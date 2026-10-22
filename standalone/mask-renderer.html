@@ -660,8 +660,8 @@ dialog.dialog-box {
 
 .renderer-page { display: grid; gap: 12px; }
 
-/* Six views don't fit in one row on a phone: two rows of three. */
-@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(3, 1fr); } }
+/* Seven views don't fit in one row on a phone: two rows of four. */
+@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(4, 1fr); } }
 
 .renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
 
@@ -2682,16 +2682,16 @@ dialog.dialog-box {
     return count;
     function rasterStroke(xs, ys, vw, vb, va, cv, sc) {
       for (let k = 0; k + 1 < xs.length; k++) {
-        const reach = Math.max(vw[k], vw[k + 1]) / 2 + 3 * Math.max(vb[k], vb[k + 1]);
+        const reach2 = Math.max(vw[k], vw[k + 1]) / 2 + 3 * Math.max(vb[k], vb[k + 1]);
         if (Math.max(va[k], va[k + 1]) <= 0) continue;
         const ax = xs[k], ay = ys[k], bx = xs[k + 1], by = ys[k + 1];
-        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - reach) / px));
-        const i1 = Math.min(W - 1, Math.floor((Math.max(ax, bx) + reach) / px));
-        const j0 = Math.max(0, Math.floor((Math.min(ay, by) - reach) / px));
-        const j1 = Math.min(cv.H - 1, Math.floor((Math.max(ay, by) + reach) / px));
+        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - reach2) / px));
+        const i1 = Math.min(W - 1, Math.floor((Math.max(ax, bx) + reach2) / px));
+        const j0 = Math.max(0, Math.floor((Math.min(ay, by) - reach2) / px));
+        const j1 = Math.min(cv.H - 1, Math.floor((Math.max(ay, by) + reach2) / px));
         const dx = bx - ax, dy = by - ay;
         const len2 = dx * dx + dy * dy || 1e-12;
-        const r2 = reach * reach;
+        const r2 = reach2 * reach2;
         for (let j = j0; j <= j1; j++) {
           const py = (j + 0.5) * px;
           for (let i = i0; i <= i1; i++) {
@@ -2735,9 +2735,9 @@ dialog.dialog-box {
       const aIn = 0.04 + 0.21 * rng.U();
       const o = rng.U() * 1e3;
       const cos = Math.cos(phi), sin = Math.sin(phi);
-      const reach = bound * (1 + P.epsK) * len / 2;
-      const i0 = Math.max(0, Math.floor((cx - reach) / px)), i1 = Math.min(W - 1, Math.floor((cx + reach) / px));
-      const j0 = Math.max(0, Math.floor((cy - reach) / px)), j1 = Math.min(H - 1, Math.floor((cy + reach) / px));
+      const reach2 = bound * (1 + P.epsK) * len / 2;
+      const i0 = Math.max(0, Math.floor((cx - reach2) / px)), i1 = Math.min(W - 1, Math.floor((cx + reach2) / px));
+      const j0 = Math.max(0, Math.floor((cy - reach2) / px)), j1 = Math.min(H - 1, Math.floor((cy + reach2) / px));
       for (let j = j0; j <= j1; j++) {
         const y = (j + 0.5) * px;
         for (let i = i0; i <= i1; i++) {
@@ -2911,6 +2911,283 @@ dialog.dialog-box {
     };
   }
 
+  // dist/web/features/renderer/engine/spontaneity.js
+  var POINTS = 16;
+  var TRIES2 = 50;
+  var OUT = 5;
+  var DEG = Math.PI / 180;
+  var logNormal2 = (rng, median, spread) => median * Math.exp(spread * rng.N());
+  var Spontaneity = class {
+    // weight(x, y) → the mask in [0, 1] at a canvas point, or null for a uniform page.
+    constructor(seed, X, Y, P, weight = null) {
+      Object.assign(this, { X, Y, P, weight });
+      this.time = stream(seed, ":spont:time");
+      this.place = stream(seed, ":spont:place");
+      this.look = stream(seed, ":spont:marks");
+      this.s = 0;
+      this.E = 0;
+      this.next = null;
+      this.recent = [];
+      this.live = [];
+      this.count = 0;
+    }
+    // S1. Every event up to t, then the marks still visible at t.
+    advance(t) {
+      const { mu, nH, tauH } = this.P;
+      const n = Math.min(nH, 0.95);
+      for (; ; ) {
+        if (!this.next) {
+          const bound2 = mu + this.E;
+          if (!(bound2 > 0)) break;
+          this.next = { t: this.s - Math.log(1 - this.time.U()) / bound2, bound: bound2 };
+        }
+        if (this.next.t > t) break;
+        const { t: tc, bound } = this.next;
+        this.next = null;
+        this.E *= Math.exp(-(tc - this.s) / tauH);
+        this.s = tc;
+        const lambda = mu + this.E;
+        if (this.time.U() * bound > lambda) continue;
+        let parent = null;
+        let pick = this.time.U() * lambda - mu;
+        if (pick >= 0) {
+          for (const r of this.recent) {
+            pick -= n / tauH * Math.exp(-(tc - r.t0) / tauH);
+            parent = r;
+            if (pick < 0) break;
+          }
+        }
+        const mk = this.birth(tc, parent);
+        this.E += n / tauH;
+        this.recent.push(mk);
+        this.live.push(mk);
+        this.count++;
+      }
+      this.recent = this.recent.filter((r) => this.s - r.t0 < 20 * tauH);
+      this.live = this.live.filter((mk) => t - mk.t0 < mk.Td + mk.T + OUT * mk.tauF);
+      return this.live;
+    }
+    // S2–S4 for one mark born at t0.
+    birth(t0, parent) {
+      const P = this.P;
+      const { X, Y } = this;
+      let x;
+      let y;
+      if (parent) {
+        x = reflect(parent.x + P.sigmaC * this.place.N(), X);
+        y = reflect(parent.y + P.sigmaC * this.place.N(), Y);
+      } else {
+        for (let k = 0; k < TRIES2; k++) {
+          x = this.place.U() * X;
+          y = this.place.U() * Y;
+          const w = this.weight ? 1 - P.rho + P.rho * this.weight(x, y) : 1;
+          if (this.place.U() < w) break;
+        }
+      }
+      const L = this.look;
+      const u = L.U();
+      const v = L.U();
+      let kind;
+      if (parent && u < P.chi) kind = parent.kind;
+      else {
+        const total = Math.max(1, P.piDot + P.piDash);
+        kind = v < P.piDot / total ? "dot" : v < (P.piDot + P.piDash) / total ? "dash" : "mark";
+      }
+      const theta = parent ? parent.theta + P.sigmaTheta * DEG * L.N() : L.U() * 2 * Math.PI;
+      const mk = {
+        t0,
+        kind,
+        x,
+        y,
+        theta,
+        parent: parent ? parent.id : null,
+        id: this.count,
+        len: logNormal2(L, P.muLen, P.sLen),
+        r: logNormal2(L, P.muR, 0.4),
+        q: 0.6 + 0.4 * L.U(),
+        w: logNormal2(L, P.muWm, 0.3),
+        b: logNormal2(L, P.muBm, 0.5),
+        a: logNormal2(L, P.muAm, P.sAm),
+        bend: kind === "mark" ? P.sigmaH * L.N() : 0,
+        alpha: 0.15 + 0.45 * L.U(),
+        beta: 0.15 + 0.45 * L.U(),
+        Td: P.Td,
+        T: logNormal2(L, P.muT, P.sT),
+        tauF: P.tauF
+      };
+      if (kind !== "dot") mk.pts = bezier(mk);
+      return mk;
+    }
+  };
+  function reflect(v, side) {
+    v = Math.abs(v) % (2 * side);
+    return v > side ? 2 * side - v : v;
+  }
+  function bezier({ x, y, theta, len, bend }) {
+    const ex = Math.cos(theta);
+    const ey = Math.sin(theta);
+    const ax = x - len / 2 * ex;
+    const ay = y - len / 2 * ey;
+    const bx = x + len / 2 * ex;
+    const by = y + len / 2 * ey;
+    const cx = x - 2 * bend * len * ey;
+    const cy = y + 2 * bend * len * ex;
+    const pts = new Float32Array(2 * (POINTS + 1));
+    for (let k = 0; k <= POINTS; k++) {
+      const u = k / POINTS;
+      const p = (1 - u) ** 2;
+      const q = 2 * u * (1 - u);
+      const r = u * u;
+      pts[2 * k] = p * ax + q * cx + r * bx;
+      pts[2 * k + 1] = p * ay + q * cy + r * by;
+    }
+    return pts;
+  }
+  function life(mk, s) {
+    if (s <= 0) return { g: 0, o: 0 };
+    const g = smoothstep(0, mk.Td, s);
+    const o = s < mk.Td + mk.T ? 1 : Math.exp(-(s - mk.Td - mk.T) / mk.tauF);
+    return { g, o };
+  }
+  function reach(mk, px) {
+    const b = Math.sqrt(mk.b * mk.b + (px / 2) ** 2);
+    if (mk.kind === "dot") {
+      const e2 = mk.r + 3 * b;
+      return [mk.x - e2, mk.y - e2, mk.x + e2, mk.y + e2];
+    }
+    const e = mk.w / 2 + 3 * b;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (let k = 0; k < mk.pts.length; k += 2) {
+      x0 = Math.min(x0, mk.pts[k]);
+      x1 = Math.max(x1, mk.pts[k]);
+      y0 = Math.min(y0, mk.pts[k + 1]);
+      y1 = Math.max(y1, mk.pts[k + 1]);
+    }
+    return [x0 - e, y0 - e, x1 + e, y1 + e];
+  }
+  function addMark(mk, t, cv, D) {
+    const { g, o } = life(mk, t - mk.t0);
+    const amp = mk.a * o;
+    if (amp < 1e-3 || g <= 0) return;
+    const { W, H, scale, px } = cv;
+    const [bx0, by0, bx1, by1] = mk.box;
+    const i0 = Math.max(0, Math.floor(bx0 * scale));
+    const i1 = Math.min(W - 1, Math.ceil(bx1 * scale));
+    const j0 = Math.max(0, Math.floor(by0 * scale));
+    const j1 = Math.min(H - 1, Math.ceil(by1 * scale));
+    const b = Math.sqrt(mk.b * mk.b + (px / 2) ** 2);
+    const k = 1 / (Math.SQRT2 * b);
+    if (mk.kind === "dot") {
+      const rr = mk.r * Math.sqrt(g);
+      const c = Math.cos(mk.theta);
+      const s = Math.sin(mk.theta);
+      for (let j = j0; j <= j1; j++) {
+        const dy = (j + 0.5) / scale - mk.y;
+        for (let i = i0; i <= i1; i++) {
+          const dx = (i + 0.5) / scale - mk.x;
+          const u = dx * c + dy * s;
+          const v = (-dx * s + dy * c) / mk.q;
+          const d = Math.hypot(u, v) - rr;
+          D[j * W + i] += amp * 0.5 * (1 - erf(d * k));
+        }
+      }
+      return;
+    }
+    const pts = mk.pts;
+    const last = g * POINTS;
+    const full = Math.floor(last);
+    for (let j = j0; j <= j1; j++) {
+      const py = (j + 0.5) / scale;
+      for (let i = i0; i <= i1; i++) {
+        const pxl = (i + 0.5) / scale;
+        let best = Infinity;
+        let bu = 0;
+        for (let s = 0; s < Math.ceil(last); s++) {
+          const ax = pts[2 * s];
+          const ay = pts[2 * s + 1];
+          let ex = pts[2 * s + 2] - ax;
+          let ey = pts[2 * s + 3] - ay;
+          const part2 = s < full ? 1 : last - full;
+          ex *= part2;
+          ey *= part2;
+          const ll = ex * ex + ey * ey;
+          let f = ll > 0 ? ((pxl - ax) * ex + (py - ay) * ey) / ll : 0;
+          f = f < 0 ? 0 : f > 1 ? 1 : f;
+          const qx = pxl - ax - f * ex;
+          const qy = py - ay - f * ey;
+          const d2 = qx * qx + qy * qy;
+          if (d2 < best) {
+            best = d2;
+            bu = (s + f * part2) / POINTS;
+          }
+        }
+        const d = Math.sqrt(best);
+        const w = mk.w;
+        const E = taper(Math.min(0.999, Math.max(1e-3, bu)), mk.alpha, mk.beta);
+        D[j * W + i] += amp * E * 0.5 * (erf((w / 2 - d) * k) + erf((w / 2 + d) * k));
+      }
+    }
+  }
+  var Living = class {
+    constructor(process, base, W, H, ak, alpha) {
+      const scale = Math.min(W, H);
+      Object.assign(this, { process, base, W, H, ak, alpha });
+      this.cv = { W, H, scale, px: 1 / scale };
+      this.rgba = new Uint8ClampedArray(base);
+      this.D = new Float32Array(W * H);
+      this.drawn = [];
+    }
+    frame(t) {
+      const live = this.process.advance(t);
+      for (const mk of live) mk.box ||= reach(mk, this.cv.px);
+      const dirty = /* @__PURE__ */ new Set([...this.drawn, ...live]);
+      const rects = [...dirty].map((mk) => this.rect(mk.box)).filter((r) => r[2] > 0 && r[3] > 0);
+      const { D, W } = this;
+      for (const [x, y, w, h] of rects) for (let j = y; j < y + h; j++) D.fill(0, j * W + x, j * W + x + w);
+      for (const mk of live) addMark(mk, t, this.cv, D);
+      for (const r of rects) this.composite(r);
+      this.drawn = live.slice();
+      return rects;
+    }
+    rect([x0, y0, x1, y1]) {
+      const { W, H, cv } = this;
+      const i0 = Math.max(0, Math.floor(x0 * cv.scale));
+      const j0 = Math.max(0, Math.floor(y0 * cv.scale));
+      const i1 = Math.min(W - 1, Math.ceil(x1 * cv.scale));
+      const j1 = Math.min(H - 1, Math.ceil(y1 * cv.scale));
+      return [i0, j0, i1 - i0 + 1, j1 - j0 + 1];
+    }
+    composite([x, y, w, h]) {
+      const { D, W, base, rgba, ak, alpha } = this;
+      for (let j = y; j < y + h; j++) {
+        for (let i = x; i < x + w; i++) {
+          const p = j * W + i;
+          const q = 4 * p;
+          const d = alpha * D[p];
+          if (d === 0) {
+            rgba[q] = base[q];
+            rgba[q + 1] = base[q + 1];
+            rgba[q + 2] = base[q + 2];
+            continue;
+          }
+          for (let c = 0; c < 3; c++) {
+            const v = LINEAR_BYTE[base[q + c]] * Math.exp(-d * ak[c]);
+            rgba[q + c] = SRGB_BYTE[Math.round(4095 * (v < 0 ? 0 : v > 1 ? 1 : v))];
+          }
+        }
+      }
+    }
+  };
+  function expected(P) {
+    const n = Math.min(P.nH, 0.95);
+    const rate = P.mu / (1 - n);
+    const life2 = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF;
+    return { rate, visible: rate * life2, cluster: 1 / (1 - n) };
+  }
+
   // dist/web/features/renderer/engine/params.js
   var PARAMS = [
     { group: "Monochrome", key: "k", label: "Contrast k", min: 0.5, max: 12, step: 0.1, value: 4 },
@@ -2970,10 +3247,34 @@ dialog.dialog-box {
     { group: "Grain", key: "aCl", label: "Cloudiness a_cl", min: 0, max: 0.15, step: 5e-3, value: 0.05 },
     { group: "Grain", key: "lambdaCl", label: "Cloud scale λ_cl", min: 0.05, max: 1, step: 0.01, value: 0.08 },
     { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 },
-    { group: "Composite", key: "warmth", label: "Inclusion warmth κ", min: 0, max: 1, step: 0.01, value: 1 }
+    { group: "Composite", key: "warmth", label: "Inclusion warmth κ", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Timing", key: "mu", label: "Background rate μ (per s)", min: 0, max: 3, step: 0.01, value: 0.3 },
+    { group: "Timing", key: "nH", label: "Branching ratio n", min: 0, max: 0.95, step: 0.01, value: 0.6 },
+    { group: "Timing", key: "tauH", label: "Memory τ_h (s)", min: 0.1, max: 10, step: 0.1, value: 1.2 },
+    { group: "Placement", key: "rho", label: "Mask affinity ρ", min: 0, max: 1, step: 0.01, value: 0.6 },
+    { group: "Placement", key: "sigmaC", label: "Cluster spread σ_c", min: 2e-3, max: 0.3, step: 1e-3, value: 0.04 },
+    { group: "Placement", key: "sigmaTheta", label: "Heading spread σ_θ (°)", min: 0, max: 180, step: 1, value: 20 },
+    { group: "Placement", key: "chi", label: "Kinship χ", min: 0, max: 1, step: 0.01, value: 0.7 },
+    { group: "Marks", key: "piDot", label: "Dot share π_dot", min: 0, max: 1, step: 0.01, value: 0.5 },
+    { group: "Marks", key: "piDash", label: "Dash share π_dash", min: 0, max: 1, step: 0.01, value: 0.3 },
+    { group: "Marks", key: "muR", label: "Dot radius μ_r", min: 5e-4, max: 0.02, step: 1e-4, value: 4e-3 },
+    { group: "Marks", key: "muLen", label: "Stroke length μ_ℓ", min: 5e-3, max: 0.15, step: 1e-3, value: 0.03 },
+    { group: "Marks", key: "sLen", label: "Length spread s_ℓ", min: 0, max: 1.5, step: 0.01, value: 0.4 },
+    { group: "Marks", key: "muWm", label: "Stroke width μ_w,m", min: 3e-4, max: 8e-3, step: 1e-4, value: 2e-3 },
+    { group: "Marks", key: "sigmaH", label: "Bend σ_h", min: 0, max: 0.6, step: 0.01, value: 0.2 },
+    { group: "Marks", key: "muBm", label: "Mark blur μ_b,m", min: 0, max: 4e-3, step: 1e-4, value: 4e-4 },
+    { group: "Marks", key: "muAm", label: "Mark darkness μ_a,m", min: 0, max: 3, step: 0.05, value: 1.2 },
+    { group: "Marks", key: "sAm", label: "Darkness spread s_a,m", min: 0, max: 1.5, step: 0.01, value: 0.3 },
+    { group: "Life", key: "Td", label: "Draw-in time T_d (s)", min: 0.05, max: 3, step: 0.05, value: 0.6 },
+    { group: "Life", key: "muT", label: "Median hold μ_T (s)", min: 0.5, max: 60, step: 0.5, value: 5 },
+    { group: "Life", key: "sT", label: "Hold spread s_T", min: 0, max: 1.5, step: 0.01, value: 0.5 },
+    { group: "Life", key: "tauF", label: "Fade time τ_f (s)", min: 0.2, max: 20, step: 0.1, value: 2.5 },
+    { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 }
   ];
   var PATTERN_GROUPS = ["Fibres", "Web", "Specks", "Flakes", "Grain"];
   var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
+  var SPONT_GROUPS = ["Timing", "Placement", "Marks", "Life"];
+  var SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
   var DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
 
   // dist/web/features/renderer/engine/index.js
@@ -3052,7 +3353,7 @@ dialog.dialog-box {
       return c;
     }
     // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
-    // 'field' at the grid's.
+    // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
     view(name, P, r) {
       const { W, H } = this.image;
       const t = this.tone(P);
@@ -3068,7 +3369,7 @@ dialog.dialog-box {
         };
       }
       const m = this.fullMask(P, r);
-      if (name === "washi") return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
+      if (name === "washi" || name === "living") return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
       return { rgba: paint(name === "mask" ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
     }
     // P6 over base tone t (null for bare paper). Warmth κ mixes the inclusions' absorber from ink to tan.
@@ -3076,6 +3377,15 @@ dialog.dialog-box {
       const k = P.warmth;
       const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
       return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
+    }
+    // S1–S5: the marks over the Washi pixels `rgba`, placed by the mask (stream seed + ':spont:…').
+    // The process is replayed from 0, so a slider change shows its marks at the same moment t.
+    living(P, r, rgba) {
+      const { seed, X, Y, W, H } = this.image;
+      const m = this.fullMask(P, r);
+      const s = Math.min(W, H);
+      const weight = (x, y) => m[Math.min(H - 1, Math.floor(y * s)) * W + Math.min(W - 1, Math.floor(x * s))];
+      return new Living(new Spontaneity(seed, X, Y, P, weight), rgba, W, H, this.inkAbsorber, P.alphaS);
     }
     fullMask(P, r) {
       const c = this.maskCache;
@@ -3151,6 +3461,10 @@ dialog.dialog-box {
       ]
     };
   }
+  function describeLiving(P) {
+    const { rate, visible, cluster } = expected(P);
+    return `Spontaneity: about ${rate.toFixed(2)} marks a second (μ / (1 − n)), in clusters of ${cluster.toFixed(1)} on average (1 / (1 − n)), so about ${visible.toFixed(1)} on the page at once (rate × mean life). Streams :spont:time :spont:place :spont:marks.`;
+  }
   function describePattern({ counts, ms }) {
     const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
     return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.web, "web strand", "web strands")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
@@ -3165,9 +3479,21 @@ dialog.dialog-box {
     ["field", "Field"],
     ["base", "Base"],
     ["pattern", "Pattern"],
-    ["washi", "Washi"]
+    ["washi", "Washi"],
+    ["living", "Living"]
   ];
-  var DRAW_KEYS = ["k", "gamma", "dMin", "dMax", "delta", "feather", "alpha", "warmth", ...PATTERN_KEYS];
+  var DRAW_KEYS = [
+    "k",
+    "gamma",
+    "dMin",
+    "dMax",
+    "delta",
+    "feather",
+    "alpha",
+    "warmth",
+    ...PATTERN_KEYS,
+    ...SPONT_KEYS
+  ];
   var Renderer = class extends Feature {
     start() {
       this.engine = new Engine();
@@ -3175,6 +3501,7 @@ dialog.dialog-box {
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
       this.current = this.storage.get("view", "base");
       this.result = null;
+      this.clock = 0;
       this.picker = ui_exports.filePicker("image/*");
       this.add("views", {
         id: "renderer",
@@ -3308,6 +3635,7 @@ dialog.dialog-box {
       this.stage.style.aspectRatio = `${W} / ${H}`;
       this.stage.style.width = `min(100%, ${70 * W / H}vh)`;
       this.paintOverlay();
+      this.animate();
       this.seedLine.replaceChildren(
         "Seed ",
         el3("code", {}, this.seed.seedText),
@@ -3329,8 +3657,27 @@ dialog.dialog-box {
           ),
           el3("ul", {}, a.lines.map((line) => el3("li", {}, line)))
         )),
-        this.engine.patternCache?.Dw && el3("p", {}, describePattern(this.engine.patternCache))
+        this.engine.patternCache?.Dw && el3("p", {}, describePattern(this.engine.patternCache)),
+        this.current === "living" && el3("p", {}, describeLiving(this.P))
       );
+    }
+    // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
+    // capped at 0.1 s, so time pauses (rather than jumps) while the page is hidden.
+    animate() {
+      cancelAnimationFrame(this.tick);
+      if (this.current !== "living") return;
+      const live = this.engine.living(this.P, this.result, this.picture.rgba);
+      const { width, height } = this.picture;
+      const image = new ImageData(live.rgba, width, height);
+      const g = this.canvas.getContext("2d");
+      let last = null;
+      const step = (now) => {
+        this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
+        last = now;
+        for (const [x, y, w, h] of live.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
+        this.tick = requestAnimationFrame(step);
+      };
+      this.tick = requestAnimationFrame(step);
     }
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
     paintOverlay() {

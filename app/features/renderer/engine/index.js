@@ -5,6 +5,7 @@
 //   const r = engine.mask(P, anchor);     // M1–M8, with re-rolls; anchor in fractions of W, H
 //   const img = engine.view('base', P, r) // { rgba, width, height }
 //   const pat = engine.pattern(P);        // P1–P5: { Dw, Dk, C, S, counts, ms }, cached
+//   const live = engine.living(P, r, img.rgba) // S1–S5 over the Washi pixels; live.frame(t) each frame
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
@@ -16,8 +17,10 @@ import { grid, field } from './field.js';
 import { components, judge } from './components.js';
 import { paint, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
 import { part, combine, PARTS } from './pattern.js';
+import { Spontaneity, Living } from './spontaneity.js';
 
-export { PARAMS, DEFAULTS, PATTERN_KEYS } from './params.js';
+export { PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS } from './params.js';
+export { expected } from './spontaneity.js';
 
 const REROLLS = 8;
 const FIELD_SHORT = 320;
@@ -97,7 +100,7 @@ export class Engine {
   }
 
   // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
-  // 'field' at the grid's.
+  // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
   view(name, P, r) {
     const { W, H } = this.image;
     const t = this.tone(P);
@@ -109,7 +112,7 @@ export class Engine {
         contour: contour(G, best.Fp, best.T) };
     }
     const m = this.fullMask(P, r);
-    if (name === 'washi') return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
+    if (name === 'washi' || name === 'living') return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
     return { rgba: paint(name === 'mask' ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
   }
 
@@ -118,6 +121,16 @@ export class Engine {
     const k = P.warmth;
     const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
     return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
+  }
+
+  // S1–S5: the marks over the Washi pixels `rgba`, placed by the mask (stream seed + ':spont:…').
+  // The process is replayed from 0, so a slider change shows its marks at the same moment t.
+  living(P, r, rgba) {
+    const { seed, X, Y, W, H } = this.image;
+    const m = this.fullMask(P, r);
+    const s = Math.min(W, H);
+    const weight = (x, y) => m[Math.min(H - 1, Math.floor(y * s)) * W + Math.min(W - 1, Math.floor(x * s))];
+    return new Living(new Spontaneity(seed, X, Y, P, weight), rgba, W, H, this.inkAbsorber, P.alphaS);
   }
 
   fullMask(P, r) {

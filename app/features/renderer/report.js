@@ -1,5 +1,7 @@
-// The M8 report as plain lines of text, one block per attempt, and the pattern's line.
+// The M8 report as plain lines of text, one block per attempt, the pattern's line and the living one.
 // No screen code, so it's testable.
+
+import { expected } from './engine/spontaneity.js';
 
 const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : '—');
 
@@ -40,6 +42,14 @@ function block(a, kept) {
 }
 
 // The pattern's line: what Engine.pattern() returned → one sentence.
+// The Living view's line: what the Hawkes process gives on average.
+export function describeLiving(P) {
+  const { rate, visible, cluster } = expected(P);
+  return `Spontaneity: about ${rate.toFixed(2)} marks a second (μ / (1 − n)), in clusters of ` +
+    `${cluster.toFixed(1)} on average (1 / (1 − n)), so about ${visible.toFixed(1)} on the page at once ` +
+    '(rate × mean life). Streams :spont:time :spont:place :spont:marks.';
+}
+
 export function describePattern({ counts, ms }) {
   const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
   return `Pattern: ${n(counts.fibres, 'fibre', 'fibres')}, ${n(counts.web, 'web strand', 'web strands')}, ` +
