@@ -49,6 +49,9 @@ Choices the spec left open:
 - M8 uses 8-connected components of `F' ≥ T`. The anchor rule is skipped when the main centre
   was placed uniformly (the ε case). When no attempt passes, the one with the lowest penalty
   (how far over each rule it went) is shown.
+- **Feather** (added after the spec, default 0.03): a Gaussian blur of the mask with that standard
+  deviation in canvas units, applied on the field grid after the smoothstep and then sampled up.
+  0 gives the spec's crisp edge. It doesn't change M8, which uses the unblurred threshold.
 - Mixes happen in OKLab: the mask view is `mix(paper, ink, mask)` and the base is
   `mix(paper, monochrome, mask)`.
 

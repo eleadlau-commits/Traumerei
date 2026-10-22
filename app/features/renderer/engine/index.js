@@ -89,9 +89,11 @@ export class Engine {
   }
 
   fullMask(P, r) {
-    if (this.maskCache?.r !== r || this.maskCache.delta !== P.delta) {
+    const c = this.maskCache;
+    if (c?.r !== r || c.delta !== P.delta || c.feather !== P.feather) {
       const { W, H } = this.image;
-      this.maskCache = { r, delta: P.delta, m: upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W, H) };
+      const m = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W, H, P.feather);
+      this.maskCache = { r, delta: P.delta, feather: P.feather, m };
     }
     return this.maskCache.m;
   }

@@ -6,6 +6,7 @@ import { oklabL, oklabToSrgb, INK, PAPER, inkPaperLUT } from '../engine/colour.j
 import { tone, imageSeed } from '../engine/monochrome.js';
 import { stickBreaking } from '../engine/skeleton.js';
 import { quantile } from '../engine/field.js';
+import { gaussianBlur } from '../engine/render.js';
 import { components, judge } from '../engine/components.js';
 import { Engine, DEFAULTS } from '../engine/index.js';
 
@@ -110,4 +111,24 @@ test('the mask covers about κ of the picture', () => {
   const m = e.fullMask(DEFAULTS, r);
   const cover = m.reduce((s, v) => s + v, 0) / m.length;
   assert.ok(Math.abs(cover - DEFAULTS.kappa) < 0.03);
+});
+
+test('the blur keeps the total and softens a step', () => {
+  const G = { gw: 40, gh: 1 };
+  const v = Float32Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 ? 1 : 0));
+  const b = gaussianBlur(G, v, 2);
+  assert.ok(near(b.reduce((s, x) => s + x, 0), 20, 1e-3));
+  assert.ok(b[10] > 0.3 && b[10] < 0.7 && b[20] > 0.99);
+});
+
+test('feather widens the fade but keeps the coverage', () => {
+  const e = new Engine();
+  e.load(picture(200, 200), 200, 200);
+  const r = e.mask(DEFAULTS, { x: 0.5, y: 0.5 });
+  const soft = (m) => m.filter((v) => v > 0.05 && v < 0.95).length;
+  const hard = e.fullMask({ ...DEFAULTS, feather: 0 }, r).slice();
+  const feathered = e.fullMask({ ...DEFAULTS, feather: 0.04 }, r);
+  assert.ok(soft(feathered) > 3 * soft(hard));
+  const mean = (m) => m.reduce((s, v) => s + v, 0) / m.length;
+  assert.ok(Math.abs(mean(feathered) - mean(hard)) < 0.02);
 });

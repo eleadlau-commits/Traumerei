@@ -15,13 +15,10 @@ export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
   return out;
 }
 
-// The mask at full resolution: F' sampled bilinearly from the grid, then
-// smoothstep(T − δ, T + δ, F'). Returns a Float32Array of W × H values in [0, 1].
-export function upscaleMask(G, Fp, T, delta, W, H) {
+// Grid values sampled bilinearly up to W × H, each passed through f.
+function upscale(G, v, W, H, f) {
   const { gw, gh } = G;
-  const m = new Float32Array(W * H);
-  const e0 = T - delta;
-  const e1 = T + delta;
+  const out = new Float32Array(W * H);
   for (let py = 0, p = 0; py < H; py++) {
     let gy = ((py + 0.5) * gh) / H - 0.5;
     gy = gy < 0 ? 0 : gy > gh - 1 ? gh - 1 : gy;
@@ -34,12 +31,49 @@ export function upscaleMask(G, Fp, T, delta, W, H) {
       gx = gx < 0 ? 0 : gx > gw - 1 ? gw - 1 : gx;
       const i0 = Math.min(gw - 2, Math.floor(gx));
       const fx = gx - i0;
-      const top = Fp[r0 + i0] + (Fp[r0 + i0 + 1] - Fp[r0 + i0]) * fx;
-      const bot = Fp[r1 + i0] + (Fp[r1 + i0 + 1] - Fp[r1 + i0]) * fx;
-      m[p] = smoothstep(e0, e1, top + (bot - top) * fy);
+      const top = v[r0 + i0] + (v[r0 + i0 + 1] - v[r0 + i0]) * fx;
+      const bot = v[r1 + i0] + (v[r1 + i0 + 1] - v[r1 + i0]) * fx;
+      out[p] = f(top + (bot - top) * fy);
     }
   }
-  return m;
+  return out;
+}
+
+// Separable Gaussian blur of grid values with standard deviation s (in cells); edges clamp.
+export function gaussianBlur(G, v, s) {
+  const { gw, gh } = G;
+  const R = Math.ceil(3 * s);
+  const w = Float32Array.from({ length: 2 * R + 1 }, (_, k) => Math.exp(-((k - R) ** 2) / (2 * s * s)));
+  const sum = w.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < w.length; k++) w[k] /= sum;
+  const tmp = new Float32Array(v.length);
+  const out = new Float32Array(v.length);
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) {
+      let acc = 0;
+      for (let k = -R; k <= R; k++) acc += w[k + R] * v[j * gw + Math.min(gw - 1, Math.max(0, i + k))];
+      tmp[j * gw + i] = acc;
+    }
+  }
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) {
+      let acc = 0;
+      for (let k = -R; k <= R; k++) acc += w[k + R] * tmp[Math.min(gh - 1, Math.max(0, j + k)) * gw + i];
+      out[j * gw + i] = acc;
+    }
+  }
+  return out;
+}
+
+// The mask at full resolution, W × H values in [0, 1]: smoothstep(T − δ, T + δ, F').
+// Without feather, F' is sampled bilinearly and the smoothstep is applied at full size (crisp edges).
+// With feather (a Gaussian's standard deviation, short side = 1), the smoothstep is applied on the
+// grid, the result is blurred, and that is sampled up.
+export function upscaleMask(G, Fp, T, delta, W, H, feather = 0) {
+  const step = (x) => smoothstep(T - delta, T + delta, x);
+  if (!(feather > 0)) return upscale(G, Fp, W, H, step);
+  const blurred = gaussianBlur(G, Fp.map(step), feather / G.hx);
+  return upscale(G, blurred, W, H, (x) => x);
 }
 
 // The views, each as t per pixel for paint():

@@ -14,7 +14,7 @@ import { describe } from './report.js';
 const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base']];
-const MONO_KEYS = ['k', 'gamma', 'dMin', 'dMax'];
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather']; // these don't change M1–M8
 
 export default class Renderer extends Feature {
   start() {
@@ -105,7 +105,7 @@ export default class Renderer extends Feature {
   change(key, value) {
     this.P[key] = value;
     this.storage.set('params', this.P);
-    this.dirtyMask ||= !MONO_KEYS.includes(key);
+    this.dirtyMask ||= !DRAW_KEYS.includes(key);
     if (this.frame) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = null;

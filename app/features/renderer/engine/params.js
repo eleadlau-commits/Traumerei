@@ -21,6 +21,7 @@ export const PARAMS = [
   { group: 'Edges', key: 'octaves', label: 'Octaves', min: 1, max: 8, step: 1, value: 5 },
   { group: 'Edges', key: 'lambdaRough', label: 'Roughness scale λ_rough', min: 0.01, max: 0.5, step: 0.005, value: 0.12 },
   { group: 'Edges', key: 'delta', label: 'Edge softness δ', min: 0, max: 0.1, step: 0.001, value: 0.01 },
+  { group: 'Edges', key: 'feather', label: 'Feather (blur of the mask)', min: 0, max: 0.15, step: 0.005, value: 0.03 },
 ];
 
 export const DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
