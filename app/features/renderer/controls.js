@@ -6,7 +6,8 @@ const { el } = ui;
 
 const shown = (p, v) => (p.step >= 1 ? String(v) : Number(v).toFixed(Math.max(0, -Math.floor(Math.log10(p.step)))));
 
-// sliders(PARAMS, values, onChange(key, value)) → { node, set(values) }
+// sliders(PARAMS, values, onChange(key, value)) → { node, groups, set(values) }
+// groups maps each group's name to its box, for pages that place the groups themselves.
 export function sliders(params, values, onChange) {
   const rows = new Map();
   const groups = new Map();
@@ -26,6 +27,7 @@ export function sliders(params, values, onChange) {
   }
   return {
     node: el('div', { class: 'renderer-sliders', 'data-own-swipe': true }, ...groups.values()),
+    groups,
     set(next) {
       for (const [key, r] of rows) {
         r.input.value = next[key];

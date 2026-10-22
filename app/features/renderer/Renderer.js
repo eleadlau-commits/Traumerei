@@ -1,11 +1,14 @@
-// Renderer: the page. Choose an image, tap it to set the anchor, switch between the seven views
-// (Monochrome, Mask, Field, Base, Pattern, Washi, Living), move the sliders, and read the seed and the report.
+// Renderer: the page. It shows only the picture, which starts as a plain white image. Everything
+// else is in Settings, under Advanced, folded into groups: choose an image, switch between the
+// seven views (Monochrome, Mask, Field, Base, Pattern, Washi, Living), show the anchor and tap the
+// picture to move it, move the sliders, and read the seed and the report.
 // Living is the only view that moves: its marks are drawn every frame while it's showing.
 // All the maths is in engine/, which this page mounts and feeds with pixels.
 //
 // Saved data: 'params' → { key: value } for every slider
 //             'anchor' → { x, y } as fractions of the width and height (default 0.5, 0.5)
 //             'view'   → 'monochrome' | 'mask' | 'field' | 'base' | 'pattern' | 'washi' | 'living'
+//             'marks'  → true to draw the anchor (and the Field view's contour) on the picture
 
 import { Feature, ui } from 'folio';
 import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS } from './engine/index.js';
@@ -14,10 +17,17 @@ import { describe, describePattern, describeLiving } from './report.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
+const WHITE = [1600, 1000]; // the plain white image the page starts with
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
 const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
   ...SPONT_KEYS]; // these don't change M1–M8
+// The slider groups, folded by layer in Advanced. Composite (α, κ) mixes the pattern in, so it's with it.
+const LAYERS = [
+  ['Base layer', ['Monochrome', 'Patches', 'Edges']],
+  ['Pattern layer', ['Fibres', 'Web', 'Specks', 'Flakes', 'Grain', 'Composite']],
+  ['Spontaneity layer', ['Timing', 'Placement', 'Marks', 'Life']],
+];
 
 export default class Renderer extends Feature {
   start() {
@@ -25,6 +35,7 @@ export default class Renderer extends Feature {
     this.P = { ...DEFAULTS, ...this.storage.get('params', {}) };
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
     this.current = this.storage.get('view', 'base');
+    this.marks = this.storage.get('marks', false);
     this.result = null;
     this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
     this.picker = ui.filePicker('image/*');
@@ -35,40 +46,71 @@ export default class Renderer extends Feature {
       icon: 'palette',
       order: 10,
       start: true,
-      subtitle: () => (this.seed ? `Seed ${this.seed.seedText}` : 'Choose an image to begin'),
-      mount: (container, { head, actions }) => this.mount(container, head, actions),
+      hideTitle: true,
+      mount: (container) => this.mount(container),
       render: () => this.draw(),
     });
+    this.add('settings', { id: 'renderer-advanced', title: 'Advanced', order: 50, render: () => this.advanced() });
   }
 
-  mount(container, head, actions) {
-    this.tabs = el('div', { class: 'seg renderer-tabs', role: 'tablist', style: `--tabs:${VIEWS.length}` },
-      VIEWS.map(([id, label]) => el('button', {
-        type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id),
-      }, label)));
-    head.append(this.tabs);
-    actions.append(el('button', {
-      type: 'button', class: 'icon-btn ghost', 'aria-label': 'Choose an image', title: 'Choose an image',
-      onclick: () => this.choose(),
-    }, ui.icon('plus')));
-
+  mount(container) {
     this.canvas = el('canvas', { class: 'renderer-canvas' });
     this.overlay = el('canvas', { class: 'renderer-overlay', 'aria-hidden': 'true' });
     this.stage = el('div', { class: 'renderer-stage', hidden: true, onclick: (e) => this.setAnchor(e) },
       this.canvas, this.overlay);
-    this.empty = el('button', { type: 'button', class: 'missing renderer-empty', onclick: () => this.choose() },
-      el('b', {}, 'Choose an image'),
-      el('span', {}, 'It stays on this device. Then tap the picture to move the anchor.'));
     this.error = ui.errorBox();
+    container.append(el('div', { class: 'renderer-page' }, this.stage, this.error));
+    new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+    if (!this.seed) this.white();
+  }
 
+  // Advanced, in Settings: every tool, folded into groups. Made once and kept, so the folds and
+  // sliders stay as they were each time Settings is opened.
+  advanced() {
+    if (this.panel) return this.panel;
+    this.tabs = el('div', { class: 'seg renderer-tabs', role: 'tablist', 'aria-label': 'View', style: `--tabs:${VIEWS.length}` },
+      VIEWS.map(([id, label]) => el('button', {
+        type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id),
+      }, label)));
     this.seedLine = el('p', { class: 'renderer-seed' });
     this.report = el('div', { class: 'renderer-report' });
     this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-    const reset = el('button', { type: 'button', class: 'btn small', onclick: () => this.reset() }, 'Back to defaults');
+    const fold = (title, ...kids) => el('details', { class: 'advanced renderer-fold' }, el('summary', {}, title),
+      el('div', { class: 'renderer-fold-body' }, ...kids));
 
-    container.append(el('div', { class: 'renderer-page' },
-      this.empty, this.stage, this.error, this.seedLine, this.controls.node, reset, this.report));
-    new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+    this.panel = el('div', { class: 'renderer-advanced' },
+      ui.hint('The tools behind the page. Changes show on the picture straight away.', { small: true }),
+      fold('Picture',
+        el('div', { class: 'renderer-buttons' },
+          el('button', { type: 'button', class: 'btn small', onclick: () => this.choose() }, 'Choose an image'),
+          el('button', { type: 'button', class: 'btn small', onclick: () => this.white() }, 'Back to white')),
+        ui.hint('A chosen image stays on this device.', { small: true }),
+        this.seedLine),
+      fold('View',
+        this.tabs,
+        el('div', { class: 'check renderer-marks' },
+          ui.toggle({ checked: this.marks, label: 'Show the anchor', onChange: (on) => this.showMarks(on) }),
+          el('span', {}, 'Show the anchor, and tap the picture to move it'))),
+      ...LAYERS.map(([title, groups]) => fold(title,
+        el('div', { class: 'renderer-sliders', 'data-own-swipe': true }, groups.map((g) => this.controls.groups.get(g))))),
+      fold('Report', this.report),
+      el('button', { type: 'button', class: 'btn small', onclick: () => this.reset() }, 'Back to defaults'));
+    this.draw();
+    return this.panel;
+  }
+
+  // The plain white image the page starts with.
+  white() {
+    const [W, H] = WHITE;
+    this.seed = this.engine.load(new Uint8ClampedArray(W * H * 4).fill(255), W, H);
+    this.error?.show(null);
+    this.remask();
+  }
+
+  showMarks(on) {
+    this.marks = on;
+    this.storage.set('marks', on);
+    this.paintOverlay();
   }
 
   async choose() {
@@ -84,7 +126,6 @@ export default class Renderer extends Feature {
       this.seed = this.engine.load(work.getImageData(0, 0, W, H).data, W, H);
       this.error.show(null);
       this.remask();
-      this.refresh(); // the seed goes in the title's status line
     } catch {
       this.error.show('That file couldn\'t be read as an image. Try a JPEG or PNG.');
     }
@@ -97,6 +138,7 @@ export default class Renderer extends Feature {
   }
 
   setAnchor(e) {
+    if (!this.marks) return;
     const box = this.stage.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width));
     const y = Math.min(1, Math.max(0, (e.clientY - box.top) / box.height));
@@ -133,9 +175,8 @@ export default class Renderer extends Feature {
   }
 
   draw() {
-    if (!this.tabs) return;
-    for (const b of this.tabs.children) b.setAttribute('aria-selected', String(b.dataset.view === this.current));
-    this.empty.hidden = !!this.seed;
+    if (this.tabs) for (const b of this.tabs.children) b.setAttribute('aria-selected', String(b.dataset.view === this.current));
+    if (!this.stage) return;
     this.stage.hidden = !this.seed;
     if (!this.seed || !this.result) return;
 
@@ -146,10 +187,12 @@ export default class Renderer extends Feature {
     this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
     const { W, H } = this.engine.image;
     this.stage.style.aspectRatio = `${W} / ${H}`;
-    this.stage.style.width = `min(100%, ${(70 * W) / H}vh)`; // tall pictures fit on screen
+    this.stage.style.width = `min(100%, calc((100dvh - 140px) * ${W / H}))`; // the whole picture fits on screen
+    this.stage.classList.toggle('marked', this.marks);
     this.paintOverlay();
     this.animate();
 
+    if (!this.panel) return;
     this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText),
       ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`);
     const r = describe(this.result);
@@ -184,6 +227,11 @@ export default class Renderer extends Feature {
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
   paintOverlay() {
     if (!this.picture || this.stage.hidden) return;
+    this.stage.classList.toggle('marked', this.marks);
+    if (!this.marks) {
+      this.overlay.width = 0; // clears it
+      return;
+    }
     const box = this.stage.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const w = Math.round(box.width * dpr);

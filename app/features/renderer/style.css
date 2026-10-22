@@ -2,20 +2,29 @@
 
 .renderer-page { display: grid; gap: 12px; }
 
-/* Seven views don't fit in one row on a phone: two rows of four. */
-@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(4, 1fr); } }
+/* Seven views don't fit in one row in the Settings window: two rows of four. */
+.renderer-tabs { grid-template-columns: repeat(4, 1fr); }
 
-.renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
+/* Advanced, in Settings: the tools folded into groups */
+.renderer-advanced { display: grid; gap: 4px; }
+.renderer-advanced > .hint.small { margin: 0 0 4px; }
+.renderer-advanced > .btn { justify-self: start; margin-top: 8px; }
+.renderer-fold { border-top: 1px solid var(--line); padding: 6px 0; }
+.renderer-fold summary { padding: 6px 0; }
+.renderer-fold-body { display: grid; gap: 12px; padding: 8px 0 6px; }
+.renderer-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.renderer-fold-body .hint.small { margin: 0; }
+.renderer-marks { font-size: 14px; }
 
 .renderer-stage {
   position: relative;
   margin: 0 auto;
   max-width: 100%;
-  cursor: crosshair;
   border-radius: var(--shape-sm);
   overflow: hidden;
   background: var(--surface-2);
 }
+.renderer-stage.marked { cursor: crosshair; }
 .renderer-stage[hidden] { display: none; }
 .renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .renderer-overlay { pointer-events: none; }

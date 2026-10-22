@@ -5,8 +5,12 @@
   "version": "1.0.0",
   "lang": "en",
   "theme": {
-    "accent": "#6b5a7a",
-    "accentDark": "#a594b5"
+    "accent": "#5c5f66",
+    "accentDark": "#b4b7bd",
+    "background": "#f4f4f5",
+    "backgroundDark": "#111112"
   },
-  "native": { "appId": "io.github.creation.maskrenderer" }
+  "native": {
+    "appId": "io.github.creation.maskrenderer"
+  }
 }

@@ -5,14 +5,18 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
 
 ## What it adds
 
-- The **Renderer** view (the app's only tab): choose an image with the **+** button (or the
-  empty box), tap the picture to move the anchor, and switch between **Monochrome**, **Mask**,
-  **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern** (the
-  paper alone), **Washi** (the base printed on the paper) and **Living** (Washi with the
-  spontaneity layer: dots, dashes and marks drawn in, held and faded, animated).
-- Sliders for every parameter, grouped as Monochrome, Patches, Edges, Fibres, Web, Specks, Flakes,
-  Grain, Composite, Timing, Placement, Marks and Life, and **Back to defaults**.
-- The seed (next to the title and under the picture) and the report from step M8: one block per
+- The **Renderer** view (the app's only tab): just the picture, which starts as a plain white
+  1600 × 1000 image. Everything else is in **Settings → Advanced**, folded into groups:
+  - **Picture**: choose an image, or go back to white; the seed.
+  - **View**: switch between **Monochrome**, **Mask**,
+    **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern**
+    (the paper alone), **Washi** (the base printed on the paper) and **Living** (Washi with the
+    spontaneity layer: dots, dashes and marks drawn in, held and faded, animated), and show the
+    anchor (then tap the picture to move it).
+  - **Base layer** (Monochrome, Patches, Edges), **Pattern layer** (Fibres, Web, Specks, Flakes,
+    Grain, Composite) and **Spontaneity layer** (Timing, Placement, Marks, Life): the sliders.
+  - **Report**, then **Back to defaults**.
+- The seed (under Picture) and the report from step M8: one block per
   attempt, with its streams, patches, threshold, components and whether each rule passed, and a line
   with the pattern's fibre, web, speck and flake counts once it has been made.
 
@@ -100,13 +104,15 @@ Choices the pattern spec (P1–P6) left open:
 - `params`: every slider's value.
 - `anchor`: `{ x, y }` as fractions of the width and height.
 - `view`: the last view shown.
+- `marks`: whether the anchor is shown on the picture.
 
 The picture itself isn't saved.
 
 ## How to check it works
 
 1. Run `python build.py serve` and open http://localhost:8000.
-2. Choose a picture, tap it, move some sliders, and switch views.
+2. Open Settings from the menu. Under Advanced, choose a picture, show the anchor and tap the
+   picture, move some sliders, and switch views.
 3. Run `python build.py test`.
 
 The spontaneity layer (S1–S5), the living one:
