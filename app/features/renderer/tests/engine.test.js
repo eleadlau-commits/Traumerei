@@ -305,3 +305,15 @@ test('the marks do not depend on the anchor', () => {
   };
   assert.equal(marks({ x: 0.2, y: 0.3 }), marks({ x: 0.8, y: 0.7 }));
 });
+
+test('fade times vary from mark to mark around their median', () => {
+  const P = { ...DEFAULTS, mu: 2, tauF: 2, sF: 0.6 };
+  const sp = new Spontaneity(11, 1.5, 1, P);
+  const seen = new Map();
+  for (let t = 1; t <= 300; t += 1) for (const m of sp.advance(t)) seen.set(m.id, m.tauF);
+  const f = [...seen.values()].sort((a, b) => a - b);
+  const median = f[Math.floor(f.length / 2)];
+  assert.ok(f.length > 300 && Math.abs(median / 2 - 1) < 0.15 && f[f.length - 1] / f[0] > 4);
+  const flat = new Spontaneity(11, 1.5, 1, { ...P, sF: 0 });
+  assert.ok(flat.advance(50).every((m) => m.tauF === 2));
+});

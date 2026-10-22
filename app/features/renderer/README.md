@@ -130,8 +130,9 @@ The spontaneity layer (S1–S5), the living one:
   fibres' erf cross-section. Darkness a ~ LogNormal(μ_a,m, s_a,m).
 - **S4 life.** Drawn in over T_d with g = smoothstep(0, T_d, s): a stroke is shown up to u = g of its
   length, like a pen; a dot's radius is r√g, so the drop's area grows evenly. Held for
-  T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f), retired after 5 τ_f.
-  About rate × (T_d + μ_T e^(s_T²/2) + τ_f) marks are on the page at once.
+  T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f), retired after 5 τ_f. Each mark has its
+  own fade time τ_f ~ LogNormal(μ_f, s_f), so some vanish quickly and some linger.
+  About rate × (T_d + μ_T e^(s_T²/2) + μ_f e^(s_f²/2)) marks are on the page at once.
 - **S5 composite.** Per channel in linear light over the Washi pixels,
   out_c = in_c · exp(−α_s D a_ink,c), with D the summed marks' density and a_ink the ink absorber.
   Only the boxes of marks shown last frame or this frame are recomputed and redrawn.

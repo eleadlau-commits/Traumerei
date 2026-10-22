@@ -5,7 +5,8 @@
 //       the mask; an offspring lands near its parent, x = x_parent + σ_c ξ, heading θ_parent + σ_θ ξ.
 //   S3  marks: a dot (a soft ellipse that spreads as it is drawn), a dash (a straight stroke) or a
 //       mark (a bent stroke, a quadratic Bézier with bend h ~ N(0, σ_h²)).
-//   S4  life: drawn in over T_d, held for T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f).
+//   S4  life: drawn in over T_d, held for T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f),
+//       with each mark's own fade time τ_f ~ LogNormal(μ_f, s_f).
 //   S5  composite over the Washi picture, per channel in linear light: out_c = in_c · exp(−α_s D a_ink,c).
 // Streams: seed + ':spont:time' (S1, and the choice of parent), ':spont:place' (S2), ':spont:marks' (S3–S4).
 // The same seed and sliders always give the same marks at the same moment, however the frames fall.
@@ -110,7 +111,7 @@ export class Spontaneity {
       beta: 0.15 + 0.45 * L.U(),
       Td: P.Td,
       T: logNormal(L, P.muT, P.sT),
-      tauF: P.tauF,
+      tauF: logNormal(L, P.tauF, P.sF),
     };
     if (kind !== 'dot') mk.pts = bezier(mk);
     return mk;
@@ -304,6 +305,6 @@ export class Living {
 export function expected(P) {
   const n = Math.min(P.nH, 0.95);
   const rate = P.mu / (1 - n);
-  const life = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF;
+  const life = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF * Math.exp(P.sF * P.sF / 2);
   return { rate, visible: rate * life, cluster: 1 / (1 - n) };
 }
