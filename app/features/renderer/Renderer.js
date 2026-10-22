@@ -167,7 +167,7 @@ export default class Renderer extends Feature {
   animate() {
     cancelAnimationFrame(this.tick);
     if (this.current !== 'living') return;
-    const live = this.engine.living(this.P, this.result, this.picture.rgba);
+    const live = this.engine.living(this.P, this.picture.rgba);
     const { width, height } = this.picture;
     const image = new ImageData(live.rgba, width, height);
     const g = this.canvas.getContext('2d');

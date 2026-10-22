@@ -118,8 +118,8 @@ The spontaneity layer (S1–S5), the living one:
   on how the frames fell.
 - **S2 placement** (stream `:spont:place`). Each event is a background mark with probability
   μ / λ(t), or else the offspring of an earlier mark j with probability ∝ (n / τ_h) e^(−(t − t_j)/τ_h).
-  A background mark is placed by rejection with weight (1 − ρ) + ρ m(x), where m is the mask, so
-  ρ = 1 keeps marks on the picture and ρ = 0 spreads them evenly (50 tries, then it stays).
+  A background mark lands uniformly on the canvas: the layer is independent of the anchor and the
+  mask, so moving the anchor never moves a mark.
   An offspring lands at x_parent + σ_c ξ (reflected into the canvas), heading θ_parent + σ_θ ξ,
   and keeps its parent's kind with probability χ.
 - **S3 marks** (stream `:spont:marks`). Kinds in shares π_dot, π_dash and the rest marks.

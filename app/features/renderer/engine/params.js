@@ -73,7 +73,6 @@ export const PARAMS = [
   { group: 'Timing', key: 'nH', label: 'Branching ratio n', min: 0, max: 0.95, step: 0.01, value: 0.6 },
   { group: 'Timing', key: 'tauH', label: 'Memory τ_h (s)', min: 0.1, max: 10, step: 0.1, value: 1.2 },
 
-  { group: 'Placement', key: 'rho', label: 'Mask affinity ρ', min: 0, max: 1, step: 0.01, value: 0.6 },
   { group: 'Placement', key: 'sigmaC', label: 'Cluster spread σ_c', min: 0.002, max: 0.3, step: 0.001, value: 0.04 },
   { group: 'Placement', key: 'sigmaTheta', label: 'Heading spread σ_θ (°)', min: 0, max: 180, step: 1, value: 20 },
   { group: 'Placement', key: 'chi', label: 'Kinship χ', min: 0, max: 1, step: 0.01, value: 0.7 },

@@ -5,7 +5,7 @@
 //   const r = engine.mask(P, anchor);     // M1–M8, with re-rolls; anchor in fractions of W, H
 //   const img = engine.view('base', P, r) // { rgba, width, height }
 //   const pat = engine.pattern(P);        // P1–P5: { Dw, Dk, C, S, counts, ms }, cached
-//   const live = engine.living(P, r, img.rgba) // S1–S5 over the Washi pixels; live.frame(t) each frame
+//   const live = engine.living(P, img.rgba) // S1–S5 over the Washi pixels; live.frame(t) each frame
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
@@ -123,14 +123,12 @@ export class Engine {
     return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
   }
 
-  // S1–S5: the marks over the Washi pixels `rgba`, placed by the mask (stream seed + ':spont:…').
-  // The process is replayed from 0, so a slider change shows its marks at the same moment t.
-  living(P, r, rgba) {
+  // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the
+  // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
+  // slider change shows its marks at the same moment t.
+  living(P, rgba) {
     const { seed, X, Y, W, H } = this.image;
-    const m = this.fullMask(P, r);
-    const s = Math.min(W, H);
-    const weight = (x, y) => m[Math.min(H - 1, Math.floor(y * s)) * W + Math.min(W - 1, Math.floor(x * s))];
-    return new Living(new Spontaneity(seed, X, Y, P, weight), rgba, W, H, this.inkAbsorber, P.alphaS);
+    return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
   }
 
   fullMask(P, r) {

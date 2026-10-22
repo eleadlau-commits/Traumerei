@@ -2913,14 +2913,12 @@ dialog.dialog-box {
 
   // dist/web/features/renderer/engine/spontaneity.js
   var POINTS = 16;
-  var TRIES2 = 50;
   var OUT = 5;
   var DEG = Math.PI / 180;
   var logNormal2 = (rng, median, spread) => median * Math.exp(spread * rng.N());
   var Spontaneity = class {
-    // weight(x, y) → the mask in [0, 1] at a canvas point, or null for a uniform page.
-    constructor(seed, X, Y, P, weight = null) {
-      Object.assign(this, { X, Y, P, weight });
+    constructor(seed, X, Y, P) {
+      Object.assign(this, { X, Y, P });
       this.time = stream(seed, ":spont:time");
       this.place = stream(seed, ":spont:place");
       this.look = stream(seed, ":spont:marks");
@@ -2977,12 +2975,8 @@ dialog.dialog-box {
         x = reflect(parent.x + P.sigmaC * this.place.N(), X);
         y = reflect(parent.y + P.sigmaC * this.place.N(), Y);
       } else {
-        for (let k = 0; k < TRIES2; k++) {
-          x = this.place.U() * X;
-          y = this.place.U() * Y;
-          const w = this.weight ? 1 - P.rho + P.rho * this.weight(x, y) : 1;
-          if (this.place.U() < w) break;
-        }
+        x = this.place.U() * X;
+        y = this.place.U() * Y;
       }
       const L = this.look;
       const u = L.U();
@@ -3251,7 +3245,6 @@ dialog.dialog-box {
     { group: "Timing", key: "mu", label: "Background rate μ (per s)", min: 0, max: 3, step: 0.01, value: 0.3 },
     { group: "Timing", key: "nH", label: "Branching ratio n", min: 0, max: 0.95, step: 0.01, value: 0.6 },
     { group: "Timing", key: "tauH", label: "Memory τ_h (s)", min: 0.1, max: 10, step: 0.1, value: 1.2 },
-    { group: "Placement", key: "rho", label: "Mask affinity ρ", min: 0, max: 1, step: 0.01, value: 0.6 },
     { group: "Placement", key: "sigmaC", label: "Cluster spread σ_c", min: 2e-3, max: 0.3, step: 1e-3, value: 0.04 },
     { group: "Placement", key: "sigmaTheta", label: "Heading spread σ_θ (°)", min: 0, max: 180, step: 1, value: 20 },
     { group: "Placement", key: "chi", label: "Kinship χ", min: 0, max: 1, step: 0.01, value: 0.7 },
@@ -3378,14 +3371,12 @@ dialog.dialog-box {
       const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
       return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
     }
-    // S1–S5: the marks over the Washi pixels `rgba`, placed by the mask (stream seed + ':spont:…').
-    // The process is replayed from 0, so a slider change shows its marks at the same moment t.
-    living(P, r, rgba) {
+    // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the
+    // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
+    // slider change shows its marks at the same moment t.
+    living(P, rgba) {
       const { seed, X, Y, W, H } = this.image;
-      const m = this.fullMask(P, r);
-      const s = Math.min(W, H);
-      const weight = (x, y) => m[Math.min(H - 1, Math.floor(y * s)) * W + Math.min(W - 1, Math.floor(x * s))];
-      return new Living(new Spontaneity(seed, X, Y, P, weight), rgba, W, H, this.inkAbsorber, P.alphaS);
+      return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
     }
     fullMask(P, r) {
       const c = this.maskCache;
@@ -3666,7 +3657,7 @@ dialog.dialog-box {
     animate() {
       cancelAnimationFrame(this.tick);
       if (this.current !== "living") return;
-      const live = this.engine.living(this.P, this.result, this.picture.rgba);
+      const live = this.engine.living(this.P, this.picture.rgba);
       const { width, height } = this.picture;
       const image = new ImageData(live.rgba, width, height);
       const g = this.canvas.getContext("2d");
