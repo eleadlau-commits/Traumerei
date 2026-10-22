@@ -1,0 +1,615 @@
+/* Folio base styles: colours, the app frame, and the building blocks every feature shares
+   (buttons, inputs, pop-up windows, switches, messages). Features add their own styles
+   in their folder; the compiler puts this file first and each feature's styles after it.
+   The accent colour comes from app/app.json ("theme"). */
+
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-2: #eceef5;
+  --text: #151925;
+  --muted: #5f6678;
+  --line: #dfe2eb;
+  --accent: #3d5afe;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6eaff;
+  --danger: #c62828;
+  --danger-soft: #fdecec;
+  --shadow: 0 1px 2px rgb(16 20 32 / .05), 0 6px 18px rgb(16 20 32 / .06);
+  --radius: 14px;
+  /* Corner shapes, from large to small. An app can give them uneven corners in app/theme.css
+     (e.g. a "knife" shape: three small corners and one large one). */
+  --shape: var(--radius);        /* cards, pop-up windows, "Missing content" boxes */
+  --shape-btn: 12px;             /* buttons, text boxes, switches between choices, the selected tab */
+  --shape-sm: 10px;              /* small tags, pills and icon tiles */
+  /* Used by the frame. app/theme.css can change any of these. */
+  --text-2: var(--text);
+  --top: #1d2130;           /* the dark area at the top: top bar and view titles */
+  --top-2: #262b3d;
+  --on-top: #ffffff;
+  --on-top-muted: #c3c8d6;
+  --tab-ink: var(--muted);  /* tabs that aren't selected */
+  --glow: var(--accent);    /* the line above the selected tab */
+  --gutter: 16px;           /* space at the screen's sides */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface-2: #232733;
+    --text: #e8eaf0;
+    --muted: #9aa1b2;
+    --line: #2c313e;
+    --accent: #8c9eff;
+    --accent-ink: #0f1117;
+    --accent-soft: #252c4d;
+    --danger: #ff8a80;
+    --danger-soft: #3a1f22;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3);
+    --top: #0b0d12;
+    --top-2: #111520;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+[hidden] { display: none !important; }
+
+svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+code {
+  font: 0.88em var(--font-mono);
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+
+/* ---- App frame ---- */
+
+.app {
+  max-width: 560px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}
+.app:has(> .tabbar[hidden]) { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+
+/* The top bar: menu on the left; other features' buttons, then account and settings, on the right */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(10px + env(safe-area-inset-top)) var(--gutter) 6px;
+  background: linear-gradient(180deg, var(--top), var(--top-2));
+  color: var(--on-top);
+}
+/* Under the top bar, the dark area fades into the page, unless the view's title is on it too. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 16px;
+  background: linear-gradient(180deg, var(--top-2), var(--bg));
+  pointer-events: none;
+}
+.dark-head > .topbar { background: var(--top); }
+.dark-head > .topbar::after { display: none; }
+.top-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-left: -10px;
+  border: 0;
+  border-radius: var(--shape-btn);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.top-btn svg { width: 24px; height: 24px; }
+.top-right { display: flex; align-items: center; gap: 8px; }
+.top-actions { display: flex; gap: 8px; }
+.top-actions:empty { display: none; }
+.top-btn.top-action { margin: 0; background: rgb(255 255 255 / .14); }
+.top-btn.top-action svg { width: 22px; height: 22px; }
+.top-btn.account { margin: 0 -10px 0 0; }
+.top-btn.account svg { width: 24px; height: 24px; }
+.top-btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+main, .view-host { flex: 1; display: flex; flex-direction: column; }
+.view { flex: 1; display: flex; flex-direction: column; }
+.screen-host { padding: 0 var(--gutter); }
+
+/* Each view's title. Views can add more there (mount's `head`). It's on the page, or on the
+   dark area for views that ask for that (darkHead). */
+.page-head { position: relative; padding: 22px var(--gutter) 0; color: var(--text); }
+.dark-head .page-head {
+  padding: 6px var(--gutter) 18px;
+  background: linear-gradient(180deg, var(--top), var(--top-2));
+  color: var(--on-top);
+}
+.dark-head .page-head::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(180deg, var(--top-2), var(--bg));
+  pointer-events: none;
+}
+.page-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.page-title h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.page-sub { margin: 0; padding-bottom: 4px; font-size: 14px; color: var(--muted); text-align: right; }
+.page-title h1 { margin-right: auto; }
+.page-actions { display: flex; align-items: center; gap: 4px; margin: 0 -6px 0 -8px; }
+.page-actions:empty { display: none; }
+.dark-head .page-sub { color: var(--on-top-muted); }
+.page-extra:empty { display: none; }
+.page-title:not([hidden]) + .page-extra { margin-top: 14px; }
+.page-body { position: relative; flex: 1; display: flex; flex-direction: column; padding: 18px var(--gutter) 0; }
+
+/* The tab bar along the bottom. The selected tab is filled in the accent colour (a "pill" that
+   slides between tabs), and the line above the bar glows over it. Tabs.js sets --pos (which tab,
+   maybe between two while swiping), --glow-x and --shift (the bar following a finger a little). */
+@property --glow-x { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  touch-action: none;
+  transition: --glow-x 0.25s ease;
+}
+.tabbar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent calc(var(--glow-x) - 55%), var(--glow) var(--glow-x), transparent calc(var(--glow-x) + 55%));
+}
+.tab-track {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  transform: translateX(var(--shift, 0px));
+  transition: transform 0.25s ease;
+}
+.tab-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc((100% - (var(--tabs) - 1) * 2px) / var(--tabs));
+  height: 100%;
+  border-radius: var(--shape-btn);
+  background: var(--accent);
+  transform: translateX(calc(var(--pos, 0) * (100% + 2px)));
+  transition: transform 0.25s cubic-bezier(.2, .8, .2, 1);
+}
+.tabbar.dragging, .tabbar.dragging .tab-track, .tabbar.dragging .tab-pill { transition: none; }
+.tab {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--shape-btn);
+  background: transparent;
+  color: var(--tab-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tab svg { width: 22px; height: 22px; }
+.tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab.lit { color: var(--accent-ink); font-weight: 600; }
+
+/* The menu: a panel that slides in from the left, over most of the screen. The rest is dimmed. */
+dialog.menu-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+.menu-drawer::backdrop { background: rgb(0 0 0 / .45); opacity: 0; transition: opacity 0.28s ease; }
+.menu-drawer.shown::backdrop { opacity: 1; }
+.menu-panel {
+  width: min(85vw, 476px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--shape);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgb(0 0 0 / .25);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(.2, .8, .2, 1);
+  touch-action: pan-y;
+  outline: none;
+}
+.menu-drawer.shown .menu-panel { transform: none; }
+.menu-drawer.dragging .menu-panel { transition: none; }
+
+/* The top of the menu: who is signed in, and the status line, on the dark area */
+.menu-top {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: calc(22px + env(safe-area-inset-top)) 20px 20px;
+  background: linear-gradient(180deg, var(--top), var(--top-2));
+  color: var(--on-top);
+}
+.menu-avatar {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(255 255 255 / .14);
+}
+.menu-avatar svg { width: 26px; height: 26px; }
+.menu-who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-top:focus-visible { outline: 2px solid var(--glow); outline-offset: -4px; }
+.menu-who b { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.menu-who small { font-size: 13px; color: var(--on-top-muted); }
+.menu-list { display: grid; padding: 8px 12px calc(16px + env(safe-area-inset-bottom)); }
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-row:last-child { border-bottom: 0; }
+.menu-row svg { width: 22px; height: 22px; color: var(--accent); }
+.menu-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--shape-btn); }
+.menu-row.spin svg { animation: spin 0.9s linear infinite; }
+
+/* Round buttons */
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--shape-btn);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.icon-btn.ghost { background: transparent; box-shadow: none; width: 32px; height: 40px; color: var(--muted); }
+.icon-btn.spin svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Switch between a few choices (e.g. Day · Week · Upcoming) */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(var(--tabs, 3), 1fr);
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--shape-btn);
+  background: var(--surface-2);
+}
+.seg button {
+  height: 34px;
+  border: 0;
+  border-radius: var(--shape-btn);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.page-head .seg { background: var(--surface); }
+.dark-head .page-head .seg { background: rgb(255 255 255 / .10); }
+.dark-head .page-head .seg button { color: var(--on-top-muted); }
+.page-head .seg button[aria-selected="true"] { color: var(--accent-ink); }
+
+/* Something with nothing to show yet (ui.missing) */
+.missing {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--shape);
+  color: var(--muted);
+  font-size: 13px;
+}
+.missing b { color: var(--text-2); font-size: 14px; font-weight: 600; }
+button.missing { font: inherit; font-size: 13px; text-align: left; background: transparent; cursor: pointer; }
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.list { display: flex; flex-direction: column; gap: 10px; }
+
+.empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+.empty b { display: block; color: var(--text); font-size: 17px; margin-bottom: 4px; }
+
+/* ---- Panels, text and forms ---- */
+
+.panel {
+  margin-top: 12px;
+  padding: 18px;
+  border-radius: var(--shape);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.panel h2 { font-size: 20px; margin-bottom: 8px; }
+.panel h3 { font-size: 16px; margin-bottom: 12px; }
+.hint { color: var(--muted); font-size: 15px; margin: 0 0 16px; }
+.hint.small { font-size: 13px; margin: 12px 0 0; }
+
+.label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.field { display: flex; gap: 8px; }
+input[type="url"], input[type="text"], input[type="date"], input[type="datetime-local"], select, textarea {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--shape-btn);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* prevents iOS zoom on focus */
+}
+textarea { min-height: 84px; resize: vertical; line-height: 1.4; }
+input[type="url"]:focus, input[type="text"]:focus, input[type="date"]:focus, input[type="datetime-local"]:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.btn {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--shape-btn);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.danger { background: transparent; color: var(--danger); }
+.btn.block { display: block; width: 100%; margin-top: 12px; }
+.btn.small { padding: 7px 12px; font-size: 14px; text-decoration: none; white-space: nowrap; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+
+.error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--shape-btn);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.stack { display: grid; gap: 12px; }
+.sub-head { font-size: 16px; margin-top: 8px; }
+
+.advanced summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 4px 0; }
+.advanced .hint { margin: 8px 0 10px; }
+
+.check { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+
+/* On/off switch */
+.switch { position: relative; width: 46px; height: 28px; flex: none; }
+.switch input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
+.switch input:disabled { cursor: default; }
+.slider { position: absolute; inset: 0; border-radius: 999px; background: var(--line); transition: background 0.2s; }
+.slider::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .3);
+  transition: transform 0.2s;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::after { transform: translateX(18px); }
+.switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Pop-up windows ---- */
+
+dialog {
+  padding: 0;
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+
+/* Most pop-ups fill the screen. The title bar stays at the top while the rest scrolls, and on a
+   wide screen the content keeps to a readable width in the middle. */
+dialog.dialog-full {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  transition: transform 0.22s ease; /* springing back after a pull that didn't close it */
+}
+dialog.dialog-full.pulling { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  dialog.dialog-full { transition: none; }
+}
+.dialog-full .dialog-body {
+  width: min(100%, 680px);
+  margin: 0 auto;
+  padding: 0 var(--gutter) calc(24px + env(safe-area-inset-bottom));
+}
+.dialog-full .dialog-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  align-items: center;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: calc(10px + env(safe-area-inset-top)) 10px 10px var(--gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.dialog-full .dialog-head h2 { padding-top: 0; }
+
+/* A small box in the middle (size: 'box'), with the rest of the screen dimmed. */
+dialog.dialog-box {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  border-radius: var(--shape);
+  box-shadow: 0 20px 60px rgb(0 0 0 / .25);
+}
+.dialog-body { display: grid; gap: 12px; padding: 18px; }
+.dialog-content { display: grid; gap: 12px; }
+.dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.dialog-head h2 { font-size: 20px; padding-top: 8px; overflow-wrap: anywhere; }
+.dialog-body .label { margin: 0 0 -6px; }
+.dialog-body .error { margin: 0; }
+.dialog-body .hint { margin: 0; }
+.dialog-body .hint.small { margin-top: -6px; }
+.dialog-body .group { display: grid; gap: 6px; }
+.dialog-body .group .label { margin: 6px 0 0; }
+.dialog-body .group .label:first-child { margin-top: 0; }
+.dialog-body .group .hint.small { margin: 0; }
+.advanced .group { margin-top: 10px; }
+
+/* ---- Settings window ---- */
+
+.settings-section { display: grid; gap: 12px; }
+.settings-section + .settings-section { padding-top: 16px; border-top: 1px solid var(--line); }
+.settings-section .sub-head { margin-top: 0; }
+.features-fold summary { font-size: 16px; }
+.features-fold summary small { float: right; padding-top: 2px; font-size: 13px; font-weight: 400; color: var(--muted); }
+.features-fold[open] summary { margin-bottom: 8px; }
+.feature-list { display: grid; }
+.feature-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.feature-row:last-child { border-bottom: 0; }
+.feature-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.feature-text small { font-size: 13px; color: var(--muted); }
+.feature-row.off .feature-text { opacity: 0.6; }
+.problems { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+
+/* ---- Message at the bottom ---- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom)); /* above the tab bar */
+  z-index: 50;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: var(--shape-btn);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn.spin svg, .menu-row.spin svg { animation: none; }
+  .tabbar, .tab-track, .tab-pill, .tab { transition: none; }
+  .menu-panel, .menu-drawer::backdrop { transition: none; }
+  .toast { transition: none; }
+}

@@ -1,0 +1,19 @@
+/* The renderer's own colour names. Components use only these and Folio's names. */
+:root {
+  --renderer-anchor: #d93025;   /* the anchor's crosshair on the picture */
+  --renderer-contour: #ec7a12;  /* the threshold line on the Field view */
+  --renderer-pass: #1d6b3c;
+  --renderer-pass-soft: #e2f4e8;
+  --renderer-fail: #a3201a;
+  --renderer-fail-soft: #fce4e2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --renderer-anchor: #ff6b5e;
+    --renderer-contour: #ffa64d;
+    --renderer-pass: #8fd9a8;
+    --renderer-pass-soft: #1d3a27;
+    --renderer-fail: #ff9a90;
+    --renderer-fail-soft: #43201d;
+  }
+}

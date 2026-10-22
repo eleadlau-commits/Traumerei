@@ -1,0 +1,60 @@
+// Colour maths: sRGB ↔ linear, OKLab lightness, OKLCh → sRGB (Björn Ottosson's matrices),
+// and the 256-entry ink-to-paper lookup table.
+
+// sRGB channel in [0, 1] → linear.
+export function linearise(c) {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+// Linear channel → sRGB in [0, 1], clamped.
+export function delinearise(c) {
+  const x = Math.min(1, Math.max(0, c));
+  return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+}
+
+// Linearisation of every 8-bit value, so a whole image needs no pow() per pixel.
+export const LINEAR_BYTE = Float32Array.from({ length: 256 }, (_, i) => linearise(i / 255));
+
+// OKLab L of a linear-RGB colour: l, m, s = M1 · rgb, then L from their cube roots.
+export function oklabL(r, g, b) {
+  const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+  return 0.2104542553 * Math.cbrt(l) + 0.7936177850 * Math.cbrt(m) - 0.0040720468 * Math.cbrt(s);
+}
+
+// OKLCh (h in degrees) → OKLab [L, a, b].
+export function oklchToOklab(L, C, hDeg) {
+  const h = (hDeg * Math.PI) / 180;
+  return [L, C * Math.cos(h), C * Math.sin(h)];
+}
+
+// OKLab → sRGB [0, 1]³, clamped (Ottosson's inverse).
+export function oklabToSrgb([L, a, b]) {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+  const l = l_ ** 3;
+  const m = m_ ** 3;
+  const s = s_ ** 3;
+  return [
+    delinearise(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    delinearise(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    delinearise(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+  ];
+}
+
+export const INK = oklchToOklab(0.27, 0.013, 315);
+export const PAPER = oklchToOklab(0.94, 0.025, 88);
+
+// LUT[3i..3i+2] = sRGB bytes of mix(ink, paper, i/255), mixed in OKLab.
+export function inkPaperLUT(ink = INK, paper = PAPER) {
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
+    const rgb = oklabToSrgb(lab);
+    for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);
+  }
+  return lut;
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{name}}</title>
+<meta name="description" content="{{description}}">
+<meta name="theme-color" content="{{background}}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{{backgroundDark}}" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="{{name}}">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="app.css">
+<script type="importmap">{{importmap}}</script>
+<script type="module" src="{{entry}}"></script>
+</head>
+<body>
+<div id="folio-root"></div>
+<noscript>This app needs JavaScript.</noscript>
+{{templates}}
+</body>
+</html>

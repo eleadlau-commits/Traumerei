@@ -1,0 +1,38 @@
+/* Styles for Renderer. Class names start with "renderer-". Colours come from app/theme.css. */
+
+.renderer-page { display: grid; gap: 12px; }
+
+.renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
+
+.renderer-stage {
+  position: relative;
+  margin: 0 auto;
+  max-width: 100%;
+  cursor: crosshair;
+  border-radius: var(--shape-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.renderer-stage[hidden] { display: none; }
+.renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.renderer-overlay { pointer-events: none; }
+
+.renderer-seed { margin: 0; color: var(--muted); font-size: 13px; }
+.renderer-seed code { font-family: var(--font-mono); color: var(--text); }
+
+.renderer-report h3 { margin: 4px 0; font-size: 15px; }
+.renderer-report p { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
+.renderer-attempt { border-top: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
+.renderer-attempt summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--font-mono); }
+.renderer-attempt ul { margin: 6px 0 2px; padding-left: 18px; color: var(--text-2); }
+.renderer-tag { padding: 1px 7px; border-radius: var(--shape-sm); font-family: var(--font); font-size: 12px; background: var(--surface-2); color: var(--muted); }
+.renderer-tag.pass { background: var(--renderer-pass-soft); color: var(--renderer-pass); }
+.renderer-tag.fail { background: var(--renderer-fail-soft); color: var(--renderer-fail); }
+.renderer-tag.kept { background: var(--accent); color: var(--accent-ink); }
+
+.renderer-sliders { display: grid; gap: 12px; }
+.renderer-group { margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: var(--shape); background: var(--surface); display: grid; gap: 8px; }
+.renderer-group legend { padding: 0 4px; font-weight: 600; font-size: 13px; }
+.renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
+.renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.renderer-value { font-family: var(--font-mono); color: var(--text); }

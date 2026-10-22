@@ -1,0 +1,7 @@
+{
+  "name": "Renderer",
+  "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.",
+  "version": "1.0.0",
+  "main": "Renderer.js",
+  "styles": ["style.css"]
+}

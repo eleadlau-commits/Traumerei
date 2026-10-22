@@ -1,0 +1,12 @@
+{
+  "id": "mask-renderer",
+  "name": "Mask renderer",
+  "description": "A faint monochrome of a picture, cut by a seeded opacity mask.",
+  "version": "1.0.0",
+  "lang": "en",
+  "theme": {
+    "accent": "#6b5a7a",
+    "accentDark": "#a594b5"
+  },
+  "native": { "appId": "io.github.creation.maskrenderer" }
+}
