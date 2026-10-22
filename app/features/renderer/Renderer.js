@@ -1,21 +1,23 @@
-// Renderer: the page. Choose an image, tap it to set the anchor, switch between the six views
-// (Monochrome, Mask, Field, Base, Pattern, Washi), move the sliders, and read the seed and the report.
+// Renderer: the page. Choose an image, tap it to set the anchor, switch between the seven views
+// (Monochrome, Mask, Field, Base, Pattern, Washi, Living), move the sliders, and read the seed and the report.
+// Living is the only view that moves: its marks are drawn every frame while it's showing.
 // All the maths is in engine/, which this page mounts and feeds with pixels.
 //
 // Saved data: 'params' → { key: value } for every slider
 //             'anchor' → { x, y } as fractions of the width and height (default 0.5, 0.5)
-//             'view'   → 'monochrome' | 'mask' | 'field' | 'base' | 'pattern' | 'washi'
+//             'view'   → 'monochrome' | 'mask' | 'field' | 'base' | 'pattern' | 'washi' | 'living'
 
 import { Feature, ui } from 'folio';
-import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS } from './engine/index.js';
+import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS } from './engine/index.js';
 import { sliders } from './controls.js';
-import { describe, describePattern } from './report.js';
+import { describe, describePattern, describeLiving } from './report.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
-  ['pattern', 'Pattern'], ['washi', 'Washi']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS]; // these don't change M1–M8
+  ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
+  ...SPONT_KEYS]; // these don't change M1–M8
 
 export default class Renderer extends Feature {
   start() {
@@ -24,6 +26,7 @@ export default class Renderer extends Feature {
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
     this.current = this.storage.get('view', 'base');
     this.result = null;
+    this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
     this.picker = ui.filePicker('image/*');
 
     this.add('views', {
@@ -145,6 +148,7 @@ export default class Renderer extends Feature {
     this.stage.style.aspectRatio = `${W} / ${H}`;
     this.stage.style.width = `min(100%, ${(70 * W) / H}vh)`; // tall pictures fit on screen
     this.paintOverlay();
+    this.animate();
 
     this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText),
       ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`);
@@ -154,7 +158,27 @@ export default class Renderer extends Feature {
         el('summary', {}, a.title, el('span', { class: `renderer-tag ${a.pass ? 'pass' : 'fail'}` }, a.pass ? 'passes' : 'fails'),
           a.kept && el('span', { class: 'renderer-tag kept' }, 'shown')),
         el('ul', {}, a.lines.map((line) => el('li', {}, line))))),
-      this.engine.patternCache?.Dw && el('p', {}, describePattern(this.engine.patternCache)));
+      this.engine.patternCache?.Dw && el('p', {}, describePattern(this.engine.patternCache)),
+      this.current === 'living' && el('p', {}, describeLiving(this.P)));
+  }
+
+  // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
+  // capped at 0.1 s, so time pauses (rather than jumps) while the page is hidden.
+  animate() {
+    cancelAnimationFrame(this.tick);
+    if (this.current !== 'living') return;
+    const live = this.engine.living(this.P, this.result, this.picture.rgba);
+    const { width, height } = this.picture;
+    const image = new ImageData(live.rgba, width, height);
+    const g = this.canvas.getContext('2d');
+    let last = null;
+    const step = (now) => {
+      this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1000);
+      last = now;
+      for (const [x, y, w, h] of live.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
+      this.tick = requestAnimationFrame(step);
+    };
+    this.tick = requestAnimationFrame(step);
   }
 
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.

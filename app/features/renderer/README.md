@@ -1,16 +1,17 @@
 # Renderer
 
 Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, prints it on a seeded
-washi paper, and shows how each layer was made.
+washi paper, lets seeded ink marks come and go over it, and shows how each layer was made.
 
 ## What it adds
 
 - The **Renderer** view (the app's only tab): choose an image with the **+** button (or the
   empty box), tap the picture to move the anchor, and switch between **Monochrome**, **Mask**,
   **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern** (the
-  paper alone) and **Washi** (the base printed on the paper).
+  paper alone), **Washi** (the base printed on the paper) and **Living** (Washi with the
+  spontaneity layer: dots, dashes and marks drawn in, held and faded, animated).
 - Sliders for every parameter, grouped as Monochrome, Patches, Edges, Fibres, Web, Specks, Flakes,
-  Grain and Composite, and **Back to defaults**.
+  Grain, Composite, Timing, Placement, Marks and Life, and **Back to defaults**.
 - The seed (next to the title and under the picture) and the report from step M8: one block per
   attempt, with its streams, patches, threshold, components and whether each rule passed, and a line
   with the pattern's fibre, web, speck and flake counts once it has been made.
@@ -33,6 +34,7 @@ mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`,
 | `engine/field.js` | M5–M7: the warped field, roughness, threshold |
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
+| `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |
 | `Renderer.js`, `controls.js`, `report.js` | The page, the sliders, the report text |
 
@@ -106,3 +108,32 @@ The picture itself isn't saved.
 1. Run `python build.py serve` and open http://localhost:8000.
 2. Choose a picture, tap it, move some sliders, and switch views.
 3. Run `python build.py test`.
+
+The spontaneity layer (S1–S5), the living one:
+- **S1 timing.** A Hawkes process with an exponential kernel,
+  λ(t) = μ + Σ_{tᵢ < t} (n / τ_h) e^(−(t − tᵢ)/τ_h), simulated exactly by Ogata's thinning
+  (stream `:spont:time`). n is the branching ratio: each mark has on average n offspring, so
+  clusters hold 1 / (1 − n) marks and the mean rate is μ / (1 − n). n = 0 is a Poisson process.
+  A candidate time that is drawn but not yet reached is kept, so the marks at time t don't depend
+  on how the frames fell.
+- **S2 placement** (stream `:spont:place`). Each event is a background mark with probability
+  μ / λ(t), or else the offspring of an earlier mark j with probability ∝ (n / τ_h) e^(−(t − t_j)/τ_h).
+  A background mark is placed by rejection with weight (1 − ρ) + ρ m(x), where m is the mask, so
+  ρ = 1 keeps marks on the picture and ρ = 0 spreads them evenly (50 tries, then it stays).
+  An offspring lands at x_parent + σ_c ξ (reflected into the canvas), heading θ_parent + σ_θ ξ,
+  and keeps its parent's kind with probability χ.
+- **S3 marks** (stream `:spont:marks`). Kinds in shares π_dot, π_dash and the rest marks.
+  A dot is a soft ellipse of radius r ~ LogNormal(μ_r, 0.4), aspect q ~ U(0.6, 1). A dash is a
+  straight stroke of length ℓ ~ LogNormal(μ_ℓ, s_ℓ); a mark is the same stroke bent into a
+  quadratic Bézier, bend h ~ N(0, σ_h²) of its length. Strokes have width w ~ LogNormal(μ_w,m, 0.3),
+  blur b ~ LogNormal(μ_b,m, 0.5) and the fibres' lopsided taper with α, β ~ U(0.15, 0.6), and the
+  fibres' erf cross-section. Darkness a ~ LogNormal(μ_a,m, s_a,m).
+- **S4 life.** Drawn in over T_d with g = smoothstep(0, T_d, s): a stroke is shown up to u = g of its
+  length, like a pen; a dot's radius is r√g, so the drop's area grows evenly. Held for
+  T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f), retired after 5 τ_f.
+  About rate × (T_d + μ_T e^(s_T²/2) + τ_f) marks are on the page at once.
+- **S5 composite.** Per channel in linear light over the Washi pixels,
+  out_c = in_c · exp(−α_s D a_ink,c), with D the summed marks' density and a_ink the ink absorber.
+  Only the boxes of marks shown last frame or this frame are recomputed and redrawn.
+- The clock runs only while Living is showing, and a frame advances it by at most 0.1 s, so it
+  pauses while the page is hidden. Moving a slider replays the process from 0 to the same moment.

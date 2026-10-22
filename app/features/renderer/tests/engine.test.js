@@ -1,4 +1,5 @@
-// Tests for the engine's rules: hashing and streams, colour, stick-breaking, the field, M8 and the pattern.
+// Tests for the engine's rules: hashing and streams, colour, stick-breaking, the field, M8, the pattern
+// and the spontaneity.
 
 import { test, assert } from 'folio/testing';
 import { cyrb53, stream } from '../engine/random.js';
@@ -9,6 +10,7 @@ import { quantile } from '../engine/field.js';
 import { gaussianBlur, washiRGB } from '../engine/render.js';
 import { erf, taper, poisson, pattern } from '../engine/pattern.js';
 import { components, judge } from '../engine/components.js';
+import { Spontaneity, Living, addMark, reach, life, expected } from '../engine/spontaneity.js';
 import { Engine, DEFAULTS } from '../engine/index.js';
 
 const near = (a, b, eps = 1e-6) => Math.abs(a - b) < eps;
@@ -197,4 +199,96 @@ test('the Washi view leaves the base view untouched', () => {
   const washi = e.view('washi', DEFAULTS, r).rgba;
   assert.deepEqual([...e.view('base', DEFAULTS, r).rgba], before);
   assert.ok(washi.some((v, i) => v !== before[i]));
+});
+
+test('the Hawkes process has mean rate μ / (1 − n), and n = 0 is Poisson', () => {
+  for (const nH of [0, 0.6]) {
+    const P = { ...DEFAULTS, mu: 1, nH, tauH: 0.5 };
+    let count = 0;
+    for (let seed = 0; seed < 10; seed++) {
+      const sp = new Spontaneity(seed, 1.5, 1, P);
+      sp.advance(1000);
+      count += sp.count;
+    }
+    const want = expected(P).rate * 10000; // clusters make Hawkes counts noisy, so ten runs
+    assert.ok(Math.abs(count - want) < 0.04 * want, `${count} vs ${want}`);
+  }
+});
+
+test('the marks at a moment do not depend on how the frames fell', () => {
+  const one = new Spontaneity(7, 1.5, 1, DEFAULTS);
+  for (let t = 0; t <= 60; t += 1 / 60) one.advance(t);
+  const two = new Spontaneity(7, 1.5, 1, DEFAULTS);
+  two.advance(60);
+  const key = (sp) => sp.live.map((m) => [m.t0, m.kind, m.x, m.y, m.len].join()).join(';');
+  assert.ok(one.live.length > 0);
+  assert.equal(key(one), key(two));
+  const other = new Spontaneity(8, 1.5, 1, DEFAULTS);
+  other.advance(60);
+  assert.ok(key(other) !== key(two));
+});
+
+test('offspring stay near their parents and background marks follow the mask', () => {
+  const P = { ...DEFAULTS, mu: 1, nH: 0.8, rho: 1 };
+  const sp = new Spontaneity(3, 2, 1, P, (x) => (x < 1 ? 1 : 0));
+  const all = [];
+  const seen = new Set();
+  for (let t = 1; t <= 400; t += 1) for (const m of sp.advance(t)) if (!seen.has(m.id)) seen.add(m.id), all.push(m);
+  const byId = new Map(all.map((m) => [m.id, m]));
+  const roots = all.filter((m) => m.parent === null);
+  assert.ok(roots.length > 50 && roots.every((m) => m.x < 1)); // the mask is the left half
+  const kids = all.filter((m) => byId.has(m.parent));
+  const far = kids.filter((m) => Math.hypot(m.x - byId.get(m.parent).x, m.y - byId.get(m.parent).y) > 5 * P.sigmaC);
+  assert.ok(kids.length > 50 && far.length < 0.02 * kids.length);
+});
+
+test('a mark is drawn in, holds and fades away', () => {
+  const mk = { Td: 1, T: 2, tauF: 1 };
+  assert.deepEqual(life(mk, 0), { g: 0, o: 0 });
+  assert.ok(near(life(mk, 0.5).g, 0.5));
+  assert.equal(life(mk, 2).o, 1);
+  assert.ok(near(life(mk, 4).o, Math.exp(-1)));
+});
+
+test('marks add density only near themselves, and the living picture goes back to the base', () => {
+  const W = 120;
+  const H = 80;
+  const cv = { W, H, scale: 80, px: 1 / 80 };
+  const base = { t0: 0, x: 0.75, y: 0.5, theta: 0, len: 0.4, r: 0.05, q: 1, w: 0.02, b: 0.002, a: 1,
+    alpha: 0.3, beta: 0.3, Td: 1, T: 1, tauF: 0.5 };
+  for (const kind of ['dot', 'dash']) {
+    const mk = { ...base, kind };
+    if (kind !== 'dot') mk.pts = Float32Array.from({ length: 34 }, (_, k) => (k % 2 ? 0.5 : 0.55 + (0.4 * (k / 2)) / 16));
+    mk.box = reach(mk, cv.px);
+    const D = new Float32Array(W * H);
+    addMark(mk, 1.5, cv, D);
+    assert.ok(D[40 * W + 60] > 0.5, kind); // at the centre
+    assert.ok(D[5 * W + 5] === 0 && D[40 * W + 5] === 0, kind); // far away
+    const half = new Float32Array(W * H);
+    addMark(mk, 0.3, cv, half); // drawn in partly: less ink
+    assert.ok(half.reduce((a, v) => a + v, 0) < D.reduce((a, v) => a + v, 0), kind);
+  }
+  const rgba = new Uint8ClampedArray(W * H * 4).fill(200);
+  const P = { ...DEFAULTS, mu: 2, muT: 1, tauF: 0.2, muR: 0.05, muLen: 0.2, muWm: 0.02 };
+  const live = new Living(new Spontaneity(5, 1.5, 1, P), rgba, W, H, [1, 1, 1], 1);
+  let changed = false;
+  for (let t = 0; t < 5; t += 0.05) live.frame(t), (changed ||= live.rgba.some((v, i) => v !== rgba[i]));
+  assert.ok(changed);
+  live.process.P = { ...P, mu: 0 }; // no new marks: once the old ones are gone, the picture is the base again
+  live.process.E = 0;
+  live.process.next = null;
+  for (let t = 5; t < 40; t += 0.5) live.frame(t);
+  assert.deepEqual([...live.rgba], [...rgba]);
+});
+
+test('the Living view starts as the Washi view', () => {
+  const e = new Engine();
+  e.load(picture(160, 120), 160, 120);
+  const r = e.mask(DEFAULTS, { x: 0.5, y: 0.5 });
+  const washi = e.view('washi', DEFAULTS, r).rgba;
+  const img = e.view('living', DEFAULTS, r);
+  assert.deepEqual([...img.rgba], [...washi]);
+  const live = e.living(DEFAULTS, r, img.rgba);
+  live.frame(30);
+  assert.deepEqual([...washi], [...img.rgba]); // the static pixels are kept; marks go in live.rgba
 });

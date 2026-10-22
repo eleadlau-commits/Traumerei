@@ -68,10 +68,40 @@ export const PARAMS = [
 
   { group: 'Composite', key: 'alpha', label: 'Pattern strength α', min: 0, max: 1, step: 0.01, value: 1 },
   { group: 'Composite', key: 'warmth', label: 'Inclusion warmth κ', min: 0, max: 1, step: 0.01, value: 1 },
+
+  { group: 'Timing', key: 'mu', label: 'Background rate μ (per s)', min: 0, max: 3, step: 0.01, value: 0.3 },
+  { group: 'Timing', key: 'nH', label: 'Branching ratio n', min: 0, max: 0.95, step: 0.01, value: 0.6 },
+  { group: 'Timing', key: 'tauH', label: 'Memory τ_h (s)', min: 0.1, max: 10, step: 0.1, value: 1.2 },
+
+  { group: 'Placement', key: 'rho', label: 'Mask affinity ρ', min: 0, max: 1, step: 0.01, value: 0.6 },
+  { group: 'Placement', key: 'sigmaC', label: 'Cluster spread σ_c', min: 0.002, max: 0.3, step: 0.001, value: 0.04 },
+  { group: 'Placement', key: 'sigmaTheta', label: 'Heading spread σ_θ (°)', min: 0, max: 180, step: 1, value: 20 },
+  { group: 'Placement', key: 'chi', label: 'Kinship χ', min: 0, max: 1, step: 0.01, value: 0.7 },
+
+  { group: 'Marks', key: 'piDot', label: 'Dot share π_dot', min: 0, max: 1, step: 0.01, value: 0.5 },
+  { group: 'Marks', key: 'piDash', label: 'Dash share π_dash', min: 0, max: 1, step: 0.01, value: 0.3 },
+  { group: 'Marks', key: 'muR', label: 'Dot radius μ_r', min: 0.0005, max: 0.02, step: 0.0001, value: 0.004 },
+  { group: 'Marks', key: 'muLen', label: 'Stroke length μ_ℓ', min: 0.005, max: 0.15, step: 0.001, value: 0.03 },
+  { group: 'Marks', key: 'sLen', label: 'Length spread s_ℓ', min: 0, max: 1.5, step: 0.01, value: 0.4 },
+  { group: 'Marks', key: 'muWm', label: 'Stroke width μ_w,m', min: 0.0003, max: 0.008, step: 0.0001, value: 0.002 },
+  { group: 'Marks', key: 'sigmaH', label: 'Bend σ_h', min: 0, max: 0.6, step: 0.01, value: 0.2 },
+  { group: 'Marks', key: 'muBm', label: 'Mark blur μ_b,m', min: 0, max: 0.004, step: 0.0001, value: 0.0004 },
+  { group: 'Marks', key: 'muAm', label: 'Mark darkness μ_a,m', min: 0, max: 3, step: 0.05, value: 1.2 },
+  { group: 'Marks', key: 'sAm', label: 'Darkness spread s_a,m', min: 0, max: 1.5, step: 0.01, value: 0.3 },
+
+  { group: 'Life', key: 'Td', label: 'Draw-in time T_d (s)', min: 0.05, max: 3, step: 0.05, value: 0.6 },
+  { group: 'Life', key: 'muT', label: 'Median hold μ_T (s)', min: 0.5, max: 60, step: 0.5, value: 5 },
+  { group: 'Life', key: 'sT', label: 'Hold spread s_T', min: 0, max: 1.5, step: 0.01, value: 0.5 },
+  { group: 'Life', key: 'tauF', label: 'Fade time τ_f (s)', min: 0.2, max: 20, step: 0.1, value: 2.5 },
+  { group: 'Life', key: 'alphaS', label: 'Spontaneity strength α_s', min: 0, max: 2, step: 0.01, value: 1 },
 ];
 
 // The pattern's sliders (P1–P5), which change the paper but not the mask; α and κ only change the composite.
 const PATTERN_GROUPS = ['Fibres', 'Web', 'Specks', 'Flakes', 'Grain'];
 export const PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
+
+// The spontaneity's sliders (S1–S5), which change only the living layer.
+const SPONT_GROUPS = ['Timing', 'Placement', 'Marks', 'Life'];
+export const SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
 
 export const DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
