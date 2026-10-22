@@ -1,4 +1,5 @@
-// The M8 report as plain lines of text, one block per attempt. No screen code, so it's testable.
+// The M8 report as plain lines of text, one block per attempt, and the pattern's line.
+// No screen code, so it's testable.
 
 const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : '—');
 
@@ -36,4 +37,12 @@ function block(a, kept) {
       sizes,
     ],
   };
+}
+
+// The pattern's line: what Engine.pattern() returned → one sentence.
+export function describePattern({ counts, ms }) {
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  return `Pattern: ${n(counts.fibres, 'fibre', 'fibres')}, ${n(counts.specks, 'speck', 'specks')} and ` +
+    `${n(counts.flakes, 'flake', 'flakes')} (streams :pattern:fibres :pattern:specks :pattern:flakes :pattern:grain), ` +
+    `made in ${Math.round(ms)} ms.`;
 }

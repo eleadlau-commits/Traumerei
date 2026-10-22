@@ -660,6 +660,9 @@ dialog.dialog-box {
 
 .renderer-page { display: grid; gap: 12px; }
 
+/* Six views don't fit in one row on a phone: two rows of three. */
+@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(3, 1fr); } }
+
 .renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
 
 .renderer-stage {
@@ -1755,21 +1758,21 @@ dialog.dialog-box {
       this.tabs.hidden = views.length < 2;
       this.tabBar.render(views, current);
       for (const v of views) {
-        let part2 = this.sections.get(v);
-        if (!part2) {
-          part2 = { title: el("h1"), subtitle: el("p", { class: "page-sub" }), actions: el("div", { class: "page-actions" }), extra: el("div", { class: "page-extra" }), body: el("div", { class: "page-body" }), mounted: false };
-          part2.head = el("div", { class: "page-head" }, el("div", { class: "page-title" }, part2.title, part2.subtitle, part2.actions), part2.extra);
-          part2.section = el("section", { class: `view view-${v.id}` }, part2.head, part2.body);
-          this.sections.set(v, part2);
-          this.viewHost.append(part2.section);
+        let part3 = this.sections.get(v);
+        if (!part3) {
+          part3 = { title: el("h1"), subtitle: el("p", { class: "page-sub" }), actions: el("div", { class: "page-actions" }), extra: el("div", { class: "page-extra" }), body: el("div", { class: "page-body" }), mounted: false };
+          part3.head = el("div", { class: "page-head" }, el("div", { class: "page-title" }, part3.title, part3.subtitle, part3.actions), part3.extra);
+          part3.section = el("section", { class: `view view-${v.id}` }, part3.head, part3.body);
+          this.sections.set(v, part3);
+          this.viewHost.append(part3.section);
         }
-        if (!part2.mounted && v === current) {
-          part2.mounted = true;
-          slot.run(v, (x) => x.mount?.(part2.body, { head: part2.extra, actions: part2.actions }));
+        if (!part3.mounted && v === current) {
+          part3.mounted = true;
+          slot.run(v, (x) => x.mount?.(part3.body, { head: part3.extra, actions: part3.actions }));
         }
-        part2.section.hidden = v !== current;
+        part3.section.hidden = v !== current;
       }
-      for (const [v, part2] of this.sections) if (!views.includes(v)) part2.section.hidden = true;
+      for (const [v, part3] of this.sections) if (!views.includes(v)) part3.section.hidden = true;
       this.empty.hidden = !!current;
       if (!current) {
         this.empty.replaceChildren(
@@ -1778,10 +1781,10 @@ dialog.dialog-box {
         );
         return;
       }
-      const part = this.sections.get(current);
-      part.title.parentNode.hidden = !!current.hideTitle;
-      part.title.textContent = current.label;
-      part.subtitle.textContent = slot.run(current, (v) => v.subtitle?.(), null) ?? this.statusText;
+      const part2 = this.sections.get(current);
+      part2.title.parentNode.hidden = !!current.hideTitle;
+      part2.title.textContent = current.label;
+      part2.subtitle.textContent = slot.run(current, (v) => v.subtitle?.(), null) ?? this.statusText;
       slot.run(current, (v) => v.render?.());
     }
     // ---- Menu: who is signed in and the status line, then the rows ----
@@ -2083,10 +2086,10 @@ dialog.dialog-box {
   }
   var INK = oklchToOklab(0.27, 0.013, 315);
   var PAPER = oklchToOklab(0.94, 0.025, 88);
-  function inkPaperLUT(ink = INK, paper = PAPER) {
+  function inkPaperLUT(ink = INK, paper = PAPER, tMax = 1) {
     const lut = new Uint8ClampedArray(256 * 3);
     for (let i = 0; i < 256; i++) {
-      const t = i / 255;
+      const t = tMax * i / 255;
       const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
       const rgb = oklabToSrgb(lab);
       for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);
@@ -2449,9 +2452,9 @@ dialog.dialog-box {
   }
 
   // dist/web/features/renderer/engine/render.js
-  function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
+  function paint(t, lut, out = new Uint8ClampedArray(t.length * 4), tMax = 1) {
     for (let p = 0, q = 0; p < t.length; p++, q += 4) {
-      const v = t[p];
+      const v = t[p] / tMax;
       const i = 3 * Math.round(255 * (v < 0 ? 0 : v > 1 ? 1 : v));
       out[q] = lut[i];
       out[q + 1] = lut[i + 1];
@@ -2520,6 +2523,19 @@ dialog.dialog-box {
     for (let i = 0; i < t.length; i++) out[i] = 1 - m[i] * (1 - t[i]);
     return out;
   }
+  var T_MAX = 1.07;
+  function washiTone(t, D, S, alpha, tMax = T_MAX) {
+    const Lk = INK[0];
+    const dL = PAPER[0] - Lk;
+    const out = new Float32Array(D.length);
+    for (let i = 0; i < D.length; i++) {
+      const L = Lk + (t ? t[i] : 1) * dL;
+      const Y = L * L * L * Math.exp(-alpha * D[i]) * (1 + alpha * S[i]);
+      const v = (Math.cbrt(Y) - Lk) / dL;
+      out[i] = v < 0 ? 0 : v > tMax ? tMax : v;
+    }
+    return out;
+  }
   function heightTone(Fp, max) {
     const s = max > 0 ? 1 / max : 0;
     return Fp.map((v) => 1 - Math.min(1, Math.max(0, v * s)));
@@ -2551,6 +2567,267 @@ dialog.dialog-box {
     return segs;
   }
 
+  // dist/web/features/renderer/engine/pattern.js
+  var MARGIN = 0.1;
+  var STEP = 1e-3;
+  var SIGMA_N = 0.47;
+  var HARMONICS = 12;
+  function poisson(rng, mean) {
+    if (!(mean > 0)) return 0;
+    if (mean > 30) return Math.max(0, Math.round(mean + Math.sqrt(mean) * rng.N()));
+    const limit = Math.exp(-mean);
+    let k = 0;
+    for (let p = rng.U(); p > limit; p *= rng.U()) k++;
+    return k;
+  }
+  var logNormal = (rng, median, spread) => median * Math.exp(spread * rng.N());
+  function erf(x) {
+    const s = x < 0 ? -1 : 1;
+    const a = Math.abs(x);
+    const t = 1 / (1 + 0.3275911 * a);
+    const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-a * a);
+    return s * y;
+  }
+  function taper(u, alpha, beta) {
+    if (u <= 0 || u >= 1) return 0;
+    const us = alpha / (alpha + beta);
+    return Math.pow(u / us, alpha) * Math.pow((1 - u) / (1 - us), beta);
+  }
+  function walk(rng, x, y, theta, len, tau) {
+    const pts = [];
+    const steps = Math.max(1, Math.ceil(len / STEP));
+    const h = len / steps;
+    const kick = tau * Math.sqrt(h);
+    for (let k = 0; k < steps; k++) {
+      x += h * Math.cos(theta);
+      y += h * Math.sin(theta);
+      pts.push(x, y);
+      theta += kick * rng.N();
+    }
+    return pts;
+  }
+  function strokes(rng, K, canvas, D) {
+    const { X, Y, W, px } = canvas;
+    const n = simplex(rng.U);
+    const count = poisson(rng, K.lambda * (X + 2 * MARGIN) * (Y + 2 * MARGIN));
+    const tau = Math.sqrt(2 / K.lp);
+    const scratch = canvas.scratch;
+    for (let f = 0; f < count; f++) {
+      const x0 = -MARGIN + rng.U() * (X + 2 * MARGIN);
+      const y0 = -MARGIN + rng.U() * (Y + 2 * MARGIN);
+      const L = logNormal(rng, K.muL, K.sL);
+      const theta0 = rng.U() * 2 * Math.PI;
+      const fwd = walk(rng, x0, y0, theta0, L / 2, tau);
+      const back = walk(rng, x0, y0, theta0 + Math.PI, L / 2, tau);
+      const w0 = logNormal(rng, K.muW, 0.3);
+      const b0 = logNormal(rng, K.muB, 0.5);
+      const a0 = logNormal(rng, K.muA, 0.4);
+      const [lo, hi] = K.ab;
+      const alpha = lo + (hi - lo) * rng.U();
+      const beta = lo + (hi - lo) * rng.U();
+      const o = [rng.U() * 1e3, rng.U() * 1e3, rng.U() * 1e3];
+      const g = (s, i) => n(s / K.ellG, o[i]) / SIGMA_N;
+      const xs = [];
+      const ys = [];
+      for (let k = back.length - 2; k >= 0; k -= 2) xs.push(back[k]), ys.push(back[k + 1]);
+      xs.push(x0), ys.push(y0);
+      for (let k = 0; k < fwd.length; k += 2) xs.push(fwd[k]), ys.push(fwd[k + 1]);
+      const m = xs.length;
+      const hb = L / 2 / (back.length / 2);
+      const hf = L / 2 / (fwd.length / 2);
+      const vw = new Float32Array(m);
+      const vb = new Float32Array(m);
+      const va = new Float32Array(m);
+      const nb = back.length / 2;
+      for (let k = 0; k < m; k++) {
+        const s = k <= nb ? k * hb : L / 2 + (k - nb) * hf;
+        vw[k] = w0 * Math.exp(K.sigmaW * g(s, 0));
+        const b = b0 * Math.exp(K.sigmaB * g(s, 1));
+        vb[k] = Math.sqrt(b * b + (px / 2) ** 2);
+        va[k] = a0 * taper(s / L, alpha, beta) * Math.max(0, 1 + K.sigmaA * g(s, 2));
+      }
+      rasterStroke(xs, ys, vw, vb, va, canvas, scratch);
+      for (const p of scratch.touched) {
+        const d = Math.sqrt(scratch.d2[p]);
+        const w = scratch.w[p];
+        const b = scratch.b[p];
+        const k = 1 / (Math.SQRT2 * b);
+        D[p] += scratch.a[p] * 0.5 * (erf((w / 2 - d) * k) + erf((w / 2 + d) * k));
+        scratch.d2[p] = Infinity;
+      }
+      scratch.touched.length = 0;
+    }
+    return count;
+    function rasterStroke(xs, ys, vw, vb, va, cv, sc) {
+      for (let k = 0; k + 1 < xs.length; k++) {
+        const reach = Math.max(vw[k], vw[k + 1]) / 2 + 3 * Math.max(vb[k], vb[k + 1]);
+        if (Math.max(va[k], va[k + 1]) <= 0) continue;
+        const ax = xs[k], ay = ys[k], bx = xs[k + 1], by = ys[k + 1];
+        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - reach) / px));
+        const i1 = Math.min(W - 1, Math.floor((Math.max(ax, bx) + reach) / px));
+        const j0 = Math.max(0, Math.floor((Math.min(ay, by) - reach) / px));
+        const j1 = Math.min(cv.H - 1, Math.floor((Math.max(ay, by) + reach) / px));
+        const dx = bx - ax, dy = by - ay;
+        const len2 = dx * dx + dy * dy || 1e-12;
+        const r2 = reach * reach;
+        for (let j = j0; j <= j1; j++) {
+          const py = (j + 0.5) * px;
+          for (let i = i0; i <= i1; i++) {
+            const pxx = (i + 0.5) * px;
+            let t = ((pxx - ax) * dx + (py - ay) * dy) / len2;
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            const ex = ax + t * dx - pxx, ey = ay + t * dy - py;
+            const d2 = ex * ex + ey * ey;
+            if (d2 > r2) continue;
+            const p = j * W + i;
+            if (d2 < sc.d2[p]) {
+              if (sc.d2[p] === Infinity) sc.touched.push(p);
+              sc.d2[p] = d2;
+              sc.w[p] = vw[k] + t * (vw[k + 1] - vw[k]);
+              sc.b[p] = vb[k] + t * (vb[k + 1] - vb[k]);
+              sc.a[p] = va[k] + t * (va[k + 1] - va[k]);
+            }
+          }
+        }
+      }
+    }
+  }
+  function flakes(rng, P, canvas, D) {
+    const { X, Y, W, H, px } = canvas;
+    const n = simplex(rng.U);
+    const count = poisson(rng, P.lambdaK * (X + 2 * MARGIN) * (Y + 2 * MARGIN));
+    for (let f = 0; f < count; f++) {
+      const cx = -MARGIN + rng.U() * (X + 2 * MARGIN);
+      const cy = -MARGIN + rng.U() * (Y + 2 * MARGIN);
+      const phi = rng.U() * Math.PI;
+      const len = logNormal(rng, P.muK, 0.5);
+      const q = 0.2 + 0.4 * rng.U();
+      const ck = [];
+      const psi = [];
+      let bound = 1;
+      for (let k = 2; k <= HARMONICS; k++) {
+        ck.push(rng.N() * P.cK * Math.pow(k, -P.pK));
+        psi.push(rng.U() * 2 * Math.PI);
+        bound += Math.abs(ck[ck.length - 1]);
+      }
+      const aIn = 0.04 + 0.21 * rng.U();
+      const o = rng.U() * 1e3;
+      const cos = Math.cos(phi), sin = Math.sin(phi);
+      const reach = bound * (1 + P.epsK) * len / 2;
+      const i0 = Math.max(0, Math.floor((cx - reach) / px)), i1 = Math.min(W - 1, Math.floor((cx + reach) / px));
+      const j0 = Math.max(0, Math.floor((cy - reach) / px)), j1 = Math.min(H - 1, Math.floor((cy + reach) / px));
+      for (let j = j0; j <= j1; j++) {
+        const y = (j + 0.5) * px;
+        for (let i = i0; i <= i1; i++) {
+          const x = (i + 0.5) * px;
+          const u1 = ((x - cx) * cos + (y - cy) * sin) * 2 / len;
+          const u2 = (-(x - cx) * sin + (y - cy) * cos) * 2 / (q * len);
+          const rad = Math.hypot(u1, u2);
+          if (rad > bound * (1 + P.epsK)) continue;
+          const th = Math.atan2(u2, u1);
+          let r = 1;
+          for (let k = 0; k < ck.length; k++) r += ck[k] * Math.cos((k + 2) * th + psi[k]);
+          const rho = rad / Math.max(0.3, r);
+          if (rho > 1 + P.epsK) continue;
+          const edge = 1 - smoothstep(1 - P.epsK, 1 + P.epsK, rho);
+          const vein = Math.max(0, 1 + P.sigmaV * n(x / P.lambdaV + o, y / P.lambdaV));
+          const rim = P.kRim * Math.exp(-((rho - 0.9) ** 2) / (2 * 0.06 * 0.06));
+          D[j * W + i] += edge * aIn * (vein + rim);
+        }
+      }
+    }
+    return count;
+  }
+  function grain(rng, P, canvas) {
+    const { X, Y, W, H, px } = canvas;
+    const nw = simplex(rng.U);
+    const o1 = rng.U() * 1e3;
+    const o2 = rng.U() * 1e3;
+    const mottle = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaN, H: 0.5 });
+    const pad = P.Ag + 2 * P.lambdaG;
+    const grids = [P.lambdaG, P.lambdaG / 2].map((size) => {
+      const c0 = Math.floor(-pad / size);
+      const gw = Math.ceil((X + pad) / size) - c0 + 1;
+      const gh = Math.ceil((Y + pad) / size) - c0 + 1;
+      const pts = new Float32Array(2 * gw * gh);
+      for (let j = 0, q = 0; j < gh; j++) {
+        for (let i = 0; i < gw; i++, q += 2) {
+          pts[q] = (c0 + i + rng.U()) * size;
+          pts[q + 1] = (c0 + j + rng.U()) * size;
+        }
+      }
+      return { size, c0, gw, gh, pts };
+    });
+    const crease = ({ size, c0, gw, gh, pts }, x, y) => {
+      const ci = Math.floor(x / size) - c0;
+      const cj = Math.floor(y / size) - c0;
+      let f1 = Infinity, f2 = Infinity;
+      for (let dj = -1; dj <= 1; dj++) {
+        const j = cj + dj;
+        if (j < 0 || j >= gh) continue;
+        for (let di = -1; di <= 1; di++) {
+          const i = ci + di;
+          if (i < 0 || i >= gw) continue;
+          const q = 2 * (j * gw + i);
+          const dx = pts[q] - x;
+          const dy = pts[q + 1] - y;
+          const d = dx * dx + dy * dy;
+          if (d < f1) f2 = f1, f1 = d;
+          else if (d < f2) f2 = d;
+        }
+      }
+      return Math.sqrt(f2) - Math.sqrt(f1);
+    };
+    const h = new Float32Array(W * H);
+    for (let j = 0, p = 0; j < H; j++) {
+      const y = (j + 0.5) * px;
+      for (let i = 0; i < W; i++, p++) {
+        const x = (i + 0.5) * px;
+        const xw = x + P.Ag * nw(x / P.lambdaGw, y / P.lambdaGw + o1);
+        const yw = y + P.Ag * nw(x / P.lambdaGw + o2, y / P.lambdaGw);
+        h[p] = smoothstep(0, P.omega, crease(grids[0], xw, yw) / P.lambdaG) + 0.5 * smoothstep(0, P.omega, 2 * crease(grids[1], xw, yw) / P.lambdaG) + P.etaG * mottle(x, y);
+      }
+    }
+    const psi = P.psi * Math.PI / 180;
+    const lx = Math.cos(psi), ly = Math.sin(psi);
+    const S = new Float32Array(W * H);
+    const k = -P.aG * P.lambdaG / px;
+    for (let j = 0, p = 0; j < H; j++) {
+      const ju = j > 0 ? j - 1 : j, jd = j < H - 1 ? j + 1 : j;
+      for (let i = 0; i < W; i++, p++) {
+        const il = i > 0 ? i - 1 : i, ir = i < W - 1 ? i + 1 : i;
+        const gx = (h[j * W + ir] - h[j * W + il]) / (ir - il || 1);
+        const gy = (h[jd * W + i] - h[ju * W + i]) / (jd - ju || 1);
+        const s = k * (gx * lx + gy * ly);
+        S[p] = s < -0.5 ? -0.5 : s > 0.5 ? 0.5 : s;
+      }
+    }
+    return S;
+  }
+  var PARTS = {
+    fibres: ["lambdaF", "muL", "sL", "lp", "muW", "muB", "muA", "sigmaW", "sigmaB", "sigmaA", "ellG"],
+    specks: ["lambdaS", "muLs", "muWs", "muAs", "sigmaW", "sigmaB", "sigmaA", "ellG"],
+    flakes: ["lambdaK", "muK", "cK", "pK", "epsK", "kRim", "sigmaV", "lambdaV"],
+    grain: ["lambdaG", "omega", "Ag", "lambdaGw", "etaG", "lambdaN", "aG", "psi"]
+  };
+  function part(name, seed, X, Y, W, H, P) {
+    const canvas = { X, Y, W, H, px: X / W };
+    const rng = stream(seed, `:pattern:${name}`);
+    if (name === "grain") return { S: grain(rng, P, canvas) };
+    const D = new Float32Array(W * H);
+    if (name === "flakes") return { D, count: flakes(rng, P, canvas, D) };
+    canvas.scratch = {
+      d2: new Float32Array(W * H).fill(Infinity),
+      w: new Float32Array(W * H),
+      b: new Float32Array(W * H),
+      a: new Float32Array(W * H),
+      touched: []
+    };
+    const K = name === "fibres" ? { lambda: P.lambdaF, muL: P.muL, sL: P.sL, lp: P.lp, muW: P.muW, muB: P.muB, muA: P.muA, ab: [0.3, 2] } : { lambda: P.lambdaS, muL: P.muLs, sL: 0.4, lp: 0.05, muW: P.muWs, muB: 2e-4, muA: P.muAs, ab: [0.6, 1.2] };
+    Object.assign(K, { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG });
+    return { D, count: strokes(rng, K, canvas, D) };
+  }
+
   // dist/web/features/renderer/engine/params.js
   var PARAMS = [
     { group: "Monochrome", key: "k", label: "Contrast k", min: 0.5, max: 12, step: 0.1, value: 4 },
@@ -2570,8 +2847,42 @@ dialog.dialog-box {
     { group: "Edges", key: "octaves", label: "Octaves", min: 1, max: 8, step: 1, value: 5 },
     { group: "Edges", key: "lambdaRough", label: "Roughness scale λ_rough", min: 0.01, max: 0.5, step: 5e-3, value: 0.12 },
     { group: "Edges", key: "delta", label: "Edge softness δ", min: 0, max: 0.1, step: 1e-3, value: 0.01 },
-    { group: "Edges", key: "feather", label: "Feather (blur of the mask)", min: 0, max: 0.15, step: 5e-3, value: 0.03 }
+    { group: "Edges", key: "feather", label: "Feather (blur of the mask)", min: 0, max: 0.15, step: 5e-3, value: 0.03 },
+    { group: "Fibres", key: "lambdaF", label: "Fibre density λ", min: 0, max: 400, step: 1, value: 150 },
+    { group: "Fibres", key: "muL", label: "Median length μ_L", min: 5e-3, max: 0.2, step: 1e-3, value: 0.04 },
+    { group: "Fibres", key: "sL", label: "Length spread s_L", min: 0, max: 1.5, step: 0.01, value: 0.5 },
+    { group: "Fibres", key: "lp", label: "Persistence length ℓ_p", min: 5e-3, max: 0.5, step: 1e-3, value: 0.05 },
+    { group: "Fibres", key: "muW", label: "Median width μ_w", min: 2e-4, max: 5e-3, step: 1e-4, value: 12e-4 },
+    { group: "Fibres", key: "muB", label: "Median blur μ_b", min: 0, max: 4e-3, step: 1e-4, value: 6e-4 },
+    { group: "Fibres", key: "muA", label: "Median darkness μ_a", min: 0, max: 0.6, step: 0.01, value: 0.35 },
+    { group: "Fibres", key: "sigmaW", label: "Width wander σ_w", min: 0, max: 1, step: 0.01, value: 0.35 },
+    { group: "Fibres", key: "sigmaB", label: "Blur wander σ_b", min: 0, max: 1.5, step: 0.01, value: 0.6 },
+    { group: "Fibres", key: "sigmaA", label: "Darkness wander σ_a", min: 0, max: 1.5, step: 0.01, value: 0.4 },
+    { group: "Fibres", key: "ellG", label: "Wander scale ℓ_g", min: 2e-3, max: 0.05, step: 1e-3, value: 0.015 },
+    { group: "Specks", key: "lambdaS", label: "Speck density λ_s", min: 0, max: 60, step: 1, value: 10 },
+    { group: "Specks", key: "muLs", label: "Speck length μ_L,s", min: 2e-3, max: 0.04, step: 1e-3, value: 0.01 },
+    { group: "Specks", key: "muWs", label: "Speck width μ_w,s", min: 5e-4, max: 8e-3, step: 1e-4, value: 25e-4 },
+    { group: "Specks", key: "muAs", label: "Speck darkness μ_a,s", min: 0, max: 3, step: 0.05, value: 1.2 },
+    { group: "Flakes", key: "lambdaK", label: "Flake density λ_k", min: 0, max: 80, step: 1, value: 18 },
+    { group: "Flakes", key: "muK", label: "Median flake length μ_k", min: 4e-3, max: 0.08, step: 1e-3, value: 0.02 },
+    { group: "Flakes", key: "cK", label: "Raggedness c", min: 0, max: 0.4, step: 0.01, value: 0.3 },
+    { group: "Flakes", key: "pK", label: "Harmonic falloff p", min: 0.3, max: 2.5, step: 0.05, value: 0.8 },
+    { group: "Flakes", key: "epsK", label: "Edge softness ε_k", min: 0.01, max: 0.3, step: 0.01, value: 0.08 },
+    { group: "Flakes", key: "kRim", label: "Rim strength κ_rim", min: 0, max: 2, step: 0.05, value: 0.8 },
+    { group: "Flakes", key: "sigmaV", label: "Vein strength σ_v", min: 0, max: 1.5, step: 0.05, value: 0.5 },
+    { group: "Flakes", key: "lambdaV", label: "Vein scale λ_v", min: 1e-3, max: 0.02, step: 5e-4, value: 4e-3 },
+    { group: "Grain", key: "lambdaG", label: "Cell size λ_g", min: 2e-3, max: 0.03, step: 5e-4, value: 8e-3 },
+    { group: "Grain", key: "omega", label: "Crease width ω", min: 0.05, max: 1, step: 0.01, value: 0.3 },
+    { group: "Grain", key: "Ag", label: "Crumple amount A_g", min: 0, max: 0.02, step: 5e-4, value: 4e-3 },
+    { group: "Grain", key: "lambdaGw", label: "Crumple scale λ_gw", min: 5e-3, max: 0.1, step: 1e-3, value: 0.02 },
+    { group: "Grain", key: "etaG", label: "Mottle η_g", min: 0, max: 1, step: 0.01, value: 0.15 },
+    { group: "Grain", key: "lambdaN", label: "Mottle scale λ_n", min: 0.01, max: 0.3, step: 5e-3, value: 0.05 },
+    { group: "Grain", key: "aG", label: "Relief depth a_g", min: 0, max: 0.15, step: 5e-3, value: 0.022 },
+    { group: "Grain", key: "psi", label: "Light direction ψ (°)", min: 0, max: 360, step: 1, value: 225 },
+    { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 }
   ];
+  var PATTERN_GROUPS = ["Fibres", "Specks", "Flakes", "Grain"];
+  var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
   var DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
 
   // dist/web/features/renderer/engine/index.js
@@ -2580,6 +2891,7 @@ dialog.dialog-box {
   var Engine = class {
     constructor() {
       this.lut = inkPaperLUT();
+      this.washiLut = inkPaperLUT(void 0, void 0, T_MAX);
       this.image = null;
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
@@ -2597,6 +2909,7 @@ dialog.dialog-box {
       };
       this.toneCache = null;
       this.maskCache = null;
+      this.patternCache = null;
       return { seed: this.image.seed, seedText: seedText(this.image.seed) };
     }
     // Steps 3–5, cached while their parameters stay the same.
@@ -2630,11 +2943,37 @@ dialog.dialog-box {
       }
       return { G, anchor, attempts, best };
     }
-    // Pixels for a view: 'monochrome', 'mask', 'base' at the image's size; 'field' at the grid's.
+    // P1–P5 at the image's size. Each part is cached while its own sliders stay the same.
+    pattern(P) {
+      const { seed, X, Y, W, H } = this.image;
+      const c = this.patternCache ||= { parts: {} };
+      const t0 = performance.now();
+      let changed = !c.D;
+      for (const [name, keys] of Object.entries(PARTS)) {
+        const key = keys.map((k) => P[k]).join();
+        if (c.parts[name]?.key === key) continue;
+        c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
+        changed = true;
+      }
+      if (changed) {
+        const { fibres, specks, flakes: flakes2, grain: grain2 } = c.parts;
+        c.D = fibres.D.map((v, i) => v + specks.D[i] + flakes2.D[i]);
+        c.S = grain2.S;
+        c.counts = { fibres: fibres.count, specks: specks.count, flakes: flakes2.count };
+        c.ms = performance.now() - t0;
+      }
+      return c;
+    }
+    // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
+    // 'field' at the grid's.
     view(name, P, r) {
       const { W, H } = this.image;
       const t = this.tone(P);
       if (name === "monochrome") return { rgba: paint(t, this.lut), width: W, height: H };
+      if (name === "pattern") {
+        const { D, S } = this.pattern(P);
+        return { rgba: paint(washiTone(null, D, S, P.alpha), this.washiLut, void 0, T_MAX), width: W, height: H };
+      }
       const { G, best } = r;
       if (name === "field") {
         return {
@@ -2645,6 +2984,10 @@ dialog.dialog-box {
         };
       }
       const m = this.fullMask(P, r);
+      if (name === "washi") {
+        const { D, S } = this.pattern(P);
+        return { rgba: paint(washiTone(baseTone(t, m), D, S, P.alpha), this.washiLut, void 0, T_MAX), width: W, height: H };
+      }
       return { rgba: paint(name === "mask" ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
     }
     fullMask(P, r) {
@@ -2721,12 +3064,23 @@ dialog.dialog-box {
       ]
     };
   }
+  function describePattern({ counts, ms }) {
+    const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+    return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:specks :pattern:flakes :pattern:grain), made in ${Math.round(ms)} ms.`;
+  }
 
   // dist/web/features/renderer/Renderer.js
   var { el: el3 } = ui_exports;
   var MAX_SIDE = 2048;
-  var VIEWS = [["monochrome", "Monochrome"], ["mask", "Mask"], ["field", "Field"], ["base", "Base"]];
-  var DRAW_KEYS = ["k", "gamma", "dMin", "dMax", "delta", "feather"];
+  var VIEWS = [
+    ["monochrome", "Monochrome"],
+    ["mask", "Mask"],
+    ["field", "Field"],
+    ["base", "Base"],
+    ["pattern", "Pattern"],
+    ["washi", "Washi"]
+  ];
+  var DRAW_KEYS = ["k", "gamma", "dMin", "dMax", "delta", "feather", "alpha", ...PATTERN_KEYS];
   var Renderer = class extends Feature {
     start() {
       this.engine = new Engine();
@@ -2749,7 +3103,7 @@ dialog.dialog-box {
     mount(container, head, actions) {
       this.tabs = el3(
         "div",
-        { class: "seg", role: "tablist", style: `--tabs:${VIEWS.length}` },
+        { class: "seg renderer-tabs", role: "tablist", style: `--tabs:${VIEWS.length}` },
         VIEWS.map(([id, label]) => el3("button", {
           type: "button",
           role: "tab",
@@ -2887,7 +3241,8 @@ dialog.dialog-box {
             a.kept && el3("span", { class: "renderer-tag kept" }, "shown")
           ),
           el3("ul", {}, a.lines.map((line) => el3("li", {}, line)))
-        ))
+        )),
+        this.engine.patternCache?.D && el3("p", {}, describePattern(this.engine.patternCache))
       );
     }
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.

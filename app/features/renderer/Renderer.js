@@ -1,20 +1,21 @@
-// Renderer: the page. Choose an image, tap it to set the anchor, switch between the four views
-// (Monochrome, Mask, Field, Base), move the sliders, and read the seed and the M8 report.
+// Renderer: the page. Choose an image, tap it to set the anchor, switch between the six views
+// (Monochrome, Mask, Field, Base, Pattern, Washi), move the sliders, and read the seed and the report.
 // All the maths is in engine/, which this page mounts and feeds with pixels.
 //
 // Saved data: 'params' → { key: value } for every slider
 //             'anchor' → { x, y } as fractions of the width and height (default 0.5, 0.5)
-//             'view'   → 'monochrome' | 'mask' | 'field' | 'base'
+//             'view'   → 'monochrome' | 'mask' | 'field' | 'base' | 'pattern' | 'washi'
 
 import { Feature, ui } from 'folio';
-import { Engine, PARAMS, DEFAULTS } from './engine/index.js';
+import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS } from './engine/index.js';
 import { sliders } from './controls.js';
-import { describe } from './report.js';
+import { describe, describePattern } from './report.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
-const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather']; // these don't change M1–M8
+const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
+  ['pattern', 'Pattern'], ['washi', 'Washi']];
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', ...PATTERN_KEYS]; // these don't change M1–M8
 
 export default class Renderer extends Feature {
   start() {
@@ -38,7 +39,7 @@ export default class Renderer extends Feature {
   }
 
   mount(container, head, actions) {
-    this.tabs = el('div', { class: 'seg', role: 'tablist', style: `--tabs:${VIEWS.length}` },
+    this.tabs = el('div', { class: 'seg renderer-tabs', role: 'tablist', style: `--tabs:${VIEWS.length}` },
       VIEWS.map(([id, label]) => el('button', {
         type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id),
       }, label)));
@@ -152,7 +153,8 @@ export default class Renderer extends Feature {
       ...r.attempts.map((a) => el('details', { class: `renderer-attempt${a.kept ? ' kept' : ''}`, open: a.kept },
         el('summary', {}, a.title, el('span', { class: `renderer-tag ${a.pass ? 'pass' : 'fail'}` }, a.pass ? 'passes' : 'fails'),
           a.kept && el('span', { class: 'renderer-tag kept' }, 'shown')),
-        el('ul', {}, a.lines.map((line) => el('li', {}, line))))));
+        el('ul', {}, a.lines.map((line) => el('li', {}, line))))),
+      this.engine.patternCache?.D && el('p', {}, describePattern(this.engine.patternCache)));
   }
 
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.

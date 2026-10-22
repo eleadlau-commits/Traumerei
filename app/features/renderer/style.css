@@ -2,6 +2,9 @@
 
 .renderer-page { display: grid; gap: 12px; }
 
+/* Six views don't fit in one row on a phone: two rows of three. */
+@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(3, 1fr); } }
+
 .renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
 
 .renderer-stage {
