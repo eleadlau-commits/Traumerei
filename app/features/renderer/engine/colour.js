@@ -29,8 +29,8 @@ export function oklchToOklab(L, C, hDeg) {
   return [L, C * Math.cos(h), C * Math.sin(h)];
 }
 
-// OKLab → sRGB [0, 1]³, clamped (Ottosson's inverse).
-export function oklabToSrgb([L, a, b]) {
+// OKLab → linear RGB, unclamped (Ottosson's inverse).
+export function oklabToLinear([L, a, b]) {
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
   const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
@@ -38,21 +38,51 @@ export function oklabToSrgb([L, a, b]) {
   const m = m_ ** 3;
   const s = s_ ** 3;
   return [
-    delinearise(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-    delinearise(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-    delinearise(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
   ];
+}
+
+// OKLab → sRGB [0, 1]³, clamped.
+export function oklabToSrgb(lab) {
+  return oklabToLinear(lab).map(delinearise);
 }
 
 export const INK = oklchToOklab(0.27, 0.013, 315);
 export const PAPER = oklchToOklab(0.94, 0.025, 88);
+// The bark tan of the Washi inclusions, from the reference paper's fibres and flakes.
+export const TAN = oklchToOklab(0.8, 0.05, 75);
 
-// LUT[3i..3i+2] = sRGB bytes of mix(ink, paper, t) with t = tMax · i/255, mixed in OKLab.
-// tMax > 1 continues the same line past paper (the Washi view's relief highlights).
-export function inkPaperLUT(ink = INK, paper = PAPER, tMax = 1) {
+// An absorber that darkens paper toward a colour: per channel, a_c = −ln(colour_c / paper_c) in
+// linear light, scaled so the luminance-weighted sum is 1. exp(−D · a) then darkens by about e^(−D).
+export function absorber(colour, paper = PAPER) {
+  const c = oklabToLinear(colour);
+  const p = oklabToLinear(paper);
+  const a = c.map((v, k) => -Math.log(Math.max(1e-6, v) / p[k]));
+  const n = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  return a.map((v) => v / n);
+}
+
+// The ink–paper line in linear light: RAMP[3i..3i+2] = linear RGB of mix(ink, paper, i/(n − 1)).
+export function linearRamp(n = 1024, ink = INK, paper = PAPER) {
+  const out = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const lin = oklabToLinear([0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t));
+    for (let k = 0; k < 3; k++) out[3 * i + k] = Math.max(0, lin[k]);
+  }
+  return out;
+}
+
+// Linear [0, 1] → sRGB byte, for 4096 evenly spaced inputs.
+export const SRGB_BYTE = Uint8ClampedArray.from({ length: 4096 }, (_, i) => Math.round(255 * delinearise(i / 4095)));
+
+// LUT[3i..3i+2] = sRGB bytes of mix(ink, paper, i/255), mixed in OKLab.
+export function inkPaperLUT(ink = INK, paper = PAPER) {
   const lut = new Uint8ClampedArray(256 * 3);
   for (let i = 0; i < 256; i++) {
-    const t = (tMax * i) / 255;
+    const t = i / 255;
     const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
     const rgb = oklabToSrgb(lab);
     for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);

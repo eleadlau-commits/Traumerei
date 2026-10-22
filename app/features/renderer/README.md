@@ -9,11 +9,11 @@ washi paper, and shows how each layer was made.
   empty box), tap the picture to move the anchor, and switch between **Monochrome**, **Mask**,
   **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern** (the
   paper alone) and **Washi** (the base printed on the paper).
-- Sliders for every parameter, grouped as Monochrome, Patches, Edges, Fibres, Specks, Flakes, Grain
-  and Composite, and **Back to defaults**.
+- Sliders for every parameter, grouped as Monochrome, Patches, Edges, Fibres, Web, Specks, Flakes,
+  Grain and Composite, and **Back to defaults**.
 - The seed (next to the title and under the picture) and the report from step M8: one block per
   attempt, with its streams, patches, threshold, components and whether each rule passed, and a line
-  with the pattern's fibre, speck and flake counts once it has been made.
+  with the pattern's fibre, web, speck and flake counts once it has been made.
 
 ## How it's built
 
@@ -26,13 +26,13 @@ mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`,
 | `engine/index.js` | `Engine`: caches the monochrome, runs M1–M8 with re-rolls, makes each view's pixels |
 | `engine/params.js` | Every parameter with its default and slider range |
 | `engine/random.js` | cyrb53, mulberry32 streams, Box–Muller |
-| `engine/colour.js` | sRGB ↔ linear, OKLab L, OKLCh → sRGB, the ink–paper lookup table |
+| `engine/colour.js` | sRGB ↔ linear, OKLab L, OKLCh → sRGB, the ink–paper lookup table, the tan, absorbers |
 | `engine/monochrome.js` | Steps 1–5 and the image seed |
 | `engine/skeleton.js` | M1–M4: stick-breaking, the main centre, ellipses, secondaries |
 | `engine/noise.js` | Seeded simplex noise and fBm |
 | `engine/field.js` | M5–M7: the warped field, roughness, threshold |
 | `engine/components.js` | M8: connected components and the two rules |
-| `engine/pattern.js` | P1–P5: fibres, specks, flakes (the density D) and the relief grain (the shading S) |
+| `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |
 | `Renderer.js`, `controls.js`, `report.js` | The page, the sliders, the report text |
 
@@ -60,9 +60,20 @@ Choices the spec left open:
   `mix(paper, monochrome, mask)`.
 
 Choices the pattern spec (P1–P6) left open:
-- The defaults of λ, μ_w, μ_a, σ_a, ℓ_g, c, p and a_g were tuned against the reference paper after
-  the spec's first guesses: fibres 150 per unit area, 0.0012 wide, darkness 0.35, darkness wander 0.4
-  over 0.015; raggedness 0.3 with falloff 0.8; relief depth 0.022.
+- The defaults were tuned against the reference paper, so they differ from the spec's first guesses.
+- **Revision after the first look** (E's reference paper vs the first render):
+  - Fibres and flakes are tinted. Each inclusion is an absorber: per channel in linear light,
+    a_c = −ln(colour_c / paper_c), scaled so its luminance-weighted sum is 1. Fibres, the web and
+    flakes absorb toward the tan OKLCh(0.80, 0.05, 75°); specks absorb toward the ink. **Inclusion
+    warmth κ** mixes the warm absorber back toward the ink's, so κ = 0 is the first version's grey.
+  - The composite is now out_c = ramp_c(t) · exp(−α(D_w a_w,c + D_k a_k,c + C)) · (1 + αS), per
+    channel in linear light, with ramp the ink–paper line in linear RGB. Relief highlights are just
+    > 1 multipliers, so the extended lookup past paper is gone.
+  - A fine **web** of faint strands (stream `:pattern:web`): the fibre machinery with
+    ℓ_p = 0.06, μ_w = 0.0006, μ_b = 0.0004, s_L = 0.5 and s_a = 0.5 fixed.
+  - **Cloudiness** C = a_cl · fBm(x / λ_cl), 4 octaves, H = 0.5 (stream `:pattern:cloud`), signed.
+  - Fibre darkness spread s_a is a slider (default 0.8: mostly faint, a few dark). Flake length
+    spread s_k is a slider (default 0.8), and the aspect is U(0.1, 0.6), so long strips appear.
 - Each part's stream starts with what its noise needs (a 255-number simplex permutation, and for the
   grain the warp offsets and the mottle's permutation), then the draws in the spec's order. The
   grain's jitters come last, row by row, for the λ_g grid and then the λ_g / 2 grid.
@@ -74,8 +85,8 @@ Choices the pattern spec (P1–P6) left open:
 - Worley's F₁ and F₂ look at the 3 × 3 cells around the point. ∇h uses central differences, one-sided at
   the edges.
 - The vein noise is n(x / λ_v + o, y / λ_v).
-- The pattern is cached part by part (fibres, specks, flakes, grain), so a slider only remakes its own
-  part. α and the base sliders only redo the composite.
+- The pattern is cached part by part (fibres, web, specks, flakes, grain, cloud), so a slider only
+  remakes its own part. α, κ and the base sliders only redo the composite.
 
 ## What it needs
 

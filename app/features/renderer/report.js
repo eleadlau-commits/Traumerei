@@ -42,7 +42,8 @@ function block(a, kept) {
 // The pattern's line: what Engine.pattern() returned → one sentence.
 export function describePattern({ counts, ms }) {
   const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-  return `Pattern: ${n(counts.fibres, 'fibre', 'fibres')}, ${n(counts.specks, 'speck', 'specks')} and ` +
-    `${n(counts.flakes, 'flake', 'flakes')} (streams :pattern:fibres :pattern:specks :pattern:flakes :pattern:grain), ` +
+  return `Pattern: ${n(counts.fibres, 'fibre', 'fibres')}, ${n(counts.web, 'web strand', 'web strands')}, ` +
+    `${n(counts.specks, 'speck', 'specks')} and ${n(counts.flakes, 'flake', 'flakes')} ` +
+    '(streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), ' +
     `made in ${Math.round(ms)} ms.`;
 }

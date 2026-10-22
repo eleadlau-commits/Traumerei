@@ -1,12 +1,12 @@
 // Turning the engine's numbers into pixels: the four views, the upscaled mask and the contour.
 
 import { smoothstep } from './field.js';
-import { INK, PAPER } from './colour.js';
+import { SRGB_BYTE } from './colour.js';
 
-// t ∈ [0, tMax] per pixel (0 = ink, 1 = paper) → RGBA through an ink–paper LUT made with that tMax.
-export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4), tMax = 1) {
+// t ∈ [0, 1] per pixel (0 = ink, 1 = paper) → RGBA through the ink–paper LUT.
+export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
   for (let p = 0, q = 0; p < t.length; p++, q += 4) {
-    const v = t[p] / tMax;
+    const v = t[p];
     const i = 3 * Math.round(255 * (v < 0 ? 0 : v > 1 ? 1 : v));
     out[q] = lut[i];
     out[q + 1] = lut[i + 1];
@@ -89,19 +89,21 @@ export function baseTone(t, m) {
   return out;
 }
 
-// P6. The base printed on the paper, in linear light: L = L_ink + t(L_paper − L_ink), Y = L³,
-// Y' = Y · exp(−αD) · (1 + αS), and back to t' through ∛Y', clamped to [0, tMax].
-// t = null stands for bare paper (t = 1 everywhere): the Pattern view.
-export const T_MAX = 1.07;
-export function washiTone(t, D, S, alpha, tMax = T_MAX) {
-  const Lk = INK[0];
-  const dL = PAPER[0] - Lk;
-  const out = new Float32Array(D.length);
-  for (let i = 0; i < D.length; i++) {
-    const L = Lk + (t ? t[i] : 1) * dL;
-    const Y = L * L * L * Math.exp(-alpha * D[i]) * (1 + alpha * S[i]);
-    const v = (Math.cbrt(Y) - Lk) / dL;
-    out[i] = v < 0 ? 0 : v > tMax ? tMax : v;
+// P6. The base printed on the paper, per channel in linear light:
+//   out_c = ramp_c(t) · exp(−α (D_w a_w,c + D_k a_k,c + C)) · (1 + α S)
+// ramp is the ink–paper line in linear RGB (linearRamp), a_w and a_k the warm and ink absorbers
+// (absorber()), C the signed cloudiness. t = null stands for bare paper: the Pattern view.
+export function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, out = new Uint8ClampedArray(Dw.length * 4)) {
+  const n = ramp.length / 3 - 1;
+  for (let p = 0, q = 0; p < Dw.length; p++, q += 4) {
+    const v = t ? t[p] : 1;
+    const r = 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
+    const lit = 1 + alpha * S[p];
+    for (let c = 0; c < 3; c++) {
+      const y = ramp[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
+      out[q + c] = SRGB_BYTE[Math.round(4095 * (y < 0 ? 0 : y > 1 ? 1 : y))];
+    }
+    out[q + 3] = 255;
   }
   return out;
 }

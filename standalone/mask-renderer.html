@@ -2071,7 +2071,7 @@ dialog.dialog-box {
     const h = hDeg * Math.PI / 180;
     return [L, C * Math.cos(h), C * Math.sin(h)];
   }
-  function oklabToSrgb([L, a, b]) {
+  function oklabToLinear([L, a, b]) {
     const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
     const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
     const s_ = L - 0.0894841775 * a - 1.291485548 * b;
@@ -2079,17 +2079,38 @@ dialog.dialog-box {
     const m = m_ ** 3;
     const s = s_ ** 3;
     return [
-      delinearise(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-      delinearise(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-      delinearise(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
     ];
+  }
+  function oklabToSrgb(lab) {
+    return oklabToLinear(lab).map(delinearise);
   }
   var INK = oklchToOklab(0.27, 0.013, 315);
   var PAPER = oklchToOklab(0.94, 0.025, 88);
-  function inkPaperLUT(ink = INK, paper = PAPER, tMax = 1) {
+  var TAN = oklchToOklab(0.8, 0.05, 75);
+  function absorber(colour, paper = PAPER) {
+    const c = oklabToLinear(colour);
+    const p = oklabToLinear(paper);
+    const a = c.map((v, k) => -Math.log(Math.max(1e-6, v) / p[k]));
+    const n = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+    return a.map((v) => v / n);
+  }
+  function linearRamp(n = 1024, ink = INK, paper = PAPER) {
+    const out = new Float32Array(3 * n);
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const lin = oklabToLinear([0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t));
+      for (let k = 0; k < 3; k++) out[3 * i + k] = Math.max(0, lin[k]);
+    }
+    return out;
+  }
+  var SRGB_BYTE = Uint8ClampedArray.from({ length: 4096 }, (_, i) => Math.round(255 * delinearise(i / 4095)));
+  function inkPaperLUT(ink = INK, paper = PAPER) {
     const lut = new Uint8ClampedArray(256 * 3);
     for (let i = 0; i < 256; i++) {
-      const t = tMax * i / 255;
+      const t = i / 255;
       const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
       const rgb = oklabToSrgb(lab);
       for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);
@@ -2452,9 +2473,9 @@ dialog.dialog-box {
   }
 
   // dist/web/features/renderer/engine/render.js
-  function paint(t, lut, out = new Uint8ClampedArray(t.length * 4), tMax = 1) {
+  function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
     for (let p = 0, q = 0; p < t.length; p++, q += 4) {
-      const v = t[p] / tMax;
+      const v = t[p];
       const i = 3 * Math.round(255 * (v < 0 ? 0 : v > 1 ? 1 : v));
       out[q] = lut[i];
       out[q + 1] = lut[i + 1];
@@ -2523,16 +2544,17 @@ dialog.dialog-box {
     for (let i = 0; i < t.length; i++) out[i] = 1 - m[i] * (1 - t[i]);
     return out;
   }
-  var T_MAX = 1.07;
-  function washiTone(t, D, S, alpha, tMax = T_MAX) {
-    const Lk = INK[0];
-    const dL = PAPER[0] - Lk;
-    const out = new Float32Array(D.length);
-    for (let i = 0; i < D.length; i++) {
-      const L = Lk + (t ? t[i] : 1) * dL;
-      const Y = L * L * L * Math.exp(-alpha * D[i]) * (1 + alpha * S[i]);
-      const v = (Math.cbrt(Y) - Lk) / dL;
-      out[i] = v < 0 ? 0 : v > tMax ? tMax : v;
+  function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, out = new Uint8ClampedArray(Dw.length * 4)) {
+    const n = ramp.length / 3 - 1;
+    for (let p = 0, q = 0; p < Dw.length; p++, q += 4) {
+      const v = t ? t[p] : 1;
+      const r = 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
+      const lit = 1 + alpha * S[p];
+      for (let c = 0; c < 3; c++) {
+        const y = ramp[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
+        out[q + c] = SRGB_BYTE[Math.round(4095 * (y < 0 ? 0 : y > 1 ? 1 : y))];
+      }
+      out[q + 3] = 255;
     }
     return out;
   }
@@ -2621,7 +2643,7 @@ dialog.dialog-box {
       const back = walk(rng, x0, y0, theta0 + Math.PI, L / 2, tau);
       const w0 = logNormal(rng, K.muW, 0.3);
       const b0 = logNormal(rng, K.muB, 0.5);
-      const a0 = logNormal(rng, K.muA, 0.4);
+      const a0 = logNormal(rng, K.muA, K.sA);
       const [lo, hi] = K.ab;
       const alpha = lo + (hi - lo) * rng.U();
       const beta = lo + (hi - lo) * rng.U();
@@ -2700,8 +2722,8 @@ dialog.dialog-box {
       const cx = -MARGIN + rng.U() * (X + 2 * MARGIN);
       const cy = -MARGIN + rng.U() * (Y + 2 * MARGIN);
       const phi = rng.U() * Math.PI;
-      const len = logNormal(rng, P.muK, 0.5);
-      const q = 0.2 + 0.4 * rng.U();
+      const len = logNormal(rng, P.muK, P.sK);
+      const q = 0.1 + 0.5 * rng.U();
       const ck = [];
       const psi = [];
       let bound = 1;
@@ -2804,16 +2826,70 @@ dialog.dialog-box {
     }
     return S;
   }
+  function cloud(rng, P, { W, H, px }) {
+    const f = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaCl, H: 0.5 });
+    const C = new Float32Array(W * H);
+    for (let j = 0, p = 0; j < H; j++) {
+      for (let i = 0; i < W; i++, p++) C[p] = P.aCl * f((i + 0.5) * px, (j + 0.5) * px);
+    }
+    return C;
+  }
   var PARTS = {
-    fibres: ["lambdaF", "muL", "sL", "lp", "muW", "muB", "muA", "sigmaW", "sigmaB", "sigmaA", "ellG"],
+    fibres: ["lambdaF", "muL", "sL", "lp", "muW", "muB", "muA", "sA", "sigmaW", "sigmaB", "sigmaA", "ellG"],
+    web: ["lambdaWeb", "muLWeb", "muAWeb", "sigmaW", "sigmaB", "sigmaA", "ellG"],
     specks: ["lambdaS", "muLs", "muWs", "muAs", "sigmaW", "sigmaB", "sigmaA", "ellG"],
-    flakes: ["lambdaK", "muK", "cK", "pK", "epsK", "kRim", "sigmaV", "lambdaV"],
-    grain: ["lambdaG", "omega", "Ag", "lambdaGw", "etaG", "lambdaN", "aG", "psi"]
+    flakes: ["lambdaK", "muK", "sK", "cK", "pK", "epsK", "kRim", "sigmaV", "lambdaV"],
+    grain: ["lambdaG", "omega", "Ag", "lambdaGw", "etaG", "lambdaN", "aG", "psi"],
+    cloud: ["aCl", "lambdaCl"]
   };
+  function strokeKind(name, P) {
+    const shared = { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG };
+    if (name === "fibres") {
+      return {
+        ...shared,
+        lambda: P.lambdaF,
+        muL: P.muL,
+        sL: P.sL,
+        lp: P.lp,
+        muW: P.muW,
+        muB: P.muB,
+        muA: P.muA,
+        sA: P.sA,
+        ab: [0.3, 2]
+      };
+    }
+    if (name === "web") {
+      return {
+        ...shared,
+        lambda: P.lambdaWeb,
+        muL: P.muLWeb,
+        sL: 0.5,
+        lp: 0.06,
+        muW: 6e-4,
+        muB: 4e-4,
+        muA: P.muAWeb,
+        sA: 0.5,
+        ab: [0.3, 2]
+      };
+    }
+    return {
+      ...shared,
+      lambda: P.lambdaS,
+      muL: P.muLs,
+      sL: 0.4,
+      lp: 0.05,
+      muW: P.muWs,
+      muB: 2e-4,
+      muA: P.muAs,
+      sA: 0.4,
+      ab: [0.6, 1.2]
+    };
+  }
   function part(name, seed, X, Y, W, H, P) {
     const canvas = { X, Y, W, H, px: X / W };
     const rng = stream(seed, `:pattern:${name}`);
     if (name === "grain") return { S: grain(rng, P, canvas) };
+    if (name === "cloud") return { C: cloud(rng, P, canvas) };
     const D = new Float32Array(W * H);
     if (name === "flakes") return { D, count: flakes(rng, P, canvas, D) };
     canvas.scratch = {
@@ -2823,9 +2899,16 @@ dialog.dialog-box {
       a: new Float32Array(W * H),
       touched: []
     };
-    const K = name === "fibres" ? { lambda: P.lambdaF, muL: P.muL, sL: P.sL, lp: P.lp, muW: P.muW, muB: P.muB, muA: P.muA, ab: [0.3, 2] } : { lambda: P.lambdaS, muL: P.muLs, sL: 0.4, lp: 0.05, muW: P.muWs, muB: 2e-4, muA: P.muAs, ab: [0.6, 1.2] };
-    Object.assign(K, { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG });
-    return { D, count: strokes(rng, K, canvas, D) };
+    return { D, count: strokes(rng, strokeKind(name, P), canvas, D) };
+  }
+  function combine({ fibres, web, specks, flakes: flakes2, grain: grain2, cloud: cloud2 }) {
+    return {
+      Dw: fibres.D.map((v, i) => v + web.D[i] + flakes2.D[i]),
+      Dk: specks.D,
+      C: cloud2.C,
+      S: grain2.S,
+      counts: { fibres: fibres.count, web: web.count, specks: specks.count, flakes: flakes2.count }
+    };
   }
 
   // dist/web/features/renderer/engine/params.js
@@ -2849,39 +2932,47 @@ dialog.dialog-box {
     { group: "Edges", key: "delta", label: "Edge softness δ", min: 0, max: 0.1, step: 1e-3, value: 0.01 },
     { group: "Edges", key: "feather", label: "Feather (blur of the mask)", min: 0, max: 0.15, step: 5e-3, value: 0.03 },
     { group: "Fibres", key: "lambdaF", label: "Fibre density λ", min: 0, max: 400, step: 1, value: 150 },
-    { group: "Fibres", key: "muL", label: "Median length μ_L", min: 5e-3, max: 0.2, step: 1e-3, value: 0.04 },
+    { group: "Fibres", key: "muL", label: "Median length μ_L", min: 5e-3, max: 0.2, step: 1e-3, value: 0.06 },
     { group: "Fibres", key: "sL", label: "Length spread s_L", min: 0, max: 1.5, step: 0.01, value: 0.5 },
     { group: "Fibres", key: "lp", label: "Persistence length ℓ_p", min: 5e-3, max: 0.5, step: 1e-3, value: 0.05 },
-    { group: "Fibres", key: "muW", label: "Median width μ_w", min: 2e-4, max: 5e-3, step: 1e-4, value: 12e-4 },
+    { group: "Fibres", key: "muW", label: "Median width μ_w", min: 2e-4, max: 5e-3, step: 1e-4, value: 9e-4 },
     { group: "Fibres", key: "muB", label: "Median blur μ_b", min: 0, max: 4e-3, step: 1e-4, value: 6e-4 },
-    { group: "Fibres", key: "muA", label: "Median darkness μ_a", min: 0, max: 0.6, step: 0.01, value: 0.35 },
+    { group: "Fibres", key: "muA", label: "Median darkness μ_a", min: 0, max: 0.6, step: 0.01, value: 0.2 },
+    { group: "Fibres", key: "sA", label: "Darkness spread s_a", min: 0, max: 1.5, step: 0.01, value: 0.8 },
     { group: "Fibres", key: "sigmaW", label: "Width wander σ_w", min: 0, max: 1, step: 0.01, value: 0.35 },
     { group: "Fibres", key: "sigmaB", label: "Blur wander σ_b", min: 0, max: 1.5, step: 0.01, value: 0.6 },
-    { group: "Fibres", key: "sigmaA", label: "Darkness wander σ_a", min: 0, max: 1.5, step: 0.01, value: 0.4 },
+    { group: "Fibres", key: "sigmaA", label: "Darkness wander σ_a", min: 0, max: 1.5, step: 0.01, value: 0.25 },
     { group: "Fibres", key: "ellG", label: "Wander scale ℓ_g", min: 2e-3, max: 0.05, step: 1e-3, value: 0.015 },
+    { group: "Web", key: "lambdaWeb", label: "Web density λ_web", min: 0, max: 6e3, step: 50, value: 2500 },
+    { group: "Web", key: "muLWeb", label: "Web strand length μ_L,web", min: 5e-3, max: 0.06, step: 1e-3, value: 0.035 },
+    { group: "Web", key: "muAWeb", label: "Web darkness μ_a,web", min: 0, max: 0.2, step: 5e-3, value: 0.18 },
     { group: "Specks", key: "lambdaS", label: "Speck density λ_s", min: 0, max: 60, step: 1, value: 10 },
     { group: "Specks", key: "muLs", label: "Speck length μ_L,s", min: 2e-3, max: 0.04, step: 1e-3, value: 0.01 },
     { group: "Specks", key: "muWs", label: "Speck width μ_w,s", min: 5e-4, max: 8e-3, step: 1e-4, value: 25e-4 },
     { group: "Specks", key: "muAs", label: "Speck darkness μ_a,s", min: 0, max: 3, step: 0.05, value: 1.2 },
     { group: "Flakes", key: "lambdaK", label: "Flake density λ_k", min: 0, max: 80, step: 1, value: 18 },
     { group: "Flakes", key: "muK", label: "Median flake length μ_k", min: 4e-3, max: 0.08, step: 1e-3, value: 0.02 },
-    { group: "Flakes", key: "cK", label: "Raggedness c", min: 0, max: 0.4, step: 0.01, value: 0.3 },
-    { group: "Flakes", key: "pK", label: "Harmonic falloff p", min: 0.3, max: 2.5, step: 0.05, value: 0.8 },
+    { group: "Flakes", key: "sK", label: "Flake length spread s_k", min: 0, max: 1.5, step: 0.01, value: 0.8 },
+    { group: "Flakes", key: "cK", label: "Raggedness c", min: 0, max: 0.4, step: 0.01, value: 0.2 },
+    { group: "Flakes", key: "pK", label: "Harmonic falloff p", min: 0.3, max: 2.5, step: 0.05, value: 1 },
     { group: "Flakes", key: "epsK", label: "Edge softness ε_k", min: 0.01, max: 0.3, step: 0.01, value: 0.08 },
     { group: "Flakes", key: "kRim", label: "Rim strength κ_rim", min: 0, max: 2, step: 0.05, value: 0.8 },
     { group: "Flakes", key: "sigmaV", label: "Vein strength σ_v", min: 0, max: 1.5, step: 0.05, value: 0.5 },
     { group: "Flakes", key: "lambdaV", label: "Vein scale λ_v", min: 1e-3, max: 0.02, step: 5e-4, value: 4e-3 },
     { group: "Grain", key: "lambdaG", label: "Cell size λ_g", min: 2e-3, max: 0.03, step: 5e-4, value: 8e-3 },
     { group: "Grain", key: "omega", label: "Crease width ω", min: 0.05, max: 1, step: 0.01, value: 0.3 },
-    { group: "Grain", key: "Ag", label: "Crumple amount A_g", min: 0, max: 0.02, step: 5e-4, value: 4e-3 },
+    { group: "Grain", key: "Ag", label: "Crumple amount A_g", min: 0, max: 0.02, step: 5e-4, value: 6e-3 },
     { group: "Grain", key: "lambdaGw", label: "Crumple scale λ_gw", min: 5e-3, max: 0.1, step: 1e-3, value: 0.02 },
     { group: "Grain", key: "etaG", label: "Mottle η_g", min: 0, max: 1, step: 0.01, value: 0.15 },
     { group: "Grain", key: "lambdaN", label: "Mottle scale λ_n", min: 0.01, max: 0.3, step: 5e-3, value: 0.05 },
-    { group: "Grain", key: "aG", label: "Relief depth a_g", min: 0, max: 0.15, step: 5e-3, value: 0.022 },
+    { group: "Grain", key: "aG", label: "Relief depth a_g", min: 0, max: 0.15, step: 5e-3, value: 0.012 },
     { group: "Grain", key: "psi", label: "Light direction ψ (°)", min: 0, max: 360, step: 1, value: 225 },
-    { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 }
+    { group: "Grain", key: "aCl", label: "Cloudiness a_cl", min: 0, max: 0.15, step: 5e-3, value: 0.05 },
+    { group: "Grain", key: "lambdaCl", label: "Cloud scale λ_cl", min: 0.05, max: 1, step: 0.01, value: 0.08 },
+    { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Composite", key: "warmth", label: "Inclusion warmth κ", min: 0, max: 1, step: 0.01, value: 1 }
   ];
-  var PATTERN_GROUPS = ["Fibres", "Specks", "Flakes", "Grain"];
+  var PATTERN_GROUPS = ["Fibres", "Web", "Specks", "Flakes", "Grain"];
   var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
   var DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
 
@@ -2891,7 +2982,9 @@ dialog.dialog-box {
   var Engine = class {
     constructor() {
       this.lut = inkPaperLUT();
-      this.washiLut = inkPaperLUT(void 0, void 0, T_MAX);
+      this.ramp = linearRamp();
+      this.inkAbsorber = absorber(INK);
+      this.tanAbsorber = absorber(TAN);
       this.image = null;
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
@@ -2948,20 +3041,14 @@ dialog.dialog-box {
       const { seed, X, Y, W, H } = this.image;
       const c = this.patternCache ||= { parts: {} };
       const t0 = performance.now();
-      let changed = !c.D;
+      let changed = !c.Dw;
       for (const [name, keys] of Object.entries(PARTS)) {
         const key = keys.map((k) => P[k]).join();
         if (c.parts[name]?.key === key) continue;
         c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
         changed = true;
       }
-      if (changed) {
-        const { fibres, specks, flakes: flakes2, grain: grain2 } = c.parts;
-        c.D = fibres.D.map((v, i) => v + specks.D[i] + flakes2.D[i]);
-        c.S = grain2.S;
-        c.counts = { fibres: fibres.count, specks: specks.count, flakes: flakes2.count };
-        c.ms = performance.now() - t0;
-      }
+      if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
       return c;
     }
     // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
@@ -2970,10 +3057,7 @@ dialog.dialog-box {
       const { W, H } = this.image;
       const t = this.tone(P);
       if (name === "monochrome") return { rgba: paint(t, this.lut), width: W, height: H };
-      if (name === "pattern") {
-        const { D, S } = this.pattern(P);
-        return { rgba: paint(washiTone(null, D, S, P.alpha), this.washiLut, void 0, T_MAX), width: W, height: H };
-      }
+      if (name === "pattern") return { rgba: this.washi(null, P), width: W, height: H };
       const { G, best } = r;
       if (name === "field") {
         return {
@@ -2984,11 +3068,14 @@ dialog.dialog-box {
         };
       }
       const m = this.fullMask(P, r);
-      if (name === "washi") {
-        const { D, S } = this.pattern(P);
-        return { rgba: paint(washiTone(baseTone(t, m), D, S, P.alpha), this.washiLut, void 0, T_MAX), width: W, height: H };
-      }
+      if (name === "washi") return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
       return { rgba: paint(name === "mask" ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
+    }
+    // P6 over base tone t (null for bare paper). Warmth κ mixes the inclusions' absorber from ink to tan.
+    washi(t, P) {
+      const k = P.warmth;
+      const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
+      return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
     }
     fullMask(P, r) {
       const c = this.maskCache;
@@ -3066,7 +3153,7 @@ dialog.dialog-box {
   }
   function describePattern({ counts, ms }) {
     const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-    return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:specks :pattern:flakes :pattern:grain), made in ${Math.round(ms)} ms.`;
+    return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.web, "web strand", "web strands")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
   }
 
   // dist/web/features/renderer/Renderer.js
@@ -3080,7 +3167,7 @@ dialog.dialog-box {
     ["pattern", "Pattern"],
     ["washi", "Washi"]
   ];
-  var DRAW_KEYS = ["k", "gamma", "dMin", "dMax", "delta", "feather", "alpha", ...PATTERN_KEYS];
+  var DRAW_KEYS = ["k", "gamma", "dMin", "dMax", "delta", "feather", "alpha", "warmth", ...PATTERN_KEYS];
   var Renderer = class extends Feature {
     start() {
       this.engine = new Engine();
@@ -3242,7 +3329,7 @@ dialog.dialog-box {
           ),
           el3("ul", {}, a.lines.map((line) => el3("li", {}, line)))
         )),
-        this.engine.patternCache?.D && el3("p", {}, describePattern(this.engine.patternCache))
+        this.engine.patternCache?.Dw && el3("p", {}, describePattern(this.engine.patternCache))
       );
     }
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
