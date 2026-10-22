@@ -27,8 +27,8 @@ test('re-rolls name their streams and the best is kept', () => {
   assert.ok(r.attempts[0].kept && !r.attempts[1].kept);
 });
 
-test('the pattern line counts fibres, specks and flakes', () => {
-  const line = describePattern({ counts: { fibres: 150, specks: 1, flakes: 18 }, ms: 812.4 });
-  assert.ok(line.startsWith('Pattern: 150 fibres, 1 speck and 18 flakes'));
+test('the pattern line counts fibres, web strands, specks and flakes', () => {
+  const line = describePattern({ counts: { fibres: 150, web: 2400, specks: 1, flakes: 18 }, ms: 812.4 });
+  assert.ok(line.startsWith('Pattern: 150 fibres, 2400 web strands, 1 speck and 18 flakes'));
   assert.ok(line.endsWith('made in 812 ms.'));
 });

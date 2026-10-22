@@ -15,7 +15,7 @@ const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', ...PATTERN_KEYS]; // these don't change M1–M8
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS]; // these don't change M1–M8
 
 export default class Renderer extends Feature {
   start() {
@@ -154,7 +154,7 @@ export default class Renderer extends Feature {
         el('summary', {}, a.title, el('span', { class: `renderer-tag ${a.pass ? 'pass' : 'fail'}` }, a.pass ? 'passes' : 'fails'),
           a.kept && el('span', { class: 'renderer-tag kept' }, 'shown')),
         el('ul', {}, a.lines.map((line) => el('li', {}, line))))),
-      this.engine.patternCache?.D && el('p', {}, describePattern(this.engine.patternCache)));
+      this.engine.patternCache?.Dw && el('p', {}, describePattern(this.engine.patternCache)));
   }
 
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.

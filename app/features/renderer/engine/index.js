@@ -4,18 +4,18 @@
 //   engine.load(rgba, W, H);              // monochrome lightness + seed, cached
 //   const r = engine.mask(P, anchor);     // M1–M8, with re-rolls; anchor in fractions of W, H
 //   const img = engine.view('base', P, r) // { rgba, width, height }
-//   const pat = engine.pattern(P);        // P1–P5: { D, S, counts, ms }, cached
+//   const pat = engine.pattern(P);        // P1–P5: { Dw, Dk, C, S, counts, ms }, cached
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
-import { inkPaperLUT } from './colour.js';
+import { inkPaperLUT, linearRamp, absorber, INK, TAN } from './colour.js';
 import { lightness, quantiles, tone, imageSeed } from './monochrome.js';
 import { stream, seedText } from './random.js';
 import { skeleton } from './skeleton.js';
 import { grid, field } from './field.js';
 import { components, judge } from './components.js';
-import { paint, upscaleMask, maskTone, baseTone, heightTone, contour, washiTone, T_MAX } from './render.js';
-import { part, PARTS } from './pattern.js';
+import { paint, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
+import { part, combine, PARTS } from './pattern.js';
 
 export { PARAMS, DEFAULTS, PATTERN_KEYS } from './params.js';
 
@@ -25,7 +25,9 @@ const FIELD_SHORT = 320;
 export class Engine {
   constructor() {
     this.lut = inkPaperLUT();
-    this.washiLut = inkPaperLUT(undefined, undefined, T_MAX);
+    this.ramp = linearRamp();
+    this.inkAbsorber = absorber(INK);
+    this.tanAbsorber = absorber(TAN);
     this.image = null;
   }
 
@@ -83,20 +85,14 @@ export class Engine {
     const { seed, X, Y, W, H } = this.image;
     const c = (this.patternCache ||= { parts: {} });
     const t0 = performance.now();
-    let changed = !c.D;
+    let changed = !c.Dw;
     for (const [name, keys] of Object.entries(PARTS)) {
       const key = keys.map((k) => P[k]).join();
       if (c.parts[name]?.key === key) continue;
       c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
       changed = true;
     }
-    if (changed) {
-      const { fibres, specks, flakes, grain } = c.parts;
-      c.D = fibres.D.map((v, i) => v + specks.D[i] + flakes.D[i]);
-      c.S = grain.S;
-      c.counts = { fibres: fibres.count, specks: specks.count, flakes: flakes.count };
-      c.ms = performance.now() - t0;
-    }
+    if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
     return c;
   }
 
@@ -106,21 +102,22 @@ export class Engine {
     const { W, H } = this.image;
     const t = this.tone(P);
     if (name === 'monochrome') return { rgba: paint(t, this.lut), width: W, height: H };
-    if (name === 'pattern') {
-      const { D, S } = this.pattern(P);
-      return { rgba: paint(washiTone(null, D, S, P.alpha), this.washiLut, undefined, T_MAX), width: W, height: H };
-    }
+    if (name === 'pattern') return { rgba: this.washi(null, P), width: W, height: H };
     const { G, best } = r;
     if (name === 'field') {
       return { rgba: paint(heightTone(best.Fp, best.max), this.lut), width: G.gw, height: G.gh,
         contour: contour(G, best.Fp, best.T) };
     }
     const m = this.fullMask(P, r);
-    if (name === 'washi') {
-      const { D, S } = this.pattern(P);
-      return { rgba: paint(washiTone(baseTone(t, m), D, S, P.alpha), this.washiLut, undefined, T_MAX), width: W, height: H };
-    }
+    if (name === 'washi') return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
     return { rgba: paint(name === 'mask' ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
+  }
+
+  // P6 over base tone t (null for bare paper). Warmth κ mixes the inclusions' absorber from ink to tan.
+  washi(t, P) {
+    const k = P.warmth;
+    const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
+    return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
   }
 
   fullMask(P, r) {

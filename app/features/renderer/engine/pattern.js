@@ -1,5 +1,6 @@
-// The Washi pattern, steps P1–P5: hairline fibres, specks and flakes as an inclusion density D,
-// and a crinkled relief grain as a shading S. Both are W × H maps at full image size.
+// The Washi pattern, steps P1–P5: hairline fibres, a fine fibre web and flakes as a warm inclusion
+// density D_w, specks as a dark one D_k, faint cloudiness C, and a crinkled relief grain as a shading S.
+// All are W × H maps at full image size.
 // Shapes and paths are in canvas units (short side = 1), so a picture gives the same sheet at any size.
 
 import { stream } from './random.js';
@@ -54,8 +55,8 @@ function walk(rng, x, y, theta, len, tau) {
   return pts;
 }
 
-// P1–P2 for one kind of stroke (fibres or specks). K holds that kind's settings:
-//   { lambda, muL, sL, lp, muW, muB, muA, sigmaW, sigmaB, sigmaA, ellG, ab: [lo, hi] }
+// P1–P2 for one kind of stroke (fibres, web or specks). K holds that kind's settings:
+//   { lambda, muL, sL, lp, muW, muB, muA, sA, sigmaW, sigmaB, sigmaA, ellG, ab: [lo, hi] }
 // Draws: the noise permutation (255), the count, then per stroke the midpoint, L, θ₀, the forward
 // walk, the backward walk, w₀, b₀, a₀, α, β and the three noise offsets. Adds into D; returns the count.
 function strokes(rng, K, canvas, D) {
@@ -73,7 +74,7 @@ function strokes(rng, K, canvas, D) {
     const back = walk(rng, x0, y0, theta0 + Math.PI, L / 2, tau);
     const w0 = logNormal(rng, K.muW, 0.3);
     const b0 = logNormal(rng, K.muB, 0.5);
-    const a0 = logNormal(rng, K.muA, 0.4);
+    const a0 = logNormal(rng, K.muA, K.sA);
     const [lo, hi] = K.ab;
     const alpha = lo + (hi - lo) * rng.U();
     const beta = lo + (hi - lo) * rng.U();
@@ -161,8 +162,8 @@ function flakes(rng, P, canvas, D) {
     const cx = -MARGIN + rng.U() * (X + 2 * MARGIN);
     const cy = -MARGIN + rng.U() * (Y + 2 * MARGIN);
     const phi = rng.U() * Math.PI;
-    const len = logNormal(rng, P.muK, 0.5);
-    const q = 0.2 + 0.4 * rng.U();
+    const len = logNormal(rng, P.muK, P.sK);
+    const q = 0.1 + 0.5 * rng.U();
     const ck = [];
     const psi = [];
     let bound = 1;
@@ -274,33 +275,66 @@ function grain(rng, P, canvas) {
   return S;
 }
 
+// Faint cloudiness: C = a_cl · fBm(x / λ_cl), 4 octaves, H = 0.5, signed. Draws: one permutation.
+function cloud(rng, P, { W, H, px }) {
+  const f = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaCl, H: 0.5 });
+  const C = new Float32Array(W * H);
+  for (let j = 0, p = 0; j < H; j++) {
+    for (let i = 0; i < W; i++, p++) C[p] = P.aCl * f((i + 0.5) * px, (j + 0.5) * px);
+  }
+  return C;
+}
+
 // The pattern's parts and the sliders each depends on, so moving one slider redoes only its part.
 export const PARTS = {
-  fibres: ['lambdaF', 'muL', 'sL', 'lp', 'muW', 'muB', 'muA', 'sigmaW', 'sigmaB', 'sigmaA', 'ellG'],
+  fibres: ['lambdaF', 'muL', 'sL', 'lp', 'muW', 'muB', 'muA', 'sA', 'sigmaW', 'sigmaB', 'sigmaA', 'ellG'],
+  web: ['lambdaWeb', 'muLWeb', 'muAWeb', 'sigmaW', 'sigmaB', 'sigmaA', 'ellG'],
   specks: ['lambdaS', 'muLs', 'muWs', 'muAs', 'sigmaW', 'sigmaB', 'sigmaA', 'ellG'],
-  flakes: ['lambdaK', 'muK', 'cK', 'pK', 'epsK', 'kRim', 'sigmaV', 'lambdaV'],
+  flakes: ['lambdaK', 'muK', 'sK', 'cK', 'pK', 'epsK', 'kRim', 'sigmaV', 'lambdaV'],
   grain: ['lambdaG', 'omega', 'Ag', 'lambdaGw', 'etaG', 'lambdaN', 'aG', 'psi'],
+  cloud: ['aCl', 'lambdaCl'],
 };
 
-// One part of P1–P5 for the whole canvas. Fibres, specks and flakes → { D, count }; grain → { S }.
+// Each kind of stroke's settings; the web and the specks fix what has no slider.
+function strokeKind(name, P) {
+  const shared = { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG };
+  if (name === 'fibres') {
+    return { ...shared, lambda: P.lambdaF, muL: P.muL, sL: P.sL, lp: P.lp, muW: P.muW, muB: P.muB,
+      muA: P.muA, sA: P.sA, ab: [0.3, 2] };
+  }
+  if (name === 'web') {
+    return { ...shared, lambda: P.lambdaWeb, muL: P.muLWeb, sL: 0.5, lp: 0.06, muW: 0.0006, muB: 0.0004,
+      muA: P.muAWeb, sA: 0.5, ab: [0.3, 2] };
+  }
+  return { ...shared, lambda: P.lambdaS, muL: P.muLs, sL: 0.4, lp: 0.05, muW: P.muWs, muB: 0.0002,
+    muA: P.muAs, sA: 0.4, ab: [0.6, 1.2] };
+}
+
+// One part of P1–P5 for the whole canvas. Strokes and flakes → { D, count }; grain → { S }; cloud → { C }.
 export function part(name, seed, X, Y, W, H, P) {
   const canvas = { X, Y, W, H, px: X / W };
   const rng = stream(seed, `:pattern:${name}`);
   if (name === 'grain') return { S: grain(rng, P, canvas) };
+  if (name === 'cloud') return { C: cloud(rng, P, canvas) };
   const D = new Float32Array(W * H);
   if (name === 'flakes') return { D, count: flakes(rng, P, canvas, D) };
   canvas.scratch = { d2: new Float32Array(W * H).fill(Infinity), w: new Float32Array(W * H),
     b: new Float32Array(W * H), a: new Float32Array(W * H), touched: [] };
-  const K = name === 'fibres'
-    ? { lambda: P.lambdaF, muL: P.muL, sL: P.sL, lp: P.lp, muW: P.muW, muB: P.muB, muA: P.muA, ab: [0.3, 2] }
-    : { lambda: P.lambdaS, muL: P.muLs, sL: 0.4, lp: 0.05, muW: P.muWs, muB: 0.0002, muA: P.muAs, ab: [0.6, 1.2] };
-  Object.assign(K, { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG });
-  return { D, count: strokes(rng, K, canvas, D) };
+  return { D, count: strokes(rng, strokeKind(name, P), canvas, D) };
 }
 
-// P1–P5 for the whole canvas, D = D_f + D_s + D_k. → { D, S, counts: { fibres, specks, flakes } }
+// Adds the parts up: D_w = fibres + web + flakes (warm), D_k = specks (toward ink).
+export function combine({ fibres, web, specks, flakes, grain, cloud }) {
+  return {
+    Dw: fibres.D.map((v, i) => v + web.D[i] + flakes.D[i]),
+    Dk: specks.D,
+    C: cloud.C,
+    S: grain.S,
+    counts: { fibres: fibres.count, web: web.count, specks: specks.count, flakes: flakes.count },
+  };
+}
+
+// P1–P5 for the whole canvas. → { Dw, Dk, C, S, counts }
 export function pattern(seed, X, Y, W, H, P) {
-  const [f, s, k] = ['fibres', 'specks', 'flakes'].map((n) => part(n, seed, X, Y, W, H, P));
-  const D = f.D.map((v, i) => v + s.D[i] + k.D[i]);
-  return { D, S: part('grain', seed, X, Y, W, H, P).S, counts: { fibres: f.count, specks: s.count, flakes: k.count } };
+  return combine(Object.fromEntries(Object.keys(PARTS).map((n) => [n, part(n, seed, X, Y, W, H, P)])));
 }

@@ -2,11 +2,11 @@
 
 import { test, assert } from 'folio/testing';
 import { cyrb53, stream } from '../engine/random.js';
-import { oklabL, oklabToSrgb, INK, PAPER, inkPaperLUT } from '../engine/colour.js';
+import { oklabL, oklabToSrgb, INK, PAPER, TAN, inkPaperLUT, absorber, linearRamp } from '../engine/colour.js';
 import { tone, imageSeed } from '../engine/monochrome.js';
 import { stickBreaking } from '../engine/skeleton.js';
 import { quantile } from '../engine/field.js';
-import { gaussianBlur, washiTone } from '../engine/render.js';
+import { gaussianBlur, washiRGB } from '../engine/render.js';
 import { erf, taper, poisson, pattern } from '../engine/pattern.js';
 import { components, judge } from '../engine/components.js';
 import { Engine, DEFAULTS } from '../engine/index.js';
@@ -151,27 +151,42 @@ test('Poisson counts have the right mean, small and large', () => {
   }
 });
 
-test('the pattern is repeatable, D is never negative and S is centred', () => {
+test('the pattern is repeatable, densities are never negative and S is centred', () => {
   const one = pattern(42, 1.5, 1, 240, 160, DEFAULTS);
   const two = pattern(42, 1.5, 1, 240, 160, DEFAULTS);
   assert.deepEqual(one.counts, two.counts);
-  assert.deepEqual([...one.D.slice(0, 2000)], [...two.D.slice(0, 2000)]);
-  assert.ok(one.counts.fibres > 100 && one.D.every((v) => v >= 0) && one.D.some((v) => v > 0.1));
+  assert.deepEqual([...one.Dw.slice(0, 2000)], [...two.Dw.slice(0, 2000)]);
+  assert.ok(one.counts.fibres > 100 && one.counts.web > 1000);
+  assert.ok(one.Dw.every((v) => v >= 0) && one.Dk.every((v) => v >= 0) && one.Dw.some((v) => v > 0.1));
   assert.ok(one.S.every((v) => Math.abs(v) <= 0.5));
   assert.ok(Math.abs(one.S.reduce((s, v) => s + v, 0) / one.S.length) < 0.01);
   const other = pattern(43, 1.5, 1, 240, 160, DEFAULTS);
-  assert.ok(other.D.some((v, i) => v !== one.D[i]));
+  assert.ok(other.Dw.some((v, i) => v !== one.Dw[i]));
 });
 
-test('the composite leaves the base alone at α = 0 and darkens through inclusions', () => {
-  const t = Float32Array.from([0, 0.5, 1]);
-  const D = Float32Array.from([1, 1, 1]);
-  const S = Float32Array.from([0.2, -0.2, 0.3]);
-  washiTone(t, D, S, 0).forEach((v, i) => assert.ok(near(v, t[i], 1e-5)));
-  const w = washiTone(t, D, new Float32Array(3), 1);
-  assert.ok(w[1] < 0.5 && w[2] < 1);
-  const lit = washiTone(null, new Float32Array(1), Float32Array.from([0.3]), 1);
-  assert.ok(lit[0] > 1 && lit[0] <= 1.07 + 1e-6); // relief highlights rise above paper
+test('absorbers darken by about e^−D, toward their colour', () => {
+  const ak = absorber(INK);
+  const at = absorber(TAN);
+  assert.ok(near(0.2126 * at[0] + 0.7152 * at[1] + 0.0722 * at[2], 1, 1e-9));
+  assert.ok(at[2] > at[1] && at[1] > at[0]); // tan absorbs blue most
+  assert.ok(Math.abs(ak[0] - ak[2]) < Math.abs(at[0] - at[2]));
+});
+
+test('the composite leaves the base alone at α = 0 and tints through warm inclusions', () => {
+  const ramp = linearRamp();
+  const ak = absorber(INK);
+  const at = absorber(TAN);
+  const one = (v) => Float32Array.from([v]);
+  const zero = one(0);
+  const bare = washiRGB(null, { Dw: zero, Dk: zero, C: zero, S: zero }, 1, ramp, at, ak);
+  const paper = oklabToSrgb(PAPER).map((c) => Math.round(255 * c));
+  for (let c = 0; c < 3; c++) assert.ok(Math.abs(bare[c] - paper[c]) <= 1);
+  const off = washiRGB(null, { Dw: one(2), Dk: one(2), C: one(0.3), S: one(0.3) }, 0, ramp, at, ak);
+  for (let c = 0; c < 3; c++) assert.ok(Math.abs(off[c] - paper[c]) <= 1);
+  const tan = washiRGB(null, { Dw: one(0.5), Dk: zero, C: zero, S: zero }, 1, ramp, at, ak);
+  assert.ok(tan[0] - tan[2] > bare[0] - bare[2]); // warmer than paper
+  const lit = washiRGB(null, { Dw: zero, Dk: zero, C: zero, S: one(0.1) }, 1, ramp, at, ak);
+  assert.ok(lit[1] > bare[1]); // relief highlights rise above paper
 });
 
 test('the Washi view leaves the base view untouched', () => {
