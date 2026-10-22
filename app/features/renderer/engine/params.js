@@ -73,7 +73,6 @@ export const PARAMS = [
   { group: 'Timing', key: 'nH', label: 'Branching ratio n', min: 0, max: 0.95, step: 0.01, value: 0.6 },
   { group: 'Timing', key: 'tauH', label: 'Memory τ_h (s)', min: 0.1, max: 10, step: 0.1, value: 1.2 },
 
-  { group: 'Placement', key: 'rho', label: 'Mask affinity ρ', min: 0, max: 1, step: 0.01, value: 0.6 },
   { group: 'Placement', key: 'sigmaC', label: 'Cluster spread σ_c', min: 0.002, max: 0.3, step: 0.001, value: 0.04 },
   { group: 'Placement', key: 'sigmaTheta', label: 'Heading spread σ_θ (°)', min: 0, max: 180, step: 1, value: 20 },
   { group: 'Placement', key: 'chi', label: 'Kinship χ', min: 0, max: 1, step: 0.01, value: 0.7 },
@@ -92,7 +91,8 @@ export const PARAMS = [
   { group: 'Life', key: 'Td', label: 'Draw-in time T_d (s)', min: 0.05, max: 3, step: 0.05, value: 0.6 },
   { group: 'Life', key: 'muT', label: 'Median hold μ_T (s)', min: 0.5, max: 60, step: 0.5, value: 5 },
   { group: 'Life', key: 'sT', label: 'Hold spread s_T', min: 0, max: 1.5, step: 0.01, value: 0.5 },
-  { group: 'Life', key: 'tauF', label: 'Fade time τ_f (s)', min: 0.2, max: 20, step: 0.1, value: 2.5 },
+  { group: 'Life', key: 'tauF', label: 'Median fade time μ_f (s)', min: 0.2, max: 20, step: 0.1, value: 2.5 },
+  { group: 'Life', key: 'sF', label: 'Fade spread s_f', min: 0, max: 1.5, step: 0.01, value: 0.6 },
   { group: 'Life', key: 'alphaS', label: 'Spontaneity strength α_s', min: 0, max: 2, step: 0.01, value: 1 },
 ];
 

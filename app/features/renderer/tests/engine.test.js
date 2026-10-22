@@ -228,15 +228,16 @@ test('the marks at a moment do not depend on how the frames fell', () => {
   assert.ok(key(other) !== key(two));
 });
 
-test('offspring stay near their parents and background marks follow the mask', () => {
-  const P = { ...DEFAULTS, mu: 1, nH: 0.8, rho: 1 };
-  const sp = new Spontaneity(3, 2, 1, P, (x) => (x < 1 ? 1 : 0));
+test('offspring stay near their parents and background marks cover the whole canvas', () => {
+  const P = { ...DEFAULTS, mu: 1, nH: 0.8 };
+  const sp = new Spontaneity(3, 2, 1, P);
   const all = [];
   const seen = new Set();
   for (let t = 1; t <= 400; t += 1) for (const m of sp.advance(t)) if (!seen.has(m.id)) seen.add(m.id), all.push(m);
   const byId = new Map(all.map((m) => [m.id, m]));
   const roots = all.filter((m) => m.parent === null);
-  assert.ok(roots.length > 50 && roots.every((m) => m.x < 1)); // the mask is the left half
+  const left = roots.filter((m) => m.x < 1).length;
+  assert.ok(roots.length > 50 && Math.abs(left / roots.length - 0.5) < 0.15); // uniform, not drawn to any part
   const kids = all.filter((m) => byId.has(m.parent));
   const far = kids.filter((m) => Math.hypot(m.x - byId.get(m.parent).x, m.y - byId.get(m.parent).y) > 5 * P.sigmaC);
   assert.ok(kids.length > 50 && far.length < 0.02 * kids.length);
@@ -288,7 +289,31 @@ test('the Living view starts as the Washi view', () => {
   const washi = e.view('washi', DEFAULTS, r).rgba;
   const img = e.view('living', DEFAULTS, r);
   assert.deepEqual([...img.rgba], [...washi]);
-  const live = e.living(DEFAULTS, r, img.rgba);
+  const live = e.living(DEFAULTS, img.rgba);
   live.frame(30);
   assert.deepEqual([...washi], [...img.rgba]); // the static pixels are kept; marks go in live.rgba
+});
+
+test('the marks do not depend on the anchor', () => {
+  const e = new Engine();
+  e.load(picture(160, 120), 160, 120);
+  const marks = (anchor) => {
+    const r = e.mask(DEFAULTS, anchor);
+    const live = e.living(DEFAULTS, e.view('living', DEFAULTS, r).rgba);
+    live.frame(40);
+    return live.process.live.map((m) => [m.t0, m.x, m.y].join()).join(';');
+  };
+  assert.equal(marks({ x: 0.2, y: 0.3 }), marks({ x: 0.8, y: 0.7 }));
+});
+
+test('fade times vary from mark to mark around their median', () => {
+  const P = { ...DEFAULTS, mu: 2, tauF: 2, sF: 0.6 };
+  const sp = new Spontaneity(11, 1.5, 1, P);
+  const seen = new Map();
+  for (let t = 1; t <= 300; t += 1) for (const m of sp.advance(t)) seen.set(m.id, m.tauF);
+  const f = [...seen.values()].sort((a, b) => a - b);
+  const median = f[Math.floor(f.length / 2)];
+  assert.ok(f.length > 300 && Math.abs(median / 2 - 1) < 0.15 && f[f.length - 1] / f[0] > 4);
+  const flat = new Spontaneity(11, 1.5, 1, { ...P, sF: 0 });
+  assert.ok(flat.advance(50).every((m) => m.tauF === 2));
 });

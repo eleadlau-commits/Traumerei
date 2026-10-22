@@ -1,11 +1,12 @@
 // The Spontaneity layer, steps S1–S5: dots, dashes and marks that are drawn in, linger and dissolve.
 //   S1  timing: a Hawkes process, λ(t) = μ + Σ_{tᵢ < t} (n / τ_h) e^(−(t − tᵢ)/τ_h), simulated exactly
 //       by Ogata's thinning. n = 0 is a Poisson process; the mean rate is μ / (1 − n).
-//   S2  placement: a background mark lands where the mask is, with weight (1 − ρ) + ρ m(x); an
-//       offspring lands near its parent, x = x_parent + σ_c ξ, heading θ_parent + σ_θ ξ.
+//   S2  placement: a background mark lands uniformly on the canvas, independent of the anchor and
+//       the mask; an offspring lands near its parent, x = x_parent + σ_c ξ, heading θ_parent + σ_θ ξ.
 //   S3  marks: a dot (a soft ellipse that spreads as it is drawn), a dash (a straight stroke) or a
 //       mark (a bent stroke, a quadratic Bézier with bend h ~ N(0, σ_h²)).
-//   S4  life: drawn in over T_d, held for T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f).
+//   S4  life: drawn in over T_d, held for T ~ LogNormal(μ_T, s_T), then o = e^(−(s − T_d − T)/τ_f),
+//       with each mark's own fade time τ_f ~ LogNormal(μ_f, s_f).
 //   S5  composite over the Washi picture, per channel in linear light: out_c = in_c · exp(−α_s D a_ink,c).
 // Streams: seed + ':spont:time' (S1, and the choice of parent), ':spont:place' (S2), ':spont:marks' (S3–S4).
 // The same seed and sliders always give the same marks at the same moment, however the frames fall.
@@ -16,16 +17,14 @@ import { erf, taper } from './pattern.js';
 import { LINEAR_BYTE, SRGB_BYTE } from './colour.js';
 
 const POINTS = 16; // the stroke's polyline has POINTS + 1 points
-const TRIES = 50; // rejection sampling for a background mark's place, then it lands where it is
 const OUT = 5; // a mark is retired after 5 τ_f of fading (o < 0.7%)
 const DEG = Math.PI / 180;
 
 const logNormal = (rng, median, spread) => median * Math.exp(spread * rng.N());
 
 export class Spontaneity {
-  // weight(x, y) → the mask in [0, 1] at a canvas point, or null for a uniform page.
-  constructor(seed, X, Y, P, weight = null) {
-    Object.assign(this, { X, Y, P, weight });
+  constructor(seed, X, Y, P) {
+    Object.assign(this, { X, Y, P });
     this.time = stream(seed, ':spont:time');
     this.place = stream(seed, ':spont:place');
     this.look = stream(seed, ':spont:marks');
@@ -85,12 +84,8 @@ export class Spontaneity {
       x = reflect(parent.x + P.sigmaC * this.place.N(), X);
       y = reflect(parent.y + P.sigmaC * this.place.N(), Y);
     } else {
-      for (let k = 0; k < TRIES; k++) {
-        x = this.place.U() * X;
-        y = this.place.U() * Y;
-        const w = this.weight ? (1 - P.rho) + P.rho * this.weight(x, y) : 1;
-        if (this.place.U() < w) break;
-      }
+      x = this.place.U() * X;
+      y = this.place.U() * Y;
     }
     const L = this.look;
     // The kind: an offspring keeps its parent's with probability χ; otherwise π_dot, π_dash, the rest marks.
@@ -116,7 +111,7 @@ export class Spontaneity {
       beta: 0.15 + 0.45 * L.U(),
       Td: P.Td,
       T: logNormal(L, P.muT, P.sT),
-      tauF: P.tauF,
+      tauF: logNormal(L, P.tauF, P.sF),
     };
     if (kind !== 'dot') mk.pts = bezier(mk);
     return mk;
@@ -310,6 +305,6 @@ export class Living {
 export function expected(P) {
   const n = Math.min(P.nH, 0.95);
   const rate = P.mu / (1 - n);
-  const life = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF;
+  const life = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF * Math.exp(P.sF * P.sF / 2);
   return { rate, visible: rate * life, cluster: 1 / (1 - n) };
 }
