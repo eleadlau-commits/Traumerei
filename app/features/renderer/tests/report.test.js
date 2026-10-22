@@ -1,7 +1,7 @@
 // Tests for the M8 report text.
 
 import { test, assert } from 'folio/testing';
-import { describe } from '../report.js';
+import { describe, describePattern } from '../report.js';
 
 const attempt = (n, pass) => ({
   n, pieces: 3, dropped: 1, T: 0.3, main: { x: 0.5, y: 0.5, how: 'gaussian' },
@@ -25,4 +25,10 @@ test('re-rolls name their streams and the best is kept', () => {
   assert.match(r.summary, /closest one \(attempt 0\)/);
   assert.match(r.attempts[1].title, /:skeleton:1 :warp:1 :noise:1/);
   assert.ok(r.attempts[0].kept && !r.attempts[1].kept);
+});
+
+test('the pattern line counts fibres, specks and flakes', () => {
+  const line = describePattern({ counts: { fibres: 150, specks: 1, flakes: 18 }, ms: 812.4 });
+  assert.ok(line.startsWith('Pattern: 150 fibres, 1 speck and 18 flakes'));
+  assert.ok(line.endsWith('made in 812 ms.'));
 });

@@ -1,11 +1,12 @@
 // Turning the engine's numbers into pixels: the four views, the upscaled mask and the contour.
 
 import { smoothstep } from './field.js';
+import { INK, PAPER } from './colour.js';
 
-// t ∈ [0, 1] per pixel (0 = ink, 1 = paper) → RGBA through the ink–paper LUT.
-export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
+// t ∈ [0, tMax] per pixel (0 = ink, 1 = paper) → RGBA through an ink–paper LUT made with that tMax.
+export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4), tMax = 1) {
   for (let p = 0, q = 0; p < t.length; p++, q += 4) {
-    const v = t[p];
+    const v = t[p] / tMax;
     const i = 3 * Math.round(255 * (v < 0 ? 0 : v > 1 ? 1 : v));
     out[q] = lut[i];
     out[q + 1] = lut[i + 1];
@@ -85,6 +86,23 @@ export function maskTone(m) {
 export function baseTone(t, m) {
   const out = new Float32Array(t.length);
   for (let i = 0; i < t.length; i++) out[i] = 1 - m[i] * (1 - t[i]);
+  return out;
+}
+
+// P6. The base printed on the paper, in linear light: L = L_ink + t(L_paper − L_ink), Y = L³,
+// Y' = Y · exp(−αD) · (1 + αS), and back to t' through ∛Y', clamped to [0, tMax].
+// t = null stands for bare paper (t = 1 everywhere): the Pattern view.
+export const T_MAX = 1.07;
+export function washiTone(t, D, S, alpha, tMax = T_MAX) {
+  const Lk = INK[0];
+  const dL = PAPER[0] - Lk;
+  const out = new Float32Array(D.length);
+  for (let i = 0; i < D.length; i++) {
+    const L = Lk + (t ? t[i] : 1) * dL;
+    const Y = L * L * L * Math.exp(-alpha * D[i]) * (1 + alpha * S[i]);
+    const v = (Math.cbrt(Y) - Lk) / dL;
+    out[i] = v < 0 ? 0 : v > tMax ? tMax : v;
+  }
   return out;
 }
 

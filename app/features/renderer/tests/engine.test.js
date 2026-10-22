@@ -1,4 +1,4 @@
-// Tests for the engine's rules: hashing and streams, colour, stick-breaking, the field and M8.
+// Tests for the engine's rules: hashing and streams, colour, stick-breaking, the field, M8 and the pattern.
 
 import { test, assert } from 'folio/testing';
 import { cyrb53, stream } from '../engine/random.js';
@@ -6,7 +6,8 @@ import { oklabL, oklabToSrgb, INK, PAPER, inkPaperLUT } from '../engine/colour.j
 import { tone, imageSeed } from '../engine/monochrome.js';
 import { stickBreaking } from '../engine/skeleton.js';
 import { quantile } from '../engine/field.js';
-import { gaussianBlur } from '../engine/render.js';
+import { gaussianBlur, washiTone } from '../engine/render.js';
+import { erf, taper, poisson, pattern } from '../engine/pattern.js';
 import { components, judge } from '../engine/components.js';
 import { Engine, DEFAULTS } from '../engine/index.js';
 
@@ -131,4 +132,54 @@ test('feather widens the fade but keeps the coverage', () => {
   assert.ok(soft(feathered) > 3 * soft(hard));
   const mean = (m) => m.reduce((s, v) => s + v, 0) / m.length;
   assert.ok(Math.abs(mean(feathered) - mean(hard)) < 0.02);
+});
+
+test('erf and the lopsided taper', () => {
+  assert.ok(near(erf(0), 0) && near(erf(1), 0.8427008, 1e-6) && near(erf(-2), -0.9953223, 1e-6));
+  assert.ok(near(taper(0.25, 0.5, 1.5), 1, 1e-9)); // peak at u* = α / (α + β)
+  assert.equal(taper(0, 1, 1), 0);
+  assert.equal(taper(1, 1, 1), 0);
+  assert.ok(taper(0.1, 1, 1) < taper(0.4, 1, 1));
+});
+
+test('Poisson counts have the right mean, small and large', () => {
+  for (const mean of [4, 200]) {
+    const rng = stream(7, ':poisson');
+    let sum = 0;
+    for (let i = 0; i < 2000; i++) sum += poisson(rng, mean);
+    assert.ok(Math.abs(sum / 2000 - mean) < 0.05 * mean);
+  }
+});
+
+test('the pattern is repeatable, D is never negative and S is centred', () => {
+  const one = pattern(42, 1.5, 1, 240, 160, DEFAULTS);
+  const two = pattern(42, 1.5, 1, 240, 160, DEFAULTS);
+  assert.deepEqual(one.counts, two.counts);
+  assert.deepEqual([...one.D.slice(0, 2000)], [...two.D.slice(0, 2000)]);
+  assert.ok(one.counts.fibres > 100 && one.D.every((v) => v >= 0) && one.D.some((v) => v > 0.1));
+  assert.ok(one.S.every((v) => Math.abs(v) <= 0.5));
+  assert.ok(Math.abs(one.S.reduce((s, v) => s + v, 0) / one.S.length) < 0.01);
+  const other = pattern(43, 1.5, 1, 240, 160, DEFAULTS);
+  assert.ok(other.D.some((v, i) => v !== one.D[i]));
+});
+
+test('the composite leaves the base alone at α = 0 and darkens through inclusions', () => {
+  const t = Float32Array.from([0, 0.5, 1]);
+  const D = Float32Array.from([1, 1, 1]);
+  const S = Float32Array.from([0.2, -0.2, 0.3]);
+  washiTone(t, D, S, 0).forEach((v, i) => assert.ok(near(v, t[i], 1e-5)));
+  const w = washiTone(t, D, new Float32Array(3), 1);
+  assert.ok(w[1] < 0.5 && w[2] < 1);
+  const lit = washiTone(null, new Float32Array(1), Float32Array.from([0.3]), 1);
+  assert.ok(lit[0] > 1 && lit[0] <= 1.07 + 1e-6); // relief highlights rise above paper
+});
+
+test('the Washi view leaves the base view untouched', () => {
+  const e = new Engine();
+  e.load(picture(160, 120), 160, 120);
+  const r = e.mask(DEFAULTS, { x: 0.5, y: 0.5 });
+  const before = [...e.view('base', DEFAULTS, r).rgba];
+  const washi = e.view('washi', DEFAULTS, r).rgba;
+  assert.deepEqual([...e.view('base', DEFAULTS, r).rgba], before);
+  assert.ok(washi.some((v, i) => v !== before[i]));
 });

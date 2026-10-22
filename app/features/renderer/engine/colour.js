@@ -47,11 +47,12 @@ export function oklabToSrgb([L, a, b]) {
 export const INK = oklchToOklab(0.27, 0.013, 315);
 export const PAPER = oklchToOklab(0.94, 0.025, 88);
 
-// LUT[3i..3i+2] = sRGB bytes of mix(ink, paper, i/255), mixed in OKLab.
-export function inkPaperLUT(ink = INK, paper = PAPER) {
+// LUT[3i..3i+2] = sRGB bytes of mix(ink, paper, t) with t = tMax · i/255, mixed in OKLab.
+// tMax > 1 continues the same line past paper (the Washi view's relief highlights).
+export function inkPaperLUT(ink = INK, paper = PAPER, tMax = 1) {
   const lut = new Uint8ClampedArray(256 * 3);
   for (let i = 0; i < 256; i++) {
-    const t = i / 255;
+    const t = (tMax * i) / 255;
     const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
     const rgb = oklabToSrgb(lab);
     for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);

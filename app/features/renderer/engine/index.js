@@ -4,6 +4,7 @@
 //   engine.load(rgba, W, H);              // monochrome lightness + seed, cached
 //   const r = engine.mask(P, anchor);     // M1–M8, with re-rolls; anchor in fractions of W, H
 //   const img = engine.view('base', P, r) // { rgba, width, height }
+//   const pat = engine.pattern(P);        // P1–P5: { D, S, counts, ms }, cached
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
@@ -13,9 +14,10 @@ import { stream, seedText } from './random.js';
 import { skeleton } from './skeleton.js';
 import { grid, field } from './field.js';
 import { components, judge } from './components.js';
-import { paint, upscaleMask, maskTone, baseTone, heightTone, contour } from './render.js';
+import { paint, upscaleMask, maskTone, baseTone, heightTone, contour, washiTone, T_MAX } from './render.js';
+import { part, PARTS } from './pattern.js';
 
-export { PARAMS, DEFAULTS } from './params.js';
+export { PARAMS, DEFAULTS, PATTERN_KEYS } from './params.js';
 
 const REROLLS = 8;
 const FIELD_SHORT = 320;
@@ -23,6 +25,7 @@ const FIELD_SHORT = 320;
 export class Engine {
   constructor() {
     this.lut = inkPaperLUT();
+    this.washiLut = inkPaperLUT(undefined, undefined, T_MAX);
     this.image = null;
   }
 
@@ -37,6 +40,7 @@ export class Engine {
     };
     this.toneCache = null;
     this.maskCache = null;
+    this.patternCache = null;
     return { seed: this.image.seed, seedText: seedText(this.image.seed) };
   }
 
@@ -74,17 +78,48 @@ export class Engine {
     return { G, anchor, attempts, best };
   }
 
-  // Pixels for a view: 'monochrome', 'mask', 'base' at the image's size; 'field' at the grid's.
+  // P1–P5 at the image's size. Each part is cached while its own sliders stay the same.
+  pattern(P) {
+    const { seed, X, Y, W, H } = this.image;
+    const c = (this.patternCache ||= { parts: {} });
+    const t0 = performance.now();
+    let changed = !c.D;
+    for (const [name, keys] of Object.entries(PARTS)) {
+      const key = keys.map((k) => P[k]).join();
+      if (c.parts[name]?.key === key) continue;
+      c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
+      changed = true;
+    }
+    if (changed) {
+      const { fibres, specks, flakes, grain } = c.parts;
+      c.D = fibres.D.map((v, i) => v + specks.D[i] + flakes.D[i]);
+      c.S = grain.S;
+      c.counts = { fibres: fibres.count, specks: specks.count, flakes: flakes.count };
+      c.ms = performance.now() - t0;
+    }
+    return c;
+  }
+
+  // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
+  // 'field' at the grid's.
   view(name, P, r) {
     const { W, H } = this.image;
     const t = this.tone(P);
     if (name === 'monochrome') return { rgba: paint(t, this.lut), width: W, height: H };
+    if (name === 'pattern') {
+      const { D, S } = this.pattern(P);
+      return { rgba: paint(washiTone(null, D, S, P.alpha), this.washiLut, undefined, T_MAX), width: W, height: H };
+    }
     const { G, best } = r;
     if (name === 'field') {
       return { rgba: paint(heightTone(best.Fp, best.max), this.lut), width: G.gw, height: G.gh,
         contour: contour(G, best.Fp, best.T) };
     }
     const m = this.fullMask(P, r);
+    if (name === 'washi') {
+      const { D, S } = this.pattern(P);
+      return { rgba: paint(washiTone(baseTone(t, m), D, S, P.alpha), this.washiLut, undefined, T_MAX), width: W, height: H };
+    }
     return { rgba: paint(name === 'mask' ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
   }
 
