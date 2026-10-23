@@ -1,5 +1,17 @@
-/* The renderer's own colour names. Components use only these and Folio's names. */
+/* A grey theme: Folio's colours made neutral (its own are slightly blue), then the renderer's
+   own colour names. Components use only these and Folio's names. The accent is in app/app.json. */
 :root {
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #ebebed;
+  --text: #1b1b1d;
+  --muted: #66666c;
+  --line: #dedee1;
+  --accent-soft: #e7e7ea;
+  --top: #2a2a2d;
+  --top-2: #333336;
+  --on-top-muted: #c6c6ca;
+
   --renderer-anchor: #d93025;   /* the anchor's crosshair on the picture */
   --renderer-contour: #ec7a12;  /* the threshold line on the Field view */
   --renderer-pass: #1d6b3c;
@@ -9,6 +21,17 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
+    --bg: #111112;
+    --surface: #1b1b1d;
+    --surface-2: #262628;
+    --text: #e9e9eb;
+    --muted: #a0a0a6;
+    --line: #313134;
+    --accent-ink: #111112;
+    --accent-soft: #2c2c30;
+    --top: #0c0c0d;
+    --top-2: #151517;
+
     --renderer-anchor: #ff6b5e;
     --renderer-contour: #ffa64d;
     --renderer-pass: #8fd9a8;

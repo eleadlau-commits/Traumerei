@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mask renderer</title>
 <meta name="description" content="A faint monochrome of a picture, cut by a seeded opacity mask.">
-<meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111112" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -40,7 +40,7 @@
   --shape-sm: 10px;              /* small tags, pills and icon tiles */
   /* Used by the frame. app/theme.css can change any of these. */
   --text-2: var(--text);
-  --top: #1d2130;           /* the dark area at the top: top bar and view titles */
+  --top: #1d2130;           /* the dark area: the top of the menu, and view titles that ask for it */
   --top-2: #262b3d;
   --on-top: #ffffff;
   --on-top-muted: #c3c8d6;
@@ -119,7 +119,17 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 }
 .app:has(> .tabbar[hidden]) { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 
-/* The top bar: menu on the left; other features' buttons, then account and settings, on the right */
+/* On a wide screen (a laptop or desktop) the page uses the width: a wider frame, roomier sides,
+   and the tab bar a comfortable width in the middle instead of stretched. */
+@media (min-width: 900px) {
+  :root { --gutter: 32px; }
+  .app { max-width: 1440px; }
+  .tabbar { max-width: 640px; border-radius: var(--shape) var(--shape) 0 0; }
+}
+
+/* The top bar: menu on the left; other features' buttons, then account and settings, on the right.
+   The bar itself is invisible: only its buttons show, each on a small frosted tile so it stays
+   readable over whatever is under it. */
 .topbar {
   position: sticky;
   top: 0;
@@ -128,41 +138,32 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
   justify-content: space-between;
   align-items: center;
   padding: calc(10px + env(safe-area-inset-top)) var(--gutter) 6px;
-  background: linear-gradient(180deg, var(--top), var(--top-2));
-  color: var(--on-top);
+  background: transparent;
+  color: var(--text);
+  pointer-events: none; /* only the buttons take clicks, not the space between them */
 }
-/* Under the top bar, the dark area fades into the page, unless the view's title is on it too. */
-.topbar::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 16px;
-  background: linear-gradient(180deg, var(--top-2), var(--bg));
-  pointer-events: none;
-}
-.dark-head > .topbar { background: var(--top); }
-.dark-head > .topbar::after { display: none; }
+.topbar > * { pointer-events: auto; }
 .top-btn {
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
-  margin-left: -10px;
   border: 0;
   border-radius: var(--shape-btn);
-  background: transparent;
-  color: inherit;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+  color: var(--text);
   cursor: pointer;
 }
 .top-btn svg { width: 24px; height: 24px; }
 .top-right { display: flex; align-items: center; gap: 8px; }
 .top-actions { display: flex; gap: 8px; }
 .top-actions:empty { display: none; }
-.top-btn.top-action { margin: 0; background: rgb(255 255 255 / .14); }
+.top-btn.top-action { margin: 0; }
 .top-btn.top-action svg { width: 22px; height: 22px; }
-.top-btn.account { margin: 0 -10px 0 0; }
+.top-btn.account { margin: 0; }
 .top-btn.account svg { width: 24px; height: 24px; }
 .top-btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 
@@ -631,12 +632,24 @@ dialog.dialog-box {
 }
 
 /* ---- Theme from app/app.json ---- */
-:root { --accent: #6b5a7a; }
-@media (prefers-color-scheme: dark) { :root { --accent: #a594b5; } }
+:root { --accent: #5c5f66; }
+@media (prefers-color-scheme: dark) { :root { --accent: #b4b7bd; } }
 
 /* ---- app/theme.css ---- */
-/* The renderer's own colour names. Components use only these and Folio's names. */
+/* A grey theme: Folio's colours made neutral (its own are slightly blue), then the renderer's
+   own colour names. Components use only these and Folio's names. The accent is in app/app.json. */
 :root {
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #ebebed;
+  --text: #1b1b1d;
+  --muted: #66666c;
+  --line: #dedee1;
+  --accent-soft: #e7e7ea;
+  --top: #2a2a2d;
+  --top-2: #333336;
+  --on-top-muted: #c6c6ca;
+
   --renderer-anchor: #d93025;   /* the anchor's crosshair on the picture */
   --renderer-contour: #ec7a12;  /* the threshold line on the Field view */
   --renderer-pass: #1d6b3c;
@@ -646,6 +659,17 @@ dialog.dialog-box {
 }
 @media (prefers-color-scheme: dark) {
   :root {
+    --bg: #111112;
+    --surface: #1b1b1d;
+    --surface-2: #262628;
+    --text: #e9e9eb;
+    --muted: #a0a0a6;
+    --line: #313134;
+    --accent-ink: #111112;
+    --accent-soft: #2c2c30;
+    --top: #0c0c0d;
+    --top-2: #151517;
+
     --renderer-anchor: #ff6b5e;
     --renderer-contour: #ffa64d;
     --renderer-pass: #8fd9a8;
@@ -660,22 +684,33 @@ dialog.dialog-box {
 
 .renderer-page { display: grid; gap: 12px; }
 
-/* Seven views don't fit in one row on a phone: two rows of four. */
-@media (max-width: 640px) { .renderer-tabs { grid-template-columns: repeat(4, 1fr); } }
+/* Seven views don't fit in one row in the Settings window: two rows of four. */
+.renderer-tabs { grid-template-columns: repeat(4, 1fr); }
 
-.renderer-empty { min-height: 220px; align-items: center; text-align: center; cursor: pointer; font: inherit; background: none; }
+/* Advanced, in Settings: the tools folded into groups */
+.renderer-advanced { display: grid; gap: 4px; }
+.renderer-advanced > .hint.small { margin: 0 0 4px; }
+.renderer-advanced > .btn { justify-self: start; margin-top: 8px; }
+.renderer-fold { border-top: 1px solid var(--line); padding: 6px 0; }
+.renderer-fold summary { padding: 6px 0; }
+.renderer-fold-body { display: grid; gap: 12px; padding: 8px 0 6px; }
+.renderer-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.renderer-fold-body .hint.small { margin: 0; }
+.renderer-marks { font-size: 14px; }
 
+/* The picture fills the screen edge to edge, behind the (invisible) top bar, cropped to fit. */
 .renderer-stage {
-  position: relative;
-  margin: 0 auto;
-  max-width: 100%;
-  cursor: crosshair;
-  border-radius: var(--shape-sm);
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
   background: var(--surface-2);
 }
+.renderer-stage.marked { cursor: crosshair; }
 .renderer-stage[hidden] { display: none; }
+.renderer-page > .error { position: relative; z-index: 1; }
 .renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.renderer-canvas { object-fit: cover; }
 .renderer-overlay { pointer-events: none; }
 
 .renderer-seed { margin: 0; color: var(--muted); font-size: 13px; }
@@ -3417,6 +3452,7 @@ dialog.dialog-box {
     }
     return {
       node: el2("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
+      groups,
       set(next) {
         for (const [key, r] of rows) {
           r.input.value = next[key];
@@ -3465,6 +3501,7 @@ dialog.dialog-box {
   // dist/web/features/renderer/Renderer.js
   var { el: el3 } = ui_exports;
   var MAX_SIDE = 2048;
+  var WHITE_SIDE = 1600;
   var VIEWS = [
     ["monochrome", "Monochrome"],
     ["mask", "Mask"],
@@ -3486,12 +3523,18 @@ dialog.dialog-box {
     ...PATTERN_KEYS,
     ...SPONT_KEYS
   ];
+  var LAYERS = [
+    ["Base layer", ["Monochrome", "Patches", "Edges"]],
+    ["Pattern layer", ["Fibres", "Web", "Specks", "Flakes", "Grain", "Composite"]],
+    ["Spontaneity layer", ["Timing", "Placement", "Marks", "Life"]]
+  ];
   var Renderer = class extends Feature {
     start() {
       this.engine = new Engine();
       this.P = { ...DEFAULTS, ...this.storage.get("params", {}) };
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
-      this.current = this.storage.get("view", "base");
+      this.current = this.storage.get("view", "washi");
+      this.marks = this.storage.get("marks", false);
       this.result = null;
       this.clock = 0;
       this.picker = ui_exports.filePicker("image/*");
@@ -3501,30 +3544,13 @@ dialog.dialog-box {
         icon: "palette",
         order: 10,
         start: true,
-        subtitle: () => this.seed ? `Seed ${this.seed.seedText}` : "Choose an image to begin",
-        mount: (container, { head, actions }) => this.mount(container, head, actions),
+        hideTitle: true,
+        mount: (container) => this.mount(container),
         render: () => this.draw()
       });
+      this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
     }
-    mount(container, head, actions) {
-      this.tabs = el3(
-        "div",
-        { class: "seg renderer-tabs", role: "tablist", style: `--tabs:${VIEWS.length}` },
-        VIEWS.map(([id, label]) => el3("button", {
-          type: "button",
-          role: "tab",
-          "data-view": id,
-          onclick: () => this.show(id)
-        }, label))
-      );
-      head.append(this.tabs);
-      actions.append(el3("button", {
-        type: "button",
-        class: "icon-btn ghost",
-        "aria-label": "Choose an image",
-        title: "Choose an image",
-        onclick: () => this.choose()
-      }, ui_exports.icon("plus")));
+    mount(container) {
       this.canvas = el3("canvas", { class: "renderer-canvas" });
       this.overlay = el3("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
       this.stage = el3(
@@ -3533,29 +3559,82 @@ dialog.dialog-box {
         this.canvas,
         this.overlay
       );
-      this.empty = el3(
-        "button",
-        { type: "button", class: "missing renderer-empty", onclick: () => this.choose() },
-        el3("b", {}, "Choose an image"),
-        el3("span", {}, "It stays on this device. Then tap the picture to move the anchor.")
-      );
       this.error = ui_exports.errorBox();
+      container.append(el3("div", { class: "renderer-page" }, this.stage, this.error));
+      new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+      if (!this.seed) this.white();
+    }
+    // Advanced, in Settings: every tool, folded into groups. Made once and kept, so the folds and
+    // sliders stay as they were each time Settings is opened.
+    advanced() {
+      if (this.panel) return this.panel;
+      this.tabs = el3(
+        "div",
+        { class: "seg renderer-tabs", role: "tablist", "aria-label": "View", style: `--tabs:${VIEWS.length}` },
+        VIEWS.map(([id, label]) => el3("button", {
+          type: "button",
+          role: "tab",
+          "data-view": id,
+          onclick: () => this.show(id)
+        }, label))
+      );
       this.seedLine = el3("p", { class: "renderer-seed" });
       this.report = el3("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      const reset = el3("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults");
-      container.append(el3(
+      const fold = (title, ...kids) => el3(
+        "details",
+        { class: "advanced renderer-fold" },
+        el3("summary", {}, title),
+        el3("div", { class: "renderer-fold-body" }, ...kids)
+      );
+      this.panel = el3(
         "div",
-        { class: "renderer-page" },
-        this.empty,
-        this.stage,
-        this.error,
-        this.seedLine,
-        this.controls.node,
-        reset,
-        this.report
-      ));
-      new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+        { class: "renderer-advanced" },
+        ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
+        fold(
+          "Picture",
+          el3(
+            "div",
+            { class: "renderer-buttons" },
+            el3("button", { type: "button", class: "btn small", onclick: () => this.choose() }, "Choose an image"),
+            el3("button", { type: "button", class: "btn small", onclick: () => this.white() }, "Back to white")
+          ),
+          ui_exports.hint("A chosen image stays on this device.", { small: true }),
+          this.seedLine
+        ),
+        fold(
+          "View",
+          this.tabs,
+          el3(
+            "div",
+            { class: "check renderer-marks" },
+            ui_exports.toggle({ checked: this.marks, label: "Show the anchor", onChange: (on) => this.showMarks(on) }),
+            el3("span", {}, "Show the anchor, and tap the picture to move it")
+          )
+        ),
+        ...LAYERS.map(([title, groups]) => fold(
+          title,
+          el3("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
+        )),
+        fold("Report", this.report),
+        el3("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
+      );
+      this.draw();
+      return this.panel;
+    }
+    // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
+    white() {
+      const aspect = Math.min(2.5, Math.max(0.4, innerWidth / innerHeight)) || 1.6;
+      const W = Math.round(aspect >= 1 ? WHITE_SIDE : WHITE_SIDE * aspect);
+      const H = Math.round(aspect >= 1 ? WHITE_SIDE / aspect : WHITE_SIDE);
+      this.seed = this.engine.load(new Uint8ClampedArray(W * H * 4).fill(255), W, H);
+      this.error?.show(null);
+      this.remask();
+    }
+    showMarks(on) {
+      this.marks = on;
+      this.storage.set("marks", on);
+      this.paintOverlay();
     }
     async choose() {
       const file = await this.picker.pick();
@@ -3570,7 +3649,6 @@ dialog.dialog-box {
         this.seed = this.engine.load(work.getImageData(0, 0, W, H).data, W, H);
         this.error.show(null);
         this.remask();
-        this.refresh();
       } catch {
         this.error.show("That file couldn't be read as an image. Try a JPEG or PNG.");
       }
@@ -3581,9 +3659,11 @@ dialog.dialog-box {
       this.draw();
     }
     setAnchor(e) {
+      if (!this.marks) return;
       const box = this.stage.getBoundingClientRect();
-      const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width));
-      const y = Math.min(1, Math.max(0, (e.clientY - box.top) / box.height));
+      const c = this.cover(box.width, box.height);
+      const x = Math.min(1, Math.max(0, (e.clientX - box.left - c.x) / c.w));
+      const y = Math.min(1, Math.max(0, (e.clientY - box.top - c.y) / c.h));
       this.anchor = { x, y };
       this.storage.set("anchor", this.anchor);
       this.remask();
@@ -3613,9 +3693,8 @@ dialog.dialog-box {
       this.draw();
     }
     draw() {
-      if (!this.tabs) return;
-      for (const b of this.tabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.current));
-      this.empty.hidden = !!this.seed;
+      if (this.tabs) for (const b of this.tabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.current));
+      if (!this.stage) return;
       this.stage.hidden = !this.seed;
       if (!this.seed || !this.result) return;
       this.picture = this.engine.view(this.current, this.P, this.result);
@@ -3623,11 +3702,11 @@ dialog.dialog-box {
       this.canvas.width = width;
       this.canvas.height = height;
       this.canvas.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
-      const { W, H } = this.engine.image;
-      this.stage.style.aspectRatio = `${W} / ${H}`;
-      this.stage.style.width = `min(100%, ${70 * W / H}vh)`;
+      this.stage.classList.toggle("marked", this.marks);
       this.paintOverlay();
       this.animate();
+      if (!this.panel) return;
+      const { W, H } = this.engine.image;
       this.seedLine.replaceChildren(
         "Seed ",
         el3("code", {}, this.seed.seedText),
@@ -3671,15 +3750,30 @@ dialog.dialog-box {
       };
       this.tick = requestAnimationFrame(step);
     }
+    // Where the picture lies in a box w × h when it covers it (object-fit: cover): its size and the
+    // offset of its top left corner, which is negative on the sides that are cropped.
+    cover(w, h) {
+      const { W, H } = this.engine.image;
+      const k = Math.max(w / W, h / H);
+      return { x: (w - W * k) / 2, y: (h - H * k) / 2, w: W * k, h: H * k };
+    }
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
     paintOverlay() {
       if (!this.picture || this.stage.hidden) return;
+      this.stage.classList.toggle("marked", this.marks);
+      if (!this.marks) {
+        this.overlay.width = 0;
+        return;
+      }
       const box = this.stage.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(box.width * dpr);
       const h = Math.round(box.height * dpr);
       this.overlay.width = w;
       this.overlay.height = h;
+      const c = this.cover(w, h);
+      const px = (x) => c.x + x * c.w;
+      const py = (y) => c.y + y * c.h;
       const g = this.overlay.getContext("2d");
       const css = getComputedStyle(this.stage);
       g.lineWidth = 1.5 * dpr;
@@ -3688,13 +3782,13 @@ dialog.dialog-box {
         g.beginPath();
         const segs = this.picture.contour;
         for (let i = 0; i < segs.length; i += 2) {
-          g.moveTo(segs[i][0] * w, segs[i][1] * h);
-          g.lineTo(segs[i + 1][0] * w, segs[i + 1][1] * h);
+          g.moveTo(px(segs[i][0]), py(segs[i][1]));
+          g.lineTo(px(segs[i + 1][0]), py(segs[i + 1][1]));
         }
         g.stroke();
       }
-      const ax = this.anchor.x * w;
-      const ay = this.anchor.y * h;
+      const ax = px(this.anchor.x);
+      const ay = py(this.anchor.y);
       const r = 7 * dpr;
       g.strokeStyle = css.getPropertyValue("--renderer-anchor").trim();
       g.beginPath();
