@@ -9,13 +9,13 @@
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
-import { inkPaperLUT, linearRamp, absorber, INK, TAN } from './colour.js';
+import { inkPaperLUT, linearRamp, absorber, oklchToOklab, INK, PAPER, TAN, WARM_HUE } from './colour.js';
 import { lightness, quantiles, tone, imageSeed } from './monochrome.js';
 import { stream, seedText } from './random.js';
 import { skeleton } from './skeleton.js';
 import { grid, field } from './field.js';
 import { components, judge } from './components.js';
-import { paint, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
+import { paint, paintLinear, shiftedLinear, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
 import { part, combine, PARTS } from './pattern.js';
 import { Spontaneity, Living } from './spontaneity.js';
 
@@ -101,10 +101,15 @@ export class Engine {
 
   // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
   // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
+  // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
+  // Living views; the Mask and Field views stay on the plain ink–paper line.
   view(name, P, r) {
     const { W, H } = this.image;
     const t = this.tone(P);
-    if (name === 'monochrome') return { rgba: paint(t, this.lut), width: W, height: H };
+    const delta = this.shift(P);
+    if (name === 'monochrome') {
+      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, INK, PAPER)) : paint(t, this.lut), width: W, height: H };
+    }
     if (name === 'pattern') return { rgba: this.washi(null, P), width: W, height: H };
     const { G, best } = r;
     if (name === 'field') {
@@ -112,15 +117,28 @@ export class Engine {
         contour: contour(G, best.Fp, best.T) };
     }
     const m = this.fullMask(P, r);
-    if (name === 'washi' || name === 'living') return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
-    return { rgba: paint(name === 'mask' ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
+    if (name === 'mask') return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
+    const tb = baseTone(t, m);
+    const lin = delta ? shiftedLinear(tb, m, delta, INK, PAPER) : null;
+    if (name === 'washi' || name === 'living') return { rgba: this.washi(tb, P, lin), width: W, height: H };
+    return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
   }
 
-  // P6 over base tone t (null for bare paper). Warmth κ mixes the inclusions' absorber from ink to tan.
-  washi(t, P) {
+  // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
+  shift(P) {
+    const dL = P.baseL || 0;
+    const dW = P.baseW || 0;
+    if (!dL && !dW) return null;
+    const [, a, b] = oklchToOklab(0, dW, WARM_HUE);
+    return [dL, a, b];
+  }
+
+  // P6 over base tone t (null for bare paper), or over lin, the shifted base in linear RGB.
+  // Warmth κ mixes the inclusions' absorber from ink to tan.
+  washi(t, P, lin = null) {
     const k = P.warmth;
     const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
-    return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
+    return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber, lin);
   }
 
   // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the

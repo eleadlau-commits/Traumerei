@@ -21,11 +21,11 @@ const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
 const WHITE_SIDE = 1600; // the long side of the plain white image the page starts with
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'baseL', 'baseW', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
   ...SPONT_KEYS]; // these don't change M1–M8
 // The slider groups, folded by layer in Advanced. Composite (α, κ) mixes the pattern in, so it's with it.
 const LAYERS = [
-  ['Base layer', ['Monochrome', 'Patches', 'Edges']],
+  ['Base layer', ['Monochrome', 'Colour', 'Patches', 'Edges']],
   ['Pattern layer', ['Fibres', 'Web', 'Specks', 'Flakes', 'Grain', 'Composite']],
   ['Spontaneity layer', ['Timing', 'Placement', 'Marks', 'Life']],
 ];

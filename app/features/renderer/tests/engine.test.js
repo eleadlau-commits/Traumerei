@@ -201,6 +201,30 @@ test('the Washi view leaves the base view untouched', () => {
   assert.ok(washi.some((v, i) => v !== before[i]));
 });
 
+test('brightness and warmth are off by default and move only the masked base', () => {
+  const e = new Engine();
+  e.load(picture(160, 120), 160, 120);
+  const r = e.mask(DEFAULTS, { x: 0.5, y: 0.5 });
+  const m = e.fullMask(DEFAULTS, r);
+  const plain = e.view('base', DEFAULTS, r).rgba;
+  const zero = e.view('base', { ...DEFAULTS, baseL: 0, baseW: 0 }, r).rgba;
+  assert.deepEqual([...zero], [...plain]);
+  const inside = m.indexOf(Math.max(...m));
+  const outside = m.indexOf(0);
+  assert.ok(m[inside] > 0.9 && outside >= 0);
+  const bright = e.view('base', { ...DEFAULTS, baseL: 0.05 }, r).rgba;
+  assert.ok(bright[4 * inside + 1] > plain[4 * inside + 1]);
+  for (let c = 0; c < 3; c++) assert.equal(bright[4 * outside + c], plain[4 * outside + c]);
+  const warm = e.view('base', { ...DEFAULTS, baseW: 0.04 }, r).rgba;
+  const cool = e.view('base', { ...DEFAULTS, baseW: -0.04 }, r).rgba;
+  const rb = (px) => px[4 * inside] - px[4 * inside + 2];
+  assert.ok(rb(warm) > rb(plain) && rb(plain) > rb(cool));
+  const washi = e.view('washi', DEFAULTS, r).rgba;
+  const warmWashi = e.view('washi', { ...DEFAULTS, baseW: 0.04 }, r).rgba;
+  assert.ok(warmWashi[4 * inside] - warmWashi[4 * inside + 2] > washi[4 * inside] - washi[4 * inside + 2]);
+  for (let c = 0; c < 3; c++) assert.equal(warmWashi[4 * outside + c], washi[4 * outside + c]);
+});
+
 test('the Hawkes process has mean rate μ / (1 − n), and n = 0 is Poisson', () => {
   for (const nH of [0, 0.6]) {
     const P = { ...DEFAULTS, mu: 1, nH, tauH: 0.5 };

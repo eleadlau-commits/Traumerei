@@ -2125,6 +2125,7 @@ dialog.dialog-box {
   var INK = oklchToOklab(0.27, 0.013, 315);
   var PAPER = oklchToOklab(0.94, 0.025, 88);
   var TAN = oklchToOklab(0.8, 0.05, 75);
+  var WARM_HUE = 75;
   function absorber(colour, paper = PAPER) {
     const c = oklabToLinear(colour);
     const p = oklabToLinear(paper);
@@ -2579,14 +2580,37 @@ dialog.dialog-box {
     for (let i = 0; i < t.length; i++) out[i] = 1 - m[i] * (1 - t[i]);
     return out;
   }
-  function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, out = new Uint8ClampedArray(Dw.length * 4)) {
+  function shiftedLinear(tb, m, delta, ink, paper) {
+    const out = new Float32Array(3 * tb.length);
+    const lab = [0, 0, 0];
+    for (let p = 0, q = 0; p < tb.length; p++, q += 3) {
+      const v = tb[p] < 0 ? 0 : tb[p] > 1 ? 1 : tb[p];
+      const w = m ? m[p] : 1;
+      for (let k = 0; k < 3; k++) lab[k] = ink[k] + (paper[k] - ink[k]) * v + w * delta[k];
+      const lin = oklabToLinear(lab);
+      for (let k = 0; k < 3; k++) out[q + k] = lin[k] < 0 ? 0 : lin[k];
+    }
+    return out;
+  }
+  function paintLinear(lin, out = new Uint8ClampedArray(lin.length / 3 * 4)) {
+    for (let p = 0, q = 0; p < lin.length; p += 3, q += 4) {
+      for (let c = 0; c < 3; c++) {
+        const y = lin[p + c];
+        out[q + c] = SRGB_BYTE[Math.round(4095 * (y > 1 ? 1 : y))];
+      }
+      out[q + 3] = 255;
+    }
+    return out;
+  }
+  function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, lin = null, out = new Uint8ClampedArray(Dw.length * 4)) {
     const n = ramp.length / 3 - 1;
     for (let p = 0, q = 0; p < Dw.length; p++, q += 4) {
       const v = t ? t[p] : 1;
-      const r = 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
+      const src = lin || ramp;
+      const r = lin ? 3 * p : 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
       const lit = 1 + alpha * S[p];
       for (let c = 0; c < 3; c++) {
-        const y = ramp[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
+        const y = src[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
         out[q + c] = SRGB_BYTE[Math.round(4095 * (y < 0 ? 0 : y > 1 ? 1 : y))];
       }
       out[q + 3] = 255;
@@ -3223,6 +3247,8 @@ dialog.dialog-box {
     { group: "Monochrome", key: "gamma", label: "Gamma γ", min: 0.3, max: 3, step: 0.01, value: 1 },
     { group: "Monochrome", key: "dMin", label: "Darkest d_min", min: 0, max: 1, step: 0.01, value: 0.65 },
     { group: "Monochrome", key: "dMax", label: "Lightest d_max", min: 0, max: 1, step: 0.01, value: 0.97 },
+    { group: "Colour", key: "baseL", label: "Brightness ΔL", min: -0.2, max: 0.2, step: 5e-3, value: 0 },
+    { group: "Colour", key: "baseW", label: "Warmth Δw", min: -0.06, max: 0.06, step: 1e-3, value: 0 },
     { group: "Patches", key: "kappa", label: "Coverage κ", min: 0.02, max: 0.95, step: 0.01, value: 0.35 },
     { group: "Patches", key: "theta", label: "Concentration θ", min: 0.1, max: 6, step: 0.05, value: 1.5 },
     { group: "Patches", key: "Amin", label: "Smallest area A_min", min: 5e-4, max: 0.05, step: 5e-4, value: 5e-3 },
@@ -3383,10 +3409,15 @@ dialog.dialog-box {
     }
     // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
     // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
+    // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
+    // Living views; the Mask and Field views stay on the plain ink–paper line.
     view(name, P, r) {
       const { W, H } = this.image;
       const t = this.tone(P);
-      if (name === "monochrome") return { rgba: paint(t, this.lut), width: W, height: H };
+      const delta = this.shift(P);
+      if (name === "monochrome") {
+        return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, INK, PAPER)) : paint(t, this.lut), width: W, height: H };
+      }
       if (name === "pattern") return { rgba: this.washi(null, P), width: W, height: H };
       const { G, best } = r;
       if (name === "field") {
@@ -3398,14 +3429,26 @@ dialog.dialog-box {
         };
       }
       const m = this.fullMask(P, r);
-      if (name === "washi" || name === "living") return { rgba: this.washi(baseTone(t, m), P), width: W, height: H };
-      return { rgba: paint(name === "mask" ? maskTone(m) : baseTone(t, m), this.lut), width: W, height: H };
+      if (name === "mask") return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
+      const tb = baseTone(t, m);
+      const lin = delta ? shiftedLinear(tb, m, delta, INK, PAPER) : null;
+      if (name === "washi" || name === "living") return { rgba: this.washi(tb, P, lin), width: W, height: H };
+      return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
     }
-    // P6 over base tone t (null for bare paper). Warmth κ mixes the inclusions' absorber from ink to tan.
-    washi(t, P) {
+    // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
+    shift(P) {
+      const dL = P.baseL || 0;
+      const dW = P.baseW || 0;
+      if (!dL && !dW) return null;
+      const [, a, b] = oklchToOklab(0, dW, WARM_HUE);
+      return [dL, a, b];
+    }
+    // P6 over base tone t (null for bare paper), or over lin, the shifted base in linear RGB.
+    // Warmth κ mixes the inclusions' absorber from ink to tan.
+    washi(t, P, lin = null) {
       const k = P.warmth;
       const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
-      return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber);
+      return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber, lin);
     }
     // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the
     // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
@@ -3516,6 +3559,8 @@ dialog.dialog-box {
     "gamma",
     "dMin",
     "dMax",
+    "baseL",
+    "baseW",
     "delta",
     "feather",
     "alpha",
@@ -3524,7 +3569,7 @@ dialog.dialog-box {
     ...SPONT_KEYS
   ];
   var LAYERS = [
-    ["Base layer", ["Monochrome", "Patches", "Edges"]],
+    ["Base layer", ["Monochrome", "Colour", "Patches", "Edges"]],
     ["Pattern layer", ["Fibres", "Web", "Specks", "Flakes", "Grain", "Composite"]],
     ["Spontaneity layer", ["Timing", "Placement", "Marks", "Life"]]
   ];
