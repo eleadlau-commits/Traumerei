@@ -16,17 +16,19 @@
 .renderer-fold-body .hint.small { margin: 0; }
 .renderer-marks { font-size: 14px; }
 
+/* The picture fills the screen edge to edge, behind the (invisible) top bar, cropped to fit. */
 .renderer-stage {
-  position: relative;
-  margin: 0 auto;
-  max-width: 100%;
-  border-radius: var(--shape-sm);
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
   background: var(--surface-2);
 }
 .renderer-stage.marked { cursor: crosshair; }
 .renderer-stage[hidden] { display: none; }
+.renderer-page > .error { position: relative; z-index: 1; }
 .renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.renderer-canvas { object-fit: cover; }
 .renderer-overlay { pointer-events: none; }
 
 .renderer-seed { margin: 0; color: var(--muted); font-size: 13px; }

@@ -1,4 +1,5 @@
-// Renderer: the page. It shows only the picture, which starts as a plain white image. Everything
+// Renderer: the page. It shows only the picture, filling the screen edge to edge (cropped to fit
+// like a cover photo), starting as a plain white image the shape of the screen. Everything
 // else is in Settings, under Advanced, folded into groups: choose an image, switch between the
 // seven views (Monochrome, Mask, Field, Base, Pattern, Washi, Living), show the anchor and tap the
 // picture to move it, move the sliders, and read the seed and the report.
@@ -17,7 +18,7 @@ import { describe, describePattern, describeLiving } from './report.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
-const WHITE = [1600, 1000]; // the plain white image the page starts with
+const WHITE_SIDE = 1600; // the long side of the plain white image the page starts with
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
 const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
@@ -34,7 +35,7 @@ export default class Renderer extends Feature {
     this.engine = new Engine();
     this.P = { ...DEFAULTS, ...this.storage.get('params', {}) };
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
-    this.current = this.storage.get('view', 'base');
+    this.current = this.storage.get('view', 'washi');
     this.marks = this.storage.get('marks', false);
     this.result = null;
     this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
@@ -99,9 +100,11 @@ export default class Renderer extends Feature {
     return this.panel;
   }
 
-  // The plain white image the page starts with.
+  // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
   white() {
-    const [W, H] = WHITE;
+    const aspect = Math.min(2.5, Math.max(0.4, innerWidth / innerHeight)) || 1.6;
+    const W = Math.round(aspect >= 1 ? WHITE_SIDE : WHITE_SIDE * aspect);
+    const H = Math.round(aspect >= 1 ? WHITE_SIDE / aspect : WHITE_SIDE);
     this.seed = this.engine.load(new Uint8ClampedArray(W * H * 4).fill(255), W, H);
     this.error?.show(null);
     this.remask();
@@ -140,8 +143,9 @@ export default class Renderer extends Feature {
   setAnchor(e) {
     if (!this.marks) return;
     const box = this.stage.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width));
-    const y = Math.min(1, Math.max(0, (e.clientY - box.top) / box.height));
+    const c = this.cover(box.width, box.height);
+    const x = Math.min(1, Math.max(0, (e.clientX - box.left - c.x) / c.w));
+    const y = Math.min(1, Math.max(0, (e.clientY - box.top - c.y) / c.h));
     this.anchor = { x, y };
     this.storage.set('anchor', this.anchor);
     this.remask();
@@ -185,14 +189,12 @@ export default class Renderer extends Feature {
     this.canvas.width = width;
     this.canvas.height = height;
     this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
-    const { W, H } = this.engine.image;
-    this.stage.style.aspectRatio = `${W} / ${H}`;
-    this.stage.style.width = `min(100%, calc((100dvh - 140px) * ${W / H}))`; // the whole picture fits on screen
     this.stage.classList.toggle('marked', this.marks);
     this.paintOverlay();
     this.animate();
 
     if (!this.panel) return;
+    const { W, H } = this.engine.image;
     this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText),
       ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`);
     const r = describe(this.result);
@@ -224,6 +226,14 @@ export default class Renderer extends Feature {
     this.tick = requestAnimationFrame(step);
   }
 
+  // Where the picture lies in a box w × h when it covers it (object-fit: cover): its size and the
+  // offset of its top left corner, which is negative on the sides that are cropped.
+  cover(w, h) {
+    const { W, H } = this.engine.image;
+    const k = Math.max(w / W, h / H);
+    return { x: (w - W * k) / 2, y: (h - H * k) / 2, w: W * k, h: H * k };
+  }
+
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
   paintOverlay() {
     if (!this.picture || this.stage.hidden) return;
@@ -238,6 +248,9 @@ export default class Renderer extends Feature {
     const h = Math.round(box.height * dpr);
     this.overlay.width = w;
     this.overlay.height = h;
+    const c = this.cover(w, h);
+    const px = (x) => c.x + x * c.w;
+    const py = (y) => c.y + y * c.h;
     const g = this.overlay.getContext('2d');
     const css = getComputedStyle(this.stage);
     g.lineWidth = 1.5 * dpr;
@@ -246,13 +259,13 @@ export default class Renderer extends Feature {
       g.beginPath();
       const segs = this.picture.contour;
       for (let i = 0; i < segs.length; i += 2) {
-        g.moveTo(segs[i][0] * w, segs[i][1] * h);
-        g.lineTo(segs[i + 1][0] * w, segs[i + 1][1] * h);
+        g.moveTo(px(segs[i][0]), py(segs[i][1]));
+        g.lineTo(px(segs[i + 1][0]), py(segs[i + 1][1]));
       }
       g.stroke();
     }
-    const ax = this.anchor.x * w;
-    const ay = this.anchor.y * h;
+    const ax = px(this.anchor.x);
+    const ay = py(this.anchor.y);
     const r = 7 * dpr;
     g.strokeStyle = css.getPropertyValue('--renderer-anchor').trim();
     g.beginPath();

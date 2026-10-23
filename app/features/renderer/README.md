@@ -5,8 +5,9 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
 
 ## What it adds
 
-- The **Renderer** view (the app's only tab): just the picture, which starts as a plain white
-  1600 × 1000 image. Everything else is in **Settings → Advanced**, folded into groups:
+- The **Renderer** view (the app's only tab): just the picture, filling the screen edge to edge
+  (cropped to fit, like a cover photo), shown as **Washi** at first. It starts as a plain white
+  image the shape of the screen (1600 px on its long side). Everything else is in **Settings → Advanced**, folded into groups:
   - **Picture**: choose an image, or go back to white; the seed.
   - **View**: switch between **Monochrome**, **Mask**,
     **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern**
