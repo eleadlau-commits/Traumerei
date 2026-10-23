@@ -14,7 +14,7 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
     (the paper alone), **Washi** (the base printed on the paper) and **Living** (Washi with the
     spontaneity layer: dots, dashes and marks drawn in, held and faded, animated), and show the
     anchor (then tap the picture to move it).
-  - **Base layer** (Monochrome, Patches, Edges), **Pattern layer** (Fibres, Web, Specks, Flakes,
+  - **Base layer** (Monochrome, Colour, Patches, Edges), **Pattern layer** (Fibres, Web, Specks, Flakes,
     Grain, Composite) and **Spontaneity layer** (Timing, Placement, Marks, Life): the sliders.
   - **Report**, then **Back to defaults**.
 - The seed (under Picture) and the report from step M8: one block per
@@ -65,6 +65,12 @@ Choices the spec left open:
   0 gives the spec's crisp edge. It doesn't change M8, which uses the unblurred threshold.
 - Mixes happen in OKLab: the mask view is `mix(paper, ink, mask)` and the base is
   `mix(paper, monochrome, mask)`.
+- **Brightness ΔL and warmth Δw** (Colour, added after the spec, both 0 by default): the monochrome
+  is moved by Δ = (ΔL, Δw cos 75°, Δw sin 75°) in OKLab before the mask mixes it over paper, so the
+  base is `mix(paper, monochrome + Δ, mask)` = the plain base + mask · Δ. 75° is the tan's hue:
+  Δw > 0 is warmer, Δw < 0 cooler. Bare paper (mask 0) doesn't change. It shows in the Monochrome,
+  Base, Washi and Living views, not in Mask or Field. At 0 the old lookup path is used, so the
+  picture is exactly as before.
 
 Choices the pattern spec (P1–P6) left open:
 - The defaults were tuned against the reference paper, so they differ from the spec's first guesses.

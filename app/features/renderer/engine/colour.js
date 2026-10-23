@@ -54,6 +54,9 @@ export const PAPER = oklchToOklab(0.94, 0.025, 88);
 // The bark tan of the Washi inclusions, from the reference paper's fibres and flakes.
 export const TAN = oklchToOklab(0.8, 0.05, 75);
 
+// The warm direction in OKLab's a–b plane: the tan's hue. Warmth moves toward it, coolness away.
+export const WARM_HUE = 75;
+
 // An absorber that darkens paper toward a colour: per channel, a_c = −ln(colour_c / paper_c) in
 // linear light, scaled so the luminance-weighted sum is 1. exp(−D · a) then darkens by about e^(−D).
 export function absorber(colour, paper = PAPER) {

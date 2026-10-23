@@ -1,7 +1,7 @@
 // Turning the engine's numbers into pixels: the four views, the upscaled mask and the contour.
 
 import { smoothstep } from './field.js';
-import { SRGB_BYTE } from './colour.js';
+import { SRGB_BYTE, oklabToLinear } from './colour.js';
 
 // t ∈ [0, 1] per pixel (0 = ink, 1 = paper) → RGBA through the ink–paper LUT.
 export function paint(t, lut, out = new Uint8ClampedArray(t.length * 4)) {
@@ -89,18 +89,49 @@ export function baseTone(t, m) {
   return out;
 }
 
+// The base with its brightness ΔL and warmth Δw: the monochrome is moved by
+// Δ = (ΔL, Δw cos h_w, Δw sin h_w) in OKLab before the mask mixes it over paper, and
+// mix(paper, mono + Δ, m) = mix(paper, mono, m) + m Δ. So bare paper (m = 0) stays as it is.
+// tb is the base tone (baseTone), m the mask (null for 1: the monochrome view). Linear RGB, 3 per pixel.
+export function shiftedLinear(tb, m, delta, ink, paper) {
+  const out = new Float32Array(3 * tb.length);
+  const lab = [0, 0, 0];
+  for (let p = 0, q = 0; p < tb.length; p++, q += 3) {
+    const v = tb[p] < 0 ? 0 : tb[p] > 1 ? 1 : tb[p];
+    const w = m ? m[p] : 1;
+    for (let k = 0; k < 3; k++) lab[k] = ink[k] + (paper[k] - ink[k]) * v + w * delta[k];
+    const lin = oklabToLinear(lab);
+    for (let k = 0; k < 3; k++) out[q + k] = lin[k] < 0 ? 0 : lin[k];
+  }
+  return out;
+}
+
+// Linear RGB, 3 per pixel → RGBA.
+export function paintLinear(lin, out = new Uint8ClampedArray((lin.length / 3) * 4)) {
+  for (let p = 0, q = 0; p < lin.length; p += 3, q += 4) {
+    for (let c = 0; c < 3; c++) {
+      const y = lin[p + c];
+      out[q + c] = SRGB_BYTE[Math.round(4095 * (y > 1 ? 1 : y))];
+    }
+    out[q + 3] = 255;
+  }
+  return out;
+}
+
 // P6. The base printed on the paper, per channel in linear light:
 //   out_c = ramp_c(t) · exp(−α (D_w a_w,c + D_k a_k,c + C)) · (1 + α S)
 // ramp is the ink–paper line in linear RGB (linearRamp), a_w and a_k the warm and ink absorbers
 // (absorber()), C the signed cloudiness. t = null stands for bare paper: the Pattern view.
-export function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, out = new Uint8ClampedArray(Dw.length * 4)) {
+// lin, when given, is the base in linear RGB (shiftedLinear) and is used in place of ramp(t).
+export function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, lin = null, out = new Uint8ClampedArray(Dw.length * 4)) {
   const n = ramp.length / 3 - 1;
   for (let p = 0, q = 0; p < Dw.length; p++, q += 4) {
     const v = t ? t[p] : 1;
-    const r = 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
+    const src = lin || ramp;
+    const r = lin ? 3 * p : 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
     const lit = 1 + alpha * S[p];
     for (let c = 0; c < 3; c++) {
-      const y = ramp[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
+      const y = src[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
       out[q + c] = SRGB_BYTE[Math.round(4095 * (y < 0 ? 0 : y > 1 ? 1 : y))];
     }
     out[q + 3] = 255;

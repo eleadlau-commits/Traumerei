@@ -7,6 +7,9 @@ export const PARAMS = [
   { group: 'Monochrome', key: 'dMin', label: 'Darkest d_min', min: 0, max: 1, step: 0.01, value: 0.65 },
   { group: 'Monochrome', key: 'dMax', label: 'Lightest d_max', min: 0, max: 1, step: 0.01, value: 0.97 },
 
+  { group: 'Colour', key: 'baseL', label: 'Brightness ΔL', min: -0.2, max: 0.2, step: 0.005, value: 0 },
+  { group: 'Colour', key: 'baseW', label: 'Warmth Δw', min: -0.06, max: 0.06, step: 0.001, value: 0 },
+
   { group: 'Patches', key: 'kappa', label: 'Coverage κ', min: 0.02, max: 0.95, step: 0.01, value: 0.35 },
   { group: 'Patches', key: 'theta', label: 'Concentration θ', min: 0.1, max: 6, step: 0.05, value: 1.5 },
   { group: 'Patches', key: 'Amin', label: 'Smallest area A_min', min: 0.0005, max: 0.05, step: 0.0005, value: 0.005 },
