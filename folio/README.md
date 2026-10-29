@@ -220,6 +220,7 @@ this.storage.once('import-v1', fn);    // runs fn only the first time, on each d
 - **Never rename a key** that a released version has used, or people lose that data. Add a new key instead, and use `once()` to move old data across.
 - **Data saved outside Folio** (by an older version of the app) can be read with `this.app.storage.raw(key)` or `rawJSON(key)`.
 - **Only this phone can see the data.** Nothing is sent anywhere unless a feature does so on purpose.
+- **Copying everything somewhere else** (such as an account): `this.app.storage.snapshot(skip)` returns every saved key as `{ 'area.key': raw JSON }` (leaving out the areas in `skip` and every `once` record), `restore(data, skip)` puts such a copy back, and `watch(fn)` calls `fn(key)` after any save (not during a restore) and returns a function that stops it.
 
 ## 8. The compiler
 

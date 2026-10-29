@@ -5,11 +5,15 @@
 // feature folder leaves everyone else's data untouched.
 //
 // Values are stored as JSON, so objects, arrays, numbers and strings all round-trip.
+//
+// For copying saved data somewhere else (such as an account), the whole app's data can be read
+// with snapshot(), written back with restore(), and watched for changes with watch(fn).
 
 export class Area {
-  constructor(prefix, onFail = () => {}) {
+  constructor(prefix, onFail = () => {}, onChange = () => {}) {
     this.prefix = prefix;
     this.onFail = onFail;
+    this.onChange = onChange;
   }
 
   get(key, fallback = null) {
@@ -27,6 +31,7 @@ export class Area {
     try {
       if (value == null) localStorage.removeItem(this.prefix + key);
       else localStorage.setItem(this.prefix + key, JSON.stringify(value));
+      this.onChange(this.prefix + key);
       return true;
     } catch {
       this.onFail(key);
@@ -75,13 +80,53 @@ export class Area {
 
 export class Storage extends Area {
   constructor(appId, onFail) {
-    super(`${appId}.`, onFail);
+    const watchers = new Set();
+    super(`${appId}.`, onFail, (key) => {
+      if (!this.quiet) for (const fn of watchers) try { fn(key); } catch (e) { console.error(e); }
+    });
     this.appId = appId;
+    this.watchers = watchers;
+    this.quiet = false; // true while restore() writes, so watchers don't hear their own data
   }
 
   // The private area for one feature (or for the framework itself, 'folio').
   area(name) {
-    return new Area(`${this.appId}.${name}.`, this.onFail);
+    return new Area(`${this.appId}.${name}.`, this.onFail, this.onChange);
+  }
+
+  // Calls fn(fullKey) whenever any area saves or removes a key. Returns a function that stops it.
+  watch(fn) {
+    this.watchers.add(fn);
+    return () => this.watchers.delete(fn);
+  }
+
+  // Everything the app has saved, as { 'area.key': raw JSON text }, leaving out the areas named
+  // in `skip` and every `once` record (those belong to the device).
+  snapshot(skip = []) {
+    const out = {};
+    const skipped = skip.map((name) => `${name}.`);
+    for (const k of this.keys()) {
+      if (skipped.some((s) => k.startsWith(s)) || /(^|\.)__once\./.test(k)) continue;
+      const raw = this.raw(this.prefix + k);
+      if (raw != null) out[k] = raw;
+    }
+    return out;
+  }
+
+  // Replaces what snapshot(skip) would return with `data`: keys missing from it are removed.
+  // Watchers aren't told. Returns false if the device refused.
+  restore(data, skip = []) {
+    this.quiet = true;
+    try {
+      for (const k of Object.keys(this.snapshot(skip))) if (!(k in data)) localStorage.removeItem(this.prefix + k);
+      for (const [k, raw] of Object.entries(data)) localStorage.setItem(this.prefix + k, raw);
+      return true;
+    } catch {
+      this.onFail('restore');
+      return false;
+    } finally {
+      this.quiet = false;
+    }
   }
 
   // Reads a key exactly as stored, outside any area. Only for importing data saved before

@@ -1,0 +1,7 @@
+{
+  "name": "Account",
+  "description": "Sign in with Google to keep your settings on every device.",
+  "version": "1.0.0",
+  "main": "Account.js",
+  "styles": ["style.css"]
+}
