@@ -76,6 +76,30 @@ test('storage.once runs only the first time', () => {
   for (const k of area.keys()) area.remove(k);
 });
 
+test('storage snapshot, restore and watch cover every area', () => {
+  const storage = new Storage('folio-test-sync');
+  for (const k of storage.keys()) storage.remove(k);
+  const heard = [];
+  const stop = storage.watch((key) => heard.push(key));
+  const a = storage.area('a');
+  a.set('x', 1);
+  a.once('setup', () => {});
+  storage.area('own').set('token', 't');
+  assert.deepEqual(heard.slice(0, 1), ['folio-test-sync.a.x']);
+  assert.deepEqual(storage.snapshot(['own']), { 'a.x': '1' });
+  heard.length = 0;
+  storage.restore({ 'b.y': '{"z":2}' }, ['own']);
+  assert.deepEqual(heard, []); // restore doesn't wake watchers
+  assert.equal(a.get('x', 'gone'), 'gone');
+  assert.equal(a.has('__once.setup'), true); // once records stay on the device
+  assert.deepEqual(storage.area('b').get('y'), { z: 2 });
+  assert.equal(storage.area('own').get('token'), 't');
+  stop();
+  a.set('x', 3);
+  assert.deepEqual(heard, []);
+  for (const k of storage.keys()) storage.remove(k);
+});
+
 test('a broken event listener doesn\'t stop the others', () => {
   const app = fakeApp();
   const events = new Events(app);

@@ -679,6 +679,15 @@ dialog.dialog-box {
   }
 }
 
+/* ---- feature: account (style.css) ---- */
+.account-page .dialog-content { display: flex; flex-direction: column; gap: 12px; }
+.account-page p { margin: 0; }
+.account-who { display: flex; align-items: center; gap: 12px; }
+.account-who > div { display: flex; flex-direction: column; min-width: 0; }
+.account-who small { opacity: 0.7; overflow-wrap: anywhere; }
+.account-photo { width: 40px; height: 40px; border-radius: 50%; }
+.account-error { color: var(--danger); }
+
 /* ---- feature: renderer (style.css) ---- */
 /* Styles for Renderer. Class names start with "renderer-". Colours come from app/theme.css. */
 
@@ -1144,9 +1153,11 @@ dialog.dialog-box {
   // dist/web/folio/Storage.js
   var Area = class {
     constructor(prefix, onFail = () => {
+    }, onChange = () => {
     }) {
       this.prefix = prefix;
       this.onFail = onFail;
+      this.onChange = onChange;
     }
     get(key, fallback = null) {
       try {
@@ -1162,6 +1173,7 @@ dialog.dialog-box {
       try {
         if (value == null) localStorage.removeItem(this.prefix + key);
         else localStorage.setItem(this.prefix + key, JSON.stringify(value));
+        this.onChange(this.prefix + key);
         return true;
       } catch {
         this.onFail(key);
@@ -1205,12 +1217,53 @@ dialog.dialog-box {
   };
   var Storage = class extends Area {
     constructor(appId, onFail) {
-      super(`${appId}.`, onFail);
+      const watchers = /* @__PURE__ */ new Set();
+      super(`${appId}.`, onFail, (key) => {
+        if (!this.quiet) for (const fn of watchers) try {
+          fn(key);
+        } catch (e) {
+          console.error(e);
+        }
+      });
       this.appId = appId;
+      this.watchers = watchers;
+      this.quiet = false;
     }
     // The private area for one feature (or for the framework itself, 'folio').
     area(name) {
-      return new Area(`${this.appId}.${name}.`, this.onFail);
+      return new Area(`${this.appId}.${name}.`, this.onFail, this.onChange);
+    }
+    // Calls fn(fullKey) whenever any area saves or removes a key. Returns a function that stops it.
+    watch(fn) {
+      this.watchers.add(fn);
+      return () => this.watchers.delete(fn);
+    }
+    // Everything the app has saved, as { 'area.key': raw JSON text }, leaving out the areas named
+    // in `skip` and every `once` record (those belong to the device).
+    snapshot(skip = []) {
+      const out = {};
+      const skipped = skip.map((name) => `${name}.`);
+      for (const k of this.keys()) {
+        if (skipped.some((s) => k.startsWith(s)) || /(^|\.)__once\./.test(k)) continue;
+        const raw = this.raw(this.prefix + k);
+        if (raw != null) out[k] = raw;
+      }
+      return out;
+    }
+    // Replaces what snapshot(skip) would return with `data`: keys missing from it are removed.
+    // Watchers aren't told. Returns false if the device refused.
+    restore(data, skip = []) {
+      this.quiet = true;
+      try {
+        for (const k of Object.keys(this.snapshot(skip))) if (!(k in data)) localStorage.removeItem(this.prefix + k);
+        for (const [k, raw] of Object.entries(data)) localStorage.setItem(this.prefix + k, raw);
+        return true;
+      } catch {
+        this.onFail("restore");
+        return false;
+      } finally {
+        this.quiet = false;
+      }
     }
     // Reads a key exactly as stored, outside any area. Only for importing data saved before
     // the app used Folio.
@@ -2086,6 +2139,206 @@ dialog.dialog-box {
   var MINUTE = 6e4;
   var HOUR = 60 * MINUTE;
   var DAY = 24 * HOUR;
+
+  // dist/web/features/account/config.js
+  var firebaseConfig = {
+    apiKey: "AIzaSyAWaKIfTx6g9TIkvrs1siqIRtU_dSCFTyg",
+    authDomain: "traumerei-writes.firebaseapp.com",
+    projectId: "traumerei-writes",
+    storageBucket: "traumerei-writes.firebasestorage.app",
+    messagingSenderId: "142212401133",
+    appId: "1:142212401133:web:4ac2532b6126897e82c9e4"
+  };
+
+  // dist/web/features/account/sync.js
+  var LOCAL_AREAS = ["account", "folio"];
+  function pack(settings) {
+    const sorted = {};
+    for (const k of Object.keys(settings).sort()) sorted[k] = settings[k];
+    return JSON.stringify(sorted);
+  }
+  function unpack(text) {
+    try {
+      const value = JSON.parse(text);
+      if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+      for (const v of Object.values(value)) if (typeof v !== "string") return null;
+      return value;
+    } catch {
+      return null;
+    }
+  }
+  function decide(cloud2, local) {
+    if (cloud2 == null) return "upload";
+    return pack(cloud2) === pack(local) ? "same" : "apply";
+  }
+
+  // dist/web/features/account/Account.js
+  var { el: el2 } = ui_exports;
+  var SDK = "https://www.gstatic.com/firebasejs/11.0.2/";
+  var UPLOAD_DELAY = 1500;
+  var Account = class extends Feature {
+    start() {
+      this.user = null;
+      this.state = "idle";
+      this.page = null;
+      this.timer = null;
+      this.synced = false;
+      this.add("account", { name: () => this.name(), open: () => this.open() });
+      this.app.storage.watch(() => this.changed());
+      window.addEventListener("pagehide", () => this.flush());
+      if (firebaseConfig && this.storage.get("signedIn", false)) this.connect().catch((e) => this.fail(e));
+    }
+    name() {
+      return this.user ? this.user.displayName || this.user.email || "Signed in" : null;
+    }
+    // ---- Firebase ----
+    // Loads Firebase and finds out who is signed in. Runs once.
+    connect() {
+      if (!this.ready) {
+        this.ready = (async () => {
+          const [appSdk, authSdk, db] = await Promise.all(
+            ["firebase-app.js", "firebase-auth.js", "firebase-firestore-lite.js"].map((f) => import(SDK + f))
+          );
+          this.sdk = { ...authSdk, ...db };
+          const app = appSdk.initializeApp(firebaseConfig);
+          this.auth = authSdk.getAuth(app);
+          this.db = db.getFirestore(app);
+          await this.auth.authStateReady();
+          authSdk.onAuthStateChanged(this.auth, (user) => this.signedInAs(user));
+        })();
+        this.ready.catch(() => {
+          this.ready = null;
+        });
+      }
+      return this.ready;
+    }
+    async signIn() {
+      this.setState("busy");
+      try {
+        await this.connect();
+        const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = this.sdk;
+        const provider = new GoogleAuthProvider();
+        try {
+          await signInWithPopup(this.auth, provider);
+        } catch (e) {
+          if (e?.code !== "auth/popup-blocked") throw e;
+          this.storage.set("signedIn", true);
+          await signInWithRedirect(this.auth, provider);
+        }
+      } catch (e) {
+        if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") this.setState("idle");
+        else this.fail(e);
+      }
+    }
+    async signOut() {
+      await this.flush();
+      await this.sdk.signOut(this.auth);
+    }
+    // Called by Firebase whenever who is signed in changes (and once when it has looked).
+    async signedInAs(user) {
+      if ((user?.uid ?? null) === (this.user?.uid ?? null) && this.synced) return;
+      this.user = user;
+      this.synced = false;
+      this.storage.set("signedIn", !!user);
+      this.setState("idle");
+      this.refresh();
+      if (user) await this.pull();
+    }
+    doc() {
+      return this.sdk.doc(this.db, "users", this.user.uid);
+    }
+    // Compares the account's settings with this device's, then uploads or applies them.
+    async pull() {
+      this.setState("busy");
+      try {
+        const snap = await this.sdk.getDoc(this.doc());
+        const cloud2 = snap.exists() ? unpack(snap.data().settings) : null;
+        const local = this.app.storage.snapshot(LOCAL_AREAS);
+        const step = decide(cloud2, local);
+        this.synced = true;
+        if (step === "upload") await this.push();
+        else if (step === "apply") {
+          this.app.storage.restore(cloud2, LOCAL_AREAS);
+          location.reload();
+        } else this.setState("saved");
+      } catch (e) {
+        this.fail(e);
+      }
+    }
+    async push() {
+      clearTimeout(this.timer);
+      this.timer = null;
+      if (!this.user || !this.synced) return;
+      this.setState("busy");
+      try {
+        const settings = pack(this.app.storage.snapshot(LOCAL_AREAS));
+        await this.sdk.setDoc(this.doc(), { settings, updated: Date.now() });
+        this.setState("saved");
+      } catch (e) {
+        this.fail(e);
+      }
+    }
+    // Something was saved on this device: send it up shortly (sliders save on every move).
+    changed() {
+      if (!this.user || !this.synced) return;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.push(), UPLOAD_DELAY);
+    }
+    // Sends a waiting change now, e.g. before the page closes.
+    flush() {
+      return this.timer ? this.push() : Promise.resolve();
+    }
+    fail(e) {
+      console.error(e);
+      this.setState("error");
+    }
+    setState(state) {
+      this.state = state;
+      if (this.page?.isOpen) this.render();
+    }
+    // ---- The account page ----
+    open() {
+      if (!this.page) this.page = ui_exports.dialog({ title: "Account", size: "box", className: "account-page" });
+      this.render();
+      this.page.open();
+    }
+    render() {
+      const busy = this.state === "busy";
+      if (!firebaseConfig) {
+        this.page.setContent(el2("p", {}, "Accounts aren't set up yet."));
+        return;
+      }
+      if (!this.user) {
+        this.page.setContent(
+          el2("p", {}, "Sign in to keep your settings on every device."),
+          this.state === "error" && el2("p", { class: "account-error" }, "Couldn't sign in. Please try again."),
+          el2(
+            "button",
+            { type: "button", class: "btn", disabled: busy, onclick: () => this.signIn() },
+            busy ? "Signing in…" : "Sign in with Google"
+          )
+        );
+        return;
+      }
+      const status = {
+        busy: "Saving…",
+        saved: "Your settings are saved to your account.",
+        error: "Couldn't reach your account. Your settings are still saved on this device.",
+        idle: ""
+      }[this.state];
+      this.page.setContent(
+        el2(
+          "div",
+          { class: "account-who" },
+          this.user.photoURL && el2("img", { class: "account-photo", src: this.user.photoURL, alt: "", referrerpolicy: "no-referrer" }),
+          el2("div", {}, el2("b", {}, this.name()), this.user.email && el2("small", {}, this.user.email))
+        ),
+        status && el2("p", { class: this.state === "error" ? "account-error" : "hint" }, status),
+        this.state === "error" && el2("button", { type: "button", class: "btn", onclick: () => this.synced ? this.push() : this.pull() }, "Try again"),
+        el2("button", { type: "button", class: "btn", disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, "Sign out")
+      );
+    }
+  };
 
   // dist/web/features/renderer/engine/colour.js
   function linearise(c) {
@@ -3469,15 +3722,15 @@ dialog.dialog-box {
   };
 
   // dist/web/features/renderer/controls.js
-  var { el: el2 } = ui_exports;
+  var { el: el3 } = ui_exports;
   var shown = (p, v) => p.step >= 1 ? String(v) : Number(v).toFixed(Math.max(0, -Math.floor(Math.log10(p.step))));
   function sliders(params, values, onChange) {
     const rows = /* @__PURE__ */ new Map();
     const groups = /* @__PURE__ */ new Map();
     for (const p of params) {
-      if (!groups.has(p.group)) groups.set(p.group, el2("fieldset", { class: "renderer-group" }, el2("legend", {}, p.group)));
-      const out = el2("output", { class: "renderer-value" }, shown(p, values[p.key]));
-      const input = el2("input", {
+      if (!groups.has(p.group)) groups.set(p.group, el3("fieldset", { class: "renderer-group" }, el3("legend", {}, p.group)));
+      const out = el3("output", { class: "renderer-value" }, shown(p, values[p.key]));
+      const input = el3("input", {
         type: "range",
         min: p.min,
         max: p.max,
@@ -3491,10 +3744,10 @@ dialog.dialog-box {
         }
       });
       rows.set(p.key, { input, out, p });
-      groups.get(p.group).append(el2("label", { class: "renderer-slider" }, el2("span", {}, p.label), out, input));
+      groups.get(p.group).append(el3("label", { class: "renderer-slider" }, el3("span", {}, p.label), out, input));
     }
     return {
-      node: el2("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
+      node: el3("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
       groups,
       set(next) {
         for (const [key, r] of rows) {
@@ -3542,7 +3795,7 @@ dialog.dialog-box {
   }
 
   // dist/web/features/renderer/Renderer.js
-  var { el: el3 } = ui_exports;
+  var { el: el4 } = ui_exports;
   var MAX_SIDE = 2048;
   var WHITE_SIDE = 1600;
   var VIEWS = [
@@ -3596,16 +3849,16 @@ dialog.dialog-box {
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
     }
     mount(container) {
-      this.canvas = el3("canvas", { class: "renderer-canvas" });
-      this.overlay = el3("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
-      this.stage = el3(
+      this.canvas = el4("canvas", { class: "renderer-canvas" });
+      this.overlay = el4("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
+      this.stage = el4(
         "div",
         { class: "renderer-stage", hidden: true, onclick: (e) => this.setAnchor(e) },
         this.canvas,
         this.overlay
       );
       this.error = ui_exports.errorBox();
-      container.append(el3("div", { class: "renderer-page" }, this.stage, this.error));
+      container.append(el4("div", { class: "renderer-page" }, this.stage, this.error));
       new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
       if (!this.seed) this.white();
     }
@@ -3613,36 +3866,36 @@ dialog.dialog-box {
     // sliders stay as they were each time Settings is opened.
     advanced() {
       if (this.panel) return this.panel;
-      this.tabs = el3(
+      this.tabs = el4(
         "div",
         { class: "seg renderer-tabs", role: "tablist", "aria-label": "View", style: `--tabs:${VIEWS.length}` },
-        VIEWS.map(([id, label]) => el3("button", {
+        VIEWS.map(([id, label]) => el4("button", {
           type: "button",
           role: "tab",
           "data-view": id,
           onclick: () => this.show(id)
         }, label))
       );
-      this.seedLine = el3("p", { class: "renderer-seed" });
-      this.report = el3("div", { class: "renderer-report" });
+      this.seedLine = el4("p", { class: "renderer-seed" });
+      this.report = el4("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      const fold = (title, ...kids) => el3(
+      const fold = (title, ...kids) => el4(
         "details",
         { class: "advanced renderer-fold" },
-        el3("summary", {}, title),
-        el3("div", { class: "renderer-fold-body" }, ...kids)
+        el4("summary", {}, title),
+        el4("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.panel = el3(
+      this.panel = el4(
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
         fold(
           "Picture",
-          el3(
+          el4(
             "div",
             { class: "renderer-buttons" },
-            el3("button", { type: "button", class: "btn small", onclick: () => this.choose() }, "Choose an image"),
-            el3("button", { type: "button", class: "btn small", onclick: () => this.white() }, "Back to white")
+            el4("button", { type: "button", class: "btn small", onclick: () => this.choose() }, "Choose an image"),
+            el4("button", { type: "button", class: "btn small", onclick: () => this.white() }, "Back to white")
           ),
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
@@ -3650,19 +3903,19 @@ dialog.dialog-box {
         fold(
           "View",
           this.tabs,
-          el3(
+          el4(
             "div",
             { class: "check renderer-marks" },
             ui_exports.toggle({ checked: this.marks, label: "Show the anchor", onChange: (on) => this.showMarks(on) }),
-            el3("span", {}, "Show the anchor, and tap the picture to move it")
+            el4("span", {}, "Show the anchor, and tap the picture to move it")
           )
         ),
         ...LAYERS.map(([title, groups]) => fold(
           title,
-          el3("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
+          el4("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
         )),
         fold("Report", this.report),
-        el3("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
+        el4("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.draw();
       return this.panel;
@@ -3754,27 +4007,27 @@ dialog.dialog-box {
       const { W, H } = this.engine.image;
       this.seedLine.replaceChildren(
         "Seed ",
-        el3("code", {}, this.seed.seedText),
+        el4("code", {}, this.seed.seedText),
         ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`
       );
       const r = describe(this.result);
       this.report.replaceChildren(
-        el3("h3", {}, "Report"),
-        el3("p", {}, r.summary),
-        ...r.attempts.map((a) => el3(
+        el4("h3", {}, "Report"),
+        el4("p", {}, r.summary),
+        ...r.attempts.map((a) => el4(
           "details",
           { class: `renderer-attempt${a.kept ? " kept" : ""}`, open: a.kept },
-          el3(
+          el4(
             "summary",
             {},
             a.title,
-            el3("span", { class: `renderer-tag ${a.pass ? "pass" : "fail"}` }, a.pass ? "passes" : "fails"),
-            a.kept && el3("span", { class: "renderer-tag kept" }, "shown")
+            el4("span", { class: `renderer-tag ${a.pass ? "pass" : "fail"}` }, a.pass ? "passes" : "fails"),
+            a.kept && el4("span", { class: "renderer-tag kept" }, "shown")
           ),
-          el3("ul", {}, a.lines.map((line) => el3("li", {}, line)))
+          el4("ul", {}, a.lines.map((line) => el4("li", {}, line)))
         )),
-        this.engine.patternCache?.Dw && el3("p", {}, describePattern(this.engine.patternCache)),
-        this.current === "living" && el3("p", {}, describeLiving(this.P))
+        this.engine.patternCache?.Dw && el4("p", {}, describePattern(this.engine.patternCache)),
+        this.current === "living" && el4("p", {}, describeLiving(this.P))
       );
     }
     // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
@@ -3847,8 +4100,10 @@ dialog.dialog-box {
   };
 
   // dist/web/standalone-entry.js
-  globalThis.__folioFeature0 = Renderer;
+  globalThis.__folioFeature0 = Account;
   var url0 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature0;"], { type: "text/javascript" }));
+  globalThis.__folioFeature1 = Renderer;
+  var url1 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature1;"], { type: "text/javascript" }));
   var config = {
     "id": "mask-renderer",
     "name": "Mask renderer",
@@ -3858,8 +4113,8 @@ dialog.dialog-box {
     "framework": "1.10.0",
     "test": false
   };
-  var features = [{ "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }];
-  new App(config, [{ ...features[0], path: url0 }]).start();
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }];
+  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }]).start();
 })();
 </script>
 </body>
