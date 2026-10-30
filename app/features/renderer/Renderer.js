@@ -21,7 +21,7 @@ const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
 const WHITE_SIDE = 1600; // the long side of the plain white image the page starts with
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'baseL', 'baseW', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
+const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'tint', 'baseL', 'baseW', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
   ...SPONT_KEYS]; // these don't change M1–M8
 // The slider groups, folded by layer in Advanced. Composite (α, κ) mixes the pattern in, so it's with it.
 const LAYERS = [
@@ -76,6 +76,12 @@ export default class Renderer extends Feature {
     this.seedLine = el('p', { class: 'renderer-seed' });
     this.report = el('div', { class: 'renderer-report' });
     this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
+    // The base tint τ, a colour picker at the top of Colour. The paper, the ink and the washi's
+    // inclusions all follow it.
+    this.tintInput = el('input', { type: 'color', value: this.P.tint, 'aria-label': 'Tint τ',
+      oninput: (e) => this.change('tint', e.target.value) });
+    this.controls.groups.get('Colour').querySelector('legend').after(
+      el('label', { class: 'renderer-slider renderer-colour' }, el('span', {}, 'Tint τ'), this.tintInput));
     const fold = (title, ...kids) => el('details', { class: 'advanced renderer-fold' }, el('summary', {}, title),
       el('div', { class: 'renderer-fold-body' }, ...kids));
 
@@ -168,6 +174,7 @@ export default class Renderer extends Feature {
     this.P = { ...DEFAULTS };
     this.storage.set('params', this.P);
     this.controls.set(this.P);
+    this.tintInput.value = this.P.tint;
     this.remask();
   }
 

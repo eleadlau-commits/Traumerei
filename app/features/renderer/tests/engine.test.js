@@ -3,7 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import { cyrb53, stream } from '../engine/random.js';
-import { oklabL, oklabToSrgb, INK, PAPER, TAN, inkPaperLUT, absorber, linearRamp } from '../engine/colour.js';
+import { oklabL, oklabToSrgb, oklabToOklch, INK, PAPER, TAN, inkPaperLUT, absorber, linearRamp, palette, hexToOklab, DEFAULT_TINT } from '../engine/colour.js';
 import { tone, imageSeed } from '../engine/monochrome.js';
 import { stickBreaking } from '../engine/skeleton.js';
 import { quantile } from '../engine/field.js';
@@ -223,6 +223,34 @@ test('brightness and warmth are off by default and move only the masked base', (
   const warmWashi = e.view('washi', { ...DEFAULTS, baseW: 0.04 }, r).rgba;
   assert.ok(warmWashi[4 * inside] - warmWashi[4 * inside + 2] > washi[4 * inside] - washi[4 * inside + 2]);
   for (let c = 0; c < 3; c++) assert.equal(warmWashi[4 * outside + c], washi[4 * outside + c]);
+});
+
+test('the default tint is the beige paper, and the tan keeps its place relative to it', () => {
+  const lab = hexToOklab('#ffffff');
+  assert.ok(near(lab[0], 1, 1e-6) && Math.abs(lab[1]) < 1e-6 && Math.abs(lab[2]) < 1e-6);
+  const p = palette(DEFAULT_TINT);
+  for (let k = 0; k < 3; k++) assert.ok(Math.abs(p.paper[k] - PAPER[k]) < 0.003);
+  for (let k = 0; k < 3; k++) assert.ok(Math.abs(p.tan[k] - TAN[k]) < 0.003);
+  const [, C, h] = oklabToOklch(palette('#d8e0ea').tan);
+  const [, Ct, ht] = oklabToOklch(hexToOklab('#d8e0ea'));
+  assert.ok(near(C, 2 * Ct, 1e-9) && near((ht - h + 360) % 360, 13, 1e-9));
+  const grey = oklabToOklch(palette('#e0e0e0').tan);
+  assert.ok(grey[1] < 1e-6); // a grey paper has grey inclusions
+});
+
+test('the tint colours the paper, the base and the washi alike', () => {
+  const e = new Engine();
+  e.load(picture(160, 120), 160, 120);
+  const P = { ...DEFAULTS, tint: '#d8e0ea' };
+  const r = e.mask(P, { x: 0.5, y: 0.5 });
+  const m = e.fullMask(P, r);
+  const outside = m.indexOf(0);
+  const base = e.view('base', P, r).rgba;
+  const tint = oklabToSrgb(hexToOklab('#d8e0ea')).map((c) => Math.round(255 * c));
+  for (let c = 0; c < 3; c++) assert.ok(Math.abs(base[4 * outside + c] - tint[c]) <= 1);
+  const blue = (px) => { let s = 0; for (let i = 0; i < px.length; i += 4) s += px[i + 2] - px[i]; return s; };
+  assert.ok(blue(e.view('washi', P, r).rgba) > 0);
+  assert.ok(blue(e.view('washi', DEFAULTS, r).rgba) < 0);
 });
 
 test('the Hawkes process has mean rate μ / (1 − n), and n = 0 is Poisson', () => {

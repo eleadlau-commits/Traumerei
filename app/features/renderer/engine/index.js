@@ -9,7 +9,7 @@
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
-import { inkPaperLUT, linearRamp, absorber, oklchToOklab, INK, PAPER, TAN, WARM_HUE } from './colour.js';
+import { inkPaperLUT, linearRamp, absorber, oklchToOklab, palette, DEFAULT_TINT } from './colour.js';
 import { lightness, quantiles, tone, imageSeed } from './monochrome.js';
 import { stream, seedText } from './random.js';
 import { skeleton } from './skeleton.js';
@@ -27,11 +27,24 @@ const FIELD_SHORT = 320;
 
 export class Engine {
   constructor() {
-    this.lut = inkPaperLUT();
-    this.ramp = linearRamp();
-    this.inkAbsorber = absorber(INK);
-    this.tanAbsorber = absorber(TAN);
     this.image = null;
+    this.colours({ tint: DEFAULT_TINT });
+  }
+
+  // The colours from the base tint τ: ink, paper and tan (palette()), the LUT and linear ramp between
+  // ink and paper, and the absorbers. Remade only when τ changes.
+  colours(P) {
+    const tint = P.tint || DEFAULT_TINT;
+    if (this.tint === tint) return;
+    const c = palette(tint);
+    this.tint = tint;
+    this.ink = c.ink;
+    this.paper = c.paper;
+    this.warmHue = c.warmHue;
+    this.lut = inkPaperLUT(c.ink, c.paper);
+    this.ramp = linearRamp(1024, c.ink, c.paper);
+    this.inkAbsorber = absorber(c.ink, c.paper);
+    this.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
   }
 
   // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
@@ -101,14 +114,16 @@ export class Engine {
 
   // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
   // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
+  // Every view uses the colours of the base tint τ (colours()).
   // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
   // Living views; the Mask and Field views stay on the plain ink–paper line.
   view(name, P, r) {
     const { W, H } = this.image;
+    this.colours(P);
     const t = this.tone(P);
     const delta = this.shift(P);
     if (name === 'monochrome') {
-      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, INK, PAPER)) : paint(t, this.lut), width: W, height: H };
+      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, this.ink, this.paper)) : paint(t, this.lut), width: W, height: H };
     }
     if (name === 'pattern') return { rgba: this.washi(null, P), width: W, height: H };
     const { G, best } = r;
@@ -119,17 +134,18 @@ export class Engine {
     const m = this.fullMask(P, r);
     if (name === 'mask') return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
     const tb = baseTone(t, m);
-    const lin = delta ? shiftedLinear(tb, m, delta, INK, PAPER) : null;
+    const lin = delta ? shiftedLinear(tb, m, delta, this.ink, this.paper) : null;
     if (name === 'washi' || name === 'living') return { rgba: this.washi(tb, P, lin), width: W, height: H };
     return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
   }
 
   // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
+  // Warmth moves toward the tan's hue, which follows the tint.
   shift(P) {
     const dL = P.baseL || 0;
     const dW = P.baseW || 0;
     if (!dL && !dW) return null;
-    const [, a, b] = oklchToOklab(0, dW, WARM_HUE);
+    const [, a, b] = oklchToOklab(0, dW, this.warmHue);
     return [dL, a, b];
   }
 
@@ -145,6 +161,7 @@ export class Engine {
   // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
   // slider change shows its marks at the same moment t.
   living(P, rgba) {
+    this.colours(P);
     const { seed, X, Y, W, H } = this.image;
     return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
   }
