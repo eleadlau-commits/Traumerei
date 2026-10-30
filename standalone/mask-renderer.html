@@ -3099,6 +3099,30 @@ dialog.dialog-box {
     }
     return count;
   }
+  function sampled(f, W, H, px, step) {
+    const gw = Math.ceil((W - 1) / step) + 1;
+    const gh = Math.ceil((H - 1) / step) + 1;
+    const g = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++) {
+      for (let i = 0; i < gw; i++) g[j * gw + i] = f((i * step + 0.5) * px, (j * step + 0.5) * px);
+    }
+    const out = new Float32Array(W * H);
+    for (let y = 0, p = 0; y < H; y++) {
+      const j0 = Math.min(gh - 2, Math.floor(y / step));
+      const fy = y / step - j0;
+      for (let x = 0; x < W; x++, p++) {
+        const i0 = Math.min(gw - 2, Math.floor(x / step));
+        const fx = x / step - i0;
+        const a = g[j0 * gw + i0];
+        const b = g[j0 * gw + i0 + 1];
+        const c = g[(j0 + 1) * gw + i0];
+        const d = g[(j0 + 1) * gw + i0 + 1];
+        out[p] = a + (b - a) * fx + (c - a + (a - b - c + d) * fx) * fy;
+      }
+    }
+    return out;
+  }
+  var stepFor = (finest, px) => Math.max(1, Math.min(8, Math.floor(finest / px / 4)));
   function grain(rng, P, canvas) {
     const { X, Y, W, H, px } = canvas;
     const nw = simplex(rng.U);
@@ -3139,14 +3163,18 @@ dialog.dialog-box {
       }
       return Math.sqrt(f2) - Math.sqrt(f1);
     };
+    const sw = stepFor(P.lambdaGw / 4, px);
+    const wx = sampled((x, y) => nw(x / P.lambdaGw, y / P.lambdaGw + o1), W, H, px, sw);
+    const wy = sampled((x, y) => nw(x / P.lambdaGw + o2, y / P.lambdaGw), W, H, px, sw);
+    const mo = sampled(mottle, W, H, px, stepFor(P.lambdaN / 8, px));
     const h = new Float32Array(W * H);
     for (let j = 0, p = 0; j < H; j++) {
       const y = (j + 0.5) * px;
       for (let i = 0; i < W; i++, p++) {
         const x = (i + 0.5) * px;
-        const xw = x + P.Ag * nw(x / P.lambdaGw, y / P.lambdaGw + o1);
-        const yw = y + P.Ag * nw(x / P.lambdaGw + o2, y / P.lambdaGw);
-        h[p] = smoothstep(0, P.omega, crease(grids[0], xw, yw) / P.lambdaG) + 0.5 * smoothstep(0, P.omega, 2 * crease(grids[1], xw, yw) / P.lambdaG) + P.etaG * mottle(x, y);
+        const xw = x + P.Ag * wx[p];
+        const yw = y + P.Ag * wy[p];
+        h[p] = smoothstep(0, P.omega, crease(grids[0], xw, yw) / P.lambdaG) + 0.5 * smoothstep(0, P.omega, 2 * crease(grids[1], xw, yw) / P.lambdaG) + P.etaG * mo[p];
       }
     }
     const psi = P.psi * Math.PI / 180;
@@ -3167,11 +3195,7 @@ dialog.dialog-box {
   }
   function cloud(rng, P, { W, H, px }) {
     const f = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaCl, H: 0.5 });
-    const C = new Float32Array(W * H);
-    for (let j = 0, p = 0; j < H; j++) {
-      for (let i = 0; i < W; i++, p++) C[p] = P.aCl * f((i + 0.5) * px, (j + 0.5) * px);
-    }
-    return C;
+    return sampled((x, y) => P.aCl * f(x, y), W, H, px, stepFor(P.lambdaCl / 8, px));
   }
   var PARTS = {
     fibres: ["lambdaF", "muL", "sL", "lp", "muW", "muB", "muA", "sA", "sigmaW", "sigmaB", "sigmaA", "ellG"],
@@ -3636,7 +3660,8 @@ dialog.dialog-box {
       this.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
-    load(rgba, W, H) {
+    // seed: pass one to keep it when the same picture is loaded again at another size.
+    load(rgba, W, H, seed = imageSeed(rgba, W, H)) {
       const L = lightness(rgba);
       const s = Math.min(W, H);
       this.image = {
@@ -3646,7 +3671,7 @@ dialog.dialog-box {
         Y: H / s,
         L,
         bw: quantiles(L, [0.01, 0.99]),
-        seed: imageSeed(rgba, W, H)
+        seed
       };
       this.toneCache = null;
       this.maskCache = null;
@@ -3840,7 +3865,8 @@ dialog.dialog-box {
   // dist/web/features/renderer/Renderer.js
   var { el: el4 } = ui_exports;
   var MAX_SIDE = 2048;
-  var WHITE_SIDE = 1600;
+  var MAX_PIXELS = 6e6;
+  var RESIZE_MS = 400;
   var VIEWS = [
     ["monochrome", "Monochrome"],
     ["mask", "Mask"],
@@ -3903,7 +3929,11 @@ dialog.dialog-box {
       );
       this.error = ui_exports.errorBox();
       container.append(el4("div", { class: "renderer-page" }, this.stage, this.error));
-      new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+      new ResizeObserver(() => {
+        this.paintOverlay();
+        clearTimeout(this.resizing);
+        this.resizing = setTimeout(() => this.fit(), RESIZE_MS);
+      }).observe(this.stage);
       if (!this.seed) this.white();
     }
     // Advanced, in Settings: every tool, folded into groups. Made once and kept, so the folds and
@@ -3975,12 +4005,53 @@ dialog.dialog-box {
     }
     // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
     white() {
-      const aspect = Math.min(2.5, Math.max(0.4, innerWidth / innerHeight)) || 1.6;
-      const W = Math.round(aspect >= 1 ? WHITE_SIDE : WHITE_SIDE * aspect);
-      const H = Math.round(aspect >= 1 ? WHITE_SIDE / aspect : WHITE_SIDE);
-      this.seed = this.engine.load(new Uint8ClampedArray(W * H * 4).fill(255), W, H);
+      this.source = null;
+      this.render();
+    }
+    // The screen in device pixels: what the picture covers, so one picture pixel is one screen pixel.
+    screen() {
+      const dpr = window.devicePixelRatio || 1;
+      const box = this.stage?.getBoundingClientRect();
+      const w = box?.width || innerWidth || 1600;
+      const h = box?.height || innerHeight || 1e3;
+      return { w: Math.max(1, Math.round(w * dpr)), h: Math.max(1, Math.round(h * dpr)) };
+    }
+    // The size to render a picture of shape W0 × H0 at: just big enough to cover the screen at full
+    // resolution (cropped like a cover photo), at most MAX_PIXELS. Everything is in canvas units
+    // (short side = 1), so a bigger render is the same picture, only sharper.
+    size(W0, H0) {
+      const { w, h } = this.screen();
+      let k = Math.max(w / W0, h / H0);
+      k = Math.min(k, Math.sqrt(MAX_PIXELS / (W0 * H0)));
+      return { W: Math.max(1, Math.round(W0 * k)), H: Math.max(1, Math.round(H0 * k)) };
+    }
+    // Loads the picture (the chosen image, or white the shape of the screen) at the screen's size.
+    // The seed comes from the chosen image at MAX_SIDE, so it doesn't change with the screen.
+    render() {
+      const { w, h } = this.screen();
+      const src = this.source;
+      const { W, H } = src ? this.size(src.W, src.H) : this.size(w, h);
+      let rgba;
+      if (src) {
+        const work = new OffscreenCanvas(W, H).getContext("2d", { willReadFrequently: true });
+        work.imageSmoothingQuality = "high";
+        work.drawImage(src.bitmap, 0, 0, W, H);
+        rgba = work.getImageData(0, 0, W, H).data;
+      } else {
+        rgba = new Uint8ClampedArray(W * H * 4).fill(255);
+      }
+      this.seed = this.engine.load(rgba, W, H, src?.seed);
       this.error?.show(null);
       this.remask();
+    }
+    // After a resize: render again if the size the screen needs has changed by more than 10%,
+    // or if white no longer has the screen's shape.
+    fit() {
+      if (!this.engine.image) return;
+      const { W, H } = this.engine.image;
+      const { w, h } = this.screen();
+      const want = this.source ? this.size(this.source.W, this.source.H) : this.size(w, h);
+      if (Math.abs(want.W / W - 1) > 0.1 || Math.abs(want.H / H - 1) > 0.1) this.render();
     }
     showMarks(on) {
       this.marks = on;
@@ -3997,9 +4068,9 @@ dialog.dialog-box {
         const H = Math.max(1, Math.round(bitmap.height * scale));
         const work = new OffscreenCanvas(W, H).getContext("2d", { willReadFrequently: true });
         work.drawImage(bitmap, 0, 0, W, H);
-        this.seed = this.engine.load(work.getImageData(0, 0, W, H).data, W, H);
-        this.error.show(null);
-        this.remask();
+        const seed = imageSeed(work.getImageData(0, 0, W, H).data, W, H);
+        this.source = { bitmap, W: bitmap.width, H: bitmap.height, seed };
+        this.render();
       } catch {
         this.error.show("That file couldn't be read as an image. Try a JPEG or PNG.");
       }

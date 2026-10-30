@@ -1,5 +1,6 @@
 // Renderer: the page. It shows only the picture, filling the screen edge to edge (cropped to fit
-// like a cover photo), starting as a plain white image the shape of the screen. Everything
+// like a cover photo), starting as a plain white image the shape of the screen. The picture is
+// rendered at the screen's own pixel size (device pixels), so the paper and the marks stay sharp. Everything
 // else is in Settings, under Advanced, folded into groups: choose an image, switch between the
 // seven views (Monochrome, Mask, Field, Base, Pattern, Washi, Living), show the anchor and tap the
 // picture to move it, move the sliders, and read the seed and the report.
@@ -13,12 +14,14 @@
 
 import { Feature, ui } from 'folio';
 import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS } from './engine/index.js';
+import { imageSeed } from './engine/monochrome.js';
 import { sliders } from './controls.js';
 import { describe, describePattern, describeLiving } from './report.js';
 
 const { el } = ui;
-const MAX_SIDE = 2048; // larger images are scaled down to this before rendering
-const WHITE_SIDE = 1600; // the long side of the plain white image the page starts with
+const MAX_SIDE = 2048; // the seed is taken from the picture scaled down to this
+const MAX_PIXELS = 6e6; // the most pixels a picture is rendered at; past that the screen scales it up
+const RESIZE_MS = 400; // a resize re-renders once it has settled for this long
 const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
   ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
 const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'tint', 'baseL', 'baseW', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
@@ -61,7 +64,11 @@ export default class Renderer extends Feature {
       this.canvas, this.overlay);
     this.error = ui.errorBox();
     container.append(el('div', { class: 'renderer-page' }, this.stage, this.error));
-    new ResizeObserver(() => this.paintOverlay()).observe(this.stage);
+    new ResizeObserver(() => {
+      this.paintOverlay();
+      clearTimeout(this.resizing);
+      this.resizing = setTimeout(() => this.fit(), RESIZE_MS);
+    }).observe(this.stage);
     if (!this.seed) this.white();
   }
 
@@ -108,12 +115,57 @@ export default class Renderer extends Feature {
 
   // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
   white() {
-    const aspect = Math.min(2.5, Math.max(0.4, innerWidth / innerHeight)) || 1.6;
-    const W = Math.round(aspect >= 1 ? WHITE_SIDE : WHITE_SIDE * aspect);
-    const H = Math.round(aspect >= 1 ? WHITE_SIDE / aspect : WHITE_SIDE);
-    this.seed = this.engine.load(new Uint8ClampedArray(W * H * 4).fill(255), W, H);
+    this.source = null;
+    this.render();
+  }
+
+  // The screen in device pixels: what the picture covers, so one picture pixel is one screen pixel.
+  screen() {
+    const dpr = window.devicePixelRatio || 1;
+    const box = this.stage?.getBoundingClientRect();
+    const w = box?.width || innerWidth || 1600;
+    const h = box?.height || innerHeight || 1000;
+    return { w: Math.max(1, Math.round(w * dpr)), h: Math.max(1, Math.round(h * dpr)) };
+  }
+
+  // The size to render a picture of shape W0 × H0 at: just big enough to cover the screen at full
+  // resolution (cropped like a cover photo), at most MAX_PIXELS. Everything is in canvas units
+  // (short side = 1), so a bigger render is the same picture, only sharper.
+  size(W0, H0) {
+    const { w, h } = this.screen();
+    let k = Math.max(w / W0, h / H0);
+    k = Math.min(k, Math.sqrt(MAX_PIXELS / (W0 * H0)));
+    return { W: Math.max(1, Math.round(W0 * k)), H: Math.max(1, Math.round(H0 * k)) };
+  }
+
+  // Loads the picture (the chosen image, or white the shape of the screen) at the screen's size.
+  // The seed comes from the chosen image at MAX_SIDE, so it doesn't change with the screen.
+  render() {
+    const { w, h } = this.screen();
+    const src = this.source;
+    const { W, H } = src ? this.size(src.W, src.H) : this.size(w, h);
+    let rgba;
+    if (src) {
+      const work = new OffscreenCanvas(W, H).getContext('2d', { willReadFrequently: true });
+      work.imageSmoothingQuality = 'high';
+      work.drawImage(src.bitmap, 0, 0, W, H);
+      rgba = work.getImageData(0, 0, W, H).data;
+    } else {
+      rgba = new Uint8ClampedArray(W * H * 4).fill(255);
+    }
+    this.seed = this.engine.load(rgba, W, H, src?.seed);
     this.error?.show(null);
     this.remask();
+  }
+
+  // After a resize: render again if the size the screen needs has changed by more than 10%,
+  // or if white no longer has the screen's shape.
+  fit() {
+    if (!this.engine.image) return;
+    const { W, H } = this.engine.image;
+    const { w, h } = this.screen();
+    const want = this.source ? this.size(this.source.W, this.source.H) : this.size(w, h);
+    if (Math.abs(want.W / W - 1) > 0.1 || Math.abs(want.H / H - 1) > 0.1) this.render();
   }
 
   showMarks(on) {
@@ -132,9 +184,9 @@ export default class Renderer extends Feature {
       const H = Math.max(1, Math.round(bitmap.height * scale));
       const work = new OffscreenCanvas(W, H).getContext('2d', { willReadFrequently: true });
       work.drawImage(bitmap, 0, 0, W, H);
-      this.seed = this.engine.load(work.getImageData(0, 0, W, H).data, W, H);
-      this.error.show(null);
-      this.remask();
+      const seed = imageSeed(work.getImageData(0, 0, W, H).data, W, H);
+      this.source = { bitmap, W: bitmap.width, H: bitmap.height, seed };
+      this.render();
     } catch {
       this.error.show('That file couldn\'t be read as an image. Try a JPEG or PNG.');
     }

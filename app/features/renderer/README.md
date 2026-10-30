@@ -7,7 +7,7 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
 
 - The **Renderer** view (the app's only tab): just the picture, filling the screen edge to edge
   (cropped to fit, like a cover photo), shown as **Washi** at first. It starts as a plain white
-  image the shape of the screen (1600 px on its long side). Everything else is in **Settings → Advanced**, folded into groups:
+  image the shape of the screen. Everything else is in **Settings → Advanced**, folded into groups:
   - **Picture**: choose an image, or go back to white; the seed.
   - **View**: switch between **Monochrome**, **Mask**,
     **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern**
@@ -44,8 +44,16 @@ mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`,
 | `Renderer.js`, `controls.js`, `report.js` | The page, the sliders, the report text |
 
 Choices the spec left open:
-- Pictures larger than 2048 px on their long side are scaled down to that first; the seed is
-  taken from that copy.
+- The seed is taken from the picture scaled down to at most 2048 px on its long side, so it
+  doesn't depend on the screen.
+- **Sharpness:** every view is rendered at the screen's own pixel size (device pixels), just big
+  enough to cover it, so one picture pixel is one screen pixel and the paper and the marks stay
+  sharp. Renders are capped at 6 million pixels (past that the screen scales the picture up a
+  little). After a resize settles (0.4 s), the picture is rendered again if the size it needs
+  changed by more than 10%. All lengths are in canvas units, so a bigger render is the same sheet.
+- The smooth noises (the grain's warp and mottle, and the cloudiness) are evaluated on a coarser
+  grid, every 1–8 pixels depending on their finest scale, and filled in bilinearly; the creases,
+  fibres, flakes and marks are evaluated at every pixel.
 - The 32×32 thumbnail is an area average, greyscale by Rec. 709 luma of the sRGB values; each
   cell becomes one hex digit, and the 1024 digits are hashed.
 - Each stream is mulberry32 seeded with `cyrb53(seed + name)`. Each Box–Muller draw uses two

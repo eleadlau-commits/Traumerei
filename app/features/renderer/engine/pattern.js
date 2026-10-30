@@ -201,6 +201,36 @@ function flakes(rng, P, canvas, D) {
   return count;
 }
 
+// A smooth field f(x, y) over the W × H pixels, evaluated every `step` pixels and filled in
+// bilinearly. Used only for the slow noises (warp, mottle, cloud), whose finest detail spans many
+// pixels, so the result matches evaluating f at every pixel to well under a percent of its range.
+function sampled(f, W, H, px, step) {
+  const gw = Math.ceil((W - 1) / step) + 1;
+  const gh = Math.ceil((H - 1) / step) + 1;
+  const g = new Float32Array(gw * gh);
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) g[j * gw + i] = f((i * step + 0.5) * px, (j * step + 0.5) * px);
+  }
+  const out = new Float32Array(W * H);
+  for (let y = 0, p = 0; y < H; y++) {
+    const j0 = Math.min(gh - 2, Math.floor(y / step));
+    const fy = y / step - j0;
+    for (let x = 0; x < W; x++, p++) {
+      const i0 = Math.min(gw - 2, Math.floor(x / step));
+      const fx = x / step - i0;
+      const a = g[j0 * gw + i0];
+      const b = g[j0 * gw + i0 + 1];
+      const c = g[(j0 + 1) * gw + i0];
+      const d = g[(j0 + 1) * gw + i0 + 1];
+      out[p] = a + (b - a) * fx + (c - a + (a - b - c + d) * fx) * fy;
+    }
+  }
+  return out;
+}
+
+// The step for sampled(): about a quarter of the finest wavelength, in pixels, from 1 to 8.
+const stepFor = (finest, px) => Math.max(1, Math.min(8, Math.floor(finest / px / 4)));
+
 // P5. The relief grain: warped two-scale Worley creases plus fBm mottle as a height h, lit from ψ.
 // Draws: the warp permutation (255), o₁, o₂, the mottle permutation (255), then one jitter (x, y)
 // per cell, row by row, for the grid at λ_g and then for the grid at λ_g / 2.
@@ -245,16 +275,22 @@ function grain(rng, P, canvas) {
     }
     return Math.sqrt(f2) - Math.sqrt(f1);
   };
+  // The warp and the mottle are smooth, so they're sampled (the warp finely, since it moves the creases);
+  // the creases themselves are evaluated at every pixel.
+  const sw = stepFor(P.lambdaGw / 4, px);
+  const wx = sampled((x, y) => nw(x / P.lambdaGw, y / P.lambdaGw + o1), W, H, px, sw);
+  const wy = sampled((x, y) => nw(x / P.lambdaGw + o2, y / P.lambdaGw), W, H, px, sw);
+  const mo = sampled(mottle, W, H, px, stepFor(P.lambdaN / 8, px));
   const h = new Float32Array(W * H);
   for (let j = 0, p = 0; j < H; j++) {
     const y = (j + 0.5) * px;
     for (let i = 0; i < W; i++, p++) {
       const x = (i + 0.5) * px;
-      const xw = x + P.Ag * nw(x / P.lambdaGw, y / P.lambdaGw + o1);
-      const yw = y + P.Ag * nw(x / P.lambdaGw + o2, y / P.lambdaGw);
+      const xw = x + P.Ag * wx[p];
+      const yw = y + P.Ag * wy[p];
       h[p] = smoothstep(0, P.omega, crease(grids[0], xw, yw) / P.lambdaG) +
         0.5 * smoothstep(0, P.omega, (2 * crease(grids[1], xw, yw)) / P.lambdaG) +
-        P.etaG * mottle(x, y);
+        P.etaG * mo[p];
     }
   }
   // S = clamp(−a_g λ_g ∇h · ℓ̂, ±0.5), ∇h by central differences (one-sided at the edges).
@@ -278,11 +314,7 @@ function grain(rng, P, canvas) {
 // Faint cloudiness: C = a_cl · fBm(x / λ_cl), 4 octaves, H = 0.5, signed. Draws: one permutation.
 function cloud(rng, P, { W, H, px }) {
   const f = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaCl, H: 0.5 });
-  const C = new Float32Array(W * H);
-  for (let j = 0, p = 0; j < H; j++) {
-    for (let i = 0; i < W; i++, p++) C[p] = P.aCl * f((i + 0.5) * px, (j + 0.5) * px);
-  }
-  return C;
+  return sampled((x, y) => P.aCl * f(x, y), W, H, px, stepFor(P.lambdaCl / 8, px));
 }
 
 // The pattern's parts and the sliders each depends on, so moving one slider redoes only its part.
