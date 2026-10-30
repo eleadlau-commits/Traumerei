@@ -65,9 +65,21 @@ Choices the spec left open:
   0 gives the spec's crisp edge. It doesn't change M8, which uses the unblurred threshold.
 - Mixes happen in OKLab: the mask view is `mix(paper, ink, mask)` and the base is
   `mix(paper, monochrome, mask)`.
+- **Tint τ** (Colour, added after the spec, default beige `#f2ebd9`, the old paper): a colour picker.
+  Everything takes its colours from τ (`palette()` in `colour.js`):
+  - paper = τ, and ink = OKLCh(min(0.27, 0.6 L_τ), C_τ / 2, h_τ). So the whole ink–paper line is
+    toned in τ's hue, with chroma C_τ (1 + t) / 2 along it, like a sepia print. The Mask and Field views
+    use the same line.
+  - The tan of the washi's fibres, web and flakes keeps its place relative to the paper:
+    tan = OKLCh(L_τ − 0.14, 2 C_τ, h_τ − 13°), which is the old tan at the default. Its absorber is taken
+    against the new paper. Specks and the spontaneity marks absorb toward the new ink. Cloudiness and
+    relief were grey multipliers already, so they follow on their own.
+  - Warmth Δw moves toward the tan's hue, h_τ − 13° (75° at the default).
+  - The defaults match the old look to within a byte, except the ink: it's now a dark beige
+    (#292620) where it was a violet grey (#29252b).
 - **Brightness ΔL and warmth Δw** (Colour, added after the spec, both 0 by default): the monochrome
   is moved by Δ = (ΔL, Δw cos 75°, Δw sin 75°) in OKLab before the mask mixes it over paper, so the
-  base is `mix(paper, monochrome + Δ, mask)` = the plain base + mask · Δ. 75° is the tan's hue:
+  base is `mix(paper, monochrome + Δ, mask)` = the plain base + mask · Δ. 75° (at the default tint) is the tan's hue:
   Δw > 0 is warmer, Δw < 0 cooler. Bare paper (mask 0) doesn't change. It shows in the Monochrome,
   Base, Washi and Living views, not in Mask or Field. At 0 the old lookup path is used, so the
   picture is exactly as before.

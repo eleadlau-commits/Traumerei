@@ -1,6 +1,8 @@
 // Every parameter, with its default and the range its slider covers.
 // Lengths and areas are in canvas units: the image's short side is 1.
 
+import { DEFAULT_TINT } from './colour.js';
+
 export const PARAMS = [
   { group: 'Monochrome', key: 'k', label: 'Contrast k', min: 0.5, max: 12, step: 0.1, value: 4 },
   { group: 'Monochrome', key: 'gamma', label: 'Gamma γ', min: 0.3, max: 3, step: 0.01, value: 1 },
@@ -107,4 +109,5 @@ export const PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group
 const SPONT_GROUPS = ['Timing', 'Placement', 'Marks', 'Life'];
 export const SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
 
-export const DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
+// The base tint τ isn't a slider: it's a colour, '#rrggbb', chosen with a colour picker.
+export const DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT };

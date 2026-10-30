@@ -741,6 +741,7 @@ dialog.dialog-box {
 .renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
 .renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 .renderer-value { font-family: var(--font-mono); color: var(--text); }
+.renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
 
 </style>
 </head>
@@ -2355,6 +2356,23 @@ dialog.dialog-box {
     const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
     return 0.2104542553 * Math.cbrt(l) + 0.793617785 * Math.cbrt(m) - 0.0040720468 * Math.cbrt(s);
   }
+  function linearToOklab([r, g, b]) {
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [
+      0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
+    ];
+  }
+  function hexToOklab(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return linearToOklab([n >> 16, n >> 8 & 255, n & 255].map((v) => linearise(v / 255)));
+  }
+  function oklabToOklch([L, a, b]) {
+    return [L, Math.hypot(a, b), (Math.atan2(b, a) * 180 / Math.PI + 360) % 360];
+  }
   function oklchToOklab(L, C, hDeg) {
     const h = hDeg * Math.PI / 180;
     return [L, C * Math.cos(h), C * Math.sin(h)];
@@ -2378,7 +2396,16 @@ dialog.dialog-box {
   var INK = oklchToOklab(0.27, 0.013, 315);
   var PAPER = oklchToOklab(0.94, 0.025, 88);
   var TAN = oklchToOklab(0.8, 0.05, 75);
-  var WARM_HUE = 75;
+  var DEFAULT_TINT = "#f2ebd9";
+  var ROUTE = { ramp: "toned", inclusions: "offset" };
+  function palette(tint = DEFAULT_TINT, route = ROUTE) {
+    const paper = hexToOklab(tint);
+    const [Lp, Cp, hp] = oklabToOklch(paper);
+    const ink = route.ramp === "toned" ? oklchToOklab(Math.min(0.27, 0.6 * Lp), Cp / 2, hp) : INK;
+    const warmHue = (hp - 13 + 360) % 360;
+    const tan = oklchToOklab(Math.max(0.05, Lp - 0.14), 2 * Cp, warmHue);
+    return { ink, paper, tan, warmHue, dye: route.inclusions === "dye" };
+  }
   function absorber(colour, paper = PAPER) {
     const c = oklabToLinear(colour);
     const p = oklabToLinear(paper);
@@ -3583,18 +3610,30 @@ dialog.dialog-box {
   var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
   var SPONT_GROUPS = ["Timing", "Placement", "Marks", "Life"];
   var SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
-  var DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
+  var DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT };
 
   // dist/web/features/renderer/engine/index.js
   var REROLLS = 8;
   var FIELD_SHORT = 320;
   var Engine = class {
     constructor() {
-      this.lut = inkPaperLUT();
-      this.ramp = linearRamp();
-      this.inkAbsorber = absorber(INK);
-      this.tanAbsorber = absorber(TAN);
       this.image = null;
+      this.colours({ tint: DEFAULT_TINT });
+    }
+    // The colours from the base tint τ: ink, paper and tan (palette()), the LUT and linear ramp between
+    // ink and paper, and the absorbers. Remade only when τ changes.
+    colours(P) {
+      const tint = P.tint || DEFAULT_TINT;
+      if (this.tint === tint) return;
+      const c = palette(tint);
+      this.tint = tint;
+      this.ink = c.ink;
+      this.paper = c.paper;
+      this.warmHue = c.warmHue;
+      this.lut = inkPaperLUT(c.ink, c.paper);
+      this.ramp = linearRamp(1024, c.ink, c.paper);
+      this.inkAbsorber = absorber(c.ink, c.paper);
+      this.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
     load(rgba, W, H) {
@@ -3662,14 +3701,16 @@ dialog.dialog-box {
     }
     // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
     // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
+    // Every view uses the colours of the base tint τ (colours()).
     // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
     // Living views; the Mask and Field views stay on the plain ink–paper line.
     view(name, P, r) {
       const { W, H } = this.image;
+      this.colours(P);
       const t = this.tone(P);
       const delta = this.shift(P);
       if (name === "monochrome") {
-        return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, INK, PAPER)) : paint(t, this.lut), width: W, height: H };
+        return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, this.ink, this.paper)) : paint(t, this.lut), width: W, height: H };
       }
       if (name === "pattern") return { rgba: this.washi(null, P), width: W, height: H };
       const { G, best } = r;
@@ -3684,16 +3725,17 @@ dialog.dialog-box {
       const m = this.fullMask(P, r);
       if (name === "mask") return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
       const tb = baseTone(t, m);
-      const lin = delta ? shiftedLinear(tb, m, delta, INK, PAPER) : null;
+      const lin = delta ? shiftedLinear(tb, m, delta, this.ink, this.paper) : null;
       if (name === "washi" || name === "living") return { rgba: this.washi(tb, P, lin), width: W, height: H };
       return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
     }
     // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
+    // Warmth moves toward the tan's hue, which follows the tint.
     shift(P) {
       const dL = P.baseL || 0;
       const dW = P.baseW || 0;
       if (!dL && !dW) return null;
-      const [, a, b] = oklchToOklab(0, dW, WARM_HUE);
+      const [, a, b] = oklchToOklab(0, dW, this.warmHue);
       return [dL, a, b];
     }
     // P6 over base tone t (null for bare paper), or over lin, the shifted base in linear RGB.
@@ -3707,6 +3749,7 @@ dialog.dialog-box {
     // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
     // slider change shows its marks at the same moment t.
     living(P, rgba) {
+      this.colours(P);
       const { seed, X, Y, W, H } = this.image;
       return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
     }
@@ -3812,6 +3855,7 @@ dialog.dialog-box {
     "gamma",
     "dMin",
     "dMax",
+    "tint",
     "baseL",
     "baseW",
     "delta",
@@ -3879,6 +3923,15 @@ dialog.dialog-box {
       this.seedLine = el4("p", { class: "renderer-seed" });
       this.report = el4("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
+      this.tintInput = el4("input", {
+        type: "color",
+        value: this.P.tint,
+        "aria-label": "Tint τ",
+        oninput: (e) => this.change("tint", e.target.value)
+      });
+      this.controls.groups.get("Colour").querySelector("legend").after(
+        el4("label", { class: "renderer-slider renderer-colour" }, el4("span", {}, "Tint τ"), this.tintInput)
+      );
       const fold = (title, ...kids) => el4(
         "details",
         { class: "advanced renderer-fold" },
@@ -3982,6 +4035,7 @@ dialog.dialog-box {
       this.P = { ...DEFAULTS };
       this.storage.set("params", this.P);
       this.controls.set(this.P);
+      this.tintInput.value = this.P.tint;
       this.remask();
     }
     remask() {

@@ -23,6 +23,29 @@ export function oklabL(r, g, b) {
   return 0.2104542553 * Math.cbrt(l) + 0.7936177850 * Math.cbrt(m) - 0.0040720468 * Math.cbrt(s);
 }
 
+// Linear RGB → OKLab [L, a, b] (Ottosson's forward matrices).
+export function linearToOklab([r, g, b]) {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
+
+// '#rrggbb' → OKLab.
+export function hexToOklab(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return linearToOklab([n >> 16, (n >> 8) & 255, n & 255].map((v) => linearise(v / 255)));
+}
+
+// OKLab → OKLCh [L, C, h in degrees].
+export function oklabToOklch([L, a, b]) {
+  return [L, Math.hypot(a, b), ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360];
+}
+
 // OKLCh (h in degrees) → OKLab [L, a, b].
 export function oklchToOklab(L, C, hDeg) {
   const h = (hDeg * Math.PI) / 180;
@@ -56,6 +79,29 @@ export const TAN = oklchToOklab(0.8, 0.05, 75);
 
 // The warm direction in OKLab's a–b plane: the tan's hue. Warmth moves toward it, coolness away.
 export const WARM_HUE = 75;
+
+// The default base tint: the beige paper, as the colour picker holds it.
+export const DEFAULT_TINT = '#f2ebd9';
+
+// The colours that follow from the base tint τ ('#rrggbb'). ROUTE picks how (see palette()).
+export const ROUTE = { ramp: 'toned', inclusions: 'offset' };
+
+// palette(τ) → { ink, paper, tan, warmHue, dye }, OKLab colours.
+//   ramp 'paper':  paper = τ, ink as it was.
+//   ramp 'toned':  paper = τ, ink = OKLCh(0.27, C_τ / 2, h_τ): the whole ink–paper line takes τ's hue,
+//                  with chroma C_τ (1 + t) / 2 along it.
+//   inclusions 'offset': the tan keeps its place relative to the paper,
+//                  OKLCh(L_τ − 0.14, 2 C_τ, h_τ − 13°), and warmth Δw moves toward its hue.
+//   inclusions 'dye': fibres and flakes absorb like τ itself (Beer–Lambert): dye = true, and the
+//                  absorber is a_c ∝ −ln τ_c rather than relative to the paper.
+export function palette(tint = DEFAULT_TINT, route = ROUTE) {
+  const paper = hexToOklab(tint);
+  const [Lp, Cp, hp] = oklabToOklch(paper);
+  const ink = route.ramp === 'toned' ? oklchToOklab(Math.min(0.27, 0.6 * Lp), Cp / 2, hp) : INK;
+  const warmHue = (hp - 13 + 360) % 360;
+  const tan = oklchToOklab(Math.max(0.05, Lp - 0.14), 2 * Cp, warmHue);
+  return { ink, paper, tan, warmHue, dye: route.inclusions === 'dye' };
+}
 
 // An absorber that darkens paper toward a colour: per channel, a_c = −ln(colour_c / paper_c) in
 // linear light, scaled so the luminance-weighted sum is 1. exp(−D · a) then darkens by about e^(−D).
