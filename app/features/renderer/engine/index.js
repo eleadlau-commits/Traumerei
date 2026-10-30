@@ -35,13 +35,14 @@ export class Engine {
   }
 
   // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
-  load(rgba, W, H) {
+  // seed: pass one to keep it when the same picture is loaded again at another size.
+  load(rgba, W, H, seed = imageSeed(rgba, W, H)) {
     const L = lightness(rgba);
     const s = Math.min(W, H);
     this.image = {
       W, H, X: W / s, Y: H / s,
       L, bw: quantiles(L, [0.01, 0.99]),
-      seed: imageSeed(rgba, W, H),
+      seed,
     };
     this.toneCache = null;
     this.maskCache = null;
