@@ -50,3 +50,4 @@
 .renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
 .renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 .renderer-value { font-family: var(--font-mono); color: var(--text); }
+.renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
