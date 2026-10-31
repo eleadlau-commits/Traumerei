@@ -776,8 +776,132 @@ dialog.dialog-box {
 /* Settings → Typeface: each choice in its own face. */
 .home-fonts button, .home-fonts button[aria-selected="true"] { font-size: 15px; font-weight: 400; }
 
+/* ---- The menu: "Veil" ----
+   No panel and no dark backdrop: when the menu opens the light comes up, the page goes pale and
+   soft-focus behind a veil, and the words stand on the left in the home page's type. Who is
+   signed in sits small at the bottom. The three lines become a thin cross in the same place.
+   Folio's Menu still opens and closes it (tap the empty veil, Escape, back, swipe left);
+   this only restyles it. Closing must finish within Menu.js's SLIDE_MS (280ms). */
+:root {
+  --veil-glow: rgb(255 253 248 / .78);
+  --veil-mid: rgb(250 247 240 / .55);
+  --veil-far: rgb(250 247 240 / .38);
+}
+dialog.menu-drawer { background: transparent; color: var(--home-ink); font-family: var(--home-font); }
+.menu-drawer::backdrop { background: transparent; }
+dialog.menu-drawer::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
+  -webkit-backdrop-filter: blur(14px) saturate(.9);
+  backdrop-filter: blur(14px) saturate(.9);
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.menu-drawer.shown::before { opacity: 1; transition: opacity .7s cubic-bezier(.22, .7, .18, 1); }
+
+.menu-drawer .menu-panel {
+  position: relative;
+  width: 100%;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  transform: none;
+  justify-content: center;
+  padding: calc(84px + env(safe-area-inset-top)) var(--gutter) calc(120px + env(safe-area-inset-bottom));
+  padding-left: calc(var(--gutter) + 12px);
+}
+/* The cross, where the three lines were. Tapping it (or any empty part) closes the menu. */
+.menu-drawer .menu-panel::before, .menu-drawer .menu-panel::after {
+  content: "";
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top) + 21.4px);
+  left: calc(var(--gutter) + 12px);
+  width: 20px;
+  height: 1.25px;
+  border-radius: 1px;
+  background: var(--home-ink);
+  opacity: 0;
+  transition: transform .25s ease, opacity .2s;
+  pointer-events: none;
+}
+.menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
+  opacity: .8;
+  transition: transform .5s cubic-bezier(.22, .7, .18, 1), opacity .3s;
+}
+.menu-drawer.shown .menu-panel::before { transform: rotate(45deg); }
+.menu-drawer.shown .menu-panel::after { transform: rotate(-45deg); }
+
+.menu-drawer .menu-list { display: grid; justify-items: start; gap: clamp(18px, 3.2vh, 30px); padding: 0; }
+.menu-drawer .menu-row {
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  font-size: clamp(20px, 2.4vw, 26px);
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(8px);
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px 100%;
+  background-size: 0 1px;
+  transition: opacity .2s, transform .25s, background-size .3s;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-drawer .menu-row svg { display: none; }
+.menu-drawer.shown .menu-row {
+  opacity: .7;
+  transform: none;
+  transition: opacity .5s cubic-bezier(.22, .7, .18, 1), transform .7s cubic-bezier(.22, .7, .18, 1), background-size .3s;
+}
+.menu-drawer.shown .menu-row:nth-child(1) { transition-delay: .10s, .10s, 0s; }
+.menu-drawer.shown .menu-row:nth-child(2) { transition-delay: .17s, .17s, 0s; }
+.menu-drawer.shown .menu-row:nth-child(3) { transition-delay: .24s, .24s, 0s; }
+.menu-drawer.shown .menu-row:nth-child(4) { transition-delay: .31s, .31s, 0s; }
+.menu-drawer.shown .menu-row:nth-child(n+5) { transition-delay: .38s, .38s, 0s; }
+.menu-drawer .menu-row:hover, .menu-drawer .menu-row:focus-visible {
+  opacity: 1;
+  outline: none;
+  background-size: calc(100% - 4px - .26em) 1px;
+}
+
+/* Who is signed in: small, at the bottom left, under a short hairline. */
+.menu-drawer .menu-top {
+  position: absolute;
+  left: calc(var(--gutter) + 14px);
+  bottom: calc(56px + env(safe-area-inset-bottom));
+  width: auto;
+  padding: 18px 0 4px;
+  display: grid;
+  background: none;
+  color: inherit;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.menu-drawer.shown .menu-top { opacity: .5; transition: opacity .6s .38s; }
+.menu-drawer .menu-top:hover, .menu-drawer .menu-top:focus-visible { opacity: .8; outline: none; }
+.menu-drawer .menu-top::before { content: ""; position: absolute; top: 0; left: 0; width: 36px; height: 1px; background: currentColor; opacity: .5; }
+.menu-drawer .menu-avatar { display: none; }
+.menu-drawer .menu-who { gap: 6px; }
+.menu-drawer .menu-who b, .menu-drawer .menu-who small {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: inherit;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-link { transition: none; }
+  .menu-drawer .menu-row, .menu-drawer .menu-top, dialog.menu-drawer::before,
+  .menu-drawer .menu-panel::before, .menu-drawer .menu-panel::after { transition: none !important; transform: none; }
+  .menu-drawer.shown .menu-panel::before { transform: rotate(45deg); }
+  .menu-drawer.shown .menu-panel::after { transform: rotate(-45deg); }
 }
 
 /* ---- feature: renderer (style.css) ---- */
@@ -2499,6 +2623,10 @@ dialog.dialog-box {
         )
       );
       (document.getElementById("folio-root") || document.body).append(this.page);
+      this.add("header.buttons", { id: "home-create", label: "Create", icon: "plus", order: 5, onClick: () => this.create() });
+      document.addEventListener("click", (e) => {
+        if (e.target.matches?.("dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list")) this.app.shell?.closeMenu?.();
+      });
       this.add("settings", { id: "home-typeface", title: "Typeface", order: 20, render: () => this.typeface() });
     }
     // ---- The three words: nothing yet ----

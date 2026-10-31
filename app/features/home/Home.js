@@ -27,6 +27,13 @@ export default class Home extends Feature {
           el('button', { type: 'button', class: 'home-link', onclick: () => this.account() }, 'Account'))));
     (document.getElementById('folio-root') || document.body).append(this.page);
 
+    // Create is also the first word in the menu (Folio adds Account, Settings and About).
+    this.add('header.buttons', { id: 'home-create', label: 'Create', icon: 'plus', order: 5, onClick: () => this.create() });
+    // The menu is a veil over the whole screen (style.css): tapping its empty part closes it.
+    document.addEventListener('click', (e) => {
+      if (e.target.matches?.('dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list')) this.app.shell?.closeMenu?.();
+    });
+
     this.add('settings', { id: 'home-typeface', title: 'Typeface', order: 20, render: () => this.typeface() });
   }
 
