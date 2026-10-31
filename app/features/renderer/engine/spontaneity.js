@@ -1,5 +1,5 @@
 // The Spontaneity layer, steps S1–S5: dots, dashes and marks that are drawn in, linger and dissolve.
-//   S1  timing: a Hawkes process, λ(t) = μ + Σ_{tᵢ < t} (n / τ_h) e^(−(t − tᵢ)/τ_h), simulated exactly
+//   S1  timing (engine/hawkes.js, shared with the other modes): a Hawkes process, λ(t) = μ + Σ_{tᵢ < t} (n / τ_h) e^(−(t − tᵢ)/τ_h), simulated exactly
 //       by Ogata's thinning. n = 0 is a Poisson process; the mean rate is μ / (1 − n).
 //   S2  placement: a background mark lands uniformly on the canvas, independent of the anchor and
 //       the mask; an offspring lands near its parent, x = x_parent + σ_c ξ, heading θ_parent + σ_θ ξ.
@@ -12,6 +12,7 @@
 // The same seed and sliders always give the same marks at the same moment, however the frames fall.
 
 import { stream } from './random.js';
+import { Hawkes } from './hawkes.js';
 import { smoothstep } from './field.js';
 import { erf, taper } from './pattern.js';
 import { LINEAR_BYTE, SRGB_BYTE } from './colour.js';
@@ -25,51 +26,27 @@ const logNormal = (rng, median, spread) => median * Math.exp(spread * rng.N());
 export class Spontaneity {
   constructor(seed, X, Y, P) {
     Object.assign(this, { X, Y, P });
-    this.time = stream(seed, ':spont:time');
+    this.hawkes = new Hawkes(stream(seed, ':spont:time'));
     this.place = stream(seed, ':spont:place');
     this.look = stream(seed, ':spont:marks');
-    this.s = 0; // the process has been simulated up to s
-    this.E = 0; // the excitation Σ (n / τ_h) e^(−(s − tᵢ)/τ_h)
-    this.next = null; // a candidate time already drawn, with the bound it was drawn under
-    this.recent = []; // marks still able to be parents
     this.live = [];
     this.count = 0;
   }
 
-  // S1. Every event up to t, then the marks still visible at t.
+  // The Hawkes state, kept readable and settable here (tests reset it to stop new marks).
+  get E() { return this.hawkes.E; }
+  set E(v) { this.hawkes.E = v; }
+  get next() { return this.hawkes.next; }
+  set next(v) { this.hawkes.next = v; }
+
+  // S1 (engine/hawkes.js). Every event up to t, then the marks still visible at t.
   advance(t) {
-    const { mu, nH, tauH } = this.P;
-    const n = Math.min(nH, 0.95);
-    for (;;) {
-      if (!this.next) {
-        const bound = mu + this.E;
-        if (!(bound > 0)) break;
-        this.next = { t: this.s - Math.log(1 - this.time.U()) / bound, bound };
-      }
-      if (this.next.t > t) break;
-      const { t: tc, bound } = this.next;
-      this.next = null;
-      this.E *= Math.exp(-(tc - this.s) / tauH);
-      this.s = tc;
-      const lambda = mu + this.E;
-      if (this.time.U() * bound > lambda) continue; // thinned
-      // Immigrant with probability μ / λ, else a parent j with probability ∝ its share of E.
-      let parent = null;
-      let pick = this.time.U() * lambda - mu;
-      if (pick >= 0) {
-        for (const r of this.recent) {
-          pick -= (n / tauH) * Math.exp(-(tc - r.t0) / tauH);
-          parent = r;
-          if (pick < 0) break;
-        }
-      }
+    this.hawkes.advance(t, this.P, (tc, parent) => {
       const mk = this.birth(tc, parent);
-      this.E += n / tauH;
-      this.recent.push(mk);
       this.live.push(mk);
       this.count++;
-    }
-    this.recent = this.recent.filter((r) => this.s - r.t0 < 20 * tauH);
+      return mk;
+    });
     this.live = this.live.filter((mk) => t - mk.t0 < mk.Td + mk.T + OUT * mk.tauF);
     return this.live;
   }
