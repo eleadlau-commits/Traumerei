@@ -1,0 +1,7 @@
+{
+  "name": "Home",
+  "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.",
+  "version": "1.0.0",
+  "main": "Home.js",
+  "styles": ["style.css"]
+}

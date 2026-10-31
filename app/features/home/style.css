@@ -1,0 +1,90 @@
+/* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
+   their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
+
+:root {
+  --home-ink: #2b2a28;
+  --home-font: "Tenor Sans", sans-serif;
+}
+
+/* The page over the picture: the name in the middle, a little above centre. Only the words
+   take clicks, so the picture underneath still can (e.g. moving the anchor). */
+.home {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 5vh, 56px);
+  padding: 0 24px 6vh;
+  pointer-events: none;
+  color: var(--home-ink);
+  font-family: var(--home-font);
+  text-align: center;
+}
+.home-font-loading .home { visibility: hidden; } /* no flash of the fallback face */
+
+.home-title {
+  margin: 0;
+  font-family: inherit;
+  font-weight: 400;
+  font-size: clamp(36px, 8vw, 104px);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  /* Letter spacing adds space after the last letter too; this keeps the word truly centred. */
+  margin-right: -0.12em;
+  opacity: 0.88;
+}
+
+.home-nav { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.home-row { display: flex; gap: clamp(28px, 4vw, 48px); }
+
+/* Plain words, not buttons: no fill, no border, no shadow. A hairline appears under the word
+   on hover or focus. */
+.home-link {
+  pointer-events: auto;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 6px 2px;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  margin-right: -0.22em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.62;
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px 100%;
+  background-size: 0 1px;
+  transition: opacity 0.2s, background-size 0.25s;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-link.home-create { font-size: 25px; opacity: 0.8; }
+.home-link:hover, .home-link:focus-visible { opacity: 1; background-size: calc(100% - 4px - 0.22em) 1px; outline: none; }
+
+/* The top bar: only the menu button, as the three lines alone at 80% opacity. */
+.topbar .top-btn {
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--home-ink);
+  opacity: 0.8;
+}
+.topbar .top-btn:hover { opacity: 1; }
+.topbar .top-right { display: none; }
+
+/* Settings → Typeface: each choice in its own face. */
+.home-fonts button, .home-fonts button[aria-selected="true"] { font-size: 15px; font-weight: 400; }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-link { transition: none; }
+}
