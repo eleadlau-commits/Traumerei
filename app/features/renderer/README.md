@@ -45,15 +45,61 @@ Washi is shown. The maths is in `engine/plain.js`:
   OKLCh(L_g, min(0.14, 1.4 C_b + 0.03), h_b + Δh). They're drawn on a canvas a quarter of the screen's
   size and screen-blended over the picture by the browser.
 
+## The Planar theme
+
+**Settings → Theme → Planar** (saved as `theme`, its view as `planarView`). So far only its base is built:
+the picture dissolved into a still fog of its own colours, where you can sense its palette and where
+its light, dark and colour lie, but no shape. Its pattern (a latent network of rectangles) and its
+spontaneity (flashes along that network) come next. Its sliders are under **Fog**. The maths is in
+`engine/planar.js`:
+
+- **F1 sample.** The picture, area-averaged in linear light onto 48 cells on the short side, to OKLab.
+  A picture with almost no colour (mean chroma under 0.012, such as the white start) keeps its
+  lightness and takes the tint τ's a and b.
+- **F2 palette.** K = 6 colours c_k by k-means in OKLab over the cells: k-means++ from the stream
+  `:planar:palette`, then 12 Lloyd steps. Their shares are in the report.
+- **F3 fields.** Each cell's soft membership of each colour, m_k = softmax(−|Lab − c_k|² / 2τ_m²) with
+  τ_m = 0.06, then each field blurred by a Gaussian of standard deviation σ (**Coarseness σ**, canvas units).
+  The fields are blurred, not the colours, so the fog keeps the picture's real colours instead of
+  averaging them into mud.
+- **F4 fog.** fog(x) = Σ_k w_k c_k with w_k = M_k^p / Σ_j M_j^p, p = 1.5, so colours stay apart and meet
+  in soft fronts.
+- **F5 drift.** fog'(x) = fog(x + A w(x / λ_d)), with w a 2D fBm vector field (2 octaves, λ_d = 0.25,
+  stream `:planar:fog`): the fog is read through a slow seeded warp, so colour drifts into veils
+  (**Unevenness A**).
+- **F6 tone.** L' = L_lo + (L_hi − L_lo) L (**Darkest L_lo**, **Lightest L_hi**: the lightness band) and
+  C' = c C (**Colour strength c**), same hue, then to sRGB (chroma reduced until it fits). Evaluated on
+  96 cells on the short side, filled in bilinearly, with a ±½ dither per 8-bit channel.
+
+Choices the spec left open:
+- K = 6, τ_m = 0.06, p = 1.5, λ_d = 0.25 and 2 octaves are fixed, not sliders. p above about 2 would
+  sharpen the fronts into edges, which would be shapes.
+- The lightness band is absolute (L = 0 → L_lo, L = 1 → L_hi), not stretched to the picture's own range,
+  so a night picture gives a darker fog than a day one. White gives L_hi.
+- The grey test is Plain's (mean chroma under 0.012); a grey picture's fog keeps its lightness layout.
+- The fog's sample and fog grids are fixed in cells per canvas unit, so the fog doesn't change with the
+  screen's size.
+
 ## How it's built
 
 `engine/` is the rendering engine. It has no screen code and doesn't use Folio, so it can be
-mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`, `pattern(P)` and
-`view(name, P, result)`.
+mounted by any page: `new Engine()`, `load(rgba, W, H)`, then for a mode `render(mode, view, P, ctx)`,
+`animate(mode, P, picture, ctx)` and `report(mode, P, view, ctx)`.
+
+Each theme is a **mode**: a plain description in `engine/modes/<id>.js` (the shape is written out in
+`engine/modes/index.js`). It names its views, its slider folds, whether it uses the anchor, the sliders
+that only change its animation, and its cached **stages** (each remade only when the values of its own
+keys change). Its animation is a pure function of time t, one of two kinds: `pixels` (rectangles of
+the picture to repaint, Washi's marks) or `layer` (shapes in canvas units drawn on their own canvas and
+blended over the picture by the browser, Plain's lights). `Renderer.js` knows nothing about any one
+mode, so a new theme is a new file in `engine/modes/` listed in `MODES`. The older calls (`mask`,
+`view`, `pattern`, `living`, `plainView`, `glow`, …) stay on `Engine` as thin wrappers.
 
 | File | What's in it |
 |---|---|
-| `engine/index.js` | `Engine`: caches the monochrome, runs M1–M8 with re-rolls, makes each view's pixels |
+| `engine/index.js` | `Engine`: loads the picture, caches each mode's stages, runs a mode's views, animation and report |
+| `engine/modes/` | One file per mode (`washi.js`: M1–M8 with re-rolls and its views; `plain.js`), and `index.js`, the list |
+| `engine/hawkes.js` | S1, the Hawkes timing by Ogata's thinning, shared by every mode's spontaneity |
 | `engine/params.js` | Every parameter with its default and slider range |
 | `engine/random.js` | cyrb53, mulberry32 streams, Box–Muller |
 | `engine/colour.js` | sRGB ↔ linear, OKLab L, OKLCh → sRGB, the ink–paper lookup table, the tan, absorbers |
@@ -63,10 +109,11 @@ mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`,
 | `engine/field.js` | M5–M7: the warped field, roughness, threshold |
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
+| `engine/planar.js` | The Planar theme: the fog (F1–F6) |
 | `engine/plain.js` | The Plain theme: the dominant hue (B), the blurred fluid field (P), its colours, and the glow's lights (G) |
 | `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |
-| `Renderer.js`, `controls.js`, `report.js` | The page, the sliders, the report text |
+| `Renderer.js`, `controls.js`, `report.js` | The page, the controls (sliders, colour pickers, choices), the report text |
 
 Choices the spec left open:
 - The seed is taken from the picture scaled down to at most 2048 px on its long side, so it
@@ -165,7 +212,8 @@ The picture itself isn't saved.
 1. Run `python build.py serve` and open http://localhost:8000.
 2. Open Settings from the menu. Under Advanced, choose a picture, show the anchor and tap the
    picture, move some sliders, and switch views.
-3. Run `python build.py test`.
+3. Run `python build.py test`. `tests/golden.test.js` holds a fingerprint of every Washi and Plain
+   output for a fixed picture, so any change to what they draw, down to one byte, fails it.
 
 The spontaneity layer (S1–S5), the living one:
 - **S1 timing.** A Hawkes process with an exponential kernel,

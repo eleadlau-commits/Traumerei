@@ -1,61 +1,39 @@
 // The rendering engine. No screen code and no Folio: the page mounts it and hands it pixels.
+// Each mode (Washi, Plain) is a description in engine/modes/ that the engine runs; see modes/index.js.
 //
 //   const engine = new Engine();
-//   engine.load(rgba, W, H);              // monochrome lightness + seed, cached
-//   const r = engine.mask(P, anchor);     // M1–M8, with re-rolls; anchor in fractions of W, H
-//   const img = engine.view('base', P, r) // { rgba, width, height }
-//   const pat = engine.pattern(P);        // P1–P5: { Dw, Dk, C, S, counts, ms }, cached
-//   const live = engine.living(P, img.rgba) // S1–S5 over the Washi pixels; live.frame(t) each frame
-//   const p = engine.plainView('plain', P)  // the Plain theme: base, pattern, plain or living
-//   const glow = engine.glow(P)              // its lights: glow.at(t) → [{ x, y, r, a }], glow.colour
+//   engine.load(rgba, W, H);                       // monochrome lightness + seed, cached
+//   const pic = engine.render(mode, 'base', P, ctx) // a mode's view: { rgba, width, height }
+//   const anim = engine.animate(mode, P, pic, ctx)  // its spontaneity, a pure function of t
+//   engine.stage(mode, name, P, input)              // a mode's cached stage
+//
+// The older calls stay, for Washi: mask(P, anchor), view(name, P, r), pattern(P), living(P, rgba);
+// and for Plain: hue(P), plainBase(P), plainField(P), plainView(name, P), glow(P).
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
-import { inkPaperLUT, linearRamp, absorber, oklchToOklab, palette, DEFAULT_TINT } from './colour.js';
-import { lightness, quantiles, tone, imageSeed } from './monochrome.js';
-import { stream, seedText } from './random.js';
-import { skeleton } from './skeleton.js';
-import { grid, field } from './field.js';
-import { components, judge } from './components.js';
-import { paint, paintLinear, shiftedLinear, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
-import { part, combine, PARTS } from './pattern.js';
-import { Spontaneity, Living } from './spontaneity.js';
-import { dominantHue, baseColour, plainField, plainRGB, Glow } from './plain.js';
+import { DEFAULT_TINT } from './colour.js';
+import { lightness, quantiles, imageSeed } from './monochrome.js';
+import { seedText } from './random.js';
+import * as washi from './modes/washi.js';
+import * as plain from './modes/plain.js';
 
-export { PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS, PLAIN_KEYS, PLAIN_FIELD_KEYS } from './params.js';
-import { PLAIN_FIELD_KEYS } from './params.js';
+export { PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS, PLAIN_KEYS, PLAIN_FIELD_KEYS, keysOf } from './params.js';
 export { expected } from './spontaneity.js';
-
-const REROLLS = 8;
-const FIELD_SHORT = 320;
+export { MODES, modeById } from './modes/index.js';
 
 export class Engine {
   constructor() {
     this.image = null;
-    this.colours({ tint: DEFAULT_TINT });
-  }
-
-  // The colours from the base tint τ: ink, paper and tan (palette()), the LUT and linear ramp between
-  // ink and paper, and the absorbers. Remade only when τ changes.
-  colours(P) {
-    const tint = P.tint || DEFAULT_TINT;
-    if (this.tint === tint) return;
-    const c = palette(tint);
-    this.tint = tint;
-    this.ink = c.ink;
-    this.paper = c.paper;
-    this.warmHue = c.warmHue;
-    this.lut = inkPaperLUT(c.ink, c.paper);
-    this.ramp = linearRamp(1024, c.ink, c.paper);
-    this.inkAbsorber = absorber(c.ink, c.paper);
-    this.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
+    this.stages = {};
+    washi.colours(this, { tint: DEFAULT_TINT });
   }
 
   // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
   // seed: pass one to keep it when the same picture is loaded again at another size.
   load(rgba, W, H, seed = imageSeed(rgba, W, H)) {
     const L = lightness(rgba);
-    this.rgba = rgba; // kept for the Plain theme's dominant hue
+    this.rgba = rgba; // kept for the modes that read the picture's colours
     const s = Math.min(W, H);
     this.image = {
       W, H, X: W / s, Y: H / s,
@@ -65,164 +43,44 @@ export class Engine {
     this.toneCache = null;
     this.maskCache = null;
     this.patternCache = null;
-    this.hueCache = null;
-    this.plainCache = null;
+    this.stages = {};
     return { seed: this.image.seed, seedText: seedText(this.image.seed) };
   }
 
-  // Steps 3–5, cached while their parameters stay the same.
-  tone(P) {
-    const key = [P.k, P.gamma, P.dMin, P.dMax].join();
-    if (this.toneCache?.key !== key) this.toneCache = { key, t: tone(this.image.L, this.image.bw, P) };
-    return this.toneCache.t;
+  // A mode's stage, made again only when the values of its keys or its input change.
+  stage(mode, name, P, input = null) {
+    const def = mode.stages[name];
+    const key = `${def.keys.map((k) => P[k]).join()}|${JSON.stringify(input)}`;
+    const id = `${mode.id}:${name}`;
+    if (this.stages[id]?.key !== key) this.stages[id] = { key, value: def.make(this, P, input) };
+    return this.stages[id].value;
   }
 
-  // M1–M8 for one attempt: streams seed + ':skeleton', ':warp', ':noise', with ':n' on re-roll n.
-  attempt(n, P, anchor, G) {
-    const { seed, X, Y } = this.image;
-    const tag = n ? `:${n}` : '';
-    const sk = skeleton(stream(seed, ':skeleton' + tag), anchor, X, Y, P);
-    const f = field(G, sk.patches, stream(seed, ':warp' + tag), stream(seed, ':noise' + tag), P);
-    const comps = components(G, f.Fp, f.T, P.Amin);
-    const verdict = judge(comps, anchor, sk.patches[0].r, sk.main.how, P.sigma);
-    return { n, ...sk, ...f, comps, verdict };
+  render(mode, name, P, ctx = {}) {
+    return mode.view(this, name, P, ctx);
   }
 
-  // The mask with its re-rolls: the first attempt that passes, or else the best one.
-  mask(P, anchorFrac) {
-    const { X, Y, W, H } = this.image;
-    const anchor = { x: anchorFrac.x * X, y: anchorFrac.y * Y };
-    const G = grid(X, Y, Math.min(FIELD_SHORT, Math.min(W, H)));
-    const attempts = [];
-    let best = null;
-    for (let n = 0; n <= REROLLS; n++) {
-      const a = this.attempt(n, P, anchor, G);
-      attempts.push(a);
-      if (!best || a.verdict.score < best.verdict.score) best = a;
-      if (a.verdict.pass) break;
-    }
-    return { G, anchor, attempts, best };
+  animate(mode, P, picture, ctx = {}) {
+    return mode.living(this, P, picture, ctx);
   }
 
-  // P1–P5 at the image's size. Each part is cached while its own sliders stay the same.
-  pattern(P) {
-    const { seed, X, Y, W, H } = this.image;
-    const c = (this.patternCache ||= { parts: {} });
-    const t0 = performance.now();
-    let changed = !c.Dw;
-    for (const [name, keys] of Object.entries(PARTS)) {
-      const key = keys.map((k) => P[k]).join();
-      if (c.parts[name]?.key === key) continue;
-      c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
-      changed = true;
-    }
-    if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
-    return c;
+  report(mode, P, name, ctx = {}) {
+    return mode.report(this, P, name, ctx);
   }
 
-  // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
-  // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
-  // Every view uses the colours of the base tint τ (colours()).
-  // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
-  // Living views; the Mask and Field views stay on the plain ink–paper line.
-  view(name, P, r) {
-    const { W, H } = this.image;
-    this.colours(P);
-    const t = this.tone(P);
-    const delta = this.shift(P);
-    if (name === 'monochrome') {
-      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, this.ink, this.paper)) : paint(t, this.lut), width: W, height: H };
-    }
-    if (name === 'pattern') return { rgba: this.washi(null, P), width: W, height: H };
-    const { G, best } = r;
-    if (name === 'field') {
-      return { rgba: paint(heightTone(best.Fp, best.max), this.lut), width: G.gw, height: G.gh,
-        contour: contour(G, best.Fp, best.T) };
-    }
-    const m = this.fullMask(P, r);
-    if (name === 'mask') return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
-    const tb = baseTone(t, m);
-    const lin = delta ? shiftedLinear(tb, m, delta, this.ink, this.paper) : null;
-    if (name === 'washi' || name === 'living') return { rgba: this.washi(tb, P, lin), width: W, height: H };
-    return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
-  }
+  // ---- Washi (engine/modes/washi.js) ----
+  colours(P) { return washi.colours(this, P); }
+  tone(P) { return washi.tone(this, P); }
+  mask(P, anchor) { return washi.mask(this, P, anchor); }
+  pattern(P) { return washi.pattern(this, P); }
+  view(name, P, r) { return washi.view(this, name, P, r); }
+  living(P, rgba) { return washi.living(this, P, rgba); }
+  fullMask(P, r) { return washi.fullMask(this, P, r); }
 
-  // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
-  // Warmth moves toward the tan's hue, which follows the tint.
-  shift(P) {
-    const dL = P.baseL || 0;
-    const dW = P.baseW || 0;
-    if (!dL && !dW) return null;
-    const [, a, b] = oklchToOklab(0, dW, this.warmHue);
-    return [dL, a, b];
-  }
-
-  // P6 over base tone t (null for bare paper), or over lin, the shifted base in linear RGB.
-  // Warmth κ mixes the inclusions' absorber from ink to tan.
-  washi(t, P, lin = null) {
-    const k = P.warmth;
-    const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
-    return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber, lin);
-  }
-
-  // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the
-  // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
-  // slider change shows its marks at the same moment t.
-  living(P, rgba) {
-    this.colours(P);
-    const { seed, X, Y, W, H } = this.image;
-    return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
-  }
-
-  // ---- The Plain theme (engine/plain.js) ----
-
-  // B1–B5: the dominant hue of the picture, or the tint τ when it has almost none. Cached per picture and τ.
-  hue(P) {
-    const tint = P.tint || DEFAULT_TINT;
-    if (this.hueCache?.tint !== tint) {
-      const { W, H } = this.image;
-      this.hueCache = { tint, hue: dominantHue(this.rgba, W, H, tint) };
-    }
-    return this.hueCache.hue;
-  }
-
-  // The base colour b after its sliders.
-  plainBase(P) {
-    return baseColour(this.hue(P), P);
-  }
-
-  // P1–P5: φ on its grid, cached while the field's sliders stay the same.
-  plainField(P) {
-    const key = PLAIN_FIELD_KEYS.map((k) => P[k]).join();
-    if (this.plainCache?.key !== key) {
-      const { seed, X, Y } = this.image;
-      const t0 = performance.now();
-      this.plainCache = { key, ...plainField(seed, X, Y, P) };
-      this.plainCache.ms = performance.now() - t0;
-    }
-    return this.plainCache;
-  }
-
-  // Pixels for a Plain view at the image's size: 'base', 'pattern', 'plain' or 'living'
-  // ('living' is the still picture; the page lays the glow over it).
-  plainView(name, P) {
-    const { W, H } = this.image;
-    return { rgba: plainRGB(name, this.plainField(P), this.plainBase(P), P, W, H), width: W, height: H };
-  }
-
-  // G1–G3: the lights (stream seed + ':plain:glow').
-  glow(P) {
-    const { seed, X, Y } = this.image;
-    return new Glow(seed, X, Y, P, this.plainBase(P));
-  }
-
-  fullMask(P, r) {
-    const c = this.maskCache;
-    if (c?.r !== r || c.delta !== P.delta || c.feather !== P.feather) {
-      const { W, H } = this.image;
-      const m = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W, H, P.feather);
-      this.maskCache = { r, delta: P.delta, feather: P.feather, m };
-    }
-    return this.maskCache.m;
-  }
+  // ---- Plain (engine/modes/plain.js) ----
+  hue(P) { return plain.hue(this, P); }
+  plainBase(P) { return plain.base(this, P); }
+  plainField(P) { return plain.field(this, P); }
+  plainView(name, P) { return plain.view(this, name, P); }
+  glow(P) { return plain.glow(this, P); }
 }

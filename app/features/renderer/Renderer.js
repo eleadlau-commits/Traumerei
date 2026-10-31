@@ -7,55 +7,37 @@
 // Living is the only view that moves: its marks are drawn every frame while it's showing.
 // All the maths is in engine/, which this page mounts and feeds with pixels.
 //
-// There are two themes (Settings → Theme). Washi is all of the above. Plain (engine/plain.js) is one
-// flat colour from the picture's dominant hue, lifted by a blurred fluid field, with soft lights
-// drifting over it; its views are Base, Pattern, Plain and Living, and its sliders replace Washi's.
-// The glow is drawn on its own small canvas and screen-blended over the picture by the browser.
+// The themes (Settings → Theme) are the engine's modes (engine/modes/): Washi is all of the above, and
+// Plain is one flat colour from the picture's dominant hue, lifted by a blurred fluid field, with soft
+// lights drifting over it. This page knows nothing about either: it shows a mode's views, folds and
+// sliders, draws its still picture, and plays its animation. A 'pixels' animation patches the picture;
+// a 'layer' animation is drawn on its own canvas (Plain's glow, a quarter of the screen, screen-blended).
 //
-// Saved data: 'theme'  → 'washi' | 'plain'
-//             'plainView' → 'base' | 'pattern' | 'plain' | 'living' (the Plain theme's view)
+// Saved data: 'theme'  → a mode's id: 'washi' | 'plain'
+//             'plainView' → 'base' | 'pattern' | 'plain' | 'living' (each mode saves its view under its viewKey)
 //             'params' → { key: value } for every slider
 //             'anchor' → { x, y } as fractions of the width and height (default 0.5, 0.5)
 //             'view'   → 'monochrome' | 'mask' | 'field' | 'base' | 'pattern' | 'washi' | 'living'
 //             'marks'  → true to draw the anchor (and the Field view's contour) on the picture
 
 import { Feature, ui } from 'folio';
-import { Engine, PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS, PLAIN_KEYS, PLAIN_FIELD_KEYS } from './engine/index.js';
+import { Engine, PARAMS, DEFAULTS, MODES, modeById } from './engine/index.js';
 import { imageSeed } from './engine/monochrome.js';
 import { sliders } from './controls.js';
-import { describe, describePattern, describeLiving, describePlain } from './report.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // the seed is taken from the picture scaled down to this
 const MAX_PIXELS = 6e6; // the most pixels a picture is rendered at; past that the screen scales it up
 const RESIZE_MS = 400; // a resize re-renders once it has settled for this long
-const VIEWS = [['monochrome', 'Monochrome'], ['mask', 'Mask'], ['field', 'Field'], ['base', 'Base'],
-  ['pattern', 'Pattern'], ['washi', 'Washi'], ['living', 'Living']];
-const DRAW_KEYS = ['k', 'gamma', 'dMin', 'dMax', 'tint', 'baseL', 'baseW', 'delta', 'feather', 'alpha', 'warmth', ...PATTERN_KEYS,
-  ...SPONT_KEYS, ...PLAIN_KEYS]; // these don't change M1–M8
-const THEMES = [['washi', 'Washi'], ['plain', 'Plain']];
-const PLAIN_VIEWS = [['base', 'Base'], ['pattern', 'Pattern'], ['plain', 'Plain'], ['living', 'Living']];
-const PLAIN_LAYERS = [['Base layer', ['Hue']], ['Pattern layer', ['Flow', 'Dye']], ['Spontaneity layer', ['Glow']]];
-const DYES = [['bands', 'Bands'], ['combed', 'Combed'], ['drops', 'Drops']];
-const GLOW_SCALE = 0.25; // the glow canvas is this fraction of the screen's device pixels
-const GLOW_KEYS = PARAMS.filter((p) => p.group === 'Glow').map((p) => p.key);
-// The slider groups, folded by layer in Advanced. Composite (α, κ) mixes the pattern in, so it's with it.
-const LAYERS = [
-  ['Base layer', ['Monochrome', 'Colour', 'Patches', 'Edges']],
-  ['Pattern layer', ['Fibres', 'Web', 'Specks', 'Flakes', 'Grain', 'Composite']],
-  ['Spontaneity layer', ['Timing', 'Placement', 'Marks', 'Life']],
-];
 
 export default class Renderer extends Feature {
   start() {
     this.engine = new Engine();
     this.P = { ...DEFAULTS, ...this.storage.get('params', {}) };
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
-    this.theme = this.storage.get('theme', 'washi');
-    this.current = this.storage.get('view', 'washi');
-    this.plainCurrent = this.storage.get('plainView', 'living');
+    this.mode = modeById(this.storage.get('theme', 'washi'));
+    this.views = Object.fromEntries(MODES.map((m) => [m.id, this.storage.get(m.viewKey, m.startView)]));
     this.marks = this.storage.get('marks', false);
-    this.result = null;
     this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
     this.picker = ui.filePicker('image/*');
 
@@ -73,12 +55,16 @@ export default class Renderer extends Feature {
     this.add('settings', { id: 'renderer-advanced', title: 'Advanced', order: 50, render: () => this.advanced() });
   }
 
+  get current() {
+    return this.views[this.mode.id];
+  }
+
   mount(container) {
     this.canvas = el('canvas', { class: 'renderer-canvas' });
     this.overlay = el('canvas', { class: 'renderer-overlay', 'aria-hidden': 'true' });
-    this.glowCanvas = el('canvas', { class: 'renderer-glow', 'aria-hidden': 'true', hidden: true });
+    this.layer = el('canvas', { class: 'renderer-layer', 'aria-hidden': 'true', hidden: true });
     this.stage = el('div', { class: 'renderer-stage', hidden: true, onclick: (e) => this.setAnchor(e) },
-      this.canvas, this.glowCanvas, this.overlay);
+      this.canvas, this.layer, this.overlay);
     this.error = ui.errorBox();
     container.append(el('div', { class: 'renderer-page' }, this.stage, this.error));
     new ResizeObserver(() => {
@@ -90,40 +76,20 @@ export default class Renderer extends Feature {
   }
 
   // Advanced, in Settings: every tool, folded into groups. Made once and kept, so the folds and
-  // sliders stay as they were each time Settings is opened.
+  // sliders stay as they were each time Settings is opened. Every mode's tabs and folds are made;
+  // only the current mode's show.
   advanced() {
     if (this.panel) return this.panel;
-    this.tabs = el('div', { class: 'seg renderer-tabs', role: 'tablist', 'aria-label': 'View', style: `--tabs:${VIEWS.length}` },
-      VIEWS.map(([id, label]) => el('button', {
-        type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id),
-      }, label)));
-    this.plainTabs = el('div', { class: 'seg renderer-tabs plain', role: 'tablist', 'aria-label': 'View', style: `--tabs:${PLAIN_VIEWS.length}` },
-      PLAIN_VIEWS.map(([id, label]) => el('button', {
-        type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id),
-      }, label)));
+    this.tabs = new Map(MODES.map((m) => [m.id, el('div', {
+      class: `seg renderer-tabs ${m.id}`, role: 'tablist', 'aria-label': 'View', style: `--tabs:${m.views.length}`,
+    }, m.views.map(([id, label]) => el('button', { type: 'button', role: 'tab', 'data-view': id, onclick: () => this.show(id) }, label)))]));
     this.seedLine = el('p', { class: 'renderer-seed' });
     this.report = el('div', { class: 'renderer-report' });
     this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-    // The base tint τ, a colour picker at the top of Colour. The paper, the ink and the washi's
-    // inclusions all follow it.
-    this.tintInput = el('input', { type: 'color', value: this.P.tint, 'aria-label': 'Tint τ',
-      oninput: (e) => this.change('tint', e.target.value) });
-    this.controls.groups.get('Colour').querySelector('legend').after(
-      el('label', { class: 'renderer-slider renderer-colour' }, el('span', {}, 'Tint τ'), this.tintInput));
-    // Plain: the tint is the colour used when the picture has almost no hue of its own.
-    this.plainTint = el('input', { type: 'color', value: this.P.tint, 'aria-label': 'Tint τ for a picture with no colour',
-      oninput: (e) => this.change('tint', e.target.value) });
-    this.controls.groups.get('Hue').querySelector('legend').after(
-      el('label', { class: 'renderer-slider renderer-colour' }, el('span', {}, 'Tint τ, for a picture with no colour'), this.plainTint));
-    this.dyeTabs = el('div', { class: 'seg renderer-dyes', role: 'radiogroup', 'aria-label': 'Dye shape', style: `--tabs:${DYES.length}` },
-      DYES.map(([id, label]) => el('button', {
-        type: 'button', role: 'radio', 'data-dye': id, onclick: () => { this.change('plainDye', id); this.syncDye(); },
-      }, label)));
-    this.controls.groups.get('Dye').querySelector('legend').after(
-      el('div', { class: 'renderer-slider' }, el('span', {}, 'Dye shape φ₀'), this.dyeTabs));
-    this.syncDye();
     const fold = (title, ...kids) => el('details', { class: 'advanced renderer-fold' }, el('summary', {}, title),
       el('div', { class: 'renderer-fold-body' }, ...kids));
+    this.folds = new Map(MODES.map((m) => [m.id, m.folds.map(([title, groups]) => fold(title,
+      el('div', { class: 'renderer-sliders', 'data-own-swipe': true }, groups.map((g) => this.controls.groups.get(g)))))]));
 
     this.panel = el('div', { class: 'renderer-advanced' },
       ui.hint('The tools behind the page. Changes show on the picture straight away.', { small: true }),
@@ -134,15 +100,11 @@ export default class Renderer extends Feature {
         ui.hint('A chosen image stays on this device.', { small: true }),
         this.seedLine),
       fold('View',
-        this.tabs,
-        this.plainTabs,
+        ...this.tabs.values(),
         el('div', { class: 'check renderer-marks' },
           ui.toggle({ checked: this.marks, label: 'Show the anchor', onChange: (on) => this.showMarks(on) }),
           el('span', {}, 'Show the anchor, and tap the picture to move it'))),
-      ...(this.washiFolds = LAYERS.map(([title, groups]) => fold(title,
-        el('div', { class: 'renderer-sliders', 'data-own-swipe': true }, groups.map((g) => this.controls.groups.get(g)))))),
-      ...(this.plainFolds = PLAIN_LAYERS.map(([title, groups]) => fold(title,
-        el('div', { class: 'renderer-sliders', 'data-own-swipe': true }, groups.map((g) => this.controls.groups.get(g)))))),
+      ...[...this.folds.values()].flat(),
       fold('Report', this.report),
       el('button', { type: 'button', class: 'btn small', onclick: () => this.reset() }, 'Back to defaults'));
     this.marksRow = this.panel.querySelector('.renderer-marks');
@@ -150,43 +112,31 @@ export default class Renderer extends Feature {
     return this.panel;
   }
 
-  // Settings → Theme: Washi or Plain.
+  // Settings → Theme: one button per mode.
   themes() {
-    this.themeTabs ||= el('div', { class: 'seg renderer-themes', role: 'radiogroup', 'aria-label': 'Theme', style: `--tabs:${THEMES.length}` },
-      THEMES.map(([id, label]) => el('button', { type: 'button', role: 'radio', 'data-theme-id': id, onclick: () => this.setTheme(id) }, label)));
+    this.themeTabs ||= el('div', { class: 'seg renderer-themes', role: 'radiogroup', 'aria-label': 'Theme', style: `--tabs:${MODES.length}` },
+      MODES.map((m) => el('button', { type: 'button', role: 'radio', 'data-theme-id': m.id, onclick: () => this.setTheme(m.id) }, m.label)));
     this.syncTheme();
     return this.themeTabs;
   }
 
   setTheme(id) {
-    this.theme = id;
-    this.storage.set('theme', id);
-    if (id === 'washi' && !this.result) this.remask();
-    else this.draw();
+    this.mode = modeById(id);
+    this.storage.set('theme', this.mode.id);
+    this.draw();
   }
 
-  // Shows the theme's own views and sliders in Advanced, and marks the chosen theme.
+  // Shows the mode's own views and sliders in Advanced, and marks the chosen theme.
   syncTheme() {
-    const plain = this.theme === 'plain';
     for (const b of this.themeTabs?.children || []) {
-      const on = String(b.dataset.themeId === this.theme);
+      const on = String(b.dataset.themeId === this.mode.id);
       b.setAttribute('aria-checked', on);
       b.setAttribute('aria-selected', on);
     }
     if (!this.panel) return;
-    this.tabs.hidden = plain;
-    this.plainTabs.hidden = !plain;
-    if (this.marksRow) this.marksRow.hidden = plain;
-    for (const f of this.washiFolds) f.hidden = plain;
-    for (const f of this.plainFolds) f.hidden = !plain;
-  }
-
-  syncDye() {
-    for (const b of this.dyeTabs.children) {
-      const on = String(b.dataset.dye === this.P.plainDye);
-      b.setAttribute('aria-checked', on);
-      b.setAttribute('aria-selected', on);
-    }
+    for (const [id, tabs] of this.tabs) tabs.hidden = id !== this.mode.id;
+    if (this.marksRow) this.marksRow.hidden = !this.mode.usesAnchor;
+    for (const [id, folds] of this.folds) for (const f of folds) f.hidden = id !== this.mode.id;
   }
 
   // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
@@ -231,7 +181,7 @@ export default class Renderer extends Feature {
     }
     this.seed = this.engine.load(rgba, W, H, src?.seed);
     this.error?.show(null);
-    this.remask();
+    this.draw();
   }
 
   // After a resize: render again if the size the screen needs has changed by more than 10%,
@@ -269,42 +219,35 @@ export default class Renderer extends Feature {
   }
 
   show(id) {
-    if (this.theme === 'plain') {
-      this.plainCurrent = id;
-      this.storage.set('plainView', id);
-    } else {
-      this.current = id;
-      this.storage.set('view', id);
-    }
+    this.views[this.mode.id] = id;
+    this.storage.set(this.mode.viewKey, id);
     this.draw();
   }
 
   setAnchor(e) {
-    if (!this.marks || this.theme === 'plain') return;
+    if (!this.marks || !this.mode.usesAnchor) return;
     const box = this.stage.getBoundingClientRect();
     const c = this.cover(box.width, box.height);
     const x = Math.min(1, Math.max(0, (e.clientX - box.left - c.x) / c.w));
     const y = Math.min(1, Math.max(0, (e.clientY - box.top - c.y) / c.h));
     this.anchor = { x, y };
     this.storage.set('anchor', this.anchor);
-    this.remask();
+    this.draw();
   }
 
-  // Slider moves are drawn on the next frame, so a fast drag doesn't queue up renders.
+  // Slider moves are drawn on the next frame, so a fast drag doesn't queue up renders. The engine's
+  // stages remake only what a slider changes. Sliders that only change the animation remake just it.
   change(key, value) {
     this.P[key] = value;
     this.storage.set('params', this.P);
-    this.dirtyMask ||= !DRAW_KEYS.includes(key);
-    // Plain's glow sliders only change the lights, not the still picture.
-    if (this.theme === 'plain' && GLOW_KEYS.includes(key)) {
-      if (this.glow) this.glow = this.engine.glow(this.P);
+    if (this.mode.liveKeys.includes(key)) {
+      if (this.anim) this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
       return;
     }
     if (this.frame) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = null;
-      if (this.dirtyMask) this.remask();
-      else this.draw();
+      this.draw();
     });
   }
 
@@ -312,134 +255,94 @@ export default class Renderer extends Feature {
     this.P = { ...DEFAULTS };
     this.storage.set('params', this.P);
     this.controls.set(this.P);
-    this.tintInput.value = this.P.tint;
-    this.plainTint.value = this.P.tint;
-    this.syncDye();
-    this.remask();
-  }
-
-  // M1–M8, which only Washi needs: Plain doesn't use the mask, so it's made when Washi is next shown.
-  remask() {
-    this.dirtyMask = false;
-    if (!this.seed) return;
-    this.result = this.theme === 'washi' ? this.engine.mask(this.P, this.anchor) : null;
     this.draw();
   }
 
+  ctx() {
+    return { anchor: this.anchor };
+  }
+
   draw() {
-    if (this.tabs) for (const b of this.tabs.children) b.setAttribute('aria-selected', String(b.dataset.view === this.current));
-    if (this.plainTabs) for (const b of this.plainTabs.children) b.setAttribute('aria-selected', String(b.dataset.view === this.plainCurrent));
+    for (const [id, tabs] of this.tabs || []) {
+      for (const b of tabs.children) b.setAttribute('aria-selected', String(b.dataset.view === this.views[id]));
+    }
     this.syncTheme();
     if (!this.stage) return;
     this.stage.hidden = !this.seed;
-    if (this.theme === 'plain') return this.drawPlain();
-    this.glowCanvas.hidden = true;
+    cancelAnimationFrame(this.tick);
+    this.anim = null;
+    this.layer.hidden = true;
     if (!this.seed) return;
-    if (!this.result) return this.remask();
 
-    this.picture = this.engine.view(this.current, this.P, this.result);
+    const mode = this.mode;
+    this.picture = this.engine.render(mode, this.current, this.P, this.ctx());
     const { rgba, width, height } = this.picture;
     this.canvas.width = width;
     this.canvas.height = height;
     this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
-    this.stage.classList.toggle('marked', this.marks);
     this.paintOverlay();
-    this.animate();
+    if (this.current === 'living' && mode.living) this.play();
 
     if (!this.panel) return;
     const { W, H } = this.engine.image;
-    this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText),
-      ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`);
-    const r = describe(this.result);
-    this.report.replaceChildren(el('h3', {}, 'Report'), el('p', {}, r.summary),
-      ...r.attempts.map((a) => el('details', { class: `renderer-attempt${a.kept ? ' kept' : ''}`, open: a.kept },
+    this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText), ` · ${W} × ${H} px` +
+      (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ''));
+    const r = this.engine.report(mode, this.P, this.current, this.ctx());
+    this.report.replaceChildren(el('h3', {}, 'Report'), ...(r.summary ? [el('p', {}, r.summary)] : []),
+      ...(r.attempts || []).map((a) => el('details', { class: `renderer-attempt${a.kept ? ' kept' : ''}`, open: a.kept },
         el('summary', {}, a.title, el('span', { class: `renderer-tag ${a.pass ? 'pass' : 'fail'}` }, a.pass ? 'passes' : 'fails'),
           a.kept && el('span', { class: 'renderer-tag kept' }, 'shown')),
         el('ul', {}, a.lines.map((line) => el('li', {}, line))))),
-      this.engine.patternCache?.Dw && el('p', {}, describePattern(this.engine.patternCache)),
-      this.current === 'living' && el('p', {}, describeLiving(this.P)));
+      ...r.lines.map((line) => el('p', {}, line)));
   }
 
-  // The Plain theme: the still picture, and in its Living view the glow over it.
-  drawPlain() {
-    cancelAnimationFrame(this.tick);
-    if (!this.seed) return;
-    this.picture = this.engine.plainView(this.plainCurrent, this.P);
-    const { rgba, width, height } = this.picture;
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
-    this.paintOverlay();
-    this.glowCanvas.hidden = this.plainCurrent !== 'living';
-    if (this.plainCurrent === 'living') this.animateGlow();
-
-    if (!this.panel) return;
-    const { W, H } = this.engine.image;
-    this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText), ` · ${W} × ${H} px`);
-    const r = describePlain(this.engine.hue(this.P), this.engine.plainBase(this.P), this.engine.plainField(this.P), this.P);
-    this.report.replaceChildren(el('h3', {}, 'Report'), ...r.map((line) => el('p', {}, line)));
-  }
-
-  // G: the lights at this.clock, drawn each frame as Gaussian radial gradients, added together, on a
-  // canvas at GLOW_SCALE of the screen that the browser screen-blends over the picture.
-  animateGlow() {
-    this.glow = this.engine.glow(this.P);
-    const g = this.glowCanvas.getContext('2d');
+  // The Living view: the mode's animation at this.clock, every frame. A frame's step is capped at
+  // 0.1 s, so time pauses (rather than jumps) while the page is hidden.
+  play() {
+    this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
+    const paint = this.anim.kind === 'pixels' ? this.pixels() : this.shapes();
     let last = null;
     const step = (now) => {
       this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1000);
       last = now;
+      paint(this.anim);
+      this.tick = requestAnimationFrame(step);
+    };
+    this.tick = requestAnimationFrame(step);
+  }
+
+  // A 'pixels' animation: the rectangles that changed are copied from its rgba to the picture.
+  pixels() {
+    const { width, height } = this.picture;
+    const image = new ImageData(this.anim.rgba, width, height);
+    const g = this.canvas.getContext('2d');
+    return (anim) => {
+      for (const [x, y, w, h] of anim.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
+    };
+  }
+
+  // A 'layer' animation: its shapes, drawn on the layer canvas at anim.scale of the screen's device
+  // pixels, over its fill, blended over the picture by the browser with anim.blend.
+  shapes() {
+    this.layer.hidden = false;
+    const g = this.layer.getContext('2d');
+    return (anim) => {
+      this.layer.style.mixBlendMode = anim.blend;
       const box = this.stage.getBoundingClientRect();
-      const dpr = (window.devicePixelRatio || 1) * GLOW_SCALE;
+      const dpr = (window.devicePixelRatio || 1) * anim.scale;
       const w = Math.max(2, Math.round(box.width * dpr));
       const h = Math.max(2, Math.round(box.height * dpr));
-      if (this.glowCanvas.width !== w || this.glowCanvas.height !== h) {
-        this.glowCanvas.width = w;
-        this.glowCanvas.height = h;
+      if (this.layer.width !== w || this.layer.height !== h) {
+        this.layer.width = w;
+        this.layer.height = h;
       }
       const c = this.cover(w, h);
-      const { X } = this.engine.image;
-      const unit = c.w / X; // screen pixels per canvas unit
-      const [kr, kg, kb] = this.glow.colour;
+      const unit = c.w / this.engine.image.X; // layer pixels per canvas unit
       g.globalCompositeOperation = 'source-over';
-      g.fillStyle = '#000';
+      g.fillStyle = anim.fill;
       g.fillRect(0, 0, w, h);
-      g.globalCompositeOperation = 'lighter';
-      for (const L of this.glow.at(this.clock)) {
-        const x = c.x + L.x * unit;
-        const y = c.y + L.y * unit;
-        const R = 3 * L.r * unit;
-        const grad = g.createRadialGradient(x, y, 0, x, y, R);
-        for (let s = 0; s <= 12; s++) {
-          const q = s / 12;
-          const e = L.a * Math.exp(-((3 * q) ** 2) / 2);
-          grad.addColorStop(q, `rgb(${Math.round(kr * e)},${Math.round(kg * e)},${Math.round(kb * e)})`);
-        }
-        g.fillStyle = grad;
-        g.fillRect(x - R, y - R, 2 * R, 2 * R);
-      }
-      this.tick = requestAnimationFrame(step);
+      for (const s of anim.at(this.clock)) PAINTERS[s.type](g, s, c, unit);
     };
-    this.tick = requestAnimationFrame(step);
-  }
-
-  // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
-  // capped at 0.1 s, so time pauses (rather than jumps) while the page is hidden.
-  animate() {
-    cancelAnimationFrame(this.tick);
-    if (this.current !== 'living') return;
-    const live = this.engine.living(this.P, this.picture.rgba);
-    const { width, height } = this.picture;
-    const image = new ImageData(live.rgba, width, height);
-    const g = this.canvas.getContext('2d');
-    let last = null;
-    const step = (now) => {
-      this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1000);
-      last = now;
-      for (const [x, y, w, h] of live.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
-      this.tick = requestAnimationFrame(step);
-    };
-    this.tick = requestAnimationFrame(step);
   }
 
   // Where the picture lies in a box w × h when it covers it (object-fit: cover): its size and the
@@ -453,7 +356,7 @@ export default class Renderer extends Feature {
   // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
   paintOverlay() {
     if (!this.picture || this.stage.hidden) return;
-    const marks = this.marks && this.theme === 'washi';
+    const marks = this.marks && this.mode.usesAnchor;
     this.stage.classList.toggle('marked', marks);
     if (!marks) {
       this.overlay.width = 0; // clears it
@@ -494,3 +397,24 @@ export default class Renderer extends Feature {
     g.stroke();
   }
 }
+
+// One painter per kind of shape a 'layer' animation returns. c: where the picture lies on the layer
+// (cover()), unit: layer pixels per canvas unit.
+const PAINTERS = {
+  // A Gaussian light, added to what's there: a radial gradient out to 3 r, in 12 steps.
+  glow(g, L, c, unit) {
+    const [kr, kg, kb] = L.colour;
+    g.globalCompositeOperation = 'lighter';
+    const x = c.x + L.x * unit;
+    const y = c.y + L.y * unit;
+    const R = 3 * L.r * unit;
+    const grad = g.createRadialGradient(x, y, 0, x, y, R);
+    for (let s = 0; s <= 12; s++) {
+      const q = s / 12;
+      const e = L.a * Math.exp(-((3 * q) ** 2) / 2);
+      grad.addColorStop(q, `rgb(${Math.round(kr * e)},${Math.round(kg * e)},${Math.round(kb * e)})`);
+    }
+    g.fillStyle = grad;
+    g.fillRect(x - R, y - R, 2 * R, 2 * R);
+  },
+};
