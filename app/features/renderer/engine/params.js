@@ -138,6 +138,8 @@ export const PARAMS = [
   { group: 'Fog', key: 'fogLo', label: 'Darkest L_lo', min: 0, max: 1, step: 0.01, value: 0.45 },
   { group: 'Fog', key: 'fogHi', label: 'Lightest L_hi', min: 0, max: 1, step: 0.01, value: 0.9 },
   { group: 'Fog', key: 'fogC', label: 'Colour strength c', min: 0, max: 1.5, step: 0.01, value: 0.6 },
+  { group: 'Network', key: 'netRho', label: 'Grid density ρ (lines per unit)', min: 1, max: 16, step: 0.5, value: 6 },
+  { group: 'Network', key: 'netMu', label: 'Merging μ', min: 0, max: 0.9, step: 0.01, value: 0.45 },
 ];
 
 const keysOf = (groups) => [...new Set(PARAMS.filter((p) => groups.includes(p.group)).map((p) => p.key))];
@@ -154,6 +156,7 @@ export const PLAIN_KEYS = keysOf(['Hue', 'Flow', 'Dye', 'Glow']);
 
 // The Planar mode's sliders, by stage.
 export const FOG_KEYS = keysOf(['Fog']);
+export const NETWORK_KEYS = keysOf(['Network']);
 
 // keysOf(groups) → the keys in those groups, each once.
 export { keysOf };

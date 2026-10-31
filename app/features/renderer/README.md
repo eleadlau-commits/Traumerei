@@ -47,11 +47,12 @@ Washi is shown. The maths is in `engine/plain.js`:
 
 ## The Planar theme
 
-**Settings → Theme → Planar** (saved as `theme`, its view as `planarView`). So far only its base is built:
-the picture dissolved into a still fog of its own colours, where you can sense its palette and where
-its light, dark and colour lie, but no shape. Its pattern (a latent network of rectangles) and its
-spontaneity (flashes along that network) come next. Its sliders are under **Fog**. The maths is in
-`engine/planar.js`:
+**Settings → Theme → Planar** (saved as `theme`, its view as `planarView`). Its base is the picture
+dissolved into a still fog of its own colours, where you can sense its palette and where its light,
+dark and colour lie, but no shape. Its pattern is a latent network of lines tiling the frame with
+rectangles, which the Planar picture never draws: only the **Pattern** view shows it, over the fog. Its
+spontaneity (flashes along the network) comes next. Its sliders are under **Fog** and **Network**. The
+fog's maths is in `engine/planar.js`:
 
 - **F1 sample.** The picture, area-averaged in linear light onto 48 cells on the short side, to OKLab.
   A picture with almost no colour (mean chroma under 0.012, such as the white start) keeps its
@@ -79,6 +80,28 @@ Choices the spec left open:
 - The grey test is Plain's (mean chroma under 0.012); a grey picture's fog keeps its lightness layout.
 - The fog's sample and fog grids are fixed in cells per canvas unit, so the fog doesn't change with the
   screen's size.
+
+The network (N1–N4, `engine/network.js`) tiles the whole frame, like a Mondrian grid, and doesn't
+depend on the picture, which only gives the seed:
+
+- **N1 grid.** m = round(ρ X) columns and n = round(ρ Y) rows (**Grid density ρ**, lines per canvas
+  unit), with gaps proportional to LogNormal(1, 0.6) draws, so some bands are wide and some narrow
+  (stream `:planar:net:grid`).
+- **N2 merge.** Until a share μ of the cells has gone (**Merging μ**), a random cell is joined to a random
+  neighbour that shares a whole side with it, so every tile stays a rectangle (stream `:planar:net:merge`).
+  Lines stay aligned across the frame, so long straight runs pass through several junctions; crossings
+  stay where no merge happened.
+- **N3 graph.** The rectangles' sides inside the frame, split at every junction into segments between
+  nodes. Interior junctions have degree 3 (T) or 4 (cross); a line meets the frame at a node of degree 1.
+- **N4 lines.** Each run of collinear segments joined end to end is one straight line, the path a glint
+  will travel along.
+- The report gives the counts: rectangles, junctions (T and crosses), ends on the frame, segments,
+  straight lines and total length. In a tiling, rectangles = segments − junctions + 1.
+
+Choices the network spec left open:
+- The frame's own edge is not part of the network: lines end where they meet it.
+- The gap spread (0.6) is fixed. The defaults (ρ = 6, μ = 0.45) give 30 rectangles on a 3:2 frame.
+- The Pattern view draws the lines 0.003 canvas units wide in a dark grey, only to show where they are.
 
 ## How it's built
 
@@ -110,6 +133,7 @@ mode, so a new theme is a new file in `engine/modes/` listed in `MODES`. The old
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
 | `engine/planar.js` | The Planar theme: the fog (F1–F6) |
+| `engine/network.js` | The Planar theme: the latent network (N1–N4), its counts and the Pattern view's lines |
 | `engine/plain.js` | The Plain theme: the dominant hue (B), the blurred fluid field (P), its colours, and the glow's lights (G) |
 | `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |
