@@ -61,3 +61,52 @@ export function fbm(n, { octaves, lambda, H }) {
     return sum / norm;
   };
 }
+
+// Seeded 3D simplex noise (Gustavson's formulation), for fields that change with time (the third axis).
+// simplex3(U) → n(x, y, z) in about [-1, 1]. Draws exactly 255 numbers from U.
+const GRAD3 = [[1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0], [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
+  [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]];
+export function simplex3(U) {
+  const p = Uint8Array.from({ length: 256 }, (_, i) => i);
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(U() * (i + 1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  const perm = new Uint8Array(512);
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  const F3 = 1 / 3;
+  const G3 = 1 / 6;
+  const corner = (gi, x, y, z) => {
+    let t = 0.6 - x * x - y * y - z * z;
+    if (t < 0) return 0;
+    const g = GRAD3[gi % 12];
+    t *= t;
+    return t * t * (g[0] * x + g[1] * y + g[2] * z);
+  };
+  return function n(x, y, z) {
+    const s = (x + y + z) * F3;
+    const i = Math.floor(x + s);
+    const j = Math.floor(y + s);
+    const k = Math.floor(z + s);
+    const t = (i + j + k) * G3;
+    const x0 = x - i + t;
+    const y0 = y - j + t;
+    const z0 = z - k + t;
+    let i1, j1, k1, i2, j2, k2;
+    if (x0 >= y0) {
+      if (y0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 1, 0];
+      else if (x0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 0, 1];
+      else [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 1, 0, 1];
+    } else if (y0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 0, 1, 1];
+    else if (x0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 0, 1, 1];
+    else [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 1, 1, 0];
+    const ii = i & 255;
+    const jj = j & 255;
+    const kk = k & 255;
+    return 32 * (
+      corner(perm[ii + perm[jj + perm[kk]]], x0, y0, z0) +
+      corner(perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], x0 - i1 + G3, y0 - j1 + G3, z0 - k1 + G3) +
+      corner(perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], x0 - i2 + 2 * G3, y0 - j2 + 2 * G3, z0 - k2 + 2 * G3) +
+      corner(perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], x0 - 1 + 3 * G3, y0 - 1 + 3 * G3, z0 - 1 + 3 * G3));
+  };
+}

@@ -6,6 +6,8 @@
 //   const img = engine.view('base', P, r) // { rgba, width, height }
 //   const pat = engine.pattern(P);        // P1–P5: { Dw, Dk, C, S, counts, ms }, cached
 //   const live = engine.living(P, img.rgba) // S1–S5 over the Washi pixels; live.frame(t) each frame
+//   const p = engine.plainView('plain', P)  // the Plain theme: base, pattern, plain or living
+//   const glow = engine.glow(P)              // its lights: glow.at(t) → [{ x, y, r, a }], glow.colour
 //
 // Coordinates: the short side of the image is 1, so the canvas is [0, X] × [0, Y].
 
@@ -18,8 +20,10 @@ import { components, judge } from './components.js';
 import { paint, paintLinear, shiftedLinear, upscaleMask, maskTone, baseTone, heightTone, contour, washiRGB } from './render.js';
 import { part, combine, PARTS } from './pattern.js';
 import { Spontaneity, Living } from './spontaneity.js';
+import { dominantHue, baseColour, plainField, plainRGB, Glow } from './plain.js';
 
-export { PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS } from './params.js';
+export { PARAMS, DEFAULTS, PATTERN_KEYS, SPONT_KEYS, PLAIN_KEYS, PLAIN_FIELD_KEYS } from './params.js';
+import { PLAIN_FIELD_KEYS } from './params.js';
 export { expected } from './spontaneity.js';
 
 const REROLLS = 8;
@@ -51,6 +55,7 @@ export class Engine {
   // seed: pass one to keep it when the same picture is loaded again at another size.
   load(rgba, W, H, seed = imageSeed(rgba, W, H)) {
     const L = lightness(rgba);
+    this.rgba = rgba; // kept for the Plain theme's dominant hue
     const s = Math.min(W, H);
     this.image = {
       W, H, X: W / s, Y: H / s,
@@ -60,6 +65,8 @@ export class Engine {
     this.toneCache = null;
     this.maskCache = null;
     this.patternCache = null;
+    this.hueCache = null;
+    this.plainCache = null;
     return { seed: this.image.seed, seedText: seedText(this.image.seed) };
   }
 
@@ -165,6 +172,48 @@ export class Engine {
     this.colours(P);
     const { seed, X, Y, W, H } = this.image;
     return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
+  }
+
+  // ---- The Plain theme (engine/plain.js) ----
+
+  // B1–B5: the dominant hue of the picture, or the tint τ when it has almost none. Cached per picture and τ.
+  hue(P) {
+    const tint = P.tint || DEFAULT_TINT;
+    if (this.hueCache?.tint !== tint) {
+      const { W, H } = this.image;
+      this.hueCache = { tint, hue: dominantHue(this.rgba, W, H, tint) };
+    }
+    return this.hueCache.hue;
+  }
+
+  // The base colour b after its sliders.
+  plainBase(P) {
+    return baseColour(this.hue(P), P);
+  }
+
+  // P1–P5: φ on its grid, cached while the field's sliders stay the same.
+  plainField(P) {
+    const key = PLAIN_FIELD_KEYS.map((k) => P[k]).join();
+    if (this.plainCache?.key !== key) {
+      const { seed, X, Y } = this.image;
+      const t0 = performance.now();
+      this.plainCache = { key, ...plainField(seed, X, Y, P) };
+      this.plainCache.ms = performance.now() - t0;
+    }
+    return this.plainCache;
+  }
+
+  // Pixels for a Plain view at the image's size: 'base', 'pattern', 'plain' or 'living'
+  // ('living' is the still picture; the page lays the glow over it).
+  plainView(name, P) {
+    const { W, H } = this.image;
+    return { rgba: plainRGB(name, this.plainField(P), this.plainBase(P), P, W, H), width: W, height: H };
+  }
+
+  // G1–G3: the lights (stream seed + ':plain:glow').
+  glow(P) {
+    const { seed, X, Y } = this.image;
+    return new Glow(seed, X, Y, P, this.plainBase(P));
   }
 
   fullMask(P, r) {

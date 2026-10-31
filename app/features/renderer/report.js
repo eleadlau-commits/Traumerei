@@ -57,3 +57,16 @@ export function describePattern({ counts, ms }) {
     '(streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), ' +
     `made in ${Math.round(ms)} ms.`;
 }
+
+// The Plain theme's report: the hue it found (B), the field (P) and the lights (G), as lines of text.
+// hue: Engine.hue(), base: Engine.plainBase(), field: Engine.plainField(), P: the sliders.
+export function describePlain(hue, base, field, P) {
+  const lines = [];
+  lines.push(hue.grey
+    ? `The picture has almost no colour, so the base takes the tint τ: hue ${hue.h.toFixed(0)}°.`
+    : `Dominant hue ${hue.h.toFixed(1)}° (peak bin ${hue.peak * 5}–${hue.peak * 5 + 5}°), L ${f3(hue.L)}, C ${f3(hue.C)}.`);
+  lines.push(`Base b = OKLCh(${f3(base.L)}, ${f3(base.C)}, ${base.h.toFixed(1)}°).`);
+  lines.push(`Field ${field.pw} × ${field.ph} cells, ${P.plainDye} dye, made in ${Math.round(field.ms)} ms.`);
+  lines.push(`${P.glowN} light${P.glowN === 1 ? '' : 's'}, size ${P.glowR}, brightness ${P.glowA}.`);
+  return lines;
+}
