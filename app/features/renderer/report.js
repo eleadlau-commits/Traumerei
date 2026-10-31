@@ -3,6 +3,7 @@
 
 import { expected } from './engine/spontaneity.js';
 import { counts } from './engine/network.js';
+import { TIMES } from './engine/flashes.js';
 
 const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : '—');
 
@@ -89,4 +90,13 @@ export function describeNetwork(net, P) {
     `${c.tees + c.crosses} junctions (${c.tees} T, ${c.crosses} crosses), ${c.frame} ends on the frame, ` +
     `${c.segments} segments on ${c.lines} straight lines, total length ${c.length.toFixed(2)}, ` +
     `grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net.ms)} ms.`;
+}
+
+// The Planar flashes' report: what the Hawkes process gives on average (E1).
+export function describeFlashes(P) {
+  const n = Math.min(P.flashN, 0.95);
+  const rate = P.flashMu / (1 - n);
+  return `Flashes (streams :planar:time :planar:flash): about ${rate.toFixed(2)} a second (μ / (1 − n)), in clusters of ` +
+    `${(1 / (1 - n)).toFixed(1)} on average, ${Math.round(100 * P.flashPiG)}% glints; black reach r ${P.flashR} ` +
+    `(spreads at ${TIMES.vB}/s, fades in ${TIMES.FB} s), glints at ${TIMES.vG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
 }
