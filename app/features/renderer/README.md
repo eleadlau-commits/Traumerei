@@ -51,7 +51,10 @@ Washi is shown. The maths is in `engine/plain.js`:
 dissolved into a still fog of its own colours, where you can sense its palette and where its light,
 dark and colour lie, but no shape. Its pattern is a latent network of lines tiling the frame with
 rectangles, which the Planar picture never draws: only the **Pattern** view shows it, over the fog. Its
-spontaneity (flashes along the network) comes next. Its sliders are under **Fog** and **Network**. The
+spontaneity is flashes along that network, played in the **Living** view (the one it starts on): glints
+of light that run along a straight line, and black lines that spread from a point and fade. Its views are
+**Base**, **Pattern**, **Planar** (the still picture: the fog, with the network latent) and **Living**,
+and its sliders are under **Fog**, **Network** and **Flashes**. The
 fog's maths is in `engine/planar.js`:
 
 - **F1 sample.** The picture, area-averaged in linear light onto 48 cells on the short side, to OKLab.
@@ -103,6 +106,35 @@ Choices the network spec left open:
 - The gap spread (0.6) is fixed. The defaults (ρ = 6, μ = 0.45) give 30 rectangles on a 3:2 frame.
 - The Pattern view draws the lines 0.003 canvas units wide in a dark grey, only to show where they are.
 
+The flashes (E1–E5, `engine/flashes.js`) are the only thing that moves. Each fades out completely, so
+nothing is remembered:
+
+- **E1 timing.** The shared Hawkes process (`engine/hawkes.js`, stream `:planar:time`), with
+  **Background rate μ**, **Branching ratio n** and memory τ_h = 1 s. Each event is a glint with
+  probability **Glint share π_g**, otherwise a black line.
+- **E2 where.** A point uniform along the network's length (stream `:planar:flash`).
+- **E3 glint.** The straight line through the point, from one of its ends: a head runs along it at
+  1.8 units/s for at most 0.25 s (so it crosses the mean line, about 0.46, and stops short on longer
+  ones), trailing a streak whose strength falls as e^(−s/0.12) behind it, then fades out over 0.4 s. Its
+  colour is the fog under it at lightness **L_g**, with half its chroma, drawn with a faint halo.
+- **E4 black line.** A reach R ~ Exponential(mean **r**). The black spreads from the point along every
+  edge at 1 unit/s, to every point within network distance R (Dijkstra from the segment's two ends), then
+  fades out over 0.8 s. With r = 0.05 a little over half stay on their own segment, and passing k
+  junctions needs R longer than k segments, which falls off exponentially.
+- **E5 fade.** o(u) = (1 − u)² as u runs from 0 to 1 over the fade, so every flash ends at exactly 0.
+- Drawn as a `layer` animation at the screen's own resolution on a clear canvas over the fog; nothing is
+  written into the fog's pixels.
+- **Revealed fraction.** R(t) = the length of network showing at more than 10% strength (each part counted
+  once) ÷ the total length. `tests/planar.test.js` simulates six hours from a fixed seed and checks the
+  largest R in each 10 minutes. A 48-hour run at the defaults (μ 0.2, n 0.85, π_g 0.5, r 0.05): median of
+  the 10-minute maxima 0.22, 90th percentile 0.29, 3 windows of 288 reached 40%, 2 reached 50%, none 60%;
+  the largest was 0.54.
+
+Choices the flashes spec left open:
+- Offspring events don't land near their parents: the clustering is only in time.
+- The durations and speeds above are fixed for now (E: "let's go with that timing for now").
+- The black is a near-black (#101014) at full strength.
+
 ## How it's built
 
 `engine/` is the rendering engine. It has no screen code and doesn't use Folio, so it can be
@@ -133,6 +165,7 @@ mode, so a new theme is a new file in `engine/modes/` listed in `MODES`. The old
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
 | `engine/planar.js` | The Planar theme: the fog (F1–F6) |
+| `engine/flashes.js` | The Planar theme: the flashes (E1–E5), the revealed fraction and the long run |
 | `engine/network.js` | The Planar theme: the latent network (N1–N4), its counts and the Pattern view's lines |
 | `engine/plain.js` | The Plain theme: the dominant hue (B), the blurred fluid field (P), its colours, and the glow's lights (G) |
 | `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |

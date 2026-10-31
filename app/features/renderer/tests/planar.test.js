@@ -133,3 +133,75 @@ test('the network report counts rectangles, junctions and length', () => {
   const net = { ...network(tiles(42, NX, NY, P), NX, NY), ms: 3 };
   assert.match(describeNetwork(net, P), /^Network \(streams :planar:net:grid :planar:net:merge\): 30 rectangles, \d+ junctions \(\d+ T, \d+ crosses\)/);
 });
+
+// ---- The flashes (E1–E5) ----
+import { Flashes, ball, revealed, revealRun } from '../engine/flashes.js';
+
+const NET = network(tiles(42, NX, NY, P), NX, NY);
+
+test('the flashes at a moment do not depend on how the frames fell', () => {
+  const a = new Flashes(9, NET, P);
+  const b = new Flashes(9, NET, P);
+  for (let t = 0; t < 30; t += 0.016) a.pieces(t);
+  assert.deepEqual(a.pieces(30), b.pieces(30));
+  a.pieces(5); // going back replays from 0
+  assert.deepEqual(a.pieces(30), b.pieces(30));
+});
+
+test('a glint stays on one straight line, and every flash fades out completely', () => {
+  const f = new Flashes(9, NET, { ...P, flashPiG: 1 });
+  let seen = 0;
+  for (let t = 0.5; t < 60; t += 0.5) {
+    const byGlint = f.pieces(t);
+    for (const p of byGlint) {
+      assert.ok(p.x0 === p.x1 || p.y0 === p.y1, 'axis-aligned');
+      seen++;
+    }
+  }
+  assert.ok(seen > 0);
+  f.P = { ...P, flashMu: 0 }; // no new events: once the last has faded, nothing shows
+  f.hawkes.E = 0;
+  f.hawkes.next = null;
+  assert.equal(f.pieces(200).length, 0);
+});
+
+test('black lines spread along the network and most stay on their own segment', () => {
+  const i = NET.edges.findIndex((e) => e.length > 0.15);
+  const small = ball(NET, i, NET.edges[i].length / 2, 0.03);
+  assert.equal(small.length, 1);
+  assert.ok(Math.abs(small[0][2] - small[0][1] - 0.06) < 1e-9);
+  const big = ball(NET, i, NET.edges[i].length / 2, NET.edges[i].length / 2 + 0.05);
+  assert.ok(big.length >= 3, 'past both ends, into every edge at each junction');
+  // With r = 0.05, how many cascades leave their segment: R must exceed the distance to the nearest node.
+  const f = new Flashes(9, NET, { ...P, flashPiG: 0 });
+  let stay = 0;
+  let all = 0;
+  for (let t = 1; t <= 600; t += 1) {
+    for (const x of f.advance(t)) {
+      if (x.counted) continue;
+      x.counted = true;
+      const e = NET.edges[x.at.edge];
+      all++;
+      if (x.R < Math.min(x.at.pos, e.length - x.at.pos)) stay++;
+    }
+  }
+  assert.ok(stay / all > 0.5, `${stay} of ${all} stay on their segment`);
+});
+
+test('the revealed fraction counts each part of the network once', () => {
+  const f = new Flashes(9, NET, P);
+  const L = NET.lines.find((l) => !l.horizontal);
+  const piece = { x0: L.at, y0: L.from, x1: L.at, y1: L.to, a0: 1, a1: 1 };
+  f.pieces = () => [piece, piece];
+  assert.ok(Math.abs(revealed(NET, f, 1) - (L.to - L.from) / NET.length) < 1e-9);
+});
+
+test('over six hours, the largest reveal in each 10 minutes is usually small and never past 60%', () => {
+  const r = revealRun(7, NET, P, 6);
+  const sorted = [...r.maxima].sort((a, b) => a - b);
+  const median = sorted[sorted.length >> 1];
+  const msg = `10-minute maxima: median ${median.toFixed(3)}, largest ${r.overall.toFixed(3)}, mean R ${r.mean.toFixed(4)}`;
+  assert.equal(r.maxima.length, 36);
+  assert.ok(median > 0.1 && median < 0.35, msg);
+  assert.ok(r.overall < 0.6, msg);
+});

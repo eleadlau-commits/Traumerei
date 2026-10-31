@@ -322,7 +322,7 @@ export default class Renderer extends Feature {
   }
 
   // A 'layer' animation: its shapes, drawn on the layer canvas at anim.scale of the screen's device
-  // pixels, over its fill, blended over the picture by the browser with anim.blend.
+  // pixels, over its fill (or clear, when it has none), blended over the picture by the browser with anim.blend.
   shapes() {
     this.layer.hidden = false;
     const g = this.layer.getContext('2d');
@@ -339,8 +339,12 @@ export default class Renderer extends Feature {
       const c = this.cover(w, h);
       const unit = c.w / this.engine.image.X; // layer pixels per canvas unit
       g.globalCompositeOperation = 'source-over';
-      g.fillStyle = anim.fill;
-      g.fillRect(0, 0, w, h);
+      if (anim.fill) {
+        g.fillStyle = anim.fill;
+        g.fillRect(0, 0, w, h);
+      } else {
+        g.clearRect(0, 0, w, h);
+      }
       for (const s of anim.at(this.clock)) PAINTERS[s.type](g, s, c, unit);
     };
   }
@@ -401,6 +405,29 @@ export default class Renderer extends Feature {
 // One painter per kind of shape a 'layer' animation returns. c: where the picture lies on the layer
 // (cover()), unit: layer pixels per canvas unit.
 const PAINTERS = {
+  // A straight piece of line, its opacity running from a0 at (x0, y0) to a1 at (x1, y1), w canvas units
+  // wide; with halo, a faint wider stroke under it first.
+  line(g, L, c, unit) {
+    g.globalCompositeOperation = 'source-over';
+    const x0 = c.x + L.x0 * unit;
+    const y0 = c.y + L.y0 * unit;
+    const x1 = c.x + L.x1 * unit;
+    const y1 = c.y + L.y1 * unit;
+    const [r, gr, b] = L.colour;
+    const stroke = (alpha, width) => {
+      const grad = g.createLinearGradient(x0, y0, x1 === x0 && y1 === y0 ? x1 + 1 : x1, y1);
+      grad.addColorStop(0, `rgba(${r},${gr},${b},${alpha * L.a0})`);
+      grad.addColorStop(1, `rgba(${r},${gr},${b},${alpha * L.a1})`);
+      g.strokeStyle = grad;
+      g.lineWidth = Math.max(1, width * unit);
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+    };
+    if (L.halo) stroke(0.25, 3 * L.w);
+    stroke(1, L.w);
+  },
   // A Gaussian light, added to what's there: a radial gradient out to 3 r, in 12 steps.
   glow(g, L, c, unit) {
     const [kr, kg, kb] = L.colour;

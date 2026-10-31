@@ -140,6 +140,12 @@ export const PARAMS = [
   { group: 'Fog', key: 'fogC', label: 'Colour strength c', min: 0, max: 1.5, step: 0.01, value: 0.6 },
   { group: 'Network', key: 'netRho', label: 'Grid density ρ (lines per unit)', min: 1, max: 16, step: 0.5, value: 6 },
   { group: 'Network', key: 'netMu', label: 'Merging μ', min: 0, max: 0.9, step: 0.01, value: 0.45 },
+
+  { group: 'Flashes', key: 'flashMu', label: 'Background rate μ (per s)', min: 0, max: 2, step: 0.01, value: 0.2 },
+  { group: 'Flashes', key: 'flashN', label: 'Branching ratio n', min: 0, max: 0.95, step: 0.01, value: 0.85 },
+  { group: 'Flashes', key: 'flashPiG', label: 'Glint share π_g', min: 0, max: 1, step: 0.01, value: 0.5 },
+  { group: 'Flashes', key: 'flashR', label: 'Black reach r', min: 0.005, max: 0.3, step: 0.005, value: 0.05 },
+  { group: 'Flashes', key: 'glintL', label: 'Glint lightness L_g', min: 0.6, max: 1, step: 0.01, value: 0.97 },
 ];
 
 const keysOf = (groups) => [...new Set(PARAMS.filter((p) => groups.includes(p.group)).map((p) => p.key))];
@@ -157,6 +163,7 @@ export const PLAIN_KEYS = keysOf(['Hue', 'Flow', 'Dye', 'Glow']);
 // The Planar mode's sliders, by stage.
 export const FOG_KEYS = keysOf(['Fog']);
 export const NETWORK_KEYS = keysOf(['Network']);
+export const FLASH_KEYS = keysOf(['Flashes']);
 
 // keysOf(groups) → the keys in those groups, each once.
 export { keysOf };
