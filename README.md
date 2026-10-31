@@ -1,4 +1,4 @@
-# Mask renderer
+# Träumerei
 
 A small page, built with **Folio**, that turns a picture into a faint monochrome, cuts it with a
 seeded opacity mask, and combines them. The same picture always gives the same result.
