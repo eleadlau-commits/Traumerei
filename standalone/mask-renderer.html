@@ -720,11 +720,12 @@ dialog.dialog-box {
   margin: 0;
   font-family: inherit;
   font-weight: 400;
-  font-size: clamp(44px, 9vw, 112px);
+  font-size: clamp(36px, 8vw, 104px);
   line-height: 1;
-  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   /* Letter spacing adds space after the last letter too; this keeps the word truly centred. */
-  margin-right: -0.06em;
+  margin-right: -0.12em;
   opacity: 0.88;
 }
 
@@ -757,7 +758,7 @@ dialog.dialog-box {
   transition: opacity 0.2s, background-size 0.25s;
   -webkit-tap-highlight-color: transparent;
 }
-.home-link.home-create { font-size: 19px; opacity: 0.8; }
+.home-link.home-create { font-size: 25px; opacity: 0.8; }
 .home-link:hover, .home-link:focus-visible { opacity: 1; background-size: calc(100% - 4px - 0.22em) 1px; outline: none; }
 
 /* The top bar: only the menu button, as the three lines alone at 80% opacity. */
