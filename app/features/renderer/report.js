@@ -70,3 +70,13 @@ export function describePlain(hue, base, field, P) {
   lines.push(`${P.glowN} light${P.glowN === 1 ? '' : 's'}, size ${P.glowR}, brightness ${P.glowA}.`);
   return lines;
 }
+
+// The Planar fog's report: its palette (F2), its grids and how long it took.
+export function describeFog(fog, P) {
+  const lines = [];
+  if (fog.grey) lines.push('The picture has almost no colour, so the fog takes the tint τ\'s hue.');
+  lines.push(`Palette (stream :planar:palette): ${fog.palette.map((p) => `OKLab(${p.lab.map((v) => v.toFixed(2)).join(', ')}) ${Math.round(100 * p.share)}%`).join(', ')}.`);
+  lines.push(`Sampled on ${fog.sw} × ${fog.sh} cells, fog on ${fog.fw} × ${fog.fh}, coarseness σ ${P.fogSigma}, ` +
+    `unevenness A ${P.fogA} (stream :planar:fog), made in ${Math.round(fog.ms)} ms.`);
+  return lines;
+}

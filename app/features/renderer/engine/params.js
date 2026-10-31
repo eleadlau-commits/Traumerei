@@ -130,6 +130,14 @@ export const PARAMS = [
   { group: 'Glow', key: 'glowT', label: 'Breath period T (s)', min: 2, max: 40, step: 0.5, value: 18 },
   { group: 'Glow', key: 'glowDh', label: 'Hue offset Δh (°)', min: -90, max: 90, step: 1, value: 14 },
   { group: 'Glow', key: 'glowL', label: 'Glow lightness L_g', min: 0.5, max: 1, step: 0.01, value: 0.88 },
+
+  // The Planar mode (engine/planar.js)
+  { group: 'Fog', key: 'tint', kind: 'colour', label: 'Tint τ, for a picture with no colour', aria: 'Tint τ for a picture with no colour', value: DEFAULT_TINT },
+  { group: 'Fog', key: 'fogSigma', label: 'Coarseness σ', min: 0.05, max: 0.6, step: 0.005, value: 0.25 },
+  { group: 'Fog', key: 'fogA', label: 'Unevenness A', min: 0, max: 0.3, step: 0.005, value: 0.08 },
+  { group: 'Fog', key: 'fogLo', label: 'Darkest L_lo', min: 0, max: 1, step: 0.01, value: 0.45 },
+  { group: 'Fog', key: 'fogHi', label: 'Lightest L_hi', min: 0, max: 1, step: 0.01, value: 0.9 },
+  { group: 'Fog', key: 'fogC', label: 'Colour strength c', min: 0, max: 1.5, step: 0.01, value: 0.6 },
 ];
 
 const keysOf = (groups) => [...new Set(PARAMS.filter((p) => groups.includes(p.group)).map((p) => p.key))];
@@ -143,6 +151,9 @@ export const SPONT_KEYS = keysOf(['Timing', 'Placement', 'Marks', 'Life']);
 // The Plain theme's sliders: the field's (P1–P5, remade when they change) and all of them.
 export const PLAIN_FIELD_KEYS = ['lambdaPsi', 'flowD', 'nu', 'eddy', 'lambdaB', 'dyeSoft', 'blurP', 'plainDye'];
 export const PLAIN_KEYS = keysOf(['Hue', 'Flow', 'Dye', 'Glow']);
+
+// The Planar mode's sliders, by stage.
+export const FOG_KEYS = keysOf(['Fog']);
 
 // keysOf(groups) → the keys in those groups, each once.
 export { keysOf };

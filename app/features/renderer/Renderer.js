@@ -281,14 +281,14 @@ export default class Renderer extends Feature {
     this.canvas.height = height;
     this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
     this.paintOverlay();
-    if (this.current === 'living') this.play();
+    if (this.current === 'living' && mode.living) this.play();
 
     if (!this.panel) return;
     const { W, H } = this.engine.image;
     this.seedLine.replaceChildren('Seed ', el('code', {}, this.seed.seedText), ` · ${W} × ${H} px` +
       (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ''));
     const r = this.engine.report(mode, this.P, this.current, this.ctx());
-    this.report.replaceChildren(el('h3', {}, 'Report'), r.summary && el('p', {}, r.summary),
+    this.report.replaceChildren(el('h3', {}, 'Report'), ...(r.summary ? [el('p', {}, r.summary)] : []),
       ...(r.attempts || []).map((a) => el('details', { class: `renderer-attempt${a.kept ? ' kept' : ''}`, open: a.kept },
         el('summary', {}, a.title, el('span', { class: `renderer-tag ${a.pass ? 'pass' : 'fail'}` }, a.pass ? 'passes' : 'fails'),
           a.kept && el('span', { class: 'renderer-tag kept' }, 'shown')),
