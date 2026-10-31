@@ -2,6 +2,7 @@
 // No screen code, so it's testable.
 
 import { expected } from './engine/spontaneity.js';
+import { counts } from './engine/network.js';
 
 const f3 = (x) => (Number.isFinite(x) ? x.toFixed(3) : '—');
 
@@ -79,4 +80,13 @@ export function describeFog(fog, P) {
   lines.push(`Sampled on ${fog.sw} × ${fog.sh} cells, fog on ${fog.fw} × ${fog.fh}, coarseness σ ${P.fogSigma}, ` +
     `unevenness A ${P.fogA} (stream :planar:fog), made in ${Math.round(fog.ms)} ms.`);
   return lines;
+}
+
+// The Planar network's report: its counts (N1–N4).
+export function describeNetwork(net, P) {
+  const c = counts(net);
+  return `Network (streams :planar:net:grid :planar:net:merge): ${c.rectangles} rectangles, ` +
+    `${c.tees + c.crosses} junctions (${c.tees} T, ${c.crosses} crosses), ${c.frame} ends on the frame, ` +
+    `${c.segments} segments on ${c.lines} straight lines, total length ${c.length.toFixed(2)}, ` +
+    `grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net.ms)} ms.`;
 }
