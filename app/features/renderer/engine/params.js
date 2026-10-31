@@ -99,6 +99,31 @@ export const PARAMS = [
   { group: 'Life', key: 'tauF', label: 'Median fade time μ_f (s)', min: 0.2, max: 20, step: 0.1, value: 2.5 },
   { group: 'Life', key: 'sF', label: 'Fade spread s_f', min: 0, max: 1.5, step: 0.01, value: 0.6 },
   { group: 'Life', key: 'alphaS', label: 'Spontaneity strength α_s', min: 0, max: 2, step: 0.01, value: 1 },
+
+  // The Plain theme (engine/plain.js)
+  { group: 'Hue', key: 'plainDL', label: 'Lightness shift ΔL', min: -0.4, max: 0.4, step: 0.01, value: 0 },
+  { group: 'Hue', key: 'plainCS', label: 'Chroma × c', min: 0, max: 1.6, step: 0.01, value: 1 },
+
+  { group: 'Flow', key: 'plainAlpha', label: 'Lightness lift α', min: 0, max: 0.4, step: 0.005, value: 0.07 },
+  { group: 'Flow', key: 'plainBeta', label: 'Chroma fade β', min: 0, max: 1, step: 0.01, value: 0.3 },
+  { group: 'Flow', key: 'lambdaPsi', label: 'Flow scale λ_ψ', min: 0.08, max: 2, step: 0.01, value: 1.1 },
+  { group: 'Flow', key: 'flowD', label: 'Flow distance D', min: 0, max: 2, step: 0.01, value: 0.3 },
+  { group: 'Flow', key: 'nu', label: 'Unsteadiness ν', min: 0, max: 2, step: 0.01, value: 0.3 },
+  { group: 'Flow', key: 'eddy', label: 'Second eddy w', min: 0, max: 1, step: 0.01, value: 0 },
+
+  { group: 'Dye', key: 'lambdaB', label: 'Dye scale λ_b', min: 0.02, max: 2, step: 0.01, value: 0.9 },
+  { group: 'Dye', key: 'dyeSoft', label: 'Dye softness', min: 0, max: 1, step: 0.01, value: 1 },
+  { group: 'Dye', key: 'blurP', label: 'Blur σ', min: 0, max: 0.4, step: 0.005, value: 0.12 },
+
+  { group: 'Glow', key: 'glowN', label: 'Lights N', min: 0, max: 9, step: 1, value: 3 },
+  { group: 'Glow', key: 'glowR', label: 'Size r', min: 0.08, max: 1.2, step: 0.01, value: 0.6 },
+  { group: 'Glow', key: 'glowA', label: 'Brightness a₀', min: 0, max: 0.8, step: 0.01, value: 0.16 },
+  { group: 'Glow', key: 'glowSigma', label: 'Wander σ', min: 0, max: 0.4, step: 0.005, value: 0.04 },
+  { group: 'Glow', key: 'glowTheta', label: 'Pull back θ', min: 0, max: 1, step: 0.01, value: 0.08 },
+  { group: 'Glow', key: 'glowBeta', label: 'Breathing β', min: 0, max: 1, step: 0.01, value: 0.35 },
+  { group: 'Glow', key: 'glowT', label: 'Breath period T (s)', min: 2, max: 40, step: 0.5, value: 18 },
+  { group: 'Glow', key: 'glowDh', label: 'Hue offset Δh (°)', min: -90, max: 90, step: 1, value: 14 },
+  { group: 'Glow', key: 'glowL', label: 'Glow lightness L_g', min: 0.5, max: 1, step: 0.01, value: 0.88 },
 ];
 
 // The pattern's sliders (P1–P5), which change the paper but not the mask; α and κ only change the composite.
@@ -109,5 +134,10 @@ export const PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group
 const SPONT_GROUPS = ['Timing', 'Placement', 'Marks', 'Life'];
 export const SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
 
+// The Plain theme's sliders: the field's (P1–P5, remade when they change) and the rest (only repainted).
+export const PLAIN_FIELD_KEYS = ['lambdaPsi', 'flowD', 'nu', 'eddy', 'lambdaB', 'dyeSoft', 'blurP', 'plainDye'];
+export const PLAIN_KEYS = [...PARAMS.filter((p) => ['Hue', 'Flow', 'Dye', 'Glow'].includes(p.group)).map((p) => p.key), 'plainDye'];
+
 // The base tint τ isn't a slider: it's a colour, '#rrggbb', chosen with a colour picker.
-export const DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT };
+// Plain's dye shape φ₀ is a choice: 'bands', 'combed' or 'drops'.
+export const DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT, plainDye: 'bands' };

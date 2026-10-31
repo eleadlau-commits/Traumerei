@@ -369,3 +369,112 @@ test('fade times vary from mark to mark around their median', () => {
   const flat = new Spontaneity(11, 1.5, 1, { ...P, sF: 0 });
   assert.ok(flat.advance(50).every((m) => m.tauF === 2));
 });
+
+// ---- The Plain theme ----
+import { dominantHue, vonMises, blur, velocity, plainField, plainRGB, Glow, baseColour, C_MIN } from '../engine/plain.js';
+import { simplex3 } from '../engine/noise.js';
+
+// A picture that's mostly one colour (#c0603a, a terracotta, hue about 40°) with a blue corner.
+function mostly(W, H) {
+  const rgba = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) {
+    const blue = (i % W) < W * 0.25 && Math.floor(i / W) < H * 0.25;
+    rgba.set(blue ? [40, 90, 200, 255] : [192, 96, 58, 255], 4 * i);
+  }
+  return rgba;
+}
+
+test('the dominant hue is the colour most of the picture is, not the average', () => {
+  const W = 120;
+  const H = 80;
+  const h = dominantHue(mostly(W, H), W, H, DEFAULT_TINT);
+  const [, Cx, hx] = oklabToOklch(hexToOklab('#c0603a'));
+  assert.ok(!h.grey);
+  assert.ok(Math.abs(h.h - hx) < 1, `hue ${h.h} vs ${hx}`);
+  assert.ok(Math.abs(h.C - Cx) < 0.005);
+});
+
+test('a grey picture falls back to the tint', () => {
+  const rgba = new Uint8ClampedArray(64 * 64 * 4).fill(200);
+  const h = dominantHue(rgba, 64, 64, '#336699');
+  const [L, C, hue] = oklabToOklch(hexToOklab('#336699'));
+  assert.ok(h.grey);
+  assert.ok(near(h.L, L) && near(h.C, C) && near(h.h, hue));
+  assert.ok(C_MIN > 0);
+});
+
+test('von Mises smoothing wraps round the circle and keeps the peak', () => {
+  const hist = new Float64Array(72);
+  hist[0] = 1;
+  const s = vonMises(hist);
+  assert.ok(near(s[1], s[71]));
+  assert.ok(s[0] > s[1] && s[1] > s[2]);
+});
+
+test('the blur keeps the mean and smooths', () => {
+  const w = 60;
+  const h = 40;
+  const f = Float32Array.from({ length: w * h }, (_, i) => ((i % w) + Math.floor(i / w)) % 2);
+  const b = blur(f, w, h, 4);
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.ok(Math.abs(mean(b) - mean(f)) < 1e-3);
+  const inside = [];
+  for (let j = 15; j < h - 15; j++) for (let i = 15; i < w - 15; i++) inside.push(b[j * w + i]);
+  assert.ok(Math.max(...inside) - Math.min(...inside) < 0.02); // the edges clamp, so only the inside is flat
+});
+
+test('the curl velocity has no divergence', () => {
+  const P = { ...DEFAULTS, flowD: 0.3 };
+  const V = velocity(7, 1.5, 1, P);
+  const u = V.U[0];
+  let div = 0;
+  let mag = 0;
+  for (let j = 5; j < V.gh - 5; j += 7) {
+    for (let i = 5; i < V.gw - 5; i += 7) {
+      const at = (a, b, c) => u[2 * (b * V.gw + a) + c];
+      div += Math.abs((at(i + 1, j, 0) - at(i - 1, j, 0)) + (at(i, j + 1, 1) - at(i, j - 1, 1))) / (2 * V.cell);
+      mag += Math.hypot(at(i, j, 0), at(i, j, 1)) / V.cell;
+    }
+  }
+  assert.ok(div < 0.02 * mag, `divergence ${div} vs ${mag}`);
+});
+
+test('simplex3 is seeded and stays in about [-1, 1]', () => {
+  const a = simplex3(stream(3, ':x').U);
+  const b = simplex3(stream(3, ':x').U);
+  let max = 0;
+  for (let i = 0; i < 2000; i++) {
+    const v = a(i * 0.137, i * 0.071, i * 0.031);
+    assert.equal(v, b(i * 0.137, i * 0.071, i * 0.031));
+    max = Math.max(max, Math.abs(v));
+  }
+  assert.ok(max <= 1.05 && max > 0.3);
+});
+
+test('the Plain field is repeatable and in [0, 1], and the picture is one hue', () => {
+  const P = { ...DEFAULTS };
+  const a = plainField(11, 1.5, 1, P);
+  const b = plainField(11, 1.5, 1, P);
+  assert.equal(a.pw, 240);
+  assert.equal(a.ph, 160);
+  assert.ok(a.phi.every((v, i) => v === b.phi[i] && v >= 0 && v <= 1));
+  const base = baseColour({ L: 0.6, C: 0.1, h: 40 }, P);
+  const flat = plainRGB('base', a, base, P, 30, 20);
+  const r0 = flat[0];
+  assert.ok(flat.every((v, i) => (i % 4 === 3 ? v === 255 : Math.abs(v - flat[i % 4]) <= 1)), `flat ${r0}`);
+});
+
+test('the glow is the same at the same moment, whichever way it got there', () => {
+  const P = { ...DEFAULTS };
+  const base = { L: 0.6, C: 0.1, h: 40 };
+  const g1 = new Glow(5, 1.6, 1, P, base);
+  const g2 = new Glow(5, 1.6, 1, P, base);
+  for (let t = 0; t < 10; t += 0.37) g1.at(t);
+  const a = g1.at(10);
+  const b = g2.at(10);
+  assert.equal(a.length, P.glowN);
+  assert.deepEqual(a, b);
+  g1.at(2); // going back replays from 0
+  assert.deepEqual(g1.at(10), b);
+  assert.ok(a.every((L) => L.a >= 0 && L.a <= P.glowA + 1e-9));
+});

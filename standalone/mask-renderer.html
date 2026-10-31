@@ -835,6 +835,13 @@ dialog.dialog-box {
 .renderer-value { font-family: var(--font-mono); color: var(--text); }
 .renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
 
+/* The Plain theme's glow: a small canvas, scaled up by the browser and screen-blended over the picture. */
+.renderer-glow { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; mix-blend-mode: screen; }
+.renderer-glow[hidden] { display: none; }
+.renderer-tabs.plain { grid-template-columns: repeat(4, 1fr); }
+.renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
+.renderer-dyes { grid-column: 1 / -1; }
+
 </style>
 </head>
 <body>
@@ -2845,6 +2852,60 @@ dialog.dialog-box {
       return sum / norm;
     };
   }
+  var GRAD3 = [
+    [1, 1, 0],
+    [-1, 1, 0],
+    [1, -1, 0],
+    [-1, -1, 0],
+    [1, 0, 1],
+    [-1, 0, 1],
+    [1, 0, -1],
+    [-1, 0, -1],
+    [0, 1, 1],
+    [0, -1, 1],
+    [0, 1, -1],
+    [0, -1, -1]
+  ];
+  function simplex3(U) {
+    const p = Uint8Array.from({ length: 256 }, (_, i) => i);
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(U() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    const perm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+    const F3 = 1 / 3;
+    const G3 = 1 / 6;
+    const corner = (gi, x, y, z) => {
+      let t = 0.6 - x * x - y * y - z * z;
+      if (t < 0) return 0;
+      const g = GRAD3[gi % 12];
+      t *= t;
+      return t * t * (g[0] * x + g[1] * y + g[2] * z);
+    };
+    return function n(x, y, z) {
+      const s = (x + y + z) * F3;
+      const i = Math.floor(x + s);
+      const j = Math.floor(y + s);
+      const k = Math.floor(z + s);
+      const t = (i + j + k) * G3;
+      const x0 = x - i + t;
+      const y0 = y - j + t;
+      const z0 = z - k + t;
+      let i1, j1, k1, i2, j2, k2;
+      if (x0 >= y0) {
+        if (y0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 1, 0];
+        else if (x0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 0, 1];
+        else [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 1, 0, 1];
+      } else if (y0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 0, 1, 1];
+      else if (x0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 0, 1, 1];
+      else [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 1, 1, 0];
+      const ii = i & 255;
+      const jj = j & 255;
+      const kk = k & 255;
+      return 32 * (corner(perm[ii + perm[jj + perm[kk]]], x0, y0, z0) + corner(perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], x0 - i1 + G3, y0 - j1 + G3, z0 - k1 + G3) + corner(perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], x0 - i2 + 2 * G3, y0 - j2 + 2 * G3, z0 - k2 + 2 * G3) + corner(perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], x0 - 1 + 3 * G3, y0 - 1 + 3 * G3, z0 - 1 + 3 * G3));
+    };
+  }
 
   // dist/web/features/renderer/engine/field.js
   var SQRT_LN2 = Math.sqrt(Math.LN2);
@@ -3131,7 +3192,7 @@ dialog.dialog-box {
     for (let p = rng.U(); p > limit; p *= rng.U()) k++;
     return k;
   }
-  var logNormal = (rng, median, spread) => median * Math.exp(spread * rng.N());
+  var logNormal = (rng, median2, spread) => median2 * Math.exp(spread * rng.N());
   function erf(x) {
     const s = x < 0 ? -1 : 1;
     const a = Math.abs(x);
@@ -3468,7 +3529,7 @@ dialog.dialog-box {
   var POINTS = 16;
   var OUT = 5;
   var DEG = Math.PI / 180;
-  var logNormal2 = (rng, median, spread) => median * Math.exp(spread * rng.N());
+  var logNormal2 = (rng, median2, spread) => median2 * Math.exp(spread * rng.N());
   var Spontaneity = class {
     constructor(seed, X, Y, P) {
       Object.assign(this, { X, Y, P });
@@ -3735,6 +3796,336 @@ dialog.dialog-box {
     return { rate, visible: rate * life2, cluster: 1 / (1 - n) };
   }
 
+  // dist/web/features/renderer/engine/plain.js
+  var C_MIN = 0.02;
+  var BINS = 72;
+  var KAPPA = 20;
+  var WINDOW = 15;
+  var SAMPLE_LONG = 256;
+  function dominantHue(rgba, W, H, fallback) {
+    const k = Math.max(1, Math.max(W, H) / SAMPLE_LONG);
+    const sw = Math.max(1, Math.floor(W / k));
+    const sh = Math.max(1, Math.floor(H / k));
+    const hist = new Float64Array(BINS);
+    const Ls = [];
+    const Cs = [];
+    const Hs = [];
+    let sumC = 0;
+    for (let j = 0; j < sh; j++) {
+      for (let i = 0; i < sw; i++) {
+        const q = 4 * (Math.min(H - 1, Math.floor((j + 0.5) * k)) * W + Math.min(W - 1, Math.floor((i + 0.5) * k)));
+        const [L, a, b] = linearToOklab([LINEAR_BYTE[rgba[q]], LINEAR_BYTE[rgba[q + 1]], LINEAR_BYTE[rgba[q + 2]]]);
+        const C = Math.hypot(a, b);
+        sumC += C;
+        if (C < C_MIN) continue;
+        const h2 = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+        hist[Math.floor(h2 / 5) % BINS] += C;
+        Ls.push(L);
+        Cs.push(C);
+        Hs.push(h2);
+      }
+    }
+    const n = sw * sh;
+    const smooth = vonMises(hist);
+    let peak = 0;
+    for (let i = 1; i < BINS; i++) if (smooth[i] > smooth[peak]) peak = i;
+    if (sumC / n < 0.012 || Hs.length < 0.02 * n) {
+      const [L, C, h2] = oklabToOklch(hexToOklab(fallback));
+      return { L, C, h: h2, grey: true, hist: smooth, peak };
+    }
+    const centre = peak * 5 + 2.5;
+    let sx = 0;
+    let sy = 0;
+    const inL = [];
+    const inC = [];
+    for (let i = 0; i < Hs.length; i++) {
+      let d = Math.abs(Hs[i] - centre);
+      d = Math.min(d, 360 - d);
+      if (d > WINDOW) continue;
+      const r = Hs[i] * Math.PI / 180;
+      sx += Cs[i] * Math.cos(r);
+      sy += Cs[i] * Math.sin(r);
+      inL.push(Ls[i]);
+      inC.push(Cs[i]);
+    }
+    const h = (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
+    return { L: median(inL), C: median(inC), h, grey: false, hist: smooth, peak };
+  }
+  function vonMises(hist) {
+    const out = new Float64Array(hist.length);
+    const w = Array.from({ length: hist.length }, (_, d) => Math.exp(KAPPA * (Math.cos(2 * Math.PI * d / hist.length) - 1)));
+    for (let i = 0; i < hist.length; i++) {
+      let s = 0;
+      for (let j = 0; j < hist.length; j++) s += hist[j] * w[(i - j + hist.length) % hist.length];
+      out[i] = s;
+    }
+    return out;
+  }
+  function median(a) {
+    const s = Float64Array.from(a).sort();
+    return s[s.length >> 1];
+  }
+  function baseColour(hue, P) {
+    return { L: Math.min(0.99, Math.max(0.02, hue.L + P.plainDL)), C: hue.C * P.plainCS, h: hue.h };
+  }
+  function lchToLinear(L, C, h) {
+    L = Math.min(1, Math.max(0, L));
+    let c = C;
+    for (let k = 0; k < 24; k++, c *= 0.88) {
+      const rgb = oklabToLinear(oklchToOklab(L, c, h));
+      if (rgb.every((v) => v >= -1e-4 && v <= 1.0001)) return rgb.map((v) => Math.min(1, Math.max(0, v)));
+    }
+    return oklabToLinear([L, 0, 0]).map((v) => Math.min(1, Math.max(0, v)));
+  }
+  var FIELD_SHORT = 160;
+  var STEPS = 36;
+  var SLICES = 9;
+  var VGRID = 90;
+  function velocity(seed, X, Y, P) {
+    const n = simplex3(stream(seed, ":plain:flow").U);
+    const m = P.flowD + 0.15;
+    const x0 = -m;
+    const y0 = -m;
+    const cell = 1 / VGRID;
+    const gw = Math.ceil((X + 2 * m) * VGRID) + 1;
+    const gh = Math.ceil((Y + 2 * m) * VGRID) + 1;
+    const psi = new Float32Array(gw * gh);
+    const U = [];
+    let sum2 = 0;
+    let count = 0;
+    for (let s = 0; s < SLICES; s++) {
+      const t = s / (SLICES - 1) * P.nu;
+      for (let j = 0; j < gh; j++) {
+        for (let i = 0; i < gw; i++) {
+          const x = (x0 + i * cell) / P.lambdaPsi;
+          const y = (y0 + j * cell) / P.lambdaPsi;
+          psi[j * gw + i] = n(x, y, t) + 0.45 * P.eddy * n(2.3 * x + 17.1, 2.3 * y - 9.3, 1.7 * t + 4.2);
+        }
+      }
+      const u = new Float32Array(2 * gw * gh);
+      for (let j = 0; j < gh; j++) {
+        for (let i = 0; i < gw; i++) {
+          const ip = Math.min(gw - 1, i + 1);
+          const im = Math.max(0, i - 1);
+          const jp = Math.min(gh - 1, j + 1);
+          const jm = Math.max(0, j - 1);
+          const dx = (psi[j * gw + ip] - psi[j * gw + im]) / ((ip - im) * cell);
+          const dy = (psi[jp * gw + i] - psi[jm * gw + i]) / ((jp - jm) * cell);
+          u[2 * (j * gw + i)] = dy;
+          u[2 * (j * gw + i) + 1] = -dx;
+          sum2 += dx * dx + dy * dy;
+          count++;
+        }
+      }
+      U.push(u);
+    }
+    const rms = Math.sqrt(sum2 / count) || 1;
+    for (const u of U) for (let i = 0; i < u.length; i++) u[i] /= rms;
+    return { U, x0, y0, gw, gh, cell };
+  }
+  function sampleVelocity(V, u, x, y, out) {
+    const fx = Math.min(V.gw - 1.001, Math.max(0, (x - V.x0) / V.cell));
+    const fy = Math.min(V.gh - 1.001, Math.max(0, (y - V.y0) / V.cell));
+    const i = fx | 0;
+    const j = fy | 0;
+    const tx = fx - i;
+    const ty = fy - j;
+    const a = 2 * (j * V.gw + i);
+    const b = a + 2;
+    const c = a + 2 * V.gw;
+    const d = c + 2;
+    out[0] = (u[a] * (1 - tx) + u[b] * tx) * (1 - ty) + (u[c] * (1 - tx) + u[d] * tx) * ty;
+    out[1] = (u[a + 1] * (1 - tx) + u[b + 1] * tx) * (1 - ty) + (u[c + 1] * (1 - tx) + u[d + 1] * tx) * ty;
+  }
+  function traceBack(V, x, y, D) {
+    const h = D / STEPS;
+    const a = [0, 0];
+    const b = [0, 0];
+    for (let s = 0; s < STEPS && h > 0; s++) {
+      const tf = (1 - s / STEPS) * (SLICES - 1);
+      const si = Math.min(SLICES - 2, tf | 0);
+      const st = tf - si;
+      sampleVelocity(V, V.U[si], x, y, a);
+      sampleVelocity(V, V.U[si + 1], x, y, b);
+      const mx = x - 0.5 * h * (a[0] + (b[0] - a[0]) * st);
+      const my = y - 0.5 * h * (a[1] + (b[1] - a[1]) * st);
+      sampleVelocity(V, V.U[si], mx, my, a);
+      sampleVelocity(V, V.U[si + 1], mx, my, b);
+      x -= h * (a[0] + (b[0] - a[0]) * st);
+      y -= h * (a[1] + (b[1] - a[1]) * st);
+    }
+    return [x, y];
+  }
+  function dye(seed, P) {
+    const { U } = stream(seed, ":plain:dye");
+    const angle = U() * Math.PI;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    const lb = P.lambdaB;
+    const k = 1 + 9 * (1 - P.dyeSoft);
+    const edge = (v) => 0.5 + 0.5 * Math.tanh(k * v) / Math.tanh(k);
+    const phase = U() * 2 * Math.PI;
+    if (P.plainDye === "combed") {
+      const phase2 = U() * 2 * Math.PI;
+      return (x, y) => edge(0.65 * Math.sin(2 * Math.PI * (x * nx + y * ny) / lb + phase) + 0.35 * Math.sin(2 * Math.PI * (-x * ny + y * nx) / (2.7 * lb) + phase2));
+    }
+    if (P.plainDye === "drops") {
+      const side = 2.4 * lb;
+      const soft = lb * (0.04 + 0.5 * P.dyeSoft);
+      const cells = /* @__PURE__ */ new Map();
+      const drop = (ci, cj) => {
+        const key = `${ci},${cj}`;
+        if (!cells.has(key)) {
+          const R = mulberry32(cyrb53(`${seed}:plain:dye:${key}`) >>> 0);
+          cells.set(key, [(ci + R()) * side, (cj + R()) * side, lb * (0.45 + 0.6 * R()), R() < 0.8]);
+        }
+        return cells.get(key);
+      };
+      return (x, y) => {
+        const ci = Math.floor(x / side);
+        const cj = Math.floor(y / side);
+        let v = 0;
+        for (let a = -1; a <= 1; a++) {
+          for (let b = -1; b <= 1; b++) {
+            const [cx, cy, r, on] = drop(ci + a, cj + b);
+            if (!on) continue;
+            const q = (r - Math.hypot(x - cx, y - cy)) / soft;
+            v = Math.max(v, q <= -1 ? 0 : q >= 1 ? 1 : 0.5 + 0.5 * Math.sin(q * Math.PI / 2));
+          }
+        }
+        return v;
+      };
+    }
+    return (x, y) => edge(Math.sin(2 * Math.PI * (x * nx + y * ny) / lb + phase));
+  }
+  function blur(f, w, h, sigma2) {
+    if (sigma2 < 0.5) return f;
+    const n = 3;
+    let wl = Math.floor(Math.sqrt(12 * sigma2 * sigma2 / n + 1));
+    if (wl % 2 === 0) wl--;
+    const m = Math.round((12 * sigma2 * sigma2 - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4));
+    let a = Float32Array.from(f);
+    let b = new Float32Array(f.length);
+    const box = (src, dst, r, lines, len, at) => {
+      for (let l = 0; l < lines; l++) {
+        const idx = (k) => at(l, k < 0 ? 0 : k >= len ? len - 1 : k);
+        let acc = 0;
+        for (let k = -r; k <= r; k++) acc += src[idx(k)];
+        for (let k = 0; k < len; k++) {
+          dst[idx(k)] = acc / (2 * r + 1);
+          acc += src[idx(k + r + 1)] - src[idx(k - r)];
+        }
+      }
+    };
+    for (let i = 0; i < n; i++) {
+      const r = ((i < m ? wl : wl + 2) - 1) / 2;
+      box(a, b, r, h, w, (l, k) => l * w + k);
+      box(b, a, r, w, h, (l, k) => k * w + l);
+    }
+    return a;
+  }
+  function plainField(seed, X, Y, P) {
+    const s = FIELD_SHORT;
+    const pw = Math.max(2, Math.round(X * s));
+    const ph = Math.max(2, Math.round(Y * s));
+    const V = velocity(seed, X, Y, P);
+    const phi0 = dye(seed, P);
+    const phi = new Float32Array(pw * ph);
+    for (let j = 0; j < ph; j++) {
+      for (let i = 0; i < pw; i++) {
+        const [x, y] = traceBack(V, (i + 0.5) / pw * X, (j + 0.5) / ph * Y, P.flowD);
+        phi[j * pw + i] = phi0(x, y);
+      }
+    }
+    return { phi: blur(phi, pw, ph, P.blurP * s), pw, ph };
+  }
+  function headroom(L) {
+    return Math.min(1, Math.max(0, (1 - L) / 0.35));
+  }
+  function plainRGB(view, field2, base, P, W, H) {
+    const N = 1024;
+    const eta = headroom(base.L);
+    const lut = new Float32Array(3 * N);
+    for (let i = 0; i < N; i++) {
+      const f = i / (N - 1);
+      let L = base.L + P.plainAlpha * eta * f;
+      let C = base.C * (1 - P.plainBeta * f);
+      if (view === "base") [L, C] = [base.L, base.C];
+      if (view === "pattern") [L, C] = [0.12 + 0.82 * f, 0];
+      const rgb = lchToLinear(L, C, base.h);
+      for (let c = 0; c < 3; c++) lut[3 * i + c] = 255 * delinearise(rgb[c]);
+    }
+    const { phi, pw, ph } = field2;
+    const out = new Uint8ClampedArray(4 * W * H);
+    const R = mulberry32(2654435769);
+    for (let y = 0; y < H; y++) {
+      const fy = Math.min(ph - 1.001, Math.max(0, (y + 0.5) * ph / H - 0.5));
+      const j = fy | 0;
+      const ty = fy - j;
+      for (let x = 0; x < W; x++) {
+        const fx = Math.min(pw - 1.001, Math.max(0, (x + 0.5) * pw / W - 0.5));
+        const i = fx | 0;
+        const tx = fx - i;
+        const k = j * pw + i;
+        const v = (phi[k] * (1 - tx) + phi[k + 1] * tx) * (1 - ty) + (phi[k + pw] * (1 - tx) + phi[k + pw + 1] * tx) * ty;
+        const q = Math.min(N - 1, Math.max(0, v * (N - 1)));
+        const i0 = Math.min(N - 2, q | 0);
+        const t = q - i0;
+        const a = 3 * i0;
+        const p = 4 * (y * W + x);
+        for (let c = 0; c < 3; c++) out[p + c] = lut[a + c] + (lut[a + 3 + c] - lut[a + c]) * t + R() - 0.5;
+        out[p + 3] = 255;
+      }
+    }
+    return out;
+  }
+  var GLOW_DT = 1 / 30;
+  var MAX_LIGHTS = 9;
+  var Glow = class {
+    constructor(seed, X, Y, P, base) {
+      this.seed = seed;
+      this.X = X;
+      this.Y = Y;
+      this.P = P;
+      const [r, g, b] = lchToLinear(P.glowL, Math.min(0.14, 1.4 * base.C + 0.03), base.h + P.glowDh);
+      this.colour = [r, g, b].map((v) => Math.round(255 * delinearise(v)));
+      this.eta = headroom(base.L);
+      this.reset();
+    }
+    reset() {
+      const { U, N } = stream(this.seed, ":plain:glow");
+      this.N = N;
+      this.t = 0;
+      this.lights = Array.from({ length: MAX_LIGHTS }, () => ({
+        x: U() * this.X,
+        y: U() * this.Y,
+        rho: 0.7 + 0.6 * U(),
+        omega: 2 * Math.PI * (0.7 + 0.6 * U()),
+        phase: 2 * Math.PI * U()
+      }));
+    }
+    at(t) {
+      const P = this.P;
+      if (t < this.t) this.reset();
+      const sq = Math.sqrt(GLOW_DT);
+      const mx = this.X / 2;
+      const my = this.Y / 2;
+      while (this.t + GLOW_DT <= t) {
+        for (const L of this.lights) {
+          L.x += -P.glowTheta * (L.x - mx) * GLOW_DT + P.glowSigma * sq * this.N();
+          L.y += -P.glowTheta * (L.y - my) * GLOW_DT + P.glowSigma * sq * this.N();
+        }
+        this.t += GLOW_DT;
+      }
+      return this.lights.slice(0, P.glowN).map((L) => ({
+        x: L.x,
+        y: L.y,
+        r: P.glowR * L.rho,
+        a: this.eta * P.glowA * (1 + P.glowBeta * Math.sin(L.omega * t / P.glowT + L.phase)) / (1 + P.glowBeta)
+      }));
+    }
+  };
+
   // dist/web/features/renderer/engine/params.js
   var PARAMS = [
     { group: "Monochrome", key: "k", label: "Contrast k", min: 0.5, max: 12, step: 0.1, value: 4 },
@@ -3818,17 +4209,40 @@ dialog.dialog-box {
     { group: "Life", key: "sT", label: "Hold spread s_T", min: 0, max: 1.5, step: 0.01, value: 0.5 },
     { group: "Life", key: "tauF", label: "Median fade time μ_f (s)", min: 0.2, max: 20, step: 0.1, value: 2.5 },
     { group: "Life", key: "sF", label: "Fade spread s_f", min: 0, max: 1.5, step: 0.01, value: 0.6 },
-    { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 }
+    { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 },
+    // The Plain theme (engine/plain.js)
+    { group: "Hue", key: "plainDL", label: "Lightness shift ΔL", min: -0.4, max: 0.4, step: 0.01, value: 0 },
+    { group: "Hue", key: "plainCS", label: "Chroma × c", min: 0, max: 1.6, step: 0.01, value: 1 },
+    { group: "Flow", key: "plainAlpha", label: "Lightness lift α", min: 0, max: 0.4, step: 5e-3, value: 0.07 },
+    { group: "Flow", key: "plainBeta", label: "Chroma fade β", min: 0, max: 1, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "lambdaPsi", label: "Flow scale λ_ψ", min: 0.08, max: 2, step: 0.01, value: 1.1 },
+    { group: "Flow", key: "flowD", label: "Flow distance D", min: 0, max: 2, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "nu", label: "Unsteadiness ν", min: 0, max: 2, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "eddy", label: "Second eddy w", min: 0, max: 1, step: 0.01, value: 0 },
+    { group: "Dye", key: "lambdaB", label: "Dye scale λ_b", min: 0.02, max: 2, step: 0.01, value: 0.9 },
+    { group: "Dye", key: "dyeSoft", label: "Dye softness", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Dye", key: "blurP", label: "Blur σ", min: 0, max: 0.4, step: 5e-3, value: 0.12 },
+    { group: "Glow", key: "glowN", label: "Lights N", min: 0, max: 9, step: 1, value: 3 },
+    { group: "Glow", key: "glowR", label: "Size r", min: 0.08, max: 1.2, step: 0.01, value: 0.6 },
+    { group: "Glow", key: "glowA", label: "Brightness a₀", min: 0, max: 0.8, step: 0.01, value: 0.16 },
+    { group: "Glow", key: "glowSigma", label: "Wander σ", min: 0, max: 0.4, step: 5e-3, value: 0.04 },
+    { group: "Glow", key: "glowTheta", label: "Pull back θ", min: 0, max: 1, step: 0.01, value: 0.08 },
+    { group: "Glow", key: "glowBeta", label: "Breathing β", min: 0, max: 1, step: 0.01, value: 0.35 },
+    { group: "Glow", key: "glowT", label: "Breath period T (s)", min: 2, max: 40, step: 0.5, value: 18 },
+    { group: "Glow", key: "glowDh", label: "Hue offset Δh (°)", min: -90, max: 90, step: 1, value: 14 },
+    { group: "Glow", key: "glowL", label: "Glow lightness L_g", min: 0.5, max: 1, step: 0.01, value: 0.88 }
   ];
   var PATTERN_GROUPS = ["Fibres", "Web", "Specks", "Flakes", "Grain"];
   var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
   var SPONT_GROUPS = ["Timing", "Placement", "Marks", "Life"];
   var SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
-  var DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT };
+  var PLAIN_FIELD_KEYS = ["lambdaPsi", "flowD", "nu", "eddy", "lambdaB", "dyeSoft", "blurP", "plainDye"];
+  var PLAIN_KEYS = [...PARAMS.filter((p) => ["Hue", "Flow", "Dye", "Glow"].includes(p.group)).map((p) => p.key), "plainDye"];
+  var DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT, plainDye: "bands" };
 
   // dist/web/features/renderer/engine/index.js
   var REROLLS = 8;
-  var FIELD_SHORT = 320;
+  var FIELD_SHORT2 = 320;
   var Engine = class {
     constructor() {
       this.image = null;
@@ -3853,6 +4267,7 @@ dialog.dialog-box {
     // seed: pass one to keep it when the same picture is loaded again at another size.
     load(rgba, W, H, seed = imageSeed(rgba, W, H)) {
       const L = lightness(rgba);
+      this.rgba = rgba;
       const s = Math.min(W, H);
       this.image = {
         W,
@@ -3866,6 +4281,8 @@ dialog.dialog-box {
       this.toneCache = null;
       this.maskCache = null;
       this.patternCache = null;
+      this.hueCache = null;
+      this.plainCache = null;
       return { seed: this.image.seed, seedText: seedText(this.image.seed) };
     }
     // Steps 3–5, cached while their parameters stay the same.
@@ -3888,7 +4305,7 @@ dialog.dialog-box {
     mask(P, anchorFrac) {
       const { X, Y, W, H } = this.image;
       const anchor = { x: anchorFrac.x * X, y: anchorFrac.y * Y };
-      const G = grid(X, Y, Math.min(FIELD_SHORT, Math.min(W, H)));
+      const G = grid(X, Y, Math.min(FIELD_SHORT2, Math.min(W, H)));
       const attempts = [];
       let best = null;
       for (let n = 0; n <= REROLLS; n++) {
@@ -3967,6 +4384,42 @@ dialog.dialog-box {
       this.colours(P);
       const { seed, X, Y, W, H } = this.image;
       return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
+    }
+    // ---- The Plain theme (engine/plain.js) ----
+    // B1–B5: the dominant hue of the picture, or the tint τ when it has almost none. Cached per picture and τ.
+    hue(P) {
+      const tint = P.tint || DEFAULT_TINT;
+      if (this.hueCache?.tint !== tint) {
+        const { W, H } = this.image;
+        this.hueCache = { tint, hue: dominantHue(this.rgba, W, H, tint) };
+      }
+      return this.hueCache.hue;
+    }
+    // The base colour b after its sliders.
+    plainBase(P) {
+      return baseColour(this.hue(P), P);
+    }
+    // P1–P5: φ on its grid, cached while the field's sliders stay the same.
+    plainField(P) {
+      const key = PLAIN_FIELD_KEYS.map((k) => P[k]).join();
+      if (this.plainCache?.key !== key) {
+        const { seed, X, Y } = this.image;
+        const t0 = performance.now();
+        this.plainCache = { key, ...plainField(seed, X, Y, P) };
+        this.plainCache.ms = performance.now() - t0;
+      }
+      return this.plainCache;
+    }
+    // Pixels for a Plain view at the image's size: 'base', 'pattern', 'plain' or 'living'
+    // ('living' is the still picture; the page lays the glow over it).
+    plainView(name, P) {
+      const { W, H } = this.image;
+      return { rgba: plainRGB(name, this.plainField(P), this.plainBase(P), P, W, H), width: W, height: H };
+    }
+    // G1–G3: the lights (stream seed + ':plain:glow').
+    glow(P) {
+      const { seed, X, Y } = this.image;
+      return new Glow(seed, X, Y, P, this.plainBase(P));
     }
     fullMask(P, r) {
       const c = this.maskCache;
@@ -4051,6 +4504,14 @@ dialog.dialog-box {
     const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
     return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.web, "web strand", "web strands")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
   }
+  function describePlain(hue, base, field2, P) {
+    const lines = [];
+    lines.push(hue.grey ? `The picture has almost no colour, so the base takes the tint τ: hue ${hue.h.toFixed(0)}°.` : `Dominant hue ${hue.h.toFixed(1)}° (peak bin ${hue.peak * 5}–${hue.peak * 5 + 5}°), L ${f3(hue.L)}, C ${f3(hue.C)}.`);
+    lines.push(`Base b = OKLCh(${f3(base.L)}, ${f3(base.C)}, ${base.h.toFixed(1)}°).`);
+    lines.push(`Field ${field2.pw} × ${field2.ph} cells, ${P.plainDye} dye, made in ${Math.round(field2.ms)} ms.`);
+    lines.push(`${P.glowN} light${P.glowN === 1 ? "" : "s"}, size ${P.glowR}, brightness ${P.glowA}.`);
+    return lines;
+  }
 
   // dist/web/features/renderer/Renderer.js
   var { el: el5 } = ui_exports;
@@ -4079,8 +4540,15 @@ dialog.dialog-box {
     "alpha",
     "warmth",
     ...PATTERN_KEYS,
-    ...SPONT_KEYS
+    ...SPONT_KEYS,
+    ...PLAIN_KEYS
   ];
+  var THEMES = [["washi", "Washi"], ["plain", "Plain"]];
+  var PLAIN_VIEWS = [["base", "Base"], ["pattern", "Pattern"], ["plain", "Plain"], ["living", "Living"]];
+  var PLAIN_LAYERS = [["Base layer", ["Hue"]], ["Pattern layer", ["Flow", "Dye"]], ["Spontaneity layer", ["Glow"]]];
+  var DYES = [["bands", "Bands"], ["combed", "Combed"], ["drops", "Drops"]];
+  var GLOW_SCALE = 0.25;
+  var GLOW_KEYS = PARAMS.filter((p) => p.group === "Glow").map((p) => p.key);
   var LAYERS = [
     ["Base layer", ["Monochrome", "Colour", "Patches", "Edges"]],
     ["Pattern layer", ["Fibres", "Web", "Specks", "Flakes", "Grain", "Composite"]],
@@ -4091,7 +4559,9 @@ dialog.dialog-box {
       this.engine = new Engine();
       this.P = { ...DEFAULTS, ...this.storage.get("params", {}) };
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
+      this.theme = this.storage.get("theme", "washi");
       this.current = this.storage.get("view", "washi");
+      this.plainCurrent = this.storage.get("plainView", "living");
       this.marks = this.storage.get("marks", false);
       this.result = null;
       this.clock = 0;
@@ -4106,15 +4576,18 @@ dialog.dialog-box {
         mount: (container) => this.mount(container),
         render: () => this.draw()
       });
+      this.add("settings", { id: "renderer-theme", title: "Theme", order: 15, render: () => this.themes() });
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
     }
     mount(container) {
       this.canvas = el5("canvas", { class: "renderer-canvas" });
       this.overlay = el5("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
+      this.glowCanvas = el5("canvas", { class: "renderer-glow", "aria-hidden": "true", hidden: true });
       this.stage = el5(
         "div",
         { class: "renderer-stage", hidden: true, onclick: (e) => this.setAnchor(e) },
         this.canvas,
+        this.glowCanvas,
         this.overlay
       );
       this.error = ui_exports.errorBox();
@@ -4140,6 +4613,16 @@ dialog.dialog-box {
           onclick: () => this.show(id)
         }, label))
       );
+      this.plainTabs = el5(
+        "div",
+        { class: "seg renderer-tabs plain", role: "tablist", "aria-label": "View", style: `--tabs:${PLAIN_VIEWS.length}` },
+        PLAIN_VIEWS.map(([id, label]) => el5("button", {
+          type: "button",
+          role: "tab",
+          "data-view": id,
+          onclick: () => this.show(id)
+        }, label))
+      );
       this.seedLine = el5("p", { class: "renderer-seed" });
       this.report = el5("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
@@ -4152,6 +4635,32 @@ dialog.dialog-box {
       this.controls.groups.get("Colour").querySelector("legend").after(
         el5("label", { class: "renderer-slider renderer-colour" }, el5("span", {}, "Tint τ"), this.tintInput)
       );
+      this.plainTint = el5("input", {
+        type: "color",
+        value: this.P.tint,
+        "aria-label": "Tint τ for a picture with no colour",
+        oninput: (e) => this.change("tint", e.target.value)
+      });
+      this.controls.groups.get("Hue").querySelector("legend").after(
+        el5("label", { class: "renderer-slider renderer-colour" }, el5("span", {}, "Tint τ, for a picture with no colour"), this.plainTint)
+      );
+      this.dyeTabs = el5(
+        "div",
+        { class: "seg renderer-dyes", role: "radiogroup", "aria-label": "Dye shape", style: `--tabs:${DYES.length}` },
+        DYES.map(([id, label]) => el5("button", {
+          type: "button",
+          role: "radio",
+          "data-dye": id,
+          onclick: () => {
+            this.change("plainDye", id);
+            this.syncDye();
+          }
+        }, label))
+      );
+      this.controls.groups.get("Dye").querySelector("legend").after(
+        el5("div", { class: "renderer-slider" }, el5("span", {}, "Dye shape φ₀"), this.dyeTabs)
+      );
+      this.syncDye();
       const fold = (title, ...kids) => el5(
         "details",
         { class: "advanced renderer-fold" },
@@ -4176,6 +4685,7 @@ dialog.dialog-box {
         fold(
           "View",
           this.tabs,
+          this.plainTabs,
           el5(
             "div",
             { class: "check renderer-marks" },
@@ -4183,15 +4693,58 @@ dialog.dialog-box {
             el5("span", {}, "Show the anchor, and tap the picture to move it")
           )
         ),
-        ...LAYERS.map(([title, groups]) => fold(
+        ...this.washiFolds = LAYERS.map(([title, groups]) => fold(
+          title,
+          el5("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
+        )),
+        ...this.plainFolds = PLAIN_LAYERS.map(([title, groups]) => fold(
           title,
           el5("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
         )),
         fold("Report", this.report),
         el5("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
+      this.marksRow = this.panel.querySelector(".renderer-marks");
       this.draw();
       return this.panel;
+    }
+    // Settings → Theme: Washi or Plain.
+    themes() {
+      this.themeTabs ||= el5(
+        "div",
+        { class: "seg renderer-themes", role: "radiogroup", "aria-label": "Theme", style: `--tabs:${THEMES.length}` },
+        THEMES.map(([id, label]) => el5("button", { type: "button", role: "radio", "data-theme-id": id, onclick: () => this.setTheme(id) }, label))
+      );
+      this.syncTheme();
+      return this.themeTabs;
+    }
+    setTheme(id) {
+      this.theme = id;
+      this.storage.set("theme", id);
+      if (id === "washi" && !this.result) this.remask();
+      else this.draw();
+    }
+    // Shows the theme's own views and sliders in Advanced, and marks the chosen theme.
+    syncTheme() {
+      const plain = this.theme === "plain";
+      for (const b of this.themeTabs?.children || []) {
+        const on = String(b.dataset.themeId === this.theme);
+        b.setAttribute("aria-checked", on);
+        b.setAttribute("aria-selected", on);
+      }
+      if (!this.panel) return;
+      this.tabs.hidden = plain;
+      this.plainTabs.hidden = !plain;
+      if (this.marksRow) this.marksRow.hidden = plain;
+      for (const f of this.washiFolds) f.hidden = plain;
+      for (const f of this.plainFolds) f.hidden = !plain;
+    }
+    syncDye() {
+      for (const b of this.dyeTabs.children) {
+        const on = String(b.dataset.dye === this.P.plainDye);
+        b.setAttribute("aria-checked", on);
+        b.setAttribute("aria-selected", on);
+      }
     }
     // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
     white() {
@@ -4266,12 +4819,17 @@ dialog.dialog-box {
       }
     }
     show(id) {
-      this.current = id;
-      this.storage.set("view", id);
+      if (this.theme === "plain") {
+        this.plainCurrent = id;
+        this.storage.set("plainView", id);
+      } else {
+        this.current = id;
+        this.storage.set("view", id);
+      }
       this.draw();
     }
     setAnchor(e) {
-      if (!this.marks) return;
+      if (!this.marks || this.theme === "plain") return;
       const box = this.stage.getBoundingClientRect();
       const c = this.cover(box.width, box.height);
       const x = Math.min(1, Math.max(0, (e.clientX - box.left - c.x) / c.w));
@@ -4285,6 +4843,10 @@ dialog.dialog-box {
       this.P[key] = value;
       this.storage.set("params", this.P);
       this.dirtyMask ||= !DRAW_KEYS.includes(key);
+      if (this.theme === "plain" && GLOW_KEYS.includes(key)) {
+        if (this.glow) this.glow = this.engine.glow(this.P);
+        return;
+      }
       if (this.frame) return;
       this.frame = requestAnimationFrame(() => {
         this.frame = null;
@@ -4297,19 +4859,27 @@ dialog.dialog-box {
       this.storage.set("params", this.P);
       this.controls.set(this.P);
       this.tintInput.value = this.P.tint;
+      this.plainTint.value = this.P.tint;
+      this.syncDye();
       this.remask();
     }
+    // M1–M8, which only Washi needs: Plain doesn't use the mask, so it's made when Washi is next shown.
     remask() {
       this.dirtyMask = false;
       if (!this.seed) return;
-      this.result = this.engine.mask(this.P, this.anchor);
+      this.result = this.theme === "washi" ? this.engine.mask(this.P, this.anchor) : null;
       this.draw();
     }
     draw() {
       if (this.tabs) for (const b of this.tabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.current));
+      if (this.plainTabs) for (const b of this.plainTabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.plainCurrent));
+      this.syncTheme();
       if (!this.stage) return;
       this.stage.hidden = !this.seed;
-      if (!this.seed || !this.result) return;
+      if (this.theme === "plain") return this.drawPlain();
+      this.glowCanvas.hidden = true;
+      if (!this.seed) return;
+      if (!this.result) return this.remask();
       this.picture = this.engine.view(this.current, this.P, this.result);
       const { rgba, width, height } = this.picture;
       this.canvas.width = width;
@@ -4345,6 +4915,66 @@ dialog.dialog-box {
         this.current === "living" && el5("p", {}, describeLiving(this.P))
       );
     }
+    // The Plain theme: the still picture, and in its Living view the glow over it.
+    drawPlain() {
+      cancelAnimationFrame(this.tick);
+      if (!this.seed) return;
+      this.picture = this.engine.plainView(this.plainCurrent, this.P);
+      const { rgba, width, height } = this.picture;
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.canvas.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
+      this.paintOverlay();
+      this.glowCanvas.hidden = this.plainCurrent !== "living";
+      if (this.plainCurrent === "living") this.animateGlow();
+      if (!this.panel) return;
+      const { W, H } = this.engine.image;
+      this.seedLine.replaceChildren("Seed ", el5("code", {}, this.seed.seedText), ` · ${W} × ${H} px`);
+      const r = describePlain(this.engine.hue(this.P), this.engine.plainBase(this.P), this.engine.plainField(this.P), this.P);
+      this.report.replaceChildren(el5("h3", {}, "Report"), ...r.map((line) => el5("p", {}, line)));
+    }
+    // G: the lights at this.clock, drawn each frame as Gaussian radial gradients, added together, on a
+    // canvas at GLOW_SCALE of the screen that the browser screen-blends over the picture.
+    animateGlow() {
+      this.glow = this.engine.glow(this.P);
+      const g = this.glowCanvas.getContext("2d");
+      let last = null;
+      const step = (now) => {
+        this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
+        last = now;
+        const box = this.stage.getBoundingClientRect();
+        const dpr = (window.devicePixelRatio || 1) * GLOW_SCALE;
+        const w = Math.max(2, Math.round(box.width * dpr));
+        const h = Math.max(2, Math.round(box.height * dpr));
+        if (this.glowCanvas.width !== w || this.glowCanvas.height !== h) {
+          this.glowCanvas.width = w;
+          this.glowCanvas.height = h;
+        }
+        const c = this.cover(w, h);
+        const { X } = this.engine.image;
+        const unit = c.w / X;
+        const [kr, kg, kb] = this.glow.colour;
+        g.globalCompositeOperation = "source-over";
+        g.fillStyle = "#000";
+        g.fillRect(0, 0, w, h);
+        g.globalCompositeOperation = "lighter";
+        for (const L of this.glow.at(this.clock)) {
+          const x = c.x + L.x * unit;
+          const y = c.y + L.y * unit;
+          const R = 3 * L.r * unit;
+          const grad = g.createRadialGradient(x, y, 0, x, y, R);
+          for (let s = 0; s <= 12; s++) {
+            const q = s / 12;
+            const e = L.a * Math.exp(-((3 * q) ** 2) / 2);
+            grad.addColorStop(q, `rgb(${Math.round(kr * e)},${Math.round(kg * e)},${Math.round(kb * e)})`);
+          }
+          g.fillStyle = grad;
+          g.fillRect(x - R, y - R, 2 * R, 2 * R);
+        }
+        this.tick = requestAnimationFrame(step);
+      };
+      this.tick = requestAnimationFrame(step);
+    }
     // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
     // capped at 0.1 s, so time pauses (rather than jumps) while the page is hidden.
     animate() {
@@ -4373,8 +5003,9 @@ dialog.dialog-box {
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
     paintOverlay() {
       if (!this.picture || this.stage.hidden) return;
-      this.stage.classList.toggle("marked", this.marks);
-      if (!this.marks) {
+      const marks = this.marks && this.theme === "washi";
+      this.stage.classList.toggle("marked", marks);
+      if (!marks) {
         this.overlay.width = 0;
         return;
       }

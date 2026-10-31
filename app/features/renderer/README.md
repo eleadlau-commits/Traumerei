@@ -21,6 +21,30 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
   attempt, with its streams, patches, threshold, components and whether each rule passed, and a line
   with the pattern's fibre, web, speck and flake counts once it has been made.
 
+## The Plain theme
+
+**Settings → Theme** switches between **Washi** (everything above) and **Plain**, which is saved. Plain
+turns the picture into one flat colour from its dominant hue, lifts its lightness with a heavily
+blurred fluid field, and lets a few soft lights drift over it. The picture itself never shows.
+In Plain, Advanced shows Plain's own views (**Base**, **Pattern**, **Plain**, **Living**) and sliders
+(**Hue**, **Flow**, **Dye**, **Glow**); the anchor and the mask aren't used, so M1–M8 only run when
+Washi is shown. The maths is in `engine/plain.js`:
+
+- **B (base):** the picture sampled to 256 px, each pixel to OKLCh; pixels with C ≥ 0.02 add their
+  chroma to a 72-bin hue histogram, smoothed with a von Mises kernel (κ = 20). The hue is the
+  chroma-weighted circular mean within 15° of the peak, and L, C are the medians there. An almost grey
+  picture (mean C < 0.012, or under 2% of pixels with a hue) takes the tint τ instead, so plain white
+  shows the beige.
+- **P (pattern):** a curl velocity u = ∇⊥ψ from 3D simplex noise (time is the third axis), the dye φ₀
+  (bands, combed or drops) traced back along it for a distance D in 36 RK2 steps, then a Gaussian
+  blur (three box passes). It's made on a grid of 160 cells on the short side and filled in bilinearly.
+- **Composite:** L = L_b + α η φ, C = C_b (1 − β φ), same hue, with η = min(1, (1 − L_b)/0.35) so a
+  pale base isn't washed out; 8-bit output dithered by ±½.
+- **G (glow):** N Gaussian lights on Ornstein–Uhlenbeck paths (fixed 1/30 s steps from the stream
+  `:plain:glow`, so the same moment always looks the same), breathing on slow sines, in the colour
+  OKLCh(L_g, min(0.14, 1.4 C_b + 0.03), h_b + Δh). They're drawn on a canvas a quarter of the screen's
+  size and screen-blended over the picture by the browser.
+
 ## How it's built
 
 `engine/` is the rendering engine. It has no screen code and doesn't use Folio, so it can be
@@ -35,10 +59,11 @@ mounted by any page: `new Engine()`, then `load(rgba, W, H)`, `mask(P, anchor)`,
 | `engine/colour.js` | sRGB ↔ linear, OKLab L, OKLCh → sRGB, the ink–paper lookup table, the tan, absorbers |
 | `engine/monochrome.js` | Steps 1–5 and the image seed |
 | `engine/skeleton.js` | M1–M4: stick-breaking, the main centre, ellipses, secondaries |
-| `engine/noise.js` | Seeded simplex noise and fBm |
+| `engine/noise.js` | Seeded simplex noise (2D, and 3D for the Plain flow) and fBm |
 | `engine/field.js` | M5–M7: the warped field, roughness, threshold |
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
+| `engine/plain.js` | The Plain theme: the dominant hue (B), the blurred fluid field (P), its colours, and the glow's lights (G) |
 | `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |
 | `Renderer.js`, `controls.js`, `report.js` | The page, the sliders, the report text |
