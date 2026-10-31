@@ -959,12 +959,12 @@ dialog.menu-drawer::before {
 .renderer-value { font-family: var(--font-mono); color: var(--text); }
 .renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
 
-/* The Plain theme's glow: a small canvas, scaled up by the browser and screen-blended over the picture. */
-.renderer-glow { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; mix-blend-mode: screen; }
-.renderer-glow[hidden] { display: none; }
-.renderer-tabs.plain { grid-template-columns: repeat(4, 1fr); }
+/* A mode's animation layer (Plain's glow): its own canvas, often smaller than the screen, scaled up by
+   the browser and blended over the picture with the mode's blend (set inline). */
+.renderer-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; mix-blend-mode: screen; }
+.renderer-layer[hidden] { display: none; }
 .renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
-.renderer-dyes { grid-column: 1 / -1; }
+.renderer-choice { grid-column: 1 / -1; }
 
 </style>
 </head>
@@ -2012,14 +2012,14 @@ dialog.menu-drawer::before {
     selectView(id, { quiet = false } = {}) {
       const slot = this.app.slot("views");
       const views = this.views;
-      let view = views.find((v) => v.id === id);
-      if (!view) {
-        view = views.find((v) => slot.run(v, (x) => !!x.contains?.(id), false));
-        if (!view) return false;
-        slot.run(view, (x) => x.open?.(id));
+      let view3 = views.find((v) => v.id === id);
+      if (!view3) {
+        view3 = views.find((v) => slot.run(v, (x) => !!x.contains?.(id), false));
+        if (!view3) return false;
+        slot.run(view3, (x) => x.open?.(id));
       }
-      const changed = this.currentId !== view.id;
-      this.currentId = view.id;
+      const changed = this.currentId !== view3.id;
+      this.currentId = view3.id;
       if (!quiet) {
         if (changed) window.scrollTo(0, 0);
         this.render();
@@ -2027,8 +2027,8 @@ dialog.menu-drawer::before {
       return true;
     }
     step(direction) {
-      const view = this.currentView;
-      if (view?.step) this.app.slot("views").run(view, (v) => v.step(direction));
+      const view3 = this.currentView;
+      if (view3?.step) this.app.slot("views").run(view3, (v) => v.step(direction));
     }
     // ---- Drawing ----
     render() {
@@ -2731,8 +2731,8 @@ dialog.menu-drawer::before {
     const tan = oklchToOklab(Math.max(0.05, Lp - 0.14), 2 * Cp, warmHue);
     return { ink, paper, tan, warmHue, dye: route.inclusions === "dye" };
   }
-  function absorber(colour, paper = PAPER) {
-    const c = oklabToLinear(colour);
+  function absorber(colour2, paper = PAPER) {
+    const c = oklabToLinear(colour2);
     const p = oklabToLinear(paper);
     const a = c.map((v, k) => -Math.log(Math.max(1e-6, v) / p[k]));
     const n = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
@@ -3051,10 +3051,10 @@ dialog.menu-drawer::before {
       return { x: p.x, y: p.y, c, s, ia2: 1 / (wa * wa), ib2: 1 / (wb * wb) };
     });
   }
-  function F(K, x, y) {
+  function F(K2, x, y) {
     let sum = 0;
-    for (let i = 0; i < K.length; i++) {
-      const k = K[i];
+    for (let i = 0; i < K2.length; i++) {
+      const k = K2[i];
       const dx = x - k.x;
       const dy = y - k.y;
       const u = dx * k.c + dy * k.s;
@@ -3071,7 +3071,7 @@ dialog.menu-drawer::before {
     return sorted[i] + (sorted[j] - sorted[i]) * (pos - i);
   }
   function field(G, patches, warpRng, noiseRng, P) {
-    const K = kernels(patches);
+    const K2 = kernels(patches);
     const n1 = simplex(warpRng.U);
     const n2 = simplex(warpRng.U);
     const rough = fbm(simplex(noiseRng.U), { octaves: P.octaves, lambda: P.lambdaRough, H: P.H });
@@ -3083,7 +3083,7 @@ dialog.menu-drawer::before {
         const x = (i + 0.5) * G.hx;
         const xw = x + P.Awarp * n1(x / P.lambdaWarp, y / P.lambdaWarp);
         const yw = y + P.Awarp * n2(x / P.lambdaWarp, y / P.lambdaWarp);
-        const f = F(K, xw, yw);
+        const f = F(K2, xw, yw);
         const fc = f < 0 ? 0 : f > 1 ? 1 : f;
         const v = f + P.eta * rough(x, y) * 4 * fc * (1 - fc);
         Fp[idx] = v;
@@ -3346,27 +3346,27 @@ dialog.menu-drawer::before {
     }
     return pts;
   }
-  function strokes(rng, K, canvas, D) {
+  function strokes(rng, K2, canvas, D) {
     const { X, Y, W, px } = canvas;
     const n = simplex(rng.U);
-    const count = poisson(rng, K.lambda * (X + 2 * MARGIN) * (Y + 2 * MARGIN));
-    const tau = Math.sqrt(2 / K.lp);
+    const count = poisson(rng, K2.lambda * (X + 2 * MARGIN) * (Y + 2 * MARGIN));
+    const tau = Math.sqrt(2 / K2.lp);
     const scratch = canvas.scratch;
     for (let f = 0; f < count; f++) {
       const x0 = -MARGIN + rng.U() * (X + 2 * MARGIN);
       const y0 = -MARGIN + rng.U() * (Y + 2 * MARGIN);
-      const L = logNormal(rng, K.muL, K.sL);
+      const L = logNormal(rng, K2.muL, K2.sL);
       const theta0 = rng.U() * 2 * Math.PI;
       const fwd = walk(rng, x0, y0, theta0, L / 2, tau);
       const back = walk(rng, x0, y0, theta0 + Math.PI, L / 2, tau);
-      const w0 = logNormal(rng, K.muW, 0.3);
-      const b0 = logNormal(rng, K.muB, 0.5);
-      const a0 = logNormal(rng, K.muA, K.sA);
-      const [lo, hi] = K.ab;
+      const w0 = logNormal(rng, K2.muW, 0.3);
+      const b0 = logNormal(rng, K2.muB, 0.5);
+      const a0 = logNormal(rng, K2.muA, K2.sA);
+      const [lo, hi] = K2.ab;
       const alpha = lo + (hi - lo) * rng.U();
       const beta = lo + (hi - lo) * rng.U();
       const o = [rng.U() * 1e3, rng.U() * 1e3, rng.U() * 1e3];
-      const g = (s, i) => n(s / K.ellG, o[i]) / SIGMA_N;
+      const g = (s, i) => n(s / K2.ellG, o[i]) / SIGMA_N;
       const xs = [];
       const ys = [];
       for (let k = back.length - 2; k >= 0; k -= 2) xs.push(back[k]), ys.push(back[k + 1]);
@@ -3381,10 +3381,10 @@ dialog.menu-drawer::before {
       const nb = back.length / 2;
       for (let k = 0; k < m; k++) {
         const s = k <= nb ? k * hb : L / 2 + (k - nb) * hf;
-        vw[k] = w0 * Math.exp(K.sigmaW * g(s, 0));
-        const b = b0 * Math.exp(K.sigmaB * g(s, 1));
+        vw[k] = w0 * Math.exp(K2.sigmaW * g(s, 0));
+        const b = b0 * Math.exp(K2.sigmaB * g(s, 1));
         vb[k] = Math.sqrt(b * b + (px / 2) ** 2);
-        va[k] = a0 * taper(s / L, alpha, beta) * Math.max(0, 1 + K.sigmaA * g(s, 2));
+        va[k] = a0 * taper(s / L, alpha, beta) * Math.max(0, 1 + K2.sigmaA * g(s, 2));
       }
       rasterStroke(xs, ys, vw, vb, va, canvas, scratch);
       for (const p of scratch.touched) {
@@ -3417,12 +3417,12 @@ dialog.menu-drawer::before {
             let t = ((pxx - ax) * dx + (py - ay) * dy) / len2;
             t = t < 0 ? 0 : t > 1 ? 1 : t;
             const ex = ax + t * dx - pxx, ey = ay + t * dy - py;
-            const d2 = ex * ex + ey * ey;
-            if (d2 > r2) continue;
+            const d22 = ex * ex + ey * ey;
+            if (d22 > r2) continue;
             const p = j * W + i;
-            if (d2 < sc.d2[p]) {
+            if (d22 < sc.d2[p]) {
               if (sc.d2[p] === Infinity) sc.touched.push(p);
-              sc.d2[p] = d2;
+              sc.d2[p] = d22;
               sc.w[p] = vw[k] + t * (vw[k + 1] - vw[k]);
               sc.b[p] = vb[k] + t * (vb[k + 1] - vb[k]);
               sc.a[p] = va[k] + t * (va[k + 1] - va[k]);
@@ -3653,6 +3653,47 @@ dialog.menu-drawer::before {
     };
   }
 
+  // dist/web/features/renderer/engine/hawkes.js
+  var Hawkes = class {
+    constructor(rng) {
+      this.rng = rng;
+      this.s = 0;
+      this.E = 0;
+      this.next = null;
+      this.recent = [];
+    }
+    advance(t, { mu, nH, tauH }, born) {
+      const n = Math.min(nH, 0.95);
+      for (; ; ) {
+        if (!this.next) {
+          const bound2 = mu + this.E;
+          if (!(bound2 > 0)) break;
+          this.next = { t: this.s - Math.log(1 - this.rng.U()) / bound2, bound: bound2 };
+        }
+        if (this.next.t > t) break;
+        const { t: tc, bound } = this.next;
+        this.next = null;
+        this.E *= Math.exp(-(tc - this.s) / tauH);
+        this.s = tc;
+        const lambda = mu + this.E;
+        if (this.rng.U() * bound > lambda) continue;
+        let parent = null;
+        let pick = this.rng.U() * lambda - mu;
+        if (pick >= 0) {
+          for (const r of this.recent) {
+            pick -= n / tauH * Math.exp(-(tc - r.t) / tauH);
+            parent = r.rec;
+            if (pick < 0) break;
+          }
+        }
+        const rec = born(tc, parent);
+        this.E += n / tauH;
+        this.recent.push({ t: tc, rec });
+      }
+      this.recent = this.recent.filter((r) => this.s - r.t < 20 * tauH);
+    }
+  };
+
   // dist/web/features/renderer/engine/spontaneity.js
   var POINTS = 16;
   var OUT = 5;
@@ -3661,49 +3702,33 @@ dialog.menu-drawer::before {
   var Spontaneity = class {
     constructor(seed, X, Y, P) {
       Object.assign(this, { X, Y, P });
-      this.time = stream(seed, ":spont:time");
+      this.hawkes = new Hawkes(stream(seed, ":spont:time"));
       this.place = stream(seed, ":spont:place");
       this.look = stream(seed, ":spont:marks");
-      this.s = 0;
-      this.E = 0;
-      this.next = null;
-      this.recent = [];
       this.live = [];
       this.count = 0;
     }
-    // S1. Every event up to t, then the marks still visible at t.
+    // The Hawkes state, kept readable and settable here (tests reset it to stop new marks).
+    get E() {
+      return this.hawkes.E;
+    }
+    set E(v) {
+      this.hawkes.E = v;
+    }
+    get next() {
+      return this.hawkes.next;
+    }
+    set next(v) {
+      this.hawkes.next = v;
+    }
+    // S1 (engine/hawkes.js). Every event up to t, then the marks still visible at t.
     advance(t) {
-      const { mu, nH, tauH } = this.P;
-      const n = Math.min(nH, 0.95);
-      for (; ; ) {
-        if (!this.next) {
-          const bound2 = mu + this.E;
-          if (!(bound2 > 0)) break;
-          this.next = { t: this.s - Math.log(1 - this.time.U()) / bound2, bound: bound2 };
-        }
-        if (this.next.t > t) break;
-        const { t: tc, bound } = this.next;
-        this.next = null;
-        this.E *= Math.exp(-(tc - this.s) / tauH);
-        this.s = tc;
-        const lambda = mu + this.E;
-        if (this.time.U() * bound > lambda) continue;
-        let parent = null;
-        let pick = this.time.U() * lambda - mu;
-        if (pick >= 0) {
-          for (const r of this.recent) {
-            pick -= n / tauH * Math.exp(-(tc - r.t0) / tauH);
-            parent = r;
-            if (pick < 0) break;
-          }
-        }
+      this.hawkes.advance(t, this.P, (tc, parent) => {
         const mk = this.birth(tc, parent);
-        this.E += n / tauH;
-        this.recent.push(mk);
         this.live.push(mk);
         this.count++;
-      }
-      this.recent = this.recent.filter((r) => this.s - r.t0 < 20 * tauH);
+        return mk;
+      });
       this.live = this.live.filter((mk) => t - mk.t0 < mk.Td + mk.T + OUT * mk.tauF);
       return this.live;
     }
@@ -3854,9 +3879,9 @@ dialog.menu-drawer::before {
           f = f < 0 ? 0 : f > 1 ? 1 : f;
           const qx = pxl - ax - f * ex;
           const qy = py - ay - f * ey;
-          const d2 = qx * qx + qy * qy;
-          if (d2 < best) {
-            best = d2;
+          const d22 = qx * qx + qy * qy;
+          if (d22 < best) {
+            best = d22;
             bu = (s + f * part2) / POINTS;
           }
         }
@@ -3868,11 +3893,11 @@ dialog.menu-drawer::before {
     }
   }
   var Living = class {
-    constructor(process, base, W, H, ak, alpha) {
+    constructor(process, base2, W, H, ak, alpha) {
       const scale = Math.min(W, H);
-      Object.assign(this, { process, base, W, H, ak, alpha });
+      Object.assign(this, { process, base: base2, W, H, ak, alpha });
       this.cv = { W, H, scale, px: 1 / scale };
-      this.rgba = new Uint8ClampedArray(base);
+      this.rgba = new Uint8ClampedArray(base2);
       this.D = new Float32Array(W * H);
       this.drawn = [];
     }
@@ -3897,20 +3922,20 @@ dialog.menu-drawer::before {
       return [i0, j0, i1 - i0 + 1, j1 - j0 + 1];
     }
     composite([x, y, w, h]) {
-      const { D, W, base, rgba, ak, alpha } = this;
+      const { D, W, base: base2, rgba, ak, alpha } = this;
       for (let j = y; j < y + h; j++) {
         for (let i = x; i < x + w; i++) {
           const p = j * W + i;
           const q = 4 * p;
           const d = alpha * D[p];
           if (d === 0) {
-            rgba[q] = base[q];
-            rgba[q + 1] = base[q + 1];
-            rgba[q + 2] = base[q + 2];
+            rgba[q] = base2[q];
+            rgba[q + 1] = base2[q + 1];
+            rgba[q + 2] = base2[q + 2];
             continue;
           }
           for (let c = 0; c < 3; c++) {
-            const v = LINEAR_BYTE[base[q + c]] * Math.exp(-d * ak[c]);
+            const v = LINEAR_BYTE[base2[q + c]] * Math.exp(-d * ak[c]);
             rgba[q + c] = SRGB_BYTE[Math.round(4095 * (v < 0 ? 0 : v > 1 ? 1 : v))];
           }
         }
@@ -3923,6 +3948,658 @@ dialog.menu-drawer::before {
     const life2 = P.Td + P.muT * Math.exp(P.sT * P.sT / 2) + P.tauF * Math.exp(P.sF * P.sF / 2);
     return { rate, visible: rate * life2, cluster: 1 / (1 - n) };
   }
+
+  // dist/web/features/renderer/engine/params.js
+  var PARAMS = [
+    { group: "Monochrome", key: "k", label: "Contrast k", min: 0.5, max: 12, step: 0.1, value: 4 },
+    { group: "Monochrome", key: "gamma", label: "Gamma γ", min: 0.3, max: 3, step: 0.01, value: 1 },
+    { group: "Monochrome", key: "dMin", label: "Darkest d_min", min: 0, max: 1, step: 0.01, value: 0.65 },
+    { group: "Monochrome", key: "dMax", label: "Lightest d_max", min: 0, max: 1, step: 0.01, value: 0.97 },
+    { group: "Colour", key: "tint", kind: "colour", label: "Tint τ", value: DEFAULT_TINT },
+    { group: "Colour", key: "baseL", label: "Brightness ΔL", min: -0.2, max: 0.2, step: 5e-3, value: 0 },
+    { group: "Colour", key: "baseW", label: "Warmth Δw", min: -0.06, max: 0.06, step: 1e-3, value: 0 },
+    { group: "Patches", key: "kappa", label: "Coverage κ", min: 0.02, max: 0.95, step: 0.01, value: 0.35 },
+    { group: "Patches", key: "theta", label: "Concentration θ", min: 0.1, max: 6, step: 0.05, value: 1.5 },
+    { group: "Patches", key: "Amin", label: "Smallest area A_min", min: 5e-4, max: 0.05, step: 5e-4, value: 5e-3 },
+    { group: "Patches", key: "sigma", label: "Spread from anchor σ", min: 0, max: 0.5, step: 5e-3, value: 0.08 },
+    { group: "Patches", key: "epsilon", label: "Chance to wander ε", min: 0, max: 1, step: 0.01, value: 0 },
+    { group: "Patches", key: "s", label: "Elongation s", min: 0, max: 1.5, step: 0.01, value: 0.3 },
+    { group: "Edges", key: "Awarp", label: "Warp amount A_warp", min: 0, max: 0.3, step: 5e-3, value: 0.06 },
+    { group: "Edges", key: "lambdaWarp", label: "Warp scale λ_warp", min: 0.02, max: 1, step: 0.01, value: 0.25 },
+    { group: "Edges", key: "eta", label: "Roughness η", min: 0, max: 1.5, step: 0.01, value: 0.35 },
+    { group: "Edges", key: "H", label: "Roughness memory H", min: 0, max: 1.5, step: 0.05, value: 0.6 },
+    { group: "Edges", key: "octaves", label: "Octaves", min: 1, max: 8, step: 1, value: 5 },
+    { group: "Edges", key: "lambdaRough", label: "Roughness scale λ_rough", min: 0.01, max: 0.5, step: 5e-3, value: 0.12 },
+    { group: "Edges", key: "delta", label: "Edge softness δ", min: 0, max: 0.1, step: 1e-3, value: 0.01 },
+    { group: "Edges", key: "feather", label: "Feather (blur of the mask)", min: 0, max: 0.15, step: 5e-3, value: 0.03 },
+    { group: "Fibres", key: "lambdaF", label: "Fibre density λ", min: 0, max: 400, step: 1, value: 150 },
+    { group: "Fibres", key: "muL", label: "Median length μ_L", min: 5e-3, max: 0.2, step: 1e-3, value: 0.06 },
+    { group: "Fibres", key: "sL", label: "Length spread s_L", min: 0, max: 1.5, step: 0.01, value: 0.5 },
+    { group: "Fibres", key: "lp", label: "Persistence length ℓ_p", min: 5e-3, max: 0.5, step: 1e-3, value: 0.05 },
+    { group: "Fibres", key: "muW", label: "Median width μ_w", min: 2e-4, max: 5e-3, step: 1e-4, value: 9e-4 },
+    { group: "Fibres", key: "muB", label: "Median blur μ_b", min: 0, max: 4e-3, step: 1e-4, value: 6e-4 },
+    { group: "Fibres", key: "muA", label: "Median darkness μ_a", min: 0, max: 0.6, step: 0.01, value: 0.2 },
+    { group: "Fibres", key: "sA", label: "Darkness spread s_a", min: 0, max: 1.5, step: 0.01, value: 0.8 },
+    { group: "Fibres", key: "sigmaW", label: "Width wander σ_w", min: 0, max: 1, step: 0.01, value: 0.35 },
+    { group: "Fibres", key: "sigmaB", label: "Blur wander σ_b", min: 0, max: 1.5, step: 0.01, value: 0.6 },
+    { group: "Fibres", key: "sigmaA", label: "Darkness wander σ_a", min: 0, max: 1.5, step: 0.01, value: 0.25 },
+    { group: "Fibres", key: "ellG", label: "Wander scale ℓ_g", min: 2e-3, max: 0.05, step: 1e-3, value: 0.015 },
+    { group: "Web", key: "lambdaWeb", label: "Web density λ_web", min: 0, max: 6e3, step: 50, value: 2500 },
+    { group: "Web", key: "muLWeb", label: "Web strand length μ_L,web", min: 5e-3, max: 0.06, step: 1e-3, value: 0.035 },
+    { group: "Web", key: "muAWeb", label: "Web darkness μ_a,web", min: 0, max: 0.2, step: 5e-3, value: 0.18 },
+    { group: "Specks", key: "lambdaS", label: "Speck density λ_s", min: 0, max: 60, step: 1, value: 10 },
+    { group: "Specks", key: "muLs", label: "Speck length μ_L,s", min: 2e-3, max: 0.04, step: 1e-3, value: 0.01 },
+    { group: "Specks", key: "muWs", label: "Speck width μ_w,s", min: 5e-4, max: 8e-3, step: 1e-4, value: 25e-4 },
+    { group: "Specks", key: "muAs", label: "Speck darkness μ_a,s", min: 0, max: 3, step: 0.05, value: 1.2 },
+    { group: "Flakes", key: "lambdaK", label: "Flake density λ_k", min: 0, max: 80, step: 1, value: 18 },
+    { group: "Flakes", key: "muK", label: "Median flake length μ_k", min: 4e-3, max: 0.08, step: 1e-3, value: 0.02 },
+    { group: "Flakes", key: "sK", label: "Flake length spread s_k", min: 0, max: 1.5, step: 0.01, value: 0.8 },
+    { group: "Flakes", key: "cK", label: "Raggedness c", min: 0, max: 0.4, step: 0.01, value: 0.2 },
+    { group: "Flakes", key: "pK", label: "Harmonic falloff p", min: 0.3, max: 2.5, step: 0.05, value: 1 },
+    { group: "Flakes", key: "epsK", label: "Edge softness ε_k", min: 0.01, max: 0.3, step: 0.01, value: 0.08 },
+    { group: "Flakes", key: "kRim", label: "Rim strength κ_rim", min: 0, max: 2, step: 0.05, value: 0.8 },
+    { group: "Flakes", key: "sigmaV", label: "Vein strength σ_v", min: 0, max: 1.5, step: 0.05, value: 0.5 },
+    { group: "Flakes", key: "lambdaV", label: "Vein scale λ_v", min: 1e-3, max: 0.02, step: 5e-4, value: 4e-3 },
+    { group: "Grain", key: "lambdaG", label: "Cell size λ_g", min: 2e-3, max: 0.03, step: 5e-4, value: 8e-3 },
+    { group: "Grain", key: "omega", label: "Crease width ω", min: 0.05, max: 1, step: 0.01, value: 0.3 },
+    { group: "Grain", key: "Ag", label: "Crumple amount A_g", min: 0, max: 0.02, step: 5e-4, value: 6e-3 },
+    { group: "Grain", key: "lambdaGw", label: "Crumple scale λ_gw", min: 5e-3, max: 0.1, step: 1e-3, value: 0.02 },
+    { group: "Grain", key: "etaG", label: "Mottle η_g", min: 0, max: 1, step: 0.01, value: 0.15 },
+    { group: "Grain", key: "lambdaN", label: "Mottle scale λ_n", min: 0.01, max: 0.3, step: 5e-3, value: 0.05 },
+    { group: "Grain", key: "aG", label: "Relief depth a_g", min: 0, max: 0.15, step: 5e-3, value: 0.012 },
+    { group: "Grain", key: "psi", label: "Light direction ψ (°)", min: 0, max: 360, step: 1, value: 225 },
+    { group: "Grain", key: "aCl", label: "Cloudiness a_cl", min: 0, max: 0.15, step: 5e-3, value: 0.05 },
+    { group: "Grain", key: "lambdaCl", label: "Cloud scale λ_cl", min: 0.05, max: 1, step: 0.01, value: 0.08 },
+    { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Composite", key: "warmth", label: "Inclusion warmth κ", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Timing", key: "mu", label: "Background rate μ (per s)", min: 0, max: 3, step: 0.01, value: 0.3 },
+    { group: "Timing", key: "nH", label: "Branching ratio n", min: 0, max: 0.95, step: 0.01, value: 0.6 },
+    { group: "Timing", key: "tauH", label: "Memory τ_h (s)", min: 0.1, max: 10, step: 0.1, value: 1.2 },
+    { group: "Placement", key: "sigmaC", label: "Cluster spread σ_c", min: 2e-3, max: 0.3, step: 1e-3, value: 0.04 },
+    { group: "Placement", key: "sigmaTheta", label: "Heading spread σ_θ (°)", min: 0, max: 180, step: 1, value: 20 },
+    { group: "Placement", key: "chi", label: "Kinship χ", min: 0, max: 1, step: 0.01, value: 0.7 },
+    { group: "Marks", key: "piDot", label: "Dot share π_dot", min: 0, max: 1, step: 0.01, value: 0.5 },
+    { group: "Marks", key: "piDash", label: "Dash share π_dash", min: 0, max: 1, step: 0.01, value: 0.3 },
+    { group: "Marks", key: "muR", label: "Dot radius μ_r", min: 5e-4, max: 0.02, step: 1e-4, value: 4e-3 },
+    { group: "Marks", key: "muLen", label: "Stroke length μ_ℓ", min: 5e-3, max: 0.15, step: 1e-3, value: 0.03 },
+    { group: "Marks", key: "sLen", label: "Length spread s_ℓ", min: 0, max: 1.5, step: 0.01, value: 0.4 },
+    { group: "Marks", key: "muWm", label: "Stroke width μ_w,m", min: 3e-4, max: 8e-3, step: 1e-4, value: 2e-3 },
+    { group: "Marks", key: "sigmaH", label: "Bend σ_h", min: 0, max: 0.6, step: 0.01, value: 0.2 },
+    { group: "Marks", key: "muBm", label: "Mark blur μ_b,m", min: 0, max: 4e-3, step: 1e-4, value: 4e-4 },
+    { group: "Marks", key: "muAm", label: "Mark darkness μ_a,m", min: 0, max: 3, step: 0.05, value: 1.2 },
+    { group: "Marks", key: "sAm", label: "Darkness spread s_a,m", min: 0, max: 1.5, step: 0.01, value: 0.3 },
+    { group: "Life", key: "Td", label: "Draw-in time T_d (s)", min: 0.05, max: 3, step: 0.05, value: 0.6 },
+    { group: "Life", key: "muT", label: "Median hold μ_T (s)", min: 0.5, max: 60, step: 0.5, value: 5 },
+    { group: "Life", key: "sT", label: "Hold spread s_T", min: 0, max: 1.5, step: 0.01, value: 0.5 },
+    { group: "Life", key: "tauF", label: "Median fade time μ_f (s)", min: 0.2, max: 20, step: 0.1, value: 2.5 },
+    { group: "Life", key: "sF", label: "Fade spread s_f", min: 0, max: 1.5, step: 0.01, value: 0.6 },
+    { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 },
+    // The Plain theme (engine/plain.js)
+    { group: "Hue", key: "tint", kind: "colour", label: "Tint τ, for a picture with no colour", aria: "Tint τ for a picture with no colour", value: DEFAULT_TINT },
+    { group: "Hue", key: "plainDL", label: "Lightness shift ΔL", min: -0.4, max: 0.4, step: 0.01, value: 0 },
+    { group: "Hue", key: "plainCS", label: "Chroma × c", min: 0, max: 1.6, step: 0.01, value: 1 },
+    { group: "Flow", key: "plainAlpha", label: "Lightness lift α", min: 0, max: 0.4, step: 5e-3, value: 0.07 },
+    { group: "Flow", key: "plainBeta", label: "Chroma fade β", min: 0, max: 1, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "lambdaPsi", label: "Flow scale λ_ψ", min: 0.08, max: 2, step: 0.01, value: 1.1 },
+    { group: "Flow", key: "flowD", label: "Flow distance D", min: 0, max: 2, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "nu", label: "Unsteadiness ν", min: 0, max: 2, step: 0.01, value: 0.3 },
+    { group: "Flow", key: "eddy", label: "Second eddy w", min: 0, max: 1, step: 0.01, value: 0 },
+    {
+      group: "Dye",
+      key: "plainDye",
+      kind: "choice",
+      label: "Dye shape φ₀",
+      aria: "Dye shape",
+      value: "bands",
+      options: [["bands", "Bands"], ["combed", "Combed"], ["drops", "Drops"]]
+    },
+    { group: "Dye", key: "lambdaB", label: "Dye scale λ_b", min: 0.02, max: 2, step: 0.01, value: 0.9 },
+    { group: "Dye", key: "dyeSoft", label: "Dye softness", min: 0, max: 1, step: 0.01, value: 1 },
+    { group: "Dye", key: "blurP", label: "Blur σ", min: 0, max: 0.4, step: 5e-3, value: 0.12 },
+    { group: "Glow", key: "glowN", label: "Lights N", min: 0, max: 9, step: 1, value: 3 },
+    { group: "Glow", key: "glowR", label: "Size r", min: 0.08, max: 1.2, step: 0.01, value: 0.6 },
+    { group: "Glow", key: "glowA", label: "Brightness a₀", min: 0, max: 0.8, step: 0.01, value: 0.16 },
+    { group: "Glow", key: "glowSigma", label: "Wander σ", min: 0, max: 0.4, step: 5e-3, value: 0.04 },
+    { group: "Glow", key: "glowTheta", label: "Pull back θ", min: 0, max: 1, step: 0.01, value: 0.08 },
+    { group: "Glow", key: "glowBeta", label: "Breathing β", min: 0, max: 1, step: 0.01, value: 0.35 },
+    { group: "Glow", key: "glowT", label: "Breath period T (s)", min: 2, max: 40, step: 0.5, value: 18 },
+    { group: "Glow", key: "glowDh", label: "Hue offset Δh (°)", min: -90, max: 90, step: 1, value: 14 },
+    { group: "Glow", key: "glowL", label: "Glow lightness L_g", min: 0.5, max: 1, step: 0.01, value: 0.88 },
+    // The Planar mode (engine/planar.js)
+    { group: "Fog", key: "tint", kind: "colour", label: "Tint τ, for a picture with no colour", aria: "Tint τ for a picture with no colour", value: DEFAULT_TINT },
+    { group: "Fog", key: "fogSigma", label: "Coarseness σ", min: 0.05, max: 0.6, step: 5e-3, value: 0.25 },
+    { group: "Fog", key: "fogA", label: "Unevenness A", min: 0, max: 0.3, step: 5e-3, value: 0.08 },
+    { group: "Fog", key: "fogLo", label: "Darkest L_lo", min: 0, max: 1, step: 0.01, value: 0.45 },
+    { group: "Fog", key: "fogHi", label: "Lightest L_hi", min: 0, max: 1, step: 0.01, value: 0.9 },
+    { group: "Fog", key: "fogC", label: "Colour strength c", min: 0, max: 1.5, step: 0.01, value: 0.6 },
+    { group: "Network", key: "netRho", label: "Grid density ρ (lines per unit)", min: 1, max: 16, step: 0.5, value: 6 },
+    { group: "Network", key: "netMu", label: "Merging μ", min: 0, max: 0.9, step: 0.01, value: 0.45 },
+    { group: "Flashes", key: "flashMu", label: "Background rate μ (per s)", min: 0, max: 2, step: 0.01, value: 0.2 },
+    { group: "Flashes", key: "flashN", label: "Branching ratio n", min: 0, max: 0.95, step: 0.01, value: 0.85 },
+    { group: "Flashes", key: "flashPiG", label: "Glint share π_g", min: 0, max: 1, step: 0.01, value: 0.5 },
+    { group: "Flashes", key: "flashR", label: "Black reach r", min: 5e-3, max: 0.3, step: 5e-3, value: 0.05 },
+    { group: "Flashes", key: "glintL", label: "Glint lightness L_g", min: 0.6, max: 1, step: 0.01, value: 0.97 }
+  ];
+  var keysOf = (groups) => [...new Set(PARAMS.filter((p) => groups.includes(p.group)).map((p) => p.key))];
+  var PATTERN_KEYS = keysOf(["Fibres", "Web", "Specks", "Flakes", "Grain"]);
+  var SPONT_KEYS = keysOf(["Timing", "Placement", "Marks", "Life"]);
+  var PLAIN_FIELD_KEYS = ["lambdaPsi", "flowD", "nu", "eddy", "lambdaB", "dyeSoft", "blurP", "plainDye"];
+  var PLAIN_KEYS = keysOf(["Hue", "Flow", "Dye", "Glow"]);
+  var FOG_KEYS = keysOf(["Fog"]);
+  var NETWORK_KEYS = keysOf(["Network"]);
+  var FLASH_KEYS = keysOf(["Flashes"]);
+  var DEFAULTS = Object.fromEntries(PARAMS.map((p) => [p.key, p.value]));
+
+  // dist/web/features/renderer/engine/network.js
+  var GAP_SPREAD = 0.6;
+  var EPS = 1e-9;
+  function tiles(seed, X, Y, P) {
+    const grid2 = stream(seed, ":planar:net:grid");
+    const cuts = (k, side) => {
+      const g = Array.from({ length: k }, () => Math.exp(GAP_SPREAD * grid2.N()));
+      const total = g.reduce((a, b) => a + b, 0);
+      const out = [0];
+      for (const v of g) out.push(out[out.length - 1] + side * v / total);
+      out[k] = side;
+      return out;
+    };
+    const m = Math.max(1, Math.round(P.netRho * X));
+    const n = Math.max(1, Math.round(P.netRho * Y));
+    const xs = cuts(m, X);
+    const ys = cuts(n, Y);
+    let cells = [];
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) cells.push([xs[i], ys[j], xs[i + 1], ys[j + 1]]);
+    const merge = stream(seed, ":planar:net:merge");
+    const same = (a, b) => Math.abs(a - b) < EPS;
+    const joins = (a, b) => (same(a[2], b[0]) || same(b[2], a[0])) && same(a[1], b[1]) && same(a[3], b[3]) || (same(a[3], b[1]) || same(b[3], a[1])) && same(a[0], b[0]) && same(a[2], b[2]);
+    const target = Math.max(1, Math.round(m * n * (1 - P.netMu)));
+    for (let tries = 0; cells.length > target && tries < 50 * m * n; tries++) {
+      const a = cells[Math.floor(merge.U() * cells.length)];
+      const nb = cells.filter((b2) => b2 !== a && joins(a, b2));
+      if (!nb.length) continue;
+      const b = nb[Math.floor(merge.U() * nb.length)];
+      cells = cells.filter((c) => c !== a && c !== b);
+      cells.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+    }
+    return cells;
+  }
+  function network(rects, X, Y) {
+    const key = (x, y) => `${x.toFixed(9)},${y.toFixed(9)}`;
+    const inside2 = (v, side) => v > EPS && v < side - EPS;
+    const sides = [];
+    for (const [x0, y0, x1, y1] of rects) {
+      if (inside2(y0, Y)) sides.push([true, y0, x0, x1]);
+      if (inside2(y1, Y)) sides.push([true, y1, x0, x1]);
+      if (inside2(x0, X)) sides.push([false, x0, y0, y1]);
+      if (inside2(x1, X)) sides.push([false, x1, y0, y1]);
+    }
+    const stops = /* @__PURE__ */ new Map();
+    const at = (h, c) => `${h ? "h" : "v"}:${c.toFixed(9)}`;
+    for (const [h, c, a, b] of sides) {
+      if (!stops.has(at(h, c))) stops.set(at(h, c), /* @__PURE__ */ new Map());
+      const s = stops.get(at(h, c));
+      s.set(a.toFixed(9), a);
+      s.set(b.toFixed(9), b);
+    }
+    for (const [h, c, a, b] of sides) {
+      for (const v of [a, b]) {
+        const s = stops.get(at(!h, v));
+        if (s) s.set(c.toFixed(9), c);
+      }
+    }
+    const seen = /* @__PURE__ */ new Map();
+    for (const [h, c, a, b] of sides) {
+      const pos = [...stops.get(at(h, c)).values()].filter((v) => v >= a - EPS && v <= b + EPS).sort((p, q) => p - q);
+      for (let k = 0; k + 1 < pos.length; k++) {
+        const [p, q] = [pos[k], pos[k + 1]];
+        if (q - p < EPS) continue;
+        const A = h ? [p, c] : [c, p];
+        const B = h ? [q, c] : [c, q];
+        const ek = `${key(...A)}|${key(...B)}`;
+        if (!seen.has(ek)) seen.set(ek, { A, B, horizontal: h, length: q - p });
+      }
+    }
+    const raw = [...seen.values()].sort((e, f) => e.horizontal - f.horizontal || (e.horizontal ? e.A[1] - f.A[1] || e.A[0] - f.A[0] : e.A[0] - f.A[0] || e.A[1] - f.A[1]));
+    const index = /* @__PURE__ */ new Map();
+    const nodes = [];
+    const node = ([x, y]) => {
+      const k = key(x, y);
+      if (!index.has(k)) {
+        index.set(k, nodes.length);
+        nodes.push({ x, y, deg: 0 });
+      }
+      return index.get(k);
+    };
+    const edges = raw.map((e) => {
+      const a = node(e.A);
+      const b = node(e.B);
+      nodes[a].deg++;
+      nodes[b].deg++;
+      return { a, b, horizontal: e.horizontal, length: e.length, line: -1 };
+    });
+    const lines = [];
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      const prev = lines[lines.length - 1];
+      const c = e.horizontal ? nodes[e.a].y : nodes[e.a].x;
+      const from = e.horizontal ? nodes[e.a].x : nodes[e.a].y;
+      const to = e.horizontal ? nodes[e.b].x : nodes[e.b].y;
+      if (prev && prev.horizontal === e.horizontal && Math.abs(prev.at - c) < EPS && Math.abs(prev.to - from) < EPS) {
+        prev.to = to;
+        prev.edges.push(i);
+      } else {
+        lines.push({ horizontal: e.horizontal, at: c, from, to, edges: [i] });
+      }
+      e.line = lines.length - 1;
+    }
+    const length = edges.reduce((s, e) => s + e.length, 0);
+    return { rects, nodes, edges, lines, length };
+  }
+  function counts(net) {
+    const by = (d) => net.nodes.filter((v) => v.deg === d).length;
+    return {
+      rectangles: net.rects.length,
+      tees: by(3),
+      crosses: by(4),
+      frame: by(1),
+      // where a line meets the frame
+      segments: net.edges.length,
+      lines: net.lines.length,
+      length: net.length
+    };
+  }
+  function drawNetwork(net, rgba, W, H, w, ink) {
+    const out = new Uint8ClampedArray(rgba);
+    const s = Math.min(W, H);
+    const half = Math.max(0.5, w * s / 2);
+    const paint2 = (px, py, a) => {
+      if (px < 0 || py < 0 || px >= W || py >= H || a <= 0) return;
+      const q = 4 * (py * W + px);
+      for (let c = 0; c < 3; c++) out[q + c] = out[q + c] + (ink[c] - out[q + c]) * Math.min(1, a);
+    };
+    for (const e of net.edges) {
+      const A = net.nodes[e.a];
+      const B = net.nodes[e.b];
+      if (e.horizontal) {
+        const cy = A.y * s;
+        const x0 = Math.floor(A.x * s - half);
+        const x1 = Math.ceil(B.x * s + half);
+        for (let py = Math.floor(cy - half - 1); py <= Math.ceil(cy + half + 1); py++) {
+          const a = Math.min(1, Math.max(0, half + 0.5 - Math.abs(py + 0.5 - cy)));
+          for (let px = x0; px < x1; px++) paint2(px, py, a);
+        }
+      } else {
+        const cx = A.x * s;
+        const y0 = Math.floor(A.y * s - half);
+        const y1 = Math.ceil(B.y * s + half);
+        for (let px = Math.floor(cx - half - 1); px <= Math.ceil(cx + half + 1); px++) {
+          const a = Math.min(1, Math.max(0, half + 0.5 - Math.abs(px + 0.5 - cx)));
+          for (let py = y0; py < y1; py++) paint2(px, py, a);
+        }
+      }
+    }
+    return out;
+  }
+
+  // dist/web/features/renderer/engine/flashes.js
+  var TIMES = {
+    tauH: 1,
+    // E1's memory τ_h
+    vG: 1.8,
+    // glint speed: the mean straight line (about 0.46) in about 0.25 s
+    TG: 0.25,
+    // glint travel time, at most
+    ellG: 0.12,
+    // glint streak length scale ℓ_g
+    FG: 0.4,
+    // glint fade
+    vB: 1,
+    // black spread speed: a mean segment (about 0.18) in about 0.2 s
+    FB: 0.8
+    // black fade
+  };
+  var VISIBLE = 0.1;
+  var fadeOut = (u) => u <= 0 ? 1 : u >= 1 ? 0 : (1 - u) * (1 - u);
+  function locate(net, d) {
+    for (let i = 0; i < net.edges.length; i++) {
+      const e = net.edges[i];
+      if (d <= e.length) return { edge: i, pos: d };
+      d -= e.length;
+    }
+    const last = net.edges.length - 1;
+    return { edge: last, pos: net.edges[last].length };
+  }
+  function distances(net, edge, pos, limit) {
+    const n = net.nodes.length;
+    const dist = new Float64Array(n).fill(Infinity);
+    if (!net.adj) {
+      net.adj = Array.from({ length: n }, () => []);
+      net.edges.forEach((e, i) => {
+        net.adj[e.a].push(i);
+        net.adj[e.b].push(i);
+      });
+    }
+    const e0 = net.edges[edge];
+    dist[e0.a] = pos;
+    dist[e0.b] = e0.length - pos;
+    const done = new Uint8Array(n);
+    for (; ; ) {
+      let u = -1;
+      for (let k = 0; k < n; k++) if (!done[k] && dist[k] <= limit && (u < 0 || dist[k] < dist[u])) u = k;
+      if (u < 0) break;
+      done[u] = 1;
+      for (const i of net.adj[u]) {
+        const e = net.edges[i];
+        const w = e.a === u ? e.b : e.a;
+        if (dist[u] + e.length < dist[w]) dist[w] = dist[u] + e.length;
+      }
+    }
+    return dist;
+  }
+  function ball(net, edge, pos, rho) {
+    const dist = distances(net, edge, pos, rho);
+    const out = [];
+    net.edges.forEach((e, i) => {
+      const parts = [];
+      if (dist[e.a] < rho) parts.push([0, Math.min(e.length, rho - dist[e.a])]);
+      if (dist[e.b] < rho) parts.push([Math.max(0, e.length - (rho - dist[e.b])), e.length]);
+      if (i === edge) parts.push([Math.max(0, pos - rho), Math.min(e.length, pos + rho)]);
+      if (!parts.length) return;
+      parts.sort((p, q) => p[0] - q[0]);
+      let [s0, s1] = parts[0];
+      for (const [a, b] of parts.slice(1)) {
+        if (a <= s1) s1 = Math.max(s1, b);
+        else {
+          out.push([i, s0, s1]);
+          [s0, s1] = [a, b];
+        }
+      }
+      out.push([i, s0, s1]);
+    });
+    return out;
+  }
+  function onLine(net, L, s) {
+    return L.horizontal ? [L.from + s, L.at] : [L.at, L.from + s];
+  }
+  function onEdge(net, i, s0, s1) {
+    const e = net.edges[i];
+    const A = net.nodes[e.a];
+    return e.horizontal ? [A.x + s0, A.y, A.x + s1, A.y] : [A.x, A.y + s0, A.x, A.y + s1];
+  }
+  var Flashes = class {
+    constructor(seed, net, P) {
+      Object.assign(this, { seed, net, P });
+      this.reset();
+    }
+    reset() {
+      this.hawkes = new Hawkes(stream(this.seed, ":planar:time"));
+      this.rng = stream(this.seed, ":planar:flash");
+      this.live = [];
+      this.t = 0;
+    }
+    // E1–E2: every event up to t, then the flashes still showing at t. Going back replays from 0.
+    advance(t) {
+      if (t < this.t) this.reset();
+      this.t = t;
+      const { P, net, rng } = this;
+      this.hawkes.advance(t, { mu: P.flashMu, nH: P.flashN, tauH: TIMES.tauH }, (t0) => {
+        const glint = rng.U() < P.flashPiG;
+        const at = locate(net, rng.U() * net.length);
+        let f;
+        if (glint) {
+          const L = net.lines[net.edges[at.edge].line];
+          const len = L.to - L.from;
+          const travel = Math.min(TIMES.TG, len / TIMES.vG);
+          f = { kind: "glint", t0, line: L, len, back: rng.U() < 0.5, travel, end: t0 + travel + TIMES.FG };
+        } else {
+          const R = -P.flashR * Math.log(1 - rng.U());
+          f = { kind: "black", t0, at, R, end: t0 + R / TIMES.vB + TIMES.FB };
+        }
+        this.live.push(f);
+        return f;
+      });
+      this.live = this.live.filter((f) => f.end > t);
+      return this.live;
+    }
+    // The pieces showing at t: { kind, x0, y0, x1, y1, a0, a1 } in canvas units, with strength a0 at
+    // (x0, y0) and a1 at (x1, y1) (glints: strongest at the head, which is (x1, y1)).
+    pieces(t) {
+      const out = [];
+      for (const f of this.advance(t)) {
+        const age = t - f.t0;
+        if (f.kind === "glint") {
+          const head = Math.min(age, f.travel) * TIMES.vG;
+          const o = fadeOut((age - f.travel) / TIMES.FG);
+          const tail = Math.max(0, head - TIMES.ellG * Math.log(1 / VISIBLE / 0.5));
+          const toS = (s) => f.back ? f.len - s : s;
+          const steps = 6;
+          for (let k = 0; k < steps; k++) {
+            const s0 = tail + (head - tail) * k / steps;
+            const s1 = tail + (head - tail) * (k + 1) / steps;
+            const [x0, y0] = onLine(this.net, f.line, toS(s0));
+            const [x1, y1] = onLine(this.net, f.line, toS(s1));
+            out.push({ kind: "glint", x0, y0, x1, y1, a0: o * Math.exp(-(head - s0) / TIMES.ellG), a1: o * Math.exp(-(head - s1) / TIMES.ellG) });
+          }
+        } else {
+          const rho = Math.min(f.R, age * TIMES.vB);
+          const o = fadeOut((age - f.R / TIMES.vB) / TIMES.FB);
+          for (const [i, s0, s1] of ball(this.net, f.at.edge, f.at.pos, rho)) {
+            const [x0, y0, x1, y1] = onEdge(this.net, i, s0, s1);
+            out.push({ kind: "black", x0, y0, x1, y1, a0: o, a1: o });
+          }
+        }
+      }
+      return out;
+    }
+  };
+
+  // dist/web/features/renderer/report.js
+  var f3 = (x) => Number.isFinite(x) ? x.toFixed(3) : "—";
+  function describe(result) {
+    const { attempts, best } = result;
+    const passed = best.verdict.pass;
+    const summary = passed ? `Attempt ${best.n} passed both rules${best.n ? ` after ${best.n} re-roll${best.n > 1 ? "s" : ""}` : ""}.` : `No attempt passed both rules in ${attempts.length} tries, so the closest one (attempt ${best.n}) is shown.`;
+    return { summary, attempts: attempts.map((a) => block(a, a === best)) };
+  }
+  function block(a, kept) {
+    const tag = a.n ? `:${a.n}` : "";
+    const v = a.verdict;
+    const near = v.near.skipped ? "Near the anchor: skipped, the main patch wandered (ε)." : `Near the anchor: ${f3(v.near.distance)} from it, limit ${f3(v.near.limit)} ${v.near.pass ? "✓" : "✗"}`;
+    const sizes = v.pairs.length ? `Different sizes: ✗ ${v.pairs.map((p) => `#${p.i + 1}/#${p.j + 1} ratio ${p.ratio.toFixed(2)}`).join(", ")}` : "Different sizes: every pair below 0.85 ✓";
+    return {
+      title: `Attempt ${a.n} · streams :skeleton${tag} :warp${tag} :noise${tag}`,
+      kept,
+      pass: v.pass,
+      lines: [
+        `${a.pieces} piece${a.pieces === 1 ? "" : "s"} from stick-breaking, ${a.patches.length} placed, ${a.dropped} dropped.`,
+        `Main patch r = ${f3(a.patches[0].r)}, centre (${f3(a.main.x)}, ${f3(a.main.y)}) by ${a.main.how}.`,
+        `Threshold T = ${f3(a.T)}.`,
+        a.comps.length ? `${a.comps.length} component${a.comps.length === 1 ? "" : "s"}: ${a.comps.map((c, i) => `#${i + 1} area ${f3(c.area)}`).join(", ")}.` : "No components above A_min.",
+        near,
+        sizes
+      ]
+    };
+  }
+  function describeLiving(P) {
+    const { rate, visible, cluster } = expected(P);
+    return `Spontaneity: about ${rate.toFixed(2)} marks a second (μ / (1 − n)), in clusters of ${cluster.toFixed(1)} on average (1 / (1 − n)), so about ${visible.toFixed(1)} on the page at once (rate × mean life). Streams :spont:time :spont:place :spont:marks.`;
+  }
+  function describePattern({ counts: counts2, ms }) {
+    const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+    return `Pattern: ${n(counts2.fibres, "fibre", "fibres")}, ${n(counts2.web, "web strand", "web strands")}, ${n(counts2.specks, "speck", "specks")} and ${n(counts2.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
+  }
+  function describePlain(hue2, base2, field3, P) {
+    const lines = [];
+    lines.push(hue2.grey ? `The picture has almost no colour, so the base takes the tint τ: hue ${hue2.h.toFixed(0)}°.` : `Dominant hue ${hue2.h.toFixed(1)}° (peak bin ${hue2.peak * 5}–${hue2.peak * 5 + 5}°), L ${f3(hue2.L)}, C ${f3(hue2.C)}.`);
+    lines.push(`Base b = OKLCh(${f3(base2.L)}, ${f3(base2.C)}, ${base2.h.toFixed(1)}°).`);
+    lines.push(`Field ${field3.pw} × ${field3.ph} cells, ${P.plainDye} dye, made in ${Math.round(field3.ms)} ms.`);
+    lines.push(`${P.glowN} light${P.glowN === 1 ? "" : "s"}, size ${P.glowR}, brightness ${P.glowA}.`);
+    return lines;
+  }
+  function describeFog(fog2, P) {
+    const lines = [];
+    if (fog2.grey) lines.push("The picture has almost no colour, so the fog takes the tint τ's hue.");
+    lines.push(`Palette (stream :planar:palette): ${fog2.palette.map((p) => `OKLab(${p.lab.map((v) => v.toFixed(2)).join(", ")}) ${Math.round(100 * p.share)}%`).join(", ")}.`);
+    lines.push(`Sampled on ${fog2.sw} × ${fog2.sh} cells, fog on ${fog2.fw} × ${fog2.fh}, coarseness σ ${P.fogSigma}, unevenness A ${P.fogA} (stream :planar:fog), made in ${Math.round(fog2.ms)} ms.`);
+    return lines;
+  }
+  function describeNetwork(net, P) {
+    const c = counts(net);
+    return `Network (streams :planar:net:grid :planar:net:merge): ${c.rectangles} rectangles, ${c.tees + c.crosses} junctions (${c.tees} T, ${c.crosses} crosses), ${c.frame} ends on the frame, ${c.segments} segments on ${c.lines} straight lines, total length ${c.length.toFixed(2)}, grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net.ms)} ms.`;
+  }
+  function describeFlashes(P) {
+    const n = Math.min(P.flashN, 0.95);
+    const rate = P.flashMu / (1 - n);
+    return `Flashes (streams :planar:time :planar:flash): about ${rate.toFixed(2)} a second (μ / (1 − n)), in clusters of ${(1 / (1 - n)).toFixed(1)} on average, ${Math.round(100 * P.flashPiG)}% glints; black reach r ${P.flashR} (spreads at ${TIMES.vB}/s, fades in ${TIMES.FB} s), glints at ${TIMES.vG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
+  }
+
+  // dist/web/features/renderer/engine/modes/washi.js
+  var REROLLS = 8;
+  var FIELD_SHORT = 320;
+  function colours(e, P) {
+    const tint = P.tint || DEFAULT_TINT;
+    if (e.tint === tint) return;
+    const c = palette(tint);
+    e.tint = tint;
+    e.ink = c.ink;
+    e.paper = c.paper;
+    e.warmHue = c.warmHue;
+    e.lut = inkPaperLUT(c.ink, c.paper);
+    e.ramp = linearRamp(1024, c.ink, c.paper);
+    e.inkAbsorber = absorber(c.ink, c.paper);
+    e.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
+  }
+  function tone2(e, P) {
+    const key = [P.k, P.gamma, P.dMin, P.dMax].join();
+    if (e.toneCache?.key !== key) e.toneCache = { key, t: tone(e.image.L, e.image.bw, P) };
+    return e.toneCache.t;
+  }
+  function attempt(e, n, P, anchor, G) {
+    const { seed, X, Y } = e.image;
+    const tag = n ? `:${n}` : "";
+    const sk = skeleton(stream(seed, ":skeleton" + tag), anchor, X, Y, P);
+    const f = field(G, sk.patches, stream(seed, ":warp" + tag), stream(seed, ":noise" + tag), P);
+    const comps = components(G, f.Fp, f.T, P.Amin);
+    const verdict = judge(comps, anchor, sk.patches[0].r, sk.main.how, P.sigma);
+    return { n, ...sk, ...f, comps, verdict };
+  }
+  function mask(e, P, anchorFrac) {
+    const { X, Y, W, H } = e.image;
+    const anchor = { x: anchorFrac.x * X, y: anchorFrac.y * Y };
+    const G = grid(X, Y, Math.min(FIELD_SHORT, Math.min(W, H)));
+    const attempts = [];
+    let best = null;
+    for (let n = 0; n <= REROLLS; n++) {
+      const a = attempt(e, n, P, anchor, G);
+      attempts.push(a);
+      if (!best || a.verdict.score < best.verdict.score) best = a;
+      if (a.verdict.pass) break;
+    }
+    return { G, anchor, attempts, best };
+  }
+  function pattern(e, P) {
+    const { seed, X, Y, W, H } = e.image;
+    const c = e.patternCache ||= { parts: {} };
+    const t0 = performance.now();
+    let changed = !c.Dw;
+    for (const [name, keys] of Object.entries(PARTS)) {
+      const key = keys.map((k) => P[k]).join();
+      if (c.parts[name]?.key === key) continue;
+      c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
+      changed = true;
+    }
+    if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
+    return c;
+  }
+  function view(e, name, P, r) {
+    const { W, H } = e.image;
+    colours(e, P);
+    const t = tone2(e, P);
+    const delta = shift(e, P);
+    if (name === "monochrome") {
+      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, e.ink, e.paper)) : paint(t, e.lut), width: W, height: H };
+    }
+    if (name === "pattern") return { rgba: washi(e, null, P), width: W, height: H };
+    const { G, best } = r;
+    if (name === "field") {
+      return {
+        rgba: paint(heightTone(best.Fp, best.max), e.lut),
+        width: G.gw,
+        height: G.gh,
+        contour: contour(G, best.Fp, best.T)
+      };
+    }
+    const m = fullMask(e, P, r);
+    if (name === "mask") return { rgba: paint(maskTone(m), e.lut), width: W, height: H };
+    const tb = baseTone(t, m);
+    const lin = delta ? shiftedLinear(tb, m, delta, e.ink, e.paper) : null;
+    if (name === "washi" || name === "living") return { rgba: washi(e, tb, P, lin), width: W, height: H };
+    return { rgba: lin ? paintLinear(lin) : paint(tb, e.lut), width: W, height: H };
+  }
+  function shift(e, P) {
+    const dL = P.baseL || 0;
+    const dW = P.baseW || 0;
+    if (!dL && !dW) return null;
+    const [, a, b] = oklchToOklab(0, dW, e.warmHue);
+    return [dL, a, b];
+  }
+  function washi(e, t, P, lin = null) {
+    const k = P.warmth;
+    const aw = e.tanAbsorber.map((v, c) => k * v + (1 - k) * e.inkAbsorber[c]);
+    return washiRGB(t, pattern(e, P), P.alpha, e.ramp, aw, e.inkAbsorber, lin);
+  }
+  function living(e, P, rgba) {
+    colours(e, P);
+    const { seed, X, Y, W, H } = e.image;
+    return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, e.inkAbsorber, P.alphaS);
+  }
+  function fullMask(e, P, r) {
+    const c = e.maskCache;
+    if (c?.r !== r || c.delta !== P.delta || c.feather !== P.feather) {
+      const { W, H } = e.image;
+      const m = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W, H, P.feather);
+      e.maskCache = { r, delta: P.delta, feather: P.feather, m };
+    }
+    return e.maskCache.m;
+  }
+  var MASK_KEYS = keysOf(["Patches", "Edges"]).filter((k) => k !== "delta" && k !== "feather");
+  var washiMode = {
+    id: "washi",
+    label: "Washi",
+    viewKey: "view",
+    startView: "washi",
+    views: [
+      ["monochrome", "Monochrome"],
+      ["mask", "Mask"],
+      ["field", "Field"],
+      ["base", "Base"],
+      ["pattern", "Pattern"],
+      ["washi", "Washi"],
+      ["living", "Living"]
+    ],
+    // The slider groups, folded by layer. Composite (α, κ) mixes the pattern in, so it's with it.
+    folds: [
+      ["Base layer", ["Monochrome", "Colour", "Patches", "Edges"]],
+      ["Pattern layer", ["Fibres", "Web", "Specks", "Flakes", "Grain", "Composite"]],
+      ["Spontaneity layer", ["Timing", "Placement", "Marks", "Life"]]
+    ],
+    usesAnchor: true,
+    liveKeys: [],
+    stages: {
+      mask: { keys: MASK_KEYS, make: (e, P, anchor) => mask(e, P, anchor) }
+    },
+    view: (e, name, P, { anchor }) => view(e, name, P, e.stage(washiMode, "mask", P, anchor)),
+    living: (e, P, picture) => ({ kind: "pixels", ...pixels(living(e, P, picture.rgba)) }),
+    report(e, P, name, { anchor }) {
+      const r = describe(e.stage(washiMode, "mask", P, anchor));
+      return {
+        ...r,
+        lines: [e.patternCache?.Dw && describePattern(e.patternCache), name === "living" && describeLiving(P)].filter(Boolean)
+      };
+    }
+  };
+  var washi_default = washiMode;
+  var pixels = (live) => ({ rgba: live.rgba, frame: (t) => live.frame(t) });
 
   // dist/web/features/renderer/engine/plain.js
   var C_MIN = 0.02;
@@ -3993,8 +4670,8 @@ dialog.menu-drawer::before {
     const s = Float64Array.from(a).sort();
     return s[s.length >> 1];
   }
-  function baseColour(hue, P) {
-    return { L: Math.min(0.99, Math.max(0.02, hue.L + P.plainDL)), C: hue.C * P.plainCS, h: hue.h };
+  function baseColour(hue2, P) {
+    return { L: Math.min(0.99, Math.max(0.02, hue2.L + P.plainDL)), C: hue2.C * P.plainCS, h: hue2.h };
   }
   function lchToLinear(L, C, h) {
     L = Math.min(1, Math.max(0, L));
@@ -4005,7 +4682,7 @@ dialog.menu-drawer::before {
     }
     return oklabToLinear([L, 0, 0]).map((v) => Math.min(1, Math.max(0, v)));
   }
-  var FIELD_SHORT = 160;
+  var FIELD_SHORT2 = 160;
   var STEPS = 36;
   var SLICES = 9;
   var VGRID = 90;
@@ -4153,7 +4830,7 @@ dialog.menu-drawer::before {
     return a;
   }
   function plainField(seed, X, Y, P) {
-    const s = FIELD_SHORT;
+    const s = FIELD_SHORT2;
     const pw = Math.max(2, Math.round(X * s));
     const ph = Math.max(2, Math.round(Y * s));
     const V = velocity(seed, X, Y, P);
@@ -4170,20 +4847,20 @@ dialog.menu-drawer::before {
   function headroom(L) {
     return Math.min(1, Math.max(0, (1 - L) / 0.35));
   }
-  function plainRGB(view, field2, base, P, W, H) {
+  function plainRGB(view3, field3, base2, P, W, H) {
     const N = 1024;
-    const eta = headroom(base.L);
+    const eta = headroom(base2.L);
     const lut = new Float32Array(3 * N);
     for (let i = 0; i < N; i++) {
       const f = i / (N - 1);
-      let L = base.L + P.plainAlpha * eta * f;
-      let C = base.C * (1 - P.plainBeta * f);
-      if (view === "base") [L, C] = [base.L, base.C];
-      if (view === "pattern") [L, C] = [0.12 + 0.82 * f, 0];
-      const rgb = lchToLinear(L, C, base.h);
+      let L = base2.L + P.plainAlpha * eta * f;
+      let C = base2.C * (1 - P.plainBeta * f);
+      if (view3 === "base") [L, C] = [base2.L, base2.C];
+      if (view3 === "pattern") [L, C] = [0.12 + 0.82 * f, 0];
+      const rgb = lchToLinear(L, C, base2.h);
       for (let c = 0; c < 3; c++) lut[3 * i + c] = 255 * delinearise(rgb[c]);
     }
-    const { phi, pw, ph } = field2;
+    const { phi, pw, ph } = field3;
     const out = new Uint8ClampedArray(4 * W * H);
     const R = mulberry32(2654435769);
     for (let y = 0; y < H; y++) {
@@ -4210,14 +4887,14 @@ dialog.menu-drawer::before {
   var GLOW_DT = 1 / 30;
   var MAX_LIGHTS = 9;
   var Glow = class {
-    constructor(seed, X, Y, P, base) {
+    constructor(seed, X, Y, P, base2) {
       this.seed = seed;
       this.X = X;
       this.Y = Y;
       this.P = P;
-      const [r, g, b] = lchToLinear(P.glowL, Math.min(0.14, 1.4 * base.C + 0.03), base.h + P.glowDh);
+      const [r, g, b] = lchToLinear(P.glowL, Math.min(0.14, 1.4 * base2.C + 0.03), base2.h + P.glowDh);
       this.colour = [r, g, b].map((v) => Math.round(255 * delinearise(v)));
-      this.eta = headroom(base.L);
+      this.eta = headroom(base2.L);
       this.reset();
     }
     reset() {
@@ -4254,142 +4931,342 @@ dialog.menu-drawer::before {
     }
   };
 
-  // dist/web/features/renderer/engine/params.js
-  var PARAMS = [
-    { group: "Monochrome", key: "k", label: "Contrast k", min: 0.5, max: 12, step: 0.1, value: 4 },
-    { group: "Monochrome", key: "gamma", label: "Gamma γ", min: 0.3, max: 3, step: 0.01, value: 1 },
-    { group: "Monochrome", key: "dMin", label: "Darkest d_min", min: 0, max: 1, step: 0.01, value: 0.65 },
-    { group: "Monochrome", key: "dMax", label: "Lightest d_max", min: 0, max: 1, step: 0.01, value: 0.97 },
-    { group: "Colour", key: "baseL", label: "Brightness ΔL", min: -0.2, max: 0.2, step: 5e-3, value: 0 },
-    { group: "Colour", key: "baseW", label: "Warmth Δw", min: -0.06, max: 0.06, step: 1e-3, value: 0 },
-    { group: "Patches", key: "kappa", label: "Coverage κ", min: 0.02, max: 0.95, step: 0.01, value: 0.35 },
-    { group: "Patches", key: "theta", label: "Concentration θ", min: 0.1, max: 6, step: 0.05, value: 1.5 },
-    { group: "Patches", key: "Amin", label: "Smallest area A_min", min: 5e-4, max: 0.05, step: 5e-4, value: 5e-3 },
-    { group: "Patches", key: "sigma", label: "Spread from anchor σ", min: 0, max: 0.5, step: 5e-3, value: 0.08 },
-    { group: "Patches", key: "epsilon", label: "Chance to wander ε", min: 0, max: 1, step: 0.01, value: 0 },
-    { group: "Patches", key: "s", label: "Elongation s", min: 0, max: 1.5, step: 0.01, value: 0.3 },
-    { group: "Edges", key: "Awarp", label: "Warp amount A_warp", min: 0, max: 0.3, step: 5e-3, value: 0.06 },
-    { group: "Edges", key: "lambdaWarp", label: "Warp scale λ_warp", min: 0.02, max: 1, step: 0.01, value: 0.25 },
-    { group: "Edges", key: "eta", label: "Roughness η", min: 0, max: 1.5, step: 0.01, value: 0.35 },
-    { group: "Edges", key: "H", label: "Roughness memory H", min: 0, max: 1.5, step: 0.05, value: 0.6 },
-    { group: "Edges", key: "octaves", label: "Octaves", min: 1, max: 8, step: 1, value: 5 },
-    { group: "Edges", key: "lambdaRough", label: "Roughness scale λ_rough", min: 0.01, max: 0.5, step: 5e-3, value: 0.12 },
-    { group: "Edges", key: "delta", label: "Edge softness δ", min: 0, max: 0.1, step: 1e-3, value: 0.01 },
-    { group: "Edges", key: "feather", label: "Feather (blur of the mask)", min: 0, max: 0.15, step: 5e-3, value: 0.03 },
-    { group: "Fibres", key: "lambdaF", label: "Fibre density λ", min: 0, max: 400, step: 1, value: 150 },
-    { group: "Fibres", key: "muL", label: "Median length μ_L", min: 5e-3, max: 0.2, step: 1e-3, value: 0.06 },
-    { group: "Fibres", key: "sL", label: "Length spread s_L", min: 0, max: 1.5, step: 0.01, value: 0.5 },
-    { group: "Fibres", key: "lp", label: "Persistence length ℓ_p", min: 5e-3, max: 0.5, step: 1e-3, value: 0.05 },
-    { group: "Fibres", key: "muW", label: "Median width μ_w", min: 2e-4, max: 5e-3, step: 1e-4, value: 9e-4 },
-    { group: "Fibres", key: "muB", label: "Median blur μ_b", min: 0, max: 4e-3, step: 1e-4, value: 6e-4 },
-    { group: "Fibres", key: "muA", label: "Median darkness μ_a", min: 0, max: 0.6, step: 0.01, value: 0.2 },
-    { group: "Fibres", key: "sA", label: "Darkness spread s_a", min: 0, max: 1.5, step: 0.01, value: 0.8 },
-    { group: "Fibres", key: "sigmaW", label: "Width wander σ_w", min: 0, max: 1, step: 0.01, value: 0.35 },
-    { group: "Fibres", key: "sigmaB", label: "Blur wander σ_b", min: 0, max: 1.5, step: 0.01, value: 0.6 },
-    { group: "Fibres", key: "sigmaA", label: "Darkness wander σ_a", min: 0, max: 1.5, step: 0.01, value: 0.25 },
-    { group: "Fibres", key: "ellG", label: "Wander scale ℓ_g", min: 2e-3, max: 0.05, step: 1e-3, value: 0.015 },
-    { group: "Web", key: "lambdaWeb", label: "Web density λ_web", min: 0, max: 6e3, step: 50, value: 2500 },
-    { group: "Web", key: "muLWeb", label: "Web strand length μ_L,web", min: 5e-3, max: 0.06, step: 1e-3, value: 0.035 },
-    { group: "Web", key: "muAWeb", label: "Web darkness μ_a,web", min: 0, max: 0.2, step: 5e-3, value: 0.18 },
-    { group: "Specks", key: "lambdaS", label: "Speck density λ_s", min: 0, max: 60, step: 1, value: 10 },
-    { group: "Specks", key: "muLs", label: "Speck length μ_L,s", min: 2e-3, max: 0.04, step: 1e-3, value: 0.01 },
-    { group: "Specks", key: "muWs", label: "Speck width μ_w,s", min: 5e-4, max: 8e-3, step: 1e-4, value: 25e-4 },
-    { group: "Specks", key: "muAs", label: "Speck darkness μ_a,s", min: 0, max: 3, step: 0.05, value: 1.2 },
-    { group: "Flakes", key: "lambdaK", label: "Flake density λ_k", min: 0, max: 80, step: 1, value: 18 },
-    { group: "Flakes", key: "muK", label: "Median flake length μ_k", min: 4e-3, max: 0.08, step: 1e-3, value: 0.02 },
-    { group: "Flakes", key: "sK", label: "Flake length spread s_k", min: 0, max: 1.5, step: 0.01, value: 0.8 },
-    { group: "Flakes", key: "cK", label: "Raggedness c", min: 0, max: 0.4, step: 0.01, value: 0.2 },
-    { group: "Flakes", key: "pK", label: "Harmonic falloff p", min: 0.3, max: 2.5, step: 0.05, value: 1 },
-    { group: "Flakes", key: "epsK", label: "Edge softness ε_k", min: 0.01, max: 0.3, step: 0.01, value: 0.08 },
-    { group: "Flakes", key: "kRim", label: "Rim strength κ_rim", min: 0, max: 2, step: 0.05, value: 0.8 },
-    { group: "Flakes", key: "sigmaV", label: "Vein strength σ_v", min: 0, max: 1.5, step: 0.05, value: 0.5 },
-    { group: "Flakes", key: "lambdaV", label: "Vein scale λ_v", min: 1e-3, max: 0.02, step: 5e-4, value: 4e-3 },
-    { group: "Grain", key: "lambdaG", label: "Cell size λ_g", min: 2e-3, max: 0.03, step: 5e-4, value: 8e-3 },
-    { group: "Grain", key: "omega", label: "Crease width ω", min: 0.05, max: 1, step: 0.01, value: 0.3 },
-    { group: "Grain", key: "Ag", label: "Crumple amount A_g", min: 0, max: 0.02, step: 5e-4, value: 6e-3 },
-    { group: "Grain", key: "lambdaGw", label: "Crumple scale λ_gw", min: 5e-3, max: 0.1, step: 1e-3, value: 0.02 },
-    { group: "Grain", key: "etaG", label: "Mottle η_g", min: 0, max: 1, step: 0.01, value: 0.15 },
-    { group: "Grain", key: "lambdaN", label: "Mottle scale λ_n", min: 0.01, max: 0.3, step: 5e-3, value: 0.05 },
-    { group: "Grain", key: "aG", label: "Relief depth a_g", min: 0, max: 0.15, step: 5e-3, value: 0.012 },
-    { group: "Grain", key: "psi", label: "Light direction ψ (°)", min: 0, max: 360, step: 1, value: 225 },
-    { group: "Grain", key: "aCl", label: "Cloudiness a_cl", min: 0, max: 0.15, step: 5e-3, value: 0.05 },
-    { group: "Grain", key: "lambdaCl", label: "Cloud scale λ_cl", min: 0.05, max: 1, step: 0.01, value: 0.08 },
-    { group: "Composite", key: "alpha", label: "Pattern strength α", min: 0, max: 1, step: 0.01, value: 1 },
-    { group: "Composite", key: "warmth", label: "Inclusion warmth κ", min: 0, max: 1, step: 0.01, value: 1 },
-    { group: "Timing", key: "mu", label: "Background rate μ (per s)", min: 0, max: 3, step: 0.01, value: 0.3 },
-    { group: "Timing", key: "nH", label: "Branching ratio n", min: 0, max: 0.95, step: 0.01, value: 0.6 },
-    { group: "Timing", key: "tauH", label: "Memory τ_h (s)", min: 0.1, max: 10, step: 0.1, value: 1.2 },
-    { group: "Placement", key: "sigmaC", label: "Cluster spread σ_c", min: 2e-3, max: 0.3, step: 1e-3, value: 0.04 },
-    { group: "Placement", key: "sigmaTheta", label: "Heading spread σ_θ (°)", min: 0, max: 180, step: 1, value: 20 },
-    { group: "Placement", key: "chi", label: "Kinship χ", min: 0, max: 1, step: 0.01, value: 0.7 },
-    { group: "Marks", key: "piDot", label: "Dot share π_dot", min: 0, max: 1, step: 0.01, value: 0.5 },
-    { group: "Marks", key: "piDash", label: "Dash share π_dash", min: 0, max: 1, step: 0.01, value: 0.3 },
-    { group: "Marks", key: "muR", label: "Dot radius μ_r", min: 5e-4, max: 0.02, step: 1e-4, value: 4e-3 },
-    { group: "Marks", key: "muLen", label: "Stroke length μ_ℓ", min: 5e-3, max: 0.15, step: 1e-3, value: 0.03 },
-    { group: "Marks", key: "sLen", label: "Length spread s_ℓ", min: 0, max: 1.5, step: 0.01, value: 0.4 },
-    { group: "Marks", key: "muWm", label: "Stroke width μ_w,m", min: 3e-4, max: 8e-3, step: 1e-4, value: 2e-3 },
-    { group: "Marks", key: "sigmaH", label: "Bend σ_h", min: 0, max: 0.6, step: 0.01, value: 0.2 },
-    { group: "Marks", key: "muBm", label: "Mark blur μ_b,m", min: 0, max: 4e-3, step: 1e-4, value: 4e-4 },
-    { group: "Marks", key: "muAm", label: "Mark darkness μ_a,m", min: 0, max: 3, step: 0.05, value: 1.2 },
-    { group: "Marks", key: "sAm", label: "Darkness spread s_a,m", min: 0, max: 1.5, step: 0.01, value: 0.3 },
-    { group: "Life", key: "Td", label: "Draw-in time T_d (s)", min: 0.05, max: 3, step: 0.05, value: 0.6 },
-    { group: "Life", key: "muT", label: "Median hold μ_T (s)", min: 0.5, max: 60, step: 0.5, value: 5 },
-    { group: "Life", key: "sT", label: "Hold spread s_T", min: 0, max: 1.5, step: 0.01, value: 0.5 },
-    { group: "Life", key: "tauF", label: "Median fade time μ_f (s)", min: 0.2, max: 20, step: 0.1, value: 2.5 },
-    { group: "Life", key: "sF", label: "Fade spread s_f", min: 0, max: 1.5, step: 0.01, value: 0.6 },
-    { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 },
-    // The Plain theme (engine/plain.js)
-    { group: "Hue", key: "plainDL", label: "Lightness shift ΔL", min: -0.4, max: 0.4, step: 0.01, value: 0 },
-    { group: "Hue", key: "plainCS", label: "Chroma × c", min: 0, max: 1.6, step: 0.01, value: 1 },
-    { group: "Flow", key: "plainAlpha", label: "Lightness lift α", min: 0, max: 0.4, step: 5e-3, value: 0.07 },
-    { group: "Flow", key: "plainBeta", label: "Chroma fade β", min: 0, max: 1, step: 0.01, value: 0.3 },
-    { group: "Flow", key: "lambdaPsi", label: "Flow scale λ_ψ", min: 0.08, max: 2, step: 0.01, value: 1.1 },
-    { group: "Flow", key: "flowD", label: "Flow distance D", min: 0, max: 2, step: 0.01, value: 0.3 },
-    { group: "Flow", key: "nu", label: "Unsteadiness ν", min: 0, max: 2, step: 0.01, value: 0.3 },
-    { group: "Flow", key: "eddy", label: "Second eddy w", min: 0, max: 1, step: 0.01, value: 0 },
-    { group: "Dye", key: "lambdaB", label: "Dye scale λ_b", min: 0.02, max: 2, step: 0.01, value: 0.9 },
-    { group: "Dye", key: "dyeSoft", label: "Dye softness", min: 0, max: 1, step: 0.01, value: 1 },
-    { group: "Dye", key: "blurP", label: "Blur σ", min: 0, max: 0.4, step: 5e-3, value: 0.12 },
-    { group: "Glow", key: "glowN", label: "Lights N", min: 0, max: 9, step: 1, value: 3 },
-    { group: "Glow", key: "glowR", label: "Size r", min: 0.08, max: 1.2, step: 0.01, value: 0.6 },
-    { group: "Glow", key: "glowA", label: "Brightness a₀", min: 0, max: 0.8, step: 0.01, value: 0.16 },
-    { group: "Glow", key: "glowSigma", label: "Wander σ", min: 0, max: 0.4, step: 5e-3, value: 0.04 },
-    { group: "Glow", key: "glowTheta", label: "Pull back θ", min: 0, max: 1, step: 0.01, value: 0.08 },
-    { group: "Glow", key: "glowBeta", label: "Breathing β", min: 0, max: 1, step: 0.01, value: 0.35 },
-    { group: "Glow", key: "glowT", label: "Breath period T (s)", min: 2, max: 40, step: 0.5, value: 18 },
-    { group: "Glow", key: "glowDh", label: "Hue offset Δh (°)", min: -90, max: 90, step: 1, value: 14 },
-    { group: "Glow", key: "glowL", label: "Glow lightness L_g", min: 0.5, max: 1, step: 0.01, value: 0.88 }
-  ];
-  var PATTERN_GROUPS = ["Fibres", "Web", "Specks", "Flakes", "Grain"];
-  var PATTERN_KEYS = PARAMS.filter((p) => PATTERN_GROUPS.includes(p.group)).map((p) => p.key);
-  var SPONT_GROUPS = ["Timing", "Placement", "Marks", "Life"];
-  var SPONT_KEYS = PARAMS.filter((p) => SPONT_GROUPS.includes(p.group)).map((p) => p.key);
-  var PLAIN_FIELD_KEYS = ["lambdaPsi", "flowD", "nu", "eddy", "lambdaB", "dyeSoft", "blurP", "plainDye"];
-  var PLAIN_KEYS = [...PARAMS.filter((p) => ["Hue", "Flow", "Dye", "Glow"].includes(p.group)).map((p) => p.key), "plainDye"];
-  var DEFAULTS = { ...Object.fromEntries(PARAMS.map((p) => [p.key, p.value])), tint: DEFAULT_TINT, plainDye: "bands" };
+  // dist/web/features/renderer/engine/modes/plain.js
+  var GLOW_KEYS = PARAMS.filter((p) => p.group === "Glow").map((p) => p.key);
+  var hue = (e, P) => e.stage(plainMode, "hue", P);
+  var base = (e, P) => baseColour(hue(e, P), P);
+  var field2 = (e, P) => e.stage(plainMode, "field", P);
+  function view2(e, name, P) {
+    const { W, H } = e.image;
+    return { rgba: plainRGB(name, field2(e, P), base(e, P), P, W, H), width: W, height: H };
+  }
+  function glow(e, P) {
+    const { seed, X, Y } = e.image;
+    return new Glow(seed, X, Y, P, base(e, P));
+  }
+  var plainMode = {
+    id: "plain",
+    label: "Plain",
+    viewKey: "plainView",
+    startView: "living",
+    views: [["base", "Base"], ["pattern", "Pattern"], ["plain", "Plain"], ["living", "Living"]],
+    folds: [["Base layer", ["Hue"]], ["Pattern layer", ["Flow", "Dye"]], ["Spontaneity layer", ["Glow"]]],
+    usesAnchor: false,
+    // The glow's sliders only change the lights, not the still picture.
+    liveKeys: GLOW_KEYS,
+    stages: {
+      hue: { keys: ["tint"], make: (e, P) => dominantHue(e.rgba, e.image.W, e.image.H, P.tint || DEFAULT_TINT) },
+      field: {
+        keys: PLAIN_FIELD_KEYS,
+        make(e, P) {
+          const { seed, X, Y } = e.image;
+          const t0 = performance.now();
+          const f = plainField(seed, X, Y, P);
+          return { ...f, ms: performance.now() - t0 };
+        }
+      }
+    },
+    view: (e, name, P) => view2(e, name, P),
+    // The lights as Gaussian glows on a canvas at a quarter of the screen, screen-blended over the picture.
+    living(e, P) {
+      const g = glow(e, P);
+      return {
+        kind: "layer",
+        blend: "screen",
+        scale: 0.25,
+        fill: "#000",
+        at: (t) => g.at(t).map((L) => ({ type: "glow", ...L, colour: g.colour }))
+      };
+    },
+    report: (e, P) => ({ lines: describePlain(hue(e, P), base(e, P), field2(e, P), P) })
+  };
+  var plain_default = plainMode;
+
+  // dist/web/features/renderer/engine/planar.js
+  var SAMPLE_SHORT = 48;
+  var FOG_SHORT = 96;
+  var K = 6;
+  var ITER = 12;
+  var TAU_M = 0.06;
+  var P_PURITY = 1.5;
+  var LAMBDA_D = 0.25;
+  var OCTAVES_D = 2;
+  var GREY_C = 0.012;
+  function sample(rgba, W, H, tint) {
+    const s = Math.min(W, H);
+    const sw = Math.max(2, Math.round(W / s * SAMPLE_SHORT));
+    const sh = Math.max(2, Math.round(H / s * SAMPLE_SHORT));
+    const lin = new Float64Array(3 * sw * sh);
+    const count = new Float64Array(sw * sh);
+    for (let y = 0; y < H; y++) {
+      const j = Math.min(sh - 1, Math.floor(y * sh / H));
+      for (let x = 0; x < W; x++) {
+        const i = Math.min(sw - 1, Math.floor(x * sw / W));
+        const c = j * sw + i;
+        const q = 4 * (y * W + x);
+        lin[3 * c] += LINEAR_BYTE[rgba[q]];
+        lin[3 * c + 1] += LINEAR_BYTE[rgba[q + 1]];
+        lin[3 * c + 2] += LINEAR_BYTE[rgba[q + 2]];
+        count[c]++;
+      }
+    }
+    const lab = new Float32Array(3 * sw * sh);
+    let sumC = 0;
+    for (let c = 0; c < sw * sh; c++) {
+      const n = count[c] || 1;
+      const [L, a, b] = linearToOklab([lin[3 * c] / n, lin[3 * c + 1] / n, lin[3 * c + 2] / n]);
+      lab.set([L, a, b], 3 * c);
+      sumC += Math.hypot(a, b);
+    }
+    const grey = sumC / (sw * sh) < GREY_C;
+    if (grey) {
+      const [, ta, tb] = hexToOklab(tint);
+      for (let c = 0; c < sw * sh; c++) {
+        lab[3 * c + 1] = ta;
+        lab[3 * c + 2] = tb;
+      }
+    }
+    return { lab, sw, sh, grey };
+  }
+  var d2 = (lab, c, k) => (lab[3 * c] - k[0]) ** 2 + (lab[3 * c + 1] - k[1]) ** 2 + (lab[3 * c + 2] - k[2]) ** 2;
+  function kmeans(lab, n, seed) {
+    const { U } = stream(seed, ":planar:palette");
+    const first = Math.floor(U() * n);
+    const centres = [[lab[3 * first], lab[3 * first + 1], lab[3 * first + 2]]];
+    const best = new Float64Array(n).fill(Infinity);
+    while (centres.length < K) {
+      let total = 0;
+      for (let c = 0; c < n; c++) {
+        best[c] = Math.min(best[c], d2(lab, c, centres[centres.length - 1]));
+        total += best[c];
+      }
+      if (!(total > 0)) break;
+      let r = U() * total;
+      let pick = n - 1;
+      for (let c = 0; c < n; c++) {
+        r -= best[c];
+        if (r < 0) {
+          pick = c;
+          break;
+        }
+      }
+      centres.push([lab[3 * pick], lab[3 * pick + 1], lab[3 * pick + 2]]);
+    }
+    const label = new Int32Array(n);
+    for (let it = 0; it < ITER; it++) {
+      const sum = centres.map(() => [0, 0, 0, 0]);
+      for (let c = 0; c < n; c++) {
+        let bk = 0;
+        let bd = Infinity;
+        for (let k = 0; k < centres.length; k++) {
+          const d = d2(lab, c, centres[k]);
+          if (d < bd) [bd, bk] = [d, k];
+        }
+        label[c] = bk;
+        const s = sum[bk];
+        s[0] += lab[3 * c];
+        s[1] += lab[3 * c + 1];
+        s[2] += lab[3 * c + 2];
+        s[3]++;
+      }
+      for (let k = 0; k < centres.length; k++) if (sum[k][3]) centres[k] = sum[k].slice(0, 3).map((v) => v / sum[k][3]);
+    }
+    const shares = centres.map(() => 0);
+    for (let c = 0; c < n; c++) shares[label[c]] += 1 / n;
+    return centres.map((lab3, k) => ({ lab: lab3, share: shares[k] })).filter((p) => p.share > 0).sort((a, b) => b.share - a.share);
+  }
+  function fogField(lab, sw, sh, pal, sigma2) {
+    const n = sw * sh;
+    const fields = pal.map(() => new Float32Array(n));
+    for (let c = 0; c < n; c++) {
+      let total = 0;
+      const e = pal.map((p) => Math.exp(-d2(lab, c, p.lab) / (2 * TAU_M * TAU_M)));
+      for (const v of e) total += v;
+      if (!(total > 0)) {
+        let bk = 0;
+        for (let k = 1; k < pal.length; k++) if (d2(lab, c, pal[k].lab) < d2(lab, c, pal[bk].lab)) bk = k;
+        fields[bk][c] = 1;
+        continue;
+      }
+      for (let k = 0; k < pal.length; k++) fields[k][c] = e[k] / total;
+    }
+    const s = Math.min(sw, sh);
+    const M = fields.map((f) => blur(f, sw, sh, sigma2 * s));
+    const fog2 = new Float32Array(3 * n);
+    for (let c = 0; c < n; c++) {
+      let total = 0;
+      const w = M.map((m) => Math.max(0, m[c]) ** P_PURITY);
+      for (const v of w) total += v;
+      for (let k = 0; k < pal.length; k++) {
+        const f = total > 0 ? w[k] / total : 1 / pal.length;
+        fog2[3 * c] += f * pal[k].lab[0];
+        fog2[3 * c + 1] += f * pal[k].lab[1];
+        fog2[3 * c + 2] += f * pal[k].lab[2];
+      }
+    }
+    return fog2;
+  }
+  function sample3(g, gw, gh, X, Y, x, y, out) {
+    const fx = Math.min(gw - 1.001, Math.max(0, x / X * gw - 0.5));
+    const fy = Math.min(gh - 1.001, Math.max(0, y / Y * gh - 0.5));
+    const i = fx | 0;
+    const j = fy | 0;
+    const tx = fx - i;
+    const ty = fy - j;
+    for (let ch = 0; ch < 3; ch++) {
+      const a = g[3 * (j * gw + i) + ch];
+      const b = g[3 * (j * gw + i + 1) + ch];
+      const c = g[3 * ((j + 1) * gw + i) + ch];
+      const d = g[3 * ((j + 1) * gw + i + 1) + ch];
+      out[ch] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+    }
+  }
+  function fog(rgba, W, H, seed, P) {
+    const X = W / Math.min(W, H);
+    const Y = H / Math.min(W, H);
+    const { lab, sw, sh, grey } = sample(rgba, W, H, P.tint);
+    const pal = kmeans(lab, sw * sh, seed);
+    const f = fogField(lab, sw, sh, pal, P.fogSigma);
+    const { U } = stream(seed, ":planar:fog");
+    const nx = simplex(U);
+    const ny = simplex(U);
+    const opt = { octaves: OCTAVES_D, lambda: LAMBDA_D, H: 0.5 };
+    const wx = fbm(nx, opt);
+    const wy = fbm(ny, opt);
+    const fw = Math.max(2, Math.round(X * FOG_SHORT));
+    const fh = Math.max(2, Math.round(Y * FOG_SHORT));
+    const rgb = new Float32Array(3 * fw * fh);
+    const v = [0, 0, 0];
+    const A = P.fogA;
+    for (let j = 0; j < fh; j++) {
+      for (let i = 0; i < fw; i++) {
+        const x = (i + 0.5) / fw * X;
+        const y = (j + 0.5) / fh * Y;
+        sample3(f, sw, sh, X, Y, x + A * wx(x, y), y + A * wy(x, y), v);
+        const [L, C, h] = oklabToOklch(v);
+        const out = lchToLinear(P.fogLo + (P.fogHi - P.fogLo) * L, P.fogC * C, h);
+        for (let ch = 0; ch < 3; ch++) rgb[3 * (j * fw + i) + ch] = 255 * delinearise(out[ch]);
+      }
+    }
+    return { rgb, fw, fh, palette: pal, grey, sw, sh };
+  }
+  function fogRGB({ rgb, fw, fh }, W, H) {
+    const out = new Uint8ClampedArray(4 * W * H);
+    const R = mulberry32(2246822507);
+    for (let y = 0; y < H; y++) {
+      const fy = Math.min(fh - 1.001, Math.max(0, (y + 0.5) * fh / H - 0.5));
+      const j = fy | 0;
+      const ty = fy - j;
+      for (let x = 0; x < W; x++) {
+        const fx = Math.min(fw - 1.001, Math.max(0, (x + 0.5) * fw / W - 0.5));
+        const i = fx | 0;
+        const tx = fx - i;
+        const a = 3 * (j * fw + i);
+        const c = a + 3 * fw;
+        const p = 4 * (y * W + x);
+        for (let ch = 0; ch < 3; ch++) {
+          out[p + ch] = (rgb[a + ch] * (1 - tx) + rgb[a + 3 + ch] * tx) * (1 - ty) + (rgb[c + ch] * (1 - tx) + rgb[c + 3 + ch] * tx) * ty + R() - 0.5;
+        }
+        out[p + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  // dist/web/features/renderer/engine/modes/planar.js
+  var LINE_WIDTH = 3e-3;
+  var LINE_INK = [30, 30, 38];
+  var FLASH_WIDTH = 3e-3;
+  var BLACK = [16, 16, 20];
+  function glintColour(fog2, X, Y, x, y, L) {
+    const i = Math.min(fog2.fw - 1, Math.max(0, Math.floor(x / X * fog2.fw)));
+    const j = Math.min(fog2.fh - 1, Math.max(0, Math.floor(y / Y * fog2.fh)));
+    const q = 3 * (j * fog2.fw + i);
+    const lin = [0, 1, 2].map((c) => LINEAR_BYTE[Math.max(0, Math.min(255, Math.round(fog2.rgb[q + c])))]);
+    const [, C, h] = oklabToOklch(linearToOklab(lin));
+    return lchToLinear(L, C / 2, h).map((v) => Math.round(255 * delinearise(v)));
+  }
+  function fogOf(e, P) {
+    return e.stage(planarMode, "fog", P);
+  }
+  function networkOf(e, P) {
+    return e.stage(planarMode, "network", P);
+  }
+  var planarMode = {
+    id: "planar",
+    label: "Planar",
+    viewKey: "planarView",
+    startView: "living",
+    views: [["base", "Base"], ["pattern", "Pattern"], ["planar", "Planar"], ["living", "Living"]],
+    folds: [["Base layer", ["Fog"]], ["Pattern layer", ["Network"]], ["Spontaneity layer", ["Flashes"]]],
+    usesAnchor: false,
+    // The flashes' sliders only change the animation, not the still picture.
+    liveKeys: FLASH_KEYS,
+    stages: {
+      fog: {
+        keys: FOG_KEYS,
+        make(e, P) {
+          const { W, H } = e.image;
+          const t0 = performance.now();
+          const f = fog(e.rgba, W, H, e.image.seed, P);
+          return { ...f, ms: performance.now() - t0 };
+        }
+      },
+      network: {
+        keys: NETWORK_KEYS,
+        make(e, P) {
+          const { seed, X, Y } = e.image;
+          const t0 = performance.now();
+          const net = network(tiles(seed, X, Y, P), X, Y);
+          return { ...net, ms: performance.now() - t0 };
+        }
+      }
+    },
+    // 'base', 'planar' and 'living': the fog (the network is latent). 'pattern': the fog with the
+    // network drawn over it. 'living' then plays the flashes over it.
+    view(e, name, P) {
+      const { W, H } = e.image;
+      const fog2 = fogRGB(fogOf(e, P), W, H);
+      const rgba = name === "pattern" ? drawNetwork(networkOf(e, P), fog2, W, H, LINE_WIDTH, LINE_INK) : fog2;
+      return { rgba, width: W, height: H };
+    },
+    // E1–E5 as a 'layer' animation: crisp lines at the screen's resolution, on a clear canvas.
+    living(e, P) {
+      const { seed, X, Y } = e.image;
+      const fog2 = fogOf(e, P);
+      const flashes = new Flashes(seed, networkOf(e, P), P);
+      return {
+        kind: "layer",
+        blend: "normal",
+        scale: 1,
+        fill: null,
+        at: (t) => flashes.pieces(t).map((p) => ({
+          type: "line",
+          ...p,
+          w: FLASH_WIDTH,
+          halo: p.kind === "glint",
+          colour: p.kind === "glint" ? glintColour(fog2, X, Y, (p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, P.glintL) : BLACK
+        }))
+      };
+    },
+    report: (e, P, name) => ({ lines: [
+      ...describeFog(fogOf(e, P), P),
+      describeNetwork(networkOf(e, P), P),
+      ...name === "living" ? [describeFlashes(P)] : []
+    ] })
+  };
+  var planar_default = planarMode;
+
+  // dist/web/features/renderer/engine/modes/index.js
+  var MODES = [washi_default, plain_default, planar_default];
+  var modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
   // dist/web/features/renderer/engine/index.js
-  var REROLLS = 8;
-  var FIELD_SHORT2 = 320;
   var Engine = class {
     constructor() {
       this.image = null;
-      this.colours({ tint: DEFAULT_TINT });
-    }
-    // The colours from the base tint τ: ink, paper and tan (palette()), the LUT and linear ramp between
-    // ink and paper, and the absorbers. Remade only when τ changes.
-    colours(P) {
-      const tint = P.tint || DEFAULT_TINT;
-      if (this.tint === tint) return;
-      const c = palette(tint);
-      this.tint = tint;
-      this.ink = c.ink;
-      this.paper = c.paper;
-      this.warmHue = c.warmHue;
-      this.lut = inkPaperLUT(c.ink, c.paper);
-      this.ramp = linearRamp(1024, c.ink, c.paper);
-      this.inkAbsorber = absorber(c.ink, c.paper);
-      this.tanAbsorber = c.dye ? absorber(c.paper, [1, 0, 0]) : absorber(c.tan, c.paper);
+      this.stages = {};
+      colours(this, { tint: DEFAULT_TINT });
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
     // seed: pass one to keep it when the same picture is loaded again at another size.
@@ -4409,154 +5286,63 @@ dialog.menu-drawer::before {
       this.toneCache = null;
       this.maskCache = null;
       this.patternCache = null;
-      this.hueCache = null;
-      this.plainCache = null;
+      this.stages = {};
       return { seed: this.image.seed, seedText: seedText(this.image.seed) };
     }
-    // Steps 3–5, cached while their parameters stay the same.
+    // A mode's stage, made again only when the values of its keys or its input change.
+    stage(mode, name, P, input = null) {
+      const def = mode.stages[name];
+      const key = `${def.keys.map((k) => P[k]).join()}|${JSON.stringify(input)}`;
+      const id = `${mode.id}:${name}`;
+      if (this.stages[id]?.key !== key) this.stages[id] = { key, value: def.make(this, P, input) };
+      return this.stages[id].value;
+    }
+    render(mode, name, P, ctx = {}) {
+      return mode.view(this, name, P, ctx);
+    }
+    animate(mode, P, picture, ctx = {}) {
+      return mode.living(this, P, picture, ctx);
+    }
+    report(mode, P, name, ctx = {}) {
+      return mode.report(this, P, name, ctx);
+    }
+    // ---- Washi (engine/modes/washi.js) ----
+    colours(P) {
+      return colours(this, P);
+    }
     tone(P) {
-      const key = [P.k, P.gamma, P.dMin, P.dMax].join();
-      if (this.toneCache?.key !== key) this.toneCache = { key, t: tone(this.image.L, this.image.bw, P) };
-      return this.toneCache.t;
+      return tone2(this, P);
     }
-    // M1–M8 for one attempt: streams seed + ':skeleton', ':warp', ':noise', with ':n' on re-roll n.
-    attempt(n, P, anchor, G) {
-      const { seed, X, Y } = this.image;
-      const tag = n ? `:${n}` : "";
-      const sk = skeleton(stream(seed, ":skeleton" + tag), anchor, X, Y, P);
-      const f = field(G, sk.patches, stream(seed, ":warp" + tag), stream(seed, ":noise" + tag), P);
-      const comps = components(G, f.Fp, f.T, P.Amin);
-      const verdict = judge(comps, anchor, sk.patches[0].r, sk.main.how, P.sigma);
-      return { n, ...sk, ...f, comps, verdict };
+    mask(P, anchor) {
+      return mask(this, P, anchor);
     }
-    // The mask with its re-rolls: the first attempt that passes, or else the best one.
-    mask(P, anchorFrac) {
-      const { X, Y, W, H } = this.image;
-      const anchor = { x: anchorFrac.x * X, y: anchorFrac.y * Y };
-      const G = grid(X, Y, Math.min(FIELD_SHORT2, Math.min(W, H)));
-      const attempts = [];
-      let best = null;
-      for (let n = 0; n <= REROLLS; n++) {
-        const a = this.attempt(n, P, anchor, G);
-        attempts.push(a);
-        if (!best || a.verdict.score < best.verdict.score) best = a;
-        if (a.verdict.pass) break;
-      }
-      return { G, anchor, attempts, best };
-    }
-    // P1–P5 at the image's size. Each part is cached while its own sliders stay the same.
     pattern(P) {
-      const { seed, X, Y, W, H } = this.image;
-      const c = this.patternCache ||= { parts: {} };
-      const t0 = performance.now();
-      let changed = !c.Dw;
-      for (const [name, keys] of Object.entries(PARTS)) {
-        const key = keys.map((k) => P[k]).join();
-        if (c.parts[name]?.key === key) continue;
-        c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
-        changed = true;
-      }
-      if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
-      return c;
+      return pattern(this, P);
     }
-    // Pixels for a view: 'monochrome', 'mask', 'base', 'pattern', 'washi' at the image's size;
-    // 'field' at the grid's. 'living' is the Washi picture, which living() then draws marks over.
-    // Every view uses the colours of the base tint τ (colours()).
-    // Brightness ΔL and warmth Δw move the monochrome (and so the base) in the Monochrome, Base, Washi and
-    // Living views; the Mask and Field views stay on the plain ink–paper line.
     view(name, P, r) {
-      const { W, H } = this.image;
-      this.colours(P);
-      const t = this.tone(P);
-      const delta = this.shift(P);
-      if (name === "monochrome") {
-        return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, this.ink, this.paper)) : paint(t, this.lut), width: W, height: H };
-      }
-      if (name === "pattern") return { rgba: this.washi(null, P), width: W, height: H };
-      const { G, best } = r;
-      if (name === "field") {
-        return {
-          rgba: paint(heightTone(best.Fp, best.max), this.lut),
-          width: G.gw,
-          height: G.gh,
-          contour: contour(G, best.Fp, best.T)
-        };
-      }
-      const m = this.fullMask(P, r);
-      if (name === "mask") return { rgba: paint(maskTone(m), this.lut), width: W, height: H };
-      const tb = baseTone(t, m);
-      const lin = delta ? shiftedLinear(tb, m, delta, this.ink, this.paper) : null;
-      if (name === "washi" || name === "living") return { rgba: this.washi(tb, P, lin), width: W, height: H };
-      return { rgba: lin ? paintLinear(lin) : paint(tb, this.lut), width: W, height: H };
+      return view(this, name, P, r);
     }
-    // The base's shift Δ in OKLab from brightness ΔL and warmth Δw, or null when both are 0.
-    // Warmth moves toward the tan's hue, which follows the tint.
-    shift(P) {
-      const dL = P.baseL || 0;
-      const dW = P.baseW || 0;
-      if (!dL && !dW) return null;
-      const [, a, b] = oklchToOklab(0, dW, this.warmHue);
-      return [dL, a, b];
-    }
-    // P6 over base tone t (null for bare paper), or over lin, the shifted base in linear RGB.
-    // Warmth κ mixes the inclusions' absorber from ink to tan.
-    washi(t, P, lin = null) {
-      const k = P.warmth;
-      const aw = this.tanAbsorber.map((v, c) => k * v + (1 - k) * this.inkAbsorber[c]);
-      return washiRGB(t, this.pattern(P), P.alpha, this.ramp, aw, this.inkAbsorber, lin);
-    }
-    // S1–S5: the marks over the Washi pixels `rgba` (streams seed + ':spont:…'). They depend only on the
-    // seed and their own sliders, never on the anchor or the mask. The process is replayed from 0, so a
-    // slider change shows its marks at the same moment t.
     living(P, rgba) {
-      this.colours(P);
-      const { seed, X, Y, W, H } = this.image;
-      return new Living(new Spontaneity(seed, X, Y, P), rgba, W, H, this.inkAbsorber, P.alphaS);
-    }
-    // ---- The Plain theme (engine/plain.js) ----
-    // B1–B5: the dominant hue of the picture, or the tint τ when it has almost none. Cached per picture and τ.
-    hue(P) {
-      const tint = P.tint || DEFAULT_TINT;
-      if (this.hueCache?.tint !== tint) {
-        const { W, H } = this.image;
-        this.hueCache = { tint, hue: dominantHue(this.rgba, W, H, tint) };
-      }
-      return this.hueCache.hue;
-    }
-    // The base colour b after its sliders.
-    plainBase(P) {
-      return baseColour(this.hue(P), P);
-    }
-    // P1–P5: φ on its grid, cached while the field's sliders stay the same.
-    plainField(P) {
-      const key = PLAIN_FIELD_KEYS.map((k) => P[k]).join();
-      if (this.plainCache?.key !== key) {
-        const { seed, X, Y } = this.image;
-        const t0 = performance.now();
-        this.plainCache = { key, ...plainField(seed, X, Y, P) };
-        this.plainCache.ms = performance.now() - t0;
-      }
-      return this.plainCache;
-    }
-    // Pixels for a Plain view at the image's size: 'base', 'pattern', 'plain' or 'living'
-    // ('living' is the still picture; the page lays the glow over it).
-    plainView(name, P) {
-      const { W, H } = this.image;
-      return { rgba: plainRGB(name, this.plainField(P), this.plainBase(P), P, W, H), width: W, height: H };
-    }
-    // G1–G3: the lights (stream seed + ':plain:glow').
-    glow(P) {
-      const { seed, X, Y } = this.image;
-      return new Glow(seed, X, Y, P, this.plainBase(P));
+      return living(this, P, rgba);
     }
     fullMask(P, r) {
-      const c = this.maskCache;
-      if (c?.r !== r || c.delta !== P.delta || c.feather !== P.feather) {
-        const { W, H } = this.image;
-        const m = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W, H, P.feather);
-        this.maskCache = { r, delta: P.delta, feather: P.feather, m };
-      }
-      return this.maskCache.m;
+      return fullMask(this, P, r);
+    }
+    // ---- Plain (engine/modes/plain.js) ----
+    hue(P) {
+      return hue(this, P);
+    }
+    plainBase(P) {
+      return base(this, P);
+    }
+    plainField(P) {
+      return field2(this, P);
+    }
+    plainView(name, P) {
+      return view2(this, name, P);
+    }
+    glow(P) {
+      return glow(this, P);
     }
   };
 
@@ -4564,81 +5350,86 @@ dialog.menu-drawer::before {
   var { el: el4 } = ui_exports;
   var shown = (p, v) => p.step >= 1 ? String(v) : Number(v).toFixed(Math.max(0, -Math.floor(Math.log10(p.step))));
   function sliders(params, values, onChange) {
-    const rows = /* @__PURE__ */ new Map();
+    const rows = [];
     const groups = /* @__PURE__ */ new Map();
+    const changed = (key, v) => {
+      for (const r of rows) if (r.p.key === key) r.show(v);
+      onChange(key, v);
+    };
     for (const p of params) {
       if (!groups.has(p.group)) groups.set(p.group, el4("fieldset", { class: "renderer-group" }, el4("legend", {}, p.group)));
-      const out = el4("output", { class: "renderer-value" }, shown(p, values[p.key]));
-      const input = el4("input", {
-        type: "range",
-        min: p.min,
-        max: p.max,
-        step: p.step,
-        value: values[p.key],
-        "aria-label": p.label,
-        oninput: (e) => {
-          const v = Number(e.target.value);
-          out.textContent = shown(p, v);
-          onChange(p.key, v);
-        }
-      });
-      rows.set(p.key, { input, out, p });
-      groups.get(p.group).append(el4("label", { class: "renderer-slider" }, el4("span", {}, p.label), out, input));
+      const row = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values[p.key], changed);
+      rows.push(row);
+      groups.get(p.group).append(row.node);
     }
     return {
       node: el4("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
       groups,
       set(next) {
-        for (const [key, r] of rows) {
-          r.input.value = next[key];
-          r.out.textContent = shown(r.p, next[key]);
-        }
+        for (const r of rows) r.show(next[r.p.key]);
       }
     };
   }
-
-  // dist/web/features/renderer/report.js
-  var f3 = (x) => Number.isFinite(x) ? x.toFixed(3) : "—";
-  function describe(result) {
-    const { attempts, best } = result;
-    const passed = best.verdict.pass;
-    const summary = passed ? `Attempt ${best.n} passed both rules${best.n ? ` after ${best.n} re-roll${best.n > 1 ? "s" : ""}` : ""}.` : `No attempt passed both rules in ${attempts.length} tries, so the closest one (attempt ${best.n}) is shown.`;
-    return { summary, attempts: attempts.map((a) => block(a, a === best)) };
-  }
-  function block(a, kept) {
-    const tag = a.n ? `:${a.n}` : "";
-    const v = a.verdict;
-    const near = v.near.skipped ? "Near the anchor: skipped, the main patch wandered (ε)." : `Near the anchor: ${f3(v.near.distance)} from it, limit ${f3(v.near.limit)} ${v.near.pass ? "✓" : "✗"}`;
-    const sizes = v.pairs.length ? `Different sizes: ✗ ${v.pairs.map((p) => `#${p.i + 1}/#${p.j + 1} ratio ${p.ratio.toFixed(2)}`).join(", ")}` : "Different sizes: every pair below 0.85 ✓";
+  function slider(p, value, changed) {
+    const out = el4("output", { class: "renderer-value" }, shown(p, value));
+    const input = el4("input", {
+      type: "range",
+      min: p.min,
+      max: p.max,
+      step: p.step,
+      value,
+      "aria-label": p.label,
+      oninput: (e) => changed(p.key, Number(e.target.value))
+    });
     return {
-      title: `Attempt ${a.n} · streams :skeleton${tag} :warp${tag} :noise${tag}`,
-      kept,
-      pass: v.pass,
-      lines: [
-        `${a.pieces} piece${a.pieces === 1 ? "" : "s"} from stick-breaking, ${a.patches.length} placed, ${a.dropped} dropped.`,
-        `Main patch r = ${f3(a.patches[0].r)}, centre (${f3(a.main.x)}, ${f3(a.main.y)}) by ${a.main.how}.`,
-        `Threshold T = ${f3(a.T)}.`,
-        a.comps.length ? `${a.comps.length} component${a.comps.length === 1 ? "" : "s"}: ${a.comps.map((c, i) => `#${i + 1} area ${f3(c.area)}`).join(", ")}.` : "No components above A_min.",
-        near,
-        sizes
-      ]
+      p,
+      node: el4("label", { class: "renderer-slider" }, el4("span", {}, p.label), out, input),
+      show(v) {
+        input.value = v;
+        out.textContent = shown(p, v);
+      }
     };
   }
-  function describeLiving(P) {
-    const { rate, visible, cluster } = expected(P);
-    return `Spontaneity: about ${rate.toFixed(2)} marks a second (μ / (1 − n)), in clusters of ${cluster.toFixed(1)} on average (1 / (1 − n)), so about ${visible.toFixed(1)} on the page at once (rate × mean life). Streams :spont:time :spont:place :spont:marks.`;
+  function colour(p, value, changed) {
+    const input = el4("input", {
+      type: "color",
+      value,
+      "aria-label": p.aria || p.label,
+      oninput: (e) => changed(p.key, e.target.value)
+    });
+    return {
+      p,
+      node: el4("label", { class: "renderer-slider renderer-colour" }, el4("span", {}, p.label), input),
+      show(v) {
+        if (input.value !== v) input.value = v;
+      }
+    };
   }
-  function describePattern({ counts, ms }) {
-    const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-    return `Pattern: ${n(counts.fibres, "fibre", "fibres")}, ${n(counts.web, "web strand", "web strands")}, ${n(counts.specks, "speck", "specks")} and ${n(counts.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
-  }
-  function describePlain(hue, base, field2, P) {
-    const lines = [];
-    lines.push(hue.grey ? `The picture has almost no colour, so the base takes the tint τ: hue ${hue.h.toFixed(0)}°.` : `Dominant hue ${hue.h.toFixed(1)}° (peak bin ${hue.peak * 5}–${hue.peak * 5 + 5}°), L ${f3(hue.L)}, C ${f3(hue.C)}.`);
-    lines.push(`Base b = OKLCh(${f3(base.L)}, ${f3(base.C)}, ${base.h.toFixed(1)}°).`);
-    lines.push(`Field ${field2.pw} × ${field2.ph} cells, ${P.plainDye} dye, made in ${Math.round(field2.ms)} ms.`);
-    lines.push(`${P.glowN} light${P.glowN === 1 ? "" : "s"}, size ${P.glowR}, brightness ${P.glowA}.`);
-    return lines;
+  function choice(p, value, changed) {
+    const buttons = p.options.map(([id, label]) => el4("button", {
+      type: "button",
+      role: "radio",
+      "data-value": id,
+      onclick: () => changed(p.key, id)
+    }, label));
+    const show = (v) => {
+      for (const b of buttons) {
+        const on = String(b.dataset.value === v);
+        b.setAttribute("aria-checked", on);
+        b.setAttribute("aria-selected", on);
+      }
+    };
+    show(value);
+    return {
+      p,
+      node: el4(
+        "div",
+        { class: "renderer-slider" },
+        el4("span", {}, p.label),
+        el4("div", { class: "seg renderer-choice", role: "radiogroup", "aria-label": p.aria || p.label, style: `--tabs:${p.options.length}` }, buttons)
+      ),
+      show
+    };
   }
 
   // dist/web/features/renderer/Renderer.js
@@ -4646,52 +5437,14 @@ dialog.menu-drawer::before {
   var MAX_SIDE = 2048;
   var MAX_PIXELS = 6e6;
   var RESIZE_MS = 400;
-  var VIEWS = [
-    ["monochrome", "Monochrome"],
-    ["mask", "Mask"],
-    ["field", "Field"],
-    ["base", "Base"],
-    ["pattern", "Pattern"],
-    ["washi", "Washi"],
-    ["living", "Living"]
-  ];
-  var DRAW_KEYS = [
-    "k",
-    "gamma",
-    "dMin",
-    "dMax",
-    "tint",
-    "baseL",
-    "baseW",
-    "delta",
-    "feather",
-    "alpha",
-    "warmth",
-    ...PATTERN_KEYS,
-    ...SPONT_KEYS,
-    ...PLAIN_KEYS
-  ];
-  var THEMES = [["washi", "Washi"], ["plain", "Plain"]];
-  var PLAIN_VIEWS = [["base", "Base"], ["pattern", "Pattern"], ["plain", "Plain"], ["living", "Living"]];
-  var PLAIN_LAYERS = [["Base layer", ["Hue"]], ["Pattern layer", ["Flow", "Dye"]], ["Spontaneity layer", ["Glow"]]];
-  var DYES = [["bands", "Bands"], ["combed", "Combed"], ["drops", "Drops"]];
-  var GLOW_SCALE = 0.25;
-  var GLOW_KEYS = PARAMS.filter((p) => p.group === "Glow").map((p) => p.key);
-  var LAYERS = [
-    ["Base layer", ["Monochrome", "Colour", "Patches", "Edges"]],
-    ["Pattern layer", ["Fibres", "Web", "Specks", "Flakes", "Grain", "Composite"]],
-    ["Spontaneity layer", ["Timing", "Placement", "Marks", "Life"]]
-  ];
   var Renderer = class extends Feature {
     start() {
       this.engine = new Engine();
       this.P = { ...DEFAULTS, ...this.storage.get("params", {}) };
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
-      this.theme = this.storage.get("theme", "washi");
-      this.current = this.storage.get("view", "washi");
-      this.plainCurrent = this.storage.get("plainView", "living");
+      this.mode = modeById(this.storage.get("theme", "washi"));
+      this.views = Object.fromEntries(MODES.map((m) => [m.id, this.storage.get(m.viewKey, m.startView)]));
       this.marks = this.storage.get("marks", false);
-      this.result = null;
       this.clock = 0;
       this.picker = ui_exports.filePicker("image/*");
       this.add("views", {
@@ -4707,15 +5460,18 @@ dialog.menu-drawer::before {
       this.add("settings", { id: "renderer-theme", title: "Theme", order: 15, render: () => this.themes() });
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
     }
+    get current() {
+      return this.views[this.mode.id];
+    }
     mount(container) {
       this.canvas = el5("canvas", { class: "renderer-canvas" });
       this.overlay = el5("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
-      this.glowCanvas = el5("canvas", { class: "renderer-glow", "aria-hidden": "true", hidden: true });
+      this.layer = el5("canvas", { class: "renderer-layer", "aria-hidden": "true", hidden: true });
       this.stage = el5(
         "div",
         { class: "renderer-stage", hidden: true, onclick: (e) => this.setAnchor(e) },
         this.canvas,
-        this.glowCanvas,
+        this.layer,
         this.overlay
       );
       this.error = ui_exports.errorBox();
@@ -4728,73 +5484,29 @@ dialog.menu-drawer::before {
       if (!this.seed) this.white();
     }
     // Advanced, in Settings: every tool, folded into groups. Made once and kept, so the folds and
-    // sliders stay as they were each time Settings is opened.
+    // sliders stay as they were each time Settings is opened. Every mode's tabs and folds are made;
+    // only the current mode's show.
     advanced() {
       if (this.panel) return this.panel;
-      this.tabs = el5(
-        "div",
-        { class: "seg renderer-tabs", role: "tablist", "aria-label": "View", style: `--tabs:${VIEWS.length}` },
-        VIEWS.map(([id, label]) => el5("button", {
-          type: "button",
-          role: "tab",
-          "data-view": id,
-          onclick: () => this.show(id)
-        }, label))
-      );
-      this.plainTabs = el5(
-        "div",
-        { class: "seg renderer-tabs plain", role: "tablist", "aria-label": "View", style: `--tabs:${PLAIN_VIEWS.length}` },
-        PLAIN_VIEWS.map(([id, label]) => el5("button", {
-          type: "button",
-          role: "tab",
-          "data-view": id,
-          onclick: () => this.show(id)
-        }, label))
-      );
+      this.tabs = new Map(MODES.map((m) => [m.id, el5("div", {
+        class: `seg renderer-tabs ${m.id}`,
+        role: "tablist",
+        "aria-label": "View",
+        style: `--tabs:${m.views.length}`
+      }, m.views.map(([id, label]) => el5("button", { type: "button", role: "tab", "data-view": id, onclick: () => this.show(id) }, label)))]));
       this.seedLine = el5("p", { class: "renderer-seed" });
       this.report = el5("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      this.tintInput = el5("input", {
-        type: "color",
-        value: this.P.tint,
-        "aria-label": "Tint τ",
-        oninput: (e) => this.change("tint", e.target.value)
-      });
-      this.controls.groups.get("Colour").querySelector("legend").after(
-        el5("label", { class: "renderer-slider renderer-colour" }, el5("span", {}, "Tint τ"), this.tintInput)
-      );
-      this.plainTint = el5("input", {
-        type: "color",
-        value: this.P.tint,
-        "aria-label": "Tint τ for a picture with no colour",
-        oninput: (e) => this.change("tint", e.target.value)
-      });
-      this.controls.groups.get("Hue").querySelector("legend").after(
-        el5("label", { class: "renderer-slider renderer-colour" }, el5("span", {}, "Tint τ, for a picture with no colour"), this.plainTint)
-      );
-      this.dyeTabs = el5(
-        "div",
-        { class: "seg renderer-dyes", role: "radiogroup", "aria-label": "Dye shape", style: `--tabs:${DYES.length}` },
-        DYES.map(([id, label]) => el5("button", {
-          type: "button",
-          role: "radio",
-          "data-dye": id,
-          onclick: () => {
-            this.change("plainDye", id);
-            this.syncDye();
-          }
-        }, label))
-      );
-      this.controls.groups.get("Dye").querySelector("legend").after(
-        el5("div", { class: "renderer-slider" }, el5("span", {}, "Dye shape φ₀"), this.dyeTabs)
-      );
-      this.syncDye();
       const fold = (title, ...kids) => el5(
         "details",
         { class: "advanced renderer-fold" },
         el5("summary", {}, title),
         el5("div", { class: "renderer-fold-body" }, ...kids)
       );
+      this.folds = new Map(MODES.map((m) => [m.id, m.folds.map(([title, groups]) => fold(
+        title,
+        el5("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
+      ))]));
       this.panel = el5(
         "div",
         { class: "renderer-advanced" },
@@ -4812,8 +5524,7 @@ dialog.menu-drawer::before {
         ),
         fold(
           "View",
-          this.tabs,
-          this.plainTabs,
+          ...this.tabs.values(),
           el5(
             "div",
             { class: "check renderer-marks" },
@@ -4821,14 +5532,7 @@ dialog.menu-drawer::before {
             el5("span", {}, "Show the anchor, and tap the picture to move it")
           )
         ),
-        ...this.washiFolds = LAYERS.map(([title, groups]) => fold(
-          title,
-          el5("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
-        )),
-        ...this.plainFolds = PLAIN_LAYERS.map(([title, groups]) => fold(
-          title,
-          el5("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
-        )),
+        ...[...this.folds.values()].flat(),
         fold("Report", this.report),
         el5("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
@@ -4836,43 +5540,32 @@ dialog.menu-drawer::before {
       this.draw();
       return this.panel;
     }
-    // Settings → Theme: Washi or Plain.
+    // Settings → Theme: one button per mode.
     themes() {
       this.themeTabs ||= el5(
         "div",
-        { class: "seg renderer-themes", role: "radiogroup", "aria-label": "Theme", style: `--tabs:${THEMES.length}` },
-        THEMES.map(([id, label]) => el5("button", { type: "button", role: "radio", "data-theme-id": id, onclick: () => this.setTheme(id) }, label))
+        { class: "seg renderer-themes", role: "radiogroup", "aria-label": "Theme", style: `--tabs:${MODES.length}` },
+        MODES.map((m) => el5("button", { type: "button", role: "radio", "data-theme-id": m.id, onclick: () => this.setTheme(m.id) }, m.label))
       );
       this.syncTheme();
       return this.themeTabs;
     }
     setTheme(id) {
-      this.theme = id;
-      this.storage.set("theme", id);
-      if (id === "washi" && !this.result) this.remask();
-      else this.draw();
+      this.mode = modeById(id);
+      this.storage.set("theme", this.mode.id);
+      this.draw();
     }
-    // Shows the theme's own views and sliders in Advanced, and marks the chosen theme.
+    // Shows the mode's own views and sliders in Advanced, and marks the chosen theme.
     syncTheme() {
-      const plain = this.theme === "plain";
       for (const b of this.themeTabs?.children || []) {
-        const on = String(b.dataset.themeId === this.theme);
+        const on = String(b.dataset.themeId === this.mode.id);
         b.setAttribute("aria-checked", on);
         b.setAttribute("aria-selected", on);
       }
       if (!this.panel) return;
-      this.tabs.hidden = plain;
-      this.plainTabs.hidden = !plain;
-      if (this.marksRow) this.marksRow.hidden = plain;
-      for (const f of this.washiFolds) f.hidden = plain;
-      for (const f of this.plainFolds) f.hidden = !plain;
-    }
-    syncDye() {
-      for (const b of this.dyeTabs.children) {
-        const on = String(b.dataset.dye === this.P.plainDye);
-        b.setAttribute("aria-checked", on);
-        b.setAttribute("aria-selected", on);
-      }
+      for (const [id, tabs] of this.tabs) tabs.hidden = id !== this.mode.id;
+      if (this.marksRow) this.marksRow.hidden = !this.mode.usesAnchor;
+      for (const [id, folds] of this.folds) for (const f of folds) f.hidden = id !== this.mode.id;
     }
     // The plain white image the page starts with, the shape of the screen so it fills it uncropped.
     white() {
@@ -4913,7 +5606,7 @@ dialog.menu-drawer::before {
       }
       this.seed = this.engine.load(rgba, W, H, src?.seed);
       this.error?.show(null);
-      this.remask();
+      this.draw();
     }
     // After a resize: render again if the size the screen needs has changed by more than 10%,
     // or if white no longer has the screen's shape.
@@ -4947,87 +5640,71 @@ dialog.menu-drawer::before {
       }
     }
     show(id) {
-      if (this.theme === "plain") {
-        this.plainCurrent = id;
-        this.storage.set("plainView", id);
-      } else {
-        this.current = id;
-        this.storage.set("view", id);
-      }
+      this.views[this.mode.id] = id;
+      this.storage.set(this.mode.viewKey, id);
       this.draw();
     }
     setAnchor(e) {
-      if (!this.marks || this.theme === "plain") return;
+      if (!this.marks || !this.mode.usesAnchor) return;
       const box = this.stage.getBoundingClientRect();
       const c = this.cover(box.width, box.height);
       const x = Math.min(1, Math.max(0, (e.clientX - box.left - c.x) / c.w));
       const y = Math.min(1, Math.max(0, (e.clientY - box.top - c.y) / c.h));
       this.anchor = { x, y };
       this.storage.set("anchor", this.anchor);
-      this.remask();
+      this.draw();
     }
-    // Slider moves are drawn on the next frame, so a fast drag doesn't queue up renders.
+    // Slider moves are drawn on the next frame, so a fast drag doesn't queue up renders. The engine's
+    // stages remake only what a slider changes. Sliders that only change the animation remake just it.
     change(key, value) {
       this.P[key] = value;
       this.storage.set("params", this.P);
-      this.dirtyMask ||= !DRAW_KEYS.includes(key);
-      if (this.theme === "plain" && GLOW_KEYS.includes(key)) {
-        if (this.glow) this.glow = this.engine.glow(this.P);
+      if (this.mode.liveKeys.includes(key)) {
+        if (this.anim) this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
         return;
       }
       if (this.frame) return;
       this.frame = requestAnimationFrame(() => {
         this.frame = null;
-        if (this.dirtyMask) this.remask();
-        else this.draw();
+        this.draw();
       });
     }
     reset() {
       this.P = { ...DEFAULTS };
       this.storage.set("params", this.P);
       this.controls.set(this.P);
-      this.tintInput.value = this.P.tint;
-      this.plainTint.value = this.P.tint;
-      this.syncDye();
-      this.remask();
-    }
-    // M1–M8, which only Washi needs: Plain doesn't use the mask, so it's made when Washi is next shown.
-    remask() {
-      this.dirtyMask = false;
-      if (!this.seed) return;
-      this.result = this.theme === "washi" ? this.engine.mask(this.P, this.anchor) : null;
       this.draw();
     }
+    ctx() {
+      return { anchor: this.anchor };
+    }
     draw() {
-      if (this.tabs) for (const b of this.tabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.current));
-      if (this.plainTabs) for (const b of this.plainTabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.plainCurrent));
+      for (const [id, tabs] of this.tabs || []) {
+        for (const b of tabs.children) b.setAttribute("aria-selected", String(b.dataset.view === this.views[id]));
+      }
       this.syncTheme();
       if (!this.stage) return;
       this.stage.hidden = !this.seed;
-      if (this.theme === "plain") return this.drawPlain();
-      this.glowCanvas.hidden = true;
+      cancelAnimationFrame(this.tick);
+      this.anim = null;
+      this.layer.hidden = true;
       if (!this.seed) return;
-      if (!this.result) return this.remask();
-      this.picture = this.engine.view(this.current, this.P, this.result);
+      const mode = this.mode;
+      this.picture = this.engine.render(mode, this.current, this.P, this.ctx());
       const { rgba, width, height } = this.picture;
       this.canvas.width = width;
       this.canvas.height = height;
       this.canvas.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
-      this.stage.classList.toggle("marked", this.marks);
       this.paintOverlay();
-      this.animate();
+      if (this.current === "living" && mode.living) this.play();
       if (!this.panel) return;
       const { W, H } = this.engine.image;
-      this.seedLine.replaceChildren(
-        "Seed ",
-        el5("code", {}, this.seed.seedText),
-        ` · ${W} × ${H} px · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})`
-      );
-      const r = describe(this.result);
+      this.seedLine.replaceChildren("Seed ", el5("code", {}, this.seed.seedText), ` · ${W} × ${H} px` + (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ""));
+      const r = this.engine.report(mode, this.P, this.current, this.ctx());
       this.report.replaceChildren(
         el5("h3", {}, "Report"),
-        el5("p", {}, r.summary),
-        ...r.attempts.map((a) => el5(
+        ...r.summary ? [el5("p", {}, r.summary)] : [],
+        ...(r.attempts || []).map((a) => el5(
           "details",
           { class: `renderer-attempt${a.kept ? " kept" : ""}`, open: a.kept },
           el5(
@@ -5039,87 +5716,58 @@ dialog.menu-drawer::before {
           ),
           el5("ul", {}, a.lines.map((line) => el5("li", {}, line)))
         )),
-        this.engine.patternCache?.Dw && el5("p", {}, describePattern(this.engine.patternCache)),
-        this.current === "living" && el5("p", {}, describeLiving(this.P))
+        ...r.lines.map((line) => el5("p", {}, line))
       );
     }
-    // The Plain theme: the still picture, and in its Living view the glow over it.
-    drawPlain() {
-      cancelAnimationFrame(this.tick);
-      if (!this.seed) return;
-      this.picture = this.engine.plainView(this.plainCurrent, this.P);
-      const { rgba, width, height } = this.picture;
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.canvas.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
-      this.paintOverlay();
-      this.glowCanvas.hidden = this.plainCurrent !== "living";
-      if (this.plainCurrent === "living") this.animateGlow();
-      if (!this.panel) return;
-      const { W, H } = this.engine.image;
-      this.seedLine.replaceChildren("Seed ", el5("code", {}, this.seed.seedText), ` · ${W} × ${H} px`);
-      const r = describePlain(this.engine.hue(this.P), this.engine.plainBase(this.P), this.engine.plainField(this.P), this.P);
-      this.report.replaceChildren(el5("h3", {}, "Report"), ...r.map((line) => el5("p", {}, line)));
-    }
-    // G: the lights at this.clock, drawn each frame as Gaussian radial gradients, added together, on a
-    // canvas at GLOW_SCALE of the screen that the browser screen-blends over the picture.
-    animateGlow() {
-      this.glow = this.engine.glow(this.P);
-      const g = this.glowCanvas.getContext("2d");
+    // The Living view: the mode's animation at this.clock, every frame. A frame's step is capped at
+    // 0.1 s, so time pauses (rather than jumps) while the page is hidden.
+    play() {
+      this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
+      const paint2 = this.anim.kind === "pixels" ? this.pixels() : this.shapes();
       let last = null;
       const step = (now) => {
         this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
         last = now;
+        paint2(this.anim);
+        this.tick = requestAnimationFrame(step);
+      };
+      this.tick = requestAnimationFrame(step);
+    }
+    // A 'pixels' animation: the rectangles that changed are copied from its rgba to the picture.
+    pixels() {
+      const { width, height } = this.picture;
+      const image = new ImageData(this.anim.rgba, width, height);
+      const g = this.canvas.getContext("2d");
+      return (anim) => {
+        for (const [x, y, w, h] of anim.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
+      };
+    }
+    // A 'layer' animation: its shapes, drawn on the layer canvas at anim.scale of the screen's device
+    // pixels, over its fill (or clear, when it has none), blended over the picture by the browser with anim.blend.
+    shapes() {
+      this.layer.hidden = false;
+      const g = this.layer.getContext("2d");
+      return (anim) => {
+        this.layer.style.mixBlendMode = anim.blend;
         const box = this.stage.getBoundingClientRect();
-        const dpr = (window.devicePixelRatio || 1) * GLOW_SCALE;
+        const dpr = (window.devicePixelRatio || 1) * anim.scale;
         const w = Math.max(2, Math.round(box.width * dpr));
         const h = Math.max(2, Math.round(box.height * dpr));
-        if (this.glowCanvas.width !== w || this.glowCanvas.height !== h) {
-          this.glowCanvas.width = w;
-          this.glowCanvas.height = h;
+        if (this.layer.width !== w || this.layer.height !== h) {
+          this.layer.width = w;
+          this.layer.height = h;
         }
         const c = this.cover(w, h);
-        const { X } = this.engine.image;
-        const unit = c.w / X;
-        const [kr, kg, kb] = this.glow.colour;
+        const unit = c.w / this.engine.image.X;
         g.globalCompositeOperation = "source-over";
-        g.fillStyle = "#000";
-        g.fillRect(0, 0, w, h);
-        g.globalCompositeOperation = "lighter";
-        for (const L of this.glow.at(this.clock)) {
-          const x = c.x + L.x * unit;
-          const y = c.y + L.y * unit;
-          const R = 3 * L.r * unit;
-          const grad = g.createRadialGradient(x, y, 0, x, y, R);
-          for (let s = 0; s <= 12; s++) {
-            const q = s / 12;
-            const e = L.a * Math.exp(-((3 * q) ** 2) / 2);
-            grad.addColorStop(q, `rgb(${Math.round(kr * e)},${Math.round(kg * e)},${Math.round(kb * e)})`);
-          }
-          g.fillStyle = grad;
-          g.fillRect(x - R, y - R, 2 * R, 2 * R);
+        if (anim.fill) {
+          g.fillStyle = anim.fill;
+          g.fillRect(0, 0, w, h);
+        } else {
+          g.clearRect(0, 0, w, h);
         }
-        this.tick = requestAnimationFrame(step);
+        for (const s of anim.at(this.clock)) PAINTERS[s.type](g, s, c, unit);
       };
-      this.tick = requestAnimationFrame(step);
-    }
-    // The Living view: the marks at this.clock, redrawn each frame where they are. A frame's step is
-    // capped at 0.1 s, so time pauses (rather than jumps) while the page is hidden.
-    animate() {
-      cancelAnimationFrame(this.tick);
-      if (this.current !== "living") return;
-      const live = this.engine.living(this.P, this.picture.rgba);
-      const { width, height } = this.picture;
-      const image = new ImageData(live.rgba, width, height);
-      const g = this.canvas.getContext("2d");
-      let last = null;
-      const step = (now) => {
-        this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
-        last = now;
-        for (const [x, y, w, h] of live.frame(this.clock)) g.putImageData(image, 0, 0, x, y, w, h);
-        this.tick = requestAnimationFrame(step);
-      };
-      this.tick = requestAnimationFrame(step);
     }
     // Where the picture lies in a box w × h when it covers it (object-fit: cover): its size and the
     // offset of its top left corner, which is negative on the sides that are cropped.
@@ -5131,7 +5779,7 @@ dialog.menu-drawer::before {
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
     paintOverlay() {
       if (!this.picture || this.stage.hidden) return;
-      const marks = this.marks && this.theme === "washi";
+      const marks = this.marks && this.mode.usesAnchor;
       this.stage.classList.toggle("marked", marks);
       if (!marks) {
         this.overlay.width = 0;
@@ -5170,6 +5818,47 @@ dialog.menu-drawer::before {
       g.moveTo(ax, ay - 2 * r);
       g.lineTo(ax, ay + 2 * r);
       g.stroke();
+    }
+  };
+  var PAINTERS = {
+    // A straight piece of line, its opacity running from a0 at (x0, y0) to a1 at (x1, y1), w canvas units
+    // wide; with halo, a faint wider stroke under it first.
+    line(g, L, c, unit) {
+      g.globalCompositeOperation = "source-over";
+      const x0 = c.x + L.x0 * unit;
+      const y0 = c.y + L.y0 * unit;
+      const x1 = c.x + L.x1 * unit;
+      const y1 = c.y + L.y1 * unit;
+      const [r, gr, b] = L.colour;
+      const stroke = (alpha, width) => {
+        const grad = g.createLinearGradient(x0, y0, x1 === x0 && y1 === y0 ? x1 + 1 : x1, y1);
+        grad.addColorStop(0, `rgba(${r},${gr},${b},${alpha * L.a0})`);
+        grad.addColorStop(1, `rgba(${r},${gr},${b},${alpha * L.a1})`);
+        g.strokeStyle = grad;
+        g.lineWidth = Math.max(1, width * unit);
+        g.beginPath();
+        g.moveTo(x0, y0);
+        g.lineTo(x1, y1);
+        g.stroke();
+      };
+      if (L.halo) stroke(0.25, 3 * L.w);
+      stroke(1, L.w);
+    },
+    // A Gaussian light, added to what's there: a radial gradient out to 3 r, in 12 steps.
+    glow(g, L, c, unit) {
+      const [kr, kg, kb] = L.colour;
+      g.globalCompositeOperation = "lighter";
+      const x = c.x + L.x * unit;
+      const y = c.y + L.y * unit;
+      const R = 3 * L.r * unit;
+      const grad = g.createRadialGradient(x, y, 0, x, y, R);
+      for (let s = 0; s <= 12; s++) {
+        const q = s / 12;
+        const e = L.a * Math.exp(-((3 * q) ** 2) / 2);
+        grad.addColorStop(q, `rgb(${Math.round(kr * e)},${Math.round(kg * e)},${Math.round(kb * e)})`);
+      }
+      g.fillStyle = grad;
+      g.fillRect(x - R, y - R, 2 * R, 2 * R);
     }
   };
 
