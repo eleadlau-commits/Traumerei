@@ -7,7 +7,7 @@
 //                head moves along it at v_g for T_g or until the line ends, trailing a streak whose
 //                strength falls as e^(−s/ℓ_g) behind the head; then it fades out over F_g.
 //   E4  black:   a reach R ~ Exponential(mean r); the black spreads from the point along every edge at
-//                v_b, to every point within network distance R; then it fades out over F_b (a slider).
+//                v_b (a slider), to every point within network distance R; then it fades out over F_b (a slider).
 //                Its front is blurred: at network distance d, with the front at ρ, its strength is
 //                clamp((ρ − d) / w_f, 0, 1), so it fades to nothing over the last w_f.
 //   E5  fade:    o(u) = (1 − u)² over the fade, u from 0 to 1, so every flash ends at exactly 0.
@@ -18,11 +18,9 @@ import { Hawkes } from './hawkes.js';
 
 export const TIMES = {
   tauH: 1, // E1's memory τ_h
-  vG: 1.8, // glint speed: the mean straight line (about 0.46) in about 0.25 s
   TG: 0.25, // glint travel time, at most
   ellG: 0.12, // glint streak length scale ℓ_g
   FG: 0.4, // glint fade
-  vB: 1, // black spread speed: a mean segment (about 0.18) in about 0.2 s
   wF: 0.04, // the black front's blur w_f
 };
 const VISIBLE = 0.1; // the revealed fraction counts strength above this
@@ -169,11 +167,11 @@ export class Flashes {
       if (glint) {
         const L = net.lines[net.edges[at.edge].line];
         const len = L.to - L.from;
-        const travel = Math.min(TIMES.TG, len / TIMES.vG);
+        const travel = Math.min(TIMES.TG, len / P.flashVG);
         f = { kind: 'glint', t0, line: L, len, back: rng.U() < 0.5, travel, end: t0 + travel + TIMES.FG };
       } else {
         const R = -P.flashR * Math.log(1 - rng.U());
-        f = { kind: 'black', t0, at, R, end: t0 + R / TIMES.vB + P.flashFB };
+        f = { kind: 'black', t0, at, R, end: t0 + R / P.flashVB + P.flashFB };
       }
       this.live.push(f);
       return f;
@@ -189,7 +187,7 @@ export class Flashes {
     for (const f of this.advance(t)) {
       const age = t - f.t0;
       if (f.kind === 'glint') {
-        const head = Math.min(age, f.travel) * TIMES.vG;
+        const head = Math.min(age, f.travel) * this.P.flashVG;
         const o = fadeOut((age - f.travel) / TIMES.FG);
         const tail = Math.max(0, head - TIMES.ellG * Math.log(1 / VISIBLE / 0.5)); // to below 5%
         const toS = (s) => (f.back ? f.len - s : s);
@@ -202,8 +200,8 @@ export class Flashes {
           out.push({ kind: 'glint', x0, y0, x1, y1, a0: o * Math.exp(-(head - s0) / TIMES.ellG), a1: o * Math.exp(-(head - s1) / TIMES.ellG) });
         }
       } else {
-        const rho = Math.min(f.R, age * TIMES.vB);
-        const o = fadeOut((age - f.R / TIMES.vB) / this.P.flashFB);
+        const rho = Math.min(f.R, age * this.P.flashVB);
+        const o = fadeOut((age - f.R / this.P.flashVB) / this.P.flashFB);
         const a = (d) => o * Math.min(1, Math.max(0, (rho - d) / TIMES.wF));
         for (const [i, s0, s1, d0, d1] of reach(this.net, f.at.edge, f.at.pos, rho)) {
           // split where the strength stops being 1, so each piece's strength is linear along it

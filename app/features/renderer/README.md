@@ -114,11 +114,11 @@ nothing is remembered:
   probability **Glint share π_g**, otherwise a black line.
 - **E2 where.** A point uniform along the network's length (stream `:planar:flash`).
 - **E3 glint.** The straight line through the point, from one of its ends: a head runs along it at
-  1.8 units/s for at most 0.25 s (so it crosses the mean line, about 0.46, and stops short on longer
+  **Glint speed v_g** (1.8 units/s by default) for at most 0.25 s (so it crosses the mean line, about 0.46, and stops short on longer
   ones), trailing a streak whose strength falls as e^(−s/0.12) behind it, then fades out over 0.4 s. Its
   colour is the fog under it at lightness **L_g**, with half its chroma, drawn with a faint halo.
 - **E4 black line.** A reach R ~ Exponential(mean **r**). The black spreads from the point along every
-  edge at 1 unit/s, to every point within network distance R (Dijkstra from the segment's two ends), then
+  edge at **Black spread speed v_b** (1 unit/s by default), to every point within network distance R (Dijkstra from the segment's two ends), then
   fades out over **Black lasts F_b** (0.8 s by default). Its front is blurred: at network distance d with
   the front at ρ, its strength is clamp((ρ − d) / w_f, 0, 1), w_f = 0.04, so it thins to nothing over the
   last 0.04 instead of ending in a hard cut, while spreading and after it stops. With r = 0.05 a little over half stay on their own segment, and passing k
