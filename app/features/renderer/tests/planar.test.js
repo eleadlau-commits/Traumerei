@@ -135,7 +135,7 @@ test('the network report counts rectangles, junctions and length', () => {
 });
 
 // ---- The flashes (E1–E5) ----
-import { Flashes, ball, revealed, revealRun } from '../engine/flashes.js';
+import { Flashes, ball, revealed, revealRun, reach } from '../engine/flashes.js';
 
 const NET = network(tiles(42, NX, NY, P), NX, NY);
 
@@ -204,4 +204,37 @@ test('over six hours, the largest reveal in each 10 minutes is usually small and
   assert.equal(r.maxima.length, 36);
   assert.ok(median > 0.1 && median < 0.35, msg);
   assert.ok(r.overall < 0.6, msg);
+});
+
+test('the black front is blurred: the reach covers the ball once, fading over its last w_f', () => {
+  const i = NET.edges.findIndex((e) => e.length > 0.15);
+  for (const rho of [0.03, 0.2, 0.5]) {
+    const pos = NET.edges[i].length / 3;
+    const len = (ps, a, b) => ps.reduce((s, p) => s + p[b] - p[a], 0);
+    const pieces = reach(NET, i, pos, rho);
+    assert.ok(Math.abs(len(pieces, 1, 2) - len(ball(NET, i, pos, rho), 1, 2)) < 1e-9, `same length at ρ ${rho}`);
+    for (const [, , , d0, d1] of pieces) assert.ok(d0 <= rho + 1e-12 && d1 <= rho + 1e-12 && d0 >= -1e-12 && d1 >= -1e-12);
+  }
+  const f = new Flashes(4, NET, { ...P, flashPiG: 0, flashMu: 1, flashR: 0.3 });
+  let soft = 0;
+  let solid = 0;
+  for (let t = 0.5; t < 60; t += 0.5) {
+    for (const p of f.pieces(t)) {
+      if (p.a0 !== p.a1) soft++;
+      else solid++;
+    }
+  }
+  assert.ok(soft > 0 && solid > 0, `${soft} soft and ${solid} solid pieces`);
+});
+
+test('the black lasts longer with a longer F_b', () => {
+  const short = new Flashes(4, NET, { ...P, flashPiG: 0, flashFB: 0.4 });
+  const long = new Flashes(4, NET, { ...P, flashPiG: 0, flashFB: 4 });
+  let a = 0;
+  let b = 0;
+  for (let t = 0.1; t < 300; t += 0.1) {
+    a += revealed(NET, short, t);
+    b += revealed(NET, long, t);
+  }
+  assert.ok(b > 2 * a, `${a.toFixed(1)} vs ${b.toFixed(1)}`);
 });

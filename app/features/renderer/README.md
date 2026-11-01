@@ -119,7 +119,9 @@ nothing is remembered:
   colour is the fog under it at lightness **L_g**, with half its chroma, drawn with a faint halo.
 - **E4 black line.** A reach R ~ Exponential(mean **r**). The black spreads from the point along every
   edge at 1 unit/s, to every point within network distance R (Dijkstra from the segment's two ends), then
-  fades out over 0.8 s. With r = 0.05 a little over half stay on their own segment, and passing k
+  fades out over **Black lasts F_b** (0.8 s by default). Its front is blurred: at network distance d with
+  the front at ρ, its strength is clamp((ρ − d) / w_f, 0, 1), w_f = 0.04, so it thins to nothing over the
+  last 0.04 instead of ending in a hard cut, while spreading and after it stops. With r = 0.05 a little over half stay on their own segment, and passing k
   junctions needs R longer than k segments, which falls off exponentially.
 - **E5 fade.** o(u) = (1 − u)² as u runs from 0 to 1 over the fade, so every flash ends at exactly 0.
 - Drawn as a `layer` animation at the screen's own resolution on a clear canvas over the fog; nothing is
@@ -127,8 +129,8 @@ nothing is remembered:
 - **Revealed fraction.** R(t) = the length of network showing at more than 10% strength (each part counted
   once) ÷ the total length. `tests/planar.test.js` simulates six hours from a fixed seed and checks the
   largest R in each 10 minutes. A 48-hour run at the defaults (μ 0.2, n 0.85, π_g 0.5, r 0.05): median of
-  the 10-minute maxima 0.22, 90th percentile 0.29, 3 windows of 288 reached 40%, 2 reached 50%, none 60%;
-  the largest was 0.54.
+  the 10-minute maxima 0.20, 90th percentile 0.27, 3 windows of 288 reached 40%, 1 reached 50%, none 60%;
+  the largest was 0.53. With F_b = 3 s: median 0.26, 15 reached 40%, 3 reached 50%, none 60%.
 
 Choices the flashes spec left open:
 - Offspring events don't land near their parents: the clustering is only in time.
