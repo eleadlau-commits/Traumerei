@@ -98,5 +98,5 @@ export function describeFlashes(P) {
   const rate = P.flashMu / (1 - n);
   return `Flashes (streams :planar:time :planar:flash): about ${rate.toFixed(2)} a second (μ / (1 − n)), in clusters of ` +
     `${(1 / (1 - n)).toFixed(1)} on average, ${Math.round(100 * P.flashPiG)}% glints; black reach r ${P.flashR} ` +
-    `(spreads at ${TIMES.vB}/s, blurred over ${TIMES.wF}, fades in ${P.flashFB} s), glints at ${TIMES.vG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
+    `(spreads at ${P.flashVB}/s, blurred over ${TIMES.wF}, fades in ${P.flashFB} s), glints at ${P.flashVG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
 }

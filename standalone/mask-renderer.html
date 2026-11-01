@@ -4079,6 +4079,8 @@ dialog.menu-drawer::before {
     { group: "Flashes", key: "flashPiG", label: "Glint share π_g", min: 0, max: 1, step: 0.01, value: 0.5 },
     { group: "Flashes", key: "flashR", label: "Black reach r", min: 5e-3, max: 0.3, step: 5e-3, value: 0.05 },
     { group: "Flashes", key: "flashFB", label: "Black lasts F_b (s)", min: 0.1, max: 6, step: 0.1, value: 0.8 },
+    { group: "Flashes", key: "flashVB", label: "Black spread speed v_b (per s)", min: 0.1, max: 4, step: 0.05, value: 1 },
+    { group: "Flashes", key: "flashVG", label: "Glint speed v_g (per s)", min: 0.2, max: 6, step: 0.1, value: 1.8 },
     { group: "Flashes", key: "glintL", label: "Glint lightness L_g", min: 0.6, max: 1, step: 0.01, value: 0.97 }
   ];
   var keysOf = (groups) => [...new Set(PARAMS.filter((p) => groups.includes(p.group)).map((p) => p.key))];
@@ -4246,16 +4248,12 @@ dialog.menu-drawer::before {
   var TIMES = {
     tauH: 1,
     // E1's memory τ_h
-    vG: 1.8,
-    // glint speed: the mean straight line (about 0.46) in about 0.25 s
     TG: 0.25,
     // glint travel time, at most
     ellG: 0.12,
     // glint streak length scale ℓ_g
     FG: 0.4,
     // glint fade
-    vB: 1,
-    // black spread speed: a mean segment (about 0.18) in about 0.2 s
     wF: 0.04
     // the black front's blur w_f
   };
@@ -4364,11 +4362,11 @@ dialog.menu-drawer::before {
         if (glint) {
           const L = net.lines[net.edges[at.edge].line];
           const len = L.to - L.from;
-          const travel = Math.min(TIMES.TG, len / TIMES.vG);
+          const travel = Math.min(TIMES.TG, len / P.flashVG);
           f = { kind: "glint", t0, line: L, len, back: rng.U() < 0.5, travel, end: t0 + travel + TIMES.FG };
         } else {
           const R = -P.flashR * Math.log(1 - rng.U());
-          f = { kind: "black", t0, at, R, end: t0 + R / TIMES.vB + P.flashFB };
+          f = { kind: "black", t0, at, R, end: t0 + R / P.flashVB + P.flashFB };
         }
         this.live.push(f);
         return f;
@@ -4383,7 +4381,7 @@ dialog.menu-drawer::before {
       for (const f of this.advance(t)) {
         const age = t - f.t0;
         if (f.kind === "glint") {
-          const head = Math.min(age, f.travel) * TIMES.vG;
+          const head = Math.min(age, f.travel) * this.P.flashVG;
           const o = fadeOut((age - f.travel) / TIMES.FG);
           const tail = Math.max(0, head - TIMES.ellG * Math.log(1 / VISIBLE / 0.5));
           const toS = (s) => f.back ? f.len - s : s;
@@ -4396,8 +4394,8 @@ dialog.menu-drawer::before {
             out.push({ kind: "glint", x0, y0, x1, y1, a0: o * Math.exp(-(head - s0) / TIMES.ellG), a1: o * Math.exp(-(head - s1) / TIMES.ellG) });
           }
         } else {
-          const rho = Math.min(f.R, age * TIMES.vB);
-          const o = fadeOut((age - f.R / TIMES.vB) / this.P.flashFB);
+          const rho = Math.min(f.R, age * this.P.flashVB);
+          const o = fadeOut((age - f.R / this.P.flashVB) / this.P.flashFB);
           const a = (d) => o * Math.min(1, Math.max(0, (rho - d) / TIMES.wF));
           for (const [i, s0, s1, d0, d1] of reach2(this.net, f.at.edge, f.at.pos, rho)) {
             const dm = rho - TIMES.wF;
@@ -4470,7 +4468,7 @@ dialog.menu-drawer::before {
   function describeFlashes(P) {
     const n = Math.min(P.flashN, 0.95);
     const rate = P.flashMu / (1 - n);
-    return `Flashes (streams :planar:time :planar:flash): about ${rate.toFixed(2)} a second (μ / (1 − n)), in clusters of ${(1 / (1 - n)).toFixed(1)} on average, ${Math.round(100 * P.flashPiG)}% glints; black reach r ${P.flashR} (spreads at ${TIMES.vB}/s, blurred over ${TIMES.wF}, fades in ${P.flashFB} s), glints at ${TIMES.vG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
+    return `Flashes (streams :planar:time :planar:flash): about ${rate.toFixed(2)} a second (μ / (1 − n)), in clusters of ${(1 / (1 - n)).toFixed(1)} on average, ${Math.round(100 * P.flashPiG)}% glints; black reach r ${P.flashR} (spreads at ${P.flashVB}/s, blurred over ${TIMES.wF}, fades in ${P.flashFB} s), glints at ${P.flashVG}/s for at most ${TIMES.TG} s, fading in ${TIMES.FG} s.`;
   }
 
   // dist/web/features/renderer/engine/modes/washi.js
