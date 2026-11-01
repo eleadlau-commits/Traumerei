@@ -7,7 +7,9 @@
 //                head moves along it at v_g for T_g or until the line ends, trailing a streak whose
 //                strength falls as e^(−s/ℓ_g) behind the head; then it fades out over F_g.
 //   E4  black:   a reach R ~ Exponential(mean r); the black spreads from the point along every edge at
-//                v_b, to every point within network distance R; then it fades out over F_b.
+//                v_b, to every point within network distance R; then it fades out over F_b (a slider).
+//                Its front is blurred: at network distance d, with the front at ρ, its strength is
+//                clamp((ρ − d) / w_f, 0, 1), so it fades to nothing over the last w_f.
 //   E5  fade:    o(u) = (1 − u)² over the fade, u from 0 to 1, so every flash ends at exactly 0.
 // Lengths are in canvas units (short side = 1), times in seconds.
 
@@ -21,7 +23,7 @@ export const TIMES = {
   ellG: 0.12, // glint streak length scale ℓ_g
   FG: 0.4, // glint fade
   vB: 1, // black spread speed: a mean segment (about 0.18) in about 0.2 s
-  FB: 0.8, // black fade
+  wF: 0.04, // the black front's blur w_f
 };
 const VISIBLE = 0.1; // the revealed fraction counts strength above this
 const fadeOut = (u) => (u <= 0 ? 1 : u >= 1 ? 0 : (1 - u) * (1 - u));
@@ -90,6 +92,47 @@ export function ball(net, edge, pos, rho) {
   return out;
 }
 
+// E4 with the blurred front: the network within distance ρ of the point, as pieces along which the
+// distance is linear: [[edge, s0, s1, d0, d1]], not overlapping. The distance along an edge is the
+// least of a few linear functions of s (through either end, or straight from the point on its own edge),
+// so it is split where they cross and where it reaches ρ.
+export function reach(net, edge, pos, rho) {
+  const dist = distances(net, edge, pos, rho);
+  const out = [];
+  net.edges.forEach((e, i) => {
+    const L = e.length;
+    const fs = []; // [slope, intercept]: candidate distances d = slope s + intercept
+    if (dist[e.a] < rho) fs.push([1, dist[e.a]]);
+    if (dist[e.b] < rho) fs.push([-1, dist[e.b] + L]);
+    if (i === edge) fs.push([1, -pos], [-1, pos]); // the two halves of |s − pos|
+    if (!fs.length) return;
+    const d = (s) => Math.min(
+      dist[e.a] + s,
+      dist[e.b] + L - s,
+      i === edge ? Math.abs(s - pos) : Infinity,
+    );
+    const cuts = new Set([0, L]);
+    if (i === edge) cuts.add(pos);
+    for (let p = 0; p < fs.length; p++) {
+      for (let q = p + 1; q < fs.length; q++) {
+        const [k1, c1] = fs[p];
+        const [k2, c2] = fs[q];
+        if (k1 !== k2) cuts.add((c2 - c1) / (k1 - k2));
+      }
+      cuts.add((rho - fs[p][1]) / fs[p][0]);
+    }
+    const xs = [...cuts].filter((v) => v >= 0 && v <= L).sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k++) {
+      const [s0, s1] = [xs[k], xs[k + 1]];
+      if (s1 - s0 < 1e-12) continue;
+      const [d0, d1] = [d(s0), d(s1)];
+      if (Math.min(d0, d1) >= rho) continue;
+      if (d0 <= rho && d1 <= rho) out.push([i, s0, s1, d0, d1]);
+    }
+  });
+  return out;
+}
+
 // A point `s` along a straight line, in canvas units.
 function onLine(net, L, s) {
   return L.horizontal ? [L.from + s, L.at] : [L.at, L.from + s];
@@ -130,7 +173,7 @@ export class Flashes {
         f = { kind: 'glint', t0, line: L, len, back: rng.U() < 0.5, travel, end: t0 + travel + TIMES.FG };
       } else {
         const R = -P.flashR * Math.log(1 - rng.U());
-        f = { kind: 'black', t0, at, R, end: t0 + R / TIMES.vB + TIMES.FB };
+        f = { kind: 'black', t0, at, R, end: t0 + R / TIMES.vB + P.flashFB };
       }
       this.live.push(f);
       return f;
@@ -160,10 +203,16 @@ export class Flashes {
         }
       } else {
         const rho = Math.min(f.R, age * TIMES.vB);
-        const o = fadeOut((age - f.R / TIMES.vB) / TIMES.FB);
-        for (const [i, s0, s1] of ball(this.net, f.at.edge, f.at.pos, rho)) {
-          const [x0, y0, x1, y1] = onEdge(this.net, i, s0, s1);
-          out.push({ kind: 'black', x0, y0, x1, y1, a0: o, a1: o });
+        const o = fadeOut((age - f.R / TIMES.vB) / this.P.flashFB);
+        const a = (d) => o * Math.min(1, Math.max(0, (rho - d) / TIMES.wF));
+        for (const [i, s0, s1, d0, d1] of reach(this.net, f.at.edge, f.at.pos, rho)) {
+          // split where the strength stops being 1, so each piece's strength is linear along it
+          const dm = rho - TIMES.wF;
+          const parts = (d0 - dm) * (d1 - dm) < 0 ? [[s0, d0, s0 + ((s1 - s0) * (dm - d0)) / (d1 - d0), dm], [s0 + ((s1 - s0) * (dm - d0)) / (d1 - d0), dm, s1, d1]] : [[s0, d0, s1, d1]];
+          for (const [u0, e0, u1, e1] of parts) {
+            const [x0, y0, x1, y1] = onEdge(this.net, i, u0, u1);
+            out.push({ kind: 'black', x0, y0, x1, y1, a0: a(e0), a1: a(e1) });
+          }
         }
       }
     }
@@ -181,12 +230,13 @@ export function revealed(net, flashes, t) {
     let lo = Math.min(u0, u1);
     let hi = Math.max(u0, u1);
     if (p.a0 !== p.a1) {
-      // the strength runs exponentially between a0 and a1: keep the part above VISIBLE
+      // the strength runs between a0 and a1: keep the part above VISIBLE
       const [aLo, aHi] = (u0 < u1) ? [p.a0, p.a1] : [p.a1, p.a0];
       if (Math.max(aLo, aHi) <= VISIBLE) continue;
       if (Math.min(aLo, aHi) < VISIBLE) {
-        const k = Math.log(aHi / aLo) / (hi - lo);
-        const cut = lo + Math.log(VISIBLE / aLo) / k;
+        const cut = p.kind === 'black'
+          ? lo + ((VISIBLE - aLo) / (aHi - aLo)) * (hi - lo) // linear along the blurred front
+          : lo + Math.log(VISIBLE / aLo) / (Math.log(aHi / aLo) / (hi - lo)); // exponential along a glint's streak
         if (aHi > aLo) lo = cut;
         else hi = cut;
       }

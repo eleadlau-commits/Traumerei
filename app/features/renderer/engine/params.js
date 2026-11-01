@@ -145,6 +145,7 @@ export const PARAMS = [
   { group: 'Flashes', key: 'flashN', label: 'Branching ratio n', min: 0, max: 0.95, step: 0.01, value: 0.85 },
   { group: 'Flashes', key: 'flashPiG', label: 'Glint share π_g', min: 0, max: 1, step: 0.01, value: 0.5 },
   { group: 'Flashes', key: 'flashR', label: 'Black reach r', min: 0.005, max: 0.3, step: 0.005, value: 0.05 },
+  { group: 'Flashes', key: 'flashFB', label: 'Black lasts F_b (s)', min: 0.1, max: 6, step: 0.1, value: 0.8 },
   { group: 'Flashes', key: 'glintL', label: 'Glint lightness L_g', min: 0.6, max: 1, step: 0.01, value: 0.97 },
 ];
 
