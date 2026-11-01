@@ -1,6 +1,6 @@
 // Home: the home page, laid over the picture (the Renderer view fills the screen behind it).
 // The name sits in the middle, "Create" beneath it, then "Settings" and "Account" under that.
-// The three words do nothing yet: each has its own method below, ready to be filled in.
+// Settings and Account open those pages; Create does nothing yet.
 //
 // The typeface is a setting (Settings → Typeface), Tenor Sans by default. The choices are in
 // fonts.js. The top bar keeps only the menu button (see style.css).
@@ -37,13 +37,13 @@ export default class Home extends Feature {
     this.add('settings', { id: 'home-typeface', title: 'Typeface', order: 20, render: () => this.typeface() });
   }
 
-  // ---- The three words: nothing yet ----
+  // ---- The three words ----
 
   create() {}
 
-  settings() {}
+  settings() { this.app.shell?.openSettings?.(); }
 
-  account() {}
+  account() { this.app.shell?.openAccount?.(); }
 
   // ---- Typeface ----
 

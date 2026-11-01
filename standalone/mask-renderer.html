@@ -896,6 +896,278 @@ dialog.menu-drawer::before {
   color: inherit;
 }
 
+/* ---- Settings, Account and About: the same "Veil" ----
+   They open like the menu: no panel or box, the page goes pale and soft-focus behind a veil, and
+   the page's words stand on the left in the home page's type. The thin cross top left closes them
+   (as do Escape, back and the pull-down). Folio's dialogs still do the work; this only restyles
+   them, mostly by giving Folio's colour tokens the veil's ink inside them. */
+:is(dialog.settings-dialog, dialog.account-page, dialog.about-dialog) {
+  --text: var(--home-ink);
+  --text-2: rgb(43 42 40 / .78);
+  --muted: rgb(43 42 40 / .58);
+  --line: rgb(43 42 40 / .14);
+  --surface: transparent;
+  --surface-2: rgb(43 42 40 / .05);
+  --accent: var(--home-ink);
+  --accent-ink: #fbf8f1;
+  --veil-ink-faint: rgb(43 42 40 / .35);
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--home-ink);
+  font-family: var(--home-font);
+}
+:is(dialog.settings-dialog, dialog.account-page, dialog.about-dialog)::backdrop { background: transparent; }
+:is(dialog.settings-dialog, dialog.account-page, dialog.about-dialog)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
+  -webkit-backdrop-filter: blur(14px) saturate(.9);
+  backdrop-filter: blur(14px) saturate(.9);
+  animation: veil-in .7s cubic-bezier(.22, .7, .18, 1) both;
+}
+/* A pale band at the top, so the words fade out as they scroll up under the cross. */
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: calc(72px + env(safe-area-inset-top));
+  background: linear-gradient(rgb(250 247 240 / .9), rgb(250 247 240 / .6) 50%, rgb(250 247 240 / 0));
+  pointer-events: none;
+  animation: veil-in .7s cubic-bezier(.22, .7, .18, 1) both;
+}
+@keyframes veil-in { from { opacity: 0; } }
+@keyframes veil-words-in { from { opacity: 0; } }
+@keyframes veil-rise { from { transform: translateY(8px); } }
+
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-body {
+  width: min(100%, 620px);
+  margin: 0;
+  padding: calc(92px + env(safe-area-inset-top)) var(--gutter) calc(72px + env(safe-area-inset-bottom));
+  padding-left: calc(var(--gutter) + 12px);
+  background: none;
+  gap: 28px;
+}
+/* The words rise into place; the body itself isn't animated, so the fixed cross stays above the band. */
+:is(.settings-dialog, .account-page, .about-dialog) :is(.dialog-content, .dialog-head h2) {
+  animation: veil-words-in .7s .1s cubic-bezier(.22, .7, .18, 1) both, veil-rise .7s .1s cubic-bezier(.22, .7, .18, 1) both;
+}
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head h2 {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-weight: 400;
+  font-size: clamp(20px, 2.4vw, 26px);
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  opacity: .8;
+}
+/* The close button becomes the thin cross where the three lines are. */
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn {
+  position: fixed;
+  z-index: 2;
+  top: calc(10px + env(safe-area-inset-top));
+  left: var(--gutter);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--home-ink);
+  opacity: .8;
+  cursor: pointer;
+}
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn:hover { opacity: 1; }
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn svg { display: none; }
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn::before,
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn::after {
+  content: "";
+  position: absolute;
+  top: 21.4px;
+  left: 12px;
+  width: 20px;
+  height: 1.25px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-head .icon-btn::after { transform: rotate(-45deg); }
+
+:is(.settings-dialog, .account-page, .about-dialog) .dialog-content { gap: 40px; }
+.account-page .dialog-content { gap: 22px; }
+:is(.settings-dialog, .about-dialog) .settings-section { gap: 16px; }
+:is(.settings-dialog, .about-dialog) .settings-section + .settings-section { padding-top: 0; border-top: 0; }
+
+/* Section names: small spaced capitals under a short hairline, like who is signed in on the menu. */
+:is(.settings-dialog, .about-dialog) .sub-head {
+  position: relative;
+  margin: 0;
+  padding-top: 14px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+:is(.settings-dialog, .about-dialog) .sub-head::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 1px;
+  background: currentColor;
+  opacity: .5;
+}
+
+/* Small writing: the home page's face, quieter, in ordinary case. */
+:is(.settings-dialog, .account-page, .about-dialog) :is(.hint, p, small) {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+
+/* Choices: plain words; the chosen one is darker with the hairline under it. */
+:is(.settings-dialog, .account-page) .seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+:is(.settings-dialog, .account-page) .seg button,
+:is(.settings-dialog, .account-page) .btn,
+:is(.settings-dialog, .account-page) .renderer-buttons button {
+  height: auto;
+  min-height: 0;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  color: var(--home-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: .2em;
+  margin-right: -.2em;
+  text-transform: uppercase;
+  opacity: .5;
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px 100%;
+  background-size: 0 1px;
+  transition: opacity .2s, background-size .3s;
+}
+:is(.settings-dialog, .account-page) .btn { justify-self: start; align-self: flex-start; opacity: .7; }
+:is(.settings-dialog, .account-page) .seg button[aria-selected="true"],
+:is(.settings-dialog, .account-page) .seg button[aria-checked="true"] {
+  background-color: transparent;
+  color: var(--home-ink);
+  font-weight: 400;
+  opacity: 1;
+  background-size: calc(100% - 4px - .2em) 1px;
+}
+:is(.settings-dialog, .account-page) :is(.seg button, .btn, .renderer-buttons button):hover,
+:is(.settings-dialog, .account-page) :is(.seg button, .btn, .renderer-buttons button):focus-visible {
+  opacity: 1;
+  outline: none;
+  background-size: calc(100% - 4px - .2em) 1px;
+}
+.settings-dialog .home-fonts button { letter-spacing: .14em; text-transform: none; font-size: 15px; }
+
+/* Folds (Advanced, the layers, Features): a spaced word with + or −, no triangle. */
+.settings-dialog details > summary {
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  opacity: .75;
+  cursor: pointer;
+}
+.settings-dialog details > summary::-webkit-details-marker { display: none; }
+.settings-dialog details > summary::before { content: "+"; width: 10px; letter-spacing: 0; opacity: .7; }
+.settings-dialog details[open] > summary::before { content: "−"; }
+.settings-dialog details > summary:hover { opacity: 1; }
+.settings-dialog .features-fold summary small { margin-left: auto; float: none; letter-spacing: .1em; text-transform: none; }
+.settings-dialog .renderer-fold, .settings-dialog .renderer-attempt, .settings-dialog .feature-row { border-color: var(--line); }
+
+/* The tools: no boxes; hairline sliders with a small ink bead. */
+.settings-dialog .renderer-group { padding: 0; border: 0; background: none; gap: 14px; }
+.settings-dialog .renderer-group legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+.settings-dialog .renderer-slider { font-family: inherit; font-size: 13px; letter-spacing: .02em; color: var(--text-2); }
+.settings-dialog .renderer-value { color: var(--home-ink); }
+.settings-dialog input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+.settings-dialog input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: var(--veil-ink-faint); }
+.settings-dialog input[type="range"]::-moz-range-track { height: 1px; background: var(--veil-ink-faint); }
+.settings-dialog input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--home-ink);
+}
+.settings-dialog input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--home-ink); }
+.settings-dialog input[type="range"]:focus-visible { outline: none; }
+.settings-dialog input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(43 42 40 / .15); }
+.settings-dialog .switch { width: 34px; height: 18px; }
+.settings-dialog .switch .slider { background: none; border: 1px solid var(--veil-ink-faint); }
+.settings-dialog .switch .slider::after { top: 3px; left: 3px; width: 10px; height: 10px; background: var(--veil-ink-faint); box-shadow: none; }
+.settings-dialog .switch input:checked + .slider { background: none; border-color: var(--home-ink); }
+.settings-dialog .switch input:checked + .slider::after { transform: translateX(16px); background: var(--home-ink); }
+.settings-dialog .renderer-colour input { border-color: var(--veil-ink-faint); border-radius: 0; }
+.settings-dialog .renderer-tag { border-radius: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(dialog.settings-dialog, dialog.account-page, dialog.about-dialog)::before,
+  :is(.settings-dialog, .account-page, .about-dialog) :is(.dialog-content, .dialog-head h2) { animation: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-link { transition: none; }
   .menu-drawer .menu-row, .menu-drawer .menu-top, dialog.menu-drawer::before,
@@ -2629,12 +2901,14 @@ dialog.menu-drawer::before {
       });
       this.add("settings", { id: "home-typeface", title: "Typeface", order: 20, render: () => this.typeface() });
     }
-    // ---- The three words: nothing yet ----
+    // ---- The three words ----
     create() {
     }
     settings() {
+      this.app.shell?.openSettings?.();
     }
     account() {
+      this.app.shell?.openAccount?.();
     }
     // ---- Typeface ----
     applyFont() {
