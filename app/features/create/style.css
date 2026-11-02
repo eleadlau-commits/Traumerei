@@ -177,18 +177,6 @@
   box-shadow: none;
 }
 
-.create-rooms-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px 28px;
-  padding: 14px var(--gutter) calc(20px + env(safe-area-inset-bottom));
-  padding-left: calc(var(--gutter) + 12px);
-}
-.create-rooms-words { display: flex; flex-wrap: wrap; gap: 8px clamp(22px, 4vw, 44px); }
-.create-note { margin: 0; font-size: 12px; letter-spacing: .06em; opacity: .45; }
-@media (hover: none) { .create-note { display: none; } }
 
 /* ---- A room ---- */
 
@@ -197,6 +185,8 @@
   inset: 0;
   background: linear-gradient(var(--room-top), var(--room-bottom));
   color: var(--room-ink);
+  user-select: none;
+  -webkit-user-select: none;
   animation: create-in .45s ease both;
 }
 @keyframes create-in { from { opacity: 0; } }
@@ -215,19 +205,43 @@
 .create-crumb-name { opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .create-crumb-name .create-name-field { width: 18ch; letter-spacing: .1em; }
 
-.create-foot {
+/* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
+.create-add { position: absolute; left: calc(var(--gutter) + 12px); bottom: calc(18px + env(safe-area-inset-bottom)); }
+.create-add-btn { display: inline-flex; align-items: baseline; gap: 8px; }
+.create-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--create-ease); }
+.create-add-btn.open .create-add-plus { transform: rotate(45deg); }
+.create-add-menu {
   position: absolute;
-  left: calc(var(--gutter) + 12px);
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 22px;
-  pointer-events: none;
+  left: -12px;
+  bottom: calc(100% + 10px);
+  display: grid;
+  min-width: 300px;
+  padding: 8px 0;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
+  animation: create-unfold .22s var(--create-ease) both;
 }
-.create-foot > * { pointer-events: auto; }
-.create-keys { font-size: 12px; letter-spacing: .06em; opacity: .45; }
-@media (hover: none) { .create-keys { display: none; } }
+@keyframes create-unfold { from { opacity: 0; transform: translateY(6px); } }
+.create-add-item {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.create-add-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 7%, transparent); }
+.create-add-note { font-size: 11px; letter-spacing: .04em; text-transform: none; opacity: .5; }
+.create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
 /* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
 .create-bar, .create-tint {
@@ -268,20 +282,64 @@
   pointer-events: none;
 }
 
-/* Thoughts. Joyce: a train reads as one paragraph, its thoughts joined by a faint dot. */
-.create-train {
+/* Thoughts. Joyce: each thought on its own, joined to the next by a line (the SVG under them):
+   taut between quick thoughts, slack after a pause. */
+.create-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.create-strand-line { fill: none; stroke: currentColor; stroke-width: 1; opacity: .32; transition: opacity .3s; }
+.create-strand-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: grab; }
+.create-knot { fill: currentColor; opacity: .45; }
+.create-strand.selected .create-strand-line { opacity: .7; stroke-width: 1.4; }
+.create-strand.selected .create-knot { opacity: .85; }
+.create-strand:hover .create-strand-line { opacity: .55; }
+.create-bead {
   position: absolute;
   width: max-content;
   max-width: 380px;
   font-size: 18px;
   line-height: 1.6;
   letter-spacing: .02em;
-    cursor: grab;
+  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  transition: text-shadow .3s;
 }
-.create-thought + .create-thought::before { content: " · "; opacity: .4; }
-.create-train.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 45%, transparent); outline-offset: 10px; }
+.create-bead:hover { text-shadow: 0 0 1px color-mix(in srgb, var(--room-ink) 30%, transparent); }
+.create-bead .create-passage, .create-bead .create-picture { margin: 0; }
+.create-bead.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 7px; }
+.create-bead.found, .create-float.found, .create-tick.found .create-tick-body { animation: create-found 2.4s ease both; }
+@keyframes create-found { 0%, 60% { background: color-mix(in srgb, var(--room-ink) 12%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--room-ink) 12%, transparent); } }
+
+/* The timeline: one straight line, a dot per thought, its time above and its tag below. */
+.create-timeline-line { position: absolute; top: 0; height: 1px; background: currentColor; opacity: .3; }
+.create-tick { position: absolute; width: 0; cursor: default; }
+.create-tick-dot { position: absolute; left: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--tag, currentColor); }
+.create-tick-time { position: absolute; left: 0; bottom: 14px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; letter-spacing: .08em; opacity: .5; }
+.create-tick-body { position: absolute; left: 0; top: 18px; transform: translateX(-50%); width: max-content; max-width: 210px; font-size: 15px; line-height: 1.5; text-align: center; padding: 2px 4px; }
+.create-tick-body .create-picture img { max-width: 160px; max-height: 160px; }
+.create-tick .create-tag {
+  position: absolute;
+  left: 0;
+  top: -54px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 8px;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--tag);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag) 45%, transparent);
+}
+.create-tick.selected .create-tick-body { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 5px; }
+
+/* Joyce's word, and the Timeline it unfolds when hovered. */
+.create-mode-wrap { display: inline-flex; align-items: baseline; gap: 14px; }
+.create-timeline-btn { max-width: 0; overflow: hidden; opacity: 0; transition: max-width .35s var(--create-ease), opacity .3s; white-space: nowrap; }
+.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { max-width: 120px; opacity: .8; }
+.create-timeline-btn[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
+
 .create-draft { opacity: 1; }
 .create-draft::after {
   content: "";
@@ -310,10 +368,9 @@
   user-select: none;
   -webkit-user-select: none;
 }
-.create-float .create-thought + .create-thought::before { content: none; }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.create-room.dark :is(.create-train, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+.create-room.dark :is(.create-bead, .create-float, .create-tick-body) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
 
 @media (max-width: 560px) {
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
@@ -381,3 +438,124 @@
 /* Settings → Rooms */
 .create-settings { display: grid; gap: 12px; }
 .create-settings .btn { justify-self: start; }
+
+/* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
+.create-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
+.create-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, #2b2a28) 55%, transparent); }
+.create-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, #2b2a28); }
+.create-options {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 10px;
+  width: 236px;
+  padding: 14px 16px;
+  background: rgb(250 247 240 / .82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 12px 40px rgb(0 0 0 / .12);
+  color: var(--home-ink, #2b2a28);
+  --room-ink: var(--home-ink, #2b2a28);
+  animation: create-unfold .2s var(--create-ease) both;
+}
+.create-options-name {
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-radius: 0;
+  padding: 4px 0;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+}
+.create-options-name:focus { border-bottom-color: currentColor; }
+.create-options .create-word { justify-self: start; }
+.create-options-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.create-options-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
+.create-options .create-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
+.create-options-delete { opacity: .6; }
+.create-options-delete:hover { color: #8a2f22; opacity: 1; }
+.create-options .create-slider input[type="range"] { width: 110px; }
+
+/* Search (Ctrl+K): a quiet panel near the top. */
+.create-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(0 0 0 / .08); }
+.create-search-panel {
+  position: absolute;
+  left: 50%;
+  top: 14vh;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 2 * var(--gutter)));
+  background: rgb(250 247 240 / .9);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 18px 60px rgb(0 0 0 / .16);
+  color: var(--home-ink, #2b2a28);
+  animation: create-unfold .2s var(--create-ease) both;
+}
+.create-search-field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px 20px;
+  font: inherit;
+  font-size: 17px;
+  letter-spacing: .02em;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(43 42 40 / .12);
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  min-height: 0;
+}
+.create-search-list { max-height: 50vh; overflow: auto; }
+.create-search-item {
+  appearance: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 20px; width: 100%; padding: 11px 20px; text-align: left;
+}
+.create-search-item.on, .create-search-item:hover { background: rgb(43 42 40 / .06); }
+.create-search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.create-search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
+.create-search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
+
+/* A quiet "Saved", and a line of help the first time a page is seen. */
+.create-saved {
+  position: fixed;
+  right: calc(var(--gutter) + 12px);
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--room-ink, var(--home-ink, #2b2a28));
+}
+.create:not(.in-room) .create-saved { color: var(--home-ink, #2b2a28); }
+.create-saved.on { animation: create-saved 2.2s ease both; }
+@keyframes create-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
+.create-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 6px);
+  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: .05em;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s, transform .6s var(--create-ease);
+  color: var(--room-ink, var(--home-ink, #2b2a28));
+}
+.create:not(.in-room) .create-hint { color: var(--home-ink, #2b2a28); }
+.create-hint.on { opacity: .6; transform: translate(-50%, 0); }
+@media (max-width: 560px) {
+  .create-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .create-options { width: 200px; }
+}

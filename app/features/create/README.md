@@ -45,3 +45,19 @@ unfolding never loses anything. Older saved data (the first prototype's shape) i
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
 the key `world` and follows the account like the settings. Other features reach it through the
 `create` service (`open()`).
+
+## Editing, the line, the timeline
+
+- **Rooms page:** hovering over a square outlines it; a click chooses it and shows its options
+  beside it (name, Go in, tint, lightness, size 1 × 1 or 2 × 2, Delete); a double click goes in.
+  There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
+- **Joyce's line:** each thought stands on its own, joined to the next by a line. Its tension
+  comes from time: thoughts written close together are joined taut, a pause leaves slack, and
+  pulling a thought far away makes it straight again (Settings → Rooms → Line tension). Drag a
+  thought to move it alone; double-click a train to choose it whole, then drag it.
+- **Timeline:** hover over Joyce and choose Timeline: every thought of the room on one straight
+  line, in the order it was last changed, each with its time and its train as a tag. Tags belong
+  to Joyce only.
+- **Add** (bottom left) unfolds to Thought, Passage, Picture and the room's settings.
+- **Ctrl+K** searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
+  quiet *Saved* shows in the corner, and a line of help the first time each page is seen.

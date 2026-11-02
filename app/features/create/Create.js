@@ -7,19 +7,24 @@
 // to any free cell. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
 // opens Messy thoughts and starts writing there, at a random place.
 //
+// On the rooms page, hovering over a square outlines it; a click chooses it and shows its options
+// beside it (name, Go in, tint, lightness, size, Delete); a double click goes in.
+//
 // A room fills the screen as one gradient of its own colour, with the back arrow to the rooms.
-// Its tint, lightness and opacity are its own (Tint, at the bottom; look.js). A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
+// A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
 // writes a thought; Enter ends it. Each room is seen through an ontological mode:
-// - Joyce (the default): thoughts are joined by time into trains, read like prose. Enter goes on
-//   with the same train; Ctrl+Enter starts a new train somewhere else. A train can't be broken:
-//   it is dragged, and moved to another room, whole.
+// - Joyce (the default): thoughts are joined by time into trains. Each thought stands on its own,
+//   joined to the next by a line: taut between quick thoughts, slack after a pause (model.js
+//   slack). Drag a thought to move it alone (the line follows); double-click a train to choose it
+//   whole, then drag it. Enter goes on with the train; Ctrl+Enter starts a new one. Hovering over
+//   Joyce unfolds Timeline: every thought of the room on one straight line, in the order it was
+//   last changed, with its train as a tag (Joyce's tags only).
 // - Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they
 //   were written, and can be dragged anywhere.
-// Select a train (Joyce) or a thought (Pessoa) to move it to another room, or a new one.
-//
-// A thought need not be a line of words. Two templates make bigger ones: a Passage (a title and a
-// paragraph, or a small article; Alt+P) and a Picture (with a caption; Alt+I, or paste one). A
-// train can be folded into one thought, which you name, and unfolded again.
+// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and the room's
+// settings. A train can be folded into one thought, which you name, and unfolded again.
+// Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
+// world is written down, and a line of help shows the first time each page is seen.
 //
 // Everything is a thought (model.js): lines, passages, pictures, trains and rooms are all kinds
 // of one object, so moving, folding and naming work the same on any of them.
@@ -32,6 +37,7 @@ import {
   MESSY, MODES, loadWorld, room, rooms, addRoom, name, view, startTrain, addThought, create, update,
   remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
   roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
+  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { pageLook, roomLook, squareLook, lookPrefs, LOOK } from './look.js';
@@ -40,6 +46,13 @@ const { el } = ui;
 const LIT_FOR = 24 * 3600e3; // a room stays lit for a day after it was written in
 const ZOOM = { min: 0.25, max: 4 };
 const GRID = { gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
+const UNDO = 60;           // how many steps back Ctrl+Z goes
+const SVG = 'http://www.w3.org/2000/svg';
+const TIMELINE = { step: 250 }; // px between thoughts on the timeline
+const HINTS = {
+  rooms: 'Click a square to change it · double-click to go in · click an empty square for a new room · or just start typing',
+  room: 'Type anywhere to write · Enter ends a thought · Ctrl+Enter starts a new train · double-click a train to move it whole · Ctrl+K searches · Ctrl+Z undoes',
+};
 
 export default class Create extends Feature {
   start() {
@@ -50,6 +63,7 @@ export default class Create extends Feature {
     this.fresh = false;   // Ctrl+Enter was pressed: the next thought starts a new train
     this.sel = null;      // { kind: 'train' | 'thought', id }
     this.renaming = null; // a room id whose name is being edited
+    this.roomSel = null;  // the room chosen on the rooms page, whose options show beside it
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
 
@@ -67,6 +81,9 @@ export default class Create extends Feature {
 
   open() {
     this.world = loadWorld(this.storage.get('world')); // it may have arrived from the account meanwhile
+    this.undoStack = [];
+    this.redoStack = [];
+    this.lastSnap = this.snap();
     this.app.shell?.closeMenu?.();
     clearTimeout(this.closing);
     this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
@@ -81,6 +98,7 @@ export default class Create extends Feature {
 
   close() {
     this.closeSheet();
+    this.closeSearch();
     this.stopWriting();
     this.backdrop?.cover?.(false);
     this.root.classList.remove('up');
@@ -101,6 +119,8 @@ export default class Create extends Feature {
     this.stopWriting();
     this.roomId = null;
     this.sel = null;
+    this.roomSel = null;
+    this.closeAdd();
     this.roomPage.hidden = true;
     this.roomsPage.hidden = false;
     this.root.classList.remove('in-room');
@@ -119,12 +139,61 @@ export default class Create extends Feature {
     this.root.classList.add('in-room');
     this.backBtn.setAttribute('aria-label', 'Back to the rooms');
     this.tinting = false;
+    this.closeAdd();
     this.drawRoom();
+    this.hint('room');
   }
 
+  // Saves the world. A change to the thoughts or rooms (not just where the view is) is a step
+  // Ctrl+Z can take back.
   save() {
+    const now = this.snap();
+    if (now !== this.lastSnap) {
+      this.undoStack.push(this.lastSnap);
+      if (this.undoStack.length > UNDO) this.undoStack.shift();
+      this.redoStack = [];
+      this.lastSnap = now;
+    }
     clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.storage.set('world', this.world), 250);
+    this.saveTimer = setTimeout(() => { this.storage.set('world', this.world); this.showSaved(); }, 250);
+  }
+
+  snap() { return JSON.stringify({ things: this.world.things, places: this.world.places }); }
+
+  undo(back = true) {
+    const from = back ? this.undoStack : this.redoStack, to = back ? this.redoStack : this.undoStack;
+    if (!from.length) { this.toast(back ? 'Nothing to undo' : 'Nothing to redo'); return; }
+    to.push(this.lastSnap);
+    this.lastSnap = from.pop();
+    const { things, places } = JSON.parse(this.lastSnap);
+    Object.assign(this.world, { things, places });
+    this.sel = null;
+    this.draft = null;
+    clearTimeout(this.saveTimer);
+    this.storage.set('world', this.world);
+    this.showSaved(back ? 'Undone' : 'Redone');
+    if (this.roomId && !room(this.world, this.roomId)) this.showRooms();
+    else if (this.roomId) this.drawRoom();
+    else this.drawRooms();
+  }
+
+  // A quiet word in the corner when the world has been written down.
+  showSaved(word = 'Saved') {
+    this.savedMark.textContent = word;
+    this.savedMark.classList.remove('on');
+    void this.savedMark.offsetWidth;
+    this.savedMark.classList.add('on');
+  }
+
+  // A line of help, once, the first time each page is seen. It fades on the first key or click.
+  hint(which) {
+    const seen = this.storage.get('hinted', {}) || {};
+    if (seen[which]) return;
+    this.storage.set('hinted', { ...seen, [which]: true });
+    this.hintLine.textContent = HINTS[which];
+    this.hintLine.classList.add('on');
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => this.hintLine.classList.remove('on'), 9000);
   }
 
   // ---- Building the pages ----
@@ -132,13 +201,7 @@ export default class Create extends Feature {
   build() {
     this.grid = el('div', { class: 'create-grid' });
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },
-      el('div', { class: 'create-grid-wrap' }, this.grid),
-      el('div', { class: 'create-rooms-foot' },
-        el('nav', { class: 'create-rooms-words', 'aria-label': 'Rooms' },
-          el('button', { type: 'button', class: 'create-word', 'aria-current': 'page', onclick: () => this.grid.scrollIntoView?.({ behavior: 'smooth' }) }, 'Rooms'),
-          el('button', { type: 'button', class: 'create-word', onclick: () => this.newRoom() }, 'New room'),
-          el('button', { type: 'button', class: 'create-word', onclick: () => this.app.shell?.openSettings?.() }, 'Settings')),
-        el('p', { class: 'create-note' }, 'Start typing to write in Messy thoughts')));
+      el('div', { class: 'create-grid-wrap' }, this.grid));
 
     this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
@@ -152,27 +215,34 @@ export default class Create extends Feature {
       this.stage,
       this.modes,
       el('div', { class: 'create-top' }, this.crumbName),
-      el('div', { class: 'create-foot' },
-        el('button', { type: 'button', class: 'create-word create-write', onclick: () => this.beginWriting() }, 'Write'),
-        el('button', { type: 'button', class: 'create-word', title: 'Alt+P', onclick: () => this.openSheet('passage') }, 'Passage'),
-        el('button', { type: 'button', class: 'create-word', title: 'Alt+I', onclick: () => this.choosePicture() }, 'Picture'),
-        el('button', { type: 'button', class: 'create-word', onclick: () => this.toggleTint() }, 'Tint'),
-        el('span', { class: 'create-keys' }, 'Enter ends a thought · Ctrl+Enter starts a new train · Alt+P a passage · Alt+I a picture')),
+      el('div', { class: 'create-add' },
+        this.addMenu = el('div', { class: 'create-add-menu', hidden: true, role: 'menu' },
+          this.addItem('Thought', 'Just type', () => this.beginWriting()),
+          this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
+          this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
+          el('div', { class: 'create-add-rule' }),
+          this.addItem('Room settings', 'Tint, lightness, opacity', () => this.toggleTint())),
+        this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
+          el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.bar,
       this.tintPanel = el('div', { class: 'create-tint', hidden: true }),
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
       this.input);
 
-    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.backBtn);
+    this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
+    this.savedMark = el('div', { class: 'create-saved', 'aria-live': 'polite' });
+    this.hintLine = el('div', { class: 'create-hint' });
+    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
     this.input.addEventListener('keydown', (e) => this.onInputKey(e));
     this.input.addEventListener('blur', () => { if (this.draft && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } });
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
-    this.stage.addEventListener('dblclick', (e) => {
-      const id = e.target.closest('[data-id]')?.dataset.id;
-      if (id && kindOf(this.world.things[id]) !== 'line') this.openSheet(null, id);
+    this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
+    document.addEventListener('pointerdown', (e) => {
+      this.hintLine.classList.remove('on');
+      if (!this.addMenu.hidden && !e.target.closest('.create-add')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
   }
@@ -210,7 +280,7 @@ export default class Create extends Feature {
         type: 'button', class: 'create-cell', 'aria-label': 'New room here',
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
-        onclick: () => this.newRoom({ col, row }),
+        onclick: () => { if (this.roomSel) { this.roomSel = null; this.drawRooms(); } else this.newRoom({ col, row }); },
       }));
     }
 
@@ -223,21 +293,95 @@ export default class Create extends Feature {
         ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
         : el('span', { class: 'create-tile-name' }, r.name);
       const tile = el('div', {
-        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : ''),
+        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : ''),
         role: 'button', tabindex: 0,
         style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
         'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
         'data-room': r.id,
-        onkeydown: (e) => { if (e.target === tile && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); this.openRoom(r.id); } },
+        'aria-expanded': String(this.roomSel === r.id),
+        onkeydown: (e) => {
+          if (e.target !== tile) return;
+          if (e.key === 'Enter') { e.preventDefault(); this.openRoom(r.id); }
+          if (e.key === ' ') { e.preventDefault(); this.chooseRoom(r.id); }
+        },
         onpointerdown: (e) => this.onTileDown(e, r, tile),
       },
-        el('div', { class: 'create-tile-label', ondblclick: (e) => { e.stopPropagation(); this.renaming = r.id; this.drawRooms(); } },
+        el('div', { class: 'create-tile-label' },
           name,
           el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
       return tile;
     });
-    this.grid.replaceChildren(...empty, ...tiles);
+    const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
+    this.grid.replaceChildren(...empty, ...tiles, ...(chosen ? [this.roomOptions(chosen, cell, cols)] : []));
     this.grid.querySelector('.create-name-field')?.focus();
+    if (!this.root.hidden) this.hint('rooms');
+  }
+
+  chooseRoom(id) {
+    this.roomSel = this.roomSel === id ? null : id;
+    this.renaming = null;
+    this.drawRooms();
+  }
+
+  // A chosen room's options, beside its square: its name, Go in, its tint and lightness, its size,
+  // and Delete (not for Messy thoughts).
+  roomOptions(r, cell, cols) {
+    const step = cell + GRID.gap;
+    const right = r.col + r.size + 1 + 2 <= cols; // room for the panel on the right
+    const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
+    const look = this.lookOf(r);
+    const nameField = el('input', {
+      class: 'create-options-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
+      onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
+      onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
+    });
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const panel = el('div', {
+      class: 'create-options' + (right ? '' : ' left'),
+      style: right
+        ? `left:${(r.col + r.size) * step + 4}px;top:${r.row * step}px`
+        : `right:${(cols - r.col) * step + 4 - GRID.gap}px;top:${r.row * step}px`,
+      onpointerdown: (e) => e.stopPropagation(),
+    },
+      nameField,
+      word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      el('label', { class: 'create-slider' }, el('span', {}, 'Tint'),
+        el('input', { type: 'color', value: look.tint, oninput: (e) => set({ tint: e.target.value }) })),
+      el('label', { class: 'create-slider' }, el('span', {}, 'Lightness'),
+        el('input', { type: 'range', min: 0.05, max: 0.95, step: 0.01, value: look.light, oninput: (e) => set({ light: +e.target.value }) })),
+      el('div', { class: 'create-options-row' },
+        el('span', { class: 'create-options-label' }, 'Size'),
+        ...[1, 2].map((n) => el('button', {
+          type: 'button', class: 'create-word', 'aria-pressed': String((r.size || 1) === n),
+          onclick: () => {
+            if (sizeRoom(this.world, r.id, n, this.cols)) { this.save(); this.drawRooms(); }
+            else this.toast('There isn\'t room for it to grow here. Move it first.');
+          },
+        }, n === 1 ? '1 × 1' : '2 × 2'))),
+      el('div', { class: 'create-options-row' },
+        r.tint || r.light != null ? word('Its own colour again', () => {
+          delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
+        }) : null,
+        r.id !== MESSY ? word('Delete', () => {
+          remove(this.world, r.id);
+          this.roomSel = null;
+          this.save();
+          this.drawRooms();
+          this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+        }, 'create-options-delete') : null));
+    return panel;
+  }
+
+  // Redraws the squares on the next frame (sliders move many times a frame).
+  drawRoomsSoon() {
+    if (this.roomsFrame) return;
+    this.roomsFrame = requestAnimationFrame(() => {
+      this.roomsFrame = 0;
+      for (const tile of this.grid.querySelectorAll('.create-tile')) {
+        const r = room(this.world, tile.dataset.room);
+        if (r) tile.style.setProperty('--square', squareLook(r, r.id === MESSY, this.prefs).fill);
+      }
+    });
   }
 
   // The grid cell under a point, or null.
@@ -278,7 +422,12 @@ export default class Create extends Feature {
       mark(null);
       this.grid.classList.remove('dragging');
       if (!dragging) {
-        if (ev.type === 'pointerup' && !this.renaming) this.openRoom(r.id);
+        if (ev.type !== 'pointerup' || this.renaming) return;
+        const now = Date.now();
+        const twice = this.lastTap?.id === r.id && now - this.lastTap.at < 380;
+        this.lastTap = { id: r.id, at: now };
+        if (twice) this.openRoom(r.id);
+        else { this.roomSel = r.id; this.drawRooms(); }
         return;
       }
       if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
@@ -379,7 +528,8 @@ export default class Create extends Feature {
         el('button', { type: 'button', class: 'btn small', onclick: () => { this.setPref('tint', ''); this.app.shell?.refreshSettings?.(); } }, 'Tint from the picture'),
         slider('Colour strength', 'saturation', 0, 1),
         slider('Lightness', 'light', 0.05, 0.95),
-        slider('Messy lightness', 'lightMessy', 0.05, 0.95)),
+        slider('Messy lightness', 'lightMessy', 0.05, 0.95),
+        slider('Line tension', 'tension', 0, 1)),
       el('button', { type: 'button', class: 'btn small', onclick: () => {
         this.prefs = lookPrefs(LOOK);
         this.storage.set('look', this.prefs);
@@ -407,12 +557,23 @@ export default class Create extends Feature {
       this.crumbName.replaceChildren(this.nameField(r, () => { this.renaming = null; this.drawRoom(); }));
       this.crumbName.querySelector('input').focus();
     } else this.crumbName.replaceChildren(r.name);
-    this.modes.replaceChildren(...MODES.map((m) => el('button', {
-      type: 'button', role: 'radio', class: 'create-mode',
-      'aria-checked': String(m.id === this.mode),
-      onclick: () => this.setMode(m.id),
-    }, m.name)));
+    const v = view(this.world, this.roomId);
+    this.modes.replaceChildren(...MODES.map((m) => {
+      const btn = el('button', {
+        type: 'button', role: 'radio', class: 'create-mode',
+        'aria-checked': String(m.id === this.mode),
+        onclick: () => this.setMode(m.id),
+      }, m.name);
+      if (m.id !== 'joyce') return btn;
+      // Hovering over Joyce unfolds the timeline.
+      return el('span', { class: 'create-mode-wrap' + (v.timeline && this.mode === 'joyce' ? ' open' : '') }, btn,
+        el('button', {
+          type: 'button', class: 'create-mode create-timeline-btn', 'aria-pressed': String(!!v.timeline && this.mode === 'joyce'),
+          onclick: () => this.toggleTimeline(),
+        }, 'Timeline'));
+    }));
     this.root.dataset.mode = this.mode;
+    this.root.classList.toggle('timeline', this.inTimeline);
     this.place();
     this.drawWorld();
   }
@@ -423,8 +584,24 @@ export default class Create extends Feature {
     this.drawRoom();
   }
 
+  get inTimeline() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
+
+  toggleTimeline() {
+    const v = view(this.world, this.roomId);
+    if (this.mode !== 'joyce') v.mode = 'joyce';
+    v.timeline = !v.timeline;
+    if (v.timeline) { // the latest thoughts in view, towards the right
+      const last = Math.max(0, timeline(this.world, this.roomId).length - 1) * TIMELINE.step;
+      Object.assign(v, { x: Math.max(last / 2, last - 360), y: 60 });
+    }
+    this.sel = null;
+    this.save();
+    this.drawRoom();
+  }
+
   setMode(id) {
     view(this.world, this.roomId).mode = id;
+    view(this.world, this.roomId).timeline = false;
     this.sel = null;
     this.save();
     this.drawRoom();
@@ -455,25 +632,65 @@ export default class Create extends Feature {
     if (!this.roomId) return;
     const w = this.world;
     const nodes = [];
-    if (this.mode === 'joyce') {
+    if (this.inTimeline) nodes.push(...this.timelineNodes());
+    else if (this.mode === 'joyce') {
+      const svg = document.createElementNS(SVG, 'svg');
+      svg.setAttribute('class', 'create-strands');
+      const tension = this.prefs.tension ?? 0.5;
       for (const t of roomTrains(w, this.roomId)) {
-        const kids = t.folded ? [this.thoughtNode(t)] : trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
-        if (this.draft?.train === t.id) kids.push(this.draftNode());
-        nodes.push(el('div', {
-          class: 'create-train' + (this.sel?.id === t.id ? ' selected' : ''),
-          'data-train': t.id,
-          style: `left:${t.x}px;top:${t.y}px`,
-        }, kids));
+        const chosen = this.sel?.kind === 'train' && this.sel.id === t.id;
+        if (t.folded) {
+          nodes.push(el('div', {
+            class: 'create-bead create-folded' + (chosen ? ' selected' : ''), 'data-train': t.id,
+            style: `left:${t.x}px;top:${t.y}px`,
+          }, this.thoughtNode(t)));
+          continue;
+        }
+        const spots = trainSpots(w, t.id);
+        const all = trainThoughts(w, t.id);
+        const knots = all.map((th) => ({ th, ...spots[th.id] }));
+        if (this.draft?.train === t.id) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
+        const g = document.createElementNS(SVG, 'g');
+        g.setAttribute('data-train', t.id);
+        g.setAttribute('class', 'create-strand' + (chosen ? ' selected' : ''));
+        for (let k = 1; k < knots.length; k++) {
+          const a = knots[k - 1], b = knots[k];
+          const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
+          const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
+          for (const cls of ['create-strand-hit', 'create-strand-line']) {
+            const path = document.createElementNS(SVG, 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('class', cls);
+            g.append(path);
+          }
+        }
+        for (const k of knots) {
+          const dot = document.createElementNS(SVG, 'circle');
+          dot.setAttribute('cx', k.x - 14);
+          dot.setAttribute('cy', k.y + 15);
+          dot.setAttribute('r', 2.6);
+          dot.setAttribute('class', 'create-knot');
+          g.append(dot);
+        }
+        svg.append(g);
+        for (const k of knots) {
+          nodes.push(el('div', {
+            class: 'create-bead' + (chosen ? ' selected' : '') + (this.sel?.id === k.th.id ? ' selected' : '') + (this.found === k.th.id ? ' found' : ''),
+            'data-train': t.id, ...(k.draft ? {} : { 'data-thought': k.th.id }),
+            style: `left:${k.x}px;top:${k.y}px`,
+          }, k.draft ? this.draftNode() : this.thoughtNode(k.th)));
+        }
       }
       if (this.draft && !this.draft.train) {
-        nodes.push(el('div', { class: 'create-train', style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
+        nodes.push(el('div', { class: 'create-bead', style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
       }
+      nodes.unshift(svg);
     } else {
       const all = roomUnits(w, this.roomId);
       for (const th of all) {
         const p = pessoaPoint(w, this.roomId, th.id);
         nodes.push(el('div', {
-          class: 'create-float' + (this.sel?.id === th.id ? ' selected' : ''),
+          class: 'create-float' + (this.sel?.id === th.id ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
           'data-thought': th.id,
           style: `left:${p.x}px;top:${p.y}px`,
         }, this.thoughtNode(th)));
@@ -485,6 +702,34 @@ export default class Create extends Feature {
     }
     this.world$.replaceChildren(...nodes);
     this.drawBar();
+  }
+
+  // The timeline: every thought of the room on one straight line, in the order it was last
+  // changed. Trains become tags, each with its own quiet colour.
+  timelineNodes() {
+    const items = timeline(this.world, this.roomId);
+    const n = items.length + (this.draft ? 1 : 0);
+    const nodes = [];
+    const line = el('div', { class: 'create-timeline-line', style: `left:${-40}px;width:${Math.max(1, n - 1) * TIMELINE.step + 80}px` });
+    nodes.push(line);
+    const day = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    items.forEach(({ th, train }, i) => {
+      const hue = hash(train.id) % 360;
+      nodes.push(el('div', {
+        class: 'create-tick' + (this.found === th.id ? ' found' : '') + (this.sel?.id === th.id ? ' selected' : ''),
+        'data-thought': th.id, style: `left:${i * TIMELINE.step}px;top:0px;--tag:hsl(${hue} 32% 46%)`,
+      },
+        el('div', { class: 'create-tick-time' }, day(lastChanged(th))),
+        el('div', { class: 'create-tick-dot' }),
+        el('div', { class: 'create-tick-body' }, this.thoughtNode(th)),
+        el('div', { class: 'create-tag' }, tagName(this.world, train.id))));
+    });
+    if (this.draft) {
+      nodes.push(el('div', { class: 'create-tick', style: `left:${items.length * TIMELINE.step}px;top:0px` },
+        el('div', { class: 'create-tick-time' }, 'Now'), el('div', { class: 'create-tick-dot' }),
+        el('div', { class: 'create-tick-body' }, this.draftNode())));
+    }
+    return nodes;
   }
 
   // One thought, drawn by its kind.
@@ -514,8 +759,20 @@ export default class Create extends Feature {
   onKey(e) {
     if (this.root.hidden || document.querySelector('dialog[open]')) return;
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    this.hintLine.classList.remove('on');
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openSearch(); return; }
+    if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && !this.editing) {
+      e.preventDefault();
+      this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey);
+      return;
+    }
     if (e.key === 'Escape') {
-      if (this.sel) { this.sel = null; this.drawWorld(); } else if (this.tinting) this.toggleTint(); else this.back();
+      if (!this.addMenu.hidden) this.closeAdd();
+      else if (this.sel) { this.sel = null; this.drawWorld(); }
+      else if (this.roomSel) { this.roomSel = null; this.drawRooms(); }
+      else if (this.tinting) this.toggleTint();
+      else this.back();
       return;
     }
     if (this.editing) return;
@@ -621,9 +878,17 @@ export default class Create extends Feature {
     const trainEl = e.target.closest('[data-train]');
     const thoughtEl = e.target.closest('[data-thought]');
     let thing = null;
-    if (trainEl && this.mode === 'joyce') {
+    if (this.inTimeline) {
+      thing = thoughtEl ? { kind: 'thought', id: thoughtEl.dataset.thought, still: true } : null;
+    } else if (trainEl && this.mode === 'joyce') {
       const t = this.world.things[trainEl.dataset.train];
-      thing = { kind: 'train', id: t.id, x: t.x, y: t.y, placed: false };
+      const whole = !thoughtEl || (this.sel?.kind === 'train' && this.sel.id === t.id) || t.folded;
+      if (whole) thing = { kind: 'train', id: t.id, x: t.x, y: t.y, live: true };
+      else {
+        const id = thoughtEl.dataset.thought;
+        const p = trainSpots(this.world, t.id)[id];
+        thing = { kind: 'thought', id, x: p.x, y: p.y, live: true, bead: true };
+      }
     } else if (thoughtEl && this.mode === 'pessoa') {
       const id = thoughtEl.dataset.thought;
       const p = pessoaPoint(this.world, this.roomId, id);
@@ -672,6 +937,16 @@ export default class Create extends Feature {
       v.x = g.vx - dx / v.zoom;
       v.y = g.vy - dy / v.zoom;
       this.place();
+    } else if (g.thing.still) {
+      v.x = g.vx - dx / v.zoom; // on the timeline, things stay on the line: dragging moves the view
+      v.y = g.vy - dy / v.zoom;
+      this.place();
+    } else if (g.thing.live) {
+      // Joyce: the thought (or its whole train) moves, and the line follows it.
+      const x = Math.round(g.thing.x + dx / v.zoom), y = Math.round(g.thing.y + dy / v.zoom);
+      if (g.thing.bead) nudge(this.world, g.thing.id, x, y);
+      else Object.assign(this.world.things[g.thing.id], { x, y });
+      if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => { this.liveFrame = 0; this.drawWorld(); });
     } else {
       const x = g.thing.x + dx / v.zoom, y = g.thing.y + dy / v.zoom;
       g.el.style.left = `${x}px`;
@@ -685,17 +960,124 @@ export default class Create extends Feature {
     this.gesture = null;
     if (!g || g.kind === 'pinch') { this.save(); return; }
     if (!g.moved) {
-      // A tap: on a train or thought selects it; on empty space clears the selection.
-      this.sel = g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
+      // A tap: on a thought (or a folded train, or a line) selects it; on empty space clears the
+      // selection. Double-click selects a whole train (onDouble).
+      const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
+      this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
+      // Two taps on the same train (the page is redrawn between them, so no dblclick comes).
+      const train = this.mode === 'joyce' && !this.inTimeline && g.el?.dataset.train;
+      const now = Date.now();
+      if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: 'train', id: train };
+      this.lastTap = train ? { train, at: now } : null;
       if (!g.thing && this.draft) this.stopWriting();
       this.drawWorld();
       return;
     }
+    if (g.thing?.live) { this.drawWorld(); this.save(); return; }
     if (g.thing && g.to) {
       if (g.thing.placed) place(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
       else Object.assign(this.world.things[g.thing.id], g.to);
     }
     this.save();
+  }
+
+  // Double-click: in Joyce, chooses the whole train (then drag it from any of its thoughts or its
+  // line); on a passage, picture or folded train in Pessoa, opens it to edit.
+  onDouble(e) {
+    window.getSelection?.()?.removeAllRanges();
+    const trainEl = e.target.closest('[data-train]');
+    if (this.mode === 'joyce' && !this.inTimeline && trainEl) {
+      this.sel = { kind: 'train', id: trainEl.dataset.train };
+      this.drawWorld();
+      return;
+    }
+    const id = e.target.closest('[data-id]')?.dataset.id;
+    if (id && kindOf(this.world.things[id]) !== 'line') this.openSheet(null, id);
+  }
+
+  // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
+
+  addItem(label, note, fn) {
+    return el('button', { type: 'button', class: 'create-add-item', role: 'menuitem', onclick: () => { this.closeAdd(); fn(); } },
+      el('span', {}, label), el('span', { class: 'create-add-note' }, note));
+  }
+
+  toggleAdd() {
+    const open = this.addMenu.hidden;
+    this.addMenu.hidden = !open;
+    this.addBtn.setAttribute('aria-expanded', String(open));
+    this.addBtn.classList.toggle('open', open);
+    if (open) this.addMenu.querySelector('button')?.focus();
+  }
+
+  closeAdd() {
+    if (!this.addMenu || this.addMenu.hidden) return;
+    this.addMenu.hidden = true;
+    this.addBtn.setAttribute('aria-expanded', 'false');
+    this.addBtn.classList.remove('open');
+  }
+
+  // ---- Search (Ctrl+K): every thought, train and room ----
+
+  openSearch() {
+    if (this.draft) this.commit();
+    const field = el('input', { class: 'create-search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
+    const list = el('div', { class: 'create-search-list', role: 'listbox' });
+    let found = [], at = 0;
+    const show = () => {
+      found = search(this.world, field.value);
+      at = Math.min(at, Math.max(0, found.length - 1));
+      list.replaceChildren(...found.map((f, i) => el('button', {
+        type: 'button', class: 'create-search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
+        onclick: () => this.goTo(f),
+      }, el('span', { class: 'create-search-text' }, f.text), el('span', { class: 'create-search-room' }, f.kind === 'room' ? 'Room' : f.roomName))),
+      field.value.trim() && !found.length ? el('p', { class: 'create-search-none' }, 'Nothing yet with those words') : '');
+    };
+    field.addEventListener('input', () => { at = 0; show(); });
+    field.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); this.closeSearch(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); at = Math.min(found.length - 1, at + 1); show(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, at - 1); show(); }
+      if (e.key === 'Enter' && found[at]) { e.preventDefault(); this.goTo(found[at]); }
+    });
+    this.searchBox.replaceChildren(el('div', { class: 'create-search-panel' }, field, list));
+    this.searchBox.hidden = false;
+    this.searchBox.onpointerdown = (e) => { if (e.target === this.searchBox) this.closeSearch(); };
+    field.focus();
+  }
+
+  closeSearch() {
+    if (!this.searchBox || this.searchBox.hidden) return;
+    this.searchBox.hidden = true;
+    this.searchBox.replaceChildren();
+  }
+
+  // Opens what was found: a room, or the room a thought is in, with the view on the thought.
+  goTo(f) {
+    this.closeSearch();
+    if (f.kind === 'room') { this.openRoom(f.id); return; }
+    if (!f.room) return;
+    if (this.roomId !== f.room) this.openRoom(f.room);
+    const th = this.world.things[f.id];
+    const v = view(this.world, f.room);
+    let p = null;
+    if (this.inTimeline) {
+      const i = timeline(this.world, f.room).findIndex((x) => x.th.id === f.id);
+      if (i >= 0) p = { x: i * TIMELINE.step, y: 0 };
+    } else if (this.mode === 'joyce') {
+      const t = kindOf(th) === 'train' ? th : this.world.things[th.parent];
+      p = t.folded || kindOf(th) === 'train' ? { x: t.x, y: t.y } : trainSpots(this.world, t.id)[f.id];
+    } else {
+      const t = this.world.things[th.parent];
+      p = pessoaPoint(this.world, f.room, t?.folded ? t.id : f.id);
+    }
+    if (p) { v.x = p.x + 120; v.y = p.y + 20; this.place(); }
+    this.found = kindOf(th) === 'train' ? null : f.id;
+    if (kindOf(th) === 'train') this.sel = { kind: 'train', id: th.id };
+    this.drawWorld();
+    clearTimeout(this.foundTimer);
+    this.foundTimer = setTimeout(() => { this.found = null; this.drawWorld(); }, 2400);
   }
 
   onWheel(e) {

@@ -143,20 +143,28 @@ const oneLine = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const lines = (s) => String(s ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
+// A line, passage or picture keeps where it was dragged to in its train (dx, dy from the train's
+// corner), and when it was last changed.
+function spot(f, out) {
+  if (Number.isFinite(f.dx) && Number.isFinite(f.dy)) { out.dx = Math.round(f.dx); out.dy = Math.round(f.dy); }
+  if (Number.isFinite(f.edited)) out.edited = f.edited;
+  return out;
+}
+
 // A thought's own fields, tidied; null when a line, passage or picture would be empty.
 function tidy(f) {
   const kind = kindOf(f);
   if (kind === 'line') {
     const text = oneLine(f.text);
-    return text ? { kind, text } : null;
+    return text ? spot(f, { kind, text }) : null;
   }
   if (kind === 'passage') {
     const title = oneLine(f.title), body = lines(f.body);
-    return title || body ? { kind, title, body } : null;
+    return title || body ? spot(f, { kind, title, body }) : null;
   }
   if (kind === 'picture') {
     const src = typeof f.src === 'string' && f.src.startsWith('data:image/') ? f.src : '';
-    return src ? { kind, src, text: oneLine(f.text) } : null;
+    return src ? spot(f, { kind, src, text: oneLine(f.text) }) : null;
   }
   if (kind === 'train') {
     const out = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
@@ -195,10 +203,10 @@ export function create(w, parent, fields, now = Date.now()) {
 
 // Changes a thought's own fields (never its kind, place or time). A line, passage or picture
 // left empty is removed.
-export function update(w, id, fields) {
+export function update(w, id, fields, now = Date.now()) {
   const th = w.things[id];
   if (!th) return null;
-  const next = tidy({ ...th, ...fields, kind: th.kind });
+  const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
   if (kindOf(th) === 'train' && !next.folded) delete th.folded;
   Object.assign(th, next);
@@ -362,8 +370,118 @@ export function randomSpot(box, taken = [], random = Math.random, tries = 24) {
   return best;
 }
 
-function hash(s) {
+export function hash(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
+}
+
+// ---- Joyce: each thought of a train on its own, joined by a line ----
+
+// How far below the one before a thought sits, until it is dragged somewhere else.
+export const STEP = { line: 58, passage: 190, picture: 270, train: 190 };
+
+// Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or
+// a step below the one before.
+export function trainSpots(w, trainId) {
+  const t = w.things[trainId];
+  const out = {};
+  if (!t) return out;
+  let x = t.x, y = t.y - STEP.line;
+  let prev = 'line';
+  for (const th of trainThoughts(w, trainId)) {
+    if (Number.isFinite(th.dx)) { x = t.x + th.dx; y = t.y + th.dy; }
+    else y += STEP[prev];
+    out[th.id] = { x, y };
+    prev = kindOf(th);
+  }
+  return out;
+}
+
+// Where the next thought of a train goes.
+export function nextSpot(w, trainId) {
+  const all = trainThoughts(w, trainId);
+  const t = w.things[trainId];
+  if (!all.length) return { x: t.x, y: t.y };
+  const last = all[all.length - 1];
+  const p = trainSpots(w, trainId)[last.id];
+  return { x: p.x, y: p.y + STEP[kindOf(last)] };
+}
+
+// Drags one thought of a train to (x, y); its train stays joined.
+export function nudge(w, id, x, y, now = Date.now()) {
+  const th = w.things[id];
+  const t = th && w.things[th.parent];
+  if (!t || !isLeaf(th) || kindOf(t) !== 'train') return false;
+  th.dx = Math.round(x - t.x);
+  th.dy = Math.round(y - t.y);
+  th.edited = now;
+  return true;
+}
+
+// How slack the line between two thoughts is (0 taut … 1 loose): thoughts written close together
+// are joined taut; a longer pause leaves slack. Pulled far apart, the line goes straight again.
+export const PAUSE = { quick: 20, long: 3600 }; // seconds
+export function slack(a, b, dist = 0, tension = 0.5) {
+  const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1000);
+  const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
+  const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP.line) / 520));
+  return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
+}
+
+// The line from p to q with that slack, as an SVG path: straight when taut, a soft curve when loose.
+export function strand(p, q, k) {
+  const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+  const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+  const bow = k * Math.max(26, d * 0.42);
+  const cx = mx + (-dy / d) * bow, cy = my + (dx / d) * bow;
+  const r = (v) => Math.round(v * 10) / 10;
+  return k < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
+}
+
+// ---- The timeline: a room's thoughts on one line, in the order they were last changed ----
+
+export const lastChanged = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
+export function timeline(w, roomId) {
+  return roomTrains(w, roomId)
+    .flatMap((t) => trainThoughts(w, t.id).map((th) => ({ th, train: t })))
+    .sort((a, b) => lastChanged(a.th) - lastChanged(b.th) || byTime(a.th, b.th));
+}
+
+// A train as a tag: its title, or its first words.
+export function tagName(w, trainId) {
+  const t = w.things[trainId];
+  if (!t) return '';
+  if (t.title) return t.title;
+  const first = trainThoughts(w, trainId)[0];
+  const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(' ') : '';
+  return words || 'A train';
+}
+
+// ---- Search: every thought, train and room whose words hold the query ----
+
+export function search(w, query, most = 30) {
+  const q = oneLine(query).toLowerCase();
+  if (!q) return [];
+  const out = [];
+  for (const th of Object.values(w.things).sort(byTime).reverse()) {
+    const kind = kindOf(th);
+    const text = kind === 'train' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
+    if (!text.toLowerCase().includes(q)) continue;
+    const r = roomOf(w, kind === 'room' ? th.id : th.id);
+    out.push({ id: th.id, kind, text, room: r?.id ?? null, roomName: r?.name ?? '' });
+    if (out.length >= most) break;
+  }
+  return out;
+}
+
+// A room's size on the grid (1 or 2 cells a side), if the cells it would take are free.
+export function sizeRoom(w, id, size, cols = Infinity) {
+  const r = room(w, id);
+  if (!r) return false;
+  const was = r.size || 1;
+  r.size = size === 2 ? 2 : 1;
+  if (r.col == null || placeRoom(w, id, r.col, r.row, cols)) return true;
+  r.size = was;
+  return false;
 }

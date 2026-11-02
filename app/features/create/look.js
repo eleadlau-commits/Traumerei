@@ -66,6 +66,7 @@ export const LOOK = {
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
   tint: '',           // the rooms' tint inside, by default ('' = the picture's own colour)
   saturation: SATURATION,  // the most a room takes of the picture's colour
+  tension: 0.5,       // Joyce's line: 0 lets pauses hang loose, 1 keeps it taut
 };
 
 // Saved settings, checked and filled in with the defaults.
