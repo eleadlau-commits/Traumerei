@@ -42,10 +42,10 @@ import {
   cells, roomAt,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
+import { visit, light, loadLog } from './attention.js';
 import { pageLook, roomLook, squareLook, lookPrefs, LOOK } from './look.js';
 
 const { el } = ui;
-const LIT_FOR = 24 * 3600e3; // a room stays lit for a day after it was written in
 const ZOOM = { min: 0.25, max: 4 };
 const GRID = { gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
 const UNDO = 60;           // how many steps back Ctrl+Z goes
@@ -70,6 +70,7 @@ export default class Create extends Feature {
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
+    this.attention = loadLog(this.storage.get('attention'));
     this.build();
     this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 18, render: () => this.settingsPane() });
     this.provide('create', this);
@@ -132,6 +133,9 @@ export default class Create extends Feature {
 
   openRoom(id) {
     if (!room(this.world, id)) return;
+    this.attention = loadLog(this.storage.get('attention'));
+    visit(this.attention, id);
+    this.storage.set('attention', this.attention);
     this.roomId = id;
     this.sel = null;
     this.draft = null;
@@ -223,7 +227,8 @@ export default class Create extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           el('div', { class: 'create-add-rule' }),
-          this.addItem('Room settings', 'Tint, lightness, opacity', () => this.toggleTint())),
+          this.addItem('Room settings', 'Tint, lightness, opacity', () => this.toggleTint()),
+          this.addItem('Keys', '?', () => this.showKeys())),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
@@ -243,6 +248,9 @@ export default class Create extends Feature {
     this.input.addEventListener('blur', () => { if (this.draft && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } });
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
     this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
+    this.stage.addEventListener('contextmenu', (e) => e.preventDefault()); // Ctrl+click on a Mac would open a menu and lose the drag
+    document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
+    document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });
     document.addEventListener('pointerdown', (e) => {
       this.hintLine.classList.remove('on');
       if (!this.addMenu.hidden && !e.target.closest('.create-add')) this.closeAdd();
@@ -265,10 +273,12 @@ export default class Create extends Feature {
     const now = Date.now();
     const { cols: fit, cell } = this.gridSize();
     const all = gridRooms(this.world, fit);
-    const cols = Math.max(fit, ...all.map((r) => r.col + r.size));
+    // The grid grows: always a spare column and row past the furthest room, and at least the
+    // size set in Settings → Rooms. The page scrolls when it is bigger than the screen.
+    const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
     const height = this.grid.parentElement?.clientHeight || window.innerHeight;
     const rows = Math.max(Math.floor((height - 2 * GRID.pad + GRID.gap) / (cell + GRID.gap)),
-      ...all.map((r) => r.row + r.size + 1));
+      this.prefs.rows || 0, ...all.map((r) => r.row + r.size + 1));
     this.cols = cols;
     this.grid.style.setProperty('--cols', cols);
     this.grid.style.setProperty('--cell', cell + 'px');
@@ -289,16 +299,17 @@ export default class Create extends Feature {
 
     const tiles = all.map((r) => {
       const look = squareLook(r, r.id === MESSY, this.prefs);
-      const last = lastWritten(this.world, r.id);
-      const count = roomThoughts(this.world, r.id).length;
-      const lit = last != null && now - last < LIT_FOR;
+      const written = roomThoughts(this.world, r.id);
+      const count = written.length;
+      const glow = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
+      const lit = glow > 0.04;
       const name = this.renaming === r.id
         ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
         : el('span', { class: 'create-tile-name' }, r.name);
       const tile = el('div', {
         class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : ''),
         role: 'button', tabindex: 0,
-        style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+        style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
         'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
         'data-room': r.id,
         'aria-expanded': String(this.roomSel === r.id),
@@ -534,7 +545,9 @@ export default class Create extends Feature {
         slider('Strength', 'square', 0, 1.5),
         colour('Colour', 'squareColour', '#000000'),
         slider('Glow', 'glow', 0, 1),
-        slider('Size', 'cell', 70, 180, 1)),
+        slider('Size', 'cell', 70, 180, 1),
+        slider('Columns at least', 'cols', 0, 30, 1),
+        slider('Rows at least', 'rows', 0, 30, 1)),
       group('Inside a room',
         colour('Tint', 'tint', '#' + avg.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')),
         el('button', { type: 'button', class: 'btn small', onclick: () => { this.setPref('tint', ''); this.app.shell?.refreshSettings?.(); } }, 'Tint from the picture'),
@@ -783,6 +796,7 @@ export default class Create extends Feature {
       return;
     }
     if (this.editing) return;
+    if (this.shortcut(e, mod)) return;
     if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyP' || e.code === 'KeyI')) {
       e.preventDefault();
       if (e.code === 'KeyP') this.openSheet('passage'); else this.choosePicture();
@@ -791,6 +805,7 @@ export default class Create extends Feature {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && this.roomId) { this.fresh = true; return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     if (e.target.closest?.('button') && e.key === ' ') return; // Space on a word presses it
+    if (e.key === ' ' && !this.draft) return; // a lone Space is held to move around (Space+drag)
     e.preventDefault();
     if (!this.roomId) this.openRoom(MESSY);
     this.beginWriting(e.key);
@@ -875,8 +890,10 @@ export default class Create extends Feature {
   // ---- Moving around, and moving things ----
 
   onDown(e) {
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const middle = e.button === 1;
+    if (e.button !== 0 && !middle && e.pointerType === 'mouse') return;
     const pointers = (this.pointers ||= new Map());
+    if (e.pointerType === 'mouse') pointers.clear(); // a mouse is one pointer: forget one whose release was lost (a Mac's Ctrl+click menu)
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     this.stage.setPointerCapture(e.pointerId);
     if (pointers.size === 2) { this.gesture = { kind: 'pinch', ...this.pinchState() }; return; }
@@ -887,7 +904,7 @@ export default class Create extends Feature {
     let thing = null;
     const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
     const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
-    if (e.ctrlKey || e.metaKey) this.gesture = { kind: 'pan', ...pan }; // Ctrl+drag moves the canvas
+    if (e.ctrlKey || e.metaKey || middle || this.spaceDown) { e.preventDefault(); this.gesture = { kind: 'pan', ...pan }; } // Ctrl+drag (or Space+drag, or the middle button) moves the canvas
     else if (this.sel?.kind === 'many' && hitId && this.isSel(hitId)) this.gesture = { kind: 'group', ...pan, from: this.groupSpots() };
     else if (!hitId && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan }; // a drag on the empty canvas draws a selection box
     if (this.gesture) { this.listen(e); return; }
@@ -1005,6 +1022,78 @@ export default class Create extends Feature {
     this.save();
   }
 
+  // ---- Keys: delete, choose all, nudge, and the list of them all (?) ----
+
+  // Returns true when the key was one of these, and was used.
+  shortcut(e, mod) {
+    const k = e.key;
+    if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
+    if (!this.roomId) {
+      // The rooms page: Delete removes the chosen room (Ctrl+Z brings it back).
+      if ((k === 'Delete' || k === 'Backspace') && this.roomSel && this.roomSel !== MESSY) {
+        e.preventDefault();
+        const r = room(this.world, this.roomSel);
+        remove(this.world, this.roomSel);
+        this.roomSel = null;
+        this.save();
+        this.drawRooms();
+        this.toast(`Deleted ${r?.name || 'the room'}. Ctrl+Z brings it back.`);
+        return true;
+      }
+      if (k === 'Enter' && this.roomSel) { e.preventDefault(); this.openRoom(this.roomSel); return true; }
+      return false;
+    }
+    if (mod && !e.altKey && k.toLowerCase() === 'a') { // choose everything in the room
+      e.preventDefault();
+      const ids = this.mode === 'pessoa'
+        ? roomUnits(this.world, this.roomId).map((th) => th.id)
+        : roomTrains(this.world, this.roomId).flatMap((t) => (t.folded ? [t.id] : trainThoughts(this.world, t.id).map((th) => th.id)));
+      this.sel = ids.length > 1 ? { kind: 'many', ids } : ids.length ? { kind: 'thought', id: ids[0] } : null;
+      this.drawWorld();
+      return true;
+    }
+    if (!this.sel) return false;
+    if (k === 'Delete' || k === 'Backspace') {
+      e.preventDefault();
+      const ids = this.sel.ids || [this.sel.id];
+      ids.forEach((id) => remove(this.world, id));
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+      this.toast(`Deleted${ids.length > 1 ? ` ${ids.length}` : ''}. Ctrl+Z brings it back.`);
+      return true;
+    }
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrows[k] && !mod) { // nudge what is chosen; Shift for bigger steps
+      e.preventDefault();
+      const step = e.shiftKey ? 60 : 10;
+      const ids = this.sel.ids || [this.sel.id];
+      const from = this.groupSpots(ids);
+      for (const [id, p] of Object.entries(from)) this.putAt(id, p.x + arrows[k][0] * step, p.y + arrows[k][1] * step);
+      this.save();
+      this.drawWorld();
+      return true;
+    }
+    return false;
+  }
+
+  showKeys() {
+    const rows = [
+      ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
+      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'],
+      ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
+      ['Delete', 'delete what is chosen'], ['Arrows · Shift+arrows', 'nudge what is chosen'],
+      ['Ctrl+K', 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
+    ];
+    this.searchBox.replaceChildren(el('div', { class: 'create-search-panel create-keys-panel' },
+      el('div', { class: 'create-options-label' }, 'Keys'),
+      el('dl', { class: 'create-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
+    this.searchBox.hidden = false;
+    this.searchBox.onpointerdown = () => this.closeSearch();
+    const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeSearch(); document.removeEventListener('keydown', close, true); };
+    document.addEventListener('keydown', close, true);
+  }
+
   // ---- Choosing many: a box drawn on the empty canvas ----
 
   isSel(id) { return this.sel?.id === id || !!this.sel?.ids?.includes(id); }
@@ -1041,9 +1130,9 @@ export default class Create extends Feature {
   }
 
   // Where each chosen thing is now (world units), to move them together.
-  groupSpots() {
+  groupSpots(ids = this.sel.ids) {
     const out = {};
-    for (const id of this.sel.ids) {
+    for (const id of ids) {
       const th = this.world.things[id];
       if (!th) continue;
       if (this.mode === 'pessoa') out[id] = pessoaPoint(this.world, this.roomId, id);

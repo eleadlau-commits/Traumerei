@@ -899,8 +899,11 @@ dialog.dialog-box {
 }
 .create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
 .create-tile:hover { transform: translateY(-2px); }
+/* Lit as much as you have been in it lately (--lit, 0 to 1). */
 .create-tile.lit {
-  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px var(--create-glow-in, rgb(255 244 214 / .35));
+  box-shadow:
+    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--create-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
+    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, rgb(255 244 214 / .35)) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
 .create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
@@ -951,6 +954,7 @@ dialog.dialog-box {
 @keyframes create-in { from { opacity: 0; } }
 .create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: default; }
 @media (hover: none) { .create-stage { cursor: grab; } }
+.create-stage.panning { cursor: grab; }
 .create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
 .create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
@@ -1407,6 +1411,12 @@ dialog.dialog-box {
   .create-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
   .create-options { width: 200px; }
 }
+
+/* The list of keys (?) */
+.create-keys-panel { padding: 18px 22px 20px; }
+.create-keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
+.create-keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+.create-keys-list dd { margin: 0; opacity: .8; }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -6824,10 +6834,6 @@ dialog.menu-drawer::before {
   var roomTrains = (w, roomId) => children(w, roomId).filter((th) => kindOf(th) === "train" && trainThoughts(w, th.id).length);
   var roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
   var roomUnits = (w, roomId) => roomTrains(w, roomId).flatMap((t) => t.folded ? [t] : trainThoughts(w, t.id)).sort(byTime);
-  function lastWritten(w, roomId) {
-    const all = roomThoughts(w, roomId);
-    return all.length ? Math.max(...all.map((th) => th.at)) : null;
-  }
   function view3(w, roomId) {
     if (!w.views[roomId]) w.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
     return w.views[roomId];
@@ -7151,6 +7157,32 @@ dialog.menu-drawer::before {
     return canvas.toDataURL("image/jpeg", QUALITY);
   }
 
+  // dist/web/features/create/attention.js
+  var FADE = 2 * 24 * 36e5;
+  var MOST = 40;
+  var WRITE = 0.5;
+  function visit(log, roomId, now = Date.now()) {
+    const times = log[roomId] ||= [];
+    if (now - (times[times.length - 1] ?? -Infinity) < 6e4) return log;
+    times.push(now);
+    if (times.length > MOST) times.splice(0, times.length - MOST);
+    return log;
+  }
+  function light(log, roomId, written = [], now = Date.now()) {
+    let score = 0;
+    for (const t of log?.[roomId] || []) score += Math.exp(-(now - t) / FADE);
+    for (const t of written) score += WRITE * Math.exp(-(now - t) / FADE);
+    return 1 - Math.exp(-score / 2.5);
+  }
+  function loadLog(saved) {
+    const out = {};
+    if (!saved || typeof saved !== "object") return out;
+    for (const [id, times] of Object.entries(saved)) {
+      if (Array.isArray(times)) out[id] = times.filter(Number.isFinite).slice(-MOST);
+    }
+    return out;
+  }
+
   // dist/web/features/create/look.js
   var PAPER2 = [242, 235, 217];
   var MASK = 0.1;
@@ -7207,6 +7239,9 @@ dialog.menu-drawer::before {
     // how brightly a room written in lately glows
     cell: 120,
     // a grid cell, in px
+    cols: 0,
+    // the grid's columns and rows at least (0: as many as fit; it grows past them)
+    rows: 0,
     light: LIGHT2,
     // a room's lightness inside, by default
     lightMessy: LIGHT_MESSY,
@@ -7262,7 +7297,6 @@ dialog.menu-drawer::before {
 
   // dist/web/features/create/Create.js
   var { el: el5 } = ui_exports;
-  var LIT_FOR = 24 * 36e5;
   var ZOOM = { min: 0.25, max: 4 };
   var GRID = { gap: 14, pad: 32, least: 4, most: 10 };
   var UNDO = 60;
@@ -7285,6 +7319,7 @@ dialog.menu-drawer::before {
       this.picker = ui_exports.filePicker("image/*");
       this.backdrop = this.use("backdrop");
       this.prefs = lookPrefs(this.storage.get("look"));
+      this.attention = loadLog(this.storage.get("attention"));
       this.build();
       this.add("settings", { id: "create-rooms", title: "Rooms", order: 18, render: () => this.settingsPane() });
       this.provide("create", this);
@@ -7345,6 +7380,9 @@ dialog.menu-drawer::before {
     }
     openRoom(id) {
       if (!room(this.world, id)) return;
+      this.attention = loadLog(this.storage.get("attention"));
+      visit(this.attention, id);
+      this.storage.set("attention", this.attention);
       this.roomId = id;
       this.sel = null;
       this.draft = null;
@@ -7448,7 +7486,8 @@ dialog.menu-drawer::before {
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             el5("div", { class: "create-add-rule" }),
-            this.addItem("Room settings", "Tint, lightness, opacity", () => this.toggleTint())
+            this.addItem("Room settings", "Tint, lightness, opacity", () => this.toggleTint()),
+            this.addItem("Keys", "?", () => this.showKeys())
           ),
           this.addBtn = el5(
             "button",
@@ -7478,6 +7517,19 @@ dialog.menu-drawer::before {
       });
       this.stage.addEventListener("pointerdown", (e) => this.onDown(e));
       this.stage.addEventListener("dblclick", (e) => this.onDouble(e));
+      this.stage.addEventListener("contextmenu", (e) => e.preventDefault());
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space" && !e.repeat && this.roomId && !this.draft && !e.target.matches?.("input, textarea, select")) {
+          this.spaceDown = true;
+          this.stage.classList.add("panning");
+        }
+      });
+      document.addEventListener("keyup", (e) => {
+        if (e.code === "Space") {
+          this.spaceDown = false;
+          this.stage.classList.remove("panning");
+        }
+      });
       document.addEventListener("pointerdown", (e) => {
         this.hintLine.classList.remove("on");
         if (!this.addMenu.hidden && !e.target.closest(".create-add")) this.closeAdd();
@@ -7497,10 +7549,11 @@ dialog.menu-drawer::before {
       const now = Date.now();
       const { cols: fit, cell } = this.gridSize();
       const all = gridRooms(this.world, fit);
-      const cols = Math.max(fit, ...all.map((r) => r.col + r.size));
+      const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
       const height = this.grid.parentElement?.clientHeight || window.innerHeight;
       const rows = Math.max(
         Math.floor((height - 2 * GRID.pad + GRID.gap) / (cell + GRID.gap)),
+        this.prefs.rows || 0,
         ...all.map((r) => r.row + r.size + 1)
       );
       this.cols = cols;
@@ -7529,9 +7582,10 @@ dialog.menu-drawer::before {
       }
       const tiles2 = all.map((r) => {
         const look = squareLook(r, r.id === MESSY, this.prefs);
-        const last = lastWritten(this.world, r.id);
-        const count = roomThoughts(this.world, r.id).length;
-        const lit = last != null && now - last < LIT_FOR;
+        const written = roomThoughts(this.world, r.id);
+        const count = written.length;
+        const glow2 = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
+        const lit = glow2 > 0.04;
         const name2 = this.renaming === r.id ? this.nameField(r, () => {
           this.renaming = null;
           this.drawRooms();
@@ -7542,7 +7596,7 @@ dialog.menu-drawer::before {
             class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : ""),
             role: "button",
             tabindex: 0,
-            style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+            style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
             "aria-label": `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
             "data-room": r.id,
             "aria-expanded": String(this.roomSel === r.id),
@@ -7854,7 +7908,9 @@ dialog.menu-drawer::before {
           slider2("Strength", "square", 0, 1.5),
           colour2("Colour", "squareColour", "#000000"),
           slider2("Glow", "glow", 0, 1),
-          slider2("Size", "cell", 70, 180, 1)
+          slider2("Size", "cell", 70, 180, 1),
+          slider2("Columns at least", "cols", 0, 30, 1),
+          slider2("Rows at least", "rows", 0, 30, 1)
         ),
         group(
           "Inside a room",
@@ -8140,6 +8196,7 @@ dialog.menu-drawer::before {
         return;
       }
       if (this.editing) return;
+      if (this.shortcut(e, mod)) return;
       if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyP" || e.code === "KeyI")) {
         e.preventDefault();
         if (e.code === "KeyP") this.openSheet("passage");
@@ -8152,6 +8209,7 @@ dialog.menu-drawer::before {
       }
       if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
       if (e.target.closest?.("button") && e.key === " ") return;
+      if (e.key === " " && !this.draft) return;
       e.preventDefault();
       if (!this.roomId) this.openRoom(MESSY);
       this.beginWriting(e.key);
@@ -8234,8 +8292,10 @@ dialog.menu-drawer::before {
     }
     // ---- Moving around, and moving things ----
     onDown(e) {
-      if (e.button !== 0 && e.pointerType === "mouse") return;
+      const middle = e.button === 1;
+      if (e.button !== 0 && !middle && e.pointerType === "mouse") return;
       const pointers = this.pointers ||= /* @__PURE__ */ new Map();
+      if (e.pointerType === "mouse") pointers.clear();
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.stage.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {
@@ -8248,8 +8308,10 @@ dialog.menu-drawer::before {
       let thing = null;
       const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
       const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
-      if (e.ctrlKey || e.metaKey) this.gesture = { kind: "pan", ...pan };
-      else if (this.sel?.kind === "many" && hitId && this.isSel(hitId)) this.gesture = { kind: "group", ...pan, from: this.groupSpots() };
+      if (e.ctrlKey || e.metaKey || middle || this.spaceDown) {
+        e.preventDefault();
+        this.gesture = { kind: "pan", ...pan };
+      } else if (this.sel?.kind === "many" && hitId && this.isSel(hitId)) this.gesture = { kind: "group", ...pan, from: this.groupSpots() };
       else if (!hitId && e.pointerType === "mouse") this.gesture = { kind: "box", ...pan };
       if (this.gesture) {
         this.listen(e);
@@ -8386,6 +8448,97 @@ dialog.menu-drawer::before {
       }
       this.save();
     }
+    // ---- Keys: delete, choose all, nudge, and the list of them all (?) ----
+    // Returns true when the key was one of these, and was used.
+    shortcut(e, mod) {
+      const k = e.key;
+      if (k === "?" && !mod) {
+        e.preventDefault();
+        this.showKeys();
+        return true;
+      }
+      if (!this.roomId) {
+        if ((k === "Delete" || k === "Backspace") && this.roomSel && this.roomSel !== MESSY) {
+          e.preventDefault();
+          const r = room(this.world, this.roomSel);
+          remove(this.world, this.roomSel);
+          this.roomSel = null;
+          this.save();
+          this.drawRooms();
+          this.toast(`Deleted ${r?.name || "the room"}. Ctrl+Z brings it back.`);
+          return true;
+        }
+        if (k === "Enter" && this.roomSel) {
+          e.preventDefault();
+          this.openRoom(this.roomSel);
+          return true;
+        }
+        return false;
+      }
+      if (mod && !e.altKey && k.toLowerCase() === "a") {
+        e.preventDefault();
+        const ids = this.mode === "pessoa" ? roomUnits(this.world, this.roomId).map((th) => th.id) : roomTrains(this.world, this.roomId).flatMap((t) => t.folded ? [t.id] : trainThoughts(this.world, t.id).map((th) => th.id));
+        this.sel = ids.length > 1 ? { kind: "many", ids } : ids.length ? { kind: "thought", id: ids[0] } : null;
+        this.drawWorld();
+        return true;
+      }
+      if (!this.sel) return false;
+      if (k === "Delete" || k === "Backspace") {
+        e.preventDefault();
+        const ids = this.sel.ids || [this.sel.id];
+        ids.forEach((id) => remove(this.world, id));
+        this.sel = null;
+        this.save();
+        this.drawWorld();
+        this.toast(`Deleted${ids.length > 1 ? ` ${ids.length}` : ""}. Ctrl+Z brings it back.`);
+        return true;
+      }
+      const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (arrows[k] && !mod) {
+        e.preventDefault();
+        const step = e.shiftKey ? 60 : 10;
+        const ids = this.sel.ids || [this.sel.id];
+        const from = this.groupSpots(ids);
+        for (const [id, p] of Object.entries(from)) this.putAt(id, p.x + arrows[k][0] * step, p.y + arrows[k][1] * step);
+        this.save();
+        this.drawWorld();
+        return true;
+      }
+      return false;
+    }
+    showKeys() {
+      const rows = [
+        ["Type anywhere", "write a thought"],
+        ["Enter", "keep it, and go on with the train"],
+        ["Ctrl+Enter", "a new train"],
+        ["Alt+P · Alt+I", "a passage · a picture"],
+        ["Click · double-click", "choose a thought · its whole train"],
+        ["Drag the canvas", "a box to choose many"],
+        ["Ctrl+drag", "move around"],
+        ["Ctrl+A", "choose everything"],
+        ["Delete", "delete what is chosen"],
+        ["Arrows · Shift+arrows", "nudge what is chosen"],
+        ["Ctrl+K", "search every room"],
+        ["Ctrl+Z · Ctrl+Shift+Z", "undo · redo"],
+        ["Escape", "let go, or go back"],
+        ["?", "these keys"]
+      ];
+      this.searchBox.replaceChildren(el5(
+        "div",
+        { class: "create-search-panel create-keys-panel" },
+        el5("div", { class: "create-options-label" }, "Keys"),
+        el5("dl", { class: "create-keys-list" }, rows.flatMap(([a, b]) => [el5("dt", {}, a), el5("dd", {}, b)]))
+      ));
+      this.searchBox.hidden = false;
+      this.searchBox.onpointerdown = () => this.closeSearch();
+      const close = (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        this.closeSearch();
+        document.removeEventListener("keydown", close, true);
+      };
+      document.addEventListener("keydown", close, true);
+    }
     // ---- Choosing many: a box drawn on the empty canvas ----
     isSel(id) {
       return this.sel?.id === id || !!this.sel?.ids?.includes(id);
@@ -8421,9 +8574,9 @@ dialog.menu-drawer::before {
       this.drawWorld();
     }
     // Where each chosen thing is now (world units), to move them together.
-    groupSpots() {
+    groupSpots(ids = this.sel.ids) {
       const out = {};
-      for (const id of this.sel.ids) {
+      for (const id of ids) {
         const th = this.world.things[id];
         if (!th) continue;
         if (this.mode === "pessoa") out[id] = pessoaPoint(this.world, this.roomId, id);

@@ -146,8 +146,11 @@
 }
 .create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
 .create-tile:hover { transform: translateY(-2px); }
+/* Lit as much as you have been in it lately (--lit, 0 to 1). */
 .create-tile.lit {
-  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px var(--create-glow-in, rgb(255 244 214 / .35));
+  box-shadow:
+    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--create-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
+    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, rgb(255 244 214 / .35)) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
 .create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
@@ -198,6 +201,7 @@
 @keyframes create-in { from { opacity: 0; } }
 .create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: default; }
 @media (hover: none) { .create-stage { cursor: grab; } }
+.create-stage.panning { cursor: grab; }
 .create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
 .create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
@@ -654,3 +658,9 @@
   .create-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
   .create-options { width: 200px; }
 }
+
+/* The list of keys (?) */
+.create-keys-panel { padding: 18px 22px 20px; }
+.create-keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
+.create-keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+.create-keys-list dd { margin: 0; opacity: .8; }
