@@ -244,7 +244,7 @@
 .create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
 /* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
-.create-bar, .create-tint {
+.create-tint {
   position: absolute;
   left: 50%;
   bottom: calc(64px + env(safe-area-inset-bottom));
@@ -260,8 +260,6 @@
   background: linear-gradient(var(--room-top), var(--room-bottom));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
 }
-.create-bar-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; }
-.create-bar-action { opacity: .55; }
 .create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-slider span { opacity: .6; }
 .create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
@@ -306,38 +304,113 @@
 .create-bead:hover { text-shadow: 0 0 1px color-mix(in srgb, var(--room-ink) 30%, transparent); }
 .create-bead .create-passage, .create-bead .create-picture { margin: 0; }
 .create-bead.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 7px; }
-.create-bead.found, .create-float.found, .create-tick.found .create-tick-body { animation: create-found 2.4s ease both; }
+.create-bead.found, .create-float.found { animation: create-found 2.4s ease both; }
 @keyframes create-found { 0%, 60% { background: color-mix(in srgb, var(--room-ink) 12%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--room-ink) 12%, transparent); } }
 
-/* The timeline: one straight line, a dot per thought, its time above and its tag below. */
-.create-timeline-line { position: absolute; top: 0; height: 1px; background: currentColor; opacity: .3; }
-.create-tick { position: absolute; width: 0; cursor: default; }
-.create-tick-dot { position: absolute; left: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--tag, currentColor); }
-.create-tick-time { position: absolute; left: 0; bottom: 14px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; letter-spacing: .08em; opacity: .5; }
-.create-tick-body { position: absolute; left: 0; top: 18px; transform: translateX(-50%); width: max-content; max-width: 210px; font-size: 15px; line-height: 1.5; text-align: center; padding: 2px 4px; }
-.create-tick-body .create-picture img { max-width: 160px; max-height: 160px; }
-.create-tick .create-tag {
+/* The timeline: a list down the left of everything written in the room, latest at the bottom. */
+.create-history {
   position: absolute;
   left: 0;
-  top: -54px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  max-width: 200px;
+  top: calc(92px + env(safe-area-inset-top));
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  width: min(320px, 78vw);
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--room-top) 70%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--room-ink) 12%, transparent);
+  animation: create-slide-in .3s var(--create-ease) both;
+  z-index: 2;
+}
+@keyframes create-slide-in { from { opacity: 0; transform: translateX(-12px); } }
+.create-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 18px 10px calc(var(--gutter) + 12px);
+  font-size: 12px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.create-history-head > span { opacity: .6; }
+.create-history-close { appearance: none; border: 0; background: none; color: inherit; font: inherit; font-size: 20px; line-height: 1; cursor: pointer; opacity: .55; }
+.create-history-close:hover { opacity: 1; }
+.create-history-list { list-style: none; margin: 0; padding: 0 0 12px; overflow: auto; flex: 1; scrollbar-width: thin; }
+.create-history-item {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 10px 18px 10px calc(var(--gutter) + 12px);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 2px 0 0 transparent;
+}
+.create-history-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 6%, transparent); }
+.create-history-item.on { box-shadow: inset 2px 0 0 var(--tag); background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
+.create-history-meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.create-history-time { flex: none; font-size: 11px; letter-spacing: .06em; opacity: .5; }
+.create-history-text { font-size: 14px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.create-history-none { margin: 0; padding: 10px 18px 10px calc(var(--gutter) + 12px); font-size: 13px; opacity: .5; }
+.create-tag {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 2px 8px;
+  white-space: nowrap;
+  padding: 1px 7px;
   font-size: 10px;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--tag);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag) 45%, transparent);
 }
-.create-tick.selected .create-tick-body { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 5px; }
+
+/* Editing what is chosen: the rooms page's pop-up, beside the thought or train. */
+.create-edit { width: 260px; }
+.create-edit-text, .create-edit-body, .create-edit-move {
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: .01em;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-radius: 0;
+  padding: 4px 0;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.create-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.create-edit-text:focus, .create-edit-body:focus { border-bottom-color: currentColor; }
+.create-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
+  background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
+.create-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
 
 /* Joyce's word, and the Timeline it unfolds when hovered. */
-.create-mode-wrap { display: inline-flex; align-items: baseline; gap: 14px; }
-.create-timeline-btn { max-width: 0; overflow: hidden; opacity: 0; transition: max-width .35s var(--create-ease), opacity .3s; white-space: nowrap; }
-.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { max-width: 120px; opacity: .8; }
+.create-mode-wrap { position: relative; display: inline-block; }
+/* Timeline drops down below Joyce when it is hovered. */
+.create-timeline-btn {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity .25s, transform .3s var(--create-ease);
+}
+.create-mode-wrap::after { content: ''; position: absolute; left: 0; right: -40px; top: 100%; height: 44px; } /* keeps the hover while the pointer goes down */
+.create-mode-wrap:not(:hover):not(:focus-within)::after { pointer-events: none; }
+.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { opacity: .8; transform: none; pointer-events: auto; z-index: 1; }
 .create-timeline-btn[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
 
 .create-draft { opacity: 1; }
@@ -370,7 +443,7 @@
 }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.create-room.dark :is(.create-bead, .create-float, .create-tick-body) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
 
 @media (max-width: 560px) {
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
