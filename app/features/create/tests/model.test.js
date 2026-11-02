@@ -5,6 +5,7 @@ import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
+  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -218,4 +219,66 @@ test('a saved world gets its rooms placed on the grid without overlaps', () => {
     seen.add(k);
   }
   assert.deepEqual([w.things.messy.col, w.things.messy.row], [0, 0]);
+});
+
+test('Joyce: a train\'s thoughts sit a step apart until one is dragged, and stay joined', () => {
+  const w = emptyWorld();
+  const t = startTrain(w, MESSY, 100, 200, 0);
+  const a = addThought(w, t.id, 'one', 1), b = addThought(w, t.id, 'two', 2), c = addThought(w, t.id, 'three', 3);
+  let s = trainSpots(w, t.id);
+  assert.deepEqual(s[a.id], { x: 100, y: 200 });
+  assert.deepEqual(s[b.id], { x: 100, y: 200 + STEP.line });
+  assert.ok(nudge(w, b.id, 400, 500, 9));
+  s = trainSpots(w, t.id);
+  assert.deepEqual(s[b.id], { x: 400, y: 500 });
+  assert.deepEqual(s[c.id], { x: 400, y: 500 + STEP.line });
+  assert.equal(b.parent, t.id);
+  assert.deepEqual(nextSpot(w, t.id), { x: 400, y: 500 + 2 * STEP.line });
+  Object.assign(t, { x: 0, y: 0 }); // moving the train moves its dragged thoughts too
+  assert.deepEqual(trainSpots(w, t.id)[b.id], { x: 300, y: 300 });
+});
+
+test('the line is taut between quick thoughts, slack after a pause, and straight when pulled', () => {
+  const quick = slack({ at: 0 }, { at: 2000 }, STEP.line);
+  const pause = slack({ at: 0 }, { at: 1800e3 }, STEP.line);
+  const pulled = slack({ at: 0 }, { at: 1800e3 }, 900);
+  assert.ok(quick < 0.2 && pause > 0.6 && pulled < 0.05, `${quick} ${pause} ${pulled}`);
+  assert.match(strand({ x: 0, y: 0 }, { x: 0, y: 100 }, 0), /^M0 0L0 100$/);
+  assert.match(strand({ x: 0, y: 0 }, { x: 0, y: 100 }, 0.8), /Q/);
+});
+
+test('the timeline lays a room\'s thoughts in the order they were last changed, with trains as tags', () => {
+  const w = emptyWorld();
+  const t1 = startTrain(w, MESSY, 0, 0, 0);
+  const a = addThought(w, t1.id, 'alpha beta gamma delta', 1);
+  const t2 = startTrain(w, MESSY, 0, 0, 2);
+  const b = addThought(w, t2.id, 'second', 3);
+  update(w, a.id, { text: 'alpha again' }, 10);
+  assert.deepEqual(timeline(w, MESSY).map((x) => x.th.id), [b.id, a.id]);
+  assert.equal(tagName(w, t2.id), 'second');
+  name(w, t2.id, 'Named');
+  assert.equal(tagName(w, t2.id), 'Named');
+});
+
+test('search finds thoughts, trains and rooms by their words', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Ontology', 1);
+  const t = startTrain(w, r.id, 0, 0, 2);
+  addThought(w, t.id, 'a building at night', 3);
+  const found = search(w, 'night');
+  assert.equal(found.length, 1);
+  assert.equal(found[0].roomName, 'Ontology');
+  assert.equal(search(w, 'ontol')[0].kind, 'room');
+  assert.deepEqual(search(w, '  '), []);
+});
+
+test('a room grows to four squares only where there is room', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, { col: 2, row: 0 });
+  addRoom(w, 'B', 2, { col: 3, row: 1 });
+  assert.ok(!sizeRoom(w, a.id, 2));
+  assert.equal(a.size, 1);
+  assert.ok(placeRoom(w, a.id, 4, 3));
+  assert.ok(sizeRoom(w, a.id, 2));
+  assert.equal(roomAt(w, 5, 4).id, a.id);
 });
