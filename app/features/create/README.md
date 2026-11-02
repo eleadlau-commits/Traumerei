@@ -65,3 +65,8 @@ the key `world` and follows the account like the settings. Other features reach 
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and the room's settings.
 - **Ctrl+K** searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.
+- **Choosing many:** drag on the empty canvas to draw a selection box; the chosen thoughts move
+  together when one is dragged, and can be moved to a room or deleted together. **Ctrl+drag**
+  (or two fingers on a phone) moves the canvas. Names keep with Enter.
+- Every pop-up and panel (Add, room settings, the sheet, the timeline, a thing's edit pop-up)
+  shares one pale, blurred white style.

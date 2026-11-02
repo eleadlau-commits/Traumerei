@@ -39,6 +39,7 @@ import {
   remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
   roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
+  cells, roomAt,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { pageLook, roomLook, squareLook, lookPrefs, LOOK } from './look.js';
@@ -405,9 +406,18 @@ export default class Create extends Feature {
       const at = this.cellAt(ev.clientX, ev.clientY);
       return at && { col: at.col - offset.col, row: at.row - offset.row };
     };
+    // Where it would land: a shadow the room's own size (2 × 2 for a big room), faint if taken.
+    const drop = el('div', { class: 'create-drop', hidden: true });
+    this.grid.append(drop);
     const mark = (c) => {
-      this.grid.querySelectorAll('.create-cell.target').forEach((n) => n.classList.remove('target'));
-      if (c) this.grid.querySelector(`.create-cell[data-col="${c.col}"][data-row="${c.row}"]`)?.classList.add('target');
+      if (!c) { drop.hidden = true; return; }
+      const size = r.size || 1;
+      const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols &&
+        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => { const o = roomAt(this.world, cc, rr, r.id); return !o; });
+      drop.hidden = false;
+      drop.classList.toggle('taken', !free);
+      drop.style.gridColumn = `${c.col + 1} / span ${size}`;
+      drop.style.gridRow = `${c.row + 1} / span ${size}`;
     };
     const moveFn = (ev) => {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
@@ -637,7 +647,7 @@ export default class Create extends Feature {
       svg.setAttribute('class', 'create-strands');
       const tension = this.prefs.tension ?? 0.5;
       for (const t of roomTrains(w, this.roomId)) {
-        const chosen = this.sel?.kind === 'train' && this.sel.id === t.id;
+        const chosen = (this.sel?.kind === 'train' && this.sel.id === t.id) || this.isSel(t.id);
         if (t.folded) {
           nodes.push(el('div', {
             class: 'create-bead create-folded' + (chosen ? ' selected' : ''), 'data-train': t.id,
@@ -674,7 +684,7 @@ export default class Create extends Feature {
         svg.append(g);
         for (const k of knots) {
           nodes.push(el('div', {
-            class: 'create-bead' + (chosen ? ' selected' : '') + (this.sel?.id === k.th.id ? ' selected' : '') + (this.found === k.th.id ? ' found' : ''),
+            class: 'create-bead' + (chosen || this.isSel(k.th.id) ? ' selected' : '') + (this.found === k.th.id ? ' found' : ''),
             'data-train': t.id, ...(k.draft ? {} : { 'data-thought': k.th.id }),
             style: `left:${k.x}px;top:${k.y}px`,
           }, k.draft ? this.draftNode() : this.thoughtNode(k.th)));
@@ -689,7 +699,7 @@ export default class Create extends Feature {
       for (const th of all) {
         const p = pessoaPoint(w, this.roomId, th.id);
         nodes.push(el('div', {
-          class: 'create-float' + (this.sel?.id === th.id ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
+          class: 'create-float' + (this.isSel(th.id) ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
           'data-thought': th.id,
           style: `left:${p.x}px;top:${p.y}px`,
         }, this.thoughtNode(th)));
@@ -875,6 +885,12 @@ export default class Create extends Feature {
     const trainEl = e.target.closest('[data-train]');
     const thoughtEl = e.target.closest('[data-thought]');
     let thing = null;
+    const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
+    const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    if (e.ctrlKey || e.metaKey) this.gesture = { kind: 'pan', ...pan }; // Ctrl+drag moves the canvas
+    else if (this.sel?.kind === 'many' && hitId && this.isSel(hitId)) this.gesture = { kind: 'group', ...pan, from: this.groupSpots() };
+    else if (!hitId && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan }; // a drag on the empty canvas draws a selection box
+    if (this.gesture) { this.listen(e); return; }
     if (trainEl && this.mode === 'joyce') {
       const t = this.world.things[trainEl.dataset.train];
       const whole = !thoughtEl || (this.sel?.kind === 'train' && this.sel.id === t.id) || t.folded;
@@ -890,7 +906,11 @@ export default class Create extends Feature {
       thing = { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id, x: p.x, y: p.y, placed: true };
     }
     this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    this.listen(e);
+  }
 
+  listen() {
+    const pointers = this.pointers;
     const move = (ev) => this.onMove(ev);
     const up = (ev) => {
       pointers.delete(ev.pointerId);
@@ -928,6 +948,12 @@ export default class Create extends Feature {
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
+    if (g.kind === 'box') { this.drawBox(g, e); return; }
+    if (g.kind === 'group') {
+      for (const [id, p] of Object.entries(g.from)) this.putAt(id, Math.round(p.x + dx / v.zoom), Math.round(p.y + dy / v.zoom));
+      if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => { this.liveFrame = 0; this.drawWorld(); });
+      return;
+    }
     if (g.kind === 'pan') {
       v.x = g.vx - dx / v.zoom;
       v.y = g.vy - dy / v.zoom;
@@ -950,6 +976,13 @@ export default class Create extends Feature {
     const g = this.gesture;
     this.gesture = null;
     if (!g || g.kind === 'pinch') { this.save(); return; }
+    if (g.kind === 'box') { this.endBox(g); return; }
+    if (g.kind === 'group') {
+      if (!g.moved) { this.sel = null; this.drawWorld(); return; }
+      this.drawWorld();
+      this.save();
+      return;
+    }
     if (!g.moved) {
       // A tap: on a thought (or a folded train, or a line) selects it; on empty space clears the
       // selection. Double-click selects a whole train (onDouble).
@@ -970,6 +1003,62 @@ export default class Create extends Feature {
       else Object.assign(this.world.things[g.thing.id], g.to);
     }
     this.save();
+  }
+
+  // ---- Choosing many: a box drawn on the empty canvas ----
+
+  isSel(id) { return this.sel?.id === id || !!this.sel?.ids?.includes(id); }
+
+  drawBox(g, e) {
+    const b = this.stage.getBoundingClientRect();
+    if (!this.box) { this.box = el('div', { class: 'create-box' }); this.stage.append(this.box); }
+    const x = Math.min(g.x0, e.clientX) - b.left, y = Math.min(g.y0, e.clientY) - b.top;
+    Object.assign(this.box.style, { left: `${x}px`, top: `${y}px`, width: `${Math.abs(e.clientX - g.x0)}px`, height: `${Math.abs(e.clientY - g.y0)}px` });
+    g.rect = { left: Math.min(g.x0, e.clientX), top: Math.min(g.y0, e.clientY), right: Math.max(g.x0, e.clientX), bottom: Math.max(g.y0, e.clientY) };
+  }
+
+  endBox(g) {
+    this.box?.remove();
+    this.box = null;
+    if (!g.moved || !g.rect) { // a plain click on the canvas: nothing chosen
+      this.sel = null;
+      if (this.draft) this.stopWriting();
+      this.drawWorld();
+      return;
+    }
+    const r = g.rect;
+    const ids = new Set();
+    for (const n of this.world$.querySelectorAll('[data-thought], .create-folded[data-train]')) {
+      const q = n.getBoundingClientRect();
+      if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
+      ids.add(n.dataset.thought || n.dataset.train);
+    }
+    const all = [...ids];
+    this.sel = !all.length ? null : all.length === 1
+      ? { kind: kindOf(this.world.things[all[0]]) === 'train' ? 'train' : 'thought', id: all[0] }
+      : { kind: 'many', ids: all };
+    this.drawWorld();
+  }
+
+  // Where each chosen thing is now (world units), to move them together.
+  groupSpots() {
+    const out = {};
+    for (const id of this.sel.ids) {
+      const th = this.world.things[id];
+      if (!th) continue;
+      if (this.mode === 'pessoa') out[id] = pessoaPoint(this.world, this.roomId, id);
+      else if (kindOf(th) === 'train') out[id] = { x: th.x, y: th.y };
+      else out[id] = trainSpots(this.world, th.parent)[id];
+    }
+    return out;
+  }
+
+  putAt(id, x, y) {
+    const th = this.world.things[id];
+    if (!th) return;
+    if (this.mode === 'pessoa') place(this.world, this.roomId, id, x, y);
+    else if (kindOf(th) === 'train') Object.assign(th, { x, y });
+    else nudge(this.world, id, x, y);
   }
 
   // Double-click: in Joyce, chooses the whole train (then drag it from any of its thoughts or its
@@ -1062,7 +1151,7 @@ export default class Create extends Feature {
     }
     if (p) { v.x = p.x + 120; v.y = p.y + 20; this.place(); }
     this.found = kindOf(th) === 'train' ? null : f.id;
-    if (kindOf(th) === 'train') this.sel = { kind: 'train', id: th.id };
+    this.sel = { kind: kindOf(th) === 'train' ? 'train' : 'thought', id: th.id }; // and its edit pop-up opens
     this.drawWorld();
     clearTimeout(this.foundTimer);
     this.foundTimer = setTimeout(() => { this.found = null; this.drawWorld(); }, 2400);
@@ -1128,6 +1217,7 @@ export default class Create extends Feature {
   // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
 
   drawBar() {
+    if (this.sel?.kind === 'many') { this.drawManyBar(); return; }
     const th = this.sel && this.world.things[this.sel.id];
     if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
     const kind = kindOf(th);
@@ -1175,6 +1265,41 @@ export default class Create extends Feature {
         }, 'create-options-delete')));
     this.bar.hidden = false;
     this.bar.replaceChildren(...rows);
+    this.positionEdit();
+    this.drawHistorySoon();
+  }
+
+  // Many things chosen with the box: move them to a room together, or delete them.
+  drawManyBar() {
+    const ids = this.sel.ids.filter((id) => this.world.things[id]);
+    const others = rooms(this.world).filter((r) => r.id !== this.roomId);
+    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
+        if (!to) return;
+        const v = view(this.world, to);
+        ids.forEach((id, i) => move(this.world, id, to, Math.round(v.x - 200 + (i % 4) * 220), Math.round(v.y - 120 + Math.floor(i / 4) * 140)));
+        this.sel = null;
+        this.save();
+        this.drawWorld();
+        this.toast(`Moved ${ids.length} to ${room(this.world, to).name}`);
+      } },
+      el('option', { value: '' }, 'Move to…'),
+      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      el('option', { value: '+' }, 'A new room'));
+    this.bar.hidden = false;
+    this.bar.replaceChildren(
+      el('div', { class: 'create-options-label' }, `${ids.length} chosen`),
+      el('p', { class: 'create-options-note' }, 'Drag any of them to move them together.'),
+      el('div', { class: 'create-options-row' }, pick),
+      el('div', { class: 'create-options-row' },
+        el('button', { type: 'button', class: 'create-word create-options-delete', onclick: () => {
+          ids.forEach((id) => remove(this.world, id));
+          this.sel = null;
+          this.save();
+          this.drawWorld();
+          this.toast(`Deleted ${ids.length}. Ctrl+Z brings them back.`);
+        } }, 'Delete')));
     this.positionEdit();
     this.drawHistorySoon();
   }
@@ -1262,7 +1387,7 @@ export default class Create extends Feature {
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); keep(); }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.tagName === 'INPUT')) { e.preventDefault(); keep(); } // Enter keeps a name; a passage's body takes Ctrl+Enter
       if (e.key === 'Escape') { e.preventDefault(); this.closeSheet(); }
     };
     const fields = [];

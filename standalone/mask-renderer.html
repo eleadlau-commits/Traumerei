@@ -760,6 +760,10 @@ dialog.dialog-box {
   --create-strip: calc(64px + env(safe-area-inset-top));
   --create-ease: cubic-bezier(.22, .7, .18, 1);
   --create-glow: rgb(255 236 190 / .55);
+  /* Every pop-up and panel: the same pale, blurred white. */
+  --create-panel: rgb(250 247 240 / .84);
+  --create-panel-ink: #2b2a28;
+  --create-panel-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 12px 40px rgb(0 0 0 / .12);
 }
 
 .create {
@@ -877,6 +881,8 @@ dialog.dialog-box {
 .create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
 .create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .create-grid.dragging .create-cell::after { content: ''; }
+.create-drop { pointer-events: none; z-index: 1; background: rgb(0 0 0 / .06); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .4); }
+.create-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(43 42 40 / .15); }
 .create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
@@ -943,8 +949,8 @@ dialog.dialog-box {
   animation: create-in .45s ease both;
 }
 @keyframes create-in { from { opacity: 0; } }
-.create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
-.create-stage:active { cursor: grabbing; }
+.create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: default; }
+@media (hover: none) { .create-stage { cursor: grab; } }
 .create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
 .create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
@@ -970,8 +976,12 @@ dialog.dialog-box {
   display: grid;
   min-width: 300px;
   padding: 8px 0;
-  background: linear-gradient(var(--room-top), var(--room-bottom));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
   animation: create-unfold .22s var(--create-ease) both;
 }
 @keyframes create-unfold { from { opacity: 0; transform: translateY(6px); } }
@@ -1010,8 +1020,12 @@ dialog.dialog-box {
   max-width: calc(100% - 2 * var(--gutter));
   box-sizing: border-box;
   padding: 12px 20px;
-  background: linear-gradient(var(--room-top), var(--room-bottom));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
 }
 .create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-slider span { opacity: .6; }
@@ -1035,6 +1049,8 @@ dialog.dialog-box {
 
 /* Thoughts. Joyce: each thought on its own, joined to the next by a line (the SVG under them):
    taut between quick thoughts, slack after a pause. */
+.create-box { position: absolute; pointer-events: none; z-index: 2; background: color-mix(in srgb, var(--room-ink) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--room-ink) 45%, transparent); }
+.create-stage:has(.create-box) { cursor: crosshair; }
 .create-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .create-strand-line { fill: none; stroke: currentColor; stroke-width: 1; opacity: .32; transition: opacity .3s; }
 .create-strand-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: grab; }
@@ -1069,10 +1085,12 @@ dialog.dialog-box {
   width: min(320px, 78vw);
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--room-top) 70%, transparent);
+  background: var(--create-panel);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: 1px 0 0 color-mix(in srgb, var(--room-ink) 12%, transparent);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
   animation: create-slide-in .3s var(--create-ease) both;
   z-index: 2;
 }
@@ -1233,8 +1251,12 @@ dialog.dialog-box {
   display: grid;
   gap: 16px;
   padding: 26px 28px 18px;
-  background: linear-gradient(var(--room-top), var(--room-bottom));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 20px 60px rgb(0 0 0 / .16);
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
   animation: create-in .35s ease both;
 }
 .create-sheet-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
@@ -1276,12 +1298,12 @@ dialog.dialog-box {
   gap: 10px;
   width: 236px;
   padding: 14px 16px;
-  background: rgb(250 247 240 / .82);
+  background: var(--create-panel);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 12px 40px rgb(0 0 0 / .12);
-  color: var(--home-ink, #2b2a28);
-  --room-ink: var(--home-ink, #2b2a28);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
   animation: create-unfold .2s var(--create-ease) both;
 }
 .create-options-name {
@@ -7670,9 +7692,22 @@ dialog.menu-drawer::before {
         const at = this.cellAt(ev.clientX, ev.clientY);
         return at && { col: at.col - offset.col, row: at.row - offset.row };
       };
+      const drop = el5("div", { class: "create-drop", hidden: true });
+      this.grid.append(drop);
       const mark = (c) => {
-        this.grid.querySelectorAll(".create-cell.target").forEach((n) => n.classList.remove("target"));
-        if (c) this.grid.querySelector(`.create-cell[data-col="${c.col}"][data-row="${c.row}"]`)?.classList.add("target");
+        if (!c) {
+          drop.hidden = true;
+          return;
+        }
+        const size = r.size || 1;
+        const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => {
+          const o = roomAt(this.world, cc, rr, r.id);
+          return !o;
+        });
+        drop.hidden = false;
+        drop.classList.toggle("taken", !free);
+        drop.style.gridColumn = `${c.col + 1} / span ${size}`;
+        drop.style.gridRow = `${c.row + 1} / span ${size}`;
       };
       const moveFn = (ev) => {
         const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
@@ -7941,7 +7976,7 @@ dialog.menu-drawer::before {
         svg.setAttribute("class", "create-strands");
         const tension = this.prefs.tension ?? 0.5;
         for (const t of roomTrains(w, this.roomId)) {
-          const chosen = this.sel?.kind === "train" && this.sel.id === t.id;
+          const chosen = this.sel?.kind === "train" && this.sel.id === t.id || this.isSel(t.id);
           if (t.folded) {
             nodes.push(el5("div", {
               class: "create-bead create-folded" + (chosen ? " selected" : ""),
@@ -7979,7 +8014,7 @@ dialog.menu-drawer::before {
           svg.append(g);
           for (const k of knots) {
             nodes.push(el5("div", {
-              class: "create-bead" + (chosen ? " selected" : "") + (this.sel?.id === k.th.id ? " selected" : "") + (this.found === k.th.id ? " found" : ""),
+              class: "create-bead" + (chosen || this.isSel(k.th.id) ? " selected" : "") + (this.found === k.th.id ? " found" : ""),
               "data-train": t.id,
               ...k.draft ? {} : { "data-thought": k.th.id },
               style: `left:${k.x}px;top:${k.y}px`
@@ -7995,7 +8030,7 @@ dialog.menu-drawer::before {
         for (const th of all) {
           const p = pessoaPoint(w, this.roomId, th.id);
           nodes.push(el5("div", {
-            class: "create-float" + (this.sel?.id === th.id ? " selected" : "") + (this.found === th.id ? " found" : ""),
+            class: "create-float" + (this.isSel(th.id) ? " selected" : "") + (this.found === th.id ? " found" : ""),
             "data-thought": th.id,
             style: `left:${p.x}px;top:${p.y}px`
           }, this.thoughtNode(th)));
@@ -8211,6 +8246,15 @@ dialog.menu-drawer::before {
       const trainEl = e.target.closest("[data-train]");
       const thoughtEl = e.target.closest("[data-thought]");
       let thing = null;
+      const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
+      const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+      if (e.ctrlKey || e.metaKey) this.gesture = { kind: "pan", ...pan };
+      else if (this.sel?.kind === "many" && hitId && this.isSel(hitId)) this.gesture = { kind: "group", ...pan, from: this.groupSpots() };
+      else if (!hitId && e.pointerType === "mouse") this.gesture = { kind: "box", ...pan };
+      if (this.gesture) {
+        this.listen(e);
+        return;
+      }
       if (trainEl && this.mode === "joyce") {
         const t = this.world.things[trainEl.dataset.train];
         const whole = !thoughtEl || this.sel?.kind === "train" && this.sel.id === t.id || t.folded;
@@ -8226,6 +8270,10 @@ dialog.menu-drawer::before {
         thing = { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id, x: p.x, y: p.y, placed: true };
       }
       this.gesture = { kind: thing ? "drag" : "pan", thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+      this.listen(e);
+    }
+    listen() {
+      const pointers = this.pointers;
       const move2 = (ev) => this.onMove(ev);
       const up = (ev) => {
         pointers.delete(ev.pointerId);
@@ -8264,6 +8312,18 @@ dialog.menu-drawer::before {
       const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
       if (!g.moved && Math.hypot(dx, dy) < 4) return;
       g.moved = true;
+      if (g.kind === "box") {
+        this.drawBox(g, e);
+        return;
+      }
+      if (g.kind === "group") {
+        for (const [id, p] of Object.entries(g.from)) this.putAt(id, Math.round(p.x + dx / v.zoom), Math.round(p.y + dy / v.zoom));
+        if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => {
+          this.liveFrame = 0;
+          this.drawWorld();
+        });
+        return;
+      }
       if (g.kind === "pan") {
         v.x = g.vx - dx / v.zoom;
         v.y = g.vy - dy / v.zoom;
@@ -8290,6 +8350,20 @@ dialog.menu-drawer::before {
         this.save();
         return;
       }
+      if (g.kind === "box") {
+        this.endBox(g);
+        return;
+      }
+      if (g.kind === "group") {
+        if (!g.moved) {
+          this.sel = null;
+          this.drawWorld();
+          return;
+        }
+        this.drawWorld();
+        this.save();
+        return;
+      }
       if (!g.moved) {
         const keep = this.sel?.kind === "train" && g.thing?.kind === "train" && this.sel.id === g.thing.id;
         this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
@@ -8311,6 +8385,59 @@ dialog.menu-drawer::before {
         else Object.assign(this.world.things[g.thing.id], g.to);
       }
       this.save();
+    }
+    // ---- Choosing many: a box drawn on the empty canvas ----
+    isSel(id) {
+      return this.sel?.id === id || !!this.sel?.ids?.includes(id);
+    }
+    drawBox(g, e) {
+      const b = this.stage.getBoundingClientRect();
+      if (!this.box) {
+        this.box = el5("div", { class: "create-box" });
+        this.stage.append(this.box);
+      }
+      const x = Math.min(g.x0, e.clientX) - b.left, y = Math.min(g.y0, e.clientY) - b.top;
+      Object.assign(this.box.style, { left: `${x}px`, top: `${y}px`, width: `${Math.abs(e.clientX - g.x0)}px`, height: `${Math.abs(e.clientY - g.y0)}px` });
+      g.rect = { left: Math.min(g.x0, e.clientX), top: Math.min(g.y0, e.clientY), right: Math.max(g.x0, e.clientX), bottom: Math.max(g.y0, e.clientY) };
+    }
+    endBox(g) {
+      this.box?.remove();
+      this.box = null;
+      if (!g.moved || !g.rect) {
+        this.sel = null;
+        if (this.draft) this.stopWriting();
+        this.drawWorld();
+        return;
+      }
+      const r = g.rect;
+      const ids = /* @__PURE__ */ new Set();
+      for (const n of this.world$.querySelectorAll("[data-thought], .create-folded[data-train]")) {
+        const q = n.getBoundingClientRect();
+        if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
+        ids.add(n.dataset.thought || n.dataset.train);
+      }
+      const all = [...ids];
+      this.sel = !all.length ? null : all.length === 1 ? { kind: kindOf(this.world.things[all[0]]) === "train" ? "train" : "thought", id: all[0] } : { kind: "many", ids: all };
+      this.drawWorld();
+    }
+    // Where each chosen thing is now (world units), to move them together.
+    groupSpots() {
+      const out = {};
+      for (const id of this.sel.ids) {
+        const th = this.world.things[id];
+        if (!th) continue;
+        if (this.mode === "pessoa") out[id] = pessoaPoint(this.world, this.roomId, id);
+        else if (kindOf(th) === "train") out[id] = { x: th.x, y: th.y };
+        else out[id] = trainSpots(this.world, th.parent)[id];
+      }
+      return out;
+    }
+    putAt(id, x, y) {
+      const th = this.world.things[id];
+      if (!th) return;
+      if (this.mode === "pessoa") place(this.world, this.roomId, id, x, y);
+      else if (kindOf(th) === "train") Object.assign(th, { x, y });
+      else nudge(this.world, id, x, y);
     }
     // Double-click: in Joyce, chooses the whole train (then drag it from any of its thoughts or its
     // line); on a passage, picture or folded train in Pessoa, opens it to edit.
@@ -8432,7 +8559,7 @@ dialog.menu-drawer::before {
         this.place();
       }
       this.found = kindOf(th) === "train" ? null : f.id;
-      if (kindOf(th) === "train") this.sel = { kind: "train", id: th.id };
+      this.sel = { kind: kindOf(th) === "train" ? "train" : "thought", id: th.id };
       this.drawWorld();
       clearTimeout(this.foundTimer);
       this.foundTimer = setTimeout(() => {
@@ -8510,6 +8637,10 @@ dialog.menu-drawer::before {
     }
     // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
     drawBar() {
+      if (this.sel?.kind === "many") {
+        this.drawManyBar();
+        return;
+      }
       const th = this.sel && this.world.things[this.sel.id];
       if (!th) {
         this.bar.hidden = true;
@@ -8609,6 +8740,51 @@ dialog.menu-drawer::before {
       this.positionEdit();
       this.drawHistorySoon();
     }
+    // Many things chosen with the box: move them to a room together, or delete them.
+    drawManyBar() {
+      const ids = this.sel.ids.filter((id) => this.world.things[id]);
+      const others = rooms(this.world).filter((r) => r.id !== this.roomId);
+      const pick = el5(
+        "select",
+        {
+          class: "create-edit-move",
+          "aria-label": "Move to a room",
+          onkeydown: (e) => e.stopPropagation(),
+          onchange: (e) => {
+            const to = e.target.value === "+" ? addRoom(this.world, "Untitled", Date.now(), null, this.cols || 6).id : e.target.value;
+            if (!to) return;
+            const v = view3(this.world, to);
+            ids.forEach((id, i) => move(this.world, id, to, Math.round(v.x - 200 + i % 4 * 220), Math.round(v.y - 120 + Math.floor(i / 4) * 140)));
+            this.sel = null;
+            this.save();
+            this.drawWorld();
+            this.toast(`Moved ${ids.length} to ${room(this.world, to).name}`);
+          }
+        },
+        el5("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el5("option", { value: r.id }, r.name)),
+        el5("option", { value: "+" }, "A new room")
+      );
+      this.bar.hidden = false;
+      this.bar.replaceChildren(
+        el5("div", { class: "create-options-label" }, `${ids.length} chosen`),
+        el5("p", { class: "create-options-note" }, "Drag any of them to move them together."),
+        el5("div", { class: "create-options-row" }, pick),
+        el5(
+          "div",
+          { class: "create-options-row" },
+          el5("button", { type: "button", class: "create-word create-options-delete", onclick: () => {
+            ids.forEach((id) => remove(this.world, id));
+            this.sel = null;
+            this.save();
+            this.drawWorld();
+            this.toast(`Deleted ${ids.length}. Ctrl+Z brings them back.`);
+          } }, "Delete")
+        )
+      );
+      this.positionEdit();
+      this.drawHistorySoon();
+    }
     // The pop-up sits beside what is chosen, and follows it as the view moves.
     positionEdit() {
       if (this.bar.hidden) return;
@@ -8686,7 +8862,7 @@ dialog.menu-drawer::before {
       const keep = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.target.tagName === "INPUT")) {
           e.preventDefault();
           keep();
         }
