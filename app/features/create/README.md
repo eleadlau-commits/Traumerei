@@ -19,6 +19,17 @@ What the home page's **Create** opens: rooms of thoughts.
     changed by them).
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
   *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.
+- **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*
+  (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
+  edit it.
+- **Folding.** Select a train and *Fold into one thought*, then name it. It shows as one thought
+  (in Pessoa it floats as one); *Unfold* opens it again.
+
+**Everything is a thought.** `model.js` has one object, the thought, of five kinds: line,
+passage, picture, train and room. Each sits inside another (`parent`): lines, passages and pictures
+in trains, trains in rooms, rooms in rooms or at the top. Moving, folding, naming and removing are
+the same operations for every kind. A folded train is the train itself shown as one thought, so
+unfolding never loses anything. Older saved data (the first prototype's shape) is converted on load.
 
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
 the key `world` and follows the account like the settings. Other features reach it through the

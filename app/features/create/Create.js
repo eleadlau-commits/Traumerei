@@ -14,16 +14,19 @@
 //
 // A thought need not be a line of words. Two templates make bigger ones: a Passage (a title and a
 // paragraph, or a small article; Alt+P) and a Picture (with a caption; Alt+I, or paste one). A
-// train can be folded into one thought, a passage that keeps the train inside it and can unfold.
+// train can be folded into one thought, which you name, and unfolded again.
+//
+// Everything is a thought (model.js): lines, passages, pictures, trains and rooms are all kinds
+// of one object, so moving, folding and naming work the same on any of them.
 //
 // Saved data: 'world' → see model.js. It is saved with everything else, so it follows the
 // account like the settings do.
 
 import { Feature, ui } from 'folio';
 import {
-  MESSY, MODES, loadWorld, room, addRoom, renameRoom, view, startTrain, addThought, addThing,
-  updateThing, kindOf, trainThoughts, roomThoughts, roomTrains, lastWritten, moveTrain, moveThought,
-  spiralPoint, pessoaPoint, placeThought, randomSpot, foldTrain, unfold,
+  MESSY, MODES, loadWorld, room, rooms, addRoom, name, view, startTrain, addThought, create, update,
+  remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
+  roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 
@@ -137,7 +140,7 @@ export default class Create extends Feature {
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
     this.stage.addEventListener('dblclick', (e) => {
       const id = e.target.closest('[data-id]')?.dataset.id;
-      if (id && kindOf(this.world.thoughts[id]) !== 'line') this.openSheet(null, id);
+      if (id && kindOf(this.world.things[id]) !== 'line') this.openSheet(null, id);
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
   }
@@ -146,7 +149,7 @@ export default class Create extends Feature {
 
   drawRooms() {
     const now = Date.now();
-    this.grid.replaceChildren(...this.world.rooms.map((r) => {
+    this.grid.replaceChildren(...rooms(this.world).map((r) => {
       const last = lastWritten(this.world, r.id);
       const count = roomThoughts(this.world, r.id).length;
       const lit = last != null && now - last < LIT_FOR;
@@ -181,7 +184,7 @@ export default class Create extends Feature {
     const finish = (keep) => {
       if (finished) return;
       finished = true;
-      if (keep) { renameRoom(this.world, r.id, field.value); this.save(); }
+      if (keep) { name(this.world, r.id, field.value); this.save(); }
       done();
     };
     const field = el('input', {
@@ -256,7 +259,7 @@ export default class Create extends Feature {
     const nodes = [];
     if (this.mode === 'joyce') {
       for (const t of roomTrains(w, this.roomId)) {
-        const kids = trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
+        const kids = t.folded ? [this.thoughtNode(t)] : trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
         if (this.draft?.train === t.id) kids.push(this.draftNode());
         nodes.push(el('div', {
           class: 'create-train' + (this.sel?.id === t.id ? ' selected' : ''),
@@ -268,7 +271,7 @@ export default class Create extends Feature {
         nodes.push(el('div', { class: 'create-train', style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
       }
     } else {
-      const all = roomThoughts(w, this.roomId);
+      const all = roomUnits(w, this.roomId);
       for (const th of all) {
         const p = pessoaPoint(w, this.roomId, th.id);
         nodes.push(el('div', {
@@ -289,10 +292,11 @@ export default class Create extends Feature {
   // One thought, drawn by its kind.
   thoughtNode(th) {
     const kind = kindOf(th);
-    if (kind === 'passage') {
-      return el('div', { class: 'create-passage' + (th.parts ? ' folded' : ''), 'data-id': th.id },
+    if (kind === 'passage' || kind === 'train') { // a folded train reads as one passage
+      const body = kind === 'train' ? thoughtText(this.world, th) : th.body;
+      return el('div', { class: 'create-passage' + (kind === 'train' ? ' folded' : ''), 'data-id': th.id },
         th.title ? el('div', { class: 'create-passage-title' }, th.title) : null,
-        th.body ? el('div', { class: 'create-passage-body' }, th.body) : null);
+        body ? el('div', { class: 'create-passage-body' }, body) : null);
     }
     if (kind === 'picture') {
       return el('figure', { class: 'create-picture', 'data-id': th.id },
@@ -376,7 +380,7 @@ export default class Create extends Feature {
     const d = this.draft;
     this.draft = null;
     if (!d || !text.trim()) { this.drawWorld(); return; }
-    const train = d.train ? this.world.trains[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
+    const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
     addThought(this.world, train.id, text);
     this.current[this.roomId] = train.id;
     this.save();
@@ -420,11 +424,12 @@ export default class Create extends Feature {
     const thoughtEl = e.target.closest('[data-thought]');
     let thing = null;
     if (trainEl && this.mode === 'joyce') {
-      const t = this.world.trains[trainEl.dataset.train];
-      thing = { kind: 'train', id: t.id, x: t.x, y: t.y };
+      const t = this.world.things[trainEl.dataset.train];
+      thing = { kind: 'train', id: t.id, x: t.x, y: t.y, placed: false };
     } else if (thoughtEl && this.mode === 'pessoa') {
-      const p = pessoaPoint(this.world, this.roomId, thoughtEl.dataset.thought);
-      thing = { kind: 'thought', id: thoughtEl.dataset.thought, x: p.x, y: p.y, el: thoughtEl };
+      const id = thoughtEl.dataset.thought;
+      const p = pessoaPoint(this.world, this.roomId, id);
+      thing = { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id, x: p.x, y: p.y, placed: true };
     }
     this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
 
@@ -489,8 +494,8 @@ export default class Create extends Feature {
       return;
     }
     if (g.thing && g.to) {
-      if (g.thing.kind === 'train') Object.assign(this.world.trains[g.thing.id], g.to);
-      else placeThought(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
+      if (g.thing.placed) place(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
+      else Object.assign(this.world.things[g.thing.id], g.to);
     }
     this.save();
   }
@@ -527,7 +532,7 @@ export default class Create extends Feature {
 
   drawBar() {
     if (!this.sel) { this.bar.hidden = true; return; }
-    const others = this.world.rooms.filter((r) => r.id !== this.roomId);
+    const others = rooms(this.world).filter((r) => r.id !== this.roomId);
     const what = this.sel.kind === 'train' ? 'this train' : 'this thought';
     this.bar.hidden = false;
     this.bar.replaceChildren(
@@ -541,29 +546,29 @@ export default class Create extends Feature {
   selActions() {
     const out = [];
     const word = (label, fn) => el('button', { type: 'button', class: 'create-word create-bar-action', onclick: fn }, label);
-    if (this.sel.kind === 'train') {
-      const all = trainThoughts(this.world, this.sel.id);
-      if (all.length > 1) out.push(word('Fold into one thought', () => this.fold(this.sel.id)));
-      if (all.length === 1 && all[0].parts) out.push(word('Unfold', () => this.unfoldThought(all[0].id)));
-      if (all.length === 1 && kindOf(all[0]) !== 'line') out.push(word('Edit', () => this.openSheet(null, all[0].id)));
-    } else {
-      const th = this.world.thoughts[this.sel.id];
-      if (th?.parts) out.push(word('Unfold', () => this.unfoldThought(th.id)));
-      if (th && kindOf(th) !== 'line') out.push(word('Edit', () => this.openSheet(null, th.id)));
-    }
+    const th = this.world.things[this.sel.id];
+    if (!th) return out;
+    if (kindOf(th) === 'train') {
+      const all = trainThoughts(this.world, th.id);
+      if (th.folded) {
+        out.push(word('Unfold', () => this.unfoldTrain(th.id)), word('Name', () => this.openSheet(null, th.id)));
+      } else {
+        if (all.length > 1) out.push(word('Fold into one thought', () => this.foldTrain(th.id)));
+        if (all.length === 1 && kindOf(all[0]) !== 'line') out.push(word('Edit', () => this.openSheet(null, all[0].id)));
+      }
+    } else if (kindOf(th) !== 'line') out.push(word('Edit', () => this.openSheet(null, th.id)));
     return out;
   }
 
-  fold(trainId) {
-    const th = foldTrain(this.world, trainId);
-    if (!th) return;
+  foldTrain(trainId) {
+    if (!fold(this.world, trainId)) return;
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.openSheet(null, th.id); // name it
+    this.openSheet(null, trainId); // name it
   }
 
-  unfoldThought(id) {
+  unfoldTrain(id) {
     unfold(this.world, id);
     this.sel = null;
     this.save();
@@ -575,7 +580,8 @@ export default class Create extends Feature {
   // Where a new thought goes: on with the current train, or a new train at a free spot.
   target() {
     const cur = this.current[this.roomId];
-    if (!this.fresh && this.world.trains[cur]?.room === this.roomId) return { train: cur };
+    const t = this.world.things[cur];
+    if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
     const spot = this.freeSpot();
     this.fresh = false;
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
@@ -608,7 +614,7 @@ export default class Create extends Feature {
   openSheet(kind, id = null, src = null) {
     if (!this.roomId) return;
     if (this.draft) this.commit();
-    const th = id ? this.world.thoughts[id] : null;
+    const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;
     this.editing = { kind, id, src: src || th?.src || null };
     const keep = () => this.keepSheet();
@@ -618,7 +624,10 @@ export default class Create extends Feature {
       if (e.key === 'Escape') { e.preventDefault(); this.closeSheet(); }
     };
     const fields = [];
-    if (kind === 'passage') {
+    if (kind === 'train') {
+      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Name this train of thought', 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
+      fields.push(this.sheetTitle, el('div', { class: 'create-sheet-preview' }, thoughtText(this.world, th)));
+    } else if (kind === 'passage') {
       this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
       this.sheetBody = el('textarea', { class: 'create-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
       this.sheetBody.value = th?.body || '';
@@ -628,28 +637,31 @@ export default class Create extends Feature {
       fields.push(el('img', { class: 'create-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
     this.sheet.replaceChildren(
-      el('div', { class: 'create-sheet-kind' }, kind === 'passage' ? (th?.parts ? 'A folded train' : 'Passage') : 'Picture'),
+      el('div', { class: 'create-sheet-kind' }, { passage: 'Passage', picture: 'Picture', train: 'A folded train' }[kind]),
       ...fields,
       el('div', { class: 'create-sheet-words' },
         el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
         el('button', { type: 'button', class: 'create-word', onclick: () => this.closeSheet() }, 'Cancel'),
         el('span', { class: 'create-keys' }, 'Ctrl+Enter keeps it')));
     this.sheet.hidden = false;
-    (kind === 'passage' ? (th?.parts || !th ? this.sheetTitle : this.sheetBody) : this.sheetCaption).focus();
+    (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
   }
 
   keepSheet() {
     const ed = this.editing;
     if (!ed) return;
-    const fields = ed.kind === 'passage'
-      ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
-      : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
-    if (ed.id) updateThing(this.world, ed.id, fields);
+    if (ed.kind === 'train') name(this.world, ed.id, this.sheetTitle.value);
     else {
-      const t = this.target();
-      const train = t.train ? this.world.trains[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
-      if (addThing(this.world, train.id, fields)) this.current[this.roomId] = train.id;
-      else if (!t.train) delete this.world.trains[train.id];
+      const fields = ed.kind === 'passage'
+        ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
+        : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
+      if (ed.id) update(this.world, ed.id, fields);
+      else {
+        const t = this.target();
+        const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
+        if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
+        else if (!t.train) remove(this.world, train.id);
+      }
     }
     this.save();
     this.closeSheet();
@@ -668,12 +680,10 @@ export default class Create extends Feature {
     const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
     const spot = randomSpot(box, taken);
     const x = Math.round(spot.x), y = Math.round(spot.y);
-    if (this.sel.kind === 'train') moveTrain(this.world, this.sel.id, toRoom, x, y);
-    else moveThought(this.world, this.sel.id, toRoom, x, y);
-    const name = room(this.world, toRoom).name;
+    move(this.world, this.sel.id, toRoom, x, y);
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.toast(`Moved to ${name}`);
+    this.toast(`Moved to ${room(this.world, toRoom).name}`);
   }
 }

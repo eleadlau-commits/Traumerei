@@ -1,22 +1,25 @@
-// The rooms and thoughts of Create, as plain data, and the rules that change them. No screen here,
-// so it can be tested on its own (tests/model.test.js).
+// Create's world, thought first. There is one kind of object, the thought, and everything is one:
+//
+//   line     { text }                         a passing thought, written until Enter
+//   passage  { title, body }                  a paragraph, or a small article
+//   picture  { src, text }                    a picture (a small JPEG data: URL) and its caption
+//   train    { x, y, title, folded }          thoughts joined by time, read in the order they were
+//                                             written; folded, it shows as one thought (its title)
+//   room     { name, tint, light, opacity }   a thought that holds thoughts, seen through a mode
+//
+// Every thought has { id, kind, parent, at }. `parent` is the thought it sits inside: a line,
+// passage or picture sits in a train; a train sits in a room; a room sits in a room, or at the top
+// (parent null) where the rooms page shows it. So moving, folding, naming and tinting are the same
+// few operations whatever the thought is. A train's order is time, and is never broken.
 //
 // world = {
-//   v: 1,
-//   rooms:    [{ id, name, at }]                         the grid of rooms, in order
-//   thoughts: { [id]: { id, room, train, kind, at, … } } one thought, of a kind (KINDS below):
-//             line    { text }                 a passing thought, written until Enter
-//             passage { title, body, parts? }  a paragraph or a small article; parts = the thoughts
-//                                              of a train folded into it, kept so it can unfold
-//             picture { src, text }            a picture (a small JPEG data: URL) and its caption
-//   trains:   { [id]: { id, room, x, y, at } }           thoughts joined by time; x, y = where it starts
-//   views:    { [room]: { mode, x, y, zoom } }           each room's mode, and where it was looked at
-//   places:   { [room]: { [thought]: { x, y } } }        Pessoa: where a thought was dragged to
+//   v: 2,
+//   things: { [id]: thought },
+//   views:  { [room]: { mode, x, y, zoom } }        each room's mode and where it was looked at
+//   places: { [room]: { [thought]: { x, y } } }     Pessoa: where a thought was dragged to
 // }
 //
-// A thought always belongs to exactly one train, and a train to one room. Within a train the
-// thoughts are joined by time (the order they were written), and that order is never broken:
-// Joyce shows the train whole, and moves it whole.
+// No screen here, so it can be tested on its own (tests/model.test.js).
 
 export const MESSY = 'messy';
 export const MODES = [
@@ -24,8 +27,10 @@ export const MODES = [
   { id: 'pessoa', name: 'Pessoa' },
 ];
 export const DEFAULT_MODE = 'joyce';
-export const KINDS = ['line', 'passage', 'picture'];
+export const LEAVES = ['line', 'passage', 'picture'];
+export const KINDS = [...LEAVES, 'train', 'room'];
 export const kindOf = (th) => (KINDS.includes(th?.kind) ? th.kind : 'line');
+export const isLeaf = (th) => LEAVES.includes(kindOf(th));
 
 let counter = 0;
 export function uid(prefix = 'x') {
@@ -33,44 +38,81 @@ export function uid(prefix = 'x') {
   return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
+const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts' });
+
 export function emptyWorld(now = Date.now()) {
-  return {
-    v: 1,
-    rooms: [{ id: MESSY, name: 'Messy thoughts', at: now }],
-    thoughts: {},
-    trains: {},
-    views: {},
-    places: {},
-  };
+  return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
 }
 
-// A saved world, repaired: anything missing comes back, and the messy room always exists.
+// A saved world, brought up to date and repaired: the messy room always exists; a train whose
+// room is gone goes to the messy room, a room whose room is gone goes to the top, and a line,
+// passage or picture whose train is gone is dropped.
 export function loadWorld(saved, now = Date.now()) {
-  const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' ? saved : {});
-  if (!Array.isArray(w.rooms)) w.rooms = [];
-  if (!w.rooms.some((r) => r.id === MESSY)) w.rooms.unshift({ id: MESSY, name: 'Messy thoughts', at: now });
-  for (const key of ['thoughts', 'trains', 'views', 'places']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
-  const rooms = new Set(w.rooms.map((r) => r.id));
-  for (const t of Object.values(w.trains)) if (!rooms.has(t.room)) t.room = MESSY;
-  for (const th of Object.values(w.thoughts)) {
-    const train = w.trains[th.train];
-    if (!train) delete w.thoughts[th.id];
-    else th.room = train.room;
+  let w = saved && typeof saved === 'object' ? saved : {};
+  if (w.v !== 2) w = fromV1(w, now);
+  w = Object.assign(emptyWorld(now), w);
+  for (const key of ['things', 'views', 'places']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
+  for (const th of Object.values(w.things)) {
+    if (th.parent == null || w.things[th.parent]) continue;
+    if (kindOf(th) === 'room') th.parent = null;
+    else if (kindOf(th) === 'train') th.parent = MESSY;
+    else delete w.things[th.id];
   }
   return w;
 }
 
-export const room = (w, id) => w.rooms.find((r) => r.id === id) || null;
-
-export function addRoom(w, name = 'Untitled', now = Date.now()) {
-  const r = { id: uid('r'), name: String(name).trim() || 'Untitled', at: now };
-  w.rooms.push(r);
-  return r;
+// The first prototype's shape (rooms, trains and thoughts kept apart), turned into thoughts.
+function fromV1(old, now) {
+  const w = emptyWorld(now);
+  for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: 'room', parent: null, at: r.at ?? now, name: r.name };
+  for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: 'train', parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: '' };
+  for (const th of Object.values(old.thoughts || {})) {
+    const { room: _room, train, parts, ...rest } = th;
+    if (parts?.length) { // a folded passage: its parts come back, and the train is folded
+      const t = w.things[train];
+      if (t) Object.assign(t, { folded: true, title: th.title || '' });
+      for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
+    } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
+  }
+  w.views = old.views || {};
+  w.places = old.places || {};
+  return w;
 }
 
-export function renameRoom(w, id, name) {
-  const r = room(w, id);
-  if (r && String(name).trim()) r.name = String(name).trim();
+// ---- Reading ----
+
+export const thing = (w, id) => w.things[id] || null;
+export const room = (w, id) => (kindOf(w.things[id]) === 'room' ? w.things[id] : null);
+
+const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+
+export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
+
+// The rooms at the top (the rooms page), oldest first.
+export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room');
+
+// The room a thought is in (itself, if it is a room).
+export function roomOf(w, id) {
+  let th = w.things[id];
+  while (th && kindOf(th) !== 'room') th = w.things[th.parent];
+  return th || null;
+}
+
+export const trainThoughts = (w, trainId) => children(w, trainId).filter(isLeaf);
+export const roomTrains = (w, roomId) =>
+  children(w, roomId).filter((th) => kindOf(th) === 'train' && trainThoughts(w, th.id).length);
+
+// Every line, passage and picture in a room, in time order.
+export const roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
+
+// What floats in Pessoa: each thought on its own, but a folded train as the one thought it is.
+export const roomUnits = (w, roomId) =>
+  roomTrains(w, roomId).flatMap((t) => (t.folded ? [t] : trainThoughts(w, t.id))).sort(byTime);
+
+export function lastWritten(w, roomId) {
+  const all = roomThoughts(w, roomId);
+  return all.length ? Math.max(...all.map((th) => th.at)) : null;
 }
 
 export function view(w, roomId) {
@@ -78,47 +120,24 @@ export function view(w, roomId) {
   return w.views[roomId];
 }
 
-export function startTrain(w, roomId, x, y, now = Date.now()) {
-  const t = { id: uid('t'), room: roomId, x, y, at: now };
-  w.trains[t.id] = t;
-  return t;
+// The words of a thought, as plain text.
+export function thoughtText(w, th) {
+  switch (kindOf(th)) {
+    case 'passage': return [th.title, th.body].filter(Boolean).join(' — ');
+    case 'picture': return th.text ? `[${th.text}]` : '[picture]';
+    case 'train': return trainThoughts(w, th.id).map((x) => thoughtText(w, x)).join('\n');
+    case 'room': return th.name || '';
+    default: return th.text || '';
+  }
 }
 
-export function addThought(w, trainId, text, now = Date.now()) {
-  return addThing(w, trainId, { kind: 'line', text }, now);
-}
-
-// Adds a thought of any kind to a train. Returns null (and adds nothing) if it would be empty.
-export function addThing(w, trainId, fields, now = Date.now()) {
-  const train = w.trains[trainId];
-  const th = tidy(fields);
-  if (!train || !th) return null;
-  Object.assign(th, { id: uid('h'), room: train.room, train: trainId, at: now });
-  w.thoughts[th.id] = th;
-  return th;
-}
-
-// Changes a thought's words (or picture); one left empty is deleted.
-export function updateThing(w, id, fields) {
-  const th = w.thoughts[id];
-  if (!th) return null;
-  const next = tidy({ ...th, ...fields });
-  if (!next) { deleteThought(w, id); return null; }
-  Object.assign(th, next);
-  return th;
-}
-
-export function deleteThought(w, id) {
-  const th = w.thoughts[id];
-  if (!th) return;
-  delete w.thoughts[id];
-  if (w.places[th.room]) delete w.places[th.room][id];
-  if (!trainThoughts(w, th.train).length) delete w.trains[th.train];
-}
+// ---- Making and changing thoughts ----
 
 const oneLine = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const lines = (s) => String(s ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
+// A thought's own fields, tidied; null when a line, passage or picture would be empty.
 function tidy(f) {
   const kind = kindOf(f);
   if (kind === 'line') {
@@ -127,98 +146,128 @@ function tidy(f) {
   }
   if (kind === 'passage') {
     const title = oneLine(f.title), body = lines(f.body);
-    if (!title && !body) return null;
-    const out = { kind, title, body };
-    if (Array.isArray(f.parts) && f.parts.length) out.parts = f.parts;
+    return title || body ? { kind, title, body } : null;
+  }
+  if (kind === 'picture') {
+    const src = typeof f.src === 'string' && f.src.startsWith('data:image/') ? f.src : '';
+    return src ? { kind, src, text: oneLine(f.text) } : null;
+  }
+  if (kind === 'train') {
+    const out = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
+    if (f.folded) out.folded = true;
     return out;
   }
-  const src = typeof f.src === 'string' && f.src.startsWith('data:image/') ? f.src : '';
-  return src ? { kind, src, text: oneLine(f.text) } : null;
+  const out = { kind, name: oneLine(f.name) || 'Untitled' };
+  if (typeof f.tint === 'string' && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
+  if (f.light != null) out.light = clamp01(f.light, 0.5);
+  if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
+  return out;
 }
 
-// The words of a thought, as plain text (a picture gives its caption).
-export function thoughtText(th) {
-  const k = kindOf(th);
-  if (k === 'passage') return [th.title, th.body].filter(Boolean).join(' — ');
-  return th.text || '';
+// What can sit inside what: lines, passages and pictures in trains, trains in rooms, rooms in
+// rooms or at the top (null).
+export function canHold(w, parent, kind) {
+  const p = parent == null ? null : w.things[parent];
+  if (parent != null && !p) return false;
+  if (LEAVES.includes(kind)) return kindOf(p) === 'train' && p != null;
+  if (kind === 'train') return p != null && kindOf(p) === 'room';
+  if (kind === 'room') return p == null || kindOf(p) === 'room';
+  return false;
 }
 
-// Folds a whole train into one thought: a passage whose body is the train's thoughts in order,
-// named `title`. The thoughts are kept inside it (parts), so unfold() can bring them back.
-export function foldTrain(w, trainId, title = '', now = Date.now()) {
-  const all = trainThoughts(w, trainId);
-  if (all.length < 2) return null;
-  const parts = all.map(({ room: _r, train: _t, ...rest }) => rest);
-  const body = all.map((th) => (kindOf(th) === 'picture' ? (th.text ? `[${th.text}]` : '[picture]') : thoughtText(th))).join('\n');
-  for (const th of all) delete w.thoughts[th.id];
-  const t = w.trains[trainId];
-  if (w.places[t.room]) for (const th of all) delete w.places[t.room][th.id];
-  return addThing(w, trainId, { kind: 'passage', title, body, parts }, all[0].at);
+// Puts a new thought inside `parent`. Returns it, or null (adding nothing) if it would be empty
+// or can't go there.
+export function create(w, parent, fields, now = Date.now()) {
+  const th = tidy(fields);
+  if (!th || !canHold(w, parent, th.kind)) return null;
+  Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
+  w.things[th.id] = th;
+  return th;
 }
 
-// The reverse: a folded passage becomes its train of thoughts again, where it was.
-export function unfold(w, thoughtId) {
-  const th = w.thoughts[thoughtId];
-  if (!th || !th.parts?.length) return false;
-  delete w.thoughts[thoughtId];
-  for (const p of th.parts) w.thoughts[p.id] = { ...p, room: th.room, train: th.train };
-  return true;
+// Changes a thought's own fields (never its kind, place or time). A line, passage or picture
+// left empty is removed.
+export function update(w, id, fields) {
+  const th = w.things[id];
+  if (!th) return null;
+  const next = tidy({ ...th, ...fields, kind: th.kind });
+  if (!next) { remove(w, id); return null; }
+  if (kindOf(th) === 'train' && !next.folded) delete th.folded;
+  Object.assign(th, next);
+  return th;
 }
 
-const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-
-export const trainThoughts = (w, trainId) =>
-  Object.values(w.thoughts).filter((th) => th.train === trainId).sort(byTime);
-
-export const roomThoughts = (w, roomId) =>
-  Object.values(w.thoughts).filter((th) => th.room === roomId).sort(byTime);
-
-// The room's trains, oldest first, leaving out any with no thoughts.
-export function roomTrains(w, roomId) {
-  const used = new Set(roomThoughts(w, roomId).map((th) => th.train));
-  return Object.values(w.trains).filter((t) => t.room === roomId && used.has(t.id)).sort(byTime);
+// Removes a thought and everything inside it; a train left empty goes too. Messy thoughts stays.
+export function remove(w, id) {
+  const th = w.things[id];
+  if (!th || id === MESSY) return;
+  for (const c of children(w, id)) remove(w, c.id);
+  delete w.things[id];
+  for (const r of Object.keys(w.places)) delete w.places[r][id];
+  delete w.views[id];
+  const p = w.things[th.parent];
+  if (p && kindOf(p) === 'train' && !children(w, p.id).length) remove(w, p.id);
 }
 
-// The latest thought written in a room (or null): "lit" rooms are the ones written in lately.
-export function lastWritten(w, roomId) {
-  const all = roomThoughts(w, roomId);
-  return all.length ? all[all.length - 1].at : null;
+// ---- The shared operations ----
+
+// True if `id` is `ancestor`, or somewhere inside it.
+export function inside(w, id, ancestor) {
+  for (let th = w.things[id]; th; th = w.things[th.parent]) if (th.id === ancestor) return true;
+  return false;
 }
 
-// Moves a whole train, every thought with it, into another room, at x, y there.
-export function moveTrain(w, trainId, toRoom, x, y) {
-  const t = w.trains[trainId];
-  if (!t || !room(w, toRoom) || t.room === toRoom) return false;
-  const from = t.room;
-  t.room = toRoom;
-  t.x = x;
-  t.y = y;
-  for (const th of trainThoughts(w, trainId)) {
-    th.room = toRoom;
-    if (w.places[from]) delete w.places[from][th.id];
+// Moves a thought into `into` (a room, or a train). A train or a room just changes parent; a
+// line, passage or picture put into a room gets a train of its own there (at x, y), and the rest
+// of its old train stays joined. Never into itself.
+export function move(w, id, into, x = 0, y = 0) {
+  const th = w.things[id];
+  if (!th || !w.things[into] || th.parent === into || inside(w, into, id)) return false;
+  const fromRoom = roomOf(w, kindOf(th) === 'room' ? th.parent : id);
+  let target = into;
+  if (isLeaf(th) && kindOf(w.things[into]) === 'room') target = create(w, into, { kind: 'train', x, y }, th.at)?.id;
+  if (!target || !canHold(w, target, kindOf(th))) return false;
+  const old = th.parent;
+  th.parent = target;
+  if (kindOf(th) === 'train') { th.x = Math.round(x); th.y = Math.round(y); }
+  if (fromRoom && w.places[fromRoom.id]) {
+    delete w.places[fromRoom.id][id];
+    for (const c of children(w, id)) delete w.places[fromRoom.id][c.id];
   }
+  const was = w.things[old];
+  if (was && kindOf(was) === 'train' && !children(w, old).length) remove(w, old);
   return true;
 }
 
-// Moves one thought into another room. It leaves its train (the rest of the train keeps its
-// order) and starts a train of its own there, at x, y.
-export function moveThought(w, thoughtId, toRoom, x, y) {
-  const th = w.thoughts[thoughtId];
-  if (!th || !room(w, toRoom) || th.room === toRoom) return false;
-  const from = th.room;
-  const old = th.train;
-  const t = startTrain(w, toRoom, x, y, th.at);
-  th.train = t.id;
-  th.room = toRoom;
-  if (w.places[from]) delete w.places[from][th.id];
-  if (!trainThoughts(w, old).length) delete w.trains[old];
+// Names a thought: a room's name, a train's or a passage's title.
+export function name(w, id, text) {
+  const th = w.things[id];
+  if (th) update(w, id, kindOf(th) === 'room' ? { name: text } : { title: text });
+}
+
+// A train folds into one thought, and unfolds back; its thoughts and their order never change.
+export function fold(w, trainId, title) {
+  if (kindOf(w.things[trainId]) !== 'train') return false;
+  update(w, trainId, { folded: true, ...(title != null ? { title } : {}) });
   return true;
 }
+export function unfold(w, trainId) {
+  const t = w.things[trainId];
+  if (kindOf(t) !== 'train' || !t.folded) return false;
+  delete t.folded;
+  return true;
+}
+
+// ---- Shortcuts the screens use ----
+
+export const addRoom = (w, text = 'Untitled', now) => create(w, null, { kind: 'room', name: text }, now);
+export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'train', x, y }, now);
+export const addThought = (w, trainId, text, now) => create(w, trainId, { kind: 'line', text }, now);
 
 // ---- Where things go ----
 
-// Pessoa's loose spiral: the i-th thought (in time order) sits on an Archimedean spiral
-// r = bθ, spaced evenly along its length, nudged a little by its id so it doesn't look ruled.
+// Pessoa's loose spiral: the i-th thought (in time order) sits on an Archimedean spiral r = bθ,
+// spaced evenly along its length, nudged a little by its id so it doesn't look ruled.
 export const SPIRAL = { step: 230, gap: 190 }; // px between neighbours along the spiral; between turns
 export function spiralPoint(i, id = '') {
   const b = SPIRAL.gap / (2 * Math.PI);
@@ -230,15 +279,16 @@ export function spiralPoint(i, id = '') {
   return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
 }
 
-export function pessoaPoint(w, roomId, thoughtId) {
-  const placed = w.places[roomId]?.[thoughtId];
+export function pessoaPoint(w, roomId, id) {
+  const placed = w.places[roomId]?.[id];
   if (placed) return placed;
-  const i = roomThoughts(w, roomId).findIndex((th) => th.id === thoughtId);
-  return spiralPoint(i < 0 ? roomThoughts(w, roomId).length : i, thoughtId);
+  const units = roomUnits(w, roomId);
+  const i = units.findIndex((u) => u.id === id);
+  return spiralPoint(i < 0 ? units.length : i, id);
 }
 
-export function placeThought(w, roomId, thoughtId, x, y) {
-  (w.places[roomId] ||= {})[thoughtId] = { x, y };
+export function place(w, roomId, id, x, y) {
+  (w.places[roomId] ||= {})[id] = { x, y };
 }
 
 // A random spot in the box { x, y, w, h } (world units), as far as it can find from the points

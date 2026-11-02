@@ -1002,6 +1002,7 @@ dialog.dialog-box {
 .create-sheet-picture { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
 .create-sheet-words { display: flex; align-items: baseline; gap: 22px; }
 .create-bar-action { opacity: .5; }
+.create-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -1563,8 +1564,8 @@ dialog.menu-drawer::before {
 (() => {
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
-    for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+    for (var name2 in all)
+      __defProp(target, name2, { get: all[name2], enumerable: true });
   };
 
   // dist/web/folio/ui.js
@@ -1842,27 +1843,27 @@ dialog.menu-drawer::before {
       return this.app.slot(slotName).add(item, this.id);
     }
     // Creates a new slot that other features can add to. Describe what an item looks like.
-    defineSlot(name, description = "") {
-      return this.app.defineSlot(name, this.id, description);
+    defineSlot(name2, description = "") {
+      return this.app.defineSlot(name2, this.id, description);
     }
-    slot(name) {
-      return this.app.slot(name);
+    slot(name2) {
+      return this.app.slot(name2);
     }
     // ---- Services: objects one feature offers to others ----
-    provide(name, service) {
-      this.app.provide(name, service, this.id);
+    provide(name2, service) {
+      this.app.provide(name2, service, this.id);
     }
     // Another feature's service, or null if that feature isn't installed or didn't start.
     // Always handle null: that's what keeps the app working when a folder is deleted.
-    use(name) {
-      return this.app.use(name);
+    use(name2) {
+      return this.app.use(name2);
     }
     // ---- Events ----
-    on(name, fn) {
-      return this.app.on(name, fn, this.id);
+    on(name2, fn) {
+      return this.app.on(name2, fn, this.id);
     }
-    emit(name, data) {
-      this.app.emit(name, data);
+    emit(name2, data) {
+      this.app.emit(name2, data);
     }
     // ---- Screen ----
     // Asks the app to redraw the top bar and the current view.
@@ -1870,9 +1871,9 @@ dialog.menu-drawer::before {
       this.app.refresh();
     }
     // A copy of <template id="name"> from this feature's templates.html.
-    template(name) {
-      const t = document.getElementById(`${this.id}--${name}`);
-      if (!t) throw new Error(`No template "${name}" in ${this.id}/templates.html`);
+    template(name2) {
+      const t = document.getElementById(`${this.id}--${name2}`);
+      if (!t) throw new Error(`No template "${name2}" in ${this.id}/templates.html`);
       return t.content.cloneNode(true);
     }
     toast(message) {
@@ -1883,8 +1884,8 @@ dialog.menu-drawer::before {
     get native() {
       return this.app.platform.native;
     }
-    plugin(name) {
-      return this.app.platform.plugin(name);
+    plugin(name2) {
+      return this.app.platform.plugin(name2);
     }
     // Downloads text from another website (see net.js): through the phone in the Android app,
     // so sites that block web pages still work; an ordinary fetch on the web.
@@ -1895,9 +1896,9 @@ dialog.menu-drawer::before {
 
   // dist/web/folio/Slot.js
   var Slot = class {
-    constructor(app, name) {
+    constructor(app, name2) {
       this.app = app;
-      this.name = name;
+      this.name = name2;
       this.owner = null;
       this.description = "";
       this.entries = [];
@@ -2018,8 +2019,8 @@ dialog.menu-drawer::before {
     }
     // Runs fn the first time only (per device), e.g. to bring over data saved by an older
     // version of the app. Returns true if it ran now.
-    once(name, fn) {
-      const flag = `__once.${name}`;
+    once(name2, fn) {
+      const flag = `__once.${name2}`;
       if (this.has(flag)) return false;
       fn();
       this.set(flag, Date.now());
@@ -2041,8 +2042,8 @@ dialog.menu-drawer::before {
       this.quiet = false;
     }
     // The private area for one feature (or for the framework itself, 'folio').
-    area(name) {
-      return new Area(`${this.appId}.${name}.`, this.onFail, this.onChange);
+    area(name2) {
+      return new Area(`${this.appId}.${name2}.`, this.onFail, this.onChange);
     }
     // Calls fn(fullKey) whenever any area saves or removes a key. Returns a function that stops it.
     watch(fn) {
@@ -2053,7 +2054,7 @@ dialog.menu-drawer::before {
     // in `skip` and every `once` record (those belong to the device).
     snapshot(skip = []) {
       const out = {};
-      const skipped = skip.map((name) => `${name}.`);
+      const skipped = skip.map((name2) => `${name2}.`);
       for (const k of this.keys()) {
         if (skipped.some((s) => k.startsWith(s)) || /(^|\.)__once\./.test(k)) continue;
         const raw = this.raw(this.prefix + k);
@@ -2107,29 +2108,29 @@ dialog.menu-drawer::before {
       this.app = app;
       this.listeners = /* @__PURE__ */ new Map();
     }
-    on(name, fn, owner = null) {
-      const list = this.listeners.get(name) || [];
+    on(name2, fn, owner = null) {
+      const list = this.listeners.get(name2) || [];
       const entry = { fn, owner };
       list.push(entry);
-      this.listeners.set(name, list);
+      this.listeners.set(name2, list);
       return () => {
-        const current = this.listeners.get(name) || [];
-        this.listeners.set(name, current.filter((e) => e !== entry));
+        const current = this.listeners.get(name2) || [];
+        this.listeners.set(name2, current.filter((e) => e !== entry));
       };
     }
-    emit(name, data) {
-      for (const { fn, owner } of [...this.listeners.get(name) || []]) {
+    emit(name2, data) {
+      for (const { fn, owner } of [...this.listeners.get(name2) || []]) {
         try {
           const result = fn(data);
-          if (result?.catch) result.catch((err) => this.app.report(owner, err, `handling "${name}"`));
+          if (result?.catch) result.catch((err) => this.app.report(owner, err, `handling "${name2}"`));
         } catch (err) {
-          this.app.report(owner, err, `handling "${name}"`);
+          this.app.report(owner, err, `handling "${name2}"`);
         }
       }
     }
     removeOwner(owner) {
-      for (const [name, list] of this.listeners) {
-        this.listeners.set(name, list.filter((e) => e.owner !== owner));
+      for (const [name2, list] of this.listeners) {
+        this.listeners.set(name2, list.filter((e) => e.owner !== owner));
       }
     }
   };
@@ -2148,8 +2149,8 @@ dialog.menu-drawer::before {
     }
     // A Capacitor plugin (e.g. 'LocalNotifications'), or null in the web version or when the
     // plugin isn't installed.
-    plugin(name) {
-      return window.Capacitor?.Plugins?.[name] ?? null;
+    plugin(name2) {
+      return window.Capacitor?.Plugins?.[name2] ?? null;
     }
   };
 
@@ -2397,10 +2398,10 @@ dialog.menu-drawer::before {
         );
       });
       const off = features2.filter((f) => f.status !== "active").length;
-      const fold = el(
+      const fold2 = el(
         "details",
         { class: "advanced features-fold", open: this.featuresOpen, ontoggle: () => {
-          this.featuresOpen = fold.open;
+          this.featuresOpen = fold2.open;
         } },
         el("summary", {}, "Features", el("small", {}, off ? `${features2.length - off} on, ${off} off` : `All ${features2.length} on`)),
         hint("Switch off anything you don't use. Features that need a switched-off feature are switched off too.", { small: true }),
@@ -2409,16 +2410,16 @@ dialog.menu-drawer::before {
       return el(
         "section",
         { class: "settings-section" },
-        fold,
+        fold2,
         this.restartNeeded && el("button", { type: "button", class: "btn primary", onclick: () => location.reload() }, "Restart the app to apply")
       );
     }
     // ---- About ----
     aboutParts() {
-      const { name, version, build, framework } = this.app.config;
+      const { name: name2, version, build, framework } = this.app.config;
       const problems = this.app.problems;
       return [
-        hint(`${name} ${version}${build ? ` (build ${build})` : ""} · Made with Folio ${framework}`, { small: true }),
+        hint(`${name2} ${version}${build ? ` (build ${build})` : ""} · Made with Folio ${framework}`, { small: true }),
         problems.length > 0 && el(
           "details",
           { class: "advanced" },
@@ -2857,36 +2858,36 @@ dialog.menu-drawer::before {
     removeEverythingFrom(owner) {
       for (const slot of this.slots.values()) slot.removeOwner(owner);
       this.events.removeOwner(owner);
-      for (const [name, entry] of this.services) if (entry.owner === owner) this.services.delete(name);
+      for (const [name2, entry] of this.services) if (entry.owner === owner) this.services.delete(name2);
     }
     // ---- Slots ----
-    slot(name) {
-      let slot = this.slots.get(name);
-      if (!slot) this.slots.set(name, slot = new Slot(this, name));
+    slot(name2) {
+      let slot = this.slots.get(name2);
+      if (!slot) this.slots.set(name2, slot = new Slot(this, name2));
       return slot;
     }
-    defineSlot(name, owner, description = "") {
-      const slot = this.slot(name);
-      if (slot.owner && slot.owner !== owner) console.warn(`Slot "${name}" is defined by both ${slot.owner} and ${owner}.`);
+    defineSlot(name2, owner, description = "") {
+      const slot = this.slot(name2);
+      if (slot.owner && slot.owner !== owner) console.warn(`Slot "${name2}" is defined by both ${slot.owner} and ${owner}.`);
       slot.owner = owner;
       slot.description = description;
       return slot;
     }
     // ---- Services ----
-    provide(name, service, owner) {
-      const existing = this.services.get(name);
-      if (existing && existing.owner !== owner) console.warn(`Service "${name}" from ${existing.owner} is replaced by ${owner}.`);
-      this.services.set(name, { service, owner });
+    provide(name2, service, owner) {
+      const existing = this.services.get(name2);
+      if (existing && existing.owner !== owner) console.warn(`Service "${name2}" from ${existing.owner} is replaced by ${owner}.`);
+      this.services.set(name2, { service, owner });
     }
-    use(name) {
-      return this.services.get(name)?.service ?? null;
+    use(name2) {
+      return this.services.get(name2)?.service ?? null;
     }
     // ---- Events ----
-    on(name, fn, owner) {
-      return this.events.on(name, fn, owner);
+    on(name2, fn, owner) {
+      return this.events.on(name2, fn, owner);
     }
-    emit(name, data) {
-      this.events.emit(name, data);
+    emit(name2, data) {
+      this.events.emit(name2, data);
     }
     // ---- Screen ----
     // Redraws the top bar and the current view. Many calls in a row cause only one redraw.
@@ -3158,87 +3159,87 @@ dialog.menu-drawer::before {
     { id: "pessoa", name: "Pessoa" }
   ];
   var DEFAULT_MODE = "joyce";
-  var KINDS = ["line", "passage", "picture"];
+  var LEAVES = ["line", "passage", "picture"];
+  var KINDS = [...LEAVES, "train", "room"];
   var kindOf = (th) => KINDS.includes(th?.kind) ? th.kind : "line";
+  var isLeaf = (th) => LEAVES.includes(kindOf(th));
   var counter = 0;
   function uid(prefix = "x") {
     counter = (counter + 1) % 1e6;
     return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   }
+  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts" });
   function emptyWorld(now = Date.now()) {
-    return {
-      v: 1,
-      rooms: [{ id: MESSY, name: "Messy thoughts", at: now }],
-      thoughts: {},
-      trains: {},
-      views: {},
-      places: {}
-    };
+    return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
   }
   function loadWorld(saved, now = Date.now()) {
-    const w = Object.assign(emptyWorld(now), saved && typeof saved === "object" ? saved : {});
-    if (!Array.isArray(w.rooms)) w.rooms = [];
-    if (!w.rooms.some((r) => r.id === MESSY)) w.rooms.unshift({ id: MESSY, name: "Messy thoughts", at: now });
-    for (const key of ["thoughts", "trains", "views", "places"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
-    const rooms = new Set(w.rooms.map((r) => r.id));
-    for (const t of Object.values(w.trains)) if (!rooms.has(t.room)) t.room = MESSY;
-    for (const th of Object.values(w.thoughts)) {
-      const train = w.trains[th.train];
-      if (!train) delete w.thoughts[th.id];
-      else th.room = train.room;
+    let w = saved && typeof saved === "object" ? saved : {};
+    if (w.v !== 2) w = fromV1(w, now);
+    w = Object.assign(emptyWorld(now), w);
+    for (const key of ["things", "views", "places"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
+    if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
+    for (const th of Object.values(w.things)) {
+      if (th.parent == null || w.things[th.parent]) continue;
+      if (kindOf(th) === "room") th.parent = null;
+      else if (kindOf(th) === "train") th.parent = MESSY;
+      else delete w.things[th.id];
     }
     return w;
   }
-  var room = (w, id) => w.rooms.find((r) => r.id === id) || null;
-  function addRoom(w, name = "Untitled", now = Date.now()) {
-    const r = { id: uid("r"), name: String(name).trim() || "Untitled", at: now };
-    w.rooms.push(r);
-    return r;
+  function fromV1(old, now) {
+    const w = emptyWorld(now);
+    for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: "room", parent: null, at: r.at ?? now, name: r.name };
+    for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: "train", parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: "" };
+    for (const th of Object.values(old.thoughts || {})) {
+      const { room: _room, train, parts, ...rest } = th;
+      if (parts?.length) {
+        const t = w.things[train];
+        if (t) Object.assign(t, { folded: true, title: th.title || "" });
+        for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
+      } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
+    }
+    w.views = old.views || {};
+    w.places = old.places || {};
+    return w;
   }
-  function renameRoom(w, id, name) {
-    const r = room(w, id);
-    if (r && String(name).trim()) r.name = String(name).trim();
+  var room = (w, id) => kindOf(w.things[id]) === "room" ? w.things[id] : null;
+  var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+  var children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
+  var rooms = (w) => children(w, null).filter((th) => kindOf(th) === "room");
+  function roomOf(w, id) {
+    let th = w.things[id];
+    while (th && kindOf(th) !== "room") th = w.things[th.parent];
+    return th || null;
+  }
+  var trainThoughts = (w, trainId) => children(w, trainId).filter(isLeaf);
+  var roomTrains = (w, roomId) => children(w, roomId).filter((th) => kindOf(th) === "train" && trainThoughts(w, th.id).length);
+  var roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
+  var roomUnits = (w, roomId) => roomTrains(w, roomId).flatMap((t) => t.folded ? [t] : trainThoughts(w, t.id)).sort(byTime);
+  function lastWritten(w, roomId) {
+    const all = roomThoughts(w, roomId);
+    return all.length ? Math.max(...all.map((th) => th.at)) : null;
   }
   function view(w, roomId) {
     if (!w.views[roomId]) w.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
     return w.views[roomId];
   }
-  function startTrain(w, roomId, x, y, now = Date.now()) {
-    const t = { id: uid("t"), room: roomId, x, y, at: now };
-    w.trains[t.id] = t;
-    return t;
-  }
-  function addThought(w, trainId, text, now = Date.now()) {
-    return addThing(w, trainId, { kind: "line", text }, now);
-  }
-  function addThing(w, trainId, fields, now = Date.now()) {
-    const train = w.trains[trainId];
-    const th = tidy(fields);
-    if (!train || !th) return null;
-    Object.assign(th, { id: uid("h"), room: train.room, train: trainId, at: now });
-    w.thoughts[th.id] = th;
-    return th;
-  }
-  function updateThing(w, id, fields) {
-    const th = w.thoughts[id];
-    if (!th) return null;
-    const next = tidy({ ...th, ...fields });
-    if (!next) {
-      deleteThought(w, id);
-      return null;
+  function thoughtText(w, th) {
+    switch (kindOf(th)) {
+      case "passage":
+        return [th.title, th.body].filter(Boolean).join(" — ");
+      case "picture":
+        return th.text ? `[${th.text}]` : "[picture]";
+      case "train":
+        return trainThoughts(w, th.id).map((x) => thoughtText(w, x)).join("\n");
+      case "room":
+        return th.name || "";
+      default:
+        return th.text || "";
     }
-    Object.assign(th, next);
-    return th;
-  }
-  function deleteThought(w, id) {
-    const th = w.thoughts[id];
-    if (!th) return;
-    delete w.thoughts[id];
-    if (w.places[th.room]) delete w.places[th.room][id];
-    if (!trainThoughts(w, th.train).length) delete w.trains[th.train];
   }
   var oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
   var lines = (s) => String(s ?? "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  var clamp01 = (v, d) => Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d;
   function tidy(f) {
     const kind = kindOf(f);
     if (kind === "line") {
@@ -3247,72 +3248,103 @@ dialog.menu-drawer::before {
     }
     if (kind === "passage") {
       const title = oneLine(f.title), body = lines(f.body);
-      if (!title && !body) return null;
-      const out = { kind, title, body };
-      if (Array.isArray(f.parts) && f.parts.length) out.parts = f.parts;
-      return out;
+      return title || body ? { kind, title, body } : null;
     }
-    const src = typeof f.src === "string" && f.src.startsWith("data:image/") ? f.src : "";
-    return src ? { kind, src, text: oneLine(f.text) } : null;
-  }
-  function thoughtText(th) {
-    const k = kindOf(th);
-    if (k === "passage") return [th.title, th.body].filter(Boolean).join(" — ");
-    return th.text || "";
-  }
-  function foldTrain(w, trainId, title = "", now = Date.now()) {
-    const all = trainThoughts(w, trainId);
-    if (all.length < 2) return null;
-    const parts = all.map(({ room: _r, train: _t, ...rest }) => rest);
-    const body = all.map((th) => kindOf(th) === "picture" ? th.text ? `[${th.text}]` : "[picture]" : thoughtText(th)).join("\n");
-    for (const th of all) delete w.thoughts[th.id];
-    const t = w.trains[trainId];
-    if (w.places[t.room]) for (const th of all) delete w.places[t.room][th.id];
-    return addThing(w, trainId, { kind: "passage", title, body, parts }, all[0].at);
-  }
-  function unfold(w, thoughtId) {
-    const th = w.thoughts[thoughtId];
-    if (!th || !th.parts?.length) return false;
-    delete w.thoughts[thoughtId];
-    for (const p of th.parts) w.thoughts[p.id] = { ...p, room: th.room, train: th.train };
-    return true;
-  }
-  var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-  var trainThoughts = (w, trainId) => Object.values(w.thoughts).filter((th) => th.train === trainId).sort(byTime);
-  var roomThoughts = (w, roomId) => Object.values(w.thoughts).filter((th) => th.room === roomId).sort(byTime);
-  function roomTrains(w, roomId) {
-    const used = new Set(roomThoughts(w, roomId).map((th) => th.train));
-    return Object.values(w.trains).filter((t) => t.room === roomId && used.has(t.id)).sort(byTime);
-  }
-  function lastWritten(w, roomId) {
-    const all = roomThoughts(w, roomId);
-    return all.length ? all[all.length - 1].at : null;
-  }
-  function moveTrain(w, trainId, toRoom, x, y) {
-    const t = w.trains[trainId];
-    if (!t || !room(w, toRoom) || t.room === toRoom) return false;
-    const from = t.room;
-    t.room = toRoom;
-    t.x = x;
-    t.y = y;
-    for (const th of trainThoughts(w, trainId)) {
-      th.room = toRoom;
-      if (w.places[from]) delete w.places[from][th.id];
+    if (kind === "picture") {
+      const src = typeof f.src === "string" && f.src.startsWith("data:image/") ? f.src : "";
+      return src ? { kind, src, text: oneLine(f.text) } : null;
     }
+    if (kind === "train") {
+      const out2 = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
+      if (f.folded) out2.folded = true;
+      return out2;
+    }
+    const out = { kind, name: oneLine(f.name) || "Untitled" };
+    if (typeof f.tint === "string" && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
+    if (f.light != null) out.light = clamp01(f.light, 0.5);
+    if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
+    return out;
+  }
+  function canHold(w, parent, kind) {
+    const p = parent == null ? null : w.things[parent];
+    if (parent != null && !p) return false;
+    if (LEAVES.includes(kind)) return kindOf(p) === "train" && p != null;
+    if (kind === "train") return p != null && kindOf(p) === "room";
+    if (kind === "room") return p == null || kindOf(p) === "room";
+    return false;
+  }
+  function create(w, parent, fields, now = Date.now()) {
+    const th = tidy(fields);
+    if (!th || !canHold(w, parent, th.kind)) return null;
+    Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
+    w.things[th.id] = th;
+    return th;
+  }
+  function update(w, id, fields) {
+    const th = w.things[id];
+    if (!th) return null;
+    const next = tidy({ ...th, ...fields, kind: th.kind });
+    if (!next) {
+      remove(w, id);
+      return null;
+    }
+    if (kindOf(th) === "train" && !next.folded) delete th.folded;
+    Object.assign(th, next);
+    return th;
+  }
+  function remove(w, id) {
+    const th = w.things[id];
+    if (!th || id === MESSY) return;
+    for (const c of children(w, id)) remove(w, c.id);
+    delete w.things[id];
+    for (const r of Object.keys(w.places)) delete w.places[r][id];
+    delete w.views[id];
+    const p = w.things[th.parent];
+    if (p && kindOf(p) === "train" && !children(w, p.id).length) remove(w, p.id);
+  }
+  function inside(w, id, ancestor) {
+    for (let th = w.things[id]; th; th = w.things[th.parent]) if (th.id === ancestor) return true;
+    return false;
+  }
+  function move(w, id, into, x = 0, y = 0) {
+    const th = w.things[id];
+    if (!th || !w.things[into] || th.parent === into || inside(w, into, id)) return false;
+    const fromRoom = roomOf(w, kindOf(th) === "room" ? th.parent : id);
+    let target = into;
+    if (isLeaf(th) && kindOf(w.things[into]) === "room") target = create(w, into, { kind: "train", x, y }, th.at)?.id;
+    if (!target || !canHold(w, target, kindOf(th))) return false;
+    const old = th.parent;
+    th.parent = target;
+    if (kindOf(th) === "train") {
+      th.x = Math.round(x);
+      th.y = Math.round(y);
+    }
+    if (fromRoom && w.places[fromRoom.id]) {
+      delete w.places[fromRoom.id][id];
+      for (const c of children(w, id)) delete w.places[fromRoom.id][c.id];
+    }
+    const was = w.things[old];
+    if (was && kindOf(was) === "train" && !children(w, old).length) remove(w, old);
     return true;
   }
-  function moveThought(w, thoughtId, toRoom, x, y) {
-    const th = w.thoughts[thoughtId];
-    if (!th || !room(w, toRoom) || th.room === toRoom) return false;
-    const from = th.room;
-    const old = th.train;
-    const t = startTrain(w, toRoom, x, y, th.at);
-    th.train = t.id;
-    th.room = toRoom;
-    if (w.places[from]) delete w.places[from][th.id];
-    if (!trainThoughts(w, old).length) delete w.trains[old];
+  function name(w, id, text) {
+    const th = w.things[id];
+    if (th) update(w, id, kindOf(th) === "room" ? { name: text } : { title: text });
+  }
+  function fold(w, trainId, title) {
+    if (kindOf(w.things[trainId]) !== "train") return false;
+    update(w, trainId, { folded: true, ...title != null ? { title } : {} });
     return true;
   }
+  function unfold(w, trainId) {
+    const t = w.things[trainId];
+    if (kindOf(t) !== "train" || !t.folded) return false;
+    delete t.folded;
+    return true;
+  }
+  var addRoom = (w, text = "Untitled", now) => create(w, null, { kind: "room", name: text }, now);
+  var startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: "train", x, y }, now);
+  var addThought = (w, trainId, text, now) => create(w, trainId, { kind: "line", text }, now);
   var SPIRAL = { step: 230, gap: 190 };
   function spiralPoint(i, id = "") {
     const b = SPIRAL.gap / (2 * Math.PI);
@@ -3323,14 +3355,15 @@ dialog.menu-drawer::before {
     const jy = ((h >> 8 & 255) / 255 - 0.5) * 28;
     return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
   }
-  function pessoaPoint(w, roomId, thoughtId) {
-    const placed = w.places[roomId]?.[thoughtId];
+  function pessoaPoint(w, roomId, id) {
+    const placed = w.places[roomId]?.[id];
     if (placed) return placed;
-    const i = roomThoughts(w, roomId).findIndex((th) => th.id === thoughtId);
-    return spiralPoint(i < 0 ? roomThoughts(w, roomId).length : i, thoughtId);
+    const units = roomUnits(w, roomId);
+    const i = units.findIndex((u) => u.id === id);
+    return spiralPoint(i < 0 ? units.length : i, id);
   }
-  function placeThought(w, roomId, thoughtId, x, y) {
-    (w.places[roomId] ||= {})[thoughtId] = { x, y };
+  function place(w, roomId, id, x, y) {
+    (w.places[roomId] ||= {})[id] = { x, y };
   }
   function randomSpot(box, taken = [], random = Math.random, tries = 24) {
     let best = null;
@@ -3486,18 +3519,18 @@ dialog.menu-drawer::before {
       this.stage.addEventListener("pointerdown", (e) => this.onDown(e));
       this.stage.addEventListener("dblclick", (e) => {
         const id = e.target.closest("[data-id]")?.dataset.id;
-        if (id && kindOf(this.world.thoughts[id]) !== "line") this.openSheet(null, id);
+        if (id && kindOf(this.world.things[id]) !== "line") this.openSheet(null, id);
       });
       this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     }
     // ---- The rooms page ----
     drawRooms() {
       const now = Date.now();
-      this.grid.replaceChildren(...this.world.rooms.map((r) => {
+      this.grid.replaceChildren(...rooms(this.world).map((r) => {
         const last = lastWritten(this.world, r.id);
         const count = roomThoughts(this.world, r.id).length;
         const lit = last != null && now - last < LIT_FOR;
-        const name = this.renaming === r.id ? this.nameField(r, () => {
+        const name2 = this.renaming === r.id ? this.nameField(r, () => {
           this.renaming = null;
           this.drawRooms();
         }) : el3("span", { class: "create-tile-name" }, r.name);
@@ -3516,7 +3549,7 @@ dialog.menu-drawer::before {
               this.renaming = r.id;
               this.drawRooms();
             } },
-            name,
+            name2,
             el3("span", { class: "create-tile-count" }, count ? String(count) : "")
           )
         );
@@ -3537,7 +3570,7 @@ dialog.menu-drawer::before {
         if (finished) return;
         finished = true;
         if (keep) {
-          renameRoom(this.world, r.id, field3.value);
+          name(this.world, r.id, field3.value);
           this.save();
         }
         done();
@@ -3615,7 +3648,7 @@ dialog.menu-drawer::before {
       const nodes = [];
       if (this.mode === "joyce") {
         for (const t of roomTrains(w, this.roomId)) {
-          const kids = trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
+          const kids = t.folded ? [this.thoughtNode(t)] : trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
           if (this.draft?.train === t.id) kids.push(this.draftNode());
           nodes.push(el3("div", {
             class: "create-train" + (this.sel?.id === t.id ? " selected" : ""),
@@ -3627,7 +3660,7 @@ dialog.menu-drawer::before {
           nodes.push(el3("div", { class: "create-train", style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
         }
       } else {
-        const all = roomThoughts(w, this.roomId);
+        const all = roomUnits(w, this.roomId);
         for (const th of all) {
           const p = pessoaPoint(w, this.roomId, th.id);
           nodes.push(el3("div", {
@@ -3647,12 +3680,13 @@ dialog.menu-drawer::before {
     // One thought, drawn by its kind.
     thoughtNode(th) {
       const kind = kindOf(th);
-      if (kind === "passage") {
+      if (kind === "passage" || kind === "train") {
+        const body = kind === "train" ? thoughtText(this.world, th) : th.body;
         return el3(
           "div",
-          { class: "create-passage" + (th.parts ? " folded" : ""), "data-id": th.id },
+          { class: "create-passage" + (kind === "train" ? " folded" : ""), "data-id": th.id },
           th.title ? el3("div", { class: "create-passage-title" }, th.title) : null,
-          th.body ? el3("div", { class: "create-passage-body" }, th.body) : null
+          body ? el3("div", { class: "create-passage-body" }, body) : null
         );
       }
       if (kind === "picture") {
@@ -3747,7 +3781,7 @@ dialog.menu-drawer::before {
         this.drawWorld();
         return;
       }
-      const train = d.train ? this.world.trains[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
+      const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
       addThought(this.world, train.id, text);
       this.current[this.roomId] = train.id;
       this.save();
@@ -3789,27 +3823,28 @@ dialog.menu-drawer::before {
       const thoughtEl = e.target.closest("[data-thought]");
       let thing = null;
       if (trainEl && this.mode === "joyce") {
-        const t = this.world.trains[trainEl.dataset.train];
-        thing = { kind: "train", id: t.id, x: t.x, y: t.y };
+        const t = this.world.things[trainEl.dataset.train];
+        thing = { kind: "train", id: t.id, x: t.x, y: t.y, placed: false };
       } else if (thoughtEl && this.mode === "pessoa") {
-        const p = pessoaPoint(this.world, this.roomId, thoughtEl.dataset.thought);
-        thing = { kind: "thought", id: thoughtEl.dataset.thought, x: p.x, y: p.y, el: thoughtEl };
+        const id = thoughtEl.dataset.thought;
+        const p = pessoaPoint(this.world, this.roomId, id);
+        thing = { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id, x: p.x, y: p.y, placed: true };
       }
       this.gesture = { kind: thing ? "drag" : "pan", thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
-      const move = (ev) => this.onMove(ev);
+      const move2 = (ev) => this.onMove(ev);
       const up = (ev) => {
         pointers.delete(ev.pointerId);
         if (pointers.size) {
           if (pointers.size === 1) this.gesture = null;
           return;
         }
-        this.stage.removeEventListener("pointermove", move);
+        this.stage.removeEventListener("pointermove", move2);
         this.stage.removeEventListener("pointerup", up);
         this.stage.removeEventListener("pointercancel", up);
         this.onUp();
       };
       if (pointers.size === 1) {
-        this.stage.addEventListener("pointermove", move);
+        this.stage.addEventListener("pointermove", move2);
         this.stage.addEventListener("pointerup", up);
         this.stage.addEventListener("pointercancel", up);
       }
@@ -3859,8 +3894,8 @@ dialog.menu-drawer::before {
         return;
       }
       if (g.thing && g.to) {
-        if (g.thing.kind === "train") Object.assign(this.world.trains[g.thing.id], g.to);
-        else placeThought(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
+        if (g.thing.placed) place(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
+        else Object.assign(this.world.things[g.thing.id], g.to);
       }
       this.save();
     }
@@ -3894,7 +3929,7 @@ dialog.menu-drawer::before {
         this.bar.hidden = true;
         return;
       }
-      const others = this.world.rooms.filter((r) => r.id !== this.roomId);
+      const others = rooms(this.world).filter((r) => r.id !== this.roomId);
       const what = this.sel.kind === "train" ? "this train" : "this thought";
       this.bar.hidden = false;
       this.bar.replaceChildren(
@@ -3908,27 +3943,27 @@ dialog.menu-drawer::before {
     selActions() {
       const out = [];
       const word = (label, fn) => el3("button", { type: "button", class: "create-word create-bar-action", onclick: fn }, label);
-      if (this.sel.kind === "train") {
-        const all = trainThoughts(this.world, this.sel.id);
-        if (all.length > 1) out.push(word("Fold into one thought", () => this.fold(this.sel.id)));
-        if (all.length === 1 && all[0].parts) out.push(word("Unfold", () => this.unfoldThought(all[0].id)));
-        if (all.length === 1 && kindOf(all[0]) !== "line") out.push(word("Edit", () => this.openSheet(null, all[0].id)));
-      } else {
-        const th = this.world.thoughts[this.sel.id];
-        if (th?.parts) out.push(word("Unfold", () => this.unfoldThought(th.id)));
-        if (th && kindOf(th) !== "line") out.push(word("Edit", () => this.openSheet(null, th.id)));
-      }
+      const th = this.world.things[this.sel.id];
+      if (!th) return out;
+      if (kindOf(th) === "train") {
+        const all = trainThoughts(this.world, th.id);
+        if (th.folded) {
+          out.push(word("Unfold", () => this.unfoldTrain(th.id)), word("Name", () => this.openSheet(null, th.id)));
+        } else {
+          if (all.length > 1) out.push(word("Fold into one thought", () => this.foldTrain(th.id)));
+          if (all.length === 1 && kindOf(all[0]) !== "line") out.push(word("Edit", () => this.openSheet(null, all[0].id)));
+        }
+      } else if (kindOf(th) !== "line") out.push(word("Edit", () => this.openSheet(null, th.id)));
       return out;
     }
-    fold(trainId) {
-      const th = foldTrain(this.world, trainId);
-      if (!th) return;
+    foldTrain(trainId) {
+      if (!fold(this.world, trainId)) return;
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.openSheet(null, th.id);
+      this.openSheet(null, trainId);
     }
-    unfoldThought(id) {
+    unfoldTrain(id) {
       unfold(this.world, id);
       this.sel = null;
       this.save();
@@ -3938,7 +3973,8 @@ dialog.menu-drawer::before {
     // Where a new thought goes: on with the current train, or a new train at a free spot.
     target() {
       const cur = this.current[this.roomId];
-      if (!this.fresh && this.world.trains[cur]?.room === this.roomId) return { train: cur };
+      const t = this.world.things[cur];
+      if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
       const spot = this.freeSpot();
       this.fresh = false;
       return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
@@ -3967,7 +4003,7 @@ dialog.menu-drawer::before {
     openSheet(kind, id = null, src = null) {
       if (!this.roomId) return;
       if (this.draft) this.commit();
-      const th = id ? this.world.thoughts[id] : null;
+      const th = id ? this.world.things[id] : null;
       kind = th ? kindOf(th) : kind;
       this.editing = { kind, id, src: src || th?.src || null };
       const keep = () => this.keepSheet();
@@ -3983,7 +4019,10 @@ dialog.menu-drawer::before {
         }
       };
       const fields = [];
-      if (kind === "passage") {
+      if (kind === "train") {
+        this.sheetTitle = el3("input", { class: "create-sheet-title", placeholder: "Name this train of thought", "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        fields.push(this.sheetTitle, el3("div", { class: "create-sheet-preview" }, thoughtText(this.world, th)));
+      } else if (kind === "passage") {
         this.sheetTitle = el3("input", { class: "create-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
         this.sheetBody = el3("textarea", { class: "create-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
         this.sheetBody.value = th?.body || "";
@@ -3993,7 +4032,7 @@ dialog.menu-drawer::before {
         fields.push(el3("img", { class: "create-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
       this.sheet.replaceChildren(
-        el3("div", { class: "create-sheet-kind" }, kind === "passage" ? th?.parts ? "A folded train" : "Passage" : "Picture"),
+        el3("div", { class: "create-sheet-kind" }, { passage: "Passage", picture: "Picture", train: "A folded train" }[kind]),
         ...fields,
         el3(
           "div",
@@ -4004,18 +4043,21 @@ dialog.menu-drawer::before {
         )
       );
       this.sheet.hidden = false;
-      (kind === "passage" ? th?.parts || !th ? this.sheetTitle : this.sheetBody : this.sheetCaption).focus();
+      (kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle).focus();
     }
     keepSheet() {
       const ed = this.editing;
       if (!ed) return;
-      const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
-      if (ed.id) updateThing(this.world, ed.id, fields);
+      if (ed.kind === "train") name(this.world, ed.id, this.sheetTitle.value);
       else {
-        const t = this.target();
-        const train = t.train ? this.world.trains[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
-        if (addThing(this.world, train.id, fields)) this.current[this.roomId] = train.id;
-        else if (!t.train) delete this.world.trains[train.id];
+        const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
+        if (ed.id) update(this.world, ed.id, fields);
+        else {
+          const t = this.target();
+          const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
+          if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
+          else if (!t.train) remove(this.world, train.id);
+        }
       }
       this.save();
       this.closeSheet();
@@ -4032,13 +4074,11 @@ dialog.menu-drawer::before {
       const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
       const spot = randomSpot(box, taken);
       const x = Math.round(spot.x), y = Math.round(spot.y);
-      if (this.sel.kind === "train") moveTrain(this.world, this.sel.id, toRoom, x, y);
-      else moveThought(this.world, this.sel.id, toRoom, x, y);
-      const name = room(this.world, toRoom).name;
+      move(this.world, this.sel.id, toRoom, x, y);
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.toast(`Moved to ${name}`);
+      this.toast(`Moved to ${room(this.world, toRoom).name}`);
     }
   };
 
@@ -4067,9 +4107,9 @@ dialog.menu-drawer::before {
   function loadFont(font) {
     if (!font.files?.length || typeof FontFace === "undefined") return Promise.resolve();
     if (!loaded.has(font.id)) {
-      const name = font.family.split(",")[0].trim().replace(/^["']|["']$/g, "");
+      const name2 = font.family.split(",")[0].trim().replace(/^["']|["']$/g, "");
       loaded.set(font.id, Promise.all(font.files.map(async (f) => {
-        const face = new FontFace(name, `url(${f.src})`, { weight: f.weight || "400", style: f.style || "normal", display: "swap" });
+        const face = new FontFace(name2, `url(${f.src})`, { weight: f.weight || "400", style: f.style || "normal", display: "swap" });
         document.fonts.add(await face.load());
       })).catch(() => {
       }));
@@ -4264,8 +4304,8 @@ dialog.menu-drawer::before {
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function stream(seed, name) {
-    const U = mulberry32(cyrb53(String(seed) + name) >>> 0);
+  function stream(seed, name2) {
+    const U = mulberry32(cyrb53(String(seed) + name2) >>> 0);
     const N = () => {
       const u1 = 1 - U();
       const u2 = U();
@@ -4349,7 +4389,7 @@ dialog.menu-drawer::before {
     const my = Math.min(m, Y / 2);
     return { x0: mx, x1: X - mx, y0: my, y1: Y - my };
   }
-  var inside = (box, x, y) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
+  var inside2 = (box, x, y) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
   function stickBreaking(U, { kappa, theta, Amin }) {
     const A = [];
     let rest = 1;
@@ -4373,7 +4413,7 @@ dialog.menu-drawer::before {
     for (let k = 0; k < TRIES; k++) {
       const x = anchor.x + sigma2 * N();
       const y = anchor.y + sigma2 * N();
-      if (inside(box, x, y)) return { x, y, how: k === 0 ? "gaussian" : `gaussian, ${k + 1} tries` };
+      if (inside2(box, x, y)) return { x, y, how: k === 0 ? "gaussian" : `gaussian, ${k + 1} tries` };
     }
     return { x: anchor.x, y: anchor.y, how: "anchor (20 tries missed)" };
   }
@@ -4399,7 +4439,7 @@ dialog.menu-drawer::before {
         const ang = 2 * Math.PI * rng.U();
         const x = main.x + d * Math.cos(ang);
         const y = main.y + d * Math.sin(ang);
-        if (!inside(box, x, y)) continue;
+        if (!inside2(box, x, y)) continue;
         const clear = patches.every((q) => Math.hypot(x - q.x, y - q.y) >= 0.8 * (p.r + q.r));
         if (clear) placed = { ...p, x, y, main: false };
       }
@@ -5065,9 +5105,9 @@ dialog.menu-drawer::before {
     grain: ["lambdaG", "omega", "Ag", "lambdaGw", "etaG", "lambdaN", "aG", "psi"],
     cloud: ["aCl", "lambdaCl"]
   };
-  function strokeKind(name, P) {
+  function strokeKind(name2, P) {
     const shared = { sigmaW: P.sigmaW, sigmaB: P.sigmaB, sigmaA: P.sigmaA, ellG: P.ellG };
-    if (name === "fibres") {
+    if (name2 === "fibres") {
       return {
         ...shared,
         lambda: P.lambdaF,
@@ -5081,7 +5121,7 @@ dialog.menu-drawer::before {
         ab: [0.3, 2]
       };
     }
-    if (name === "web") {
+    if (name2 === "web") {
       return {
         ...shared,
         lambda: P.lambdaWeb,
@@ -5108,13 +5148,13 @@ dialog.menu-drawer::before {
       ab: [0.6, 1.2]
     };
   }
-  function part(name, seed, X, Y, W, H, P) {
+  function part(name2, seed, X, Y, W, H, P) {
     const canvas = { X, Y, W, H, px: X / W };
-    const rng = stream(seed, `:pattern:${name}`);
-    if (name === "grain") return { S: grain(rng, P, canvas) };
-    if (name === "cloud") return { C: cloud(rng, P, canvas) };
+    const rng = stream(seed, `:pattern:${name2}`);
+    if (name2 === "grain") return { S: grain(rng, P, canvas) };
+    if (name2 === "cloud") return { C: cloud(rng, P, canvas) };
     const D = new Float32Array(W * H);
-    if (name === "flakes") return { D, count: flakes(rng, P, canvas, D) };
+    if (name2 === "flakes") return { D, count: flakes(rng, P, canvas, D) };
     canvas.scratch = {
       d2: new Float32Array(W * H).fill(Infinity),
       w: new Float32Array(W * H),
@@ -5122,7 +5162,7 @@ dialog.menu-drawer::before {
       a: new Float32Array(W * H),
       touched: []
     };
-    return { D, count: strokes(rng, strokeKind(name, P), canvas, D) };
+    return { D, count: strokes(rng, strokeKind(name2, P), canvas, D) };
   }
   function combine({ fibres, web, specks, flakes: flakes2, grain: grain2, cloud: cloud2 }) {
     return {
@@ -5609,13 +5649,13 @@ dialog.menu-drawer::before {
   }
   function network(rects, X, Y) {
     const key = (x, y) => `${x.toFixed(9)},${y.toFixed(9)}`;
-    const inside2 = (v, side) => v > EPS && v < side - EPS;
+    const inside3 = (v, side) => v > EPS && v < side - EPS;
     const sides = [];
     for (const [x0, y0, x1, y1] of rects) {
-      if (inside2(y0, Y)) sides.push([true, y0, x0, x1]);
-      if (inside2(y1, Y)) sides.push([true, y1, x0, x1]);
-      if (inside2(x0, X)) sides.push([false, x0, y0, y1]);
-      if (inside2(x1, X)) sides.push([false, x1, y0, y1]);
+      if (inside3(y0, Y)) sides.push([true, y0, x0, x1]);
+      if (inside3(y1, Y)) sides.push([true, y1, x0, x1]);
+      if (inside3(x0, X)) sides.push([false, x0, y0, y1]);
+      if (inside3(x1, X)) sides.push([false, x1, y0, y1]);
     }
     const stops = /* @__PURE__ */ new Map();
     const at = (h, c) => `${h ? "h" : "v"}:${c.toFixed(9)}`;
@@ -6001,26 +6041,26 @@ dialog.menu-drawer::before {
     const c = e.patternCache ||= { parts: {} };
     const t0 = performance.now();
     let changed = !c.Dw;
-    for (const [name, keys] of Object.entries(PARTS)) {
+    for (const [name2, keys] of Object.entries(PARTS)) {
       const key = keys.map((k) => P[k]).join();
-      if (c.parts[name]?.key === key) continue;
-      c.parts[name] = { key, ...part(name, seed, X, Y, W, H, P) };
+      if (c.parts[name2]?.key === key) continue;
+      c.parts[name2] = { key, ...part(name2, seed, X, Y, W, H, P) };
       changed = true;
     }
     if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
     return c;
   }
-  function view2(e, name, P, r) {
+  function view2(e, name2, P, r) {
     const { W, H } = e.image;
     colours(e, P);
     const t = tone2(e, P);
     const delta = shift(e, P);
-    if (name === "monochrome") {
+    if (name2 === "monochrome") {
       return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, e.ink, e.paper)) : paint(t, e.lut), width: W, height: H };
     }
-    if (name === "pattern") return { rgba: washi(e, null, P), width: W, height: H };
+    if (name2 === "pattern") return { rgba: washi(e, null, P), width: W, height: H };
     const { G, best } = r;
-    if (name === "field") {
+    if (name2 === "field") {
       return {
         rgba: paint(heightTone(best.Fp, best.max), e.lut),
         width: G.gw,
@@ -6029,10 +6069,10 @@ dialog.menu-drawer::before {
       };
     }
     const m = fullMask(e, P, r);
-    if (name === "mask") return { rgba: paint(maskTone(m), e.lut), width: W, height: H };
+    if (name2 === "mask") return { rgba: paint(maskTone(m), e.lut), width: W, height: H };
     const tb = baseTone(t, m);
     const lin = delta ? shiftedLinear(tb, m, delta, e.ink, e.paper) : null;
-    if (name === "washi" || name === "living") return { rgba: washi(e, tb, P, lin), width: W, height: H };
+    if (name2 === "washi" || name2 === "living") return { rgba: washi(e, tb, P, lin), width: W, height: H };
     return { rgba: lin ? paintLinear(lin) : paint(tb, e.lut), width: W, height: H };
   }
   function shift(e, P) {
@@ -6087,13 +6127,13 @@ dialog.menu-drawer::before {
     stages: {
       mask: { keys: MASK_KEYS, make: (e, P, anchor) => mask(e, P, anchor) }
     },
-    view: (e, name, P, { anchor }) => view2(e, name, P, e.stage(washiMode, "mask", P, anchor)),
+    view: (e, name2, P, { anchor }) => view2(e, name2, P, e.stage(washiMode, "mask", P, anchor)),
     living: (e, P, picture) => ({ kind: "pixels", ...pixels(living(e, P, picture.rgba)) }),
-    report(e, P, name, { anchor }) {
+    report(e, P, name2, { anchor }) {
       const r = describe(e.stage(washiMode, "mask", P, anchor));
       return {
         ...r,
-        lines: [e.patternCache?.Dw && describePattern(e.patternCache), name === "living" && describeLiving(P)].filter(Boolean)
+        lines: [e.patternCache?.Dw && describePattern(e.patternCache), name2 === "living" && describeLiving(P)].filter(Boolean)
       };
     }
   };
@@ -6435,9 +6475,9 @@ dialog.menu-drawer::before {
   var hue = (e, P) => e.stage(plainMode, "hue", P);
   var base = (e, P) => baseColour(hue(e, P), P);
   var field2 = (e, P) => e.stage(plainMode, "field", P);
-  function view3(e, name, P) {
+  function view3(e, name2, P) {
     const { W, H } = e.image;
-    return { rgba: plainRGB(name, field2(e, P), base(e, P), P, W, H), width: W, height: H };
+    return { rgba: plainRGB(name2, field2(e, P), base(e, P), P, W, H), width: W, height: H };
   }
   function glow(e, P) {
     const { seed, X, Y } = e.image;
@@ -6465,7 +6505,7 @@ dialog.menu-drawer::before {
         }
       }
     },
-    view: (e, name, P) => view3(e, name, P),
+    view: (e, name2, P) => view3(e, name2, P),
     // The lights as Gaussian glows on a canvas at a quarter of the screen, screen-blended over the picture.
     living(e, P) {
       const g = glow(e, P);
@@ -6723,10 +6763,10 @@ dialog.menu-drawer::before {
     },
     // 'base', 'planar' and 'living': the fog (the network is latent). 'pattern': the fog with the
     // network drawn over it. 'living' then plays the flashes over it.
-    view(e, name, P) {
+    view(e, name2, P) {
       const { W, H } = e.image;
       const fog2 = fogRGB(fogOf(e, P), W, H);
-      const rgba = name === "pattern" ? drawNetwork(networkOf(e, P), fog2, W, H, LINE_WIDTH, LINE_INK) : fog2;
+      const rgba = name2 === "pattern" ? drawNetwork(networkOf(e, P), fog2, W, H, LINE_WIDTH, LINE_INK) : fog2;
       return { rgba, width: W, height: H };
     },
     // E1–E5 as a 'layer' animation: crisp lines at the screen's resolution, on a clear canvas.
@@ -6748,10 +6788,10 @@ dialog.menu-drawer::before {
         }))
       };
     },
-    report: (e, P, name) => ({ lines: [
+    report: (e, P, name2) => ({ lines: [
       ...describeFog(fogOf(e, P), P),
       describeNetwork(networkOf(e, P), P),
-      ...name === "living" ? [describeFlashes(P)] : []
+      ...name2 === "living" ? [describeFlashes(P)] : []
     ] })
   };
   var planar_default = planarMode;
@@ -6789,21 +6829,21 @@ dialog.menu-drawer::before {
       return { seed: this.image.seed, seedText: seedText(this.image.seed) };
     }
     // A mode's stage, made again only when the values of its keys or its input change.
-    stage(mode, name, P, input = null) {
-      const def = mode.stages[name];
+    stage(mode, name2, P, input = null) {
+      const def = mode.stages[name2];
       const key = `${def.keys.map((k) => P[k]).join()}|${JSON.stringify(input)}`;
-      const id = `${mode.id}:${name}`;
+      const id = `${mode.id}:${name2}`;
       if (this.stages[id]?.key !== key) this.stages[id] = { key, value: def.make(this, P, input) };
       return this.stages[id].value;
     }
-    render(mode, name, P, ctx = {}) {
-      return mode.view(this, name, P, ctx);
+    render(mode, name2, P, ctx = {}) {
+      return mode.view(this, name2, P, ctx);
     }
     animate(mode, P, picture, ctx = {}) {
       return mode.living(this, P, picture, ctx);
     }
-    report(mode, P, name, ctx = {}) {
-      return mode.report(this, P, name, ctx);
+    report(mode, P, name2, ctx = {}) {
+      return mode.report(this, P, name2, ctx);
     }
     // ---- Washi (engine/modes/washi.js) ----
     colours(P) {
@@ -6818,8 +6858,8 @@ dialog.menu-drawer::before {
     pattern(P) {
       return pattern(this, P);
     }
-    view(name, P, r) {
-      return view2(this, name, P, r);
+    view(name2, P, r) {
+      return view2(this, name2, P, r);
     }
     living(P, rgba) {
       return living(this, P, rgba);
@@ -6837,8 +6877,8 @@ dialog.menu-drawer::before {
     plainField(P) {
       return field2(this, P);
     }
-    plainView(name, P) {
-      return view3(this, name, P);
+    plainView(name2, P) {
+      return view3(this, name2, P);
     }
     glow(P) {
       return glow(this, P);
@@ -6996,13 +7036,13 @@ dialog.menu-drawer::before {
       this.seedLine = el6("p", { class: "renderer-seed" });
       this.report = el6("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      const fold = (title, ...kids) => el6(
+      const fold2 = (title, ...kids) => el6(
         "details",
         { class: "advanced renderer-fold" },
         el6("summary", {}, title),
         el6("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.folds = new Map(MODES2.map((m) => [m.id, m.folds.map(([title, groups]) => fold(
+      this.folds = new Map(MODES2.map((m) => [m.id, m.folds.map(([title, groups]) => fold2(
         title,
         el6("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
       ))]));
@@ -7010,7 +7050,7 @@ dialog.menu-drawer::before {
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
-        fold(
+        fold2(
           "Picture",
           el6(
             "div",
@@ -7021,7 +7061,7 @@ dialog.menu-drawer::before {
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
         ),
-        fold(
+        fold2(
           "View",
           ...this.tabs.values(),
           el6(
@@ -7032,7 +7072,7 @@ dialog.menu-drawer::before {
           )
         ),
         ...[...this.folds.values()].flat(),
-        fold("Report", this.report),
+        fold2("Report", this.report),
         el6("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.marksRow = this.panel.querySelector(".renderer-marks");
