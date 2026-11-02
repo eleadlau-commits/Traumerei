@@ -55,9 +55,13 @@ the key `world` and follows the account like the settings. Other features reach 
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
   pulling a thought far away makes it straight again (Settings → Rooms → Line tension). Drag a
   thought to move it alone; double-click a train to choose it whole, then drag it.
-- **Timeline:** hover over Joyce and choose Timeline: every thought of the room on one straight
-  line, in the order it was last changed, each with its time and its train as a tag. Tags belong
-  to Joyce only.
+- **Timeline:** hover over Joyce and Timeline drops down below it. It opens a list down the
+  left of everything written in the room, in the order it was last changed (latest at the
+  bottom), each with its time and its train as a tag (Joyce's tags only). Scroll it to see
+  everything; a click takes the view to that thought.
+- **Editing:** a click on a thought (or a double click on a train) opens a pop-up beside it, in
+  the rooms page's style: edit its words (a passage's title and body, a picture's caption, a
+  train's name), fold or unfold a train, move it to another room, or delete it.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and the room's settings.
 - **Ctrl+K** searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.

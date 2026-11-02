@@ -997,7 +997,7 @@ dialog.dialog-box {
 .create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
 /* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
-.create-bar, .create-tint {
+.create-tint {
   position: absolute;
   left: 50%;
   bottom: calc(64px + env(safe-area-inset-bottom));
@@ -1013,8 +1013,6 @@ dialog.dialog-box {
   background: linear-gradient(var(--room-top), var(--room-bottom));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
 }
-.create-bar-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; }
-.create-bar-action { opacity: .55; }
 .create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-slider span { opacity: .6; }
 .create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
@@ -1059,38 +1057,113 @@ dialog.dialog-box {
 .create-bead:hover { text-shadow: 0 0 1px color-mix(in srgb, var(--room-ink) 30%, transparent); }
 .create-bead .create-passage, .create-bead .create-picture { margin: 0; }
 .create-bead.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 7px; }
-.create-bead.found, .create-float.found, .create-tick.found .create-tick-body { animation: create-found 2.4s ease both; }
+.create-bead.found, .create-float.found { animation: create-found 2.4s ease both; }
 @keyframes create-found { 0%, 60% { background: color-mix(in srgb, var(--room-ink) 12%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--room-ink) 12%, transparent); } }
 
-/* The timeline: one straight line, a dot per thought, its time above and its tag below. */
-.create-timeline-line { position: absolute; top: 0; height: 1px; background: currentColor; opacity: .3; }
-.create-tick { position: absolute; width: 0; cursor: default; }
-.create-tick-dot { position: absolute; left: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--tag, currentColor); }
-.create-tick-time { position: absolute; left: 0; bottom: 14px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; letter-spacing: .08em; opacity: .5; }
-.create-tick-body { position: absolute; left: 0; top: 18px; transform: translateX(-50%); width: max-content; max-width: 210px; font-size: 15px; line-height: 1.5; text-align: center; padding: 2px 4px; }
-.create-tick-body .create-picture img { max-width: 160px; max-height: 160px; }
-.create-tick .create-tag {
+/* The timeline: a list down the left of everything written in the room, latest at the bottom. */
+.create-history {
   position: absolute;
   left: 0;
-  top: -54px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  max-width: 200px;
+  top: calc(92px + env(safe-area-inset-top));
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  width: min(320px, 78vw);
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--room-top) 70%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--room-ink) 12%, transparent);
+  animation: create-slide-in .3s var(--create-ease) both;
+  z-index: 2;
+}
+@keyframes create-slide-in { from { opacity: 0; transform: translateX(-12px); } }
+.create-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 18px 10px calc(var(--gutter) + 12px);
+  font-size: 12px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.create-history-head > span { opacity: .6; }
+.create-history-close { appearance: none; border: 0; background: none; color: inherit; font: inherit; font-size: 20px; line-height: 1; cursor: pointer; opacity: .55; }
+.create-history-close:hover { opacity: 1; }
+.create-history-list { list-style: none; margin: 0; padding: 0 0 12px; overflow: auto; flex: 1; scrollbar-width: thin; }
+.create-history-item {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 10px 18px 10px calc(var(--gutter) + 12px);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 2px 0 0 transparent;
+}
+.create-history-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 6%, transparent); }
+.create-history-item.on { box-shadow: inset 2px 0 0 var(--tag); background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
+.create-history-meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.create-history-time { flex: none; font-size: 11px; letter-spacing: .06em; opacity: .5; }
+.create-history-text { font-size: 14px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.create-history-none { margin: 0; padding: 10px 18px 10px calc(var(--gutter) + 12px); font-size: 13px; opacity: .5; }
+.create-tag {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 2px 8px;
+  white-space: nowrap;
+  padding: 1px 7px;
   font-size: 10px;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--tag);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag) 45%, transparent);
 }
-.create-tick.selected .create-tick-body { outline: 1px solid color-mix(in srgb, var(--room-ink) 40%, transparent); outline-offset: 5px; }
+
+/* Editing what is chosen: the rooms page's pop-up, beside the thought or train. */
+.create-edit { width: 260px; }
+.create-edit-text, .create-edit-body, .create-edit-move {
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: .01em;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-radius: 0;
+  padding: 4px 0;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.create-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.create-edit-text:focus, .create-edit-body:focus { border-bottom-color: currentColor; }
+.create-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
+  background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
+.create-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
 
 /* Joyce's word, and the Timeline it unfolds when hovered. */
-.create-mode-wrap { display: inline-flex; align-items: baseline; gap: 14px; }
-.create-timeline-btn { max-width: 0; overflow: hidden; opacity: 0; transition: max-width .35s var(--create-ease), opacity .3s; white-space: nowrap; }
-.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { max-width: 120px; opacity: .8; }
+.create-mode-wrap { position: relative; display: inline-block; }
+/* Timeline drops down below Joyce when it is hovered. */
+.create-timeline-btn {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity .25s, transform .3s var(--create-ease);
+}
+.create-mode-wrap::after { content: ''; position: absolute; left: 0; right: -40px; top: 100%; height: 44px; } /* keeps the hover while the pointer goes down */
+.create-mode-wrap:not(:hover):not(:focus-within)::after { pointer-events: none; }
+.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { opacity: .8; transform: none; pointer-events: auto; z-index: 1; }
 .create-timeline-btn[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
 
 .create-draft { opacity: 1; }
@@ -1123,7 +1196,7 @@ dialog.dialog-box {
 }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.create-room.dark :is(.create-bead, .create-float, .create-tick-body) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
 
 @media (max-width: 560px) {
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
@@ -7172,7 +7245,6 @@ dialog.menu-drawer::before {
   var GRID = { gap: 14, pad: 32, least: 4, most: 10 };
   var UNDO = 60;
   var SVG = "http://www.w3.org/2000/svg";
-  var TIMELINE = { step: 250 };
   var HINTS = {
     rooms: "Click a square to change it · double-click to go in · click an empty square for a new room · or just start typing",
     room: "Type anywhere to write · Enter ends a thought · Ctrl+Enter starts a new train · double-click a train to move it whole · Ctrl+K searches · Ctrl+Z undoes"
@@ -7336,7 +7408,8 @@ dialog.menu-drawer::before {
       this.world$ = el5("div", { class: "create-world" });
       this.stage = el5("div", { class: "create-stage", "data-own-swipe": "" }, this.world$);
       this.input = el5("textarea", { class: "create-input", "aria-label": "Write a thought", rows: 1, autocomplete: "off", spellcheck: "false" });
-      this.bar = el5("div", { class: "create-bar", hidden: true });
+      this.bar = el5("div", { class: "create-options create-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.history = el5("aside", { class: "create-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
       this.roomPage = el5(
         "section",
         { class: "create-room", hidden: true, "aria-label": "Room" },
@@ -7362,6 +7435,7 @@ dialog.menu-drawer::before {
             "Add"
           )
         ),
+        this.history,
         this.bar,
         this.tintPanel = el5("div", { class: "create-tint", hidden: true }),
         this.sheet = el5("div", { class: "create-sheet", hidden: true }),
@@ -7811,7 +7885,8 @@ dialog.menu-drawer::before {
         );
       }));
       this.root.dataset.mode = this.mode;
-      this.root.classList.toggle("timeline", this.inTimeline);
+      this.root.classList.toggle("history-open", this.historyOpen);
+      this.drawHistory();
       this.place();
       this.drawWorld();
     }
@@ -7820,17 +7895,13 @@ dialog.menu-drawer::before {
       this.renaming = this.roomId;
       this.drawRoom();
     }
-    get inTimeline() {
+    get historyOpen() {
       return this.mode === "joyce" && !!view3(this.world, this.roomId).timeline;
     }
     toggleTimeline() {
       const v = view3(this.world, this.roomId);
       if (this.mode !== "joyce") v.mode = "joyce";
       v.timeline = !v.timeline;
-      if (v.timeline) {
-        const last = Math.max(0, timeline(this.world, this.roomId).length - 1) * TIMELINE.step;
-        Object.assign(v, { x: Math.max(last / 2, last - 360), y: 60 });
-      }
       this.sel = null;
       this.save();
       this.drawRoom();
@@ -7847,6 +7918,7 @@ dialog.menu-drawer::before {
       const v = view3(this.world, this.roomId);
       const { width, height } = this.stage.getBoundingClientRect();
       this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
+      this.positionEdit?.();
     }
     toWorld(clientX, clientY) {
       const v = view3(this.world, this.roomId);
@@ -7864,8 +7936,7 @@ dialog.menu-drawer::before {
       if (!this.roomId) return;
       const w = this.world;
       const nodes = [];
-      if (this.inTimeline) nodes.push(...this.timelineNodes());
-      else if (this.mode === "joyce") {
+      if (this.mode === "joyce") {
         const svg = document.createElementNS(SVG, "svg");
         svg.setAttribute("class", "create-strands");
         const tension = this.prefs.tension ?? 0.5;
@@ -7937,40 +8008,47 @@ dialog.menu-drawer::before {
       this.world$.replaceChildren(...nodes);
       this.drawBar();
     }
-    // The timeline: every thought of the room on one straight line, in the order it was last
-    // changed. Trains become tags, each with its own quiet colour.
-    timelineNodes() {
-      const items = timeline(this.world, this.roomId);
-      const n = items.length + (this.draft ? 1 : 0);
-      const nodes = [];
-      const line = el5("div", { class: "create-timeline-line", style: `left:${-40}px;width:${Math.max(1, n - 1) * TIMELINE.step + 80}px` });
-      nodes.push(line);
-      const day = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      items.forEach(({ th, train }, i) => {
-        const hue2 = hash(train.id) % 360;
-        nodes.push(el5(
-          "div",
-          {
-            class: "create-tick" + (this.found === th.id ? " found" : "") + (this.sel?.id === th.id ? " selected" : ""),
-            "data-thought": th.id,
-            style: `left:${i * TIMELINE.step}px;top:0px;--tag:hsl(${hue2} 32% 46%)`
-          },
-          el5("div", { class: "create-tick-time" }, day(lastChanged(th))),
-          el5("div", { class: "create-tick-dot" }),
-          el5("div", { class: "create-tick-body" }, this.thoughtNode(th)),
-          el5("div", { class: "create-tag" }, tagName(this.world, train.id))
-        ));
-      });
-      if (this.draft) {
-        nodes.push(el5(
-          "div",
-          { class: "create-tick", style: `left:${items.length * TIMELINE.step}px;top:0px` },
-          el5("div", { class: "create-tick-time" }, "Now"),
-          el5("div", { class: "create-tick-dot" }),
-          el5("div", { class: "create-tick-body" }, this.draftNode())
-        ));
+    // The timeline: a list down the left of everything written in the room, in the order it was
+    // last changed (latest at the bottom), each with its time and its train as a tag. A click
+    // takes the view to it.
+    drawHistory() {
+      if (!this.historyOpen) {
+        this.history.hidden = true;
+        return;
       }
-      return nodes;
+      const items = timeline(this.world, this.roomId);
+      const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const list = el5("ol", { class: "create-history-list" }, items.map(({ th, train }) => el5(
+        "li",
+        {},
+        el5(
+          "button",
+          {
+            type: "button",
+            class: "create-history-item" + (this.sel?.id === th.id || this.sel?.id === train.id ? " on" : ""),
+            style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
+            onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId })
+          },
+          el5(
+            "span",
+            { class: "create-history-meta" },
+            el5("span", { class: "create-history-time" }, when(lastChanged(th))),
+            el5("span", { class: "create-tag" }, tagName(this.world, train.id))
+          ),
+          el5("span", { class: "create-history-text" }, thoughtText(this.world, th))
+        )
+      )));
+      this.history.hidden = false;
+      this.history.replaceChildren(
+        el5(
+          "div",
+          { class: "create-history-head" },
+          el5("span", {}, "Timeline"),
+          el5("button", { type: "button", class: "create-history-close", "aria-label": "Close the timeline", onclick: () => this.toggleTimeline() }, "×")
+        ),
+        items.length ? list : el5("p", { class: "create-history-none" }, "Nothing written here yet")
+      );
+      list.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
     // One thought, drawn by its kind.
     thoughtNode(th) {
@@ -8133,9 +8211,7 @@ dialog.menu-drawer::before {
       const trainEl = e.target.closest("[data-train]");
       const thoughtEl = e.target.closest("[data-thought]");
       let thing = null;
-      if (this.inTimeline) {
-        thing = thoughtEl ? { kind: "thought", id: thoughtEl.dataset.thought, still: true } : null;
-      } else if (trainEl && this.mode === "joyce") {
+      if (trainEl && this.mode === "joyce") {
         const t = this.world.things[trainEl.dataset.train];
         const whole = !thoughtEl || this.sel?.kind === "train" && this.sel.id === t.id || t.folded;
         if (whole) thing = { kind: "train", id: t.id, x: t.x, y: t.y, live: true };
@@ -8192,10 +8268,6 @@ dialog.menu-drawer::before {
         v.x = g.vx - dx / v.zoom;
         v.y = g.vy - dy / v.zoom;
         this.place();
-      } else if (g.thing.still) {
-        v.x = g.vx - dx / v.zoom;
-        v.y = g.vy - dy / v.zoom;
-        this.place();
       } else if (g.thing.live) {
         const x = Math.round(g.thing.x + dx / v.zoom), y = Math.round(g.thing.y + dy / v.zoom);
         if (g.thing.bead) nudge(this.world, g.thing.id, x, y);
@@ -8221,7 +8293,7 @@ dialog.menu-drawer::before {
       if (!g.moved) {
         const keep = this.sel?.kind === "train" && g.thing?.kind === "train" && this.sel.id === g.thing.id;
         this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
-        const train = this.mode === "joyce" && !this.inTimeline && g.el?.dataset.train;
+        const train = this.mode === "joyce" && g.el?.dataset.train;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
         this.lastTap = train ? { train, at: now } : null;
@@ -8245,7 +8317,7 @@ dialog.menu-drawer::before {
     onDouble(e) {
       window.getSelection?.()?.removeAllRanges();
       const trainEl = e.target.closest("[data-train]");
-      if (this.mode === "joyce" && !this.inTimeline && trainEl) {
+      if (this.mode === "joyce" && trainEl) {
         this.sel = { kind: "train", id: trainEl.dataset.train };
         this.drawWorld();
         return;
@@ -8347,10 +8419,7 @@ dialog.menu-drawer::before {
       const th = this.world.things[f.id];
       const v = view3(this.world, f.room);
       let p = null;
-      if (this.inTimeline) {
-        const i = timeline(this.world, f.room).findIndex((x) => x.th.id === f.id);
-        if (i >= 0) p = { x: i * TIMELINE.step, y: 0 };
-      } else if (this.mode === "joyce") {
+      if (this.mode === "joyce") {
         const t = kindOf(th) === "train" ? th : this.world.things[th.parent];
         p = t.folded || kindOf(th) === "train" ? { x: t.x, y: t.y } : trainSpots(this.world, t.id)[f.id];
       } else {
@@ -8439,38 +8508,130 @@ dialog.menu-drawer::before {
         el5("button", { type: "button", class: "create-word", onclick: () => this.toggleTint() }, "Done")
       );
     }
-    // ---- Moving a train or thought to another room ----
+    // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
     drawBar() {
-      if (!this.sel) {
+      const th = this.sel && this.world.things[this.sel.id];
+      if (!th) {
         this.bar.hidden = true;
+        this.drawHistorySoon();
         return;
       }
+      const kind = kindOf(th);
+      const stop = (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape" || e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur();
+      };
+      const field3 = (value, label, onchange, cls = "create-options-name") => el5("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
+      const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
+      const done = () => {
+        this.save();
+        this.drawWorld();
+      };
+      const rows = [];
+      const title = { line: "Thought", passage: "Passage", picture: "Picture", train: th.folded ? "A folded train" : "Train" }[kind];
+      rows.push(el5("div", { class: "create-options-label" }, title));
+      if (kind === "line") rows.push(field3(th.text, "The thought", (e) => {
+        update(this.world, th.id, { text: e.target.value });
+        done();
+      }, "create-edit-text"));
+      if (kind === "passage") {
+        rows.push(field3(th.title, "Title", (e) => {
+          update(this.world, th.id, { title: e.target.value });
+          done();
+        }));
+        const body = el5("textarea", {
+          class: "create-edit-body",
+          rows: 5,
+          "aria-label": "Passage",
+          onkeydown: (e) => e.stopPropagation(),
+          onchange: (e) => {
+            update(this.world, th.id, { body: e.target.value });
+            done();
+          }
+        });
+        body.value = th.body || "";
+        rows.push(body, word("Open it large", () => this.openSheet(null, th.id)));
+      }
+      if (kind === "picture") rows.push(field3(th.text, "A caption", (e) => {
+        update(this.world, th.id, { text: e.target.value });
+        done();
+      }, "create-edit-text"));
+      if (kind === "train") {
+        const n = trainThoughts(this.world, th.id).length;
+        rows.push(
+          field3(th.title, "Name this train", (e) => {
+            name(this.world, th.id, e.target.value);
+            done();
+          }),
+          el5(
+            "div",
+            { class: "create-options-row" },
+            el5("span", { class: "create-options-note" }, `${n} thought${n === 1 ? "" : "s"}`),
+            th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 ? word("Fold into one", () => this.foldTrain(th.id)) : null
+          )
+        );
+      }
       const others = rooms(this.world).filter((r) => r.id !== this.roomId);
-      const what = this.sel.kind === "train" ? "this train" : "this thought";
-      this.bar.hidden = false;
-      this.bar.replaceChildren(
-        el5("span", { class: "create-bar-label" }, `Move ${what} to`),
-        ...others.map((r) => el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(r.id) }, r.name)),
-        el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(addRoom(this.world, "Untitled", Date.now(), null, this.cols || 6).id) }, "A new room"),
-        ...this.selActions()
+      const pick = el5(
+        "select",
+        {
+          class: "create-edit-move",
+          "aria-label": "Move to a room",
+          onkeydown: (e) => e.stopPropagation(),
+          onchange: (e) => {
+            const to = e.target.value === "+" ? addRoom(this.world, "Untitled", Date.now(), null, this.cols || 6).id : e.target.value;
+            if (to) this.moveTo(to);
+          }
+        },
+        el5("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el5("option", { value: r.id }, r.name)),
+        el5("option", { value: "+" }, "A new room")
       );
+      rows.push(
+        el5("div", { class: "create-options-row" }, pick),
+        el5(
+          "div",
+          { class: "create-options-row" },
+          kind !== "train" && this.mode === "joyce" ? word("The whole train", () => {
+            this.sel = { kind: "train", id: th.parent };
+            this.drawWorld();
+          }) : null,
+          word("Delete", () => {
+            remove(this.world, th.id);
+            this.sel = null;
+            done();
+            this.toast(`Deleted. Ctrl+Z brings it back.`);
+          }, "create-options-delete")
+        )
+      );
+      this.bar.hidden = false;
+      this.bar.replaceChildren(...rows);
+      this.positionEdit();
+      this.drawHistorySoon();
     }
-    // Fold, unfold and edit, for what is selected.
-    selActions() {
-      const out = [];
-      const word = (label, fn) => el5("button", { type: "button", class: "create-word create-bar-action", onclick: fn }, label);
-      const th = this.world.things[this.sel.id];
-      if (!th) return out;
-      if (kindOf(th) === "train") {
-        const all = trainThoughts(this.world, th.id);
-        if (th.folded) {
-          out.push(word("Unfold", () => this.unfoldTrain(th.id)), word("Name", () => this.openSheet(null, th.id)));
-        } else {
-          if (all.length > 1) out.push(word("Fold into one thought", () => this.foldTrain(th.id)));
-          if (all.length === 1 && kindOf(all[0]) !== "line") out.push(word("Edit", () => this.openSheet(null, all[0].id)));
-        }
-      } else if (kindOf(th) !== "line") out.push(word("Edit", () => this.openSheet(null, th.id)));
-      return out;
+    // The pop-up sits beside what is chosen, and follows it as the view moves.
+    positionEdit() {
+      if (this.bar.hidden) return;
+      const chosen = [...this.world$.querySelectorAll(".selected")].map((n) => n.getBoundingClientRect()).filter((r) => r.width);
+      if (!chosen.length) {
+        this.bar.style.visibility = "hidden";
+        return;
+      }
+      const box = chosen.reduce((a, r) => ({ left: Math.min(a.left, r.left), top: Math.min(a.top, r.top), right: Math.max(a.right, r.right), bottom: Math.max(a.bottom, r.bottom) }));
+      const page = this.roomPage.getBoundingClientRect();
+      const w = this.bar.offsetWidth || 236, h = this.bar.offsetHeight || 200;
+      let x = box.right + 22;
+      if (x + w > page.right - 16) x = box.left - w - 22;
+      x = Math.max(page.left + 16, Math.min(x, page.right - w - 16));
+      const y = Math.max(page.top + 64, Math.min(box.top - 8, page.bottom - h - 70));
+      this.bar.style.visibility = "";
+      this.bar.style.left = `${x - page.left}px`;
+      this.bar.style.top = `${y - page.top}px`;
+    }
+    drawHistorySoon() {
+      if (!this.historyOpen) return;
+      clearTimeout(this.historyTimer);
+      this.historyTimer = setTimeout(() => this.drawHistory(), 60);
     }
     foldTrain(trainId) {
       if (!fold(this.world, trainId)) return;

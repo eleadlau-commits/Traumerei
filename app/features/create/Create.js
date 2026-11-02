@@ -17,8 +17,9 @@
 //   joined to the next by a line: taut between quick thoughts, slack after a pause (model.js
 //   slack). Drag a thought to move it alone (the line follows); double-click a train to choose it
 //   whole, then drag it. Enter goes on with the train; Ctrl+Enter starts a new one. Hovering over
-//   Joyce unfolds Timeline: every thought of the room on one straight line, in the order it was
-//   last changed, with its train as a tag (Joyce's tags only).
+//   Joyce drops down Timeline: a list down the left of everything written in the room, in the
+//   order it was last changed, with its train as a tag (Joyce's tags only).
+//   A click on a thought (or a double click on a train) opens a pop-up beside it to edit it.
 // - Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they
 //   were written, and can be dragged anywhere.
 // Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and the room's
@@ -48,7 +49,6 @@ const ZOOM = { min: 0.25, max: 4 };
 const GRID = { gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
 const UNDO = 60;           // how many steps back Ctrl+Z goes
 const SVG = 'http://www.w3.org/2000/svg';
-const TIMELINE = { step: 250 }; // px between thoughts on the timeline
 const HINTS = {
   rooms: 'Click a square to change it · double-click to go in · click an empty square for a new room · or just start typing',
   room: 'Type anywhere to write · Enter ends a thought · Ctrl+Enter starts a new train · double-click a train to move it whole · Ctrl+K searches · Ctrl+Z undoes',
@@ -210,7 +210,8 @@ export default class Create extends Feature {
     this.world$ = el('div', { class: 'create-world' });
     this.stage = el('div', { class: 'create-stage', 'data-own-swipe': '' }, this.world$);
     this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, autocomplete: 'off', spellcheck: 'false' });
-    this.bar = el('div', { class: 'create-bar', hidden: true });
+    this.bar = el('div', { class: 'create-options create-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
+    this.history = el('aside', { class: 'create-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
       this.stage,
       this.modes,
@@ -224,6 +225,7 @@ export default class Create extends Feature {
           this.addItem('Room settings', 'Tint, lightness, opacity', () => this.toggleTint())),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
+      this.history,
       this.bar,
       this.tintPanel = el('div', { class: 'create-tint', hidden: true }),
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
@@ -573,7 +575,8 @@ export default class Create extends Feature {
         }, 'Timeline'));
     }));
     this.root.dataset.mode = this.mode;
-    this.root.classList.toggle('timeline', this.inTimeline);
+    this.root.classList.toggle('history-open', this.historyOpen);
+    this.drawHistory();
     this.place();
     this.drawWorld();
   }
@@ -584,16 +587,12 @@ export default class Create extends Feature {
     this.drawRoom();
   }
 
-  get inTimeline() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
+  get historyOpen() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
 
   toggleTimeline() {
     const v = view(this.world, this.roomId);
     if (this.mode !== 'joyce') v.mode = 'joyce';
     v.timeline = !v.timeline;
-    if (v.timeline) { // the latest thoughts in view, towards the right
-      const last = Math.max(0, timeline(this.world, this.roomId).length - 1) * TIMELINE.step;
-      Object.assign(v, { x: Math.max(last / 2, last - 360), y: 60 });
-    }
     this.sel = null;
     this.save();
     this.drawRoom();
@@ -612,6 +611,7 @@ export default class Create extends Feature {
     const v = view(this.world, this.roomId);
     const { width, height } = this.stage.getBoundingClientRect();
     this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
+    this.positionEdit?.();
   }
 
   toWorld(clientX, clientY) {
@@ -632,8 +632,7 @@ export default class Create extends Feature {
     if (!this.roomId) return;
     const w = this.world;
     const nodes = [];
-    if (this.inTimeline) nodes.push(...this.timelineNodes());
-    else if (this.mode === 'joyce') {
+    if (this.mode === 'joyce') {
       const svg = document.createElementNS(SVG, 'svg');
       svg.setAttribute('class', 'create-strands');
       const tension = this.prefs.tension ?? 0.5;
@@ -704,32 +703,30 @@ export default class Create extends Feature {
     this.drawBar();
   }
 
-  // The timeline: every thought of the room on one straight line, in the order it was last
-  // changed. Trains become tags, each with its own quiet colour.
-  timelineNodes() {
+  // The timeline: a list down the left of everything written in the room, in the order it was
+  // last changed (latest at the bottom), each with its time and its train as a tag. A click
+  // takes the view to it.
+  drawHistory() {
+    if (!this.historyOpen) { this.history.hidden = true; return; }
     const items = timeline(this.world, this.roomId);
-    const n = items.length + (this.draft ? 1 : 0);
-    const nodes = [];
-    const line = el('div', { class: 'create-timeline-line', style: `left:${-40}px;width:${Math.max(1, n - 1) * TIMELINE.step + 80}px` });
-    nodes.push(line);
-    const day = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    items.forEach(({ th, train }, i) => {
-      const hue = hash(train.id) % 360;
-      nodes.push(el('div', {
-        class: 'create-tick' + (this.found === th.id ? ' found' : '') + (this.sel?.id === th.id ? ' selected' : ''),
-        'data-thought': th.id, style: `left:${i * TIMELINE.step}px;top:0px;--tag:hsl(${hue} 32% 46%)`,
+    const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const list = el('ol', { class: 'create-history-list' }, items.map(({ th, train }) => el('li', {},
+      el('button', {
+        type: 'button', class: 'create-history-item' + (this.sel?.id === th.id || this.sel?.id === train.id ? ' on' : ''),
+        style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
+        onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }),
       },
-        el('div', { class: 'create-tick-time' }, day(lastChanged(th))),
-        el('div', { class: 'create-tick-dot' }),
-        el('div', { class: 'create-tick-body' }, this.thoughtNode(th)),
-        el('div', { class: 'create-tag' }, tagName(this.world, train.id))));
-    });
-    if (this.draft) {
-      nodes.push(el('div', { class: 'create-tick', style: `left:${items.length * TIMELINE.step}px;top:0px` },
-        el('div', { class: 'create-tick-time' }, 'Now'), el('div', { class: 'create-tick-dot' }),
-        el('div', { class: 'create-tick-body' }, this.draftNode())));
-    }
-    return nodes;
+        el('span', { class: 'create-history-meta' },
+          el('span', { class: 'create-history-time' }, when(lastChanged(th))),
+          el('span', { class: 'create-tag' }, tagName(this.world, train.id))),
+        el('span', { class: 'create-history-text' }, thoughtText(this.world, th))))));
+    this.history.hidden = false;
+    this.history.replaceChildren(
+      el('div', { class: 'create-history-head' },
+        el('span', {}, 'Timeline'),
+        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close the timeline', onclick: () => this.toggleTimeline() }, '×')),
+      items.length ? list : el('p', { class: 'create-history-none' }, 'Nothing written here yet'));
+    list.lastElementChild?.scrollIntoView?.({ block: 'end' });
   }
 
   // One thought, drawn by its kind.
@@ -878,9 +875,7 @@ export default class Create extends Feature {
     const trainEl = e.target.closest('[data-train]');
     const thoughtEl = e.target.closest('[data-thought]');
     let thing = null;
-    if (this.inTimeline) {
-      thing = thoughtEl ? { kind: 'thought', id: thoughtEl.dataset.thought, still: true } : null;
-    } else if (trainEl && this.mode === 'joyce') {
+    if (trainEl && this.mode === 'joyce') {
       const t = this.world.things[trainEl.dataset.train];
       const whole = !thoughtEl || (this.sel?.kind === 'train' && this.sel.id === t.id) || t.folded;
       if (whole) thing = { kind: 'train', id: t.id, x: t.x, y: t.y, live: true };
@@ -937,10 +932,6 @@ export default class Create extends Feature {
       v.x = g.vx - dx / v.zoom;
       v.y = g.vy - dy / v.zoom;
       this.place();
-    } else if (g.thing.still) {
-      v.x = g.vx - dx / v.zoom; // on the timeline, things stay on the line: dragging moves the view
-      v.y = g.vy - dy / v.zoom;
-      this.place();
     } else if (g.thing.live) {
       // Joyce: the thought (or its whole train) moves, and the line follows it.
       const x = Math.round(g.thing.x + dx / v.zoom), y = Math.round(g.thing.y + dy / v.zoom);
@@ -965,7 +956,7 @@ export default class Create extends Feature {
       const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
       this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
       // Two taps on the same train (the page is redrawn between them, so no dblclick comes).
-      const train = this.mode === 'joyce' && !this.inTimeline && g.el?.dataset.train;
+      const train = this.mode === 'joyce' && g.el?.dataset.train;
       const now = Date.now();
       if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: 'train', id: train };
       this.lastTap = train ? { train, at: now } : null;
@@ -986,7 +977,7 @@ export default class Create extends Feature {
   onDouble(e) {
     window.getSelection?.()?.removeAllRanges();
     const trainEl = e.target.closest('[data-train]');
-    if (this.mode === 'joyce' && !this.inTimeline && trainEl) {
+    if (this.mode === 'joyce' && trainEl) {
       this.sel = { kind: 'train', id: trainEl.dataset.train };
       this.drawWorld();
       return;
@@ -1062,10 +1053,7 @@ export default class Create extends Feature {
     const th = this.world.things[f.id];
     const v = view(this.world, f.room);
     let p = null;
-    if (this.inTimeline) {
-      const i = timeline(this.world, f.room).findIndex((x) => x.th.id === f.id);
-      if (i >= 0) p = { x: i * TIMELINE.step, y: 0 };
-    } else if (this.mode === 'joyce') {
+    if (this.mode === 'joyce') {
       const t = kindOf(th) === 'train' ? th : this.world.things[th.parent];
       p = t.folded || kindOf(th) === 'train' ? { x: t.x, y: t.y } : trainSpots(this.world, t.id)[f.id];
     } else {
@@ -1137,36 +1125,81 @@ export default class Create extends Feature {
       el('button', { type: 'button', class: 'create-word', onclick: () => this.toggleTint() }, 'Done'));
   }
 
-  // ---- Moving a train or thought to another room ----
+  // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
 
   drawBar() {
-    if (!this.sel) { this.bar.hidden = true; return; }
+    const th = this.sel && this.world.things[this.sel.id];
+    if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
+    const kind = kindOf(th);
+    const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
+    const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const done = () => { this.save(); this.drawWorld(); };
+    const rows = [];
+    const title = { line: 'Thought', passage: 'Passage', picture: 'Picture', train: th.folded ? 'A folded train' : 'Train' }[kind];
+    rows.push(el('div', { class: 'create-options-label' }, title));
+    if (kind === 'line') rows.push(field(th.text, 'The thought', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'passage') {
+      rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
+      const body = el('textarea', { class: 'create-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
+        onchange: (e) => { update(this.world, th.id, { body: e.target.value }); done(); } });
+      body.value = th.body || '';
+      rows.push(body, word('Open it large', () => this.openSheet(null, th.id)));
+    }
+    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'train') {
+      const n = trainThoughts(this.world, th.id).length;
+      rows.push(field(th.title, 'Name this train', (e) => { name(this.world, th.id, e.target.value); done(); }),
+        el('div', { class: 'create-options-row' },
+          el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
+          th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
+            : n > 1 ? word('Fold into one', () => this.foldTrain(th.id)) : null));
+    }
     const others = rooms(this.world).filter((r) => r.id !== this.roomId);
-    const what = this.sel.kind === 'train' ? 'this train' : 'this thought';
+    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
+        if (to) this.moveTo(to);
+      } },
+      el('option', { value: '' }, 'Move to…'),
+      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      el('option', { value: '+' }, 'A new room'));
+    rows.push(el('div', { class: 'create-options-row' }, pick),
+      el('div', { class: 'create-options-row' },
+        kind !== 'train' && this.mode === 'joyce' ? word('The whole train', () => { this.sel = { kind: 'train', id: th.parent }; this.drawWorld(); }) : null,
+        word('Delete', () => {
+          remove(this.world, th.id);
+          this.sel = null;
+          done();
+          this.toast(`Deleted. Ctrl+Z brings it back.`);
+        }, 'create-options-delete')));
     this.bar.hidden = false;
-    this.bar.replaceChildren(
-      el('span', { class: 'create-bar-label' }, `Move ${what} to`),
-      ...others.map((r) => el('button', { type: 'button', class: 'create-word', onclick: () => this.moveTo(r.id) }, r.name)),
-      el('button', { type: 'button', class: 'create-word', onclick: () => this.moveTo(addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id) }, 'A new room'),
-      ...this.selActions());
+    this.bar.replaceChildren(...rows);
+    this.positionEdit();
+    this.drawHistorySoon();
   }
 
-  // Fold, unfold and edit, for what is selected.
-  selActions() {
-    const out = [];
-    const word = (label, fn) => el('button', { type: 'button', class: 'create-word create-bar-action', onclick: fn }, label);
-    const th = this.world.things[this.sel.id];
-    if (!th) return out;
-    if (kindOf(th) === 'train') {
-      const all = trainThoughts(this.world, th.id);
-      if (th.folded) {
-        out.push(word('Unfold', () => this.unfoldTrain(th.id)), word('Name', () => this.openSheet(null, th.id)));
-      } else {
-        if (all.length > 1) out.push(word('Fold into one thought', () => this.foldTrain(th.id)));
-        if (all.length === 1 && kindOf(all[0]) !== 'line') out.push(word('Edit', () => this.openSheet(null, all[0].id)));
-      }
-    } else if (kindOf(th) !== 'line') out.push(word('Edit', () => this.openSheet(null, th.id)));
-    return out;
+  // The pop-up sits beside what is chosen, and follows it as the view moves.
+  positionEdit() {
+    if (this.bar.hidden) return;
+    const chosen = [...this.world$.querySelectorAll('.selected')].map((n) => n.getBoundingClientRect()).filter((r) => r.width);
+    if (!chosen.length) { this.bar.style.visibility = 'hidden'; return; }
+    const box = chosen.reduce((a, r) => ({ left: Math.min(a.left, r.left), top: Math.min(a.top, r.top), right: Math.max(a.right, r.right), bottom: Math.max(a.bottom, r.bottom) }));
+    const page = this.roomPage.getBoundingClientRect();
+    const w = this.bar.offsetWidth || 236, h = this.bar.offsetHeight || 200;
+    let x = box.right + 22;
+    if (x + w > page.right - 16) x = box.left - w - 22;
+    x = Math.max(page.left + 16, Math.min(x, page.right - w - 16));
+    const y = Math.max(page.top + 64, Math.min(box.top - 8, page.bottom - h - 70));
+    this.bar.style.visibility = '';
+    this.bar.style.left = `${x - page.left}px`;
+    this.bar.style.top = `${y - page.top}px`;
+  }
+
+  drawHistorySoon() {
+    if (!this.historyOpen) return;
+    clearTimeout(this.historyTimer);
+    this.historyTimer = setTimeout(() => this.drawHistory(), 60);
   }
 
   foldTrain(trainId) {
