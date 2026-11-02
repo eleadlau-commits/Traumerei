@@ -7,7 +7,16 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
 
 - The **Renderer** view (the app's only tab): just the picture, filling the screen edge to edge
   (cropped to fit, like a cover photo), shown as **Washi** at first. It starts as a plain white
-  image the shape of the screen. Everything else is in **Settings → Advanced**, folded into groups:
+  image the shape of the screen. **Settings → Colour** holds the one tint τ, with *From the
+  picture* (the picture's dominant hue, as Plain finds it, at τ's lightness and a chroma of
+  0.35 C, kept within 0.015–0.06) and *Back to defaults*. Every colour in the app comes from τ
+  (`engine/palette.js`): paper = τ, ink = OKLCh(0.285, 0.2 C_τ, h_τ), pale = OKLCh(0.93, 1.2 C_τ,
+  h_τ), veil = OKLCh(0.977, 0.4 C_τ, h_τ), glow = OKLCh(0.86, 0.1, h_τ − 4°), each pulled into
+  sRGB by lowering its chroma. They are set on the page as CSS variables (`--paper`, `--ink`,
+  `--pale`, `--veil`, `--glow`, and `--ink-rgb` etc. as "r g b"), handed to Create by the
+  `backdrop` service's `palette()`, and announced by a `palette` event on `document`. At the
+  default beige they are the old fixed colours. Everything else is in **Settings → Advanced**,
+  folded into groups (its *Back to defaults* keeps τ):
   - **Picture**: choose an image, or go back to white; the seed.
   - **View**: switch between **Monochrome**, **Mask**,
     **Field** (the heightmap with the threshold line), **Base** (the base layer), **Pattern**
@@ -204,7 +213,7 @@ Choices the spec left open:
   0 gives the spec's crisp edge. It doesn't change M8, which uses the unblurred threshold.
 - Mixes happen in OKLab: the mask view is `mix(paper, ink, mask)` and the base is
   `mix(paper, monochrome, mask)`.
-- **Tint τ** (Colour, added after the spec, default beige `#f2ebd9`, the old paper): a colour picker.
+- **Tint τ** (Settings → Colour, added after the spec, default beige `#f2ebd9`, the old paper): a colour picker.
   Everything takes its colours from τ (`palette()` in `colour.js`):
   - paper = τ, and ink = OKLCh(min(0.27, 0.6 L_τ), C_τ / 2, h_τ). So the whole ink–paper line is
     toned in τ's hue, with chroma C_τ (1 + t) / 2 along it, like a sepia print. The Mask and Field views

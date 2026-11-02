@@ -5,7 +5,7 @@ import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
-  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP,
+  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -219,6 +219,17 @@ test('a saved world gets its rooms placed on the grid without overlaps', () => {
     seen.add(k);
   }
   assert.deepEqual([w.things.messy.col, w.things.messy.row], [0, 0]);
+});
+
+test('A thought edited over several lines keeps its lines and pushes the next one down', () => {
+  const w = emptyWorld();
+  const t = startTrain(w, MESSY, 0, 0, 0);
+  const a = addThought(w, t.id, 'one', 1), b = addThought(w, t.id, 'two', 2);
+  update(w, a.id, { text: '  first line  \r\nsecond line\n\n\n\nthird  ' }, 3);
+  assert.equal(a.text, 'first line\nsecond line\n\nthird');
+  assert.equal(stepAfter(a), STEP.line + 3 * 29);
+  assert.deepEqual(trainSpots(w, t.id)[b.id], { x: 0, y: stepAfter(a) });
+  assert.equal(search(w, 'second line third')[0].id, a.id); // search reads across the lines
 });
 
 test('Joyce: a train\'s thoughts sit a step apart until one is dragged, and stay joined', () => {

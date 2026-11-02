@@ -4,6 +4,7 @@
   "description": "A faint monochrome of a picture, cut by a seeded opacity mask.",
   "version": "1.0.0",
   "lang": "en",
+  "appearance": "light",
   "theme": {
     "accent": "#5c5f66",
     "accentDark": "#b4b7bd",

@@ -1,24 +1,25 @@
 // How rooms look: plain colour maths, no screen (tested in tests/look.test.js).
 //
-// The rooms page is an opacity mask (MASK: black at that alpha) laid over the home picture itself,
-// which is held still underneath (its spontaneity layer off), so nothing is drawn while it shows.
-// The picture's colours are still read once, for the rooms' default colour inside. On it each
-// room is an opacity square: its tint (black by default) at an alpha that grows as the room gets
-// darker, so Messy thoughts shows as the deepest square. Each room is a gradient of
-// one colour: its tint (by default the picture's average colour) at its lightness (by default
-// LIGHT, and darker for Messy thoughts), shown at its opacity over the picture. Words in a room
-// are dark ink on a light room and pale light on a dark one.
+// Every colour here comes from the app's palette (Renderer, Settings → Colour: one tint, and the
+// roles made from it: paper, ink, pale, veil, glow), handed in as { paper, ink, pale, glow } hex.
+// The rooms page is an opacity mask (the ink at MASK) laid over the home picture itself, which is
+// held still underneath (its spontaneity layer off), so nothing is drawn while it shows.
+// A room is one colour r = (L_r, C_r, h_r) in OKLCh: the hue and chroma of its own colour (or the
+// paper's, if it has none) at its lightness L_r (by default LIGHT, and darker for Messy thoughts).
+// Inside, it fills the screen as a gentle gradient of r at its opacity. On the rooms page its
+// square is a deeper version of r, (L_r − DEEPER, C_r, h_r), at α = strength × (1.1 − L_r) × opacity,
+// so a darker room is a deeper square and Messy thoughts the deepest. Words are the ink on a
+// light room and the pale on a dark one.
 
-export const PAPER = [242, 235, 217]; // the base tint, when there's no picture to read
-export const MASK = 0.1;              // the rooms page: the opacity of its dark mask over the picture
-export const SQUARE = 0.6;            // a room's square: alpha = (1 - lightness) × this
-export const LIGHT = 0.8;             // a room's lightness, by default
-export const LIGHT_MESSY = 0.62;      // Messy thoughts: a little darker
+export const PALETTE = { paper: '#f2ebd9', ink: '#2b2a27', pale: '#f0e7d2', glow: '#efcc83' }; // the default tint's
+export const MASK = 0.1;              // the rooms page: the opacity of its mask over the picture
+export const SQUARE = 0.6;            // a square's strength
+export const DEEPER = 0.35;           // a square is this much darker (OKLab L) than its room inside
+export const LIGHT = 0.86;            // a room's lightness inside (OKLab L), by default
+export const LIGHT_MESSY = 0.72;      // Messy thoughts: a little darker
+export const DARK = 0.6;              // below this lightness a room is dark, and its words pale
 export const OPACITY = 1;
-export const SATURATION = 0.22;       // the most a room takes of the picture's colour, by default
-export const SPREAD = 0.05;           // a room's gradient: this much lighter at the top, darker at the bottom
-export const INK = '#2b2a28';
-export const PALE = '#f1e8d2';
+export const SPREAD = 0.035;          // a room's gradient: this much lighter at the top, darker at the bottom
 
 export const hex = ([r, g, b]) => '#' + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
 export function rgb(h) {
@@ -54,20 +55,46 @@ export function fromHsl([h, s, l]) {
 
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
-// Settings → Rooms: what each one changes, and its default. Saved as 'look' in the create area.
+// OKLab (Ottosson), the same maths as the renderer's engine/colour.js.
+const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const delin = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+export function toOklch([R, G, B]) {
+  const [r, g, b] = [R, G, B].map((v) => lin(v / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const Bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return [L, Math.hypot(A, Bb), ((Math.atan2(Bb, A) * 180) / Math.PI + 360) % 360];
+}
+function linear(L, C, h) {
+  const t = (h * Math.PI) / 180, a = C * Math.cos(t), b = C * Math.sin(t);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+}
+// OKLCh → [r, g, b] bytes; a colour outside sRGB loses chroma (keeping its lightness and hue) until it fits.
+export function fromOklch([L, C, h]) {
+  let c = Math.max(0, C), v = linear(L, c, h);
+  for (let i = 0; i < 40 && v.some((x) => x < -1e-4 || x > 1 + 1e-4); i++) v = linear(L, (c *= 0.9), h);
+  return v.map((x) => Math.round(255 * delin(clamp(x, 0, 1))));
+}
+
+// Settings → Rooms: what each one changes, and its default. Saved as 'look' in the create area,
+// with v: 2 (lightness in OKLab L; before that it was HSL, so older lightness values are dropped).
 export const LOOK = {
   mask: MASK,         // the rooms page's mask: how much of it covers the picture
-  maskColour: '#000000',
   square: SQUARE,     // how strong the rooms' squares are
-  squareColour: '#000000',  // a square's colour, when the room has no tint of its own
   glow: 0.55,         // how brightly a room written in lately glows
   cell: 120,          // a grid cell, in px
   cols: 0,            // the grid's columns and rows at least (0: as many as fit; it grows past them)
   rows: 0,
   light: LIGHT,        // a room's lightness inside, by default
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
-  tint: '',           // the rooms' tint inside, by default ('' = the picture's own colour)
-  saturation: SATURATION,  // the most a room takes of the picture's colour
   tension: 0.5,       // Joyce's line: 0 lets pauses hang loose, 1 keeps it taut
 };
 
@@ -75,48 +102,56 @@ export const LOOK = {
 export function lookPrefs(saved) {
   const out = { ...LOOK };
   if (!saved || typeof saved !== 'object') return out;
+  const old = saved.v !== 2;
   for (const [k, d] of Object.entries(LOOK)) {
+    if (old && (k === 'light' || k === 'lightMessy')) continue;
     const v = saved[k];
     if (typeof d === 'number' && Number.isFinite(+v) && v !== '' && v != null) out[k] = +v;
-    if (typeof d === 'string' && typeof v === 'string' && (v === '' || /^#[0-9a-f]{6}$/i.test(v))) out[k] = v;
   }
-  if (!out.maskColour) out.maskColour = LOOK.maskColour;
-  if (!out.squareColour) out.squareColour = LOOK.squareColour;
   return out;
 }
+export const savedLook = (prefs) => ({ ...prefs, v: 2 });
 
-// The picture's colours ({ top, bottom } from the backdrop, or null) → the rooms page's gradient.
-export function pageLook(colours, prefs = LOOK) {
-  const top = colours?.top || PAPER, bottom = colours?.bottom || PAPER;
-  return { top: css(top), bottom: css(bottom), mask: css(rgb(prefs.maskColour) || [0, 0, 0], prefs.mask), average: mix(top, bottom, 0.5) };
+const pal = (palette) => ({ ...PALETTE, ...(palette || {}) });
+
+// The picture's colours ({ top, bottom } from the backdrop, or null) → the rooms page's gradient,
+// and its mask: the ink at the mask's opacity.
+export function pageLook(colours, prefs = LOOK, palette = PALETTE) {
+  const paper = rgb(pal(palette).paper);
+  const top = colours?.top || paper, bottom = colours?.bottom || paper;
+  return { top: css(top), bottom: css(bottom), mask: css(rgb(pal(palette).ink), prefs.mask) };
 }
 
-// A room's square on the rooms page: one colour at one alpha, laid over the page like a mask.
-export function squareLook(room, messy = false, prefs = LOOK) {
-  const l = room?.light ?? (messy ? prefs.lightMessy : prefs.light);
-  const a = clamp((1 - l) * prefs.square * (room?.opacity ?? OPACITY), 0, 0.95);
-  return { fill: css(rgb(room?.tint) || rgb(prefs.squareColour) || [0, 0, 0], a), alpha: a };
+// A room's colour inside, in OKLCh: its own colour's hue and chroma (or the paper's), at its lightness.
+export function roomColour(room, messy = false, prefs = LOOK, palette = PALETTE) {
+  const [, C, h] = toOklch(rgb(room?.tint) || rgb(pal(palette).paper));
+  const L = clamp(room?.light ?? (messy ? prefs.lightMessy : prefs.light), 0.02, 0.99);
+  return [L, C, h];
 }
 
-// One room's look, given the picture's average colour: its gradient, the ink for its words,
-// and whether it is a dark room.
-export function roomLook(room, average = PAPER, messy = false, prefs = LOOK) {
-  const own = rgb(room?.tint) || rgb(prefs.tint);
-  const tint = own || average;
-  const [h, s0] = toHsl(tint);
-  const s = own ? s0 : Math.min(s0, prefs.saturation); // the picture's own colour, kept quiet
-  const l = room?.light ?? (messy ? prefs.lightMessy : prefs.light);
+// A room's square on the rooms page: a deeper version of its colour, at one alpha, laid over the
+// page like a mask.
+export function squareLook(room, messy = false, prefs = LOOK, palette = PALETTE) {
+  const [L, C, h] = roomColour(room, messy, prefs, palette);
+  const a = clamp(prefs.square * (1.1 - L) * (room?.opacity ?? OPACITY), 0, 0.95);
+  return { fill: css(fromOklch([Math.max(0.03, L - DEEPER), C, h]), a), alpha: a };
+}
+
+// One room's look inside: its gradient, the ink for its words, and whether it is a dark room.
+export function roomLook(room, palette = PALETTE, messy = false, prefs = LOOK) {
+  const p = pal(palette);
+  const [L, C, h] = roomColour(room, messy, prefs, p);
   const a = room?.opacity ?? OPACITY;
-  const at = (dl) => fromHsl([h, s, clamp(l + dl, 0, 1)]);
-  const dark = l < 0.55;
+  const at = (dl) => fromOklch([clamp(L + dl, 0, 1), C, h]);
+  const dark = L < DARK;
   return {
     top: css(at(SPREAD), a),
     bottom: css(at(-SPREAD), a),
     flat: css(at(0), a),
-    ink: dark ? PALE : INK,
+    ink: dark ? p.pale : p.ink,
     dark,
-    tint: hex(tint),
-    light: l,
+    colour: hex(at(0)),
+    light: L,
     opacity: a,
   };
 }

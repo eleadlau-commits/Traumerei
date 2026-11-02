@@ -301,6 +301,10 @@ class Project:
         app.setdefault('version', '1.0.0')
         app.setdefault('description', '')
         app.setdefault('lang', 'en')
+        app.setdefault('appearance', 'choose')
+        if app['appearance'] not in ('choose', 'auto', 'light', 'dark'):
+            log.error('app.json "appearance" must be "choose" (the default: Settings offers Automatic, Light and Dark), "auto", "light" or "dark".')
+            return None
         theme = app.setdefault('theme', {})
         theme.setdefault('accent', '#3d5afe')
         theme.setdefault('accentDark', '#8c9eff')
@@ -606,7 +610,7 @@ class Project:
         } for f in included]
         config = {'id': app['id'], 'name': app['name'], 'description': app.get('description', ''), 'version': app['version'],
                   'build': str(build_number) if build_number else '', 'framework': self.framework_version,
-                  'test': test}
+                  'appearance': app['appearance'], 'test': test}
         seed = test and (self.app_dir / 'tests' / 'seed.js').is_file()
         if test and (self.app_dir / 'tests').is_dir():
             shutil.copytree(self.app_dir / 'tests', web / 'app-tests')

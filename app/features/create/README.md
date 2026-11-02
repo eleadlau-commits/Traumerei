@@ -6,19 +6,22 @@ What the home page's **Create** opens: rooms of thoughts.
   back arrow (top right) home. It is a light opacity mask (`look.js`) over the home picture
   itself, which is held still underneath: its spontaneity layer is off while the rooms page
   shows (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
-  is an opacity square on it (its tint, black by default, at an alpha that deepens as the room
-  darkens); a room written in during the last day glows. **Messy thoughts** is always there,
+  is an opacity square on it: a deeper version of the room's own colour inside, (L_r − 0.35,
+  C_r, h_r) in OKLCh, at α = strength × (1.1 − L_r) × opacity, so a darker room is a deeper
+  square; a room written in during the last day glows. **Messy thoughts** is always there,
   four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
-  a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** sets the page's mask (opacity and colour), the squares (strength, colour,
-  glow, size) and the default look inside rooms (tint, colour strength, lightness, Messy's
-  lightness); a room's own Tint wins. While the rooms page shows, the home picture's
+  a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** has two folds: *The rooms page* (mask
+  opacity, square strength, glow, size, columns and rows at least) and *Inside a room* (lightness,
+  Messy's lightness, Joyce's line tension). Every colour comes from the app's palette (Settings →
+  Colour, the Renderer's one tint): the mask is its ink, and a room with no colour of its own
+  takes its paper. While the rooms page shows, the home picture's
   spontaneity layer is turned off. *Rooms*,
   *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
   to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
   place.**
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
-  *Tint* sets its tint, lightness and opacity (by default the picture's colour, quietened; Messy
-  is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
+  Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
+  tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
   a trackpad's two-finger scroll moves around. Type anywhere to write a thought; Enter ends it.
   On a phone, *Write* opens the keyboard. Escape goes back to the rooms (and from there, home).
 - **Ontological modes**, top right, chosen per room:
@@ -49,7 +52,9 @@ the key `world` and follows the account like the settings. Other features reach 
 ## Editing, the line, the timeline
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it and shows its options
-  beside it (name, Go in, tint, lightness, size 1 × 1 or 2 × 2, Delete); a double click goes in.
+  beside it (name, Go in, colour, lightness, opacity, size 1 × 1 or 2 × 2, Back to the tint,
+  Delete); a double click goes in. A colour picked there is the room's colour inside, its
+  lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Joyce's line:** each thought stands on its own, joined to the next by a line. Its tension
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
@@ -61,15 +66,17 @@ the key `world` and follows the account like the settings. Other features reach 
   everything; a click takes the view to that thought.
 - **Editing:** a click on a thought (or a double click on a train) opens a pop-up beside it, in
   the rooms page's style: edit its words (a passage's title and body, a picture's caption, a
-  train's name), fold or unfold a train, move it to another room, or delete it.
+  train's name), fold or unfold a train, move it to another room, or delete it. In a thought's
+  box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
+  thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and the room's settings.
 - **Ctrl+K** searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.
 - **Choosing many:** drag on the empty canvas to draw a selection box; the chosen thoughts move
   together when one is dragged, and can be moved to a room or deleted together. **Ctrl+drag**
   (or two fingers on a phone) moves the canvas. Names keep with Enter.
-- Every pop-up and panel (Add, room settings, the sheet, the timeline, a thing's edit pop-up)
-  shares one pale, blurred white style.
+- Every pop-up and panel (Add, the sheet, the timeline, a thing's edit pop-up)
+  shares one pale, blurred style: the palette's veil.
 - **The grid grows:** there is always a spare column and row past the furthest room, and the
   page scrolls; Settings → Rooms sets columns and rows at least.
 - **Lights:** a room's glow follows your attention lately: going in and writing there light it,

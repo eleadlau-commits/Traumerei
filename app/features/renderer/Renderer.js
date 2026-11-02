@@ -24,6 +24,8 @@ import { Feature, ui } from 'folio';
 import { Engine, PARAMS, DEFAULTS, MODES, modeById } from './engine/index.js';
 import { imageSeed } from './engine/monochrome.js';
 import { sliders } from './controls.js';
+import { roles, hexOf, tintFromPicture } from './engine/palette.js';
+import { DEFAULT_TINT } from './engine/colour.js';
 
 const { el } = ui;
 const MAX_SIDE = 2048; // the seed is taken from the picture scaled down to this
@@ -51,10 +53,47 @@ export default class Renderer extends Feature {
       mount: (container) => this.mount(container),
       render: () => this.draw(),
     });
+    this.add('settings', { id: 'renderer-colour', title: 'Colour', order: 5, render: () => this.colourPane() });
     this.add('settings', { id: 'renderer-theme', title: 'Theme', order: 15, render: () => this.themes() });
     this.add('settings', { id: 'renderer-advanced', title: 'Advanced', order: 50, render: () => this.advanced() });
-    // For pages laid over the picture (Create): its colours, and a way to pause it while covered.
-    this.provide('backdrop', { colours: () => this.colours(), cover: (on) => this.hold(on) });
+    // For pages laid over the picture (Create): its colours, the app's colour roles, and a way to
+    // pause it while covered.
+    this.provide('backdrop', { colours: () => this.colours(), palette: () => this.palette, cover: (on) => this.hold(on) });
+    this.paint();
+  }
+
+  // The app's colours (engine/palette.js), all from the tint τ: set on the page as CSS variables
+  // (--paper, --ink, --pale, --veil, --glow, and each as --name-rgb: "r g b" for use with an
+  // alpha), for every feature's styles to use. Other pages hear of a change by 'palette' on document.
+  paint() {
+    const r = roles(this.P.tint);
+    this.palette = { tint: this.P.tint, ...Object.fromEntries(Object.entries(r).map(([k, v]) => [k, hexOf(v)])) };
+    const root = document.documentElement.style;
+    for (const [k, v] of Object.entries(r)) {
+      root.setProperty(`--${k}`, hexOf(v));
+      root.setProperty(`--${k}-rgb`, v.join(' '));
+    }
+    document.dispatchEvent(new CustomEvent('palette', { detail: this.palette }));
+  }
+
+  // Settings → Colour: the one tint everything takes its colour from.
+  colourPane() {
+    const set = (tint) => {
+      this.change('tint', tint);
+      this.controls?.set(this.P);
+      if (this.tintInput) this.tintInput.value = tint;
+    };
+    this.tintInput = el('input', { type: 'color', value: this.P.tint, 'aria-label': 'Tint', oninput: (e) => set(e.target.value) });
+    return el('div', { class: 'renderer-colour-pane' },
+      el('label', { class: 'renderer-slider renderer-colour' }, el('span', {}, 'Tint'), this.tintInput),
+      ui.hint('Every colour comes from this one: the paper, the words, the menu\'s veil and the rooms.', { small: true }),
+      el('div', { class: 'renderer-buttons' },
+        el('button', { type: 'button', class: 'btn small', onclick: () => {
+          const found = this.engine.rgba && tintFromPicture(this.engine.rgba, this.engine.image.W, this.engine.image.H, this.P.tint);
+          if (found) set(found);
+          else ui.toast(this.source ? 'This picture has almost no colour to take.' : 'Choose an image first (Advanced → Picture).');
+        } }, 'From the picture'),
+        el('button', { type: 'button', class: 'btn small', onclick: () => set(DEFAULT_TINT) }, 'Back to defaults')));
   }
 
   // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
@@ -280,6 +319,7 @@ export default class Renderer extends Feature {
   change(key, value) {
     this.P[key] = value;
     this.storage.set('params', this.P);
+    if (key === 'tint') this.paint();
     if (this.mode.liveKeys.includes(key)) {
       if (this.anim) this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
       return;
@@ -291,8 +331,9 @@ export default class Renderer extends Feature {
     });
   }
 
+  // Advanced → Back to defaults: every theme's sliders. The tint is Settings → Colour's, and stays.
   reset() {
-    this.P = { ...DEFAULTS };
+    this.P = { ...DEFAULTS, tint: this.P.tint };
     this.storage.set('params', this.P);
     this.controls.set(this.P);
     this.draw();

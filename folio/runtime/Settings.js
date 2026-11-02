@@ -1,6 +1,7 @@
 // The Settings window and the About window.
 //
-// Settings: Appearance (Automatic, Light or Dark) first, then the 'settings' sections from
+// Settings: Appearance (Automatic, Light or Dark) first, unless app.json fixes it ("appearance":
+// "auto", "light" or "dark", and then there's no choice to show), then the 'settings' sections from
 // features, then the framework's own two:
 //   Features  switches to turn features on and off for this phone, folded away until opened
 //   About     the app's name and version, and any problems since it opened
@@ -13,7 +14,8 @@ export class Settings {
   constructor(app) {
     this.app = app;
     this.prefs = app.storage.area('folio');
-    startAppearance(this.prefs.get('appearance', 'auto'));
+    this.fixed = ['auto', 'light', 'dark'].includes(app.config.appearance) ? app.config.appearance : null;
+    startAppearance(this.fixed || this.prefs.get('appearance', 'auto'));
     this.restartNeeded = false;
     this.featuresOpen = false; // the Features list stays as it was while the window is redrawn
   }
@@ -42,7 +44,7 @@ export class Settings {
       if (!body) return null;
       return el('section', { class: 'settings-section' }, s.title && el('h3', { class: 'sub-head' }, s.title), body);
     });
-    this.window.setContent(this.appearanceSection(), ...sections, this.featuresSection(), el('section', { class: 'settings-section about' },
+    this.window.setContent(this.fixed ? null : this.appearanceSection(), ...sections, this.featuresSection(), el('section', { class: 'settings-section about' },
       el('h3', { class: 'sub-head' }, 'About'), ...this.aboutParts()));
   }
 

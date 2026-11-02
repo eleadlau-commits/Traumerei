@@ -6,11 +6,11 @@
 :root {
   --create-strip: calc(64px + env(safe-area-inset-top));
   --create-ease: cubic-bezier(.22, .7, .18, 1);
-  --create-glow: rgb(255 236 190 / .55);
+  --create-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
   /* Every pop-up and panel: the same pale, blurred white. */
-  --create-panel: rgb(250 247 240 / .84);
-  --create-panel-ink: #2b2a28;
-  --create-panel-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 12px 40px rgb(0 0 0 / .12);
+  --create-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
+  --create-panel-ink: var(--ink, #2b2a28);
+  --create-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
 }
 
 .create {
@@ -89,8 +89,8 @@
   display: flex;
   flex-direction: column;
   /* An opacity mask over the home picture itself, which is held still underneath. */
-  background: var(--create-mask, rgb(0 0 0 / .1));
-  box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
+  background: var(--create-mask, rgb(var(--ink-rgb, 43 42 40) / .1));
+  box-shadow: 0 -1px 0 rgb(var(--ink-rgb, 43 42 40) / .08), 0 -18px 40px rgb(var(--ink-rgb, 43 42 40) / .08);
   transform: translateY(100%);
   transition: transform .5s var(--create-ease);
 }
@@ -118,19 +118,19 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(43 42 40 / .035);
+  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035);
   transition: box-shadow .3s, background-color .3s;
   display: grid;
   place-items: center;
   font: 300 22px/1 var(--home-font, inherit);
 }
 .create-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
-.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
+.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb, 43 42 40) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .14); }
 .create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .create-grid.dragging .create-cell::after { content: ''; }
-.create-drop { pointer-events: none; z-index: 1; background: rgb(0 0 0 / .06); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .4); }
-.create-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(43 42 40 / .15); }
-.create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
+.create-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb, 43 42 40) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .4); }
+.create-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .15); }
+.create-cell.target { background: rgb(var(--ink-rgb, 43 42 40) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .3); }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
 .create-tile {
@@ -150,9 +150,9 @@
 .create-tile.lit {
   box-shadow:
     0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--create-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
-    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, rgb(255 244 214 / .35)) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
+    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
-.create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
+.create-tile.deep { color: var(--pale, #f1e8d2); } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
 .create-tile-label {
   position: absolute;
@@ -257,27 +257,7 @@
 .create-add-note { font-size: 11px; letter-spacing: .04em; text-transform: none; opacity: .5; }
 .create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
-/* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
-.create-tint {
-  position: absolute;
-  left: 50%;
-  bottom: calc(64px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px 22px;
-  max-width: calc(100% - 2 * var(--gutter));
-  box-sizing: border-box;
-  padding: 12px 20px;
-  background: var(--create-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--create-panel-shadow);
-  color: var(--create-panel-ink);
-  --room-ink: var(--create-panel-ink);
-}
+/* A slider or colour in a pop-up. */
 .create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-slider span { opacity: .6; }
 .create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
@@ -401,7 +381,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -411,6 +391,8 @@
   box-sizing: border-box;
 }
 .create-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.create-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
+.create-thought { white-space: pre-line; }
 .create-edit-text:focus, .create-edit-body:focus { border-bottom-color: currentColor; }
 .create-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
   background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
@@ -465,7 +447,7 @@
 }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
 
 @media (max-width: 560px) {
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
@@ -540,8 +522,8 @@
 
 /* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
 .create-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
-.create-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, #2b2a28) 55%, transparent); }
-.create-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, #2b2a28); }
+.create-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 55%, transparent); }
+.create-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, var(--ink, #2b2a28)); }
 .create-options {
   position: absolute;
   z-index: 3;
@@ -565,7 +547,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -582,18 +564,18 @@
 .create-options .create-slider input[type="range"] { width: 110px; }
 
 /* Search (Ctrl+K): a quiet panel near the top. */
-.create-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(0 0 0 / .08); }
+.create-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
 .create-search-panel {
   position: absolute;
   left: 50%;
   top: 14vh;
   transform: translateX(-50%);
   width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(250 247 240 / .9);
+  background: rgb(var(--veil-rgb, 250 247 240) / .9);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 18px 60px rgb(0 0 0 / .16);
-  color: var(--home-ink, #2b2a28);
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
+  color: var(--home-ink, var(--ink, #2b2a28));
   animation: create-unfold .2s var(--create-ease) both;
 }
 .create-search-field {
@@ -606,7 +588,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .12);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .12);
   border-radius: 0;
   outline: none;
   box-shadow: none;
@@ -617,7 +599,7 @@
   appearance: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
   display: flex; justify-content: space-between; align-items: baseline; gap: 20px; width: 100%; padding: 11px 20px; text-align: left;
 }
-.create-search-item.on, .create-search-item:hover { background: rgb(43 42 40 / .06); }
+.create-search-item.on, .create-search-item:hover { background: rgb(var(--ink-rgb, 43 42 40) / .06); }
 .create-search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .create-search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
 .create-search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
@@ -632,9 +614,9 @@
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
-  color: var(--room-ink, var(--home-ink, #2b2a28));
+  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
 }
-.create:not(.in-room) .create-saved { color: var(--home-ink, #2b2a28); }
+.create:not(.in-room) .create-saved { color: var(--home-ink, var(--ink, #2b2a28)); }
 .create-saved.on { animation: create-saved 2.2s ease both; }
 @keyframes create-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
 .create-hint {
@@ -650,9 +632,9 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity .6s, transform .6s var(--create-ease);
-  color: var(--room-ink, var(--home-ink, #2b2a28));
+  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
 }
-.create:not(.in-room) .create-hint { color: var(--home-ink, #2b2a28); }
+.create:not(.in-room) .create-hint { color: var(--home-ink, var(--ink, #2b2a28)); }
 .create-hint.on { opacity: .6; transform: translate(-50%, 0); }
 @media (max-width: 560px) {
   .create-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }

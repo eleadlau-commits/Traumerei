@@ -8,7 +8,7 @@
 // opens Messy thoughts and starts writing there, at a random place.
 //
 // On the rooms page, hovering over a square outlines it; a click chooses it and shows its options
-// beside it (name, Go in, tint, lightness, size, Delete); a double click goes in.
+// beside it (name, Go in, colour, lightness, opacity, size, Delete); a double click goes in.
 //
 // A room fills the screen as one gradient of its own colour, with the back arrow to the rooms.
 // A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
@@ -43,7 +43,7 @@ import {
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { visit, light, loadLog } from './attention.js';
-import { pageLook, roomLook, squareLook, lookPrefs, LOOK } from './look.js';
+import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOOK, PALETTE } from './look.js';
 
 const { el } = ui;
 const ZOOM = { min: 0.25, max: 4 };
@@ -70,9 +70,12 @@ export default class Create extends Feature {
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
+    // The app's colours (Renderer, Settings → Colour), and any change to them.
+    this.palette = this.backdrop?.palette?.() || PALETTE;
+    document.addEventListener('palette', (e) => { this.palette = e.detail; this.repaint(); });
     this.attention = loadLog(this.storage.get('attention'));
     this.build();
-    this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 18, render: () => this.settingsPane() });
+    this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 30, render: () => this.settingsPane() });
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
@@ -89,6 +92,7 @@ export default class Create extends Feature {
     this.app.shell?.closeMenu?.();
     clearTimeout(this.closing);
     this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
+    this.palette = this.backdrop?.palette?.() || this.palette;
     this.paintPage();
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
@@ -143,7 +147,6 @@ export default class Create extends Feature {
     this.roomPage.hidden = false;
     this.root.classList.add('in-room');
     this.backBtn.setAttribute('aria-label', 'Back to the rooms');
-    this.tinting = false;
     this.closeAdd();
     this.drawRoom();
     this.hint('room');
@@ -227,13 +230,11 @@ export default class Create extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           el('div', { class: 'create-add-rule' }),
-          this.addItem('Room settings', 'Tint, lightness, opacity', () => this.toggleTint()),
           this.addItem('Keys', '?', () => this.showKeys())),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
       this.bar,
-      this.tintPanel = el('div', { class: 'create-tint', hidden: true }),
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
       this.input);
 
@@ -298,7 +299,7 @@ export default class Create extends Feature {
     }
 
     const tiles = all.map((r) => {
-      const look = squareLook(r, r.id === MESSY, this.prefs);
+      const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
       const written = roomThoughts(this.world, r.id);
       const count = written.length;
       const glow = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
@@ -337,13 +338,14 @@ export default class Create extends Feature {
     this.drawRooms();
   }
 
-  // A chosen room's options, beside its square: its name, Go in, its tint and lightness, its size,
-  // and Delete (not for Messy thoughts).
+  // A chosen room's options, beside its square: its name, Go in, its colour, lightness and opacity
+  // (the only place a room's colour is set), its size, Back to the tint, and Delete (not for Messy).
   roomOptions(r, cell, cols) {
     const step = cell + GRID.gap;
     const right = r.col + r.size + 1 + 2 <= cols; // room for the panel on the right
     const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
     const look = this.lookOf(r);
+    const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
     const nameField = el('input', {
       class: 'create-options-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
@@ -359,10 +361,16 @@ export default class Create extends Feature {
     },
       nameField,
       word('Go in', () => this.openRoom(r.id), 'create-options-go'),
-      el('label', { class: 'create-slider' }, el('span', {}, 'Tint'),
-        el('input', { type: 'color', value: look.tint, oninput: (e) => set({ tint: e.target.value }) })),
-      el('label', { class: 'create-slider' }, el('span', {}, 'Lightness'),
-        el('input', { type: 'range', min: 0.05, max: 0.95, step: 0.01, value: look.light, oninput: (e) => set({ light: +e.target.value }) })),
+      // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
+      el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
+        el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
+          const L = toOklch(rgb(e.target.value))[0];
+          set({ tint: e.target.value, light: Math.round(L * 1000) / 1000 });
+          lightness.value = L;
+        } })),
+      el('label', { class: 'create-slider' }, el('span', {}, 'Lightness'), lightness),
+      el('label', { class: 'create-slider' }, el('span', {}, 'Opacity'),
+        el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) })),
       el('div', { class: 'create-options-row' },
         el('span', { class: 'create-options-label' }, 'Size'),
         ...[1, 2].map((n) => el('button', {
@@ -373,7 +381,7 @@ export default class Create extends Feature {
           },
         }, n === 1 ? '1 × 1' : '2 × 2'))),
       el('div', { class: 'create-options-row' },
-        r.tint || r.light != null ? word('Its own colour again', () => {
+        r.tint || r.light != null || r.opacity != null ? word('Back to the tint', () => {
           delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
         }) : null,
         r.id !== MESSY ? word('Delete', () => {
@@ -393,7 +401,7 @@ export default class Create extends Feature {
       this.roomsFrame = 0;
       for (const tile of this.grid.querySelectorAll('.create-tile')) {
         const r = room(this.world, tile.dataset.room);
-        if (r) tile.style.setProperty('--square', squareLook(r, r.id === MESSY, this.prefs).fill);
+        if (r) tile.style.setProperty('--square', squareLook(r, r.id === MESSY, this.prefs, this.palette).fill);
       }
     });
   }
@@ -495,23 +503,26 @@ export default class Create extends Feature {
 
   get mode() { return view(this.world, this.roomId).mode; }
 
-  lookOf(r) { return roomLook(r, this.page?.average, r.id === MESSY, this.prefs); }
+  lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
 
   // The rooms page's colours, from the picture's (read when Create opened) and Settings → Rooms.
   paintPage() {
-    this.page = pageLook(this.colours, this.prefs);
+    this.page = pageLook(this.colours, this.prefs, this.palette);
     this.root.style.setProperty('--create-top', this.page.top);
     this.root.style.setProperty('--create-bottom', this.page.bottom);
     this.root.style.setProperty('--create-mask', this.page.mask);
-    this.root.style.setProperty('--create-glow', `rgb(255 236 190 / ${this.prefs.glow})`);
-    this.root.style.setProperty('--create-glow-in', `rgb(255 244 214 / ${(this.prefs.glow * 0.64).toFixed(3)})`);
+    // A lit room's glow: the palette's glow, lightened toward white.
+    const glow = rgb(this.palette.glow) || [239, 204, 131];
+    const lift = (t, a) => `rgb(${glow.map((v) => Math.round(v + (255 - v) * t)).join(' ')} / ${a.toFixed(3)})`;
+    this.root.style.setProperty('--create-glow', lift(0.55, this.prefs.glow));
+    this.root.style.setProperty('--create-glow-in', lift(0.7, this.prefs.glow * 0.64));
   }
 
   // ---- Settings → Rooms ----
 
   setPref(key, value) {
     this.prefs = lookPrefs({ ...this.prefs, [key]: value });
-    this.storage.set('look', this.prefs);
+    this.storage.set('look', savedLook(this.prefs));
     this.repaint();
   }
 
@@ -523,6 +534,8 @@ export default class Create extends Feature {
     else this.drawRooms();
   }
 
+  // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
+  // colour from its pop-up on the rooms page.
   settingsPane() {
     const p = this.prefs;
     const slider = (label, key, min, max, step = 0.01) => {
@@ -531,33 +544,24 @@ export default class Create extends Feature {
         el('input', { type: 'range', min, max, step, value: p[key], 'aria-label': label,
           oninput: (e) => { out.textContent = e.target.value; this.setPref(key, +e.target.value); } }));
     };
-    const colour = (label, key, fallback) => el('label', { class: 'renderer-slider renderer-colour' },
-      el('span', {}, label),
-      el('input', { type: 'color', value: p[key] || fallback, 'aria-label': label, oninput: (e) => this.setPref(key, e.target.value) }));
-    const group = (legend, ...rows) => el('fieldset', { class: 'renderer-group' }, el('legend', {}, legend), ...rows);
-    const avg = this.page?.average || [242, 235, 217];
+    const fold = (title, ...rows) => el('details', { class: 'advanced renderer-fold' }, el('summary', {}, title),
+      el('div', { class: 'renderer-fold-body' }, el('div', { class: 'renderer-sliders' }, ...rows)));
     return el('div', { class: 'create-settings' },
-      ui.hint('How the rooms page and the rooms look. A room\'s own Tint (inside it) wins over these.', { small: true }),
-      group('Rooms page',
+      fold('The rooms page',
         slider('Mask opacity', 'mask', 0, 0.6),
-        colour('Mask colour', 'maskColour', '#000000')),
-      group('Squares',
-        slider('Strength', 'square', 0, 1.5),
-        colour('Colour', 'squareColour', '#000000'),
+        slider('Square strength', 'square', 0, 1.5),
         slider('Glow', 'glow', 0, 1),
         slider('Size', 'cell', 70, 180, 1),
         slider('Columns at least', 'cols', 0, 30, 1),
         slider('Rows at least', 'rows', 0, 30, 1)),
-      group('Inside a room',
-        colour('Tint', 'tint', '#' + avg.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')),
-        el('button', { type: 'button', class: 'btn small', onclick: () => { this.setPref('tint', ''); this.app.shell?.refreshSettings?.(); } }, 'Tint from the picture'),
-        slider('Colour strength', 'saturation', 0, 1),
-        slider('Lightness', 'light', 0.05, 0.95),
-        slider('Messy lightness', 'lightMessy', 0.05, 0.95),
+      fold('Inside a room',
+        slider('Lightness', 'light', 0.05, 0.98),
+        slider('Messy lightness', 'lightMessy', 0.05, 0.98),
         slider('Line tension', 'tension', 0, 1)),
+      ui.hint('A room\'s own colour is in its pop-up on the rooms page: click its square.', { small: true }),
       el('button', { type: 'button', class: 'btn small', onclick: () => {
         this.prefs = lookPrefs(LOOK);
-        this.storage.set('look', this.prefs);
+        this.storage.set('look', savedLook(this.prefs));
         this.repaint();
         this.app.shell?.refreshSettings?.();
       } }, 'Back to defaults'));
@@ -791,7 +795,6 @@ export default class Create extends Feature {
       if (!this.addMenu.hidden) this.closeAdd();
       else if (this.sel) { this.sel = null; this.drawWorld(); }
       else if (this.roomSel) { this.roomSel = null; this.drawRooms(); }
-      else if (this.tinting) this.toggleTint();
       else this.back();
       return;
     }
@@ -1274,35 +1277,6 @@ export default class Create extends Feature {
     this.place();
   }
 
-  // ---- The room's own look: tint, lightness, opacity ----
-
-  toggleTint() {
-    this.tinting = !this.tinting;
-    this.drawTint();
-  }
-
-  drawTint() {
-    if (!this.tinting || !this.roomId) { this.tintPanel.hidden = true; return; }
-    const r = room(this.world, this.roomId);
-    const look = this.lookOf(r);
-    const set = (fields) => { update(this.world, r.id, fields); this.paintRoom(); this.save(); };
-    const slider = (label, key, min, max, value) => el('label', { class: 'create-slider' },
-      el('span', {}, label),
-      el('input', { type: 'range', min, max, step: 0.01, value, oninput: (e) => set({ [key]: +e.target.value }) }));
-    this.tintPanel.hidden = false;
-    this.tintPanel.replaceChildren(
-      el('label', { class: 'create-slider' },
-        el('span', {}, 'Tint'),
-        el('input', { type: 'color', value: look.tint, oninput: (e) => set({ tint: e.target.value }) })),
-      slider('Lightness', 'light', 0.05, 0.95, look.light),
-      slider('Opacity', 'opacity', 0.3, 1, look.opacity),
-      el('button', { type: 'button', class: 'create-word', onclick: () => {
-        delete r.tint; delete r.light; delete r.opacity;
-        this.paintRoom(); this.save(); this.drawTint();
-      } }, 'Back to its own'),
-      el('button', { type: 'button', class: 'create-word', onclick: () => this.toggleTint() }, 'Done'));
-  }
-
   // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
 
   drawBar() {
@@ -1313,11 +1287,31 @@ export default class Create extends Feature {
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
     const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const title = { line: 'Thought', passage: 'Passage', picture: 'Picture', train: th.folded ? 'A folded train' : 'Train' }[kind];
     rows.push(el('div', { class: 'create-options-label' }, title));
-    if (kind === 'line') rows.push(field(th.text, 'The thought', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'line') {
+      // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
+      const text = el('textarea', { class: 'create-edit-text create-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
+        oninput: (e) => grow(e.target),
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === 'Escape') { e.target.blur(); return; }
+          if (e.key !== 'Enter' || e.isComposing) return;
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) {
+            const a = e.target.selectionStart, b = e.target.selectionEnd;
+            e.target.setRangeText('\n', a, b, 'end');
+            grow(e.target);
+          } else e.target.blur();
+        },
+        onchange: (e) => { update(this.world, th.id, { text: e.target.value }); done(); } });
+      text.value = th.text || '';
+      rows.push(text);
+      requestAnimationFrame(() => grow(text));
+    }
     if (kind === 'passage') {
       rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
       const body = el('textarea', { class: 'create-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
