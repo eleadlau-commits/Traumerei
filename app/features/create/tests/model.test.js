@@ -6,6 +6,7 @@ import {
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
+  shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -292,4 +293,78 @@ test('a room grows to four squares only where there is room', () => {
   assert.ok(placeRoom(w, a.id, 4, 3));
   assert.ok(sizeRoom(w, a.id, 2));
   assert.equal(roomAt(w, 5, 4).id, a.id);
+});
+
+test('a room keeps a short description, and loses it when it is cleared', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Ontology', 1);
+  update(w, r.id, { desc: '  Where the ways of thinking live.  ' });
+  assert.equal(r.desc, 'Where the ways of thinking live.');
+  update(w, r.id, { desc: 'x'.repeat(DESC + 50) });
+  assert.equal(r.desc.length, DESC);
+  update(w, r.id, { desc: '' });
+  assert.equal('desc' in r, false);
+});
+
+test('nothing in a locked room can be written, changed, moved or deleted, and its square stays put', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Done', 1, { col: 3, row: 0 }, 6);
+  const t = train(w, r.id, 'kept');
+  const th = trainThoughts(w, t.id)[0];
+  lock(w, r.id);
+  assert.ok(shut(w, th.id));
+  assert.equal(addThought(w, t.id, 'more'), null);
+  assert.equal(startTrain(w, r.id, 0, 0), null);
+  assert.equal(update(w, th.id, { text: 'changed' }), null);
+  assert.equal(th.text, 'kept');
+  remove(w, th.id);
+  remove(w, r.id);
+  assert.ok(w.things[th.id] && w.things[r.id]);
+  assert.equal(move(w, th.id, MESSY), false);
+  const other = train(w, MESSY, 'outside');
+  assert.equal(move(w, other.id, r.id), false);
+  assert.equal(nudge(w, th.id, 50, 50), false);
+  assert.equal(placeRoom(w, r.id, 4, 0, 6), false);
+  assert.equal(sizeRoom(w, r.id, 2, 6), false);
+  assert.equal(r.col, 3);
+  update(w, r.id, { name: 'Done, renamed' }); // the room itself can still be named
+  assert.equal(r.name, 'Done, renamed');
+  lock(w, r.id, false);
+  assert.ok(addThought(w, t.id, 'more'));
+});
+
+test('an archived room leaves the grid for the Archive, and comes back to a free cell', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Old', 1, { col: 4, row: 1 }, 6);
+  train(w, r.id, 'a thought about washi');
+  assert.ok(archive(w, r.id));
+  assert.equal(rooms(w).some((x) => x.id === r.id), false);
+  assert.deepEqual(archived(w).map((x) => x.id), [r.id]);
+  assert.equal(r.col, undefined);
+  assert.equal(search(w, 'washi').length, 1); // still found
+  assert.equal(archive(w, MESSY), false);
+  assert.ok(restore(w, r.id, { col: 5, row: 2 }, 6));
+  assert.equal(r.archived, undefined);
+  assert.deepEqual([r.col, r.row], [5, 2]);
+  lock(w, r.id);
+  assert.equal(archive(w, r.id), false); // unlock it first
+});
+
+test('a square peeks at the last things written in its room', () => {
+  const w = emptyWorld();
+  train(w, MESSY, 'one', 'two', 'three', 'four');
+  assert.deepEqual(peek(w, MESSY), ['two', 'three', 'four']);
+  assert.deepEqual(peek(w, MESSY, 1), ['four']);
+});
+
+test('search lights count what each room at the top holds, rooms inside rooms included', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Ontology', 1);
+  train(w, r.id, 'the facade is the work', 'a facade of rooms');
+  const inner = create(w, r.id, { kind: 'room', name: 'Facades' });
+  train(w, inner.id, 'facade again');
+  train(w, MESSY, 'facade, messily', 'nothing');
+  assert.equal(topRoom(w, inner.id).id, r.id);
+  assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 4, [MESSY]: 1 });
+  assert.deepEqual(roomHits(w, ''), {});
 });

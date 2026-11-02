@@ -36,6 +36,14 @@ test('a square is a deeper version of its room, and Messy thoughts is the deepes
   assert.ok(Math.abs(h - inside[2]) < 3);
 });
 
+test('a square shows its room\'s colour more vividly than the room itself', () => {
+  const blue = { tint: '#336699', light: 0.7 };
+  const chroma = (look) => toOklch(look.fill.match(/\d+/g).slice(0, 3).map(Number))[1];
+  const inside = toOklch(rgb(roomLook(blue).colour))[1];
+  assert.ok(chroma(squareLook(blue)) > inside * 1.2);
+  assert.ok(chroma(squareLook(blue, false, { ...LOOK, vivid: 1 })) < chroma(squareLook(blue)));
+});
+
 test('a room with no colour of its own takes the paper\'s hue', () => {
   const [, , h] = toOklch(rgb(roomLook({}).colour));
   assert.ok(Math.abs(h - toOklch(rgb(PALETTE.paper))[2]) < 3);

@@ -646,3 +646,142 @@
 .create-keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
 .create-keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
 .create-keys-list dd { margin: 0; opacity: .8; }
+
+/* ---- The rooms page, step 1: peek, the last room, a half-written thought, lock, lights, Archive ---- */
+
+/* Peek: a square's last thoughts in small, faint words, when it is hovered over (or always). */
+.create-peek {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 9px;
+  bottom: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: .02em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s;
+  -webkit-mask-image: linear-gradient(#000 70%, transparent);
+  mask-image: linear-gradient(#000 70%, transparent);
+}
+.create-tile.messy .create-peek { left: 14px; right: 14px; top: 13px; bottom: 36px; font-size: 12px; gap: 5px; }
+.create-tile:hover .create-peek, .create-grid.peek-always .create-peek { opacity: .72; }
+.create-peek-line { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.create-peek-line:last-child { opacity: 1; }
+.create-peek-line:not(:last-child) { opacity: .6; }
+.create-peek-desc { font-style: italic; opacity: .8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* The room last gone into: a soft outline of light. */
+.create-tile.last::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--create-glow) 90%, transparent), 0 0 18px 2px color-mix(in srgb, var(--create-glow) 70%, transparent);
+  animation: create-breathe 4.5s ease-in-out infinite;
+}
+@keyframes create-breathe { 50% { opacity: .55; } }
+
+/* A thought left half written there: a small dot, top right. */
+.create-tile-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .75;
+}
+
+/* Locked: a thin bar along its top; it keeps its place. */
+.create-tile.locked { cursor: default; }
+.create-tile.locked:hover { transform: none; }
+.create-tile.locked { box-shadow: inset 0 3px 0 color-mix(in srgb, currentColor 55%, transparent); }
+.create-tile.locked.lit { box-shadow:
+    inset 0 3px 0 color-mix(in srgb, currentColor 55%, transparent),
+    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--create-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent); }
+.create-room.locked .create-add { display: none; }
+
+/* Search lights: the rooms without the words dim; those with them show how many. */
+.create-lights {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 2 * var(--gutter)));
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  animation: create-unfold .2s var(--create-ease) both;
+}
+.create-lights-field { flex: 1; min-width: 0; padding: 12px 0; font: inherit; font-size: 15px; color: inherit; background: none; border: 0; border-radius: 0; outline: none; box-shadow: none; min-height: 0; }
+.create-lights-note { font-size: 11px; letter-spacing: .08em; opacity: .55; white-space: nowrap; }
+.create-grid.lights .create-tile.unlit { opacity: .22; }
+.create-grid.lights .create-tile.found .create-peek { opacity: .72; }
+.create-tile-found {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  z-index: 1;
+  padding: 1px 6px;
+  font-size: 10px;
+  letter-spacing: .05em;
+  background: var(--create-panel);
+  color: var(--create-panel-ink);
+}
+.create-grid.lights .create-tile.found .create-peek { top: 28px; }
+
+/* The Archive: a page of its own, reached from the word at the bottom left. */
+.create-rooms-foot { position: absolute; left: calc(var(--gutter) + 12px); bottom: calc(14px + env(safe-area-inset-bottom)); }
+.create-shelf-head { text-align: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin: 0 0 24px; }
+.create-rooms.shelf { background: color-mix(in srgb, var(--create-mask, rgb(43 42 40 / .1)) 100%, rgb(var(--ink-rgb, 43 42 40) / .12)); }
+.create-rooms.shelf .create-tile { filter: saturate(.7); }
+
+/* A room's description: under its name inside the room, and in its pop-up. */
+.create-crumb-desc { margin-top: 2px; font-size: 12px; letter-spacing: .03em; font-style: italic; text-align: center; opacity: .55; max-width: 40vw; white-space: normal; }
+.create-options-desc {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .15);
+  border-radius: 0;
+  padding: 4px 0;
+  resize: none;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+}
+.create-options-desc:focus { border-bottom-color: currentColor; }
+.create-edit-read { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+
+/* Going in: the square grows to fill the screen, then fades into the room. */
+.create-expand {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 5;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.create-expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
+.create-expand.done { transition: opacity .25s ease; opacity: 0; }
+.create.expanding .create-room { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
+.create.expanding .create-back { color: var(--home-ink); }
