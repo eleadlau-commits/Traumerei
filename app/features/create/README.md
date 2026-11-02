@@ -3,10 +3,13 @@
 What the home page's **Create** opens: rooms of thoughts.
 
 - **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
-  back arrow (top right) home. It is a still gradient of the picture's own colours, a little
-  darker (`look.js`), read once when it opens; the picture's animation stops underneath (the
-  Renderer's `backdrop` service). Rooms are squares of one size; a room written in during the
-  last day glows. **Messy thoughts** is always there, a little darker than the rest. *Rooms*,
+  back arrow (top right) home. It is a still gradient of the picture's own colours under a
+  light opacity mask (`look.js`), read once when it opens; the picture's animation stops
+  underneath (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
+  is an opacity square on it (its tint, black by default, at an alpha that deepens as the room
+  darkens); a room written in during the last day glows. **Messy thoughts** is always there,
+  four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
+  a room to any free cell (it snaps back if the cells are taken). *Rooms*,
   *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
   to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
   place.**

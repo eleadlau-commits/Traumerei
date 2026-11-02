@@ -1,13 +1,16 @@
 // How rooms look: plain colour maths, no screen (tested in tests/look.test.js).
 //
-// The rooms page is a still gradient, top to bottom, from the home picture's own colours made a
-// little darker (DARKEN), so nothing has to be drawn while it shows. Each room is a gradient of
+// The rooms page is a still gradient, top to bottom, from the home picture's own colours, under an
+// opacity mask (MASK: black at that alpha), so nothing has to be drawn while it shows. On it each
+// room is an opacity square: its tint (black by default) at an alpha that grows as the room gets
+// darker, so Messy thoughts shows as the deepest square. Each room is a gradient of
 // one colour: its tint (by default the picture's average colour) at its lightness (by default
 // LIGHT, and darker for Messy thoughts), shown at its opacity over the picture. Words in a room
 // are dark ink on a light room and pale light on a dark one.
 
 export const PAPER = [242, 235, 217]; // the base tint, when there's no picture to read
-export const DARKEN = 0.9;            // the rooms page, against the picture
+export const MASK = 0.1;              // the rooms page: the opacity of its dark mask over the picture
+export const SQUARE = 0.6;            // a room's square: alpha = (1 - lightness) × this
 export const LIGHT = 0.8;             // a room's lightness, by default
 export const LIGHT_MESSY = 0.62;      // Messy thoughts: a little darker
 export const OPACITY = 1;
@@ -53,7 +56,14 @@ const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 // The picture's colours ({ top, bottom } from the backdrop, or null) → the rooms page's gradient.
 export function pageLook(colours) {
   const top = colours?.top || PAPER, bottom = colours?.bottom || PAPER;
-  return { top: css(top.map((v) => v * DARKEN)), bottom: css(bottom.map((v) => v * DARKEN)), average: mix(top, bottom, 0.5) };
+  return { top: css(top), bottom: css(bottom), mask: css([0, 0, 0], MASK), average: mix(top, bottom, 0.5) };
+}
+
+// A room's square on the rooms page: one colour at one alpha, laid over the page like a mask.
+export function squareLook(room, messy = false) {
+  const l = room?.light ?? (messy ? LIGHT_MESSY : LIGHT);
+  const a = clamp((1 - l) * SQUARE * (room?.opacity ?? OPACITY), 0.04, 0.9);
+  return { fill: css(rgb(room?.tint) || [0, 0, 0], a), alpha: a };
 }
 
 // One room's look, given the picture's average colour: its gradient, the ink for its words,

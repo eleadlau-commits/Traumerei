@@ -1,9 +1,10 @@
 // Create: rooms of thoughts. Create (on the home page, or in the menu) slides the rooms page up
 // from the bottom, leaving a strip of the home page at the top with a back arrow (top right) home.
-// The page is a still gradient of the picture's own colours, a little darker, so nothing is drawn
-// while it shows (the picture's animation stops underneath). The rooms are squares of one size on
-// a grid; a room written in lately glows. There is always "Messy thoughts", a little darker than
-// the rest. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
+// The page is a still gradient of the picture's own colours under a light opacity mask, so nothing
+// is drawn while it shows (the picture's animation stops underneath). It is a grid of square cells:
+// each room is an opacity square on it (one cell; Messy thoughts takes four at the top left), and
+// a room written in lately glows. Click an empty cell to make a room there; drag a room to move it
+// to any free cell. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
 // opens Messy thoughts and starts writing there, at a random place.
 //
 // A room fills the screen as one gradient of its own colour, with the back arrow to the rooms.
@@ -30,14 +31,15 @@ import { Feature, ui } from 'folio';
 import {
   MESSY, MODES, loadWorld, room, rooms, addRoom, name, view, startTrain, addThought, create, update,
   remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
-  roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot,
+  roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
-import { pageLook, roomLook } from './look.js';
+import { pageLook, roomLook, squareLook } from './look.js';
 
 const { el } = ui;
 const LIT_FOR = 24 * 3600e3; // a room stays lit for a day after it was written in
 const ZOOM = { min: 0.25, max: 4 };
+const GRID = { cell: 120, gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
 
 export default class Create extends Feature {
   start() {
@@ -55,7 +57,7 @@ export default class Create extends Feature {
     this.build();
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
-    window.addEventListener('resize', () => this.roomId && this.place());
+    window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
     document.addEventListener('paste', (e) => this.onPaste(e));
   }
 
@@ -68,6 +70,7 @@ export default class Create extends Feature {
     this.page = pageLook(this.backdrop?.colours?.()); // read once: the page is still from here on
     this.root.style.setProperty('--create-top', this.page.top);
     this.root.style.setProperty('--create-bottom', this.page.bottom);
+    this.root.style.setProperty('--create-mask', this.page.mask);
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
     this.showRooms();
@@ -176,33 +179,119 @@ export default class Create extends Feature {
 
   // ---- The rooms page ----
 
+  // How many columns fit, and how big a cell is.
+  gridSize() {
+    const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad;
+    const fit = Math.floor((width + GRID.gap) / (GRID.cell + GRID.gap));
+    const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
+    const cell = Math.max(56, Math.min(GRID.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
+    return { cols, cell };
+  }
+
   drawRooms() {
     const now = Date.now();
-    this.grid.replaceChildren(...rooms(this.world).map((r) => {
-      const look = this.lookOf(r);
+    const { cols: fit, cell } = this.gridSize();
+    const all = gridRooms(this.world, fit);
+    const cols = Math.max(fit, ...all.map((r) => r.col + r.size));
+    const height = this.grid.parentElement?.clientHeight || window.innerHeight;
+    const rows = Math.max(Math.floor((height - 2 * GRID.pad + GRID.gap) / (cell + GRID.gap)),
+      ...all.map((r) => r.row + r.size + 1));
+    this.cols = cols;
+    this.grid.style.setProperty('--cols', cols);
+    this.grid.style.setProperty('--cell', cell + 'px');
+    this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
+
+    const taken = new Set();
+    for (const r of all) for (let c = 0; c < r.size; c++) for (let d = 0; d < r.size; d++) taken.add(`${r.col + c},${r.row + d}`);
+    const empty = [];
+    for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+      if (taken.has(`${col},${row}`)) continue;
+      empty.push(el('button', {
+        type: 'button', class: 'create-cell', 'aria-label': 'New room here',
+        style: `grid-column:${col + 1};grid-row:${row + 1}`,
+        'data-col': col, 'data-row': row,
+        onclick: () => this.newRoom({ col, row }),
+      }));
+    }
+
+    const tiles = all.map((r) => {
+      const look = squareLook(r, r.id === MESSY);
       const last = lastWritten(this.world, r.id);
       const count = roomThoughts(this.world, r.id).length;
       const lit = last != null && now - last < LIT_FOR;
       const name = this.renaming === r.id
         ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
         : el('span', { class: 'create-tile-name' }, r.name);
-      return el('div', { class: 'create-tile' },
-        el('button', {
-          type: 'button',
-          class: 'create-window' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : ''),
-          style: `--room-top:${look.top};--room-bottom:${look.bottom};--room-flat:${look.flat}`,
-          'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
-          onclick: () => this.openRoom(r.id),
-        }),
-        el('div', { class: 'create-tile-label', ondblclick: () => { this.renaming = r.id; this.drawRooms(); } },
+      const tile = el('div', {
+        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : ''),
+        role: 'button', tabindex: 0,
+        style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+        'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
+        'data-room': r.id,
+        onkeydown: (e) => { if (e.target === tile && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); this.openRoom(r.id); } },
+        onpointerdown: (e) => this.onTileDown(e, r, tile),
+      },
+        el('div', { class: 'create-tile-label', ondblclick: (e) => { e.stopPropagation(); this.renaming = r.id; this.drawRooms(); } },
           name,
           el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
-    }));
+      return tile;
+    });
+    this.grid.replaceChildren(...empty, ...tiles);
     this.grid.querySelector('.create-name-field')?.focus();
   }
 
-  newRoom() {
-    const r = addRoom(this.world, 'Untitled');
+  // The grid cell under a point, or null.
+  cellAt(x, y) {
+    const box = this.grid.getBoundingClientRect();
+    const step = parseFloat(this.grid.style.getPropertyValue('--cell')) + GRID.gap;
+    const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
+    return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
+  }
+
+  // Pressing a room opens it; dragging it moves it to the cell it is let go over, if that is free.
+  onTileDown(e, r, tile) {
+    if (e.button || e.target.closest('input')) return;
+    const start = { x: e.clientX, y: e.clientY };
+    const grab = this.cellAt(e.clientX, e.clientY);
+    const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
+    let dragging = false, target = null;
+    const spot = (ev) => {
+      const at = this.cellAt(ev.clientX, ev.clientY);
+      return at && { col: at.col - offset.col, row: at.row - offset.row };
+    };
+    const mark = (c) => {
+      this.grid.querySelectorAll('.create-cell.target').forEach((n) => n.classList.remove('target'));
+      if (c) this.grid.querySelector(`.create-cell[data-col="${c.col}"][data-row="${c.row}"]`)?.classList.add('target');
+    };
+    const moveFn = (ev) => {
+      const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+      if (!dragging && Math.hypot(dx, dy) < 5) return;
+      if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); }
+      tile.style.transform = `translate(${dx}px, ${dy}px)`;
+      target = spot(ev);
+      mark(target);
+    };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', moveFn);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      mark(null);
+      this.grid.classList.remove('dragging');
+      if (!dragging) {
+        if (ev.type === 'pointerup' && !this.renaming) this.openRoom(r.id);
+        return;
+      }
+      if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
+      this.drawRooms();
+    };
+    window.addEventListener('pointermove', moveFn);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
+  // A new room, in the cell asked for (or the first free one), with its name ready to write.
+  newRoom(cell = null) {
+    const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols);
     this.save();
     this.renaming = r.id;
     this.drawRooms();
@@ -613,7 +702,7 @@ export default class Create extends Feature {
     this.bar.replaceChildren(
       el('span', { class: 'create-bar-label' }, `Move ${what} to`),
       ...others.map((r) => el('button', { type: 'button', class: 'create-word', onclick: () => this.moveTo(r.id) }, r.name)),
-      el('button', { type: 'button', class: 'create-word', onclick: () => this.moveTo(addRoom(this.world, 'Untitled').id) }, 'A new room'),
+      el('button', { type: 'button', class: 'create-word', onclick: () => this.moveTo(addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id) }, 'A new room'),
       ...this.selActions());
   }
 

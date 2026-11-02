@@ -84,40 +84,84 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(var(--create-top, #e6dcc4), var(--create-bottom, #d9cfb8));
+  /* The picture's gradient under an opacity mask: nothing is drawn while it shows. */
+  background:
+    linear-gradient(var(--create-mask, rgb(0 0 0 / .1)), var(--create-mask, rgb(0 0 0 / .1))),
+    linear-gradient(var(--create-top, #f2ebd9), var(--create-bottom, #e6dcc4));
   box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
   transform: translateY(100%);
   transition: transform .5s var(--create-ease);
 }
 .create.up .create-rooms { transform: none; transition-duration: .6s; }
 
-.create-grid-wrap { flex: 1; overflow: auto; display: grid; place-items: center; padding: 40px var(--gutter); }
+.create-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter); }
+/* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
+   takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
 .create-grid {
+  --cell: 120px;
+  --cell-gap: 14px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, min(140px, 38vw));
-  justify-content: center;
-  gap: clamp(22px, 3vw, 36px);
-  width: min(100%, 860px);
+  grid-template-columns: repeat(var(--cols, 6), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: var(--cell-gap);
+  width: max-content;
+  margin: 0 auto;
+  position: relative;
 }
-.create-tile { display: grid; gap: 10px; min-width: 0; }
-/* A room: a square of its own colour. Lit (a soft glow) when written in lately. */
-.create-window {
+.create-cell {
   appearance: none;
   border: 0;
   border-radius: 0;
   padding: 0;
-  width: min(140px, 38vw);
-  height: min(140px, 38vw);
-  background: linear-gradient(var(--room-top), var(--room-bottom));
-  box-shadow: 0 1px 0 rgb(43 42 40 / .06);
+  background: transparent;
+  color: inherit;
   cursor: pointer;
-  transition: box-shadow .5s, transform .3s var(--create-ease);
+  box-shadow: inset 0 0 0 1px rgb(43 42 40 / .035);
+  transition: box-shadow .3s, background-color .3s;
+  display: grid;
+  place-items: center;
+  font: 300 22px/1 var(--home-font, inherit);
 }
-.create-window.lit { box-shadow: 0 0 34px var(--create-glow), 0 1px 0 rgb(43 42 40 / .06); }
-.create-window:is(:hover, :focus-visible) { transform: translateY(-2px); outline: none; box-shadow: 0 0 0 1px var(--home-ink); }
-.create-tile-label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-.create-tile-name { opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.create-tile-count { opacity: .45; letter-spacing: .08em; }
+.create-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
+.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
+.create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
+.create-grid.dragging .create-cell::after { content: ''; }
+.create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
+
+/* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
+.create-tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--square);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow .5s, transform .3s var(--create-ease), opacity .3s;
+}
+.create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
+.create-tile:hover { transform: translateY(-2px); }
+.create-tile.lit {
+  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px rgb(255 244 214 / .35);
+}
+.create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
+.create-tile-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.create-tile.messy .create-tile-label { left: 14px; bottom: 13px; font-size: 12px; }
+.create-tile-name { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-tile-count { opacity: .5; letter-spacing: .08em; }
 .create-name-field {
   width: 100%;
   min-width: 0;

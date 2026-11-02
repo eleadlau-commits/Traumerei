@@ -5,7 +5,9 @@
 //   picture  { src, text }                    a picture (a small JPEG data: URL) and its caption
 //   train    { x, y, title, folded }          thoughts joined by time, read in the order they were
 //                                             written; folded, it shows as one thought (its title)
-//   room     { name, tint, light, opacity }   a thought that holds thoughts, seen through a mode
+//   room     { name, tint, light, opacity,    a thought that holds thoughts, seen through a mode;
+//              col, row, size }               on the rooms page it is a square of size × size cells
+//                                             at (col, row) of the grid
 //
 // Every thought has { id, kind, parent, at }. `parent` is the thought it sits inside: a line,
 // passage or picture sits in a train; a train sits in a room; a room sits in a room, or at the top
@@ -38,7 +40,7 @@ export function uid(prefix = 'x') {
   return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts' });
+const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
   return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
@@ -59,6 +61,10 @@ export function loadWorld(saved, now = Date.now()) {
     else if (kindOf(th) === 'train') th.parent = MESSY;
     else delete w.things[th.id];
   }
+  const messy = w.things[MESSY];
+  messy.size = 2;
+  if (messy.col == null) { messy.col = 0; messy.row = 0; }
+  gridRooms(w);
   return w;
 }
 
@@ -161,6 +167,8 @@ function tidy(f) {
   if (typeof f.tint === 'string' && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
   if (f.light != null) out.light = clamp01(f.light, 0.5);
   if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
+  if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0) { out.col = f.col; out.row = f.row; }
+  out.size = f.size === 2 ? 2 : 1;
   return out;
 }
 
@@ -260,7 +268,57 @@ export function unfold(w, trainId) {
 
 // ---- Shortcuts the screens use ----
 
-export const addRoom = (w, text = 'Untitled', now) => create(w, null, { kind: 'room', name: text }, now);
+export function addRoom(w, text = 'Untitled', now, cell = null, cols = 6) {
+  const r = create(w, null, { kind: 'room', name: text, ...(cell || {}) }, now);
+  if (r && (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols))) {
+    delete r.col; delete r.row;
+    gridRooms(w, cols);
+  }
+  return r;
+}
+
+// ---- The rooms page's grid ----
+
+// The cells a room covers.
+export function cells(r) {
+  const out = [];
+  for (let dc = 0; dc < (r.size || 1); dc++) for (let dr = 0; dr < (r.size || 1); dr++) out.push([r.col + dc, r.row + dr]);
+  return out;
+}
+
+// The room at a cell (other than `except`), or null.
+export function roomAt(w, col, row, except = null) {
+  return rooms(w).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
+}
+
+// Puts a top-level room at (col, row) if all its cells are free. Returns whether it moved.
+export function placeRoom(w, id, col, row, cols = Infinity) {
+  const r = room(w, id);
+  if (!r || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
+  const want = cells({ ...r, col, row });
+  if (want.some(([c, rr]) => roomAt(w, c, rr, id))) return false;
+  r.col = col;
+  r.row = row;
+  return true;
+}
+
+// Gives every top-level room without a place the first free cell (left to right, top to bottom,
+// `cols` wide), and returns the rooms.
+export function gridRooms(w, cols = 6) {
+  const all = rooms(w).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
+  const taken = new Set();
+  const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
+  for (const r of all) {
+    if (r.col == null || !free(r, r.col, r.row)) {
+      for (let i = 0; ; i++) {
+        const col = i % cols, row = Math.floor(i / cols);
+        if (col + (r.size || 1) <= cols && free(r, col, row)) { r.col = col; r.row = row; break; }
+      }
+    }
+    for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+  }
+  return rooms(w);
+}
 export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'train', x, y }, now);
 export const addThought = (w, trainId, text, now) => create(w, trainId, { kind: 'line', text }, now);
 

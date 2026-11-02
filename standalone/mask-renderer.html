@@ -837,40 +837,84 @@ dialog.dialog-box {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(var(--create-top, #e6dcc4), var(--create-bottom, #d9cfb8));
+  /* The picture's gradient under an opacity mask: nothing is drawn while it shows. */
+  background:
+    linear-gradient(var(--create-mask, rgb(0 0 0 / .1)), var(--create-mask, rgb(0 0 0 / .1))),
+    linear-gradient(var(--create-top, #f2ebd9), var(--create-bottom, #e6dcc4));
   box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
   transform: translateY(100%);
   transition: transform .5s var(--create-ease);
 }
 .create.up .create-rooms { transform: none; transition-duration: .6s; }
 
-.create-grid-wrap { flex: 1; overflow: auto; display: grid; place-items: center; padding: 40px var(--gutter); }
+.create-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter); }
+/* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
+   takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
 .create-grid {
+  --cell: 120px;
+  --cell-gap: 14px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, min(140px, 38vw));
-  justify-content: center;
-  gap: clamp(22px, 3vw, 36px);
-  width: min(100%, 860px);
+  grid-template-columns: repeat(var(--cols, 6), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: var(--cell-gap);
+  width: max-content;
+  margin: 0 auto;
+  position: relative;
 }
-.create-tile { display: grid; gap: 10px; min-width: 0; }
-/* A room: a square of its own colour. Lit (a soft glow) when written in lately. */
-.create-window {
+.create-cell {
   appearance: none;
   border: 0;
   border-radius: 0;
   padding: 0;
-  width: min(140px, 38vw);
-  height: min(140px, 38vw);
-  background: linear-gradient(var(--room-top), var(--room-bottom));
-  box-shadow: 0 1px 0 rgb(43 42 40 / .06);
+  background: transparent;
+  color: inherit;
   cursor: pointer;
-  transition: box-shadow .5s, transform .3s var(--create-ease);
+  box-shadow: inset 0 0 0 1px rgb(43 42 40 / .035);
+  transition: box-shadow .3s, background-color .3s;
+  display: grid;
+  place-items: center;
+  font: 300 22px/1 var(--home-font, inherit);
 }
-.create-window.lit { box-shadow: 0 0 34px var(--create-glow), 0 1px 0 rgb(43 42 40 / .06); }
-.create-window:is(:hover, :focus-visible) { transform: translateY(-2px); outline: none; box-shadow: 0 0 0 1px var(--home-ink); }
-.create-tile-label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-.create-tile-name { opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.create-tile-count { opacity: .45; letter-spacing: .08em; }
+.create-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
+.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
+.create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
+.create-grid.dragging .create-cell::after { content: ''; }
+.create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
+
+/* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
+.create-tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--square);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow .5s, transform .3s var(--create-ease), opacity .3s;
+}
+.create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
+.create-tile:hover { transform: translateY(-2px); }
+.create-tile.lit {
+  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px rgb(255 244 214 / .35);
+}
+.create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
+.create-tile-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.create-tile.messy .create-tile-label { left: 14px; bottom: 13px; font-size: 12px; }
+.create-tile-name { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-tile-count { opacity: .5; letter-spacing: .08em; }
 .create-name-field {
   width: 100%;
   min-width: 0;
@@ -4618,21 +4662,21 @@ dialog.menu-drawer::before {
     const n = Math.max(1, Math.round(P.netRho * Y));
     const xs = cuts(m, X);
     const ys = cuts(n, Y);
-    let cells = [];
-    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) cells.push([xs[i], ys[j], xs[i + 1], ys[j + 1]]);
+    let cells2 = [];
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) cells2.push([xs[i], ys[j], xs[i + 1], ys[j + 1]]);
     const merge = stream(seed, ":planar:net:merge");
     const same = (a, b) => Math.abs(a - b) < EPS;
     const joins = (a, b) => (same(a[2], b[0]) || same(b[2], a[0])) && same(a[1], b[1]) && same(a[3], b[3]) || (same(a[3], b[1]) || same(b[3], a[1])) && same(a[0], b[0]) && same(a[2], b[2]);
     const target = Math.max(1, Math.round(m * n * (1 - P.netMu)));
-    for (let tries = 0; cells.length > target && tries < 50 * m * n; tries++) {
-      const a = cells[Math.floor(merge.U() * cells.length)];
-      const nb = cells.filter((b2) => b2 !== a && joins(a, b2));
+    for (let tries = 0; cells2.length > target && tries < 50 * m * n; tries++) {
+      const a = cells2[Math.floor(merge.U() * cells2.length)];
+      const nb = cells2.filter((b2) => b2 !== a && joins(a, b2));
       if (!nb.length) continue;
       const b = nb[Math.floor(merge.U() * nb.length)];
-      cells = cells.filter((c) => c !== a && c !== b);
-      cells.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+      cells2 = cells2.filter((c) => c !== a && c !== b);
+      cells2.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
     }
-    return cells;
+    return cells2;
   }
   function network(rects, X, Y) {
     const key = (x, y) => `${x.toFixed(9)},${y.toFixed(9)}`;
@@ -5303,14 +5347,14 @@ dialog.menu-drawer::before {
     if (P.plainDye === "drops") {
       const side = 2.4 * lb;
       const soft = lb * (0.04 + 0.5 * P.dyeSoft);
-      const cells = /* @__PURE__ */ new Map();
+      const cells2 = /* @__PURE__ */ new Map();
       const drop = (ci, cj) => {
         const key = `${ci},${cj}`;
-        if (!cells.has(key)) {
+        if (!cells2.has(key)) {
           const R = mulberry32(cyrb53(`${seed}:plain:dye:${key}`) >>> 0);
-          cells.set(key, [(ci + R()) * side, (cj + R()) * side, lb * (0.45 + 0.6 * R()), R() < 0.8]);
+          cells2.set(key, [(ci + R()) * side, (cj + R()) * side, lb * (0.45 + 0.6 * R()), R() < 0.8]);
         }
-        return cells.get(key);
+        return cells2.get(key);
       };
       return (x, y) => {
         const ci = Math.floor(x / side);
@@ -6440,7 +6484,7 @@ dialog.menu-drawer::before {
     counter = (counter + 1) % 1e6;
     return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   }
-  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts" });
+  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts", col: 0, row: 0, size: 2 });
   function emptyWorld(now = Date.now()) {
     return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
   }
@@ -6456,6 +6500,13 @@ dialog.menu-drawer::before {
       else if (kindOf(th) === "train") th.parent = MESSY;
       else delete w.things[th.id];
     }
+    const messy = w.things[MESSY];
+    messy.size = 2;
+    if (messy.col == null) {
+      messy.col = 0;
+      messy.row = 0;
+    }
+    gridRooms(w);
     return w;
   }
   function fromV1(old, now) {
@@ -6535,6 +6586,11 @@ dialog.menu-drawer::before {
     if (typeof f.tint === "string" && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
     if (f.light != null) out.light = clamp01(f.light, 0.5);
     if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
+    if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0) {
+      out.col = f.col;
+      out.row = f.row;
+    }
+    out.size = f.size === 2 ? 2 : 1;
     return out;
   }
   function canHold(w, parent, kind) {
@@ -6614,7 +6670,51 @@ dialog.menu-drawer::before {
     delete t.folded;
     return true;
   }
-  var addRoom = (w, text = "Untitled", now) => create(w, null, { kind: "room", name: text }, now);
+  function addRoom(w, text = "Untitled", now, cell = null, cols = 6) {
+    const r = create(w, null, { kind: "room", name: text, ...cell || {} }, now);
+    if (r && (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols))) {
+      delete r.col;
+      delete r.row;
+      gridRooms(w, cols);
+    }
+    return r;
+  }
+  function cells(r) {
+    const out = [];
+    for (let dc = 0; dc < (r.size || 1); dc++) for (let dr = 0; dr < (r.size || 1); dr++) out.push([r.col + dc, r.row + dr]);
+    return out;
+  }
+  function roomAt(w, col, row, except = null) {
+    return rooms(w).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
+  }
+  function placeRoom(w, id, col, row, cols = Infinity) {
+    const r = room(w, id);
+    if (!r || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
+    const want = cells({ ...r, col, row });
+    if (want.some(([c, rr]) => roomAt(w, c, rr, id))) return false;
+    r.col = col;
+    r.row = row;
+    return true;
+  }
+  function gridRooms(w, cols = 6) {
+    const all = rooms(w).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
+    const taken = /* @__PURE__ */ new Set();
+    const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
+    for (const r of all) {
+      if (r.col == null || !free(r, r.col, r.row)) {
+        for (let i = 0; ; i++) {
+          const col = i % cols, row = Math.floor(i / cols);
+          if (col + (r.size || 1) <= cols && free(r, col, row)) {
+            r.col = col;
+            r.row = row;
+            break;
+          }
+        }
+      }
+      for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+    }
+    return rooms(w);
+  }
   var startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: "train", x, y }, now);
   var addThought = (w, trainId, text, now) => create(w, trainId, { kind: "line", text }, now);
   var SPIRAL = { step: 230, gap: 190 };
@@ -6675,7 +6775,8 @@ dialog.menu-drawer::before {
 
   // dist/web/features/create/look.js
   var PAPER2 = [242, 235, 217];
-  var DARKEN = 0.9;
+  var MASK = 0.1;
+  var SQUARE = 0.6;
   var LIGHT2 = 0.8;
   var LIGHT_MESSY = 0.62;
   var OPACITY = 1;
@@ -6718,7 +6819,12 @@ dialog.menu-drawer::before {
   var mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
   function pageLook(colours2) {
     const top = colours2?.top || PAPER2, bottom = colours2?.bottom || PAPER2;
-    return { top: css(top.map((v) => v * DARKEN)), bottom: css(bottom.map((v) => v * DARKEN)), average: mix(top, bottom, 0.5) };
+    return { top: css(top), bottom: css(bottom), mask: css([0, 0, 0], MASK), average: mix(top, bottom, 0.5) };
+  }
+  function squareLook(room2, messy = false) {
+    const l = room2?.light ?? (messy ? LIGHT_MESSY : LIGHT2);
+    const a = clamp((1 - l) * SQUARE * (room2?.opacity ?? OPACITY), 0.04, 0.9);
+    return { fill: css(rgb(room2?.tint) || [0, 0, 0], a), alpha: a };
   }
   function roomLook(room2, average = PAPER2, messy = false) {
     const tint = rgb(room2?.tint) || average;
@@ -6744,6 +6850,7 @@ dialog.menu-drawer::before {
   var { el: el5 } = ui_exports;
   var LIT_FOR = 24 * 36e5;
   var ZOOM = { min: 0.25, max: 4 };
+  var GRID = { cell: 120, gap: 14, pad: 32, least: 4, most: 10 };
   var Create = class extends Feature {
     start() {
       this.world = loadWorld(this.storage.get("world"));
@@ -6759,7 +6866,10 @@ dialog.menu-drawer::before {
       this.build();
       this.provide("create", this);
       document.addEventListener("keydown", (e) => this.onKey(e));
-      window.addEventListener("resize", () => this.roomId && this.place());
+      window.addEventListener("resize", () => {
+        if (this.roomId) this.place();
+        else if (!this.root.hidden) this.drawRooms();
+      });
       document.addEventListener("paste", (e) => this.onPaste(e));
     }
     // ---- Opening and closing ----
@@ -6770,6 +6880,7 @@ dialog.menu-drawer::before {
       this.page = pageLook(this.backdrop?.colours?.());
       this.root.style.setProperty("--create-top", this.page.top);
       this.root.style.setProperty("--create-bottom", this.page.bottom);
+      this.root.style.setProperty("--create-mask", this.page.mask);
       this.root.hidden = false;
       document.documentElement.classList.add("create-open");
       this.showRooms();
@@ -6890,10 +7001,45 @@ dialog.menu-drawer::before {
       this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     }
     // ---- The rooms page ----
+    // How many columns fit, and how big a cell is.
+    gridSize() {
+      const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad;
+      const fit = Math.floor((width + GRID.gap) / (GRID.cell + GRID.gap));
+      const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
+      const cell = Math.max(56, Math.min(GRID.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
+      return { cols, cell };
+    }
     drawRooms() {
       const now = Date.now();
-      this.grid.replaceChildren(...rooms(this.world).map((r) => {
-        const look = this.lookOf(r);
+      const { cols: fit, cell } = this.gridSize();
+      const all = gridRooms(this.world, fit);
+      const cols = Math.max(fit, ...all.map((r) => r.col + r.size));
+      const height = this.grid.parentElement?.clientHeight || window.innerHeight;
+      const rows = Math.max(
+        Math.floor((height - 2 * GRID.pad + GRID.gap) / (cell + GRID.gap)),
+        ...all.map((r) => r.row + r.size + 1)
+      );
+      this.cols = cols;
+      this.grid.style.setProperty("--cols", cols);
+      this.grid.style.setProperty("--cell", cell + "px");
+      this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
+      const taken = /* @__PURE__ */ new Set();
+      for (const r of all) for (let c = 0; c < r.size; c++) for (let d = 0; d < r.size; d++) taken.add(`${r.col + c},${r.row + d}`);
+      const empty = [];
+      for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+        if (taken.has(`${col},${row}`)) continue;
+        empty.push(el5("button", {
+          type: "button",
+          class: "create-cell",
+          "aria-label": "New room here",
+          style: `grid-column:${col + 1};grid-row:${row + 1}`,
+          "data-col": col,
+          "data-row": row,
+          onclick: () => this.newRoom({ col, row })
+        }));
+      }
+      const tiles2 = all.map((r) => {
+        const look = squareLook(r, r.id === MESSY);
         const last = lastWritten(this.world, r.id);
         const count = roomThoughts(this.world, r.id).length;
         const lit = last != null && now - last < LIT_FOR;
@@ -6901,19 +7047,27 @@ dialog.menu-drawer::before {
           this.renaming = null;
           this.drawRooms();
         }) : el5("span", { class: "create-tile-name" }, r.name);
-        return el5(
+        const tile = el5(
           "div",
-          { class: "create-tile" },
-          el5("button", {
-            type: "button",
-            class: "create-window" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : ""),
-            style: `--room-top:${look.top};--room-bottom:${look.bottom};--room-flat:${look.flat}`,
+          {
+            class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : ""),
+            role: "button",
+            tabindex: 0,
+            style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
             "aria-label": `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
-            onclick: () => this.openRoom(r.id)
-          }),
+            "data-room": r.id,
+            onkeydown: (e) => {
+              if (e.target === tile && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                this.openRoom(r.id);
+              }
+            },
+            onpointerdown: (e) => this.onTileDown(e, r, tile)
+          },
           el5(
             "div",
-            { class: "create-tile-label", ondblclick: () => {
+            { class: "create-tile-label", ondblclick: (e) => {
+              e.stopPropagation();
               this.renaming = r.id;
               this.drawRooms();
             } },
@@ -6921,11 +7075,65 @@ dialog.menu-drawer::before {
             el5("span", { class: "create-tile-count" }, count ? String(count) : "")
           )
         );
-      }));
+        return tile;
+      });
+      this.grid.replaceChildren(...empty, ...tiles2);
       this.grid.querySelector(".create-name-field")?.focus();
     }
-    newRoom() {
-      const r = addRoom(this.world, "Untitled");
+    // The grid cell under a point, or null.
+    cellAt(x, y) {
+      const box = this.grid.getBoundingClientRect();
+      const step = parseFloat(this.grid.style.getPropertyValue("--cell")) + GRID.gap;
+      const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
+      return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
+    }
+    // Pressing a room opens it; dragging it moves it to the cell it is let go over, if that is free.
+    onTileDown(e, r, tile) {
+      if (e.button || e.target.closest("input")) return;
+      const start = { x: e.clientX, y: e.clientY };
+      const grab = this.cellAt(e.clientX, e.clientY);
+      const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
+      let dragging = false, target = null;
+      const spot = (ev) => {
+        const at = this.cellAt(ev.clientX, ev.clientY);
+        return at && { col: at.col - offset.col, row: at.row - offset.row };
+      };
+      const mark = (c) => {
+        this.grid.querySelectorAll(".create-cell.target").forEach((n) => n.classList.remove("target"));
+        if (c) this.grid.querySelector(`.create-cell[data-col="${c.col}"][data-row="${c.row}"]`)?.classList.add("target");
+      };
+      const moveFn = (ev) => {
+        const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+        if (!dragging && Math.hypot(dx, dy) < 5) return;
+        if (!dragging) {
+          dragging = true;
+          tile.classList.add("dragging");
+          this.grid.classList.add("dragging");
+        }
+        tile.style.transform = `translate(${dx}px, ${dy}px)`;
+        target = spot(ev);
+        mark(target);
+      };
+      const up = (ev) => {
+        window.removeEventListener("pointermove", moveFn);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        mark(null);
+        this.grid.classList.remove("dragging");
+        if (!dragging) {
+          if (ev.type === "pointerup" && !this.renaming) this.openRoom(r.id);
+          return;
+        }
+        if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
+        this.drawRooms();
+      };
+      window.addEventListener("pointermove", moveFn);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+    }
+    // A new room, in the cell asked for (or the first free one), with its name ready to write.
+    newRoom(cell = null) {
+      const r = addRoom(this.world, "Untitled", Date.now(), cell, this.cols || this.gridSize().cols);
       this.save();
       this.renaming = r.id;
       this.drawRooms();
@@ -7362,7 +7570,7 @@ dialog.menu-drawer::before {
       this.bar.replaceChildren(
         el5("span", { class: "create-bar-label" }, `Move ${what} to`),
         ...others.map((r) => el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(r.id) }, r.name)),
-        el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(addRoom(this.world, "Untitled").id) }, "A new room"),
+        el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(addRoom(this.world, "Untitled", Date.now(), null, this.cols || 6).id) }, "A new room"),
         ...this.selActions()
       );
     }

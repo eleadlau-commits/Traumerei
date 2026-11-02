@@ -4,7 +4,7 @@ import { test, assert } from 'folio/testing';
 import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
-  roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view,
+  roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -175,4 +175,47 @@ test('a dragged Pessoa thought stays where it was put', () => {
 test('a random spot is inside the box', () => {
   const p = randomSpot({ x: 10, y: 20, w: 100, h: 50 }, [{ x: 0, y: 0 }]);
   assert.ok(p.x >= 10 && p.x <= 110 && p.y >= 20 && p.y <= 70);
+});
+
+test('Messy thoughts takes four squares at the top left of the grid', () => {
+  const w = emptyWorld();
+  const m = rooms(w)[0];
+  assert.deepEqual([m.col, m.row, m.size], [0, 0, 2]);
+  assert.equal(roomAt(w, 1, 1).id, MESSY);
+  assert.equal(roomAt(w, 2, 0), null);
+});
+
+test('a room is made in the square asked for, or the first free one', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, { col: 4, row: 3 });
+  assert.deepEqual([a.col, a.row], [4, 3]);
+  const b = addRoom(w, 'B', 2, { col: 1, row: 1 }); // taken by Messy
+  assert.deepEqual([b.col, b.row], [2, 0]);
+  const c = addRoom(w, 'C', 3);
+  assert.deepEqual([c.col, c.row], [3, 0]);
+});
+
+test('rooms move to free squares only', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, { col: 3, row: 0 });
+  assert.ok(placeRoom(w, a.id, 5, 5));
+  assert.ok(!placeRoom(w, a.id, 0, 1));
+  assert.ok(!placeRoom(w, MESSY, 4, 5)); // would cover A
+  assert.ok(placeRoom(w, MESSY, 2, 2));
+  assert.ok(placeRoom(w, a.id, 0, 0));
+});
+
+test('a saved world gets its rooms placed on the grid without overlaps', () => {
+  const w = loadWorld({ v: 2, things: {
+    messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
+    r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'One', col: 1, row: 0 },
+    r2: { id: 'r2', kind: 'room', parent: null, at: 2, name: 'Two' },
+  } });
+  const seen = new Set();
+  for (const r of gridRooms(w)) for (let c = 0; c < r.size; c++) for (let d = 0; d < r.size; d++) {
+    const k = `${r.col + c},${r.row + d}`;
+    assert.ok(!seen.has(k), k);
+    seen.add(k);
+  }
+  assert.deepEqual([w.things.messy.col, w.things.messy.row], [0, 0]);
 });

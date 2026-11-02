@@ -1,7 +1,7 @@
 // Tests for how rooms look.
 
 import { test, assert } from 'folio/testing';
-import { rgb, hex, toHsl, fromHsl, pageLook, roomLook, LIGHT, LIGHT_MESSY } from '../look.js';
+import { rgb, hex, toHsl, fromHsl, pageLook, roomLook, squareLook, LIGHT, LIGHT_MESSY } from '../look.js';
 
 test('colours go to hex and back', () => {
   assert.deepEqual(rgb('#f2ebd9'), [242, 235, 217]);
@@ -15,10 +15,17 @@ test('HSL there and back keeps the colour', () => {
   assert.deepEqual(back, c);
 });
 
-test('the rooms page is a little darker than the picture', () => {
+test('the rooms page is the picture\'s gradient under a light opacity mask', () => {
   const p = pageLook({ top: [200, 200, 200], bottom: [100, 100, 100] });
-  assert.equal(p.top, 'rgb(180 180 180 / 1)');
-  assert.equal(p.bottom, 'rgb(90 90 90 / 1)');
+  assert.equal(p.top, 'rgb(200 200 200 / 1)');
+  assert.equal(p.bottom, 'rgb(100 100 100 / 1)');
+  assert.equal(p.mask, 'rgb(0 0 0 / 0.1)');
+});
+
+test('room squares are see-through, and Messy thoughts is the deepest', () => {
+  const room = squareLook({}), messy = squareLook({}, true);
+  assert.ok(room.alpha > 0 && room.alpha < messy.alpha && messy.alpha < 0.5);
+  assert.match(squareLook({ tint: '#336699' }).fill, /^rgb\(51 102 153 \//);
 });
 
 test('Messy thoughts is darker than other rooms by default', () => {
