@@ -7,6 +7,7 @@ import {
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
+  BORGES, isBorges, roomsIn, roomPath, modeRooms, putRoom, merge, pageCount, addPage, addDoor, doorsOf, useDoor, doorWidth,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -42,9 +43,12 @@ test('what can sit inside what', () => {
   assert.ok(canHold(w, t.id, 'line'));
   assert.ok(!canHold(w, MESSY, 'line'));
   assert.ok(canHold(w, MESSY, 'train'));
-  assert.ok(canHold(w, MESSY, 'room'));
+  assert.ok(!canHold(w, MESSY, 'room')); // a mode room holds thoughts; rooms go in a Borges room
   assert.ok(canHold(w, null, 'room'));
   assert.ok(!canHold(w, t.id, 'room'));
+  const b = addRoom(w, 'Theory', 1, null, 6, {}, BORGES);
+  assert.ok(canHold(w, b.id, 'room'));
+  assert.ok(!canHold(w, b.id, 'train'));
 });
 
 test('thoughts in a train keep the order they were written in', () => {
@@ -101,14 +105,89 @@ test('a train left empty by a move is removed', () => {
   assert.equal(w.things[t.id], undefined);
 });
 
-test('rooms can go inside rooms, but never inside themselves', () => {
+test('rooms can go inside Borges rooms, but never inside themselves', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A');
-  const b = addRoom(w, 'B');
+  const a = addRoom(w, 'A', 1, null, 6, {}, BORGES);
+  const b = addRoom(w, 'B', 2, null, 6, {}, BORGES);
+  const c = addRoom(w, 'C');
   assert.ok(move(w, b.id, a.id));
   assert.deepEqual(children(w, a.id).map((x) => x.id), [b.id]);
   assert.ok(!move(w, a.id, b.id));
   assert.ok(!move(w, a.id, a.id));
+  assert.ok(!move(w, a.id, c.id)); // not into a mode room
+  assert.ok(putRoom(w, c.id, b.id));
+  assert.deepEqual(roomPath(w, c.id).map((r) => r.name), ['A', 'B']);
+  assert.ok(!putRoom(w, a.id, b.id)); // never inside itself
+  assert.ok(!putRoom(w, MESSY, a.id)); // Messy thoughts stays at the top
+});
+
+test('a new room is a mode room (Joyce by default, or Pessoa) or a Borges room', () => {
+  const w = emptyWorld();
+  const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, null, 6, {}, 'pessoa'), b = addRoom(w, 'B', 1, null, 6, {}, BORGES);
+  assert.equal(view(w, j.id).mode, 'joyce');
+  assert.equal(view(w, p.id).mode, 'pessoa');
+  assert.ok(isBorges(b) && !isBorges(j));
+  const inner = addRoom(w, 'Inner', 1, { col: 2, row: 1 }, 6, { parent: b.id });
+  assert.equal(inner.parent, b.id);
+  assert.deepEqual([inner.col, inner.row], [2, 1]);
+  assert.deepEqual(roomsIn(w, b.id).map((r) => r.id), [inner.id]);
+  assert.deepEqual(peek(w, b.id), ['Inner']);
+  assert.ok(!modeRooms(w).some((r) => r.id === b.id));
+});
+
+test('merge: a room dropped on another makes a Borges room in its cell, holding both', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, { col: 4, row: 0 });
+  const b = addRoom(w, 'B', 2, { col: 5, row: 2 });
+  const c = merge(w, a.id, b.id, 3);
+  assert.ok(isBorges(c));
+  assert.deepEqual([c.col, c.row, c.parent], [5, 2, null]);
+  assert.deepEqual(roomsIn(w, c.id).map((r) => r.id).sort(), [a.id, b.id].sort());
+  assert.equal(roomAt(w, 4, 0), null);
+  const d = addRoom(w, 'D', 4);
+  assert.equal(merge(w, d.id, c.id, 5), c); // dropped on a Borges room, it goes inside
+  assert.equal(d.parent, c.id);
+  assert.equal(merge(w, MESSY, c.id), null);
+  assert.equal(merge(w, c.id, a.id), null); // not into what it holds
+});
+
+test('pages: rooms on the rooms page sit on one page each, with grids of their own', () => {
+  const w = emptyWorld();
+  assert.equal(pageCount(w), 1);
+  const p = addPage(w);
+  assert.equal(p, 1);
+  const r = addRoom(w, 'Two', 1, { col: 0, row: 0 }, 6, { page: 1 });
+  assert.equal(r.page, 1);
+  assert.deepEqual([r.col, r.row], [0, 0]); // Messy's cells are on page 0
+  assert.equal(roomAt(w, 0, 0, null, null, 1).id, r.id);
+  assert.equal(roomAt(w, 0, 0).id, MESSY);
+  assert.equal(pageCount(w), 2);
+  assert.ok(putRoom(w, r.id, null, 6, 0));
+  assert.equal(r.page, undefined);
+  assert.ok(!(r.col === 0 && r.row === 0));
+});
+
+test('doors link two rooms, once, wear in with use, and go when a room goes', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A'), b = addRoom(w, 'B');
+  const d = addDoor(w, a.id, b.id, 1);
+  assert.equal(addDoor(w, b.id, a.id), d);
+  assert.equal(addDoor(w, a.id, a.id), null);
+  assert.deepEqual(doorsOf(w, a.id).map((x) => x.other.id), [b.id]);
+  assert.equal(doorWidth(d), 1);
+  useDoor(w, d.id); useDoor(w, d.id); useDoor(w, d.id);
+  assert.ok(doorWidth(d) > 3);
+  const back = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.equal(Object.keys(back.doors).length, 1);
+  remove(w, b.id);
+  assert.deepEqual(doorsOf(w, a.id), []);
+});
+
+test('a saved room inside a mode room goes back to the top', () => {
+  const w = emptyWorld();
+  w.things.r9 = { id: 'r9', kind: 'room', parent: MESSY, at: 1, name: 'Stray' };
+  const back = loadWorld(w);
+  assert.equal(back.things.r9.parent, null);
 });
 
 test('removing a room removes what is in it; Messy thoughts stays', () => {
@@ -359,12 +438,16 @@ test('a square peeks at the last things written in its room', () => {
 
 test('search lights count what each room at the top holds, rooms inside rooms included', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Ontology', 1);
-  train(w, r.id, 'the facade is the work', 'a facade of rooms');
+  const r = addRoom(w, 'Ontology', 1, null, 6, {}, BORGES);
+  const a = create(w, r.id, { kind: 'room', name: 'Facade notes' });
+  train(w, a.id, 'the facade is the work', 'a facade of rooms');
   const inner = create(w, r.id, { kind: 'room', name: 'Facades' });
   train(w, inner.id, 'facade again');
   train(w, MESSY, 'facade, messily', 'nothing');
   assert.equal(topRoom(w, inner.id).id, r.id);
-  assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 4, [MESSY]: 1 });
+  assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 5, [MESSY]: 1 });
+  const inR = roomHits(w, 'facade', r.id);
+  assert.equal(inR[a.id], 3);
+  assert.equal(inR[inner.id], 2);
   assert.deepEqual(roomHits(w, ''), {});
 });

@@ -1,29 +1,40 @@
 // Create: rooms of thoughts. Create (on the home page, or in the menu) slides the rooms page up
-// from the bottom, leaving a strip of the home page at the top with a back arrow (top right) home.
-// The page is a light opacity mask over the home picture itself, held still underneath (its
-// spontaneity layer is off), so nothing is drawn while it shows. It is a grid of square cells:
-// each room is an opacity square on it (one cell; Messy thoughts takes four at the top left), and
-// a room written in lately glows. Click an empty cell to make a room there; drag a room to move it
-// to any free cell. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
-// opens Messy thoughts and starts writing there, at a random place.
+// from the bottom, leaving a strip of the home page at the top with a back arrow (top right) home,
+// and Search (Ctrl+K, ⌘K on a Mac) beside it. The page is a light opacity mask over the home
+// picture itself, held still underneath (its spontaneity layer is off), so nothing is drawn while
+// it shows. It is a grid of square cells: each room is an opacity square on it (one cell; Messy
+// thoughts takes four at the top left), and a room written in lately glows. The rooms page has
+// pages (1 2 3 + along the bottom); a thin rail on the left, under the menu, holds Rooms and the
+// Archive. Typing anything on the rooms page opens Messy thoughts and starts writing there.
 //
-// On the rooms page, hovering over a square outlines it; a click chooses it and shows its options
-// beside it (name, Go in, colour, lightness, opacity, size, Delete); a double click goes in.
+// Two kinds of room (model.js): a mode room holds thoughts, seen through one ontological mode
+// (Joyce or Pessoa, set in its properties on the grid that holds it); a Borges room holds rooms,
+// on a grid of its own like the rooms page. A new room (click an empty cell) asks which kind.
+// Going into a Borges room shows its grid, with a path at the top (Rooms › Theory); back goes up
+// one level.
 //
-// A room fills the screen as one gradient of its own colour, with the back arrow to the rooms.
+// On a grid, a click chooses a square (an outline); a right-click (or a long press) opens its
+// properties beside it (name, Go in, mode, colour, lightness, opacity, size, doors, Lock, Archive,
+// Delete); a double click or Enter goes in. Drag a square to move it; drop it on another to merge
+// the two into a Borges room (or, on a Borges room, to put it inside), on a page number to move it
+// to that page, on the path to take it up a level, or on Archive. Drag from a square's edge to
+// another square to make a door between them: the line thickens with use, and a room lists its
+// doors under its name.
+//
+// A room fills the screen as one gradient of its own colour, with the back arrow to its grid.
 // A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
-// writes a thought; Enter ends it. Each room is seen through an ontological mode:
+// writes a thought; Enter ends it. A click chooses a thought; a right-click (or long press, or
+// Enter) opens its properties beside it; a right-click on the empty canvas opens Add there.
 // - Joyce (the default): thoughts are joined by time into trains. Each thought stands on its own,
 //   joined to the next by a line: taut between quick thoughts, slack after a pause (model.js
 //   slack). Drag a thought to move it alone (the line follows); double-click a train to choose it
 //   whole, then drag it. Enter goes on with the train; Ctrl+Enter starts a new one. Hovering over
 //   Joyce drops down Timeline: a list down the left of everything written in the room, in the
 //   order it was last changed, with its train as a tag (Joyce's tags only).
-//   A click on a thought (or a double click on a train) opens a pop-up beside it to edit it.
 // - Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they
 //   were written, and can be dragged anywhere.
-// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and the room's
-// settings. A train can be folded into one thought, which you name, and unfolded again.
+// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Keys. A
+// train can be folded into one thought, which you name, and unfolded again.
 // Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
 // world is written down, and a line of help shows the first time each page is seen.
 //
@@ -35,11 +46,13 @@
 
 import { Feature, ui } from 'folio';
 import {
-  MESSY, MODES, loadWorld, room, rooms, addRoom, name, view, startTrain, addThought, create, update,
-  remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
-  roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
+  MESSY, MODES, BORGES, KINDS_OF_ROOM, loadWorld, room, addRoom, name, view, startTrain, addThought,
+  create, update, remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts,
+  roomTrains, roomUnits, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
-  cells, roomAt, shut, lock, archive, archived, restore, peek, roomHits, DESC,
+  cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, isBorges, roomsIn, roomPath,
+  modeRooms, putRoom, merge, pageCount, addPage, addDoor, removeDoor, doorsOf, useDoor, doorWidth,
+  holds, inside,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { visit, light, loadLog } from './attention.js';
@@ -47,12 +60,17 @@ import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOO
 
 const { el } = ui;
 const ZOOM = { min: 0.25, max: 4 };
-const GRID = { gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
+const GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 72 }; // the rooms page's cells (px); the rail on the left
+const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+const KEY = MAC ? '⌘K' : 'Ctrl+K';
+const HOLD = 520;          // ms: a long press opens properties, as a right-click does
+const EDGE = 11;           // px: a press this near a square's edge draws a door
+const KIND_NOTES = { joyce: 'thoughts joined by time', pessoa: 'each thought on its own', [BORGES]: 'a room of rooms' };
 const UNDO = 60;           // how many steps back Ctrl+Z goes
 const SVG = 'http://www.w3.org/2000/svg';
 const HINTS = {
-  rooms: 'Click a square to change it · double-click to go in · click an empty square for a new room · or just start typing',
-  room: 'Type anywhere to write · Enter ends a thought · Ctrl+Enter starts a new train · double-click a train to move it whole · Ctrl+K searches · Ctrl+Z undoes',
+  rooms: 'Click to choose · double-click to go in · right-click for properties · drag from an edge for a door · or just start typing',
+  room: 'Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes',
 };
 
 export default class Create extends Feature {
@@ -64,7 +82,13 @@ export default class Create extends Feature {
     this.fresh = false;   // Ctrl+Enter was pressed: the next thought starts a new train
     this.sel = null;      // { kind: 'train' | 'thought', id }
     this.renaming = null; // a room id whose name is being edited
-    this.roomSel = null;  // the room chosen on the rooms page, whose options show beside it
+    this.roomPick = null; // the room chosen (outlined) on a grid
+    this.roomSel = null;  // the room whose properties show beside it
+    this.making = null;   // an empty cell clicked: { col, row }, where the new room's kinds show
+    this.merging = null;  // a room dropped on another: { a, b }, waiting to be confirmed
+    this.inside = null;   // the Borges room whose grid shows, or null for the rooms page
+    this.page = 0;        // the rooms page's page that shows
+    this.barFor = null;   // in a room: what the properties pop-up is open for (selKey)
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
     this.lastRoom = this.storage.get('lastRoom') || null; // the room last gone into: its square glows
@@ -99,6 +123,9 @@ export default class Create extends Feature {
     this.palette = this.backdrop?.palette?.() || this.palette;
     this.paintPage();
     this.shelf = false;
+    this.inside = null;
+    this.page = 0;
+    this.roomPick = null;
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
     this.showRooms();
@@ -123,8 +150,34 @@ export default class Create extends Feature {
     }, 520);
   }
 
+  // Back: from a room to the grid that holds it; from the Archive to the rooms; from a Borges
+  // room's grid up one level; from the rooms page home.
   back() {
-    if (this.roomId) this.showRooms(); else this.close();
+    if (this.roomId) this.showRooms();
+    else if (this.shelf) this.toggleShelf();
+    else if (this.inside) this.upLevel();
+    else this.close();
+  }
+
+  // Up one level, out of the Borges room whose grid shows; it is left chosen.
+  upLevel() {
+    const r = room(this.world, this.inside);
+    this.showGrid(r && isBorges(room(this.world, r.parent)) ? r.parent : null, r?.page || 0);
+    this.roomPick = r?.id || null;
+    this.drawRooms();
+  }
+
+  // Shows a grid: inside a Borges room, or a page of the rooms page (parent null).
+  showGrid(parent = null, page = this.page) {
+    if (this.roomId) this.showRooms();
+    this.closeLights();
+    this.inside = parent;
+    if (parent == null) this.page = page;
+    this.shelf = false;
+    this.roomPick = this.roomSel = this.making = this.merging = null;
+    this.renaming = null;
+    this.grid.parentElement?.scrollTo?.(0, 0);
+    this.drawRooms();
   }
 
   showRooms() {
@@ -133,7 +186,7 @@ export default class Create extends Feature {
     this.stopWriting();
     this.roomId = null;
     this.sel = null;
-    this.roomSel = null;
+    this.roomSel = this.making = this.merging = null;
     this.closeAdd();
     this.roomPage.hidden = true;
     this.roomsPage.hidden = false;
@@ -144,8 +197,27 @@ export default class Create extends Feature {
     this.drawRooms();
   }
 
+  // Goes into a room: a mode room's canvas, or a Borges room's grid. Back then goes to the grid
+  // that holds it (or the Archive, if it was opened from there).
   openRoom(id) {
-    if (!room(this.world, id)) return;
+    const r = room(this.world, id);
+    if (!r) return;
+    if (!this.shelf) {
+      const p = room(this.world, r.parent);
+      this.inside = isBorges(p) ? p.id : null;
+      if (!this.inside) this.page = r.page || 0;
+    }
+    if (isBorges(r) && !r.archived) {
+      this.attention = loadLog(this.storage.get('attention'));
+      visit(this.attention, id);
+      this.storage.set('attention', this.attention);
+      this.showGrid(id);
+      this.roomsPage.classList.remove('entering');
+      void this.roomsPage.offsetWidth;
+      this.roomsPage.classList.add('entering');
+      return;
+    }
+    if (isBorges(r)) { this.toast('Restore it to go in: its rooms are on its grid.'); return; }
     this.closeLights();
     this.attention = loadLog(this.storage.get('attention'));
     visit(this.attention, id);
@@ -235,16 +307,17 @@ export default class Create extends Feature {
     this.saveTimer = setTimeout(() => { this.storage.set('world', this.world); this.showSaved(); }, 250);
   }
 
-  snap() { return JSON.stringify({ things: this.world.things, places: this.world.places }); }
+  snap() { const w = this.world; return JSON.stringify({ things: w.things, places: w.places, doors: w.doors, pages: w.pages }); }
 
   undo(back = true) {
     const from = back ? this.undoStack : this.redoStack, to = back ? this.redoStack : this.undoStack;
     if (!from.length) { this.toast(back ? 'Nothing to undo' : 'Nothing to redo'); return; }
     to.push(this.lastSnap);
     this.lastSnap = from.pop();
-    const { things, places } = JSON.parse(this.lastSnap);
-    Object.assign(this.world, { things, places });
+    const { things, places, doors = {}, pages = 1 } = JSON.parse(this.lastSnap);
+    Object.assign(this.world, { things, places, doors, pages });
     this.sel = null;
+    this.roomSel = this.making = this.merging = null;
     this.draft = null;
     clearTimeout(this.saveTimer);
     this.storage.set('world', this.world);
@@ -287,17 +360,33 @@ export default class Create extends Feature {
       if (e.key === 'Escape') { e.preventDefault(); this.closeLights(); }
       if (e.key === 'Enter') { e.preventDefault(); const best = this.bestLit(); if (best) this.openRoom(best); }
     });
-    this.shelfBtn = el('button', { type: 'button', class: 'create-word create-shelf-btn', onclick: () => this.toggleShelf() });
+    // The rail on the left, under the menu: the rooms, and the Archive with how many it holds. A
+    // room dragged onto Archive goes there.
+    this.railRooms = el('button', { type: 'button', class: 'create-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); else if (this.inside) this.showGrid(null); } }, 'Rooms');
+    this.shelfBtn = el('button', { type: 'button', class: 'create-rail-item create-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
+      el('span', {}, 'Archive'), this.shelfCount = el('span', { class: 'create-rail-count' }));
+    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn);
     this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
+    // Where the grid is: Rooms › Theory › Ontology. Each word goes there; a room dropped on it goes there too.
+    this.pathBar = el('nav', { class: 'create-path', 'aria-label': 'Where you are', hidden: true });
+    // The rooms page's pages: 1 2 3 +. A room dropped on a number goes to that page.
+    this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
-      el('div', { class: 'create-grid-wrap' }, this.shelfHead, this.grid),
-      el('div', { class: 'create-rooms-foot' }, this.shelfBtn));
+      this.rail,
+      el('div', { class: 'create-grid-wrap' }, this.pathBar, this.shelfHead, this.grid),
+      this.pagesBar);
 
     this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
+    // Search, beside the back arrow: the rooms page's lights, or a room's search of every room.
+    this.searchBtn = el('button', { type: 'button', class: 'create-word create-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
+      onclick: () => { if (this.roomId) this.openSearch(); else if (this.lights != null) this.closeLights(); else this.openLights(); } },
+    el('span', {}, 'Search'), el('span', { class: 'create-search-key' }, KEY));
     this.crumbName = el('button', { type: 'button', class: 'create-crumb create-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
-    this.modes = el('div', { class: 'create-modes', role: 'radiogroup', 'aria-label': 'Ontological mode' });
+    this.crumbPath = el('nav', { class: 'create-path create-crumb-path', 'aria-label': 'Where you are', hidden: true });
+    this.crumbDoors = el('div', { class: 'create-crumb-doors', hidden: true });
+    this.modes = el('div', { class: 'create-modes', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'create-world' });
     this.stage = el('div', { class: 'create-stage', 'data-own-swipe': '' }, this.world$);
     this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, autocomplete: 'off', spellcheck: 'false' });
@@ -306,14 +395,14 @@ export default class Create extends Feature {
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
       this.stage,
       this.modes,
-      el('div', { class: 'create-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'create-crumb-desc' })),
+      el('div', { class: 'create-top' }, this.crumbPath, this.crumbName, this.crumbDesc = el('div', { class: 'create-crumb-desc' }), this.crumbDoors),
       el('div', { class: 'create-add' },
         this.addMenu = el('div', { class: 'create-add-menu', hidden: true, role: 'menu' },
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           el('div', { class: 'create-add-rule' }),
-          this.addItem('Keys', '?', () => this.showKeys())),
+          this.addItem('Keys', '?', () => this.showKeys(), false)),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
@@ -324,7 +413,7 @@ export default class Create extends Feature {
     this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
     this.savedMark = el('div', { class: 'create-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'create-hint' });
-    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
+    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -332,12 +421,12 @@ export default class Create extends Feature {
     this.input.addEventListener('blur', () => { if (this.draft && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } });
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
     this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
-    this.stage.addEventListener('contextmenu', (e) => e.preventDefault()); // Ctrl+click on a Mac would open a menu and lose the drag
+    this.stage.addEventListener('contextmenu', (e) => this.onContext(e));
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });
     document.addEventListener('pointerdown', (e) => {
       this.hintLine.classList.remove('on');
-      if (!this.addMenu.hidden && !e.target.closest('.create-add')) this.closeAdd();
+      if (!this.addMenu.hidden && !e.target.closest('.create-add-menu, .create-add-btn')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
   }
@@ -346,36 +435,62 @@ export default class Create extends Feature {
 
   // How many columns fit, and how big a cell is.
   gridSize() {
-    const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad;
+    const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad - (window.innerWidth > 560 ? GRID.rail : 0);
     const fit = Math.floor((width + GRID.gap) / (this.prefs.cell + GRID.gap));
     const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
     const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
     return { cols, cell };
   }
 
+  // The grid that shows: { parent, page }.
+  get grid$() { return { parent: this.inside, page: this.inside ? 0 : this.page }; }
+
+  // For each room on the grid (ids), how many thoughts and rooms in it hold the words.
+  hitsOn(ids, query = this.lights) {
+    const out = {};
+    if (!query?.trim()) return out;
+    for (const f of search(this.world, query, Infinity)) {
+      for (let th = this.world.things[f.id]; th; th = this.world.things[th.parent]) {
+        if (ids.has(th.id)) { out[th.id] = (out[th.id] || 0) + 1; break; }
+      }
+    }
+    return out;
+  }
+
   drawRooms() {
     const now = Date.now();
+    if (this.inside && !(isBorges(room(this.world, this.inside)) && !room(this.world, this.inside).archived)) this.inside = null; // gone (undone, deleted)
+    this.page = Math.min(this.page, pageCount(this.world) - 1);
     const { cols: fit, cell } = this.gridSize();
-    const all = gridRooms(this.world, fit);
+    const { parent, page } = this.grid$;
+    const all = gridRooms(this.world, fit, parent, page);
     const shelved = archived(this.world);
     if (this.shelf && !shelved.length) this.shelf = false;
-    this.shelfBtn.hidden = !shelved.length;
-    this.shelfBtn.textContent = this.shelf ? 'Rooms' : `Archive · ${shelved.length}`;
+    this.shelfCount.textContent = String(shelved.length);
+    this.shelfBtn.setAttribute('aria-current', String(this.shelf));
+    this.railRooms.setAttribute('aria-current', String(!this.shelf));
     this.shelfHead.hidden = !this.shelf;
     this.roomsPage.classList.toggle('shelf', this.shelf);
+    this.drawPath();
+    this.drawPages();
+    this.paintGrid();
+    this.backBtn.setAttribute('aria-label', this.shelf ? 'Back to the rooms' : this.inside ? 'Up a level' : 'Back to the home page');
     this.grid.classList.toggle('peek-always', this.prefs.peek >= 0.5);
-    const hits = this.lights?.trim() ? roomHits(this.world, this.lights) : null;
+    const shown = new Set((this.shelf ? shelved : all).map((r) => r.id));
+    if (!shown.has(this.roomPick)) this.roomPick = null; // chosen things not on this grid are let go
+    if (!shown.has(this.roomSel)) this.roomSel = null;
+    const hits = this.lights?.trim() ? this.hitsOn(shown) : null;
     this.grid.classList.toggle('lights', !!hits);
     if (hits) {
       const n = Object.keys(hits).length;
-      this.lightsNote.textContent = n ? `${n} room${n === 1 ? '' : 's'} · Enter goes in` : 'Nothing yet with those words';
+      this.lightsNote.textContent = n ? `${n} room${n === 1 ? '' : 's'} · Enter goes in` : 'Nothing here yet with those words';
     } else this.lightsNote.textContent = '';
     if (this.shelf) { this.drawShelf(shelved, fit, cell, hits); return; }
     // The grid grows: always a spare column and row past the furthest room, and at least the
     // size set in Settings → Rooms. The page scrolls when it is bigger than the screen.
     const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
     const height = this.grid.parentElement?.clientHeight || window.innerHeight;
-    const rows = Math.max(Math.floor((height - 2 * GRID.pad + GRID.gap) / (cell + GRID.gap)),
+    const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)) - (this.inside ? 1 : 0),
       this.prefs.rows || 0, ...all.map((r) => r.row + r.size + 1));
     this.cols = cols;
     this.grid.style.setProperty('--cols', cols);
@@ -383,23 +498,156 @@ export default class Create extends Feature {
     this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
 
     const taken = new Set();
-    for (const r of all) for (let c = 0; c < r.size; c++) for (let d = 0; d < r.size; d++) taken.add(`${r.col + c},${r.row + d}`);
+    for (const r of all) for (let c = 0; c < (r.size || 1); c++) for (let d = 0; d < (r.size || 1); d++) taken.add(`${r.col + c},${r.row + d}`);
     const empty = [];
     for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
       if (taken.has(`${col},${row}`)) continue;
+      const making = this.making?.col === col && this.making?.row === row;
       empty.push(el('button', {
-        type: 'button', class: 'create-cell', 'aria-label': 'New room here',
+        type: 'button', class: 'create-cell' + (making ? ' target' : ''), 'aria-label': 'New room here',
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
-        onclick: () => { if (this.roomSel) { this.roomSel = null; this.drawRooms(); } else this.newRoom({ col, row }); },
+        onclick: () => this.onCell(col, row),
+        oncontextmenu: (e) => { e.preventDefault(); this.roomSel = this.merging = null; this.roomPick = null; this.making = { col, row }; this.drawRooms(); },
       }));
     }
 
     const tiles = all.map((r) => this.tile(r, now, hits));
+    const panels = [];
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
-    this.grid.replaceChildren(...empty, ...tiles, ...(chosen ? [this.roomOptions(chosen, cell, cols)] : []));
+    if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
+    const into = this.merging && all.find((r) => r.id === this.merging.b);
+    if (into && room(this.world, this.merging.a)) panels.push(this.mergeOptions(room(this.world, this.merging.a), into, cell, cols));
+    else this.merging = null;
+    if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
+    this.grid.replaceChildren(this.doorLines(all, cell), ...empty, ...tiles, ...panels);
     this.grid.querySelector('.create-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
+  }
+
+  // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
+  // of room to make there.
+  onCell(col, row) {
+    if (this.roomSel || this.merging || this.making) { this.roomSel = this.merging = this.making = null; this.drawRooms(); return; }
+    this.roomPick = null;
+    this.making = { col, row };
+    this.drawRooms();
+    this.grid.querySelector('.create-kinds button')?.focus({ preventScroll: true });
+  }
+
+  // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
+  beside(c, cell, cols, extra = '') {
+    const step = cell + GRID.gap;
+    const size = c.size || 1;
+    const right = c.col + size + 1 + 2 <= cols;
+    return {
+      class: 'create-options' + (right ? '' : ' left') + extra,
+      style: right ? `left:${(c.col + size) * step + 4}px;top:${c.row * step}px` : `right:${(cols - c.col) * step + 4 - GRID.gap}px;top:${c.row * step}px`,
+      onpointerdown: (e) => e.stopPropagation(),
+      oncontextmenu: (e) => e.stopPropagation(),
+    };
+  }
+
+  // The kinds of room a new one can be, beside the empty cell clicked.
+  kindOptions(c, cell, cols) {
+    return el('div', this.beside(c, cell, cols, ' create-kinds'),
+      el('div', { class: 'create-options-label' }, 'A new room'),
+      ...KINDS_OF_ROOM.map((k) => el('button', { type: 'button', class: 'create-kind', onclick: () => this.newRoom(c, k.id) },
+        el('span', { class: 'create-kind-name' }, k.name), el('span', { class: 'create-add-note' }, KIND_NOTES[k.id] || ''))));
+  }
+
+  // A room dropped on another: merge the two into a Borges room, or put it inside a Borges room.
+  mergeOptions(a, b, cell, cols) {
+    const into = isBorges(b);
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    return el('div', this.beside(b, cell, cols, ' create-merge'),
+      el('div', { class: 'create-options-label' }, into ? 'Put inside' : 'Merge'),
+      el('p', { class: 'create-options-note' }, into
+        ? `Put ${a.name} inside ${b.name}?`
+        : `Make a Borges room here holding ${a.name} and ${b.name}?`),
+      el('div', { class: 'create-options-row' },
+        word(into ? 'Put inside' : 'Merge', () => {
+          const c = merge(this.world, a.id, b.id, Date.now(), this.cols || 6);
+          this.merging = null;
+          if (!c) { this.toast('Those two can\'t be merged.'); this.drawRooms(); return; }
+          this.save();
+          if (!into) this.renaming = c.id; // name the new room
+          this.roomPick = c.id;
+          this.drawRooms();
+          this.grid.querySelector('.create-name-field')?.select();
+          this.toast(into ? `${a.name} is inside ${b.name}.` : 'Merged. Name the new room.');
+        }, 'create-options-go'),
+        word('Cancel', () => { this.merging = null; this.drawRooms(); })));
+  }
+
+  // The path to the grid that shows: Rooms › Theory › Ontology.
+  trail(ids) {
+    const items = [{ id: null, name: 'Rooms' }, ...ids.map((id) => room(this.world, id)).filter(Boolean)];
+    const out = [];
+    items.forEach((r, i) => {
+      if (i) out.push(el('span', { class: 'create-path-sep', 'aria-hidden': 'true' }, '›'));
+      out.push(el('button', {
+        type: 'button', class: 'create-word create-path-item', 'data-into': r.id ?? '',
+        onclick: () => (r.id ? this.openRoom(r.id) : this.showGrid(null)),
+      }, r.name));
+    });
+    return out;
+  }
+
+  drawPath() {
+    const ids = this.inside && !this.shelf ? [...roomPath(this.world, this.inside).map((r) => r.id), this.inside] : [];
+    this.pathBar.hidden = !ids.length;
+    if (!ids.length) { this.pathBar.replaceChildren(); return; }
+    const items = this.trail(ids);
+    items.at(-1).setAttribute('aria-current', 'page');
+    this.pathBar.replaceChildren(...items);
+  }
+
+  drawPages() {
+    const n = pageCount(this.world);
+    this.pagesBar.hidden = !!this.inside || this.shelf;
+    this.pagesBar.replaceChildren(
+      ...Array.from({ length: n }, (_, i) => el('button', {
+        type: 'button', class: 'create-word create-page', 'data-page': i, 'aria-label': `Page ${i + 1}`,
+        ...(i === this.page ? { 'aria-current': 'page' } : {}),
+        onclick: () => this.showGrid(null, i),
+      }, String(i + 1))),
+      el('button', { type: 'button', class: 'create-word create-page', 'aria-label': 'A new page', title: 'A new page', onclick: () => {
+        const i = addPage(this.world);
+        this.save();
+        this.showGrid(null, i);
+      } }, '+'));
+  }
+
+  // A Borges room's grid is veiled in the room's own colour.
+  paintGrid() {
+    const r = !this.shelf && this.inside && room(this.world, this.inside);
+    this.roomsPage.classList.toggle('borges', !!r);
+    if (r) {
+      const look = this.lookOf(r);
+      this.roomsPage.style.setProperty('--grid-veil', `linear-gradient(${look.top}, ${look.bottom})`);
+    }
+  }
+
+  // The doors between rooms on this grid: lines from square to square, thicker the more used.
+  doorLines(all, cell) {
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('class', 'create-doors');
+    svg.setAttribute('aria-hidden', 'true');
+    const step = cell + GRID.gap;
+    const at = new Map(all.map((r) => [r.id, { x: (r.col + (r.size || 1) / 2) * step - GRID.gap / 2, y: (r.row + (r.size || 1) / 2) * step - GRID.gap / 2 }]));
+    for (const d of Object.values(this.world.doors || {})) {
+      const p = at.get(d.a), q = at.get(d.b);
+      if (!p || !q) continue;
+      const line = document.createElementNS(SVG, 'path');
+      const dx = q.x - p.x, dy = q.y - p.y, k = 0.12 * Math.sign(dx || 1); // a little slack, like a train's line
+      const mx = (p.x + q.x) / 2 - dy * k, my = (p.y + q.y) / 2 + dx * k;
+      line.setAttribute('d', `M${p.x},${p.y} Q${mx},${my} ${q.x},${q.y}`);
+      line.setAttribute('stroke-width', doorWidth(d).toFixed(2));
+      line.setAttribute('data-door', d.id);
+      svg.append(line);
+    }
+    return svg;
   }
 
   // One room's square: its colour, its light, its name and count; its last thoughts (the peek);
@@ -407,8 +655,9 @@ export default class Create extends Feature {
   // thin bar along its top if it is locked, and how many finds it holds while the lights are on.
   tile(r, now = Date.now(), hits = null) {
     const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
-    const written = roomThoughts(this.world, r.id);
-    const count = written.length;
+    const borges = isBorges(r);
+    const written = borges ? [] : roomThoughts(this.world, r.id);
+    const count = borges ? holds(this.world, r.id).length : written.length;
     const glow = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
     const lit = glow > 0.04;
     const name = this.renaming === r.id
@@ -418,18 +667,25 @@ export default class Create extends Feature {
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
       class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
+        + (this.roomPick === r.id ? ' picked' : '') + (borges ? ' borges' : '') + (this.merging?.b === r.id ? ' merge-target' : '')
         + (this.lastRoom === r.id ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
       style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
-      'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
+      'aria-label': borges ? `${r.name}, a Borges room of ${count} room${count === 1 ? '' : 's'}` : `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
+      'aria-selected': String(this.roomPick === r.id),
       'data-room': r.id,
       'aria-expanded': String(this.roomSel === r.id),
       onkeydown: (e) => {
         if (e.target !== tile) return;
-        if (e.key === 'Enter') { e.preventDefault(); this.openRoom(r.id); }
-        if (e.key === ' ') { e.preventDefault(); this.chooseRoom(r.id); }
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); this.openRoom(r.id); }
+        if (e.key === ' ') { e.preventDefault(); this.pickRoom(r.id); }
+        if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); this.chooseRoom(r.id, true); }
       },
+      onfocus: () => { if (this.roomPick !== r.id && !this.roomSel) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.create-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
       onpointerdown: (e) => this.onTileDown(e, r, tile),
+      onpointermove: (e) => { if (!e.buttons) tile.classList.toggle('edge', !this.shelf && this.nearEdge(e, tile)); },
+      onpointerleave: () => tile.classList.remove('edge'),
+      oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.chooseRoom(r.id, true); this.held = null; },
     },
       lines.length || r.desc ? el('div', { class: 'create-peek', 'aria-hidden': 'true' },
         r.desc ? el('div', { class: 'create-peek-desc' }, r.desc) : null,
@@ -438,7 +694,8 @@ export default class Create extends Feature {
       found ? el('span', { class: 'create-tile-found' }, String(found)) : null,
       el('div', { class: 'create-tile-label' },
         name,
-        el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
+        el('span', { class: 'create-tile-count' }, count ? String(count) : '')),
+      borges ? el('span', { class: 'create-tile-borges', 'aria-hidden': 'true' }) : null);
     return tile;
   }
 
@@ -446,7 +703,7 @@ export default class Create extends Feature {
 
   toggleShelf() {
     this.shelf = !this.shelf;
-    this.roomSel = null;
+    this.roomSel = this.roomPick = this.making = this.merging = null;
     this.drawRooms();
     this.grid.parentElement?.scrollTo?.(0, 0);
   }
@@ -468,20 +725,17 @@ export default class Create extends Feature {
     const at = shelved.findIndex((r) => r.id === this.roomSel);
     const panel = at < 0 ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
     this.grid.replaceChildren(...tiles, ...(panel ? [panel] : []));
+    if (!shelved.length) this.grid.replaceChildren(el('p', { class: 'create-shelf-none' }, 'Nothing in the Archive'));
   }
 
   shelfOptions(r, col, row, cell, cols) {
-    const step = cell + GRID.gap;
-    const right = col + 1 + 2 <= cols;
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
-    return el('div', {
-      class: 'create-options' + (right ? '' : ' left'),
-      style: right ? `left:${(col + 1) * step + 4}px;top:${row * step}px` : `right:${(cols - col) * step + 4 - GRID.gap}px;top:${row * step}px`,
-      onpointerdown: (e) => e.stopPropagation(),
-    },
+    const from = roomPath(this.world, r.id).map((p) => p.name).join(' › ');
+    return el('div', this.beside({ col, row }, cell, cols),
       el('div', { class: 'create-options-label' }, r.name),
       r.desc ? el('p', { class: 'create-options-note' }, r.desc) : null,
-      word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      from ? el('p', { class: 'create-options-note' }, `From ${from}`) : null,
+      isBorges(r) ? null : word('Go in', () => this.openRoom(r.id), 'create-options-go'),
       word('Restore', () => {
         restore(this.world, r.id, null, this.gridSize().cols);
         this.roomSel = null;
@@ -516,23 +770,37 @@ export default class Create extends Feature {
     if (!this.roomId && !this.root.hidden) this.drawRooms();
   }
 
-  // The room the lights found most in.
+  // The room the lights found most in, on the grid that shows.
   bestLit() {
-    const hits = roomHits(this.world, this.lights || '');
+    const { parent, page } = this.grid$;
+    const ids = new Set((this.shelf ? archived(this.world) : roomsIn(this.world, parent, page)).map((r) => r.id));
+    const hits = this.hitsOn(ids);
     return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   }
 
-  chooseRoom(id) {
-    this.roomSel = this.roomSel === id ? null : id;
+  // A click on a square chooses it (an outline); the properties wait for a right-click.
+  pickRoom(id) {
+    if (this.roomSel && this.roomSel !== id) this.roomSel = null;
+    this.making = this.merging = null;
+    this.roomPick = id;
+    this.drawRooms();
+    this.grid.querySelector(`.create-tile[data-room="${id}"]`)?.focus({ preventScroll: true });
+  }
+
+  // Opens (or, with open false, toggles) a room's properties beside its square.
+  chooseRoom(id, open = false) {
+    this.roomSel = open || this.roomSel !== id ? id : null;
+    this.roomPick = id;
+    this.making = this.merging = null;
     this.renaming = null;
     this.drawRooms();
   }
 
-  // A chosen room's options, beside its square: its name, Go in, its colour, lightness and opacity
-  // (the only place a room's colour is set), its size, Back to the tint, and Delete (not for Messy).
+  // A room's properties, beside its square: its name and description, Go in, its mode (the only
+  // place a room's mode is set), its colour, lightness and opacity (the only place its colour is
+  // set), its size, its doors, Back to the tint, Lock, Archive and Delete (not for Messy).
   roomOptions(r, cell, cols) {
-    const step = cell + GRID.gap;
-    const right = r.col + r.size + 1 + 2 <= cols; // room for the panel on the right
+    const borges = isBorges(r);
     const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
     const look = this.lookOf(r);
     const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
@@ -542,13 +810,9 @@ export default class Create extends Feature {
       onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
     });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
-    const panel = el('div', {
-      class: 'create-options' + (right ? '' : ' left'),
-      style: right
-        ? `left:${(r.col + r.size) * step + 4}px;top:${r.row * step}px`
-        : `right:${(cols - r.col) * step + 4 - GRID.gap}px;top:${r.row * step}px`,
-      onpointerdown: (e) => e.stopPropagation(),
-    },
+    const mode = view(this.world, r.id).mode;
+    const n = borges ? holds(this.world, r.id).length : 0;
+    const panel = el('div', this.beside(r, cell, cols),
       nameField,
       // A line or two about the room: shown under its name inside, and in its square's peek.
       el('textarea', {
@@ -557,6 +821,15 @@ export default class Create extends Feature {
         onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
       }, r.desc || ''),
       word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      // A mode room's way of being seen: set here, on the grid that holds it, never inside.
+      borges
+        ? el('p', { class: 'create-options-note' }, `Borges · a room of rooms · ${n} inside`)
+        : el('div', { class: 'create-options-row create-options-modes', role: 'radiogroup', 'aria-label': 'Mode' },
+          el('span', { class: 'create-options-label' }, 'Mode'),
+          ...MODES.map((m) => el('button', {
+            type: 'button', class: 'create-word', role: 'radio', 'aria-checked': String(m.id === mode), 'aria-pressed': String(m.id === mode),
+            onclick: () => { const v = view(this.world, r.id); v.mode = m.id; v.timeline = false; this.save(); this.drawRooms(); },
+          }, m.name))),
       // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
       el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
         el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
@@ -576,6 +849,7 @@ export default class Create extends Feature {
             else this.toast('There isn\'t room for it to grow here. Move it first.');
           },
         }, n === 1 ? '1 × 1' : '2 × 2'))),
+      this.doorRows(r),
       el('div', { class: 'create-options-row' },
         r.tint || r.light != null || r.opacity != null ? word('Back to the tint', () => {
           delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
@@ -591,12 +865,52 @@ export default class Create extends Feature {
         }) : null,
         r.id !== MESSY && !r.locked ? word('Delete', () => {
           remove(this.world, r.id);
-          this.roomSel = null;
+          this.roomSel = this.roomPick = null;
           this.save();
           this.drawRooms();
-          this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+          this.toast(`Deleted ${r.name}${n ? ` and the ${n} room${n === 1 ? '' : 's'} in it` : ''}. Ctrl+Z brings it back.`);
         }, 'create-options-delete') : null));
     return panel;
+  }
+
+  // A room's name with the rooms it is inside: Theory › Ontology.
+  pathName(r) { return [...roomPath(this.world, r.id), r].map((x) => x.name).join(' › '); }
+
+  // A room's doors, each going through (and wearing it in) or taken away; and Door to… any room.
+  doorRows(r) {
+    const doors = doorsOf(this.world, r.id);
+    const linked = new Set(doors.map((d) => d.other.id));
+    const others = Object.values(this.world.things)
+      .filter((th) => kindOf(th) === 'room' && th.id !== r.id && !th.archived && !linked.has(th.id))
+      .sort((a, b) => this.pathName(a).localeCompare(this.pathName(b)));
+    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'A door to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = room(this.world, e.target.value);
+        if (!to) return;
+        addDoor(this.world, r.id, to.id);
+        this.save();
+        this.drawRooms();
+        this.toast(`A door between ${r.name} and ${to.name}`);
+      } },
+    el('option', { value: '' }, 'Door to…'),
+    ...others.map((o) => el('option', { value: o.id }, this.pathName(o))));
+    return el('div', { class: 'create-options-doors' },
+      doors.length ? el('span', { class: 'create-options-label' }, 'Doors') : null,
+      ...doors.map(({ door, other }) => el('div', { class: 'create-options-door' },
+        el('button', { type: 'button', class: 'create-word', onclick: () => this.goThrough(door.id, other.id) }, this.pathName(other)),
+        el('button', { type: 'button', class: 'create-door-off', 'aria-label': `Take away the door to ${other.name}`, title: 'Take the door away', onclick: () => {
+          removeDoor(this.world, door.id);
+          this.save();
+          this.drawRooms();
+        } }, '×'))),
+      others.length ? pick : null);
+  }
+
+  // Through a door: it is worn in a little, and the room on the other side opens.
+  goThrough(doorId, to) {
+    useDoor(this.world, doorId);
+    this.save();
+    this.openRoom(to);
   }
 
   // Redraws the squares on the next frame (sliders move many times a frame).
@@ -619,13 +933,42 @@ export default class Create extends Feature {
     return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
   }
 
-  // Pressing a room opens it; dragging it moves it to the cell it is let go over, if that is free.
+  // True if a pointer is within EDGE px of a square's edge (a door starts there).
+  nearEdge(e, tile) {
+    const b = tile.getBoundingClientRect();
+    const d = Math.min(e.clientX - b.left, b.right - e.clientX, e.clientY - b.top, b.bottom - e.clientY);
+    return d >= 0 && d < EDGE;
+  }
+
+  // What is under a point while a square is dragged: a page number, a word of the path, the
+  // Archive, or another square.
+  dropAt(x, y) {
+    const n = document.elementFromPoint(x, y);
+    const page = n?.closest?.('[data-page]');
+    if (page) return { page: +page.dataset.page, el: page };
+    const up = n?.closest?.('[data-into]');
+    if (up) return { into: up.dataset.into || null, el: up };
+    const shelf = n?.closest?.('[data-drop="archive"]');
+    if (shelf) return { archive: true, el: shelf };
+    const t = n?.closest?.('.create-tile');
+    if (t) return { room: t.dataset.room, el: t };
+    return null;
+  }
+
+  // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
+  // moves it to the cell it is let go over, if that is free, or onto what is there (see dropAt).
+  // From its edge, a drag draws a door to another square.
   onTileDown(e, r, tile) {
-    if (e.button || e.target.closest('input')) return;
+    if (e.button || e.target.closest('input, textarea, select')) return;
+    if (e.ctrlKey && MAC) return; // a Mac's Ctrl+click is a right-click (oncontextmenu)
     const start = { x: e.clientX, y: e.clientY };
+    const door = !this.shelf && e.pointerType === 'mouse' && this.nearEdge(e, tile);
     const grab = this.cellAt(e.clientX, e.clientY);
     const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
-    let dragging = false, target = null;
+    let dragging = false, target = null, over = null;
+    this.held = null;
+    // A long press (touch, or a pen) opens the properties, as a right-click does.
+    const hold = e.pointerType !== 'mouse' && setTimeout(() => { this.held = r.id; finish(); this.chooseRoom(r.id, true); }, HOLD);
     const spot = (ev) => {
       const at = this.cellAt(ev.clientX, ev.clientY);
       return at && { col: at.col - offset.col, row: at.row - offset.row };
@@ -637,37 +980,97 @@ export default class Create extends Feature {
       if (!c) { drop.hidden = true; return; }
       const size = r.size || 1;
       const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols &&
-        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => { const o = roomAt(this.world, cc, rr, r.id); return !o; });
+        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, this.grid$.parent, this.grid$.page));
       drop.hidden = false;
       drop.classList.toggle('taken', !free);
       drop.style.gridColumn = `${c.col + 1} / span ${size}`;
       drop.style.gridRow = `${c.row + 1} / span ${size}`;
     };
+    const lit = (n) => {
+      for (const x of this.root.querySelectorAll('.drop-on')) if (x !== n) x.classList.remove('drop-on');
+      n?.classList.add('drop-on');
+    };
+    // A door: a line from the square's middle to the pointer, then to the square let go over.
+    let line = null;
+    const mid = () => { const b = tile.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; };
+    const drawLine = (ev) => {
+      if (!line) {
+        line = document.createElementNS(SVG, 'svg');
+        line.setAttribute('class', 'create-door-draft');
+        line.append(document.createElementNS(SVG, 'line'));
+        this.root.append(line);
+      }
+      const m = mid(), l = line.firstChild;
+      l.setAttribute('x1', m.x); l.setAttribute('y1', m.y); l.setAttribute('x2', ev.clientX); l.setAttribute('y2', ev.clientY);
+    };
     const moveFn = (ev) => {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
-      if (r.locked || r.archived) return; // a locked room keeps its place; an archived one has none
       if (!dragging && Math.hypot(dx, dy) < 5) return;
-      if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); }
+      clearTimeout(hold);
+      if (door) {
+        dragging = true;
+        drawLine(ev);
+        const t = this.dropAt(ev.clientX, ev.clientY);
+        over = t?.room && t.room !== r.id ? t : null;
+        lit(over?.el);
+        return;
+      }
+      if (r.locked || r.archived) return; // a locked room keeps its place; an archived one has none
+      if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); this.roomSel = null; }
       tile.style.transform = `translate(${dx}px, ${dy}px)`;
-      target = spot(ev);
+      over = this.dropAt(ev.clientX, ev.clientY);
+      if (over?.room === r.id) over = null;
+      // Onto another square: a merge, if both can be merged.
+      if (over?.room) {
+        const b = room(this.world, over.room);
+        if (!b || b.locked || b.id === MESSY || r.id === MESSY) over = null;
+      }
+      if (over?.into !== undefined && (over.into || null) === this.inside) over = null; // already here
+      if (over?.archive && (r.id === MESSY)) over = null;
+      lit(over?.el);
+      target = over ? null : spot(ev);
       mark(target);
     };
-    const up = (ev) => {
+    const finish = () => {
+      clearTimeout(hold);
       window.removeEventListener('pointermove', moveFn);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       mark(null);
+      drop.remove();
+      lit(null);
+      line?.remove();
+      tile.classList.remove('dragging');
       this.grid.classList.remove('dragging');
+    };
+    const up = (ev) => {
+      finish();
       if (!dragging) {
-        if (ev.type !== 'pointerup' || this.renaming) return;
+        if (ev.type !== 'pointerup' || this.renaming || this.held) return;
         const now = Date.now();
         const twice = this.lastTap?.id === r.id && now - this.lastTap.at < 380;
         this.lastTap = { id: r.id, at: now };
         if (twice) this.openRoom(r.id);
-        else { this.roomSel = r.id; this.drawRooms(); }
+        else this.pickRoom(r.id);
         return;
       }
-      if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
+      if (door) {
+        const b = over && room(this.world, over.room);
+        if (b && addDoor(this.world, r.id, b.id)) { this.save(); this.toast(`A door between ${r.name} and ${b.name}`); }
+        this.drawRooms();
+        return;
+      }
+      tile.style.transform = '';
+      const cols = this.cols || this.gridSize().cols;
+      if (over?.room) { this.merging = { a: r.id, b: over.room }; this.roomPick = over.room; }
+      else if (over?.page != null) {
+        if (putRoom(this.world, r.id, null, cols, over.page)) { this.save(); this.toast(`${r.name} is on page ${over.page + 1}.`); }
+      } else if (over && 'into' in over) {
+        const into = over.into || null;
+        if (putRoom(this.world, r.id, into, cols, into ? 0 : this.page)) { this.save(); this.toast(`${r.name} is in ${into ? room(this.world, into).name : 'Rooms'}.`); }
+      } else if (over?.archive) {
+        if (archive(this.world, r.id)) { this.save(); this.toast(`${r.name} is in the Archive.`); }
+      } else if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
       this.drawRooms();
     };
     window.addEventListener('pointermove', moveFn);
@@ -675,11 +1078,15 @@ export default class Create extends Feature {
     window.addEventListener('pointercancel', up);
   }
 
-  // A new room, in the cell asked for (or the first free one), with its name ready to write.
-  newRoom(cell = null) {
-    const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols);
+  // A new room of a kind (a mode, or Borges), in the cell asked for (or the first free one), with
+  // its name ready to write.
+  newRoom(cell = null, kind = 'joyce') {
+    const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols, this.grid$, kind);
+    this.making = null;
+    if (!r) { this.toast('A room can\'t be made here.'); this.drawRooms(); return; }
     this.save();
     this.renaming = r.id;
+    this.roomPick = r.id;
     this.drawRooms();
     this.grid.querySelector('.create-name-field')?.select();
   }
@@ -802,20 +1209,27 @@ export default class Create extends Feature {
     this.crumbDesc.hidden = !r.desc;
     this.roomPage.classList.toggle('locked', !!this.locked);
     const v = view(this.world, this.roomId);
-    this.modes.replaceChildren(...MODES.map((m) => {
-      const btn = el('button', {
-        type: 'button', role: 'radio', class: 'create-mode',
-        'aria-checked': String(m.id === this.mode),
-        onclick: () => this.setMode(m.id),
-      }, m.name);
-      if (m.id !== 'joyce') return btn;
-      // Hovering over Joyce unfolds the timeline.
-      return el('span', { class: 'create-mode-wrap' + (v.timeline && this.mode === 'joyce' ? ' open' : '') }, btn,
+    // The room's mode, as a word (it is set from the room's properties on the grid that holds it);
+    // hovering over Joyce unfolds the timeline.
+    const m = MODES.find((x) => x.id === this.mode) || MODES[0];
+    const label = el('span', { class: 'create-mode create-mode-label', title: 'The room\'s mode: set it from the room\'s properties (right-click its square)' }, m.name);
+    this.modes.replaceChildren(m.id !== 'joyce' ? label
+      : el('span', { class: 'create-mode-wrap' + (v.timeline ? ' open' : ''), tabindex: 0 }, label,
         el('button', {
-          type: 'button', class: 'create-mode create-timeline-btn', 'aria-pressed': String(!!v.timeline && this.mode === 'joyce'),
+          type: 'button', class: 'create-mode create-timeline-btn', 'aria-pressed': String(!!v.timeline),
           onclick: () => this.toggleTimeline(),
-        }, 'Timeline'));
-    }));
+        }, 'Timeline')));
+    // Where it is (Rooms › Theory ›, when it is inside a Borges room), and its doors.
+    const path = roomPath(this.world, r.id).map((x) => x.id);
+    this.crumbPath.hidden = !path.length;
+    this.crumbPath.replaceChildren(...(path.length ? this.trail(path) : []));
+    const doors = doorsOf(this.world, r.id);
+    this.crumbDoors.hidden = !doors.length;
+    this.crumbDoors.replaceChildren(...(doors.length ? [el('span', { class: 'create-crumb-doors-label' }, 'Doors'),
+      ...doors.map(({ door, other }) => el('button', {
+        type: 'button', class: 'create-word create-crumb-door', style: `--door:${Math.min(1, 0.45 + door.uses * 0.06).toFixed(2)}`,
+        title: `Go through to ${this.pathName(other)}`, onclick: () => this.goThrough(door.id, other.id),
+      }, other.name))] : []));
     this.root.dataset.mode = this.mode;
     this.root.classList.toggle('history-open', this.historyOpen);
     this.drawHistory();
@@ -832,17 +1246,9 @@ export default class Create extends Feature {
   get historyOpen() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
 
   toggleTimeline() {
+    if (this.mode !== 'joyce') return;
     const v = view(this.world, this.roomId);
-    if (this.mode !== 'joyce') v.mode = 'joyce';
     v.timeline = !v.timeline;
-    this.sel = null;
-    this.save();
-    this.drawRoom();
-  }
-
-  setMode(id) {
-    view(this.world, this.roomId).mode = id;
-    view(this.world, this.roomId).timeline = false;
     this.sel = null;
     this.save();
     this.drawRoom();
@@ -1008,10 +1414,11 @@ export default class Create extends Feature {
     }
     if (e.key === 'Escape') {
       if (!this.addMenu.hidden) this.closeAdd();
+      else if (this.roomId && this.sel && this.barFor) { this.barFor = null; this.drawBar(); }
       else if (this.sel) { this.sel = null; this.drawWorld(); }
-      else if (this.roomSel) { this.roomSel = null; this.drawRooms(); }
+      else if (!this.roomId && (this.roomSel || this.making || this.merging)) { this.roomSel = this.making = this.merging = null; this.drawRooms(); }
+      else if (!this.roomId && this.roomPick) { this.roomPick = null; this.drawRooms(); }
       else if (!this.roomId && this.lights != null) this.closeLights();
-      else if (!this.roomId && this.shelf) this.toggleShelf();
       else this.back();
       return;
     }
@@ -1110,6 +1517,57 @@ export default class Create extends Feature {
 
   // ---- Moving around, and moving things ----
 
+  // A right-click in a room: on a thought (or a train), its properties; on the empty canvas, Add
+  // just there. A Mac's Ctrl+click is a right-click too, but Ctrl+drag moves around, so it waits
+  // to see whether the pointer moves (onUp, or a moment later).
+  onContext(e) {
+    e.preventDefault();
+    if (Date.now() - (this.heldAt || 0) < 900) return; // a long press opened it already; this is the browser's own
+    if (e.ctrlKey && e.button === 0 && this.gesture?.kind === 'pan') {
+      const g = this.gesture;
+      g.ctx = { x: e.clientX, y: e.clientY, target: e.target };
+      clearTimeout(this.ctxTimer);
+      this.ctxTimer = setTimeout(() => { if (this.gesture === g && !g.moved) { this.gesture = null; this.contextAt(g.ctx); } }, 450);
+      return;
+    }
+    this.contextAt({ x: e.clientX, y: e.clientY, target: e.target });
+  }
+
+  contextAt({ x, y, target }) {
+    this.gesture = null;
+    clearTimeout(this.ctxTimer);
+    if (!this.roomId) return;
+    const trainEl = target.closest?.('[data-train]');
+    const thoughtEl = target.closest?.('[data-thought]');
+    const hit = thoughtEl?.dataset.thought || trainEl?.dataset.train;
+    if (!hit) { this.openAddAt(x, y); return; }
+    if (this.sel?.kind === 'many' && this.isSel(hit)) { this.openProps(this.sel); return; }
+    if (this.mode === 'joyce') {
+      const t = this.world.things[trainEl?.dataset.train];
+      const whole = !thoughtEl || t?.folded || (this.sel?.kind === 'train' && this.sel.id === t?.id);
+      this.openProps(whole ? { kind: 'train', id: t.id } : { kind: 'thought', id: thoughtEl.dataset.thought });
+    } else {
+      const id = thoughtEl.dataset.thought;
+      this.openProps({ kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id });
+    }
+  }
+
+  // Add, unfolded at a point on the canvas: what is made goes there.
+  openAddAt(x, y) {
+    if (this.locked) return;
+    if (this.draft) this.stopWriting();
+    this.sel = null;
+    this.drawWorld();
+    this.addAt = this.toWorld(x, y);
+    this.addMenu.hidden = false;
+    this.addMenu.classList.add('at');
+    this.addBtn.setAttribute('aria-expanded', 'true');
+    const w = this.addMenu.offsetWidth || 300, h = this.addMenu.offsetHeight || 220;
+    this.addMenu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - w - 8))}px`;
+    this.addMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - h - 8))}px`;
+    this.addMenu.querySelector('button')?.focus();
+  }
+
   onDown(e) {
     const middle = e.button === 1;
     if (e.button !== 0 && !middle && e.pointerType === 'mouse') return;
@@ -1145,6 +1603,12 @@ export default class Create extends Feature {
     }
     if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
     this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    // A long press (touch, or a pen) opens the properties, or Add on the empty canvas.
+    if (e.pointerType !== 'mouse') {
+      const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
+      clearTimeout(this.ctxTimer);
+      this.ctxTimer = setTimeout(() => { if (this.gesture === g && !g.moved && this.pointers.size === 1) { this.heldAt = Date.now(); this.contextAt(at); } }, HOLD);
+    }
     this.listen(e);
   }
 
@@ -1216,7 +1680,9 @@ export default class Create extends Feature {
   onUp() {
     const g = this.gesture;
     this.gesture = null;
+    clearTimeout(this.ctxTimer);
     if (!g || g.kind === 'pinch') { this.save(); return; }
+    if (g.ctx && !g.moved) { this.contextAt(g.ctx); return; } // a Mac's Ctrl+click
     if (g.kind === 'box') { this.endBox(g); return; }
     if (g.kind === 'group') {
       if (!g.moved) { this.sel = null; this.drawWorld(); return; }
@@ -1253,19 +1719,29 @@ export default class Create extends Feature {
     const k = e.key;
     if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
     if (!this.roomId) {
-      // The rooms page: Delete removes the chosen room (Ctrl+Z brings it back).
-      if ((k === 'Delete' || k === 'Backspace') && this.roomSel && this.roomSel !== MESSY && !room(this.world, this.roomSel)?.locked) {
+      // A grid: Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in; the
+      // ContextMenu key (or Shift+F10) opens its properties; Backspace, with nothing chosen, goes up.
+      const id = this.roomSel || this.roomPick;
+      const r = id && room(this.world, id);
+      if ((k === 'Delete' || k === 'Backspace') && r && r.id !== MESSY && !shut(this.world, r.id)) {
         e.preventDefault();
-        const r = room(this.world, this.roomSel);
-        remove(this.world, this.roomSel);
-        this.roomSel = null;
+        remove(this.world, r.id);
+        this.roomSel = this.roomPick = null;
         this.save();
         this.drawRooms();
-        this.toast(`Deleted ${r?.name || 'the room'}. Ctrl+Z brings it back.`);
+        this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
         return true;
       }
-      if (k === 'Enter' && this.roomSel) { e.preventDefault(); this.openRoom(this.roomSel); return true; }
+      if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
+      if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
       return false;
+    }
+    if ((k === 'Enter' && !mod && !e.shiftKey) || k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) {
+      // In a room: Enter (or the ContextMenu key) opens the properties of what is chosen.
+      if (!this.sel) return false;
+      e.preventDefault();
+      this.openProps(this.sel);
+      return true;
     }
     if (mod && !e.altKey && k.toLowerCase() === 'a') { // choose everything in the room
       e.preventDefault();
@@ -1306,9 +1782,10 @@ export default class Create extends Feature {
     const rows = [
       ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
       ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'],
+      ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
       ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
       ['Delete', 'delete what is chosen'], ['Arrows · Shift+arrows', 'nudge what is chosen'],
-      ['Ctrl+K', 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
+      [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
     this.searchBox.replaceChildren(el('div', { class: 'create-search-panel create-keys-panel' },
       el('div', { class: 'create-options-label' }, 'Keys'),
@@ -1391,22 +1868,29 @@ export default class Create extends Feature {
 
   // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
 
-  addItem(label, note, fn) {
-    return el('button', { type: 'button', class: 'create-add-item', role: 'menuitem', onclick: () => { this.closeAdd(); fn(); } },
+  addItem(label, note, fn, keep = true) {
+    return el('button', { type: 'button', class: 'create-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
       el('span', {}, label), el('span', { class: 'create-add-note' }, note));
   }
 
   toggleAdd() {
-    const open = this.addMenu.hidden;
+    const open = this.addMenu.hidden || this.addMenu.classList.contains('at');
+    this.addAt = null;
+    this.addMenu.classList.remove('at');
+    this.addMenu.style.left = this.addMenu.style.top = '';
     this.addMenu.hidden = !open;
     this.addBtn.setAttribute('aria-expanded', String(open));
     this.addBtn.classList.toggle('open', open);
     if (open) this.addMenu.querySelector('button')?.focus();
   }
 
-  closeAdd() {
+  // Closes Add; what was asked for at a point (keep) still goes there.
+  closeAdd(keep = false) {
+    if (!keep) this.addAt = null;
     if (!this.addMenu || this.addMenu.hidden) return;
     this.addMenu.hidden = true;
+    this.addMenu.classList.remove('at');
+    this.addMenu.style.left = this.addMenu.style.top = '';
     this.addBtn.setAttribute('aria-expanded', 'false');
     this.addBtn.classList.remove('open');
   }
@@ -1501,7 +1985,20 @@ export default class Create extends Feature {
 
   // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
 
+  // What is chosen, as a word: the properties pop-up shows only while it is open for this.
+  selKey(sel = this.sel) { return sel ? `${sel.kind}:${sel.ids ? sel.ids.join(',') : sel.id}` : null; }
+
+  // Chooses something and opens its properties (a right-click, a long press, Enter).
+  openProps(sel) {
+    this.sel = sel;
+    this.barFor = this.selKey(sel);
+    if (this.draft) this.stopWriting();
+    this.drawWorld();
+    this.bar.querySelector('textarea, input')?.focus({ preventScroll: true });
+  }
+
   drawBar() {
+    if (!this.sel || this.barFor !== this.selKey()) { this.barFor = null; this.bar.hidden = true; this.drawHistorySoon(); return; }
     if (this.sel?.kind === 'many') { this.drawManyBar(); return; }
     const th = this.sel && this.world.things[this.sel.id];
     if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
@@ -1559,18 +2056,18 @@ export default class Create extends Feature {
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 ? word('Fold into one', () => this.foldTrain(th.id)) : null));
     }
-    const others = rooms(this.world).filter((r) => r.id !== this.roomId && !r.locked);
+    const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
         if (to) this.moveTo(to);
       } },
       el('option', { value: '' }, 'Move to…'),
-      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      ...others.map((r) => el('option', { value: r.id }, this.pathName(r))),
       el('option', { value: '+' }, 'A new room'));
     rows.push(el('div', { class: 'create-options-row' }, pick),
       el('div', { class: 'create-options-row' },
-        kind !== 'train' && this.mode === 'joyce' ? word('The whole train', () => { this.sel = { kind: 'train', id: th.parent }; this.drawWorld(); }) : null,
+        kind !== 'train' && this.mode === 'joyce' ? word('The whole train', () => this.openProps({ kind: 'train', id: th.parent })) : null,
         word('Delete', () => {
           remove(this.world, th.id);
           this.sel = null;
@@ -1587,7 +2084,7 @@ export default class Create extends Feature {
   drawManyBar() {
     if (this.locked) { this.bar.hidden = true; return; }
     const ids = this.sel.ids.filter((id) => this.world.things[id]);
-    const others = rooms(this.world).filter((r) => r.id !== this.roomId && !r.locked);
+    const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
@@ -1600,7 +2097,7 @@ export default class Create extends Feature {
         this.toast(`Moved ${ids.length} to ${room(this.world, to).name}`);
       } },
       el('option', { value: '' }, 'Move to…'),
-      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      ...others.map((r) => el('option', { value: r.id }, this.pathName(r))),
       el('option', { value: '+' }, 'A new room'));
     this.bar.hidden = false;
     this.bar.replaceChildren(
@@ -1617,6 +2114,12 @@ export default class Create extends Feature {
         } }, 'Delete')));
     this.positionEdit();
     this.drawHistorySoon();
+  }
+
+  // The rooms a thought can be moved to: every mode room (not this one, nor a locked one).
+  moveRooms() {
+    return modeRooms(this.world).filter((r) => r.id !== this.roomId && !shut(this.world, r.id))
+      .sort((a, b) => (a.id === MESSY ? -1 : b.id === MESSY ? 1 : this.pathName(a).localeCompare(this.pathName(b))));
   }
 
   // The pop-up sits beside what is chosen, and follows it as the view moves.
@@ -1661,6 +2164,11 @@ export default class Create extends Feature {
 
   // Where a new thought goes: on with the current train, or a new train at a free spot.
   target() {
+    if (this.addAt) { // Add, from a right-click on the canvas
+      const at = this.addAt;
+      this.addAt = null;
+      return { train: null, x: Math.round(at.x), y: Math.round(at.y) };
+    }
     const cur = this.current[this.roomId];
     const t = this.world.things[cur];
     if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
@@ -1671,7 +2179,7 @@ export default class Create extends Feature {
 
   async choosePicture() {
     const file = await this.picker.pick();
-    if (file) this.takePicture(file);
+    if (file) this.takePicture(file); else this.addAt = null;
   }
 
   onPaste(e) {
@@ -1752,6 +2260,7 @@ export default class Create extends Feature {
   }
 
   closeSheet() {
+    this.addAt = null;
     this.editing = null;
     this.sheet.hidden = true;
     this.sheet.replaceChildren();
