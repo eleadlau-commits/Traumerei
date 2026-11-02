@@ -1,7 +1,8 @@
 // How rooms look: plain colour maths, no screen (tested in tests/look.test.js).
 //
-// The rooms page is a still gradient, top to bottom, from the home picture's own colours, under an
-// opacity mask (MASK: black at that alpha), so nothing has to be drawn while it shows. On it each
+// The rooms page is an opacity mask (MASK: black at that alpha) laid over the home picture itself,
+// which is held still underneath (its spontaneity layer off), so nothing is drawn while it shows.
+// The picture's colours are still read once, for the rooms' default colour inside. On it each
 // room is an opacity square: its tint (black by default) at an alpha that grows as the room gets
 // darker, so Messy thoughts shows as the deepest square. Each room is a gradient of
 // one colour: its tint (by default the picture's average colour) at its lightness (by default
