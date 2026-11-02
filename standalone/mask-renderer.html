@@ -837,10 +837,8 @@ dialog.dialog-box {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  /* The picture's gradient under an opacity mask: nothing is drawn while it shows. */
-  background:
-    linear-gradient(var(--create-mask, rgb(0 0 0 / .1)), var(--create-mask, rgb(0 0 0 / .1))),
-    linear-gradient(var(--create-top, #f2ebd9), var(--create-bottom, #e6dcc4));
+  /* An opacity mask over the home picture itself, which is held still underneath. */
+  background: var(--create-mask, rgb(0 0 0 / .1));
   box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
   transform: translateY(100%);
   transition: transform .5s var(--create-ease);

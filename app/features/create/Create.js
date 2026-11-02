@@ -1,7 +1,7 @@
 // Create: rooms of thoughts. Create (on the home page, or in the menu) slides the rooms page up
 // from the bottom, leaving a strip of the home page at the top with a back arrow (top right) home.
-// The page is a still gradient of the picture's own colours under a light opacity mask, so nothing
-// is drawn while it shows (the picture's animation stops underneath). It is a grid of square cells:
+// The page is a light opacity mask over the home picture itself, held still underneath (its
+// spontaneity layer is off), so nothing is drawn while it shows. It is a grid of square cells:
 // each room is an opacity square on it (one cell; Messy thoughts takes four at the top left), and
 // a room written in lately glows. Click an empty cell to make a room there; drag a room to move it
 // to any free cell. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
