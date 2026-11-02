@@ -9,7 +9,10 @@ What the home page's **Create** opens: rooms of thoughts.
   is an opacity square on it (its tint, black by default, at an alpha that deepens as the room
   darkens); a room written in during the last day glows. **Messy thoughts** is always there,
   four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
-  a room to any free cell (it snaps back if the cells are taken). *Rooms*,
+  a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** sets the page's mask (opacity and colour), the squares (strength, colour,
+  glow, size) and the default look inside rooms (tint, colour strength, lightness, Messy's
+  lightness); a room's own Tint wins. While the rooms page shows, the home picture's
+  spontaneity layer is turned off. *Rooms*,
   *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
   to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
   place.**

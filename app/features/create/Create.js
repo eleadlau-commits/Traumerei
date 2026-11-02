@@ -34,12 +34,12 @@ import {
   roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
-import { pageLook, roomLook, squareLook } from './look.js';
+import { pageLook, roomLook, squareLook, lookPrefs, LOOK } from './look.js';
 
 const { el } = ui;
 const LIT_FOR = 24 * 3600e3; // a room stays lit for a day after it was written in
 const ZOOM = { min: 0.25, max: 4 };
-const GRID = { cell: 120, gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
+const GRID = { gap: 14, pad: 32, least: 4, most: 10 }; // the rooms page's cells (px)
 
 export default class Create extends Feature {
   start() {
@@ -54,7 +54,9 @@ export default class Create extends Feature {
     this.picker = ui.filePicker('image/*');
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
+    this.prefs = lookPrefs(this.storage.get('look'));
     this.build();
+    this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 18, render: () => this.settingsPane() });
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
@@ -67,10 +69,8 @@ export default class Create extends Feature {
     this.world = loadWorld(this.storage.get('world')); // it may have arrived from the account meanwhile
     this.app.shell?.closeMenu?.();
     clearTimeout(this.closing);
-    this.page = pageLook(this.backdrop?.colours?.()); // read once: the page is still from here on
-    this.root.style.setProperty('--create-top', this.page.top);
-    this.root.style.setProperty('--create-bottom', this.page.bottom);
-    this.root.style.setProperty('--create-mask', this.page.mask);
+    this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
+    this.paintPage();
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
     this.showRooms();
@@ -182,9 +182,9 @@ export default class Create extends Feature {
   // How many columns fit, and how big a cell is.
   gridSize() {
     const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad;
-    const fit = Math.floor((width + GRID.gap) / (GRID.cell + GRID.gap));
+    const fit = Math.floor((width + GRID.gap) / (this.prefs.cell + GRID.gap));
     const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
-    const cell = Math.max(56, Math.min(GRID.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
+    const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
     return { cols, cell };
   }
 
@@ -215,7 +215,7 @@ export default class Create extends Feature {
     }
 
     const tiles = all.map((r) => {
-      const look = squareLook(r, r.id === MESSY);
+      const look = squareLook(r, r.id === MESSY, this.prefs);
       const last = lastWritten(this.world, r.id);
       const count = roomThoughts(this.world, r.id).length;
       const lit = last != null && now - last < LIT_FOR;
@@ -223,7 +223,7 @@ export default class Create extends Feature {
         ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
         : el('span', { class: 'create-tile-name' }, r.name);
       const tile = el('div', {
-        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : ''),
+        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : ''),
         role: 'button', tabindex: 0,
         style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
         'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
@@ -323,7 +323,70 @@ export default class Create extends Feature {
 
   get mode() { return view(this.world, this.roomId).mode; }
 
-  lookOf(r) { return roomLook(r, this.page?.average, r.id === MESSY); }
+  lookOf(r) { return roomLook(r, this.page?.average, r.id === MESSY, this.prefs); }
+
+  // The rooms page's colours, from the picture's (read when Create opened) and Settings → Rooms.
+  paintPage() {
+    this.page = pageLook(this.colours, this.prefs);
+    this.root.style.setProperty('--create-top', this.page.top);
+    this.root.style.setProperty('--create-bottom', this.page.bottom);
+    this.root.style.setProperty('--create-mask', this.page.mask);
+    this.root.style.setProperty('--create-glow', `rgb(255 236 190 / ${this.prefs.glow})`);
+    this.root.style.setProperty('--create-glow-in', `rgb(255 244 214 / ${(this.prefs.glow * 0.64).toFixed(3)})`);
+  }
+
+  // ---- Settings → Rooms ----
+
+  setPref(key, value) {
+    this.prefs = lookPrefs({ ...this.prefs, [key]: value });
+    this.storage.set('look', this.prefs);
+    this.repaint();
+  }
+
+  // Shows a change straight away, if Create is open.
+  repaint() {
+    this.paintPage();
+    if (this.root.hidden) return;
+    if (this.roomId) this.paintRoom();
+    else this.drawRooms();
+  }
+
+  settingsPane() {
+    const p = this.prefs;
+    const slider = (label, key, min, max, step = 0.01) => {
+      const out = el('output', { class: 'renderer-value' }, String(p[key]));
+      return el('label', { class: 'renderer-slider' }, el('span', {}, label), out,
+        el('input', { type: 'range', min, max, step, value: p[key], 'aria-label': label,
+          oninput: (e) => { out.textContent = e.target.value; this.setPref(key, +e.target.value); } }));
+    };
+    const colour = (label, key, fallback) => el('label', { class: 'renderer-slider renderer-colour' },
+      el('span', {}, label),
+      el('input', { type: 'color', value: p[key] || fallback, 'aria-label': label, oninput: (e) => this.setPref(key, e.target.value) }));
+    const group = (legend, ...rows) => el('fieldset', { class: 'renderer-group' }, el('legend', {}, legend), ...rows);
+    const avg = this.page?.average || [242, 235, 217];
+    return el('div', { class: 'create-settings' },
+      ui.hint('How the rooms page and the rooms look. A room\'s own Tint (inside it) wins over these.', { small: true }),
+      group('Rooms page',
+        slider('Mask opacity', 'mask', 0, 0.6),
+        colour('Mask colour', 'maskColour', '#000000')),
+      group('Squares',
+        slider('Strength', 'square', 0, 1.5),
+        colour('Colour', 'squareColour', '#000000'),
+        slider('Glow', 'glow', 0, 1),
+        slider('Size', 'cell', 70, 180, 1)),
+      group('Inside a room',
+        colour('Tint', 'tint', '#' + avg.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')),
+        el('button', { type: 'button', class: 'btn small', onclick: () => { this.setPref('tint', ''); this.app.shell?.refreshSettings?.(); } }, 'Tint from the picture'),
+        slider('Colour strength', 'saturation', 0, 1),
+        slider('Lightness', 'light', 0.05, 0.95),
+        slider('Messy lightness', 'lightMessy', 0.05, 0.95)),
+      el('button', { type: 'button', class: 'btn small', onclick: () => {
+        this.prefs = lookPrefs(LOOK);
+        this.storage.set('look', this.prefs);
+        this.repaint();
+        this.app.shell?.refreshSettings?.();
+      } }, 'Back to defaults'));
+  }
 
   // The open room's colours, on the room page (and the menu's lines take its ink).
   paintRoom() {

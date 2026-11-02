@@ -1,7 +1,7 @@
 // Tests for how rooms look.
 
 import { test, assert } from 'folio/testing';
-import { rgb, hex, toHsl, fromHsl, pageLook, roomLook, squareLook, LIGHT, LIGHT_MESSY } from '../look.js';
+import { rgb, hex, toHsl, fromHsl, pageLook, roomLook, squareLook, lookPrefs, LOOK, LIGHT, LIGHT_MESSY } from '../look.js';
 
 test('colours go to hex and back', () => {
   assert.deepEqual(rgb('#f2ebd9'), [242, 235, 217]);
@@ -43,4 +43,15 @@ test('a room keeps its own tint and opacity', () => {
   const look = roomLook({ tint: '#336699', opacity: 0.5 });
   assert.equal(look.tint, '#336699');
   assert.match(look.top, / \/ 0\.5\)$/);
+});
+
+test('Settings → Rooms: saved values are checked, and change the look', () => {
+  const p = lookPrefs({ mask: 0.3, maskColour: '#102030', square: 'x', tint: 'nope', glow: 0.2 });
+  assert.equal(p.mask, 0.3);
+  assert.equal(p.square, LOOK.square);
+  assert.equal(p.tint, '');
+  assert.equal(pageLook(null, p).mask, 'rgb(16 32 48 / 0.3)');
+  assert.ok(squareLook({}, false, { ...p, square: 1.2 }).alpha > squareLook({}, false, p).alpha);
+  assert.equal(roomLook({}, undefined, false, { ...p, tint: '#336699', saturation: 0 }).tint, '#336699');
+  assert.equal(roomLook({}, undefined, true, { ...p, lightMessy: 0.3 }).light, 0.3);
 });
