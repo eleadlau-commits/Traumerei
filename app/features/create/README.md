@@ -70,3 +70,10 @@ the key `world` and follows the account like the settings. Other features reach 
   (or two fingers on a phone) moves the canvas. Names keep with Enter.
 - Every pop-up and panel (Add, room settings, the sheet, the timeline, a thing's edit pop-up)
   shares one pale, blurred white style.
+- **The grid grows:** there is always a spare column and row past the furthest room, and the
+  page scrolls; Settings → Rooms sets columns and rows at least.
+- **Lights:** a room's glow follows your attention lately: going in and writing there light it,
+  and the light fades over a day or two (`attention.js`, saved as 'attention').
+- **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen (or the chosen
+  room on the rooms page); arrows nudge it (Shift for bigger steps); Enter opens the chosen room;
+  ? (or Add → Keys) lists them all. Ctrl+drag, Space+drag or the middle button move the canvas.

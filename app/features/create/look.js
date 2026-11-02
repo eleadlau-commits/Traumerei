@@ -62,6 +62,8 @@ export const LOOK = {
   squareColour: '#000000',  // a square's colour, when the room has no tint of its own
   glow: 0.55,         // how brightly a room written in lately glows
   cell: 120,          // a grid cell, in px
+  cols: 0,            // the grid's columns and rows at least (0: as many as fit; it grows past them)
+  rows: 0,
   light: LIGHT,        // a room's lightness inside, by default
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
   tint: '',           // the rooms' tint inside, by default ('' = the picture's own colour)
