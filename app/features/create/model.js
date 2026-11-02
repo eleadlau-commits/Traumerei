@@ -6,8 +6,11 @@
 //   train    { x, y, title, folded }          thoughts joined by time, read in the order they were
 //                                             written; folded, it shows as one thought (its title)
 //   room     { name, tint, light, opacity,    a thought that holds thoughts, seen through a mode;
-//              col, row, size }               on the rooms page it is a square of size × size cells
-//                                             at (col, row) of the grid
+//              col, row, size,                on the rooms page it is a square of size × size cells
+//              desc, locked, archived }       at (col, row) of the grid. desc: a line or two about
+//                                             it. locked: nothing in it can change, and its square
+//                                             stays where it is. archived: off the grid, on the
+//                                             Archive page (and still found by search)
 //
 // Every thought has { id, kind, parent, at }. `parent` is the thought it sits inside: a line,
 // passage or picture sits in a train; a train sits in a room; a room sits in a room, or at the top
@@ -95,8 +98,22 @@ const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
 export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
 
-// The rooms at the top (the rooms page), oldest first.
-export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room');
+// The rooms at the top (the rooms page), oldest first; archived ones are on the Archive page.
+export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && !th.archived);
+export const archived = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && th.archived);
+
+// True if `id` is a locked room, or is somewhere inside one: then nothing about it can change.
+export function shut(w, id) {
+  for (let th = w.things[id]; th; th = w.things[th.parent]) if (kindOf(th) === 'room' && th.locked) return true;
+  return false;
+}
+
+// The room at the top (on the rooms page, or archived) that a thought is in.
+export function topRoom(w, id) {
+  let top = null;
+  for (let th = w.things[id]; th; th = w.things[th.parent]) if (kindOf(th) === 'room') top = th;
+  return top;
+}
 
 // The room a thought is in (itself, if it is a room).
 export function roomOf(w, id) {
@@ -141,6 +158,7 @@ export function thoughtText(w, th) {
 
 const oneLine = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const lines = (s) => String(s ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+export const DESC = 280; // a room's description, at most this many letters
 const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
 // A line, passage or picture keeps where it was dragged to in its train (dx, dy from the train's
@@ -177,6 +195,10 @@ function tidy(f) {
   if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
   if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0) { out.col = f.col; out.row = f.row; }
   out.size = f.size === 2 ? 2 : 1;
+  const desc = lines(f.desc).slice(0, DESC);
+  if (desc) out.desc = desc;
+  if (f.locked) out.locked = true;
+  if (f.archived) { out.archived = true; delete out.col; delete out.row; }
   return out;
 }
 
@@ -195,7 +217,7 @@ export function canHold(w, parent, kind) {
 // or can't go there.
 export function create(w, parent, fields, now = Date.now()) {
   const th = tidy(fields);
-  if (!th || !canHold(w, parent, th.kind)) return null;
+  if (!th || !canHold(w, parent, th.kind) || (parent != null && shut(w, parent))) return null;
   Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
   w.things[th.id] = th;
   return th;
@@ -205,10 +227,11 @@ export function create(w, parent, fields, now = Date.now()) {
 // left empty is removed.
 export function update(w, id, fields, now = Date.now()) {
   const th = w.things[id];
-  if (!th) return null;
+  if (!th || (kindOf(th) !== 'room' && shut(w, id))) return null; // a room itself can still be renamed, coloured or unlocked
   const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
   if (kindOf(th) === 'train' && !next.folded) delete th.folded;
+  if (kindOf(th) === 'room') for (const k of ['desc', 'locked', 'archived']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   return th;
 }
@@ -216,7 +239,7 @@ export function update(w, id, fields, now = Date.now()) {
 // Removes a thought and everything inside it; a train left empty goes too. Messy thoughts stays.
 export function remove(w, id) {
   const th = w.things[id];
-  if (!th || id === MESSY) return;
+  if (!th || id === MESSY || shut(w, id)) return;
   for (const c of children(w, id)) remove(w, c.id);
   delete w.things[id];
   for (const r of Object.keys(w.places)) delete w.places[r][id];
@@ -238,7 +261,7 @@ export function inside(w, id, ancestor) {
 // of its old train stays joined. Never into itself.
 export function move(w, id, into, x = 0, y = 0) {
   const th = w.things[id];
-  if (!th || !w.things[into] || th.parent === into || inside(w, into, id)) return false;
+  if (!th || !w.things[into] || th.parent === into || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
   const fromRoom = roomOf(w, kindOf(th) === 'room' ? th.parent : id);
   let target = into;
   if (isLeaf(th) && kindOf(w.things[into]) === 'room') target = create(w, into, { kind: 'train', x, y }, th.at)?.id;
@@ -269,7 +292,7 @@ export function fold(w, trainId, title) {
 }
 export function unfold(w, trainId) {
   const t = w.things[trainId];
-  if (kindOf(t) !== 'train' || !t.folded) return false;
+  if (kindOf(t) !== 'train' || !t.folded || shut(w, trainId)) return false;
   delete t.folded;
   return true;
 }
@@ -302,7 +325,7 @@ export function roomAt(w, col, row, except = null) {
 // Puts a top-level room at (col, row) if all its cells are free. Returns whether it moved.
 export function placeRoom(w, id, col, row, cols = Infinity) {
   const r = room(w, id);
-  if (!r || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
+  if (!r || r.locked || r.archived || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
   const want = cells({ ...r, col, row });
   if (want.some(([c, rr]) => roomAt(w, c, rr, id))) return false;
   r.col = col;
@@ -354,6 +377,7 @@ export function pessoaPoint(w, roomId, id) {
 }
 
 export function place(w, roomId, id, x, y) {
+  if (shut(w, roomId)) return;
   (w.places[roomId] ||= {})[id] = { x, y };
 }
 
@@ -420,7 +444,7 @@ export function nextSpot(w, trainId) {
 export function nudge(w, id, x, y, now = Date.now()) {
   const th = w.things[id];
   const t = th && w.things[th.parent];
-  if (!t || !isLeaf(th) || kindOf(t) !== 'train') return false;
+  if (!t || !isLeaf(th) || kindOf(t) !== 'train' || shut(w, id)) return false;
   th.dx = Math.round(x - t.x);
   th.dy = Math.round(y - t.y);
   th.edited = now;
@@ -486,10 +510,55 @@ export function search(w, query, most = 30) {
 // A room's size on the grid (1 or 2 cells a side), if the cells it would take are free.
 export function sizeRoom(w, id, size, cols = Infinity) {
   const r = room(w, id);
-  if (!r) return false;
+  if (!r || r.locked) return false;
   const was = r.size || 1;
   r.size = size === 2 ? 2 : 1;
   if (r.col == null || placeRoom(w, id, r.col, r.row, cols)) return true;
   r.size = was;
   return false;
+}
+
+// ---- The rooms page: lock, archive, peek, search lights ----
+
+// Locks or unlocks a room: locked, nothing in it can be written, moved or deleted, and its square
+// stays where it is.
+export function lock(w, id, on = true) {
+  const r = room(w, id);
+  if (!r) return false;
+  if (on) r.locked = true; else delete r.locked;
+  return true;
+}
+
+// Takes a room off the grid to the Archive page (not Messy thoughts, nor a locked room).
+export function archive(w, id) {
+  const r = room(w, id);
+  if (!r || r.parent != null || id === MESSY || r.locked || r.archived) return false;
+  r.archived = true;
+  delete r.col;
+  delete r.row;
+  return true;
+}
+
+// Brings an archived room back to the grid: to `cell` if it is free, or the first free one.
+export function restore(w, id, cell = null, cols = 6) {
+  const r = room(w, id);
+  if (!r || !r.archived) return false;
+  delete r.archived;
+  if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols);
+  return true;
+}
+
+// The last few things written in a room (newest last), as plain text, for its square's peek.
+export function peek(w, roomId, most = 3) {
+  return roomThoughts(w, roomId).slice(-most).map((th) => oneLine(thoughtText(w, th))).filter(Boolean);
+}
+
+// Search lights: for each room at the top, how many of its thoughts (and rooms) hold the query.
+export function roomHits(w, query) {
+  const out = {};
+  for (const f of search(w, query, Infinity)) {
+    const top = topRoom(w, f.id);
+    if (top) out[top.id] = (out[top.id] || 0) + 1;
+  }
+  return out;
 }

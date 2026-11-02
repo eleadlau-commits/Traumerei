@@ -39,7 +39,7 @@ import {
   remove, move, fold, unfold, kindOf, isLeaf, thoughtText, trainThoughts, roomThoughts, roomTrains,
   roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot, gridRooms, placeRoom,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
-  cells, roomAt,
+  cells, roomAt, shut, lock, archive, archived, restore, peek, roomHits, DESC,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { visit, light, loadLog } from './attention.js';
@@ -67,6 +67,10 @@ export default class Create extends Feature {
     this.roomSel = null;  // the room chosen on the rooms page, whose options show beside it
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
+    this.lastRoom = this.storage.get('lastRoom') || null; // the room last gone into: its square glows
+    this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
+    this.shelf = false;   // the Archive page is showing, instead of the grid
+    this.lights = null;   // the rooms page's search lights: what is being looked for, or null
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
@@ -94,6 +98,7 @@ export default class Create extends Feature {
     this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
     this.palette = this.backdrop?.palette?.() || this.palette;
     this.paintPage();
+    this.shelf = false;
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
     this.showRooms();
@@ -105,6 +110,8 @@ export default class Create extends Feature {
   close() {
     this.closeSheet();
     this.closeSearch();
+    this.closeLights();
+    this.shelveDraft();
     this.stopWriting();
     this.backdrop?.cover?.(false);
     this.root.classList.remove('up');
@@ -122,6 +129,7 @@ export default class Create extends Feature {
 
   showRooms() {
     this.closeSheet();
+    this.shelveDraft();
     this.stopWriting();
     this.roomId = null;
     this.sel = null;
@@ -129,7 +137,8 @@ export default class Create extends Feature {
     this.closeAdd();
     this.roomPage.hidden = true;
     this.roomsPage.hidden = false;
-    this.root.classList.remove('in-room');
+    this.root.classList.remove('in-room', 'expanding');
+    this.expandVeil?.remove();
     this.backBtn.setAttribute('aria-label', 'Back to the home page');
     document.documentElement.classList.remove('create-dark');
     this.drawRooms();
@@ -137,20 +146,80 @@ export default class Create extends Feature {
 
   openRoom(id) {
     if (!room(this.world, id)) return;
+    this.closeLights();
     this.attention = loadLog(this.storage.get('attention'));
     visit(this.attention, id);
     this.storage.set('attention', this.attention);
+    this.lastRoom = id;
+    this.storage.set('lastRoom', id);
+    // Going in from the rooms page, the room's square grows to fill the screen first.
+    const tile = !this.roomId && !this.roomsPage.hidden && this.grid.querySelector(`.create-tile[data-room="${id}"]`);
     this.roomId = id;
     this.sel = null;
     this.draft = null;
-    this.roomsPage.hidden = true;
     this.roomPage.hidden = false;
     this.root.classList.add('in-room');
     this.backBtn.setAttribute('aria-label', 'Back to the rooms');
     this.closeAdd();
     this.drawRoom();
+    if (tile) this.expand(tile); else this.roomsPage.hidden = true;
+    this.takeDraft();
     this.hint('room');
   }
+
+  // The square grows into the room: a veil of the room's own colour starts on the square and
+  // fills the screen, then the room shows under it and the veil fades. The room is ready (and
+  // can be typed in) at once; only what is seen waits.
+  expand(tile) {
+    this.expandVeil?.remove();
+    clearTimeout(this.expandTimer);
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.roomsPage.hidden = true; return; }
+    const look = this.lookOf(room(this.world, this.roomId));
+    const a = tile.getBoundingClientRect();
+    const W = window.innerWidth, H = window.innerHeight;
+    const veil = el('div', { class: 'create-expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
+    this.expandVeil = veil;
+    this.root.classList.add('expanding');
+    this.root.append(veil);
+    veil.getBoundingClientRect();
+    veil.classList.add('go');
+    veil.style.transform = 'none';
+    this.expandTimer = setTimeout(() => {
+      this.root.classList.remove('expanding');
+      if (this.roomId) this.roomsPage.hidden = true;
+      veil.classList.add('done');
+      this.expandTimer = setTimeout(() => veil.remove(), 260);
+    }, 430);
+  }
+
+  // A thought left half written when leaving a room is kept for it (its square shows a dot), and
+  // put back when the room is gone into again.
+  shelveDraft() {
+    if (!this.roomId) return;
+    const text = this.input.value;
+    if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0 };
+    else delete this.drafts[this.roomId];
+    this.storage.set('drafts', this.drafts);
+    this.draft = null;
+    this.input.value = '';
+    this.input.blur();
+  }
+
+  takeDraft() {
+    const d = this.drafts[this.roomId];
+    if (!d) return;
+    delete this.drafts[this.roomId];
+    this.storage.set('drafts', this.drafts);
+    if (this.locked) return;
+    const t = d.train && this.world.things[d.train];
+    this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y };
+    this.input.value = d.text;
+    this.input.focus({ preventScroll: true });
+    this.drawWorld();
+    this.showDraft();
+  }
+
+  get locked() { return !!this.roomId && shut(this.world, this.roomId); }
 
   // Saves the world. A change to the thoughts or rooms (not just where the view is) is a step
   // Ctrl+Z can take back.
@@ -208,8 +277,22 @@ export default class Create extends Feature {
 
   build() {
     this.grid = el('div', { class: 'create-grid' });
+    // Search lights (Ctrl+K on the rooms page): the rooms without the words dim.
+    this.lightsField = el('input', { class: 'create-lights-field', placeholder: 'Light the rooms that hold…', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
+    this.lightsBar = el('div', { class: 'create-lights', hidden: true }, this.lightsField,
+      this.lightsNote = el('span', { class: 'create-lights-note' }));
+    this.lightsField.addEventListener('input', () => { this.lights = this.lightsField.value; this.drawRooms(); });
+    this.lightsField.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); this.closeLights(); }
+      if (e.key === 'Enter') { e.preventDefault(); const best = this.bestLit(); if (best) this.openRoom(best); }
+    });
+    this.shelfBtn = el('button', { type: 'button', class: 'create-word create-shelf-btn', onclick: () => this.toggleShelf() });
+    this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },
-      el('div', { class: 'create-grid-wrap' }, this.grid));
+      this.lightsBar,
+      el('div', { class: 'create-grid-wrap' }, this.shelfHead, this.grid),
+      el('div', { class: 'create-rooms-foot' }, this.shelfBtn));
 
     this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
@@ -223,7 +306,7 @@ export default class Create extends Feature {
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
       this.stage,
       this.modes,
-      el('div', { class: 'create-top' }, this.crumbName),
+      el('div', { class: 'create-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'create-crumb-desc' })),
       el('div', { class: 'create-add' },
         this.addMenu = el('div', { class: 'create-add-menu', hidden: true, role: 'menu' },
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
@@ -274,6 +357,20 @@ export default class Create extends Feature {
     const now = Date.now();
     const { cols: fit, cell } = this.gridSize();
     const all = gridRooms(this.world, fit);
+    const shelved = archived(this.world);
+    if (this.shelf && !shelved.length) this.shelf = false;
+    this.shelfBtn.hidden = !shelved.length;
+    this.shelfBtn.textContent = this.shelf ? 'Rooms' : `Archive · ${shelved.length}`;
+    this.shelfHead.hidden = !this.shelf;
+    this.roomsPage.classList.toggle('shelf', this.shelf);
+    this.grid.classList.toggle('peek-always', this.prefs.peek >= 0.5);
+    const hits = this.lights?.trim() ? roomHits(this.world, this.lights) : null;
+    this.grid.classList.toggle('lights', !!hits);
+    if (hits) {
+      const n = Object.keys(hits).length;
+      this.lightsNote.textContent = n ? `${n} room${n === 1 ? '' : 's'} · Enter goes in` : 'Nothing yet with those words';
+    } else this.lightsNote.textContent = '';
+    if (this.shelf) { this.drawShelf(shelved, fit, cell, hits); return; }
     // The grid grows: always a spare column and row past the furthest room, and at least the
     // size set in Settings → Rooms. The page scrolls when it is bigger than the screen.
     const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
@@ -298,38 +395,131 @@ export default class Create extends Feature {
       }));
     }
 
-    const tiles = all.map((r) => {
-      const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
-      const written = roomThoughts(this.world, r.id);
-      const count = written.length;
-      const glow = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
-      const lit = glow > 0.04;
-      const name = this.renaming === r.id
-        ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
-        : el('span', { class: 'create-tile-name' }, r.name);
-      const tile = el('div', {
-        class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : ''),
-        role: 'button', tabindex: 0,
-        style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
-        'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
-        'data-room': r.id,
-        'aria-expanded': String(this.roomSel === r.id),
-        onkeydown: (e) => {
-          if (e.target !== tile) return;
-          if (e.key === 'Enter') { e.preventDefault(); this.openRoom(r.id); }
-          if (e.key === ' ') { e.preventDefault(); this.chooseRoom(r.id); }
-        },
-        onpointerdown: (e) => this.onTileDown(e, r, tile),
-      },
-        el('div', { class: 'create-tile-label' },
-          name,
-          el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
-      return tile;
-    });
+    const tiles = all.map((r) => this.tile(r, now, hits));
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
     this.grid.replaceChildren(...empty, ...tiles, ...(chosen ? [this.roomOptions(chosen, cell, cols)] : []));
     this.grid.querySelector('.create-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
+  }
+
+  // One room's square: its colour, its light, its name and count; its last thoughts (the peek);
+  // a glow if it was the last room gone into, a dot if a thought was left half written there, a
+  // thin bar along its top if it is locked, and how many finds it holds while the lights are on.
+  tile(r, now = Date.now(), hits = null) {
+    const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
+    const written = roomThoughts(this.world, r.id);
+    const count = written.length;
+    const glow = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
+    const lit = glow > 0.04;
+    const name = this.renaming === r.id
+      ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
+      : el('span', { class: 'create-tile-name' }, r.name);
+    const lines = peek(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
+    const found = hits?.[r.id] || 0;
+    const tile = el('div', {
+      class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
+        + (this.lastRoom === r.id ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
+      role: 'button', tabindex: 0,
+      style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+      'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
+      'data-room': r.id,
+      'aria-expanded': String(this.roomSel === r.id),
+      onkeydown: (e) => {
+        if (e.target !== tile) return;
+        if (e.key === 'Enter') { e.preventDefault(); this.openRoom(r.id); }
+        if (e.key === ' ') { e.preventDefault(); this.chooseRoom(r.id); }
+      },
+      onpointerdown: (e) => this.onTileDown(e, r, tile),
+    },
+      lines.length || r.desc ? el('div', { class: 'create-peek', 'aria-hidden': 'true' },
+        r.desc ? el('div', { class: 'create-peek-desc' }, r.desc) : null,
+        ...lines.map((t) => el('div', { class: 'create-peek-line' }, t))) : null,
+      this.drafts[r.id] ? el('span', { class: 'create-tile-dot', title: 'A thought left half written' }) : null,
+      found ? el('span', { class: 'create-tile-found' }, String(found)) : null,
+      el('div', { class: 'create-tile-label' },
+        name,
+        el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
+    return tile;
+  }
+
+  // ---- The Archive: rooms taken off the grid, on a page of their own ----
+
+  toggleShelf() {
+    this.shelf = !this.shelf;
+    this.roomSel = null;
+    this.drawRooms();
+    this.grid.parentElement?.scrollTo?.(0, 0);
+  }
+
+  // The archived rooms, in rows, in the order they were made. A click shows Restore, Go in and
+  // Delete; a double click goes in.
+  drawShelf(shelved, cols, cell, hits) {
+    this.cols = cols;
+    this.grid.style.setProperty('--cols', cols);
+    this.grid.style.setProperty('--cell', cell + 'px');
+    this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
+    const tiles = shelved.map((r, i) => {
+      const t = this.tile({ ...r, size: 1 }, Date.now(), hits);
+      t.style.gridColumn = `${(i % cols) + 1}`;
+      t.style.gridRow = `${Math.floor(i / cols) + 1}`;
+      t.dataset.room = r.id;
+      return t;
+    });
+    const at = shelved.findIndex((r) => r.id === this.roomSel);
+    const panel = at < 0 ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
+    this.grid.replaceChildren(...tiles, ...(panel ? [panel] : []));
+  }
+
+  shelfOptions(r, col, row, cell, cols) {
+    const step = cell + GRID.gap;
+    const right = col + 1 + 2 <= cols;
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    return el('div', {
+      class: 'create-options' + (right ? '' : ' left'),
+      style: right ? `left:${(col + 1) * step + 4}px;top:${row * step}px` : `right:${(cols - col) * step + 4 - GRID.gap}px;top:${row * step}px`,
+      onpointerdown: (e) => e.stopPropagation(),
+    },
+      el('div', { class: 'create-options-label' }, r.name),
+      r.desc ? el('p', { class: 'create-options-note' }, r.desc) : null,
+      word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      word('Restore', () => {
+        restore(this.world, r.id, null, this.gridSize().cols);
+        this.roomSel = null;
+        this.save();
+        this.drawRooms();
+        this.toast(`${r.name} is back among the rooms.`);
+      }),
+      word('Delete', () => {
+        remove(this.world, r.id);
+        this.roomSel = null;
+        this.save();
+        this.drawRooms();
+        this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+      }, 'create-options-delete'));
+  }
+
+  // ---- Search lights ----
+
+  openLights() {
+    this.lights = this.lights ?? '';
+    this.lightsBar.hidden = false;
+    this.lightsField.value = this.lights;
+    this.lightsField.focus();
+    this.lightsField.select();
+  }
+
+  closeLights() {
+    if (this.lights == null) return;
+    this.lights = null;
+    this.lightsBar.hidden = true;
+    this.lightsField.value = '';
+    if (!this.roomId && !this.root.hidden) this.drawRooms();
+  }
+
+  // The room the lights found most in.
+  bestLit() {
+    const hits = roomHits(this.world, this.lights || '');
+    return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   }
 
   chooseRoom(id) {
@@ -360,6 +550,12 @@ export default class Create extends Feature {
       onpointerdown: (e) => e.stopPropagation(),
     },
       nameField,
+      // A line or two about the room: shown under its name inside, and in its square's peek.
+      el('textarea', {
+        class: 'create-options-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
+        onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
+        onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
+      }, r.desc || ''),
       word('Go in', () => this.openRoom(r.id), 'create-options-go'),
       // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
       el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
@@ -371,7 +567,7 @@ export default class Create extends Feature {
       el('label', { class: 'create-slider' }, el('span', {}, 'Lightness'), lightness),
       el('label', { class: 'create-slider' }, el('span', {}, 'Opacity'),
         el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) })),
-      el('div', { class: 'create-options-row' },
+      r.locked ? null : el('div', { class: 'create-options-row' },
         el('span', { class: 'create-options-label' }, 'Size'),
         ...[1, 2].map((n) => el('button', {
           type: 'button', class: 'create-word', 'aria-pressed': String((r.size || 1) === n),
@@ -384,7 +580,16 @@ export default class Create extends Feature {
         r.tint || r.light != null || r.opacity != null ? word('Back to the tint', () => {
           delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
         }) : null,
-        r.id !== MESSY ? word('Delete', () => {
+        // Locked: nothing inside can change, and the square stays where it is.
+        word(r.locked ? 'Unlock' : 'Lock', () => { lock(this.world, r.id, !r.locked); this.save(); this.drawRooms(); }),
+        r.id !== MESSY && !r.locked ? word('Archive', () => {
+          archive(this.world, r.id);
+          this.roomSel = null;
+          this.save();
+          this.drawRooms();
+          this.toast(`${r.name} is in the Archive.`);
+        }) : null,
+        r.id !== MESSY && !r.locked ? word('Delete', () => {
           remove(this.world, r.id);
           this.roomSel = null;
           this.save();
@@ -440,6 +645,7 @@ export default class Create extends Feature {
     };
     const moveFn = (ev) => {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+      if (r.locked || r.archived) return; // a locked room keeps its place; an archived one has none
       if (!dragging && Math.hypot(dx, dy) < 5) return;
       if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); }
       tile.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -550,10 +756,16 @@ export default class Create extends Feature {
       fold('The rooms page',
         slider('Mask opacity', 'mask', 0, 0.6),
         slider('Square strength', 'square', 0, 1.5),
+        slider('Colour strength', 'vivid', 0.5, 3),
         slider('Glow', 'glow', 0, 1),
         slider('Size', 'cell', 70, 180, 1),
         slider('Columns at least', 'cols', 0, 30, 1),
-        slider('Rows at least', 'rows', 0, 30, 1)),
+        slider('Rows at least', 'rows', 0, 30, 1),
+        // A square's last thoughts: shown when it is hovered over, or always.
+        el('label', { class: 'renderer-slider' }, el('span', {}, 'Peek'), el('span'),
+          el('select', { 'aria-label': 'Peek', onchange: (e) => this.setPref('peek', +e.target.value) },
+            el('option', { value: 0, ...(p.peek < 0.5 ? { selected: '' } : {}) }, 'When hovered over'),
+            el('option', { value: 1, ...(p.peek >= 0.5 ? { selected: '' } : {}) }, 'Always')))),
       fold('Inside a room',
         slider('Lightness', 'light', 0.05, 0.98),
         slider('Messy lightness', 'lightMessy', 0.05, 0.98),
@@ -586,6 +798,9 @@ export default class Create extends Feature {
       this.crumbName.replaceChildren(this.nameField(r, () => { this.renaming = null; this.drawRoom(); }));
       this.crumbName.querySelector('input').focus();
     } else this.crumbName.replaceChildren(r.name);
+    this.crumbDesc.textContent = r.desc || '';
+    this.crumbDesc.hidden = !r.desc;
+    this.roomPage.classList.toggle('locked', !!this.locked);
     const v = view(this.world, this.roomId);
     this.modes.replaceChildren(...MODES.map((m) => {
       const btn = el('button', {
@@ -785,7 +1000,7 @@ export default class Create extends Feature {
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     this.hintLine.classList.remove('on');
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openSearch(); return; }
+    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); if (this.roomId) this.openSearch(); else this.openLights(); return; }
     if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && !this.editing) {
       e.preventDefault();
       this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey);
@@ -795,6 +1010,8 @@ export default class Create extends Feature {
       if (!this.addMenu.hidden) this.closeAdd();
       else if (this.sel) { this.sel = null; this.drawWorld(); }
       else if (this.roomSel) { this.roomSel = null; this.drawRooms(); }
+      else if (!this.roomId && this.lights != null) this.closeLights();
+      else if (!this.roomId && this.shelf) this.toggleShelf();
       else this.back();
       return;
     }
@@ -817,6 +1034,7 @@ export default class Create extends Feature {
   // Starts a thought (if one isn't started), with `seed` as its first letters.
   beginWriting(seed = '') {
     if (!this.roomId) return;
+    if (this.locked) { this.toast('This room is locked. Unlock it from its square to write here.'); return; }
     if (!this.draft) {
       this.draft = this.target();
       this.sel = null;
@@ -925,6 +1143,7 @@ export default class Create extends Feature {
       const p = pessoaPoint(this.world, this.roomId, id);
       thing = { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id, x: p.x, y: p.y, placed: true };
     }
+    if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
     this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     this.listen(e);
   }
@@ -969,7 +1188,9 @@ export default class Create extends Feature {
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
     if (g.kind === 'box') { this.drawBox(g, e); return; }
+    if (g.kind === 'drag' && g.thing?.still) { g.kind = 'pan'; }
     if (g.kind === 'group') {
+      if (this.locked) return;
       for (const [id, p] of Object.entries(g.from)) this.putAt(id, Math.round(p.x + dx / v.zoom), Math.round(p.y + dy / v.zoom));
       if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => { this.liveFrame = 0; this.drawWorld(); });
       return;
@@ -1033,7 +1254,7 @@ export default class Create extends Feature {
     if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
     if (!this.roomId) {
       // The rooms page: Delete removes the chosen room (Ctrl+Z brings it back).
-      if ((k === 'Delete' || k === 'Backspace') && this.roomSel && this.roomSel !== MESSY) {
+      if ((k === 'Delete' || k === 'Backspace') && this.roomSel && this.roomSel !== MESSY && !room(this.world, this.roomSel)?.locked) {
         e.preventDefault();
         const r = room(this.world, this.roomSel);
         remove(this.world, this.roomSel);
@@ -1056,6 +1277,7 @@ export default class Create extends Feature {
       return true;
     }
     if (!this.sel) return false;
+    if (this.locked && (k === 'Delete' || k === 'Backspace' || k.startsWith('Arrow'))) { e.preventDefault(); this.toast('This room is locked.'); return true; }
     if (k === 'Delete' || k === 'Backspace') {
       e.preventDefault();
       const ids = this.sel.ids || [this.sel.id];
@@ -1284,6 +1506,15 @@ export default class Create extends Feature {
     const th = this.sel && this.world.things[this.sel.id];
     if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
     const kind = kindOf(th);
+    if (this.locked) { // read only: the words, and nothing to change
+      this.bar.hidden = false;
+      this.bar.replaceChildren(
+        el('div', { class: 'create-options-label' }, 'Locked'),
+        el('p', { class: 'create-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+      this.positionEdit();
+      this.drawHistorySoon();
+      return;
+    }
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
     const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
@@ -1328,7 +1559,7 @@ export default class Create extends Feature {
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 ? word('Fold into one', () => this.foldTrain(th.id)) : null));
     }
-    const others = rooms(this.world).filter((r) => r.id !== this.roomId);
+    const others = rooms(this.world).filter((r) => r.id !== this.roomId && !r.locked);
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
@@ -1354,8 +1585,9 @@ export default class Create extends Feature {
 
   // Many things chosen with the box: move them to a room together, or delete them.
   drawManyBar() {
+    if (this.locked) { this.bar.hidden = true; return; }
     const ids = this.sel.ids.filter((id) => this.world.things[id]);
-    const others = rooms(this.world).filter((r) => r.id !== this.roomId);
+    const others = rooms(this.world).filter((r) => r.id !== this.roomId && !r.locked);
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
@@ -1463,6 +1695,7 @@ export default class Create extends Feature {
   // an existing thought (id). Keep (Ctrl+Enter) saves it; Escape or Cancel leaves it.
   openSheet(kind, id = null, src = null) {
     if (!this.roomId) return;
+    if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.commit();
     const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;

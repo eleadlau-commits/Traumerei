@@ -84,3 +84,28 @@ the key `world` and follows the account like the settings. Other features reach 
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen (or the chosen
   room on the rooms page); arrows nudge it (Shift for bigger steps); Enter opens the chosen room;
   ? (or Add → Keys) lists them all. Ctrl+drag, Space+drag or the middle button move the canvas.
+
+## The rooms page, step 1
+
+- **Peek:** a square shows the last thing written in its room (Messy thoughts, the last three),
+  and its description, in small faint words: when hovered over by default, or always (Settings →
+  Rooms → Peek).
+- **The last room** gone into has a soft outline of light. **A dot** (top right) marks a room where
+  a thought was left half written: leaving a room keeps the unfinished thought (saved as
+  'drafts'), and going back in puts it back where it was.
+- **Search lights:** Ctrl+K on the rooms page opens a field at the top; the rooms without the
+  words dim, and the others show how many things in them hold the words. Enter goes into the
+  room with the most; Escape puts the lights out. (Inside a room, Ctrl+K still searches every
+  room in a list.)
+- **Lock** (in a room's pop-up): nothing in a locked room can be written, moved or deleted, and its
+  square keeps its place on the grid (no dragging, no resizing, no Delete). A thin bar runs along
+  its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
+- **Description:** a line or two about a room, written in its pop-up; it shows under the room's
+  name inside, and in its peek.
+- **Archive** (in a room's pop-up): the room leaves the grid for the Archive, a page of its own
+  reached from *Archive · n* at the bottom left (Escape or *Rooms* goes back). There a click shows
+  Go in, Restore (to the first free cell) and Delete. Archived rooms are still found by search.
+- **Colour:** a square shows its room's colour more vividly than before: (L − 0.25, vivid × C, h)
+  at α = strength × (1.2 − L) × opacity (Settings → Rooms → Colour strength, 1.6 by default).
+- **Going in:** the square grows to fill the screen in the room's own colour, then fades into the
+  room (skipped when the system asks for less motion). The room takes typing at once.

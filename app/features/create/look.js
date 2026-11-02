@@ -7,14 +7,16 @@
 // A room is one colour r = (L_r, C_r, h_r) in OKLCh: the hue and chroma of its own colour (or the
 // paper's, if it has none) at its lightness L_r (by default LIGHT, and darker for Messy thoughts).
 // Inside, it fills the screen as a gentle gradient of r at its opacity. On the rooms page its
-// square is a deeper version of r, (L_r − DEEPER, C_r, h_r), at α = strength × (1.1 − L_r) × opacity,
-// so a darker room is a deeper square and Messy thoughts the deepest. Words are the ink on a
+// square is a deeper, more vivid version of r, (L_r − DEEPER, vivid × C_r, h_r), at
+// α = strength × (1.2 − L_r) × opacity, so a square shows the colour of its inside, a darker room
+// is a deeper square and Messy thoughts the deepest. Words are the ink on a
 // light room and the pale on a dark one.
 
 export const PALETTE = { paper: '#f2ebd9', ink: '#2b2a27', pale: '#f0e7d2', glow: '#efcc83' }; // the default tint's
 export const MASK = 0.1;              // the rooms page: the opacity of its mask over the picture
 export const SQUARE = 0.6;            // a square's strength
-export const DEEPER = 0.35;           // a square is this much darker (OKLab L) than its room inside
+export const DEEPER = 0.25;           // a square is this much darker (OKLab L) than its room inside
+export const VIVID = 1.6;             // and its chroma this many times its inside's (Settings → Rooms → Colour strength)
 export const LIGHT = 0.86;            // a room's lightness inside (OKLab L), by default
 export const LIGHT_MESSY = 0.72;      // Messy thoughts: a little darker
 export const DARK = 0.6;              // below this lightness a room is dark, and its words pale
@@ -96,6 +98,8 @@ export const LOOK = {
   light: LIGHT,        // a room's lightness inside, by default
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
   tension: 0.5,       // Joyce's line: 0 lets pauses hang loose, 1 keeps it taut
+  vivid: VIVID,       // how strongly a square shows its room's colour
+  peek: 0,            // a square's last thoughts: 0 when hovered over, 1 always
 };
 
 // Saved settings, checked and filled in with the defaults.
@@ -133,8 +137,8 @@ export function roomColour(room, messy = false, prefs = LOOK, palette = PALETTE)
 // page like a mask.
 export function squareLook(room, messy = false, prefs = LOOK, palette = PALETTE) {
   const [L, C, h] = roomColour(room, messy, prefs, palette);
-  const a = clamp(prefs.square * (1.1 - L) * (room?.opacity ?? OPACITY), 0, 0.95);
-  return { fill: css(fromOklch([Math.max(0.03, L - DEEPER), C, h]), a), alpha: a };
+  const a = clamp(prefs.square * (1.2 - L) * (room?.opacity ?? OPACITY), 0, 0.95);
+  return { fill: css(fromOklch([Math.max(0.03, L - DEEPER), C * (prefs.vivid ?? VIVID), h]), a), alpha: a };
 }
 
 // One room's look inside: its gradient, the ink for its words, and whether it is a dark room.
