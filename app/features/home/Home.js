@@ -1,6 +1,6 @@
 // Home: the home page, laid over the picture (the Renderer view fills the screen behind it).
 // The name sits in the middle, "Create" beneath it, then "Settings" and "Account" under that.
-// Settings and Account open those pages; Create does nothing yet.
+// Create opens the rooms (the Create feature); Settings and Account open those pages.
 //
 // The typeface is a setting (Settings → Typeface), Tenor Sans by default. The choices are in
 // fonts.js. The top bar keeps only the menu button (see style.css).
@@ -39,7 +39,7 @@ export default class Home extends Feature {
 
   // ---- The three words ----
 
-  create() {}
+  create() { this.use('create')?.open(); }
 
   settings() { this.app.shell?.openSettings?.(); }
 

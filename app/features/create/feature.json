@@ -1,0 +1,7 @@
+{
+  "name": "Create",
+  "description": "Rooms of thoughts: a grid of rooms under the veil, each a canvas to write in, seen through an ontological mode (Joyce or Pessoa).",
+  "version": "0.1.0",
+  "main": "Create.js",
+  "styles": ["style.css"]
+}

@@ -4,8 +4,8 @@ The home page, laid over the picture that the Renderer draws full screen behind 
 
 - **Traumerei** in the middle, in the chosen typeface.
 - **Create** beneath it, then **Settings** and **Account** under that. They are plain words,
-  not buttons, and do nothing yet: `create()`, `settings()` and `account()` in `Home.js` are
-  where that goes.
+  not buttons. Create opens the rooms (the `create` feature, if it's there); Settings and
+  Account open those pages.
 - The top bar keeps only the menu button: the three lines alone at 80% opacity
   (`style.css`).
 
