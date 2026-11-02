@@ -1313,11 +1313,31 @@ export default class Create extends Feature {
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
     const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const title = { line: 'Thought', passage: 'Passage', picture: 'Picture', train: th.folded ? 'A folded train' : 'Train' }[kind];
     rows.push(el('div', { class: 'create-options-label' }, title));
-    if (kind === 'line') rows.push(field(th.text, 'The thought', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'line') {
+      // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
+      const text = el('textarea', { class: 'create-edit-text create-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
+        oninput: (e) => grow(e.target),
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === 'Escape') { e.target.blur(); return; }
+          if (e.key !== 'Enter' || e.isComposing) return;
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) {
+            const a = e.target.selectionStart, b = e.target.selectionEnd;
+            e.target.setRangeText('\n', a, b, 'end');
+            grow(e.target);
+          } else e.target.blur();
+        },
+        onchange: (e) => { update(this.world, th.id, { text: e.target.value }); done(); } });
+      text.value = th.text || '';
+      rows.push(text);
+      requestAnimationFrame(() => grow(text));
+    }
     if (kind === 'passage') {
       rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
       const body = el('textarea', { class: 'create-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),

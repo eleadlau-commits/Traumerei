@@ -411,6 +411,8 @@
   box-sizing: border-box;
 }
 .create-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.create-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
+.create-thought { white-space: pre-line; }
 .create-edit-text:focus, .create-edit-body:focus { border-bottom-color: currentColor; }
 .create-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
   background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }

@@ -61,7 +61,9 @@ the key `world` and follows the account like the settings. Other features reach 
   everything; a click takes the view to that thought.
 - **Editing:** a click on a thought (or a double click on a train) opens a pop-up beside it, in
   the rooms page's style: edit its words (a passage's title and body, a picture's caption, a
-  train's name), fold or unfold a train, move it to another room, or delete it.
+  train's name), fold or unfold a train, move it to another room, or delete it. In a thought's
+  box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
+  thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and the room's settings.
 - **Ctrl+K** searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.

@@ -155,7 +155,7 @@ function spot(f, out) {
 function tidy(f) {
   const kind = kindOf(f);
   if (kind === 'line') {
-    const text = oneLine(f.text);
+    const text = lines(String(f.text ?? '').split('\n').map(oneLine).join('\n'));
     return text ? spot(f, { kind, text }) : null;
   }
   if (kind === 'passage') {
@@ -380,6 +380,14 @@ export function hash(s) {
 
 // How far below the one before a thought sits, until it is dragged somewhere else.
 export const STEP = { line: 58, passage: 190, picture: 270, train: 190 };
+const LINE = 29; // each extra line of a thought written over several lines
+
+// How far below a thought the next one sits.
+export function stepAfter(th) {
+  const kind = kindOf(th);
+  if (kind !== 'line') return STEP[kind];
+  return STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
+}
 
 // Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or
 // a step below the one before.
@@ -388,12 +396,12 @@ export function trainSpots(w, trainId) {
   const out = {};
   if (!t) return out;
   let x = t.x, y = t.y - STEP.line;
-  let prev = 'line';
+  let step = STEP.line;
   for (const th of trainThoughts(w, trainId)) {
     if (Number.isFinite(th.dx)) { x = t.x + th.dx; y = t.y + th.dy; }
-    else y += STEP[prev];
+    else y += step;
     out[th.id] = { x, y };
-    prev = kindOf(th);
+    step = stepAfter(th);
   }
   return out;
 }
@@ -405,7 +413,7 @@ export function nextSpot(w, trainId) {
   if (!all.length) return { x: t.x, y: t.y };
   const last = all[all.length - 1];
   const p = trainSpots(w, trainId)[last.id];
-  return { x: p.x, y: p.y + STEP[kindOf(last)] };
+  return { x: p.x, y: p.y + stepAfter(last) };
 }
 
 // Drags one thought of a train to (x, y); its train stays joined.
@@ -467,7 +475,7 @@ export function search(w, query, most = 30) {
   for (const th of Object.values(w.things).sort(byTime).reverse()) {
     const kind = kindOf(th);
     const text = kind === 'train' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
-    if (!text.toLowerCase().includes(q)) continue;
+    if (!oneLine(text).toLowerCase().includes(q)) continue;
     const r = roomOf(w, kind === 'room' ? th.id : th.id);
     out.push({ id: th.id, kind, text, room: r?.id ?? null, roomName: r?.name ?? '' });
     if (out.length >= most) break;

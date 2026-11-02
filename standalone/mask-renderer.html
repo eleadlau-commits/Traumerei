@@ -1164,6 +1164,8 @@ dialog.dialog-box {
   box-sizing: border-box;
 }
 .create-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.create-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
+.create-thought { white-space: pre-line; }
 .create-edit-text:focus, .create-edit-body:focus { border-bottom-color: currentColor; }
 .create-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
   background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
@@ -6866,7 +6868,7 @@ dialog.menu-drawer::before {
   function tidy(f) {
     const kind = kindOf(f);
     if (kind === "line") {
-      const text = oneLine(f.text);
+      const text = lines(String(f.text ?? "").split("\n").map(oneLine).join("\n"));
       return text ? spot(f, { kind, text }) : null;
     }
     if (kind === "passage") {
@@ -7056,19 +7058,25 @@ dialog.menu-drawer::before {
     return h >>> 0;
   }
   var STEP2 = { line: 58, passage: 190, picture: 270, train: 190 };
+  var LINE = 29;
+  function stepAfter(th) {
+    const kind = kindOf(th);
+    if (kind !== "line") return STEP2[kind];
+    return STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
+  }
   function trainSpots(w, trainId) {
     const t = w.things[trainId];
     const out = {};
     if (!t) return out;
     let x = t.x, y = t.y - STEP2.line;
-    let prev = "line";
+    let step = STEP2.line;
     for (const th of trainThoughts(w, trainId)) {
       if (Number.isFinite(th.dx)) {
         x = t.x + th.dx;
         y = t.y + th.dy;
-      } else y += STEP2[prev];
+      } else y += step;
       out[th.id] = { x, y };
-      prev = kindOf(th);
+      step = stepAfter(th);
     }
     return out;
   }
@@ -7078,7 +7086,7 @@ dialog.menu-drawer::before {
     if (!all.length) return { x: t.x, y: t.y };
     const last = all[all.length - 1];
     const p = trainSpots(w, trainId)[last.id];
-    return { x: p.x, y: p.y + STEP2[kindOf(last)] };
+    return { x: p.x, y: p.y + stepAfter(last) };
   }
   function nudge(w, id, x, y, now = Date.now()) {
     const th = w.things[id];
@@ -7123,7 +7131,7 @@ dialog.menu-drawer::before {
     for (const th of Object.values(w.things).sort(byTime).reverse()) {
       const kind = kindOf(th);
       const text = kind === "train" ? th.title || "" : kind === "room" ? th.name || "" : thoughtText(w, th);
-      if (!text.toLowerCase().includes(q)) continue;
+      if (!oneLine(text).toLowerCase().includes(q)) continue;
       const r = roomOf(w, kind === "room" ? th.id : th.id);
       out.push({ id: th.id, kind, text, room: r?.id ?? null, roomName: r?.name ?? "" });
       if (out.length >= most) break;
@@ -8807,6 +8815,10 @@ dialog.menu-drawer::before {
       };
       const field3 = (value, label, onchange, cls = "create-options-name") => el5("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
       const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
+      const grow = (t) => {
+        t.style.height = "auto";
+        t.style.height = t.scrollHeight + "px";
+      };
       const done = () => {
         this.save();
         this.drawWorld();
@@ -8814,10 +8826,36 @@ dialog.menu-drawer::before {
       const rows = [];
       const title = { line: "Thought", passage: "Passage", picture: "Picture", train: th.folded ? "A folded train" : "Train" }[kind];
       rows.push(el5("div", { class: "create-options-label" }, title));
-      if (kind === "line") rows.push(field3(th.text, "The thought", (e) => {
-        update(this.world, th.id, { text: e.target.value });
-        done();
-      }, "create-edit-text"));
+      if (kind === "line") {
+        const text = el5("textarea", {
+          class: "create-edit-text create-edit-lines",
+          rows: 1,
+          placeholder: "The thought",
+          "aria-label": "The thought",
+          oninput: (e) => grow(e.target),
+          onkeydown: (e) => {
+            e.stopPropagation();
+            if (e.key === "Escape") {
+              e.target.blur();
+              return;
+            }
+            if (e.key !== "Enter" || e.isComposing) return;
+            e.preventDefault();
+            if (e.ctrlKey || e.metaKey) {
+              const a = e.target.selectionStart, b = e.target.selectionEnd;
+              e.target.setRangeText("\n", a, b, "end");
+              grow(e.target);
+            } else e.target.blur();
+          },
+          onchange: (e) => {
+            update(this.world, th.id, { text: e.target.value });
+            done();
+          }
+        });
+        text.value = th.text || "";
+        rows.push(text);
+        requestAnimationFrame(() => grow(text));
+      }
       if (kind === "passage") {
         rows.push(field3(th.title, "Title", (e) => {
           update(this.world, th.id, { title: e.target.value });
