@@ -2,12 +2,17 @@
 
 What the home page's **Create** opens: rooms of thoughts.
 
-- **The rooms page.** Rooms are squares on a grid, under the same veil as the menu (the picture
-  shows through, pale and soft), like the windows of a building at night. A room written in
-  during the last day is lit. There is always a dark room called **Messy thoughts**. *New room*
-  adds one; double-click a room's name to rename it. **Typing anything here opens Messy thoughts
-  and starts writing there, at a random place.**
-- **A room** is a dark canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
+- **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
+  back arrow (top right) home. It is a still gradient of the picture's own colours, a little
+  darker (`look.js`), read once when it opens; the picture's animation stops underneath (the
+  Renderer's `backdrop` service). Rooms are squares of one size; a room written in during the
+  last day glows. **Messy thoughts** is always there, a little darker than the rest. *Rooms*,
+  *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
+  to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
+  place.**
+- **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
+  *Tint* sets its tint, lightness and opacity (by default the picture's colour, quietened; Messy
+  is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
   a trackpad's two-finger scroll moves around. Type anywhere to write a thought; Enter ends it.
   On a phone, *Write* opens the keyboard. Escape goes back to the rooms (and from there, home).
 - **Ontological modes**, top right, chosen per room:

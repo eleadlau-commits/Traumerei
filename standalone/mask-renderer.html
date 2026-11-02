@@ -688,30 +688,115 @@ dialog.dialog-box {
 .account-photo { width: 40px; height: 40px; border-radius: 50%; }
 .account-error { color: var(--danger); }
 
+/* ---- feature: renderer (style.css) ---- */
+/* Styles for Renderer. Class names start with "renderer-". Colours come from app/theme.css. */
+
+.renderer-page { display: grid; gap: 12px; }
+
+/* Seven views don't fit in one row in the Settings window: two rows of four. */
+.renderer-tabs { grid-template-columns: repeat(4, 1fr); }
+
+/* Advanced, in Settings: the tools folded into groups */
+.renderer-advanced { display: grid; gap: 4px; }
+.renderer-advanced > .hint.small { margin: 0 0 4px; }
+.renderer-advanced > .btn { justify-self: start; margin-top: 8px; }
+.renderer-fold { border-top: 1px solid var(--line); padding: 6px 0; }
+.renderer-fold summary { padding: 6px 0; }
+.renderer-fold-body { display: grid; gap: 12px; padding: 8px 0 6px; }
+.renderer-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.renderer-fold-body .hint.small { margin: 0; }
+.renderer-marks { font-size: 14px; }
+
+/* The picture fills the screen edge to edge, behind the (invisible) top bar, cropped to fit. */
+.renderer-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.renderer-stage.marked { cursor: crosshair; }
+.renderer-stage[hidden] { display: none; }
+.renderer-page > .error { position: relative; z-index: 1; }
+.renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.renderer-canvas { object-fit: cover; }
+.renderer-overlay { pointer-events: none; }
+
+.renderer-seed { margin: 0; color: var(--muted); font-size: 13px; }
+.renderer-seed code { font-family: var(--font-mono); color: var(--text); }
+
+.renderer-report h3 { margin: 4px 0; font-size: 15px; }
+.renderer-report p { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
+.renderer-attempt { border-top: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
+.renderer-attempt summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--font-mono); }
+.renderer-attempt ul { margin: 6px 0 2px; padding-left: 18px; color: var(--text-2); }
+.renderer-tag { padding: 1px 7px; border-radius: var(--shape-sm); font-family: var(--font); font-size: 12px; background: var(--surface-2); color: var(--muted); }
+.renderer-tag.pass { background: var(--renderer-pass-soft); color: var(--renderer-pass); }
+.renderer-tag.fail { background: var(--renderer-fail-soft); color: var(--renderer-fail); }
+.renderer-tag.kept { background: var(--accent); color: var(--accent-ink); }
+
+.renderer-sliders { display: grid; gap: 12px; }
+.renderer-group { margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: var(--shape); background: var(--surface); display: grid; gap: 8px; }
+.renderer-group legend { padding: 0 4px; font-weight: 600; font-size: 13px; }
+.renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
+.renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.renderer-value { font-family: var(--font-mono); color: var(--text); }
+.renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
+
+/* A mode's animation layer (Plain's glow): its own canvas, often smaller than the screen, scaled up by
+   the browser and blended over the picture with the mode's blend (set inline). */
+.renderer-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; mix-blend-mode: screen; }
+.renderer-layer[hidden] { display: none; }
+.renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
+.renderer-choice { grid-column: 1 / -1; }
+
 /* ---- feature: create (style.css) ---- */
-/* Styles for Create. Class names start with "create-". The rooms page lies under the menu's veil
-   (the picture shows through, pale and soft); a room inside is dark, and its thoughts are the
-   light in it, like a lit window at night. The same in light and dark mode. */
+/* Styles for Create. Class names start with "create-". The rooms page slides up over the home page,
+   leaving a strip of it at the top; it is a still gradient of the picture's colours (set from
+   Create.js as --create-top / --create-bottom). A room fills the screen with its own gradient
+   (--room-top / --room-bottom) and its words take --room-ink. The same in light and dark mode. */
 
 :root {
-  --create-night: #121319;
-  --create-window: #1b1c24;
-  --create-light: #e9dcb8;
-  --create-light-2: rgb(233 220 184 / .62);
-  --create-glow: rgb(240 205 130 / .38);
+  --create-strip: calc(64px + env(safe-area-inset-top));
+  --create-ease: cubic-bezier(.22, .7, .18, 1);
+  --create-glow: rgb(255 236 190 / .55);
 }
 
 .create {
   position: fixed;
   inset: 0;
   z-index: 3;
+  pointer-events: none; /* the strip at the top stays the home page's */
   color: var(--home-ink);
   font-family: var(--home-font);
 }
+.create > * { pointer-events: auto; }
 .create[hidden], .create [hidden] { display: none !important; }
-/* While Create is open the home page's words step aside, and the menu's lines take the room's light. */
+/* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .create-open .home { visibility: hidden; }
-.create-dark .topbar .top-btn { color: var(--create-light); }
+.create-dark .topbar .top-btn { color: var(--room-ink); }
+
+/* The back arrow, top right: home from the rooms page, the rooms from a room. */
+.create-back {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: var(--gutter);
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--home-ink);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .4s;
+  -webkit-tap-highlight-color: transparent;
+}
+.create.up .create-back { opacity: .8; }
+.create-back:is(:hover, :focus-visible) { opacity: 1; outline: none; }
+.create.in-room .create-back { color: var(--room-ink); z-index: 6; }
+.create-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
 .create-word, .create-crumb, .create-mode {
@@ -735,7 +820,8 @@ dialog.dialog-box {
   transition: opacity .2s, background-size .25s;
   -webkit-tap-highlight-color: transparent;
 }
-:is(.create-word, .create-crumb, .create-mode):is(:hover, :focus-visible) {
+:is(.create-word, .create-crumb, .create-mode):is(:hover, :focus-visible),
+.create-word[aria-current], .create-mode[aria-checked="true"] {
   opacity: 1;
   background-size: calc(100% - 4px - .22em) 1px;
   outline: none;
@@ -745,49 +831,29 @@ dialog.dialog-box {
 
 .create-rooms {
   position: absolute;
-  inset: 0;
-  overflow: auto;
+  top: var(--create-strip);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  align-content: center;
-  gap: clamp(40px, 7vw, 120px);
-  padding: calc(92px + env(safe-area-inset-top)) var(--gutter) calc(72px + env(safe-area-inset-bottom));
-  padding-left: calc(var(--gutter) + 12px);
-  box-sizing: border-box;
-  animation: create-in .7s cubic-bezier(.22, .7, .18, 1) both;
+  flex-direction: column;
+  background: linear-gradient(var(--create-top, #e6dcc4), var(--create-bottom, #d9cfb8));
+  box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
+  transform: translateY(100%);
+  transition: transform .5s var(--create-ease);
 }
-.create-rooms::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
-  -webkit-backdrop-filter: blur(14px) saturate(.9);
-  backdrop-filter: blur(14px) saturate(.9);
-}
-@keyframes create-in { from { opacity: 0; } }
+.create.up .create-rooms { transform: none; transition-duration: .6s; }
 
-.create-side { display: grid; justify-items: start; gap: 14px; flex: 0 0 auto; }
-.create-heading {
-  margin: 0 0 10px;
-  font: inherit;
-  font-size: clamp(20px, 2.4vw, 26px);
-  letter-spacing: .26em;
-  text-transform: uppercase;
-  opacity: .8;
-}
-.create-note { margin: 18px 0 0; font-size: 13px; letter-spacing: .04em; opacity: .5; max-width: 22ch; line-height: 1.5; }
-
+.create-grid-wrap { flex: 1; overflow: auto; display: grid; place-items: center; padding: 40px var(--gutter); }
 .create-grid {
-  flex: 1 1 420px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, min(140px, 38vw));
+  grid-template-columns: repeat(auto-fit, min(140px, 38vw));
+  justify-content: center;
   gap: clamp(22px, 3vw, 36px);
-  max-width: 820px;
+  width: min(100%, 860px);
 }
 .create-tile { display: grid; gap: 10px; min-width: 0; }
-/* A window: a dark square. Lit when written in lately. */
+/* A room: a square of its own colour. Lit (a soft glow) when written in lately. */
 .create-window {
   appearance: none;
   border: 0;
@@ -795,16 +861,13 @@ dialog.dialog-box {
   padding: 0;
   width: min(140px, 38vw);
   height: min(140px, 38vw);
-  background: var(--create-window);
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 1px 0 rgb(43 42 40 / .06);
   cursor: pointer;
-  transition: background .5s, box-shadow .5s, transform .3s cubic-bezier(.22, .7, .18, 1);
+  transition: box-shadow .5s, transform .3s var(--create-ease);
 }
-.create-window.lit {
-  background: radial-gradient(120% 110% at 50% 40%, #f6e2ad, #e9c98a);
-  box-shadow: 0 0 46px var(--create-glow);
-}
+.create-window.lit { box-shadow: 0 0 34px var(--create-glow), 0 1px 0 rgb(43 42 40 / .06); }
 .create-window:is(:hover, :focus-visible) { transform: translateY(-2px); outline: none; box-shadow: 0 0 0 1px var(--home-ink); }
-.create-window.lit:is(:hover, :focus-visible) { box-shadow: 0 0 46px var(--create-glow), 0 0 0 1px var(--home-ink); }
 .create-tile-label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-tile-name { opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .create-tile-count { opacity: .45; letter-spacing: .08em; }
@@ -821,60 +884,84 @@ dialog.dialog-box {
   text-transform: none;
   color: inherit;
   outline: none;
+  box-shadow: none;
 }
+
+.create-rooms-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 28px;
+  padding: 14px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  padding-left: calc(var(--gutter) + 12px);
+}
+.create-rooms-words { display: flex; flex-wrap: wrap; gap: 8px clamp(22px, 4vw, 44px); }
+.create-note { margin: 0; font-size: 12px; letter-spacing: .06em; opacity: .45; }
+@media (hover: none) { .create-note { display: none; } }
 
 /* ---- A room ---- */
 
-.create-room { position: absolute; inset: 0; background: var(--create-night); color: var(--create-light); animation: create-in .5s ease both; }
+.create-room {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  color: var(--room-ink);
+  animation: create-in .45s ease both;
+}
+@keyframes create-in { from { opacity: 0; } }
 .create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
 .create-stage:active { cursor: grabbing; }
 .create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
+.create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
 .create-top {
   position: absolute;
   top: calc(10px + env(safe-area-inset-top) + 5px);
-  left: calc(var(--gutter) + 64px);
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  max-width: calc(100% - 300px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 40vw;
 }
-.create-slash { opacity: .35; font-size: 13px; }
-.create-crumb-name { opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.create-crumb-name { opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .create-crumb-name .create-name-field { width: 18ch; letter-spacing: .1em; }
-.create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); right: var(--gutter); display: flex; gap: 22px; }
-.create-mode[aria-checked="true"] { opacity: 1; background-size: calc(100% - 4px - .22em) 1px; }
 
 .create-foot {
   position: absolute;
   left: calc(var(--gutter) + 12px);
   bottom: calc(18px + env(safe-area-inset-bottom));
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 22px;
+  gap: 6px 22px;
   pointer-events: none;
 }
 .create-foot > * { pointer-events: auto; }
-.create-keys { font-size: 12px; letter-spacing: .06em; opacity: .38; }
+.create-keys { font-size: 12px; letter-spacing: .06em; opacity: .45; }
 @media (hover: none) { .create-keys { display: none; } }
 
-.create-bar {
+/* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
+.create-bar, .create-tint {
   position: absolute;
   left: 50%;
-  bottom: calc(18px + env(safe-area-inset-bottom));
+  bottom: calc(64px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: baseline;
-  gap: 6px 20px;
+  align-items: center;
+  gap: 8px 22px;
   max-width: calc(100% - 2 * var(--gutter));
-  padding: 10px 18px;
-  background: rgb(18 19 25 / .82);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+  padding: 12px 20px;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
 }
-.create-bar-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .45; }
+.create-bar-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; }
+.create-bar-action { opacity: .55; }
+.create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+.create-slider span { opacity: .6; }
+.create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
+.create-slider input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid color-mix(in srgb, var(--room-ink) 30%, transparent); border-radius: 0; background: none; flex: none; }
 
 /* The hidden box the keys go into: in view (so a phone shows its keyboard), but unseen. */
 .create-input {
@@ -899,14 +986,13 @@ dialog.dialog-box {
   font-size: 18px;
   line-height: 1.6;
   letter-spacing: .02em;
-  text-shadow: 0 0 18px var(--create-glow);
-  cursor: grab;
+    cursor: grab;
   user-select: none;
   -webkit-user-select: none;
 }
 .create-thought + .create-thought::before { content: " · "; opacity: .4; }
-.create-train.selected, .create-float.selected { outline: 1px solid var(--create-light-2); outline-offset: 10px; }
-.create-draft { color: #fff6dc; }
+.create-train.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 45%, transparent); outline-offset: 10px; }
+.create-draft { opacity: 1; }
 .create-draft::after {
   content: "";
   display: inline-block;
@@ -930,17 +1016,17 @@ dialog.dialog-box {
   font-size: 16px;
   line-height: 1.45;
   letter-spacing: .02em;
-  color: var(--create-light);
-  text-shadow: 0 0 14px var(--create-glow);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
 }
 .create-float .create-thought + .create-thought::before { content: none; }
 
+/* In a dark room the words glow faintly, like a lit window. */
+.create-room.dark :is(.create-train, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+
 @media (max-width: 560px) {
-  .create-top { max-width: calc(100% - 96px); }
-  .create-modes { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 64px); right: auto; }
+  .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
 }
 
 /* Bigger thoughts. In a Joyce train they stand as blocks between the lines of words. */
@@ -948,7 +1034,7 @@ dialog.dialog-box {
 .create-passage {
   max-width: 380px;
   padding: 2px 0 2px 14px;
-  border-left: 1px solid var(--create-light-2);
+  border-left: 1px solid color-mix(in srgb, var(--room-ink) 45%, transparent);
   font-size: 15px;
   line-height: 1.6;
   text-align: left;
@@ -974,10 +1060,8 @@ dialog.dialog-box {
   display: grid;
   gap: 16px;
   padding: 26px 28px 18px;
-  background: rgb(24 25 32 / .94);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 80px rgb(240 205 130 / .08);
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 20px 60px rgb(0 0 0 / .16);
   animation: create-in .35s ease both;
 }
 .create-sheet-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
@@ -986,19 +1070,19 @@ dialog.dialog-box {
   box-sizing: border-box;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid rgb(233 220 184 / .25);
+  border-bottom: 1px solid color-mix(in srgb, var(--room-ink) 25%, transparent);
   border-radius: 0;
   padding: 8px 0;
   font: inherit;
-  color: var(--create-light);
+  color: inherit;
   outline: none;
   box-shadow: none;
   border-width: 0 0 1px;
 }
 .create-sheet-title { font-size: 18px; letter-spacing: .04em; }
 .create-sheet-body { font-size: 15px; line-height: 1.6; resize: vertical; min-height: 9em; }
-:is(.create-sheet-title, .create-sheet-body):focus { border-bottom-color: var(--create-light-2); outline: none; }
-:is(.create-sheet-title, .create-sheet-body)::placeholder { color: var(--create-light); opacity: .35; }
+:is(.create-sheet-title, .create-sheet-body):focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 45%, transparent); outline: none; }
+:is(.create-sheet-title, .create-sheet-body)::placeholder { color: inherit; opacity: .4; }
 .create-sheet-picture { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
 .create-sheet-words { display: flex; align-items: baseline; gap: 22px; }
 .create-bar-action { opacity: .5; }
@@ -1491,68 +1575,6 @@ dialog.menu-drawer::before {
   .menu-drawer.shown .menu-panel::before { transform: rotate(45deg); }
   .menu-drawer.shown .menu-panel::after { transform: rotate(-45deg); }
 }
-
-/* ---- feature: renderer (style.css) ---- */
-/* Styles for Renderer. Class names start with "renderer-". Colours come from app/theme.css. */
-
-.renderer-page { display: grid; gap: 12px; }
-
-/* Seven views don't fit in one row in the Settings window: two rows of four. */
-.renderer-tabs { grid-template-columns: repeat(4, 1fr); }
-
-/* Advanced, in Settings: the tools folded into groups */
-.renderer-advanced { display: grid; gap: 4px; }
-.renderer-advanced > .hint.small { margin: 0 0 4px; }
-.renderer-advanced > .btn { justify-self: start; margin-top: 8px; }
-.renderer-fold { border-top: 1px solid var(--line); padding: 6px 0; }
-.renderer-fold summary { padding: 6px 0; }
-.renderer-fold-body { display: grid; gap: 12px; padding: 8px 0 6px; }
-.renderer-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-.renderer-fold-body .hint.small { margin: 0; }
-.renderer-marks { font-size: 14px; }
-
-/* The picture fills the screen edge to edge, behind the (invisible) top bar, cropped to fit. */
-.renderer-stage {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: var(--surface-2);
-}
-.renderer-stage.marked { cursor: crosshair; }
-.renderer-stage[hidden] { display: none; }
-.renderer-page > .error { position: relative; z-index: 1; }
-.renderer-canvas, .renderer-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.renderer-canvas { object-fit: cover; }
-.renderer-overlay { pointer-events: none; }
-
-.renderer-seed { margin: 0; color: var(--muted); font-size: 13px; }
-.renderer-seed code { font-family: var(--font-mono); color: var(--text); }
-
-.renderer-report h3 { margin: 4px 0; font-size: 15px; }
-.renderer-report p { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
-.renderer-attempt { border-top: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
-.renderer-attempt summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--font-mono); }
-.renderer-attempt ul { margin: 6px 0 2px; padding-left: 18px; color: var(--text-2); }
-.renderer-tag { padding: 1px 7px; border-radius: var(--shape-sm); font-family: var(--font); font-size: 12px; background: var(--surface-2); color: var(--muted); }
-.renderer-tag.pass { background: var(--renderer-pass-soft); color: var(--renderer-pass); }
-.renderer-tag.fail { background: var(--renderer-fail-soft); color: var(--renderer-fail); }
-.renderer-tag.kept { background: var(--accent); color: var(--accent-ink); }
-
-.renderer-sliders { display: grid; gap: 12px; }
-.renderer-group { margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: var(--shape); background: var(--surface); display: grid; gap: 8px; }
-.renderer-group legend { padding: 0 4px; font-weight: 600; font-size: 13px; }
-.renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
-.renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
-.renderer-value { font-family: var(--font-mono); color: var(--text); }
-.renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
-
-/* A mode's animation layer (Plain's glow): its own canvas, often smaller than the screen, scaled up by
-   the browser and blended over the picture with the mode's blend (set inline). */
-.renderer-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; mix-blend-mode: screen; }
-.renderer-layer[hidden] { display: none; }
-.renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
-.renderer-choice { grid-column: 1 / -1; }
 
 </style>
 </head>
@@ -3152,1041 +3174,6 @@ dialog.menu-drawer::before {
     }
   };
 
-  // dist/web/features/create/model.js
-  var MESSY = "messy";
-  var MODES = [
-    { id: "joyce", name: "Joyce" },
-    { id: "pessoa", name: "Pessoa" }
-  ];
-  var DEFAULT_MODE = "joyce";
-  var LEAVES = ["line", "passage", "picture"];
-  var KINDS = [...LEAVES, "train", "room"];
-  var kindOf = (th) => KINDS.includes(th?.kind) ? th.kind : "line";
-  var isLeaf = (th) => LEAVES.includes(kindOf(th));
-  var counter = 0;
-  function uid(prefix = "x") {
-    counter = (counter + 1) % 1e6;
-    return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  }
-  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts" });
-  function emptyWorld(now = Date.now()) {
-    return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
-  }
-  function loadWorld(saved, now = Date.now()) {
-    let w = saved && typeof saved === "object" ? saved : {};
-    if (w.v !== 2) w = fromV1(w, now);
-    w = Object.assign(emptyWorld(now), w);
-    for (const key of ["things", "views", "places"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
-    if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
-    for (const th of Object.values(w.things)) {
-      if (th.parent == null || w.things[th.parent]) continue;
-      if (kindOf(th) === "room") th.parent = null;
-      else if (kindOf(th) === "train") th.parent = MESSY;
-      else delete w.things[th.id];
-    }
-    return w;
-  }
-  function fromV1(old, now) {
-    const w = emptyWorld(now);
-    for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: "room", parent: null, at: r.at ?? now, name: r.name };
-    for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: "train", parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: "" };
-    for (const th of Object.values(old.thoughts || {})) {
-      const { room: _room, train, parts, ...rest } = th;
-      if (parts?.length) {
-        const t = w.things[train];
-        if (t) Object.assign(t, { folded: true, title: th.title || "" });
-        for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
-      } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
-    }
-    w.views = old.views || {};
-    w.places = old.places || {};
-    return w;
-  }
-  var room = (w, id) => kindOf(w.things[id]) === "room" ? w.things[id] : null;
-  var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-  var children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
-  var rooms = (w) => children(w, null).filter((th) => kindOf(th) === "room");
-  function roomOf(w, id) {
-    let th = w.things[id];
-    while (th && kindOf(th) !== "room") th = w.things[th.parent];
-    return th || null;
-  }
-  var trainThoughts = (w, trainId) => children(w, trainId).filter(isLeaf);
-  var roomTrains = (w, roomId) => children(w, roomId).filter((th) => kindOf(th) === "train" && trainThoughts(w, th.id).length);
-  var roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
-  var roomUnits = (w, roomId) => roomTrains(w, roomId).flatMap((t) => t.folded ? [t] : trainThoughts(w, t.id)).sort(byTime);
-  function lastWritten(w, roomId) {
-    const all = roomThoughts(w, roomId);
-    return all.length ? Math.max(...all.map((th) => th.at)) : null;
-  }
-  function view(w, roomId) {
-    if (!w.views[roomId]) w.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
-    return w.views[roomId];
-  }
-  function thoughtText(w, th) {
-    switch (kindOf(th)) {
-      case "passage":
-        return [th.title, th.body].filter(Boolean).join(" — ");
-      case "picture":
-        return th.text ? `[${th.text}]` : "[picture]";
-      case "train":
-        return trainThoughts(w, th.id).map((x) => thoughtText(w, x)).join("\n");
-      case "room":
-        return th.name || "";
-      default:
-        return th.text || "";
-    }
-  }
-  var oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
-  var lines = (s) => String(s ?? "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  var clamp01 = (v, d) => Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d;
-  function tidy(f) {
-    const kind = kindOf(f);
-    if (kind === "line") {
-      const text = oneLine(f.text);
-      return text ? { kind, text } : null;
-    }
-    if (kind === "passage") {
-      const title = oneLine(f.title), body = lines(f.body);
-      return title || body ? { kind, title, body } : null;
-    }
-    if (kind === "picture") {
-      const src = typeof f.src === "string" && f.src.startsWith("data:image/") ? f.src : "";
-      return src ? { kind, src, text: oneLine(f.text) } : null;
-    }
-    if (kind === "train") {
-      const out2 = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
-      if (f.folded) out2.folded = true;
-      return out2;
-    }
-    const out = { kind, name: oneLine(f.name) || "Untitled" };
-    if (typeof f.tint === "string" && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
-    if (f.light != null) out.light = clamp01(f.light, 0.5);
-    if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
-    return out;
-  }
-  function canHold(w, parent, kind) {
-    const p = parent == null ? null : w.things[parent];
-    if (parent != null && !p) return false;
-    if (LEAVES.includes(kind)) return kindOf(p) === "train" && p != null;
-    if (kind === "train") return p != null && kindOf(p) === "room";
-    if (kind === "room") return p == null || kindOf(p) === "room";
-    return false;
-  }
-  function create(w, parent, fields, now = Date.now()) {
-    const th = tidy(fields);
-    if (!th || !canHold(w, parent, th.kind)) return null;
-    Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
-    w.things[th.id] = th;
-    return th;
-  }
-  function update(w, id, fields) {
-    const th = w.things[id];
-    if (!th) return null;
-    const next = tidy({ ...th, ...fields, kind: th.kind });
-    if (!next) {
-      remove(w, id);
-      return null;
-    }
-    if (kindOf(th) === "train" && !next.folded) delete th.folded;
-    Object.assign(th, next);
-    return th;
-  }
-  function remove(w, id) {
-    const th = w.things[id];
-    if (!th || id === MESSY) return;
-    for (const c of children(w, id)) remove(w, c.id);
-    delete w.things[id];
-    for (const r of Object.keys(w.places)) delete w.places[r][id];
-    delete w.views[id];
-    const p = w.things[th.parent];
-    if (p && kindOf(p) === "train" && !children(w, p.id).length) remove(w, p.id);
-  }
-  function inside(w, id, ancestor) {
-    for (let th = w.things[id]; th; th = w.things[th.parent]) if (th.id === ancestor) return true;
-    return false;
-  }
-  function move(w, id, into, x = 0, y = 0) {
-    const th = w.things[id];
-    if (!th || !w.things[into] || th.parent === into || inside(w, into, id)) return false;
-    const fromRoom = roomOf(w, kindOf(th) === "room" ? th.parent : id);
-    let target = into;
-    if (isLeaf(th) && kindOf(w.things[into]) === "room") target = create(w, into, { kind: "train", x, y }, th.at)?.id;
-    if (!target || !canHold(w, target, kindOf(th))) return false;
-    const old = th.parent;
-    th.parent = target;
-    if (kindOf(th) === "train") {
-      th.x = Math.round(x);
-      th.y = Math.round(y);
-    }
-    if (fromRoom && w.places[fromRoom.id]) {
-      delete w.places[fromRoom.id][id];
-      for (const c of children(w, id)) delete w.places[fromRoom.id][c.id];
-    }
-    const was = w.things[old];
-    if (was && kindOf(was) === "train" && !children(w, old).length) remove(w, old);
-    return true;
-  }
-  function name(w, id, text) {
-    const th = w.things[id];
-    if (th) update(w, id, kindOf(th) === "room" ? { name: text } : { title: text });
-  }
-  function fold(w, trainId, title) {
-    if (kindOf(w.things[trainId]) !== "train") return false;
-    update(w, trainId, { folded: true, ...title != null ? { title } : {} });
-    return true;
-  }
-  function unfold(w, trainId) {
-    const t = w.things[trainId];
-    if (kindOf(t) !== "train" || !t.folded) return false;
-    delete t.folded;
-    return true;
-  }
-  var addRoom = (w, text = "Untitled", now) => create(w, null, { kind: "room", name: text }, now);
-  var startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: "train", x, y }, now);
-  var addThought = (w, trainId, text, now) => create(w, trainId, { kind: "line", text }, now);
-  var SPIRAL = { step: 230, gap: 190 };
-  function spiralPoint(i, id = "") {
-    const b = SPIRAL.gap / (2 * Math.PI);
-    const theta = Math.sqrt(2 * SPIRAL.step * (i + 0.6) / b);
-    const r = b * theta;
-    const h = hash(id);
-    const jx = ((h & 255) / 255 - 0.5) * 36;
-    const jy = ((h >> 8 & 255) / 255 - 0.5) * 28;
-    return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
-  }
-  function pessoaPoint(w, roomId, id) {
-    const placed = w.places[roomId]?.[id];
-    if (placed) return placed;
-    const units = roomUnits(w, roomId);
-    const i = units.findIndex((u) => u.id === id);
-    return spiralPoint(i < 0 ? units.length : i, id);
-  }
-  function place(w, roomId, id, x, y) {
-    (w.places[roomId] ||= {})[id] = { x, y };
-  }
-  function randomSpot(box, taken = [], random = Math.random, tries = 24) {
-    let best = null;
-    let bestD = -1;
-    for (let i = 0; i < tries; i++) {
-      const p = { x: box.x + random() * box.w, y: box.y + random() * box.h };
-      const d = taken.length ? Math.min(...taken.map((q) => Math.hypot(q.x - p.x, q.y - p.y))) : 0;
-      if (d > bestD) {
-        best = p;
-        bestD = d;
-      }
-    }
-    return best;
-  }
-  function hash(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-    return h >>> 0;
-  }
-
-  // dist/web/features/create/picture.js
-  var SIDE = 720;
-  var QUALITY = 0.78;
-  async function shrinkPicture(file, side = SIDE) {
-    const bitmap = await createImageBitmap(file);
-    const k = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * k));
-    canvas.height = Math.max(1, Math.round(bitmap.height * k));
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close?.();
-    return canvas.toDataURL("image/jpeg", QUALITY);
-  }
-
-  // dist/web/features/create/Create.js
-  var { el: el3 } = ui_exports;
-  var LIT_FOR = 24 * 36e5;
-  var ZOOM = { min: 0.25, max: 4 };
-  var Create = class extends Feature {
-    start() {
-      this.world = loadWorld(this.storage.get("world"));
-      this.roomId = null;
-      this.draft = null;
-      this.current = {};
-      this.fresh = false;
-      this.sel = null;
-      this.renaming = null;
-      this.editing = null;
-      this.picker = ui_exports.filePicker("image/*");
-      this.build();
-      this.provide("create", this);
-      document.addEventListener("keydown", (e) => this.onKey(e));
-      window.addEventListener("resize", () => this.roomId && this.place());
-      document.addEventListener("paste", (e) => this.onPaste(e));
-    }
-    // ---- Opening and closing ----
-    open() {
-      this.world = loadWorld(this.storage.get("world"));
-      this.app.shell?.closeMenu?.();
-      this.root.hidden = false;
-      document.documentElement.classList.add("create-open");
-      this.showRooms();
-    }
-    close() {
-      this.closeSheet();
-      this.stopWriting();
-      this.root.hidden = true;
-      document.documentElement.classList.remove("create-open", "create-dark");
-    }
-    showRooms() {
-      this.closeSheet();
-      this.stopWriting();
-      this.roomId = null;
-      this.sel = null;
-      this.roomPage.hidden = true;
-      this.roomsPage.hidden = false;
-      document.documentElement.classList.remove("create-dark");
-      this.drawRooms();
-    }
-    openRoom(id) {
-      if (!room(this.world, id)) return;
-      this.roomId = id;
-      this.sel = null;
-      this.draft = null;
-      this.roomsPage.hidden = true;
-      this.roomPage.hidden = false;
-      document.documentElement.classList.add("create-dark");
-      this.drawRoom();
-    }
-    save() {
-      clearTimeout(this.saveTimer);
-      this.saveTimer = setTimeout(() => this.storage.set("world", this.world), 250);
-    }
-    // ---- Building the pages ----
-    build() {
-      this.grid = el3("div", { class: "create-grid" });
-      this.roomsPage = el3(
-        "section",
-        { class: "create-rooms", "aria-label": "Rooms" },
-        el3(
-          "div",
-          { class: "create-side" },
-          el3("h2", { class: "create-heading" }, "Rooms"),
-          el3("button", { type: "button", class: "create-word", onclick: () => this.newRoom() }, "New room"),
-          el3("button", { type: "button", class: "create-word", onclick: () => this.close() }, "Home"),
-          el3("p", { class: "create-note" }, "Start typing to write in Messy thoughts.")
-        ),
-        this.grid
-      );
-      this.crumbName = el3("button", { type: "button", class: "create-crumb create-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
-      this.modes = el3("div", { class: "create-modes", role: "radiogroup", "aria-label": "Ontological mode" });
-      this.world$ = el3("div", { class: "create-world" });
-      this.stage = el3("div", { class: "create-stage", "data-own-swipe": "" }, this.world$);
-      this.input = el3("textarea", { class: "create-input", "aria-label": "Write a thought", rows: 1, autocomplete: "off", spellcheck: "false" });
-      this.bar = el3("div", { class: "create-bar", hidden: true });
-      this.roomPage = el3(
-        "section",
-        { class: "create-room", hidden: true, "aria-label": "Room" },
-        this.stage,
-        el3(
-          "nav",
-          { class: "create-top", "aria-label": "Where you are" },
-          el3("button", { type: "button", class: "create-crumb", onclick: () => this.showRooms() }, "Rooms"),
-          el3("span", { class: "create-slash", "aria-hidden": "true" }, "/"),
-          this.crumbName
-        ),
-        this.modes,
-        el3(
-          "div",
-          { class: "create-foot" },
-          el3("button", { type: "button", class: "create-word create-write", onclick: () => this.beginWriting() }, "Write"),
-          el3("button", { type: "button", class: "create-word", title: "Alt+P", onclick: () => this.openSheet("passage") }, "Passage"),
-          el3("button", { type: "button", class: "create-word", title: "Alt+I", onclick: () => this.choosePicture() }, "Picture"),
-          el3("span", { class: "create-keys" }, "Enter ends a thought · Ctrl+Enter starts a new train · Alt+P a passage · Alt+I a picture")
-        ),
-        this.bar,
-        this.sheet = el3("div", { class: "create-sheet", hidden: true }),
-        this.input
-      );
-      this.root = el3("div", { class: "create", hidden: true }, this.roomsPage, this.roomPage);
-      (document.getElementById("folio-root") || document.body).append(this.root);
-      this.input.addEventListener("input", () => this.onInput());
-      this.input.addEventListener("keydown", (e) => this.onInputKey(e));
-      this.input.addEventListener("blur", () => {
-        if (this.draft && !this.input.value.trim()) {
-          this.draft = null;
-          this.drawWorld();
-        }
-      });
-      this.stage.addEventListener("pointerdown", (e) => this.onDown(e));
-      this.stage.addEventListener("dblclick", (e) => {
-        const id = e.target.closest("[data-id]")?.dataset.id;
-        if (id && kindOf(this.world.things[id]) !== "line") this.openSheet(null, id);
-      });
-      this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
-    }
-    // ---- The rooms page ----
-    drawRooms() {
-      const now = Date.now();
-      this.grid.replaceChildren(...rooms(this.world).map((r) => {
-        const last = lastWritten(this.world, r.id);
-        const count = roomThoughts(this.world, r.id).length;
-        const lit = last != null && now - last < LIT_FOR;
-        const name2 = this.renaming === r.id ? this.nameField(r, () => {
-          this.renaming = null;
-          this.drawRooms();
-        }) : el3("span", { class: "create-tile-name" }, r.name);
-        return el3(
-          "div",
-          { class: "create-tile" },
-          el3("button", {
-            type: "button",
-            class: "create-window" + (lit ? " lit" : ""),
-            "aria-label": `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
-            onclick: () => this.openRoom(r.id)
-          }),
-          el3(
-            "div",
-            { class: "create-tile-label", ondblclick: () => {
-              this.renaming = r.id;
-              this.drawRooms();
-            } },
-            name2,
-            el3("span", { class: "create-tile-count" }, count ? String(count) : "")
-          )
-        );
-      }));
-      this.grid.querySelector(".create-name-field")?.focus();
-    }
-    newRoom() {
-      const r = addRoom(this.world, "Untitled");
-      this.save();
-      this.renaming = r.id;
-      this.drawRooms();
-      this.grid.querySelector(".create-name-field")?.select();
-    }
-    // An input for a room's name: Enter or leaving it keeps the name, Escape keeps the old one.
-    nameField(r, done) {
-      let finished = false;
-      const finish = (keep) => {
-        if (finished) return;
-        finished = true;
-        if (keep) {
-          name(this.world, r.id, field3.value);
-          this.save();
-        }
-        done();
-      };
-      const field3 = el3("input", {
-        class: "create-name-field",
-        value: r.name,
-        "aria-label": "Room name",
-        maxlength: 60,
-        onkeydown: (e) => {
-          e.stopPropagation();
-          if (e.key === "Enter") finish(true);
-          if (e.key === "Escape") finish(false);
-        },
-        onblur: () => finish(true)
-      });
-      return field3;
-    }
-    // ---- A room ----
-    get mode() {
-      return view(this.world, this.roomId).mode;
-    }
-    drawRoom() {
-      const r = room(this.world, this.roomId);
-      if (this.renaming === r.id) {
-        this.crumbName.replaceChildren(this.nameField(r, () => {
-          this.renaming = null;
-          this.drawRoom();
-        }));
-        this.crumbName.querySelector("input").focus();
-      } else this.crumbName.replaceChildren(r.name);
-      this.modes.replaceChildren(...MODES.map((m) => el3("button", {
-        type: "button",
-        role: "radio",
-        class: "create-mode",
-        "aria-checked": String(m.id === this.mode),
-        onclick: () => this.setMode(m.id)
-      }, m.name)));
-      this.root.dataset.mode = this.mode;
-      this.place();
-      this.drawWorld();
-    }
-    renameOpenRoom() {
-      if (this.renaming) return;
-      this.renaming = this.roomId;
-      this.drawRoom();
-    }
-    setMode(id) {
-      view(this.world, this.roomId).mode = id;
-      this.sel = null;
-      this.save();
-      this.drawRoom();
-    }
-    // The world's transform: the view's x, y (world units) sit at the middle of the screen.
-    place() {
-      const v = view(this.world, this.roomId);
-      const { width, height } = this.stage.getBoundingClientRect();
-      this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
-    }
-    toWorld(clientX, clientY) {
-      const v = view(this.world, this.roomId);
-      const b = this.stage.getBoundingClientRect();
-      return { x: v.x + (clientX - b.left - b.width / 2) / v.zoom, y: v.y + (clientY - b.top - b.height / 2) / v.zoom };
-    }
-    // What's on the screen, in world units, less a margin all round.
-    visibleBox(margin = 0.18) {
-      const v = view(this.world, this.roomId);
-      const { width, height } = this.stage.getBoundingClientRect();
-      const w = width / v.zoom, h = height / v.zoom;
-      return { x: v.x - w / 2 + w * margin, y: v.y - h / 2 + h * margin, w: w * (1 - 2 * margin) * 0.75, h: h * (1 - 2 * margin) };
-    }
-    drawWorld() {
-      if (!this.roomId) return;
-      const w = this.world;
-      const nodes = [];
-      if (this.mode === "joyce") {
-        for (const t of roomTrains(w, this.roomId)) {
-          const kids = t.folded ? [this.thoughtNode(t)] : trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
-          if (this.draft?.train === t.id) kids.push(this.draftNode());
-          nodes.push(el3("div", {
-            class: "create-train" + (this.sel?.id === t.id ? " selected" : ""),
-            "data-train": t.id,
-            style: `left:${t.x}px;top:${t.y}px`
-          }, kids));
-        }
-        if (this.draft && !this.draft.train) {
-          nodes.push(el3("div", { class: "create-train", style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
-        }
-      } else {
-        const all = roomUnits(w, this.roomId);
-        for (const th of all) {
-          const p = pessoaPoint(w, this.roomId, th.id);
-          nodes.push(el3("div", {
-            class: "create-float" + (this.sel?.id === th.id ? " selected" : ""),
-            "data-thought": th.id,
-            style: `left:${p.x}px;top:${p.y}px`
-          }, this.thoughtNode(th)));
-        }
-        if (this.draft) {
-          const p = spiralPoint(all.length, "draft");
-          nodes.push(el3("div", { class: "create-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
-        }
-      }
-      this.world$.replaceChildren(...nodes);
-      this.drawBar();
-    }
-    // One thought, drawn by its kind.
-    thoughtNode(th) {
-      const kind = kindOf(th);
-      if (kind === "passage" || kind === "train") {
-        const body = kind === "train" ? thoughtText(this.world, th) : th.body;
-        return el3(
-          "div",
-          { class: "create-passage" + (kind === "train" ? " folded" : ""), "data-id": th.id },
-          th.title ? el3("div", { class: "create-passage-title" }, th.title) : null,
-          body ? el3("div", { class: "create-passage-body" }, body) : null
-        );
-      }
-      if (kind === "picture") {
-        return el3(
-          "figure",
-          { class: "create-picture", "data-id": th.id },
-          el3("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
-          th.text ? el3("figcaption", {}, th.text) : null
-        );
-      }
-      return el3("span", { class: "create-thought", "data-id": th.id }, th.text);
-    }
-    draftNode() {
-      this.draftEl = el3("span", { class: "create-thought create-draft" }, this.input.value);
-      return this.draftEl;
-    }
-    // ---- Writing ----
-    onKey(e) {
-      if (this.root.hidden || document.querySelector("dialog[open]")) return;
-      if (e.target === this.input || e.target.matches?.("input, textarea, select, [contenteditable]")) return;
-      if (e.key === "Escape") {
-        if (this.sel) {
-          this.sel = null;
-          this.drawWorld();
-        } else if (this.roomId) this.showRooms();
-        else this.close();
-        return;
-      }
-      if (this.editing) return;
-      if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyP" || e.code === "KeyI")) {
-        e.preventDefault();
-        if (e.code === "KeyP") this.openSheet("passage");
-        else this.choosePicture();
-        return;
-      }
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && this.roomId) {
-        this.fresh = true;
-        return;
-      }
-      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
-      if (e.target.closest?.("button") && e.key === " ") return;
-      e.preventDefault();
-      if (!this.roomId) this.openRoom(MESSY);
-      this.beginWriting(e.key);
-    }
-    // Starts a thought (if one isn't started), with `seed` as its first letters.
-    beginWriting(seed = "") {
-      if (!this.roomId) return;
-      if (!this.draft) {
-        this.draft = this.target();
-        this.sel = null;
-      }
-      this.input.value += seed;
-      this.input.focus({ preventScroll: true });
-      this.drawWorld();
-      this.showDraft();
-    }
-    freeSpot() {
-      const taken = roomTrains(this.world, this.roomId).map((t) => ({ x: t.x, y: t.y }));
-      return randomSpot(this.visibleBox(), taken);
-    }
-    onInput() {
-      if (!this.draft) {
-        this.beginWriting();
-        return;
-      }
-      if (this.draftEl) this.draftEl.textContent = this.input.value;
-      this.showDraft();
-    }
-    onInputKey(e) {
-      if (e.altKey && (e.code === "KeyP" || e.code === "KeyI")) {
-        e.preventDefault();
-        if (e.code === "KeyP") this.openSheet("passage");
-        else this.choosePicture();
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        this.commit();
-        if (e.ctrlKey || e.metaKey) this.fresh = true;
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        this.stopWriting();
-      }
-    }
-    commit() {
-      const text = this.input.value;
-      this.input.value = "";
-      const d = this.draft;
-      this.draft = null;
-      if (!d || !text.trim()) {
-        this.drawWorld();
-        return;
-      }
-      const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
-      addThought(this.world, train.id, text);
-      this.current[this.roomId] = train.id;
-      this.save();
-      this.drawWorld();
-    }
-    stopWriting() {
-      if (this.draft) this.commit();
-      this.input.blur();
-    }
-    // Keeps the thought being written on the screen, moving the view if it has gone off it.
-    showDraft() {
-      if (!this.draftEl) return;
-      const r = this.draftEl.getBoundingClientRect();
-      const b = this.stage.getBoundingClientRect();
-      const pad = 60;
-      let dx = 0, dy = 0;
-      if (r.right > b.right - pad) dx = r.right - (b.right - pad);
-      if (r.left < b.left + pad) dx = r.left - (b.left + pad);
-      if (r.bottom > b.bottom - pad * 2) dy = r.bottom - (b.bottom - pad * 2);
-      if (r.top < b.top + pad * 1.5) dy = r.top - (b.top + pad * 1.5);
-      if (!dx && !dy) return;
-      const v = view(this.world, this.roomId);
-      v.x += dx / v.zoom;
-      v.y += dy / v.zoom;
-      this.place();
-    }
-    // ---- Moving around, and moving things ----
-    onDown(e) {
-      if (e.button !== 0 && e.pointerType === "mouse") return;
-      const pointers = this.pointers ||= /* @__PURE__ */ new Map();
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      this.stage.setPointerCapture(e.pointerId);
-      if (pointers.size === 2) {
-        this.gesture = { kind: "pinch", ...this.pinchState() };
-        return;
-      }
-      const v = view(this.world, this.roomId);
-      const trainEl = e.target.closest("[data-train]");
-      const thoughtEl = e.target.closest("[data-thought]");
-      let thing = null;
-      if (trainEl && this.mode === "joyce") {
-        const t = this.world.things[trainEl.dataset.train];
-        thing = { kind: "train", id: t.id, x: t.x, y: t.y, placed: false };
-      } else if (thoughtEl && this.mode === "pessoa") {
-        const id = thoughtEl.dataset.thought;
-        const p = pessoaPoint(this.world, this.roomId, id);
-        thing = { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id, x: p.x, y: p.y, placed: true };
-      }
-      this.gesture = { kind: thing ? "drag" : "pan", thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
-      const move2 = (ev) => this.onMove(ev);
-      const up = (ev) => {
-        pointers.delete(ev.pointerId);
-        if (pointers.size) {
-          if (pointers.size === 1) this.gesture = null;
-          return;
-        }
-        this.stage.removeEventListener("pointermove", move2);
-        this.stage.removeEventListener("pointerup", up);
-        this.stage.removeEventListener("pointercancel", up);
-        this.onUp();
-      };
-      if (pointers.size === 1) {
-        this.stage.addEventListener("pointermove", move2);
-        this.stage.addEventListener("pointerup", up);
-        this.stage.addEventListener("pointercancel", up);
-      }
-    }
-    pinchState() {
-      const [a, b] = [...this.pointers.values()];
-      const v = view(this.world, this.roomId);
-      return { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: v.zoom, mid: this.toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
-    }
-    onMove(e) {
-      if (!this.pointers?.has(e.pointerId)) return;
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      const g = this.gesture;
-      if (!g) return;
-      const v = view(this.world, this.roomId);
-      if (g.kind === "pinch") {
-        const [a, b] = [...this.pointers.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        this.zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, g.z0 * d / g.d0, g.mid);
-        return;
-      }
-      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
-      if (!g.moved && Math.hypot(dx, dy) < 4) return;
-      g.moved = true;
-      if (g.kind === "pan") {
-        v.x = g.vx - dx / v.zoom;
-        v.y = g.vy - dy / v.zoom;
-        this.place();
-      } else {
-        const x = g.thing.x + dx / v.zoom, y = g.thing.y + dy / v.zoom;
-        g.el.style.left = `${x}px`;
-        g.el.style.top = `${y}px`;
-        g.to = { x: Math.round(x), y: Math.round(y) };
-      }
-    }
-    onUp() {
-      const g = this.gesture;
-      this.gesture = null;
-      if (!g || g.kind === "pinch") {
-        this.save();
-        return;
-      }
-      if (!g.moved) {
-        this.sel = g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
-        if (!g.thing && this.draft) this.stopWriting();
-        this.drawWorld();
-        return;
-      }
-      if (g.thing && g.to) {
-        if (g.thing.placed) place(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
-        else Object.assign(this.world.things[g.thing.id], g.to);
-      }
-      this.save();
-    }
-    onWheel(e) {
-      e.preventDefault();
-      const v = view(this.world, this.roomId);
-      const mouse = e.deltaMode !== 0 || e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY);
-      if (e.ctrlKey || mouse) {
-        const k = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 15e-4) * (e.deltaMode === 1 ? 30 : 1));
-        this.zoomAt(e.clientX, e.clientY, v.zoom * k);
-      } else {
-        v.x += e.deltaX / v.zoom;
-        v.y += e.deltaY / v.zoom;
-        this.place();
-      }
-      clearTimeout(this.wheelSave);
-      this.wheelSave = setTimeout(() => this.save(), 300);
-    }
-    // Zooms to `zoom`, keeping the world point `at` (default: the one under the screen point) still.
-    zoomAt(clientX, clientY, zoom, at = this.toWorld(clientX, clientY)) {
-      const v = view(this.world, this.roomId);
-      v.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom));
-      const b = this.stage.getBoundingClientRect();
-      v.x = at.x - (clientX - b.left - b.width / 2) / v.zoom;
-      v.y = at.y - (clientY - b.top - b.height / 2) / v.zoom;
-      this.place();
-    }
-    // ---- Moving a train or thought to another room ----
-    drawBar() {
-      if (!this.sel) {
-        this.bar.hidden = true;
-        return;
-      }
-      const others = rooms(this.world).filter((r) => r.id !== this.roomId);
-      const what = this.sel.kind === "train" ? "this train" : "this thought";
-      this.bar.hidden = false;
-      this.bar.replaceChildren(
-        el3("span", { class: "create-bar-label" }, `Move ${what} to`),
-        ...others.map((r) => el3("button", { type: "button", class: "create-word", onclick: () => this.moveTo(r.id) }, r.name)),
-        el3("button", { type: "button", class: "create-word", onclick: () => this.moveTo(addRoom(this.world, "Untitled").id) }, "A new room"),
-        ...this.selActions()
-      );
-    }
-    // Fold, unfold and edit, for what is selected.
-    selActions() {
-      const out = [];
-      const word = (label, fn) => el3("button", { type: "button", class: "create-word create-bar-action", onclick: fn }, label);
-      const th = this.world.things[this.sel.id];
-      if (!th) return out;
-      if (kindOf(th) === "train") {
-        const all = trainThoughts(this.world, th.id);
-        if (th.folded) {
-          out.push(word("Unfold", () => this.unfoldTrain(th.id)), word("Name", () => this.openSheet(null, th.id)));
-        } else {
-          if (all.length > 1) out.push(word("Fold into one thought", () => this.foldTrain(th.id)));
-          if (all.length === 1 && kindOf(all[0]) !== "line") out.push(word("Edit", () => this.openSheet(null, all[0].id)));
-        }
-      } else if (kindOf(th) !== "line") out.push(word("Edit", () => this.openSheet(null, th.id)));
-      return out;
-    }
-    foldTrain(trainId) {
-      if (!fold(this.world, trainId)) return;
-      this.sel = null;
-      this.save();
-      this.drawWorld();
-      this.openSheet(null, trainId);
-    }
-    unfoldTrain(id) {
-      unfold(this.world, id);
-      this.sel = null;
-      this.save();
-      this.drawWorld();
-    }
-    // ---- Passage and Picture: the two templates for bigger thoughts ----
-    // Where a new thought goes: on with the current train, or a new train at a free spot.
-    target() {
-      const cur = this.current[this.roomId];
-      const t = this.world.things[cur];
-      if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
-      const spot = this.freeSpot();
-      this.fresh = false;
-      return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
-    }
-    async choosePicture() {
-      const file = await this.picker.pick();
-      if (file) this.takePicture(file);
-    }
-    onPaste(e) {
-      if (this.root.hidden || !this.roomId || this.editing) return;
-      const file = [...e.clipboardData?.files || []].find((f) => f.type.startsWith("image/"));
-      if (!file) return;
-      e.preventDefault();
-      this.takePicture(file);
-    }
-    async takePicture(file) {
-      try {
-        const src = await shrinkPicture(file);
-        this.openSheet("picture", null, src);
-      } catch {
-        this.toast("That file couldn't be read as a picture.");
-      }
-    }
-    // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
-    // an existing thought (id). Keep (Ctrl+Enter) saves it; Escape or Cancel leaves it.
-    openSheet(kind, id = null, src = null) {
-      if (!this.roomId) return;
-      if (this.draft) this.commit();
-      const th = id ? this.world.things[id] : null;
-      kind = th ? kindOf(th) : kind;
-      this.editing = { kind, id, src: src || th?.src || null };
-      const keep = () => this.keepSheet();
-      const keys = (e) => {
-        e.stopPropagation();
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          keep();
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          this.closeSheet();
-        }
-      };
-      const fields = [];
-      if (kind === "train") {
-        this.sheetTitle = el3("input", { class: "create-sheet-title", placeholder: "Name this train of thought", "aria-label": "Name", value: th.title || "", onkeydown: keys });
-        fields.push(this.sheetTitle, el3("div", { class: "create-sheet-preview" }, thoughtText(this.world, th)));
-      } else if (kind === "passage") {
-        this.sheetTitle = el3("input", { class: "create-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
-        this.sheetBody = el3("textarea", { class: "create-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
-        this.sheetBody.value = th?.body || "";
-        fields.push(this.sheetTitle, this.sheetBody);
-      } else {
-        this.sheetCaption = el3("input", { class: "create-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
-        fields.push(el3("img", { class: "create-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
-      }
-      this.sheet.replaceChildren(
-        el3("div", { class: "create-sheet-kind" }, { passage: "Passage", picture: "Picture", train: "A folded train" }[kind]),
-        ...fields,
-        el3(
-          "div",
-          { class: "create-sheet-words" },
-          el3("button", { type: "button", class: "create-word", onclick: keep }, "Keep"),
-          el3("button", { type: "button", class: "create-word", onclick: () => this.closeSheet() }, "Cancel"),
-          el3("span", { class: "create-keys" }, "Ctrl+Enter keeps it")
-        )
-      );
-      this.sheet.hidden = false;
-      (kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle).focus();
-    }
-    keepSheet() {
-      const ed = this.editing;
-      if (!ed) return;
-      if (ed.kind === "train") name(this.world, ed.id, this.sheetTitle.value);
-      else {
-        const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
-        if (ed.id) update(this.world, ed.id, fields);
-        else {
-          const t = this.target();
-          const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
-          if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
-          else if (!t.train) remove(this.world, train.id);
-        }
-      }
-      this.save();
-      this.closeSheet();
-      this.drawWorld();
-    }
-    closeSheet() {
-      this.editing = null;
-      this.sheet.hidden = true;
-      this.sheet.replaceChildren();
-    }
-    moveTo(toRoom) {
-      const v = view(this.world, toRoom);
-      const box = { x: v.x - 300, y: v.y - 160, w: 400, h: 320 };
-      const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-      const spot = randomSpot(box, taken);
-      const x = Math.round(spot.x), y = Math.round(spot.y);
-      move(this.world, this.sel.id, toRoom, x, y);
-      this.sel = null;
-      this.save();
-      this.drawWorld();
-      this.toast(`Moved to ${room(this.world, toRoom).name}`);
-    }
-  };
-
-  // dist/web/features/home/fonts/tenor-sans.js
-  var tenor_sans_default = "data:font/woff2;base64,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";
-
-  // dist/web/features/home/fonts.js
-  var FONTS = [
-    {
-      id: "tenor-sans",
-      name: "Tenor Sans",
-      family: '"Tenor Sans", "Optima", "Candara", sans-serif',
-      files: [{ src: tenor_sans_default, weight: "400" }]
-    },
-    {
-      id: "system",
-      name: "System",
-      family: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
-    }
-  ];
-  var DEFAULT_FONT = FONTS[0].id;
-  function findFont(id) {
-    return FONTS.find((f) => f.id === id) || FONTS[0];
-  }
-  var loaded = /* @__PURE__ */ new Map();
-  function loadFont(font) {
-    if (!font.files?.length || typeof FontFace === "undefined") return Promise.resolve();
-    if (!loaded.has(font.id)) {
-      const name2 = font.family.split(",")[0].trim().replace(/^["']|["']$/g, "");
-      loaded.set(font.id, Promise.all(font.files.map(async (f) => {
-        const face = new FontFace(name2, `url(${f.src})`, { weight: f.weight || "400", style: f.style || "normal", display: "swap" });
-        document.fonts.add(await face.load());
-      })).catch(() => {
-      }));
-    }
-    return loaded.get(font.id);
-  }
-
-  // dist/web/features/home/Home.js
-  var { el: el4 } = ui_exports;
-  var TITLE = "Traumerei";
-  var Home = class extends Feature {
-    start() {
-      this.font = findFont(this.storage.get("font", DEFAULT_FONT));
-      this.applyFont();
-      this.page = el4(
-        "div",
-        { class: "home" },
-        el4("h1", { class: "home-title" }, TITLE),
-        el4(
-          "nav",
-          { class: "home-nav", "aria-label": "Home" },
-          el4("button", { type: "button", class: "home-link home-create", onclick: () => this.create() }, "Create"),
-          el4(
-            "div",
-            { class: "home-row" },
-            el4("button", { type: "button", class: "home-link", onclick: () => this.settings() }, "Settings"),
-            el4("button", { type: "button", class: "home-link", onclick: () => this.account() }, "Account")
-          )
-        )
-      );
-      (document.getElementById("folio-root") || document.body).append(this.page);
-      this.add("header.buttons", { id: "home-create", label: "Create", icon: "plus", order: 5, onClick: () => this.create() });
-      document.addEventListener("click", (e) => {
-        if (e.target.matches?.("dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list")) this.app.shell?.closeMenu?.();
-      });
-      this.add("settings", { id: "home-typeface", title: "Typeface", order: 20, render: () => this.typeface() });
-    }
-    // ---- The three words ----
-    create() {
-      this.use("create")?.open();
-    }
-    settings() {
-      this.app.shell?.openSettings?.();
-    }
-    account() {
-      this.app.shell?.openAccount?.();
-    }
-    // ---- Typeface ----
-    applyFont() {
-      document.documentElement.style.setProperty("--home-font", this.font.family);
-      document.documentElement.classList.add("home-font-loading");
-      loadFont(this.font).then(() => document.documentElement.classList.remove("home-font-loading"));
-    }
-    chooseFont(id) {
-      this.font = findFont(id);
-      this.storage.set("font", this.font.id);
-      this.applyFont();
-      this.app.shell?.refreshSettings?.();
-    }
-    // Settings → Typeface: one button per font, each written in its own face.
-    typeface() {
-      for (const f of FONTS) loadFont(f);
-      return el4(
-        "div",
-        { class: "seg home-fonts", role: "radiogroup", "aria-label": "Typeface", style: `--tabs:${FONTS.length}` },
-        FONTS.map((f) => el4("button", {
-          type: "button",
-          role: "radio",
-          "aria-checked": String(f.id === this.font.id),
-          "aria-selected": String(f.id === this.font.id),
-          style: `font-family:${f.family}`,
-          onclick: () => this.chooseFont(f.id)
-        }, f.name))
-      );
-    }
-  };
-
   // dist/web/features/renderer/engine/colour.js
   function linearise(c) {
     return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
@@ -4212,8 +3199,8 @@ dialog.menu-drawer::before {
       0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
     ];
   }
-  function hexToOklab(hex) {
-    const n = parseInt(hex.slice(1), 16);
+  function hexToOklab(hex2) {
+    const n = parseInt(hex2.slice(1), 16);
     return linearToOklab([n >> 16, n >> 8 & 255, n & 255].map((v) => linearise(v / 255)));
   }
   function oklabToOklch([L, a, b]) {
@@ -4274,8 +3261,8 @@ dialog.menu-drawer::before {
     for (let i = 0; i < 256; i++) {
       const t = i / 255;
       const lab = [0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t);
-      const rgb = oklabToSrgb(lab);
-      for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb[k]);
+      const rgb2 = oklabToSrgb(lab);
+      for (let k = 0; k < 3; k++) lut[3 * i + k] = Math.round(255 * rgb2[k]);
     }
     return lut;
   }
@@ -4389,7 +3376,7 @@ dialog.menu-drawer::before {
     const my = Math.min(m, Y / 2);
     return { x0: mx, x1: X - mx, y0: my, y1: Y - my };
   }
-  var inside2 = (box, x, y) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
+  var inside = (box, x, y) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
   function stickBreaking(U, { kappa, theta, Amin }) {
     const A = [];
     let rest = 1;
@@ -4413,7 +3400,7 @@ dialog.menu-drawer::before {
     for (let k = 0; k < TRIES; k++) {
       const x = anchor.x + sigma2 * N();
       const y = anchor.y + sigma2 * N();
-      if (inside2(box, x, y)) return { x, y, how: k === 0 ? "gaussian" : `gaussian, ${k + 1} tries` };
+      if (inside(box, x, y)) return { x, y, how: k === 0 ? "gaussian" : `gaussian, ${k + 1} tries` };
     }
     return { x: anchor.x, y: anchor.y, how: "anchor (20 tries missed)" };
   }
@@ -4439,7 +3426,7 @@ dialog.menu-drawer::before {
         const ang = 2 * Math.PI * rng.U();
         const x = main.x + d * Math.cos(ang);
         const y = main.y + d * Math.sin(ang);
-        if (!inside2(box, x, y)) continue;
+        if (!inside(box, x, y)) continue;
         const clear = patches.every((q) => Math.hypot(x - q.x, y - q.y) >= 0.8 * (p.r + q.r));
         if (clear) placed = { ...p, x, y, main: false };
       }
@@ -6050,7 +5037,7 @@ dialog.menu-drawer::before {
     if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t0 });
     return c;
   }
-  function view2(e, name2, P, r) {
+  function view(e, name2, P, r) {
     const { W, H } = e.image;
     colours(e, P);
     const t = tone2(e, P);
@@ -6127,7 +5114,7 @@ dialog.menu-drawer::before {
     stages: {
       mask: { keys: MASK_KEYS, make: (e, P, anchor) => mask(e, P, anchor) }
     },
-    view: (e, name2, P, { anchor }) => view2(e, name2, P, e.stage(washiMode, "mask", P, anchor)),
+    view: (e, name2, P, { anchor }) => view(e, name2, P, e.stage(washiMode, "mask", P, anchor)),
     living: (e, P, picture) => ({ kind: "pixels", ...pixels(living(e, P, picture.rgba)) }),
     report(e, P, name2, { anchor }) {
       const r = describe(e.stage(washiMode, "mask", P, anchor));
@@ -6216,8 +5203,8 @@ dialog.menu-drawer::before {
     L = Math.min(1, Math.max(0, L));
     let c = C;
     for (let k = 0; k < 24; k++, c *= 0.88) {
-      const rgb = oklabToLinear(oklchToOklab(L, c, h));
-      if (rgb.every((v) => v >= -1e-4 && v <= 1.0001)) return rgb.map((v) => Math.min(1, Math.max(0, v)));
+      const rgb2 = oklabToLinear(oklchToOklab(L, c, h));
+      if (rgb2.every((v) => v >= -1e-4 && v <= 1.0001)) return rgb2.map((v) => Math.min(1, Math.max(0, v)));
     }
     return oklabToLinear([L, 0, 0]).map((v) => Math.min(1, Math.max(0, v)));
   }
@@ -6396,8 +5383,8 @@ dialog.menu-drawer::before {
       let C = base2.C * (1 - P.plainBeta * f);
       if (view4 === "base") [L, C] = [base2.L, base2.C];
       if (view4 === "pattern") [L, C] = [0.12 + 0.82 * f, 0];
-      const rgb = lchToLinear(L, C, base2.h);
-      for (let c = 0; c < 3; c++) lut[3 * i + c] = 255 * delinearise(rgb[c]);
+      const rgb2 = lchToLinear(L, C, base2.h);
+      for (let c = 0; c < 3; c++) lut[3 * i + c] = 255 * delinearise(rgb2[c]);
     }
     const { phi, pw, ph } = field3;
     const out = new Uint8ClampedArray(4 * W * H);
@@ -6475,7 +5462,7 @@ dialog.menu-drawer::before {
   var hue = (e, P) => e.stage(plainMode, "hue", P);
   var base = (e, P) => baseColour(hue(e, P), P);
   var field2 = (e, P) => e.stage(plainMode, "field", P);
-  function view3(e, name2, P) {
+  function view2(e, name2, P) {
     const { W, H } = e.image;
     return { rgba: plainRGB(name2, field2(e, P), base(e, P), P, W, H), width: W, height: H };
   }
@@ -6505,7 +5492,7 @@ dialog.menu-drawer::before {
         }
       }
     },
-    view: (e, name2, P) => view3(e, name2, P),
+    view: (e, name2, P) => view2(e, name2, P),
     // The lights as Gaussian glows on a canvas at a quarter of the screen, screen-blended over the picture.
     living(e, P) {
       const g = glow(e, P);
@@ -6674,7 +5661,7 @@ dialog.menu-drawer::before {
     const wy = fbm(ny, opt);
     const fw = Math.max(2, Math.round(X * FOG_SHORT));
     const fh = Math.max(2, Math.round(Y * FOG_SHORT));
-    const rgb = new Float32Array(3 * fw * fh);
+    const rgb2 = new Float32Array(3 * fw * fh);
     const v = [0, 0, 0];
     const A = P.fogA;
     for (let j = 0; j < fh; j++) {
@@ -6684,12 +5671,12 @@ dialog.menu-drawer::before {
         sample3(f, sw, sh, X, Y, x + A * wx(x, y), y + A * wy(x, y), v);
         const [L, C, h] = oklabToOklch(v);
         const out = lchToLinear(P.fogLo + (P.fogHi - P.fogLo) * L, P.fogC * C, h);
-        for (let ch = 0; ch < 3; ch++) rgb[3 * (j * fw + i) + ch] = 255 * delinearise(out[ch]);
+        for (let ch = 0; ch < 3; ch++) rgb2[3 * (j * fw + i) + ch] = 255 * delinearise(out[ch]);
       }
     }
-    return { rgb, fw, fh, palette: pal, grey, sw, sh };
+    return { rgb: rgb2, fw, fh, palette: pal, grey, sw, sh };
   }
-  function fogRGB({ rgb, fw, fh }, W, H) {
+  function fogRGB({ rgb: rgb2, fw, fh }, W, H) {
     const out = new Uint8ClampedArray(4 * W * H);
     const R = mulberry32(2246822507);
     for (let y = 0; y < H; y++) {
@@ -6704,7 +5691,7 @@ dialog.menu-drawer::before {
         const c = a + 3 * fw;
         const p = 4 * (y * W + x);
         for (let ch = 0; ch < 3; ch++) {
-          out[p + ch] = (rgb[a + ch] * (1 - tx) + rgb[a + 3 + ch] * tx) * (1 - ty) + (rgb[c + ch] * (1 - tx) + rgb[c + 3 + ch] * tx) * ty + R() - 0.5;
+          out[p + ch] = (rgb2[a + ch] * (1 - tx) + rgb2[a + 3 + ch] * tx) * (1 - ty) + (rgb2[c + ch] * (1 - tx) + rgb2[c + 3 + ch] * tx) * ty + R() - 0.5;
         }
         out[p + 3] = 255;
       }
@@ -6797,8 +5784,8 @@ dialog.menu-drawer::before {
   var planar_default = planarMode;
 
   // dist/web/features/renderer/engine/modes/index.js
-  var MODES2 = [washi_default, plain_default, planar_default];
-  var modeById = (id) => MODES2.find((m) => m.id === id) || MODES2[0];
+  var MODES = [washi_default, plain_default, planar_default];
+  var modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
   // dist/web/features/renderer/engine/index.js
   var Engine = class {
@@ -6859,7 +5846,7 @@ dialog.menu-drawer::before {
       return pattern(this, P);
     }
     view(name2, P, r) {
-      return view2(this, name2, P, r);
+      return view(this, name2, P, r);
     }
     living(P, rgba) {
       return living(this, P, rgba);
@@ -6878,7 +5865,7 @@ dialog.menu-drawer::before {
       return field2(this, P);
     }
     plainView(name2, P) {
-      return view3(this, name2, P);
+      return view2(this, name2, P);
     }
     glow(P) {
       return glow(this, P);
@@ -6886,7 +5873,7 @@ dialog.menu-drawer::before {
   };
 
   // dist/web/features/renderer/controls.js
-  var { el: el5 } = ui_exports;
+  var { el: el3 } = ui_exports;
   var shown = (p, v) => p.step >= 1 ? String(v) : Number(v).toFixed(Math.max(0, -Math.floor(Math.log10(p.step))));
   function sliders(params, values, onChange) {
     const rows = [];
@@ -6896,13 +5883,13 @@ dialog.menu-drawer::before {
       onChange(key, v);
     };
     for (const p of params) {
-      if (!groups.has(p.group)) groups.set(p.group, el5("fieldset", { class: "renderer-group" }, el5("legend", {}, p.group)));
+      if (!groups.has(p.group)) groups.set(p.group, el3("fieldset", { class: "renderer-group" }, el3("legend", {}, p.group)));
       const row = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values[p.key], changed);
       rows.push(row);
       groups.get(p.group).append(row.node);
     }
     return {
-      node: el5("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
+      node: el3("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
       groups,
       set(next) {
         for (const r of rows) r.show(next[r.p.key]);
@@ -6910,8 +5897,8 @@ dialog.menu-drawer::before {
     };
   }
   function slider(p, value, changed) {
-    const out = el5("output", { class: "renderer-value" }, shown(p, value));
-    const input = el5("input", {
+    const out = el3("output", { class: "renderer-value" }, shown(p, value));
+    const input = el3("input", {
       type: "range",
       min: p.min,
       max: p.max,
@@ -6922,7 +5909,7 @@ dialog.menu-drawer::before {
     });
     return {
       p,
-      node: el5("label", { class: "renderer-slider" }, el5("span", {}, p.label), out, input),
+      node: el3("label", { class: "renderer-slider" }, el3("span", {}, p.label), out, input),
       show(v) {
         input.value = v;
         out.textContent = shown(p, v);
@@ -6930,7 +5917,7 @@ dialog.menu-drawer::before {
     };
   }
   function colour(p, value, changed) {
-    const input = el5("input", {
+    const input = el3("input", {
       type: "color",
       value,
       "aria-label": p.aria || p.label,
@@ -6938,14 +5925,14 @@ dialog.menu-drawer::before {
     });
     return {
       p,
-      node: el5("label", { class: "renderer-slider renderer-colour" }, el5("span", {}, p.label), input),
+      node: el3("label", { class: "renderer-slider renderer-colour" }, el3("span", {}, p.label), input),
       show(v) {
         if (input.value !== v) input.value = v;
       }
     };
   }
   function choice(p, value, changed) {
-    const buttons = p.options.map(([id, label]) => el5("button", {
+    const buttons = p.options.map(([id, label]) => el3("button", {
       type: "button",
       role: "radio",
       "data-value": id,
@@ -6961,18 +5948,18 @@ dialog.menu-drawer::before {
     show(value);
     return {
       p,
-      node: el5(
+      node: el3(
         "div",
         { class: "renderer-slider" },
-        el5("span", {}, p.label),
-        el5("div", { class: "seg renderer-choice", role: "radiogroup", "aria-label": p.aria || p.label, style: `--tabs:${p.options.length}` }, buttons)
+        el3("span", {}, p.label),
+        el3("div", { class: "seg renderer-choice", role: "radiogroup", "aria-label": p.aria || p.label, style: `--tabs:${p.options.length}` }, buttons)
       ),
       show
     };
   }
 
   // dist/web/features/renderer/Renderer.js
-  var { el: el6 } = ui_exports;
+  var { el: el4 } = ui_exports;
   var MAX_SIDE = 2048;
   var MAX_PIXELS = 6e6;
   var RESIZE_MS = 400;
@@ -6982,7 +5969,7 @@ dialog.menu-drawer::before {
       this.P = { ...DEFAULTS, ...this.storage.get("params", {}) };
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
       this.mode = modeById(this.storage.get("theme", "washi"));
-      this.views = Object.fromEntries(MODES2.map((m) => [m.id, this.storage.get(m.viewKey, m.startView)]));
+      this.views = Object.fromEntries(MODES.map((m) => [m.id, this.storage.get(m.viewKey, m.startView)]));
       this.marks = this.storage.get("marks", false);
       this.clock = 0;
       this.picker = ui_exports.filePicker("image/*");
@@ -6998,15 +5985,39 @@ dialog.menu-drawer::before {
       });
       this.add("settings", { id: "renderer-theme", title: "Theme", order: 15, render: () => this.themes() });
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
+      this.provide("backdrop", { colours: () => this.colours(), cover: (on) => this.cover(on) });
+    }
+    // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
+    // when nothing is drawn yet. Read once from a small copy, so it costs almost nothing.
+    colours() {
+      if (!this.canvas?.width) return null;
+      const n = 24;
+      const small = document.createElement("canvas");
+      small.width = n;
+      small.height = n;
+      const g = small.getContext("2d", { willReadFrequently: true });
+      g.drawImage(this.canvas, 0, 0, n, n);
+      const { data } = g.getImageData(0, 0, n, n);
+      const band = (y0, y1) => {
+        const sum = [0, 0, 0];
+        for (let y = y0; y < y1; y++) for (let x = 0; x < n; x++) for (let c = 0; c < 3; c++) sum[c] += data[(y * n + x) * 4 + c];
+        return sum.map((v) => Math.round(v / ((y1 - y0) * n)));
+      };
+      return { top: band(0, n / 3), bottom: band(2 * n / 3, n) };
+    }
+    // While a page covers the picture, its animation stops (and starts again where it was).
+    cover(on) {
+      this.covered = !!on;
+      if (!this.covered && this.anim && this.resume) this.resume();
     }
     get current() {
       return this.views[this.mode.id];
     }
     mount(container) {
-      this.canvas = el6("canvas", { class: "renderer-canvas" });
-      this.overlay = el6("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
-      this.layer = el6("canvas", { class: "renderer-layer", "aria-hidden": "true", hidden: true });
-      this.stage = el6(
+      this.canvas = el4("canvas", { class: "renderer-canvas" });
+      this.overlay = el4("canvas", { class: "renderer-overlay", "aria-hidden": "true" });
+      this.layer = el4("canvas", { class: "renderer-layer", "aria-hidden": "true", hidden: true });
+      this.stage = el4(
         "div",
         { class: "renderer-stage", hidden: true, onclick: (e) => this.setAnchor(e) },
         this.canvas,
@@ -7014,7 +6025,7 @@ dialog.menu-drawer::before {
         this.overlay
       );
       this.error = ui_exports.errorBox();
-      container.append(el6("div", { class: "renderer-page" }, this.stage, this.error));
+      container.append(el4("div", { class: "renderer-page" }, this.stage, this.error));
       new ResizeObserver(() => {
         this.paintOverlay();
         clearTimeout(this.resizing);
@@ -7027,36 +6038,36 @@ dialog.menu-drawer::before {
     // only the current mode's show.
     advanced() {
       if (this.panel) return this.panel;
-      this.tabs = new Map(MODES2.map((m) => [m.id, el6("div", {
+      this.tabs = new Map(MODES.map((m) => [m.id, el4("div", {
         class: `seg renderer-tabs ${m.id}`,
         role: "tablist",
         "aria-label": "View",
         style: `--tabs:${m.views.length}`
-      }, m.views.map(([id, label]) => el6("button", { type: "button", role: "tab", "data-view": id, onclick: () => this.show(id) }, label)))]));
-      this.seedLine = el6("p", { class: "renderer-seed" });
-      this.report = el6("div", { class: "renderer-report" });
+      }, m.views.map(([id, label]) => el4("button", { type: "button", role: "tab", "data-view": id, onclick: () => this.show(id) }, label)))]));
+      this.seedLine = el4("p", { class: "renderer-seed" });
+      this.report = el4("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      const fold2 = (title, ...kids) => el6(
+      const fold2 = (title, ...kids) => el4(
         "details",
         { class: "advanced renderer-fold" },
-        el6("summary", {}, title),
-        el6("div", { class: "renderer-fold-body" }, ...kids)
+        el4("summary", {}, title),
+        el4("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.folds = new Map(MODES2.map((m) => [m.id, m.folds.map(([title, groups]) => fold2(
+      this.folds = new Map(MODES.map((m) => [m.id, m.folds.map(([title, groups]) => fold2(
         title,
-        el6("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
+        el4("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g) => this.controls.groups.get(g)))
       ))]));
-      this.panel = el6(
+      this.panel = el4(
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
         fold2(
           "Picture",
-          el6(
+          el4(
             "div",
             { class: "renderer-buttons" },
-            el6("button", { type: "button", class: "btn small", onclick: () => this.choose() }, "Choose an image"),
-            el6("button", { type: "button", class: "btn small", onclick: () => this.white() }, "Back to white")
+            el4("button", { type: "button", class: "btn small", onclick: () => this.choose() }, "Choose an image"),
+            el4("button", { type: "button", class: "btn small", onclick: () => this.white() }, "Back to white")
           ),
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
@@ -7064,16 +6075,16 @@ dialog.menu-drawer::before {
         fold2(
           "View",
           ...this.tabs.values(),
-          el6(
+          el4(
             "div",
             { class: "check renderer-marks" },
             ui_exports.toggle({ checked: this.marks, label: "Show the anchor", onChange: (on) => this.showMarks(on) }),
-            el6("span", {}, "Show the anchor, and tap the picture to move it")
+            el4("span", {}, "Show the anchor, and tap the picture to move it")
           )
         ),
         ...[...this.folds.values()].flat(),
         fold2("Report", this.report),
-        el6("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
+        el4("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.marksRow = this.panel.querySelector(".renderer-marks");
       this.draw();
@@ -7081,10 +6092,10 @@ dialog.menu-drawer::before {
     }
     // Settings → Theme: one button per mode.
     themes() {
-      this.themeTabs ||= el6(
+      this.themeTabs ||= el4(
         "div",
-        { class: "seg renderer-themes", role: "radiogroup", "aria-label": "Theme", style: `--tabs:${MODES2.length}` },
-        MODES2.map((m) => el6("button", { type: "button", role: "radio", "data-theme-id": m.id, onclick: () => this.setTheme(m.id) }, m.label))
+        { class: "seg renderer-themes", role: "radiogroup", "aria-label": "Theme", style: `--tabs:${MODES.length}` },
+        MODES.map((m) => el4("button", { type: "button", role: "radio", "data-theme-id": m.id, onclick: () => this.setTheme(m.id) }, m.label))
       );
       this.syncTheme();
       return this.themeTabs;
@@ -7238,24 +6249,24 @@ dialog.menu-drawer::before {
       if (this.current === "living" && mode.living) this.play();
       if (!this.panel) return;
       const { W, H } = this.engine.image;
-      this.seedLine.replaceChildren("Seed ", el6("code", {}, this.seed.seedText), ` · ${W} × ${H} px` + (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ""));
+      this.seedLine.replaceChildren("Seed ", el4("code", {}, this.seed.seedText), ` · ${W} × ${H} px` + (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ""));
       const r = this.engine.report(mode, this.P, this.current, this.ctx());
       this.report.replaceChildren(
-        el6("h3", {}, "Report"),
-        ...r.summary ? [el6("p", {}, r.summary)] : [],
-        ...(r.attempts || []).map((a) => el6(
+        el4("h3", {}, "Report"),
+        ...r.summary ? [el4("p", {}, r.summary)] : [],
+        ...(r.attempts || []).map((a) => el4(
           "details",
           { class: `renderer-attempt${a.kept ? " kept" : ""}`, open: a.kept },
-          el6(
+          el4(
             "summary",
             {},
             a.title,
-            el6("span", { class: `renderer-tag ${a.pass ? "pass" : "fail"}` }, a.pass ? "passes" : "fails"),
-            a.kept && el6("span", { class: "renderer-tag kept" }, "shown")
+            el4("span", { class: `renderer-tag ${a.pass ? "pass" : "fail"}` }, a.pass ? "passes" : "fails"),
+            a.kept && el4("span", { class: "renderer-tag kept" }, "shown")
           ),
-          el6("ul", {}, a.lines.map((line) => el6("li", {}, line)))
+          el4("ul", {}, a.lines.map((line) => el4("li", {}, line)))
         )),
-        ...r.lines.map((line) => el6("p", {}, line))
+        ...r.lines.map((line) => el4("p", {}, line))
       );
     }
     // The Living view: the mode's animation at this.clock, every frame. A frame's step is capped at
@@ -7264,11 +6275,23 @@ dialog.menu-drawer::before {
       this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
       const paint2 = this.anim.kind === "pixels" ? this.pixels() : this.shapes();
       let last = null;
+      let running = true;
       const step = (now) => {
+        if (this.covered) {
+          running = false;
+          last = null;
+          return;
+        }
         this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
         last = now;
         paint2(this.anim);
         this.tick = requestAnimationFrame(step);
+      };
+      this.resume = () => {
+        if (!running) {
+          running = true;
+          this.tick = requestAnimationFrame(step);
+        }
       };
       this.tick = requestAnimationFrame(step);
     }
@@ -7334,10 +6357,10 @@ dialog.menu-drawer::before {
       const px = (x) => c.x + x * c.w;
       const py = (y) => c.y + y * c.h;
       const g = this.overlay.getContext("2d");
-      const css = getComputedStyle(this.stage);
+      const css2 = getComputedStyle(this.stage);
       g.lineWidth = 1.5 * dpr;
       if (this.current === "field" && this.picture.contour) {
-        g.strokeStyle = css.getPropertyValue("--renderer-contour").trim();
+        g.strokeStyle = css2.getPropertyValue("--renderer-contour").trim();
         g.beginPath();
         const segs = this.picture.contour;
         for (let i = 0; i < segs.length; i += 2) {
@@ -7349,7 +6372,7 @@ dialog.menu-drawer::before {
       const ax = px(this.anchor.x);
       const ay = py(this.anchor.y);
       const r = 7 * dpr;
-      g.strokeStyle = css.getPropertyValue("--renderer-anchor").trim();
+      g.strokeStyle = css2.getPropertyValue("--renderer-anchor").trim();
       g.beginPath();
       g.arc(ax, ay, r, 0, 2 * Math.PI);
       g.moveTo(ax - 2 * r, ay);
@@ -7401,14 +6424,1204 @@ dialog.menu-drawer::before {
     }
   };
 
+  // dist/web/features/create/model.js
+  var MESSY = "messy";
+  var MODES2 = [
+    { id: "joyce", name: "Joyce" },
+    { id: "pessoa", name: "Pessoa" }
+  ];
+  var DEFAULT_MODE = "joyce";
+  var LEAVES = ["line", "passage", "picture"];
+  var KINDS = [...LEAVES, "train", "room"];
+  var kindOf = (th) => KINDS.includes(th?.kind) ? th.kind : "line";
+  var isLeaf = (th) => LEAVES.includes(kindOf(th));
+  var counter = 0;
+  function uid(prefix = "x") {
+    counter = (counter + 1) % 1e6;
+    return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  }
+  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts" });
+  function emptyWorld(now = Date.now()) {
+    return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {} };
+  }
+  function loadWorld(saved, now = Date.now()) {
+    let w = saved && typeof saved === "object" ? saved : {};
+    if (w.v !== 2) w = fromV1(w, now);
+    w = Object.assign(emptyWorld(now), w);
+    for (const key of ["things", "views", "places"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
+    if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
+    for (const th of Object.values(w.things)) {
+      if (th.parent == null || w.things[th.parent]) continue;
+      if (kindOf(th) === "room") th.parent = null;
+      else if (kindOf(th) === "train") th.parent = MESSY;
+      else delete w.things[th.id];
+    }
+    return w;
+  }
+  function fromV1(old, now) {
+    const w = emptyWorld(now);
+    for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: "room", parent: null, at: r.at ?? now, name: r.name };
+    for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: "train", parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: "" };
+    for (const th of Object.values(old.thoughts || {})) {
+      const { room: _room, train, parts, ...rest } = th;
+      if (parts?.length) {
+        const t = w.things[train];
+        if (t) Object.assign(t, { folded: true, title: th.title || "" });
+        for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
+      } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
+    }
+    w.views = old.views || {};
+    w.places = old.places || {};
+    return w;
+  }
+  var room = (w, id) => kindOf(w.things[id]) === "room" ? w.things[id] : null;
+  var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+  var children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
+  var rooms = (w) => children(w, null).filter((th) => kindOf(th) === "room");
+  function roomOf(w, id) {
+    let th = w.things[id];
+    while (th && kindOf(th) !== "room") th = w.things[th.parent];
+    return th || null;
+  }
+  var trainThoughts = (w, trainId) => children(w, trainId).filter(isLeaf);
+  var roomTrains = (w, roomId) => children(w, roomId).filter((th) => kindOf(th) === "train" && trainThoughts(w, th.id).length);
+  var roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
+  var roomUnits = (w, roomId) => roomTrains(w, roomId).flatMap((t) => t.folded ? [t] : trainThoughts(w, t.id)).sort(byTime);
+  function lastWritten(w, roomId) {
+    const all = roomThoughts(w, roomId);
+    return all.length ? Math.max(...all.map((th) => th.at)) : null;
+  }
+  function view3(w, roomId) {
+    if (!w.views[roomId]) w.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
+    return w.views[roomId];
+  }
+  function thoughtText(w, th) {
+    switch (kindOf(th)) {
+      case "passage":
+        return [th.title, th.body].filter(Boolean).join(" — ");
+      case "picture":
+        return th.text ? `[${th.text}]` : "[picture]";
+      case "train":
+        return trainThoughts(w, th.id).map((x) => thoughtText(w, x)).join("\n");
+      case "room":
+        return th.name || "";
+      default:
+        return th.text || "";
+    }
+  }
+  var oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+  var lines = (s) => String(s ?? "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  var clamp01 = (v, d) => Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d;
+  function tidy(f) {
+    const kind = kindOf(f);
+    if (kind === "line") {
+      const text = oneLine(f.text);
+      return text ? { kind, text } : null;
+    }
+    if (kind === "passage") {
+      const title = oneLine(f.title), body = lines(f.body);
+      return title || body ? { kind, title, body } : null;
+    }
+    if (kind === "picture") {
+      const src = typeof f.src === "string" && f.src.startsWith("data:image/") ? f.src : "";
+      return src ? { kind, src, text: oneLine(f.text) } : null;
+    }
+    if (kind === "train") {
+      const out2 = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
+      if (f.folded) out2.folded = true;
+      return out2;
+    }
+    const out = { kind, name: oneLine(f.name) || "Untitled" };
+    if (typeof f.tint === "string" && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
+    if (f.light != null) out.light = clamp01(f.light, 0.5);
+    if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
+    return out;
+  }
+  function canHold(w, parent, kind) {
+    const p = parent == null ? null : w.things[parent];
+    if (parent != null && !p) return false;
+    if (LEAVES.includes(kind)) return kindOf(p) === "train" && p != null;
+    if (kind === "train") return p != null && kindOf(p) === "room";
+    if (kind === "room") return p == null || kindOf(p) === "room";
+    return false;
+  }
+  function create(w, parent, fields, now = Date.now()) {
+    const th = tidy(fields);
+    if (!th || !canHold(w, parent, th.kind)) return null;
+    Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
+    w.things[th.id] = th;
+    return th;
+  }
+  function update(w, id, fields) {
+    const th = w.things[id];
+    if (!th) return null;
+    const next = tidy({ ...th, ...fields, kind: th.kind });
+    if (!next) {
+      remove(w, id);
+      return null;
+    }
+    if (kindOf(th) === "train" && !next.folded) delete th.folded;
+    Object.assign(th, next);
+    return th;
+  }
+  function remove(w, id) {
+    const th = w.things[id];
+    if (!th || id === MESSY) return;
+    for (const c of children(w, id)) remove(w, c.id);
+    delete w.things[id];
+    for (const r of Object.keys(w.places)) delete w.places[r][id];
+    delete w.views[id];
+    const p = w.things[th.parent];
+    if (p && kindOf(p) === "train" && !children(w, p.id).length) remove(w, p.id);
+  }
+  function inside2(w, id, ancestor) {
+    for (let th = w.things[id]; th; th = w.things[th.parent]) if (th.id === ancestor) return true;
+    return false;
+  }
+  function move(w, id, into, x = 0, y = 0) {
+    const th = w.things[id];
+    if (!th || !w.things[into] || th.parent === into || inside2(w, into, id)) return false;
+    const fromRoom = roomOf(w, kindOf(th) === "room" ? th.parent : id);
+    let target = into;
+    if (isLeaf(th) && kindOf(w.things[into]) === "room") target = create(w, into, { kind: "train", x, y }, th.at)?.id;
+    if (!target || !canHold(w, target, kindOf(th))) return false;
+    const old = th.parent;
+    th.parent = target;
+    if (kindOf(th) === "train") {
+      th.x = Math.round(x);
+      th.y = Math.round(y);
+    }
+    if (fromRoom && w.places[fromRoom.id]) {
+      delete w.places[fromRoom.id][id];
+      for (const c of children(w, id)) delete w.places[fromRoom.id][c.id];
+    }
+    const was = w.things[old];
+    if (was && kindOf(was) === "train" && !children(w, old).length) remove(w, old);
+    return true;
+  }
+  function name(w, id, text) {
+    const th = w.things[id];
+    if (th) update(w, id, kindOf(th) === "room" ? { name: text } : { title: text });
+  }
+  function fold(w, trainId, title) {
+    if (kindOf(w.things[trainId]) !== "train") return false;
+    update(w, trainId, { folded: true, ...title != null ? { title } : {} });
+    return true;
+  }
+  function unfold(w, trainId) {
+    const t = w.things[trainId];
+    if (kindOf(t) !== "train" || !t.folded) return false;
+    delete t.folded;
+    return true;
+  }
+  var addRoom = (w, text = "Untitled", now) => create(w, null, { kind: "room", name: text }, now);
+  var startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: "train", x, y }, now);
+  var addThought = (w, trainId, text, now) => create(w, trainId, { kind: "line", text }, now);
+  var SPIRAL = { step: 230, gap: 190 };
+  function spiralPoint(i, id = "") {
+    const b = SPIRAL.gap / (2 * Math.PI);
+    const theta = Math.sqrt(2 * SPIRAL.step * (i + 0.6) / b);
+    const r = b * theta;
+    const h = hash(id);
+    const jx = ((h & 255) / 255 - 0.5) * 36;
+    const jy = ((h >> 8 & 255) / 255 - 0.5) * 28;
+    return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
+  }
+  function pessoaPoint(w, roomId, id) {
+    const placed = w.places[roomId]?.[id];
+    if (placed) return placed;
+    const units = roomUnits(w, roomId);
+    const i = units.findIndex((u) => u.id === id);
+    return spiralPoint(i < 0 ? units.length : i, id);
+  }
+  function place(w, roomId, id, x, y) {
+    (w.places[roomId] ||= {})[id] = { x, y };
+  }
+  function randomSpot(box, taken = [], random = Math.random, tries = 24) {
+    let best = null;
+    let bestD = -1;
+    for (let i = 0; i < tries; i++) {
+      const p = { x: box.x + random() * box.w, y: box.y + random() * box.h };
+      const d = taken.length ? Math.min(...taken.map((q) => Math.hypot(q.x - p.x, q.y - p.y))) : 0;
+      if (d > bestD) {
+        best = p;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+  function hash(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+
+  // dist/web/features/create/picture.js
+  var SIDE = 720;
+  var QUALITY = 0.78;
+  async function shrinkPicture(file, side = SIDE) {
+    const bitmap = await createImageBitmap(file);
+    const k = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * k));
+    canvas.height = Math.max(1, Math.round(bitmap.height * k));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    return canvas.toDataURL("image/jpeg", QUALITY);
+  }
+
+  // dist/web/features/create/look.js
+  var PAPER2 = [242, 235, 217];
+  var DARKEN = 0.9;
+  var LIGHT2 = 0.8;
+  var LIGHT_MESSY = 0.62;
+  var OPACITY = 1;
+  var SATURATION = 0.22;
+  var SPREAD = 0.05;
+  var INK2 = "#2b2a28";
+  var PALE = "#f1e8d2";
+  var hex = ([r, g, b]) => "#" + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("");
+  function rgb(h) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ""));
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [n >> 16, n >> 8 & 255, n & 255];
+  }
+  var clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  var css = (c, a = 1) => `rgb(${c.map(Math.round).join(" ")} / ${+a.toFixed(3)})`;
+  function toHsl([r, g, b]) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h / 6, s, l];
+  }
+  function fromHsl([h, s, l]) {
+    if (!s) return [l * 255, l * 255, l * 255];
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const f = (t) => {
+      t = (t + 1) % 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+  }
+  var mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  function pageLook(colours2) {
+    const top = colours2?.top || PAPER2, bottom = colours2?.bottom || PAPER2;
+    return { top: css(top.map((v) => v * DARKEN)), bottom: css(bottom.map((v) => v * DARKEN)), average: mix(top, bottom, 0.5) };
+  }
+  function roomLook(room2, average = PAPER2, messy = false) {
+    const tint = rgb(room2?.tint) || average;
+    const [h, s0] = toHsl(tint);
+    const s = room2?.tint ? s0 : Math.min(s0, SATURATION);
+    const l = room2?.light ?? (messy ? LIGHT_MESSY : LIGHT2);
+    const a = room2?.opacity ?? OPACITY;
+    const at = (dl) => fromHsl([h, s, clamp(l + dl, 0, 1)]);
+    const dark = l < 0.55;
+    return {
+      top: css(at(SPREAD), a),
+      bottom: css(at(-SPREAD), a),
+      flat: css(at(0), a),
+      ink: dark ? PALE : INK2,
+      dark,
+      tint: hex(tint),
+      light: l,
+      opacity: a
+    };
+  }
+
+  // dist/web/features/create/Create.js
+  var { el: el5 } = ui_exports;
+  var LIT_FOR = 24 * 36e5;
+  var ZOOM = { min: 0.25, max: 4 };
+  var Create = class extends Feature {
+    start() {
+      this.world = loadWorld(this.storage.get("world"));
+      this.roomId = null;
+      this.draft = null;
+      this.current = {};
+      this.fresh = false;
+      this.sel = null;
+      this.renaming = null;
+      this.editing = null;
+      this.picker = ui_exports.filePicker("image/*");
+      this.backdrop = this.use("backdrop");
+      this.build();
+      this.provide("create", this);
+      document.addEventListener("keydown", (e) => this.onKey(e));
+      window.addEventListener("resize", () => this.roomId && this.place());
+      document.addEventListener("paste", (e) => this.onPaste(e));
+    }
+    // ---- Opening and closing ----
+    open() {
+      this.world = loadWorld(this.storage.get("world"));
+      this.app.shell?.closeMenu?.();
+      clearTimeout(this.closing);
+      this.page = pageLook(this.backdrop?.colours?.());
+      this.root.style.setProperty("--create-top", this.page.top);
+      this.root.style.setProperty("--create-bottom", this.page.bottom);
+      this.root.hidden = false;
+      document.documentElement.classList.add("create-open");
+      this.showRooms();
+      this.root.getBoundingClientRect();
+      this.root.classList.add("up");
+      this.backdrop?.cover?.(true);
+    }
+    close() {
+      this.closeSheet();
+      this.stopWriting();
+      this.backdrop?.cover?.(false);
+      this.root.classList.remove("up");
+      document.documentElement.classList.remove("create-dark");
+      clearTimeout(this.closing);
+      this.closing = setTimeout(() => {
+        this.root.hidden = true;
+        document.documentElement.classList.remove("create-open");
+      }, 520);
+    }
+    back() {
+      if (this.roomId) this.showRooms();
+      else this.close();
+    }
+    showRooms() {
+      this.closeSheet();
+      this.stopWriting();
+      this.roomId = null;
+      this.sel = null;
+      this.roomPage.hidden = true;
+      this.roomsPage.hidden = false;
+      this.root.classList.remove("in-room");
+      this.backBtn.setAttribute("aria-label", "Back to the home page");
+      document.documentElement.classList.remove("create-dark");
+      this.drawRooms();
+    }
+    openRoom(id) {
+      if (!room(this.world, id)) return;
+      this.roomId = id;
+      this.sel = null;
+      this.draft = null;
+      this.roomsPage.hidden = true;
+      this.roomPage.hidden = false;
+      this.root.classList.add("in-room");
+      this.backBtn.setAttribute("aria-label", "Back to the rooms");
+      this.tinting = false;
+      this.drawRoom();
+    }
+    save() {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = setTimeout(() => this.storage.set("world", this.world), 250);
+    }
+    // ---- Building the pages ----
+    build() {
+      this.grid = el5("div", { class: "create-grid" });
+      this.roomsPage = el5(
+        "section",
+        { class: "create-rooms", "aria-label": "Rooms" },
+        el5("div", { class: "create-grid-wrap" }, this.grid),
+        el5(
+          "div",
+          { class: "create-rooms-foot" },
+          el5(
+            "nav",
+            { class: "create-rooms-words", "aria-label": "Rooms" },
+            el5("button", { type: "button", class: "create-word", "aria-current": "page", onclick: () => this.grid.scrollIntoView?.({ behavior: "smooth" }) }, "Rooms"),
+            el5("button", { type: "button", class: "create-word", onclick: () => this.newRoom() }, "New room"),
+            el5("button", { type: "button", class: "create-word", onclick: () => this.app.shell?.openSettings?.() }, "Settings")
+          ),
+          el5("p", { class: "create-note" }, "Start typing to write in Messy thoughts")
+        )
+      );
+      this.backBtn = el5(
+        "button",
+        { type: "button", class: "create-back", "aria-label": "Back to the home page", onclick: () => this.back() },
+        ui_exports.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>')
+      );
+      this.crumbName = el5("button", { type: "button", class: "create-crumb create-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
+      this.modes = el5("div", { class: "create-modes", role: "radiogroup", "aria-label": "Ontological mode" });
+      this.world$ = el5("div", { class: "create-world" });
+      this.stage = el5("div", { class: "create-stage", "data-own-swipe": "" }, this.world$);
+      this.input = el5("textarea", { class: "create-input", "aria-label": "Write a thought", rows: 1, autocomplete: "off", spellcheck: "false" });
+      this.bar = el5("div", { class: "create-bar", hidden: true });
+      this.roomPage = el5(
+        "section",
+        { class: "create-room", hidden: true, "aria-label": "Room" },
+        this.stage,
+        this.modes,
+        el5("div", { class: "create-top" }, this.crumbName),
+        el5(
+          "div",
+          { class: "create-foot" },
+          el5("button", { type: "button", class: "create-word create-write", onclick: () => this.beginWriting() }, "Write"),
+          el5("button", { type: "button", class: "create-word", title: "Alt+P", onclick: () => this.openSheet("passage") }, "Passage"),
+          el5("button", { type: "button", class: "create-word", title: "Alt+I", onclick: () => this.choosePicture() }, "Picture"),
+          el5("button", { type: "button", class: "create-word", onclick: () => this.toggleTint() }, "Tint"),
+          el5("span", { class: "create-keys" }, "Enter ends a thought · Ctrl+Enter starts a new train · Alt+P a passage · Alt+I a picture")
+        ),
+        this.bar,
+        this.tintPanel = el5("div", { class: "create-tint", hidden: true }),
+        this.sheet = el5("div", { class: "create-sheet", hidden: true }),
+        this.input
+      );
+      this.root = el5("div", { class: "create", hidden: true }, this.roomsPage, this.roomPage, this.backBtn);
+      (document.getElementById("folio-root") || document.body).append(this.root);
+      this.input.addEventListener("input", () => this.onInput());
+      this.input.addEventListener("keydown", (e) => this.onInputKey(e));
+      this.input.addEventListener("blur", () => {
+        if (this.draft && !this.input.value.trim()) {
+          this.draft = null;
+          this.drawWorld();
+        }
+      });
+      this.stage.addEventListener("pointerdown", (e) => this.onDown(e));
+      this.stage.addEventListener("dblclick", (e) => {
+        const id = e.target.closest("[data-id]")?.dataset.id;
+        if (id && kindOf(this.world.things[id]) !== "line") this.openSheet(null, id);
+      });
+      this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+    }
+    // ---- The rooms page ----
+    drawRooms() {
+      const now = Date.now();
+      this.grid.replaceChildren(...rooms(this.world).map((r) => {
+        const look = this.lookOf(r);
+        const last = lastWritten(this.world, r.id);
+        const count = roomThoughts(this.world, r.id).length;
+        const lit = last != null && now - last < LIT_FOR;
+        const name2 = this.renaming === r.id ? this.nameField(r, () => {
+          this.renaming = null;
+          this.drawRooms();
+        }) : el5("span", { class: "create-tile-name" }, r.name);
+        return el5(
+          "div",
+          { class: "create-tile" },
+          el5("button", {
+            type: "button",
+            class: "create-window" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : ""),
+            style: `--room-top:${look.top};--room-bottom:${look.bottom};--room-flat:${look.flat}`,
+            "aria-label": `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
+            onclick: () => this.openRoom(r.id)
+          }),
+          el5(
+            "div",
+            { class: "create-tile-label", ondblclick: () => {
+              this.renaming = r.id;
+              this.drawRooms();
+            } },
+            name2,
+            el5("span", { class: "create-tile-count" }, count ? String(count) : "")
+          )
+        );
+      }));
+      this.grid.querySelector(".create-name-field")?.focus();
+    }
+    newRoom() {
+      const r = addRoom(this.world, "Untitled");
+      this.save();
+      this.renaming = r.id;
+      this.drawRooms();
+      this.grid.querySelector(".create-name-field")?.select();
+    }
+    // An input for a room's name: Enter or leaving it keeps the name, Escape keeps the old one.
+    nameField(r, done) {
+      let finished = false;
+      const finish = (keep) => {
+        if (finished) return;
+        finished = true;
+        if (keep) {
+          name(this.world, r.id, field3.value);
+          this.save();
+        }
+        done();
+      };
+      const field3 = el5("input", {
+        class: "create-name-field",
+        value: r.name,
+        "aria-label": "Room name",
+        maxlength: 60,
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") finish(true);
+          if (e.key === "Escape") finish(false);
+        },
+        onblur: () => finish(true)
+      });
+      return field3;
+    }
+    // ---- A room ----
+    get mode() {
+      return view3(this.world, this.roomId).mode;
+    }
+    lookOf(r) {
+      return roomLook(r, this.page?.average, r.id === MESSY);
+    }
+    // The open room's colours, on the room page (and the menu's lines take its ink).
+    paintRoom() {
+      const look = this.lookOf(room(this.world, this.roomId));
+      for (const [k, v] of Object.entries({ "--room-top": look.top, "--room-bottom": look.bottom, "--room-ink": look.ink })) {
+        this.roomPage.style.setProperty(k, v);
+        this.root.style.setProperty(k, v);
+      }
+      this.roomPage.classList.toggle("dark", look.dark);
+      document.documentElement.classList.toggle("create-dark", look.dark);
+      return look;
+    }
+    drawRoom() {
+      const r = room(this.world, this.roomId);
+      this.paintRoom();
+      if (this.renaming === r.id) {
+        this.crumbName.replaceChildren(this.nameField(r, () => {
+          this.renaming = null;
+          this.drawRoom();
+        }));
+        this.crumbName.querySelector("input").focus();
+      } else this.crumbName.replaceChildren(r.name);
+      this.modes.replaceChildren(...MODES2.map((m) => el5("button", {
+        type: "button",
+        role: "radio",
+        class: "create-mode",
+        "aria-checked": String(m.id === this.mode),
+        onclick: () => this.setMode(m.id)
+      }, m.name)));
+      this.root.dataset.mode = this.mode;
+      this.place();
+      this.drawWorld();
+    }
+    renameOpenRoom() {
+      if (this.renaming) return;
+      this.renaming = this.roomId;
+      this.drawRoom();
+    }
+    setMode(id) {
+      view3(this.world, this.roomId).mode = id;
+      this.sel = null;
+      this.save();
+      this.drawRoom();
+    }
+    // The world's transform: the view's x, y (world units) sit at the middle of the screen.
+    place() {
+      const v = view3(this.world, this.roomId);
+      const { width, height } = this.stage.getBoundingClientRect();
+      this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
+    }
+    toWorld(clientX, clientY) {
+      const v = view3(this.world, this.roomId);
+      const b = this.stage.getBoundingClientRect();
+      return { x: v.x + (clientX - b.left - b.width / 2) / v.zoom, y: v.y + (clientY - b.top - b.height / 2) / v.zoom };
+    }
+    // What's on the screen, in world units, less a margin all round.
+    visibleBox(margin = 0.18) {
+      const v = view3(this.world, this.roomId);
+      const { width, height } = this.stage.getBoundingClientRect();
+      const w = width / v.zoom, h = height / v.zoom;
+      return { x: v.x - w / 2 + w * margin, y: v.y - h / 2 + h * margin, w: w * (1 - 2 * margin) * 0.75, h: h * (1 - 2 * margin) };
+    }
+    drawWorld() {
+      if (!this.roomId) return;
+      const w = this.world;
+      const nodes = [];
+      if (this.mode === "joyce") {
+        for (const t of roomTrains(w, this.roomId)) {
+          const kids = t.folded ? [this.thoughtNode(t)] : trainThoughts(w, t.id).map((th) => this.thoughtNode(th));
+          if (this.draft?.train === t.id) kids.push(this.draftNode());
+          nodes.push(el5("div", {
+            class: "create-train" + (this.sel?.id === t.id ? " selected" : ""),
+            "data-train": t.id,
+            style: `left:${t.x}px;top:${t.y}px`
+          }, kids));
+        }
+        if (this.draft && !this.draft.train) {
+          nodes.push(el5("div", { class: "create-train", style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
+        }
+      } else {
+        const all = roomUnits(w, this.roomId);
+        for (const th of all) {
+          const p = pessoaPoint(w, this.roomId, th.id);
+          nodes.push(el5("div", {
+            class: "create-float" + (this.sel?.id === th.id ? " selected" : ""),
+            "data-thought": th.id,
+            style: `left:${p.x}px;top:${p.y}px`
+          }, this.thoughtNode(th)));
+        }
+        if (this.draft) {
+          const p = spiralPoint(all.length, "draft");
+          nodes.push(el5("div", { class: "create-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+        }
+      }
+      this.world$.replaceChildren(...nodes);
+      this.drawBar();
+    }
+    // One thought, drawn by its kind.
+    thoughtNode(th) {
+      const kind = kindOf(th);
+      if (kind === "passage" || kind === "train") {
+        const body = kind === "train" ? thoughtText(this.world, th) : th.body;
+        return el5(
+          "div",
+          { class: "create-passage" + (kind === "train" ? " folded" : ""), "data-id": th.id },
+          th.title ? el5("div", { class: "create-passage-title" }, th.title) : null,
+          body ? el5("div", { class: "create-passage-body" }, body) : null
+        );
+      }
+      if (kind === "picture") {
+        return el5(
+          "figure",
+          { class: "create-picture", "data-id": th.id },
+          el5("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
+          th.text ? el5("figcaption", {}, th.text) : null
+        );
+      }
+      return el5("span", { class: "create-thought", "data-id": th.id }, th.text);
+    }
+    draftNode() {
+      this.draftEl = el5("span", { class: "create-thought create-draft" }, this.input.value);
+      return this.draftEl;
+    }
+    // ---- Writing ----
+    onKey(e) {
+      if (this.root.hidden || document.querySelector("dialog[open]")) return;
+      if (e.target === this.input || e.target.matches?.("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "Escape") {
+        if (this.sel) {
+          this.sel = null;
+          this.drawWorld();
+        } else if (this.tinting) this.toggleTint();
+        else this.back();
+        return;
+      }
+      if (this.editing) return;
+      if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyP" || e.code === "KeyI")) {
+        e.preventDefault();
+        if (e.code === "KeyP") this.openSheet("passage");
+        else this.choosePicture();
+        return;
+      }
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && this.roomId) {
+        this.fresh = true;
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      if (e.target.closest?.("button") && e.key === " ") return;
+      e.preventDefault();
+      if (!this.roomId) this.openRoom(MESSY);
+      this.beginWriting(e.key);
+    }
+    // Starts a thought (if one isn't started), with `seed` as its first letters.
+    beginWriting(seed = "") {
+      if (!this.roomId) return;
+      if (!this.draft) {
+        this.draft = this.target();
+        this.sel = null;
+      }
+      this.input.value += seed;
+      this.input.focus({ preventScroll: true });
+      this.drawWorld();
+      this.showDraft();
+    }
+    freeSpot() {
+      const taken = roomTrains(this.world, this.roomId).map((t) => ({ x: t.x, y: t.y }));
+      return randomSpot(this.visibleBox(), taken);
+    }
+    onInput() {
+      if (!this.draft) {
+        this.beginWriting();
+        return;
+      }
+      if (this.draftEl) this.draftEl.textContent = this.input.value;
+      this.showDraft();
+    }
+    onInputKey(e) {
+      if (e.altKey && (e.code === "KeyP" || e.code === "KeyI")) {
+        e.preventDefault();
+        if (e.code === "KeyP") this.openSheet("passage");
+        else this.choosePicture();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        this.commit();
+        if (e.ctrlKey || e.metaKey) this.fresh = true;
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        this.stopWriting();
+      }
+    }
+    commit() {
+      const text = this.input.value;
+      this.input.value = "";
+      const d = this.draft;
+      this.draft = null;
+      if (!d || !text.trim()) {
+        this.drawWorld();
+        return;
+      }
+      const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
+      addThought(this.world, train.id, text);
+      this.current[this.roomId] = train.id;
+      this.save();
+      this.drawWorld();
+    }
+    stopWriting() {
+      if (this.draft) this.commit();
+      this.input.blur();
+    }
+    // Keeps the thought being written on the screen, moving the view if it has gone off it.
+    showDraft() {
+      if (!this.draftEl) return;
+      const r = this.draftEl.getBoundingClientRect();
+      const b = this.stage.getBoundingClientRect();
+      const pad = 60;
+      let dx = 0, dy = 0;
+      if (r.right > b.right - pad) dx = r.right - (b.right - pad);
+      if (r.left < b.left + pad) dx = r.left - (b.left + pad);
+      if (r.bottom > b.bottom - pad * 2) dy = r.bottom - (b.bottom - pad * 2);
+      if (r.top < b.top + pad * 1.5) dy = r.top - (b.top + pad * 1.5);
+      if (!dx && !dy) return;
+      const v = view3(this.world, this.roomId);
+      v.x += dx / v.zoom;
+      v.y += dy / v.zoom;
+      this.place();
+    }
+    // ---- Moving around, and moving things ----
+    onDown(e) {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      const pointers = this.pointers ||= /* @__PURE__ */ new Map();
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this.stage.setPointerCapture(e.pointerId);
+      if (pointers.size === 2) {
+        this.gesture = { kind: "pinch", ...this.pinchState() };
+        return;
+      }
+      const v = view3(this.world, this.roomId);
+      const trainEl = e.target.closest("[data-train]");
+      const thoughtEl = e.target.closest("[data-thought]");
+      let thing = null;
+      if (trainEl && this.mode === "joyce") {
+        const t = this.world.things[trainEl.dataset.train];
+        thing = { kind: "train", id: t.id, x: t.x, y: t.y, placed: false };
+      } else if (thoughtEl && this.mode === "pessoa") {
+        const id = thoughtEl.dataset.thought;
+        const p = pessoaPoint(this.world, this.roomId, id);
+        thing = { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id, x: p.x, y: p.y, placed: true };
+      }
+      this.gesture = { kind: thing ? "drag" : "pan", thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+      const move2 = (ev) => this.onMove(ev);
+      const up = (ev) => {
+        pointers.delete(ev.pointerId);
+        if (pointers.size) {
+          if (pointers.size === 1) this.gesture = null;
+          return;
+        }
+        this.stage.removeEventListener("pointermove", move2);
+        this.stage.removeEventListener("pointerup", up);
+        this.stage.removeEventListener("pointercancel", up);
+        this.onUp();
+      };
+      if (pointers.size === 1) {
+        this.stage.addEventListener("pointermove", move2);
+        this.stage.addEventListener("pointerup", up);
+        this.stage.addEventListener("pointercancel", up);
+      }
+    }
+    pinchState() {
+      const [a, b] = [...this.pointers.values()];
+      const v = view3(this.world, this.roomId);
+      return { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: v.zoom, mid: this.toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
+    }
+    onMove(e) {
+      if (!this.pointers?.has(e.pointerId)) return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const g = this.gesture;
+      if (!g) return;
+      const v = view3(this.world, this.roomId);
+      if (g.kind === "pinch") {
+        const [a, b] = [...this.pointers.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        this.zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, g.z0 * d / g.d0, g.mid);
+        return;
+      }
+      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+      if (!g.moved && Math.hypot(dx, dy) < 4) return;
+      g.moved = true;
+      if (g.kind === "pan") {
+        v.x = g.vx - dx / v.zoom;
+        v.y = g.vy - dy / v.zoom;
+        this.place();
+      } else {
+        const x = g.thing.x + dx / v.zoom, y = g.thing.y + dy / v.zoom;
+        g.el.style.left = `${x}px`;
+        g.el.style.top = `${y}px`;
+        g.to = { x: Math.round(x), y: Math.round(y) };
+      }
+    }
+    onUp() {
+      const g = this.gesture;
+      this.gesture = null;
+      if (!g || g.kind === "pinch") {
+        this.save();
+        return;
+      }
+      if (!g.moved) {
+        this.sel = g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
+        if (!g.thing && this.draft) this.stopWriting();
+        this.drawWorld();
+        return;
+      }
+      if (g.thing && g.to) {
+        if (g.thing.placed) place(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
+        else Object.assign(this.world.things[g.thing.id], g.to);
+      }
+      this.save();
+    }
+    onWheel(e) {
+      e.preventDefault();
+      const v = view3(this.world, this.roomId);
+      const mouse = e.deltaMode !== 0 || e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY);
+      if (e.ctrlKey || mouse) {
+        const k = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 15e-4) * (e.deltaMode === 1 ? 30 : 1));
+        this.zoomAt(e.clientX, e.clientY, v.zoom * k);
+      } else {
+        v.x += e.deltaX / v.zoom;
+        v.y += e.deltaY / v.zoom;
+        this.place();
+      }
+      clearTimeout(this.wheelSave);
+      this.wheelSave = setTimeout(() => this.save(), 300);
+    }
+    // Zooms to `zoom`, keeping the world point `at` (default: the one under the screen point) still.
+    zoomAt(clientX, clientY, zoom, at = this.toWorld(clientX, clientY)) {
+      const v = view3(this.world, this.roomId);
+      v.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom));
+      const b = this.stage.getBoundingClientRect();
+      v.x = at.x - (clientX - b.left - b.width / 2) / v.zoom;
+      v.y = at.y - (clientY - b.top - b.height / 2) / v.zoom;
+      this.place();
+    }
+    // ---- The room's own look: tint, lightness, opacity ----
+    toggleTint() {
+      this.tinting = !this.tinting;
+      this.drawTint();
+    }
+    drawTint() {
+      if (!this.tinting || !this.roomId) {
+        this.tintPanel.hidden = true;
+        return;
+      }
+      const r = room(this.world, this.roomId);
+      const look = this.lookOf(r);
+      const set = (fields) => {
+        update(this.world, r.id, fields);
+        this.paintRoom();
+        this.save();
+      };
+      const slider2 = (label, key, min, max, value) => el5(
+        "label",
+        { class: "create-slider" },
+        el5("span", {}, label),
+        el5("input", { type: "range", min, max, step: 0.01, value, oninput: (e) => set({ [key]: +e.target.value }) })
+      );
+      this.tintPanel.hidden = false;
+      this.tintPanel.replaceChildren(
+        el5(
+          "label",
+          { class: "create-slider" },
+          el5("span", {}, "Tint"),
+          el5("input", { type: "color", value: look.tint, oninput: (e) => set({ tint: e.target.value }) })
+        ),
+        slider2("Lightness", "light", 0.05, 0.95, look.light),
+        slider2("Opacity", "opacity", 0.3, 1, look.opacity),
+        el5("button", { type: "button", class: "create-word", onclick: () => {
+          delete r.tint;
+          delete r.light;
+          delete r.opacity;
+          this.paintRoom();
+          this.save();
+          this.drawTint();
+        } }, "Back to its own"),
+        el5("button", { type: "button", class: "create-word", onclick: () => this.toggleTint() }, "Done")
+      );
+    }
+    // ---- Moving a train or thought to another room ----
+    drawBar() {
+      if (!this.sel) {
+        this.bar.hidden = true;
+        return;
+      }
+      const others = rooms(this.world).filter((r) => r.id !== this.roomId);
+      const what = this.sel.kind === "train" ? "this train" : "this thought";
+      this.bar.hidden = false;
+      this.bar.replaceChildren(
+        el5("span", { class: "create-bar-label" }, `Move ${what} to`),
+        ...others.map((r) => el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(r.id) }, r.name)),
+        el5("button", { type: "button", class: "create-word", onclick: () => this.moveTo(addRoom(this.world, "Untitled").id) }, "A new room"),
+        ...this.selActions()
+      );
+    }
+    // Fold, unfold and edit, for what is selected.
+    selActions() {
+      const out = [];
+      const word = (label, fn) => el5("button", { type: "button", class: "create-word create-bar-action", onclick: fn }, label);
+      const th = this.world.things[this.sel.id];
+      if (!th) return out;
+      if (kindOf(th) === "train") {
+        const all = trainThoughts(this.world, th.id);
+        if (th.folded) {
+          out.push(word("Unfold", () => this.unfoldTrain(th.id)), word("Name", () => this.openSheet(null, th.id)));
+        } else {
+          if (all.length > 1) out.push(word("Fold into one thought", () => this.foldTrain(th.id)));
+          if (all.length === 1 && kindOf(all[0]) !== "line") out.push(word("Edit", () => this.openSheet(null, all[0].id)));
+        }
+      } else if (kindOf(th) !== "line") out.push(word("Edit", () => this.openSheet(null, th.id)));
+      return out;
+    }
+    foldTrain(trainId) {
+      if (!fold(this.world, trainId)) return;
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+      this.openSheet(null, trainId);
+    }
+    unfoldTrain(id) {
+      unfold(this.world, id);
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+    }
+    // ---- Passage and Picture: the two templates for bigger thoughts ----
+    // Where a new thought goes: on with the current train, or a new train at a free spot.
+    target() {
+      const cur = this.current[this.roomId];
+      const t = this.world.things[cur];
+      if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
+      const spot = this.freeSpot();
+      this.fresh = false;
+      return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
+    }
+    async choosePicture() {
+      const file = await this.picker.pick();
+      if (file) this.takePicture(file);
+    }
+    onPaste(e) {
+      if (this.root.hidden || !this.roomId || this.editing) return;
+      const file = [...e.clipboardData?.files || []].find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+      e.preventDefault();
+      this.takePicture(file);
+    }
+    async takePicture(file) {
+      try {
+        const src = await shrinkPicture(file);
+        this.openSheet("picture", null, src);
+      } catch {
+        this.toast("That file couldn't be read as a picture.");
+      }
+    }
+    // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
+    // an existing thought (id). Keep (Ctrl+Enter) saves it; Escape or Cancel leaves it.
+    openSheet(kind, id = null, src = null) {
+      if (!this.roomId) return;
+      if (this.draft) this.commit();
+      const th = id ? this.world.things[id] : null;
+      kind = th ? kindOf(th) : kind;
+      this.editing = { kind, id, src: src || th?.src || null };
+      const keep = () => this.keepSheet();
+      const keys = (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          keep();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          this.closeSheet();
+        }
+      };
+      const fields = [];
+      if (kind === "train") {
+        this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: "Name this train of thought", "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        fields.push(this.sheetTitle, el5("div", { class: "create-sheet-preview" }, thoughtText(this.world, th)));
+      } else if (kind === "passage") {
+        this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
+        this.sheetBody = el5("textarea", { class: "create-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
+        this.sheetBody.value = th?.body || "";
+        fields.push(this.sheetTitle, this.sheetBody);
+      } else {
+        this.sheetCaption = el5("input", { class: "create-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
+        fields.push(el5("img", { class: "create-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
+      }
+      this.sheet.replaceChildren(
+        el5("div", { class: "create-sheet-kind" }, { passage: "Passage", picture: "Picture", train: "A folded train" }[kind]),
+        ...fields,
+        el5(
+          "div",
+          { class: "create-sheet-words" },
+          el5("button", { type: "button", class: "create-word", onclick: keep }, "Keep"),
+          el5("button", { type: "button", class: "create-word", onclick: () => this.closeSheet() }, "Cancel"),
+          el5("span", { class: "create-keys" }, "Ctrl+Enter keeps it")
+        )
+      );
+      this.sheet.hidden = false;
+      (kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle).focus();
+    }
+    keepSheet() {
+      const ed = this.editing;
+      if (!ed) return;
+      if (ed.kind === "train") name(this.world, ed.id, this.sheetTitle.value);
+      else {
+        const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
+        if (ed.id) update(this.world, ed.id, fields);
+        else {
+          const t = this.target();
+          const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
+          if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
+          else if (!t.train) remove(this.world, train.id);
+        }
+      }
+      this.save();
+      this.closeSheet();
+      this.drawWorld();
+    }
+    closeSheet() {
+      this.editing = null;
+      this.sheet.hidden = true;
+      this.sheet.replaceChildren();
+    }
+    moveTo(toRoom) {
+      const v = view3(this.world, toRoom);
+      const box = { x: v.x - 300, y: v.y - 160, w: 400, h: 320 };
+      const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
+      const spot = randomSpot(box, taken);
+      const x = Math.round(spot.x), y = Math.round(spot.y);
+      move(this.world, this.sel.id, toRoom, x, y);
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+      this.toast(`Moved to ${room(this.world, toRoom).name}`);
+    }
+  };
+
+  // dist/web/features/home/fonts/tenor-sans.js
+  var tenor_sans_default = "data:font/woff2;base64,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";
+
+  // dist/web/features/home/fonts.js
+  var FONTS = [
+    {
+      id: "tenor-sans",
+      name: "Tenor Sans",
+      family: '"Tenor Sans", "Optima", "Candara", sans-serif',
+      files: [{ src: tenor_sans_default, weight: "400" }]
+    },
+    {
+      id: "system",
+      name: "System",
+      family: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+    }
+  ];
+  var DEFAULT_FONT = FONTS[0].id;
+  function findFont(id) {
+    return FONTS.find((f) => f.id === id) || FONTS[0];
+  }
+  var loaded = /* @__PURE__ */ new Map();
+  function loadFont(font) {
+    if (!font.files?.length || typeof FontFace === "undefined") return Promise.resolve();
+    if (!loaded.has(font.id)) {
+      const name2 = font.family.split(",")[0].trim().replace(/^["']|["']$/g, "");
+      loaded.set(font.id, Promise.all(font.files.map(async (f) => {
+        const face = new FontFace(name2, `url(${f.src})`, { weight: f.weight || "400", style: f.style || "normal", display: "swap" });
+        document.fonts.add(await face.load());
+      })).catch(() => {
+      }));
+    }
+    return loaded.get(font.id);
+  }
+
+  // dist/web/features/home/Home.js
+  var { el: el6 } = ui_exports;
+  var TITLE = "Traumerei";
+  var Home = class extends Feature {
+    start() {
+      this.font = findFont(this.storage.get("font", DEFAULT_FONT));
+      this.applyFont();
+      this.page = el6(
+        "div",
+        { class: "home" },
+        el6("h1", { class: "home-title" }, TITLE),
+        el6(
+          "nav",
+          { class: "home-nav", "aria-label": "Home" },
+          el6("button", { type: "button", class: "home-link home-create", onclick: () => this.create() }, "Create"),
+          el6(
+            "div",
+            { class: "home-row" },
+            el6("button", { type: "button", class: "home-link", onclick: () => this.settings() }, "Settings"),
+            el6("button", { type: "button", class: "home-link", onclick: () => this.account() }, "Account")
+          )
+        )
+      );
+      (document.getElementById("folio-root") || document.body).append(this.page);
+      this.add("header.buttons", { id: "home-create", label: "Create", icon: "plus", order: 5, onClick: () => this.create() });
+      document.addEventListener("click", (e) => {
+        if (e.target.matches?.("dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list")) this.app.shell?.closeMenu?.();
+      });
+      this.add("settings", { id: "home-typeface", title: "Typeface", order: 20, render: () => this.typeface() });
+    }
+    // ---- The three words ----
+    create() {
+      this.use("create")?.open();
+    }
+    settings() {
+      this.app.shell?.openSettings?.();
+    }
+    account() {
+      this.app.shell?.openAccount?.();
+    }
+    // ---- Typeface ----
+    applyFont() {
+      document.documentElement.style.setProperty("--home-font", this.font.family);
+      document.documentElement.classList.add("home-font-loading");
+      loadFont(this.font).then(() => document.documentElement.classList.remove("home-font-loading"));
+    }
+    chooseFont(id) {
+      this.font = findFont(id);
+      this.storage.set("font", this.font.id);
+      this.applyFont();
+      this.app.shell?.refreshSettings?.();
+    }
+    // Settings → Typeface: one button per font, each written in its own face.
+    typeface() {
+      for (const f of FONTS) loadFont(f);
+      return el6(
+        "div",
+        { class: "seg home-fonts", role: "radiogroup", "aria-label": "Typeface", style: `--tabs:${FONTS.length}` },
+        FONTS.map((f) => el6("button", {
+          type: "button",
+          role: "radio",
+          "aria-checked": String(f.id === this.font.id),
+          "aria-selected": String(f.id === this.font.id),
+          style: `font-family:${f.family}`,
+          onclick: () => this.chooseFont(f.id)
+        }, f.name))
+      );
+    }
+  };
+
   // dist/web/standalone-entry.js
   globalThis.__folioFeature0 = Account;
   var url0 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature0;"], { type: "text/javascript" }));
-  globalThis.__folioFeature1 = Create;
+  globalThis.__folioFeature1 = Renderer;
   var url1 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature1;"], { type: "text/javascript" }));
-  globalThis.__folioFeature2 = Home;
+  globalThis.__folioFeature2 = Create;
   var url2 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature2;"], { type: "text/javascript" }));
-  globalThis.__folioFeature3 = Renderer;
+  globalThis.__folioFeature3 = Home;
   var url3 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature3;"], { type: "text/javascript" }));
   var config = {
     "id": "mask-renderer",
@@ -7419,7 +7632,7 @@ dialog.menu-drawer::before {
     "framework": "1.10.0",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "create", "name": "Create", "description": "Rooms of thoughts: a grid of rooms under the veil, each a canvas to write in, seen through an ontological mode (Joyce or Pessoa).", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/create/Create.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["create"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "create", "name": "Create", "description": "Rooms of thoughts: a grid of rooms under the veil, each a canvas to write in, seen through an ontological mode (Joyce or Pessoa).", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/create/Create.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["create"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }]).start();
 })();
 </script>

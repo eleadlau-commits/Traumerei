@@ -1,9 +1,13 @@
-// Create: rooms of thoughts. Create (on the home page, or in the menu) opens the rooms: dark
-// squares on a grid under the menu's veil, like windows of a building at night; a room written in
-// lately is lit. There is always "Messy thoughts". Typing anything on the rooms page opens Messy
-// thoughts and starts writing there, at a random place.
+// Create: rooms of thoughts. Create (on the home page, or in the menu) slides the rooms page up
+// from the bottom, leaving a strip of the home page at the top with a back arrow (top right) home.
+// The page is a still gradient of the picture's own colours, a little darker, so nothing is drawn
+// while it shows (the picture's animation stops underneath). The rooms are squares of one size on
+// a grid; a room written in lately glows. There is always "Messy thoughts", a little darker than
+// the rest. Rooms, New room and Settings are along the bottom. Typing anything on the rooms page
+// opens Messy thoughts and starts writing there, at a random place.
 //
-// A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
+// A room fills the screen as one gradient of its own colour, with the back arrow to the rooms.
+// Its tint, lightness and opacity are its own (Tint, at the bottom; look.js). A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
 // writes a thought; Enter ends it. Each room is seen through an ontological mode:
 // - Joyce (the default): thoughts are joined by time into trains, read like prose. Enter goes on
 //   with the same train; Ctrl+Enter starts a new train somewhere else. A train can't be broken:
@@ -29,6 +33,7 @@ import {
   roomUnits, lastWritten, spiralPoint, pessoaPoint, place, randomSpot,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
+import { pageLook, roomLook } from './look.js';
 
 const { el } = ui;
 const LIT_FOR = 24 * 3600e3; // a room stays lit for a day after it was written in
@@ -46,6 +51,7 @@ export default class Create extends Feature {
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
 
+    this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.build();
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
@@ -58,16 +64,33 @@ export default class Create extends Feature {
   open() {
     this.world = loadWorld(this.storage.get('world')); // it may have arrived from the account meanwhile
     this.app.shell?.closeMenu?.();
+    clearTimeout(this.closing);
+    this.page = pageLook(this.backdrop?.colours?.()); // read once: the page is still from here on
+    this.root.style.setProperty('--create-top', this.page.top);
+    this.root.style.setProperty('--create-bottom', this.page.bottom);
     this.root.hidden = false;
     document.documentElement.classList.add('create-open');
     this.showRooms();
+    this.root.getBoundingClientRect(); // so the slide starts from below
+    this.root.classList.add('up');
+    this.backdrop?.cover?.(true);
   }
 
   close() {
     this.closeSheet();
     this.stopWriting();
-    this.root.hidden = true;
-    document.documentElement.classList.remove('create-open', 'create-dark');
+    this.backdrop?.cover?.(false);
+    this.root.classList.remove('up');
+    document.documentElement.classList.remove('create-dark');
+    clearTimeout(this.closing);
+    this.closing = setTimeout(() => {
+      this.root.hidden = true;
+      document.documentElement.classList.remove('create-open');
+    }, 520);
+  }
+
+  back() {
+    if (this.roomId) this.showRooms(); else this.close();
   }
 
   showRooms() {
@@ -77,6 +100,8 @@ export default class Create extends Feature {
     this.sel = null;
     this.roomPage.hidden = true;
     this.roomsPage.hidden = false;
+    this.root.classList.remove('in-room');
+    this.backBtn.setAttribute('aria-label', 'Back to the home page');
     document.documentElement.classList.remove('create-dark');
     this.drawRooms();
   }
@@ -88,7 +113,9 @@ export default class Create extends Feature {
     this.draft = null;
     this.roomsPage.hidden = true;
     this.roomPage.hidden = false;
-    document.documentElement.classList.add('create-dark');
+    this.root.classList.add('in-room');
+    this.backBtn.setAttribute('aria-label', 'Back to the rooms');
+    this.tinting = false;
     this.drawRoom();
   }
 
@@ -102,13 +129,16 @@ export default class Create extends Feature {
   build() {
     this.grid = el('div', { class: 'create-grid' });
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },
-      el('div', { class: 'create-side' },
-        el('h2', { class: 'create-heading' }, 'Rooms'),
-        el('button', { type: 'button', class: 'create-word', onclick: () => this.newRoom() }, 'New room'),
-        el('button', { type: 'button', class: 'create-word', onclick: () => this.close() }, 'Home'),
-        el('p', { class: 'create-note' }, 'Start typing to write in Messy thoughts.')),
-      this.grid);
+      el('div', { class: 'create-grid-wrap' }, this.grid),
+      el('div', { class: 'create-rooms-foot' },
+        el('nav', { class: 'create-rooms-words', 'aria-label': 'Rooms' },
+          el('button', { type: 'button', class: 'create-word', 'aria-current': 'page', onclick: () => this.grid.scrollIntoView?.({ behavior: 'smooth' }) }, 'Rooms'),
+          el('button', { type: 'button', class: 'create-word', onclick: () => this.newRoom() }, 'New room'),
+          el('button', { type: 'button', class: 'create-word', onclick: () => this.app.shell?.openSettings?.() }, 'Settings')),
+        el('p', { class: 'create-note' }, 'Start typing to write in Messy thoughts')));
 
+    this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
+      ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
     this.crumbName = el('button', { type: 'button', class: 'create-crumb create-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
     this.modes = el('div', { class: 'create-modes', role: 'radiogroup', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'create-world' });
@@ -117,21 +147,20 @@ export default class Create extends Feature {
     this.bar = el('div', { class: 'create-bar', hidden: true });
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
       this.stage,
-      el('nav', { class: 'create-top', 'aria-label': 'Where you are' },
-        el('button', { type: 'button', class: 'create-crumb', onclick: () => this.showRooms() }, 'Rooms'),
-        el('span', { class: 'create-slash', 'aria-hidden': 'true' }, '/'),
-        this.crumbName),
       this.modes,
+      el('div', { class: 'create-top' }, this.crumbName),
       el('div', { class: 'create-foot' },
         el('button', { type: 'button', class: 'create-word create-write', onclick: () => this.beginWriting() }, 'Write'),
         el('button', { type: 'button', class: 'create-word', title: 'Alt+P', onclick: () => this.openSheet('passage') }, 'Passage'),
         el('button', { type: 'button', class: 'create-word', title: 'Alt+I', onclick: () => this.choosePicture() }, 'Picture'),
+        el('button', { type: 'button', class: 'create-word', onclick: () => this.toggleTint() }, 'Tint'),
         el('span', { class: 'create-keys' }, 'Enter ends a thought · Ctrl+Enter starts a new train · Alt+P a passage · Alt+I a picture')),
       this.bar,
+      this.tintPanel = el('div', { class: 'create-tint', hidden: true }),
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
       this.input);
 
-    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage);
+    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.backBtn);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -150,6 +179,7 @@ export default class Create extends Feature {
   drawRooms() {
     const now = Date.now();
     this.grid.replaceChildren(...rooms(this.world).map((r) => {
+      const look = this.lookOf(r);
       const last = lastWritten(this.world, r.id);
       const count = roomThoughts(this.world, r.id).length;
       const lit = last != null && now - last < LIT_FOR;
@@ -159,7 +189,8 @@ export default class Create extends Feature {
       return el('div', { class: 'create-tile' },
         el('button', {
           type: 'button',
-          class: 'create-window' + (lit ? ' lit' : ''),
+          class: 'create-window' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : ''),
+          style: `--room-top:${look.top};--room-bottom:${look.bottom};--room-flat:${look.flat}`,
           'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
           onclick: () => this.openRoom(r.id),
         }),
@@ -203,8 +234,23 @@ export default class Create extends Feature {
 
   get mode() { return view(this.world, this.roomId).mode; }
 
+  lookOf(r) { return roomLook(r, this.page?.average, r.id === MESSY); }
+
+  // The open room's colours, on the room page (and the menu's lines take its ink).
+  paintRoom() {
+    const look = this.lookOf(room(this.world, this.roomId));
+    for (const [k, v] of Object.entries({ '--room-top': look.top, '--room-bottom': look.bottom, '--room-ink': look.ink })) {
+      this.roomPage.style.setProperty(k, v);
+      this.root.style.setProperty(k, v);
+    }
+    this.roomPage.classList.toggle('dark', look.dark);
+    document.documentElement.classList.toggle('create-dark', look.dark);
+    return look;
+  }
+
   drawRoom() {
     const r = room(this.world, this.roomId);
+    this.paintRoom();
     if (this.renaming === r.id) {
       this.crumbName.replaceChildren(this.nameField(r, () => { this.renaming = null; this.drawRoom(); }));
       this.crumbName.querySelector('input').focus();
@@ -317,7 +363,7 @@ export default class Create extends Feature {
     if (this.root.hidden || document.querySelector('dialog[open]')) return;
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     if (e.key === 'Escape') {
-      if (this.sel) { this.sel = null; this.drawWorld(); } else if (this.roomId) this.showRooms(); else this.close();
+      if (this.sel) { this.sel = null; this.drawWorld(); } else if (this.tinting) this.toggleTint(); else this.back();
       return;
     }
     if (this.editing) return;
@@ -526,6 +572,35 @@ export default class Create extends Feature {
     v.x = at.x - (clientX - b.left - b.width / 2) / v.zoom;
     v.y = at.y - (clientY - b.top - b.height / 2) / v.zoom;
     this.place();
+  }
+
+  // ---- The room's own look: tint, lightness, opacity ----
+
+  toggleTint() {
+    this.tinting = !this.tinting;
+    this.drawTint();
+  }
+
+  drawTint() {
+    if (!this.tinting || !this.roomId) { this.tintPanel.hidden = true; return; }
+    const r = room(this.world, this.roomId);
+    const look = this.lookOf(r);
+    const set = (fields) => { update(this.world, r.id, fields); this.paintRoom(); this.save(); };
+    const slider = (label, key, min, max, value) => el('label', { class: 'create-slider' },
+      el('span', {}, label),
+      el('input', { type: 'range', min, max, step: 0.01, value, oninput: (e) => set({ [key]: +e.target.value }) }));
+    this.tintPanel.hidden = false;
+    this.tintPanel.replaceChildren(
+      el('label', { class: 'create-slider' },
+        el('span', {}, 'Tint'),
+        el('input', { type: 'color', value: look.tint, oninput: (e) => set({ tint: e.target.value }) })),
+      slider('Lightness', 'light', 0.05, 0.95, look.light),
+      slider('Opacity', 'opacity', 0.3, 1, look.opacity),
+      el('button', { type: 'button', class: 'create-word', onclick: () => {
+        delete r.tint; delete r.light; delete r.opacity;
+        this.paintRoom(); this.save(); this.drawTint();
+      } }, 'Back to its own'),
+      el('button', { type: 'button', class: 'create-word', onclick: () => this.toggleTint() }, 'Done'));
   }
 
   // ---- Moving a train or thought to another room ----
