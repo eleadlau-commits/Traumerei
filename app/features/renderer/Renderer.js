@@ -53,6 +53,33 @@ export default class Renderer extends Feature {
     });
     this.add('settings', { id: 'renderer-theme', title: 'Theme', order: 15, render: () => this.themes() });
     this.add('settings', { id: 'renderer-advanced', title: 'Advanced', order: 50, render: () => this.advanced() });
+    // For pages laid over the picture (Create): its colours, and a way to pause it while covered.
+    this.provide('backdrop', { colours: () => this.colours(), cover: (on) => this.cover(on) });
+  }
+
+  // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
+  // when nothing is drawn yet. Read once from a small copy, so it costs almost nothing.
+  colours() {
+    if (!this.canvas?.width) return null;
+    const n = 24;
+    const small = document.createElement('canvas');
+    small.width = n;
+    small.height = n;
+    const g = small.getContext('2d', { willReadFrequently: true });
+    g.drawImage(this.canvas, 0, 0, n, n);
+    const { data } = g.getImageData(0, 0, n, n);
+    const band = (y0, y1) => {
+      const sum = [0, 0, 0];
+      for (let y = y0; y < y1; y++) for (let x = 0; x < n; x++) for (let c = 0; c < 3; c++) sum[c] += data[(y * n + x) * 4 + c];
+      return sum.map((v) => Math.round(v / ((y1 - y0) * n)));
+    };
+    return { top: band(0, n / 3), bottom: band((2 * n) / 3, n) };
+  }
+
+  // While a page covers the picture, its animation stops (and starts again where it was).
+  cover(on) {
+    this.covered = !!on;
+    if (!this.covered && this.anim && this.resume) this.resume();
   }
 
   get current() {
@@ -302,12 +329,15 @@ export default class Renderer extends Feature {
     this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
     const paint = this.anim.kind === 'pixels' ? this.pixels() : this.shapes();
     let last = null;
+    let running = true;
     const step = (now) => {
+      if (this.covered) { running = false; last = null; return; } // stopped; resume() starts it again
       this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1000);
       last = now;
       paint(this.anim);
       this.tick = requestAnimationFrame(step);
     };
+    this.resume = () => { if (!running) { running = true; this.tick = requestAnimationFrame(step); } };
     this.tick = requestAnimationFrame(step);
   }
 

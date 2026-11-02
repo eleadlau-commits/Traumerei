@@ -1,0 +1,380 @@
+/* Styles for Create. Class names start with "create-". The rooms page slides up over the home page,
+   leaving a strip of it at the top; it is a still gradient of the picture's colours (set from
+   Create.js as --create-top / --create-bottom). A room fills the screen with its own gradient
+   (--room-top / --room-bottom) and its words take --room-ink. The same in light and dark mode. */
+
+:root {
+  --create-strip: calc(64px + env(safe-area-inset-top));
+  --create-ease: cubic-bezier(.22, .7, .18, 1);
+  --create-glow: rgb(255 236 190 / .55);
+}
+
+.create {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none; /* the strip at the top stays the home page's */
+  color: var(--home-ink);
+  font-family: var(--home-font);
+}
+.create > * { pointer-events: auto; }
+.create[hidden], .create [hidden] { display: none !important; }
+/* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
+.create-open .home { visibility: hidden; }
+.create-dark .topbar .top-btn { color: var(--room-ink); }
+
+/* The back arrow, top right: home from the rooms page, the rooms from a room. */
+.create-back {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: var(--gutter);
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--home-ink);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .4s;
+  -webkit-tap-highlight-color: transparent;
+}
+.create.up .create-back { opacity: .8; }
+.create-back:is(:hover, :focus-visible) { opacity: 1; outline: none; }
+.create.in-room .create-back { color: var(--room-ink); z-index: 6; }
+.create-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
+.create-word, .create-crumb, .create-mode {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 6px 2px;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: .66;
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px 100%;
+  background-size: 0 1px;
+  transition: opacity .2s, background-size .25s;
+  -webkit-tap-highlight-color: transparent;
+}
+:is(.create-word, .create-crumb, .create-mode):is(:hover, :focus-visible),
+.create-word[aria-current], .create-mode[aria-checked="true"] {
+  opacity: 1;
+  background-size: calc(100% - 4px - .22em) 1px;
+  outline: none;
+}
+
+/* ---- The rooms page ---- */
+
+.create-rooms {
+  position: absolute;
+  top: var(--create-strip);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  /* The picture's gradient under an opacity mask: nothing is drawn while it shows. */
+  background:
+    linear-gradient(var(--create-mask, rgb(0 0 0 / .1)), var(--create-mask, rgb(0 0 0 / .1))),
+    linear-gradient(var(--create-top, #f2ebd9), var(--create-bottom, #e6dcc4));
+  box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
+  transform: translateY(100%);
+  transition: transform .5s var(--create-ease);
+}
+.create.up .create-rooms { transform: none; transition-duration: .6s; }
+
+.create-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter); }
+/* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
+   takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
+.create-grid {
+  --cell: 120px;
+  --cell-gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 6), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: var(--cell-gap);
+  width: max-content;
+  margin: 0 auto;
+  position: relative;
+}
+.create-cell {
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgb(43 42 40 / .035);
+  transition: box-shadow .3s, background-color .3s;
+  display: grid;
+  place-items: center;
+  font: 300 22px/1 var(--home-font, inherit);
+}
+.create-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
+.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
+.create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
+.create-grid.dragging .create-cell::after { content: ''; }
+.create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
+
+/* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
+.create-tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--square);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow .5s, transform .3s var(--create-ease), opacity .3s;
+}
+.create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
+.create-tile:hover { transform: translateY(-2px); }
+.create-tile.lit {
+  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px rgb(255 244 214 / .35);
+}
+.create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
+.create-tile-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.create-tile.messy .create-tile-label { left: 14px; bottom: 13px; font-size: 12px; }
+.create-tile-name { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-tile-count { opacity: .5; letter-spacing: .08em; }
+.create-name-field {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  border-radius: 0;
+  padding: 2px 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: inherit;
+  outline: none;
+  box-shadow: none;
+}
+
+.create-rooms-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 28px;
+  padding: 14px var(--gutter) calc(20px + env(safe-area-inset-bottom));
+  padding-left: calc(var(--gutter) + 12px);
+}
+.create-rooms-words { display: flex; flex-wrap: wrap; gap: 8px clamp(22px, 4vw, 44px); }
+.create-note { margin: 0; font-size: 12px; letter-spacing: .06em; opacity: .45; }
+@media (hover: none) { .create-note { display: none; } }
+
+/* ---- A room ---- */
+
+.create-room {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  color: var(--room-ink);
+  animation: create-in .45s ease both;
+}
+@keyframes create-in { from { opacity: 0; } }
+.create-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
+.create-stage:active { cursor: grabbing; }
+.create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+
+.create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
+.create-top {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top) + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 40vw;
+}
+.create-crumb-name { opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.create-crumb-name .create-name-field { width: 18ch; letter-spacing: .1em; }
+
+.create-foot {
+  position: absolute;
+  left: calc(var(--gutter) + 12px);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 22px;
+  pointer-events: none;
+}
+.create-foot > * { pointer-events: auto; }
+.create-keys { font-size: 12px; letter-spacing: .06em; opacity: .45; }
+@media (hover: none) { .create-keys { display: none; } }
+
+/* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
+.create-bar, .create-tint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 22px;
+  max-width: calc(100% - 2 * var(--gutter));
+  box-sizing: border-box;
+  padding: 12px 20px;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 10px 40px rgb(0 0 0 / .12);
+}
+.create-bar-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; }
+.create-bar-action { opacity: .55; }
+.create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+.create-slider span { opacity: .6; }
+.create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
+.create-slider input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid color-mix(in srgb, var(--room-ink) 30%, transparent); border-radius: 0; background: none; flex: none; }
+
+/* The hidden box the keys go into: in view (so a phone shows its keyboard), but unseen. */
+.create-input {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  resize: none;
+  pointer-events: none;
+}
+
+/* Thoughts. Joyce: a train reads as one paragraph, its thoughts joined by a faint dot. */
+.create-train {
+  position: absolute;
+  width: max-content;
+  max-width: 380px;
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: .02em;
+    cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.create-thought + .create-thought::before { content: " · "; opacity: .4; }
+.create-train.selected, .create-float.selected { outline: 1px solid color-mix(in srgb, var(--room-ink) 45%, transparent); outline-offset: 10px; }
+.create-draft { opacity: 1; }
+.create-draft::after {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -.15em;
+  background: currentColor;
+  animation: create-caret 1.1s steps(1) infinite;
+}
+.create-draft:empty::after { margin-left: 0; }
+@keyframes create-caret { 50% { opacity: 0; } }
+
+/* Pessoa: each thought floats on its own, centred on its place. */
+.create-float {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 260px;
+  width: max-content;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.45;
+  letter-spacing: .02em;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.create-float .create-thought + .create-thought::before { content: none; }
+
+/* In a dark room the words glow faintly, like a lit window. */
+.create-room.dark :is(.create-train, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+
+@media (max-width: 560px) {
+  .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
+}
+
+/* Bigger thoughts. In a Joyce train they stand as blocks between the lines of words. */
+.create-passage, .create-picture { display: block; margin: 12px 0; text-shadow: none; }
+.create-passage {
+  max-width: 380px;
+  padding: 2px 0 2px 14px;
+  border-left: 1px solid color-mix(in srgb, var(--room-ink) 45%, transparent);
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: left;
+}
+.create-passage-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .85; margin-bottom: 4px; }
+.create-passage-body { white-space: pre-line; opacity: .9; max-height: 22em; overflow: hidden; }
+.create-passage.folded { border-left-style: dotted; }
+.create-picture img { display: block; max-width: 240px; max-height: 240px; width: auto; height: auto; opacity: .92; pointer-events: none; }
+.create-picture figcaption { margin-top: 6px; font-size: 13px; opacity: .7; }
+.create-float .create-passage { margin: 0; }
+.create-float .create-picture { margin: 0; display: grid; justify-items: center; }
+
+/* The sheet for writing a passage or captioning a picture. */
+.create-sheet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100% - 160px);
+  overflow: auto;
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+  padding: 26px 28px 18px;
+  background: linear-gradient(var(--room-top), var(--room-bottom));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--room-ink) 14%, transparent), 0 20px 60px rgb(0 0 0 / .16);
+  animation: create-in .35s ease both;
+}
+.create-sheet-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
+.create-sheet-title, .create-sheet-body {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--room-ink) 25%, transparent);
+  border-radius: 0;
+  padding: 8px 0;
+  font: inherit;
+  color: inherit;
+  outline: none;
+  box-shadow: none;
+  border-width: 0 0 1px;
+}
+.create-sheet-title { font-size: 18px; letter-spacing: .04em; }
+.create-sheet-body { font-size: 15px; line-height: 1.6; resize: vertical; min-height: 9em; }
+:is(.create-sheet-title, .create-sheet-body):focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 45%, transparent); outline: none; }
+:is(.create-sheet-title, .create-sheet-body)::placeholder { color: inherit; opacity: .4; }
+.create-sheet-picture { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
+.create-sheet-words { display: flex; align-items: baseline; gap: 22px; }
+.create-bar-action { opacity: .5; }
+.create-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
