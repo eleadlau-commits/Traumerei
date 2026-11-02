@@ -54,7 +54,7 @@ export default class Renderer extends Feature {
     this.add('settings', { id: 'renderer-theme', title: 'Theme', order: 15, render: () => this.themes() });
     this.add('settings', { id: 'renderer-advanced', title: 'Advanced', order: 50, render: () => this.advanced() });
     // For pages laid over the picture (Create): its colours, and a way to pause it while covered.
-    this.provide('backdrop', { colours: () => this.colours(), cover: (on) => this.cover(on) });
+    this.provide('backdrop', { colours: () => this.colours(), cover: (on) => this.hold(on) });
   }
 
   // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
@@ -77,9 +77,22 @@ export default class Renderer extends Feature {
   }
 
   // While a page covers the picture, its animation stops (and starts again where it was).
-  cover(on) {
+  // hold(on): while something covers the page (the rooms), the spontaneity layer is turned off:
+  // the animation stops and the still picture shows. hold(false) brings it back where it was.
+  hold(on) {
     this.covered = !!on;
-    if (!this.covered && this.anim && this.resume) this.resume();
+    if (!this.anim) return;
+    if (this.covered) {
+      cancelAnimationFrame(this.tick);
+      this.layer.hidden = true;
+      if (this.anim.kind === 'pixels' && this.picture) {
+        const { rgba, width, height } = this.picture;
+        this.canvas.getContext('2d').putImageData(new ImageData(rgba, width, height), 0, 0);
+      }
+    } else {
+      if (this.anim.kind !== 'pixels') this.layer.hidden = false;
+      this.resume?.();
+    }
   }
 
   get current() {
@@ -329,15 +342,14 @@ export default class Renderer extends Feature {
     this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
     const paint = this.anim.kind === 'pixels' ? this.pixels() : this.shapes();
     let last = null;
-    let running = true;
     const step = (now) => {
-      if (this.covered) { running = false; last = null; return; } // stopped; resume() starts it again
+      if (this.covered) { this.layer.hidden = true; return; } // turned off; resume() starts it again
       this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1000);
       last = now;
       paint(this.anim);
       this.tick = requestAnimationFrame(step);
     };
-    this.resume = () => { if (!running) { running = true; this.tick = requestAnimationFrame(step); } };
+    this.resume = () => { cancelAnimationFrame(this.tick); last = null; this.tick = requestAnimationFrame(step); };
     this.tick = requestAnimationFrame(step);
   }
 

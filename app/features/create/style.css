@@ -143,8 +143,9 @@
 .create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
 .create-tile:hover { transform: translateY(-2px); }
 .create-tile.lit {
-  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px rgb(255 244 214 / .35);
+  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px var(--create-glow-in, rgb(255 244 214 / .35));
 }
+.create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
 .create-tile-label {
   position: absolute;
@@ -378,3 +379,7 @@
 .create-sheet-words { display: flex; align-items: baseline; gap: 22px; }
 .create-bar-action { opacity: .5; }
 .create-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
+
+/* Settings → Rooms */
+.create-settings { display: grid; gap: 12px; }
+.create-settings .btn { justify-self: start; }

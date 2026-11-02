@@ -53,26 +53,55 @@ export function fromHsl([h, s, l]) {
 
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
+// Settings → Rooms: what each one changes, and its default. Saved as 'look' in the create area.
+export const LOOK = {
+  mask: MASK,         // the rooms page's mask: how much of it covers the picture
+  maskColour: '#000000',
+  square: SQUARE,     // how strong the rooms' squares are
+  squareColour: '#000000',  // a square's colour, when the room has no tint of its own
+  glow: 0.55,         // how brightly a room written in lately glows
+  cell: 120,          // a grid cell, in px
+  light: LIGHT,        // a room's lightness inside, by default
+  lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
+  tint: '',           // the rooms' tint inside, by default ('' = the picture's own colour)
+  saturation: SATURATION,  // the most a room takes of the picture's colour
+};
+
+// Saved settings, checked and filled in with the defaults.
+export function lookPrefs(saved) {
+  const out = { ...LOOK };
+  if (!saved || typeof saved !== 'object') return out;
+  for (const [k, d] of Object.entries(LOOK)) {
+    const v = saved[k];
+    if (typeof d === 'number' && Number.isFinite(+v) && v !== '' && v != null) out[k] = +v;
+    if (typeof d === 'string' && typeof v === 'string' && (v === '' || /^#[0-9a-f]{6}$/i.test(v))) out[k] = v;
+  }
+  if (!out.maskColour) out.maskColour = LOOK.maskColour;
+  if (!out.squareColour) out.squareColour = LOOK.squareColour;
+  return out;
+}
+
 // The picture's colours ({ top, bottom } from the backdrop, or null) → the rooms page's gradient.
-export function pageLook(colours) {
+export function pageLook(colours, prefs = LOOK) {
   const top = colours?.top || PAPER, bottom = colours?.bottom || PAPER;
-  return { top: css(top), bottom: css(bottom), mask: css([0, 0, 0], MASK), average: mix(top, bottom, 0.5) };
+  return { top: css(top), bottom: css(bottom), mask: css(rgb(prefs.maskColour) || [0, 0, 0], prefs.mask), average: mix(top, bottom, 0.5) };
 }
 
 // A room's square on the rooms page: one colour at one alpha, laid over the page like a mask.
-export function squareLook(room, messy = false) {
-  const l = room?.light ?? (messy ? LIGHT_MESSY : LIGHT);
-  const a = clamp((1 - l) * SQUARE * (room?.opacity ?? OPACITY), 0.04, 0.9);
-  return { fill: css(rgb(room?.tint) || [0, 0, 0], a), alpha: a };
+export function squareLook(room, messy = false, prefs = LOOK) {
+  const l = room?.light ?? (messy ? prefs.lightMessy : prefs.light);
+  const a = clamp((1 - l) * prefs.square * (room?.opacity ?? OPACITY), 0, 0.95);
+  return { fill: css(rgb(room?.tint) || rgb(prefs.squareColour) || [0, 0, 0], a), alpha: a };
 }
 
 // One room's look, given the picture's average colour: its gradient, the ink for its words,
 // and whether it is a dark room.
-export function roomLook(room, average = PAPER, messy = false) {
-  const tint = rgb(room?.tint) || average;
+export function roomLook(room, average = PAPER, messy = false, prefs = LOOK) {
+  const own = rgb(room?.tint) || rgb(prefs.tint);
+  const tint = own || average;
   const [h, s0] = toHsl(tint);
-  const s = room?.tint ? s0 : Math.min(s0, SATURATION); // the picture's own colour, kept quiet
-  const l = room?.light ?? (messy ? LIGHT_MESSY : LIGHT);
+  const s = own ? s0 : Math.min(s0, prefs.saturation); // the picture's own colour, kept quiet
+  const l = room?.light ?? (messy ? prefs.lightMessy : prefs.light);
   const a = room?.opacity ?? OPACITY;
   const at = (dl) => fromHsl([h, s, clamp(l + dl, 0, 1)]);
   const dark = l < 0.55;

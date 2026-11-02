@@ -896,8 +896,9 @@ dialog.dialog-box {
 .create-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
 .create-tile:hover { transform: translateY(-2px); }
 .create-tile.lit {
-  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px rgb(255 244 214 / .35);
+  box-shadow: 0 0 34px var(--create-glow), inset 0 0 28px var(--create-glow-in, rgb(255 244 214 / .35));
 }
+.create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
 .create-tile-label {
   position: absolute;
@@ -1131,6 +1132,10 @@ dialog.dialog-box {
 .create-sheet-words { display: flex; align-items: baseline; gap: 22px; }
 .create-bar-action { opacity: .5; }
 .create-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
+
+/* Settings → Rooms */
+.create-settings { display: grid; gap: 12px; }
+.create-settings .btn { justify-self: start; }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -6029,7 +6034,7 @@ dialog.menu-drawer::before {
       });
       this.add("settings", { id: "renderer-theme", title: "Theme", order: 15, render: () => this.themes() });
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
-      this.provide("backdrop", { colours: () => this.colours(), cover: (on) => this.cover(on) });
+      this.provide("backdrop", { colours: () => this.colours(), cover: (on) => this.hold(on) });
     }
     // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
     // when nothing is drawn yet. Read once from a small copy, so it costs almost nothing.
@@ -6050,9 +6055,22 @@ dialog.menu-drawer::before {
       return { top: band(0, n / 3), bottom: band(2 * n / 3, n) };
     }
     // While a page covers the picture, its animation stops (and starts again where it was).
-    cover(on) {
+    // hold(on): while something covers the page (the rooms), the spontaneity layer is turned off:
+    // the animation stops and the still picture shows. hold(false) brings it back where it was.
+    hold(on) {
       this.covered = !!on;
-      if (!this.covered && this.anim && this.resume) this.resume();
+      if (!this.anim) return;
+      if (this.covered) {
+        cancelAnimationFrame(this.tick);
+        this.layer.hidden = true;
+        if (this.anim.kind === "pixels" && this.picture) {
+          const { rgba, width, height } = this.picture;
+          this.canvas.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
+        }
+      } else {
+        if (this.anim.kind !== "pixels") this.layer.hidden = false;
+        this.resume?.();
+      }
     }
     get current() {
       return this.views[this.mode.id];
@@ -6319,11 +6337,9 @@ dialog.menu-drawer::before {
       this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
       const paint2 = this.anim.kind === "pixels" ? this.pixels() : this.shapes();
       let last = null;
-      let running = true;
       const step = (now) => {
         if (this.covered) {
-          running = false;
-          last = null;
+          this.layer.hidden = true;
           return;
         }
         this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
@@ -6332,10 +6348,9 @@ dialog.menu-drawer::before {
         this.tick = requestAnimationFrame(step);
       };
       this.resume = () => {
-        if (!running) {
-          running = true;
-          this.tick = requestAnimationFrame(step);
-        }
+        cancelAnimationFrame(this.tick);
+        last = null;
+        this.tick = requestAnimationFrame(step);
       };
       this.tick = requestAnimationFrame(step);
     }
@@ -6817,20 +6832,54 @@ dialog.menu-drawer::before {
     return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
   }
   var mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
-  function pageLook(colours2) {
+  var LOOK = {
+    mask: MASK,
+    // the rooms page's mask: how much of it covers the picture
+    maskColour: "#000000",
+    square: SQUARE,
+    // how strong the rooms' squares are
+    squareColour: "#000000",
+    // a square's colour, when the room has no tint of its own
+    glow: 0.55,
+    // how brightly a room written in lately glows
+    cell: 120,
+    // a grid cell, in px
+    light: LIGHT2,
+    // a room's lightness inside, by default
+    lightMessy: LIGHT_MESSY,
+    // Messy thoughts' lightness inside
+    tint: "",
+    // the rooms' tint inside, by default ('' = the picture's own colour)
+    saturation: SATURATION
+    // the most a room takes of the picture's colour
+  };
+  function lookPrefs(saved) {
+    const out = { ...LOOK };
+    if (!saved || typeof saved !== "object") return out;
+    for (const [k, d] of Object.entries(LOOK)) {
+      const v = saved[k];
+      if (typeof d === "number" && Number.isFinite(+v) && v !== "" && v != null) out[k] = +v;
+      if (typeof d === "string" && typeof v === "string" && (v === "" || /^#[0-9a-f]{6}$/i.test(v))) out[k] = v;
+    }
+    if (!out.maskColour) out.maskColour = LOOK.maskColour;
+    if (!out.squareColour) out.squareColour = LOOK.squareColour;
+    return out;
+  }
+  function pageLook(colours2, prefs = LOOK) {
     const top = colours2?.top || PAPER2, bottom = colours2?.bottom || PAPER2;
-    return { top: css(top), bottom: css(bottom), mask: css([0, 0, 0], MASK), average: mix(top, bottom, 0.5) };
+    return { top: css(top), bottom: css(bottom), mask: css(rgb(prefs.maskColour) || [0, 0, 0], prefs.mask), average: mix(top, bottom, 0.5) };
   }
-  function squareLook(room2, messy = false) {
-    const l = room2?.light ?? (messy ? LIGHT_MESSY : LIGHT2);
-    const a = clamp((1 - l) * SQUARE * (room2?.opacity ?? OPACITY), 0.04, 0.9);
-    return { fill: css(rgb(room2?.tint) || [0, 0, 0], a), alpha: a };
+  function squareLook(room2, messy = false, prefs = LOOK) {
+    const l = room2?.light ?? (messy ? prefs.lightMessy : prefs.light);
+    const a = clamp((1 - l) * prefs.square * (room2?.opacity ?? OPACITY), 0, 0.95);
+    return { fill: css(rgb(room2?.tint) || rgb(prefs.squareColour) || [0, 0, 0], a), alpha: a };
   }
-  function roomLook(room2, average = PAPER2, messy = false) {
-    const tint = rgb(room2?.tint) || average;
+  function roomLook(room2, average = PAPER2, messy = false, prefs = LOOK) {
+    const own = rgb(room2?.tint) || rgb(prefs.tint);
+    const tint = own || average;
     const [h, s0] = toHsl(tint);
-    const s = room2?.tint ? s0 : Math.min(s0, SATURATION);
-    const l = room2?.light ?? (messy ? LIGHT_MESSY : LIGHT2);
+    const s = own ? s0 : Math.min(s0, prefs.saturation);
+    const l = room2?.light ?? (messy ? prefs.lightMessy : prefs.light);
     const a = room2?.opacity ?? OPACITY;
     const at = (dl) => fromHsl([h, s, clamp(l + dl, 0, 1)]);
     const dark = l < 0.55;
@@ -6850,7 +6899,7 @@ dialog.menu-drawer::before {
   var { el: el5 } = ui_exports;
   var LIT_FOR = 24 * 36e5;
   var ZOOM = { min: 0.25, max: 4 };
-  var GRID = { cell: 120, gap: 14, pad: 32, least: 4, most: 10 };
+  var GRID = { gap: 14, pad: 32, least: 4, most: 10 };
   var Create = class extends Feature {
     start() {
       this.world = loadWorld(this.storage.get("world"));
@@ -6863,7 +6912,9 @@ dialog.menu-drawer::before {
       this.editing = null;
       this.picker = ui_exports.filePicker("image/*");
       this.backdrop = this.use("backdrop");
+      this.prefs = lookPrefs(this.storage.get("look"));
       this.build();
+      this.add("settings", { id: "create-rooms", title: "Rooms", order: 18, render: () => this.settingsPane() });
       this.provide("create", this);
       document.addEventListener("keydown", (e) => this.onKey(e));
       window.addEventListener("resize", () => {
@@ -6877,10 +6928,8 @@ dialog.menu-drawer::before {
       this.world = loadWorld(this.storage.get("world"));
       this.app.shell?.closeMenu?.();
       clearTimeout(this.closing);
-      this.page = pageLook(this.backdrop?.colours?.());
-      this.root.style.setProperty("--create-top", this.page.top);
-      this.root.style.setProperty("--create-bottom", this.page.bottom);
-      this.root.style.setProperty("--create-mask", this.page.mask);
+      this.colours = this.backdrop?.colours?.();
+      this.paintPage();
       this.root.hidden = false;
       document.documentElement.classList.add("create-open");
       this.showRooms();
@@ -7004,9 +7053,9 @@ dialog.menu-drawer::before {
     // How many columns fit, and how big a cell is.
     gridSize() {
       const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad;
-      const fit = Math.floor((width + GRID.gap) / (GRID.cell + GRID.gap));
+      const fit = Math.floor((width + GRID.gap) / (this.prefs.cell + GRID.gap));
       const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
-      const cell = Math.max(56, Math.min(GRID.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
+      const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
       return { cols, cell };
     }
     drawRooms() {
@@ -7039,7 +7088,7 @@ dialog.menu-drawer::before {
         }));
       }
       const tiles2 = all.map((r) => {
-        const look = squareLook(r, r.id === MESSY);
+        const look = squareLook(r, r.id === MESSY, this.prefs);
         const last = lastWritten(this.world, r.id);
         const count = roomThoughts(this.world, r.id).length;
         const lit = last != null && now - last < LIT_FOR;
@@ -7050,7 +7099,7 @@ dialog.menu-drawer::before {
         const tile = el5(
           "div",
           {
-            class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : ""),
+            class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : ""),
             role: "button",
             tabindex: 0,
             style: `--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
@@ -7170,7 +7219,95 @@ dialog.menu-drawer::before {
       return view3(this.world, this.roomId).mode;
     }
     lookOf(r) {
-      return roomLook(r, this.page?.average, r.id === MESSY);
+      return roomLook(r, this.page?.average, r.id === MESSY, this.prefs);
+    }
+    // The rooms page's colours, from the picture's (read when Create opened) and Settings → Rooms.
+    paintPage() {
+      this.page = pageLook(this.colours, this.prefs);
+      this.root.style.setProperty("--create-top", this.page.top);
+      this.root.style.setProperty("--create-bottom", this.page.bottom);
+      this.root.style.setProperty("--create-mask", this.page.mask);
+      this.root.style.setProperty("--create-glow", `rgb(255 236 190 / ${this.prefs.glow})`);
+      this.root.style.setProperty("--create-glow-in", `rgb(255 244 214 / ${(this.prefs.glow * 0.64).toFixed(3)})`);
+    }
+    // ---- Settings → Rooms ----
+    setPref(key, value) {
+      this.prefs = lookPrefs({ ...this.prefs, [key]: value });
+      this.storage.set("look", this.prefs);
+      this.repaint();
+    }
+    // Shows a change straight away, if Create is open.
+    repaint() {
+      this.paintPage();
+      if (this.root.hidden) return;
+      if (this.roomId) this.paintRoom();
+      else this.drawRooms();
+    }
+    settingsPane() {
+      const p = this.prefs;
+      const slider2 = (label, key, min, max, step = 0.01) => {
+        const out = el5("output", { class: "renderer-value" }, String(p[key]));
+        return el5(
+          "label",
+          { class: "renderer-slider" },
+          el5("span", {}, label),
+          out,
+          el5("input", {
+            type: "range",
+            min,
+            max,
+            step,
+            value: p[key],
+            "aria-label": label,
+            oninput: (e) => {
+              out.textContent = e.target.value;
+              this.setPref(key, +e.target.value);
+            }
+          })
+        );
+      };
+      const colour2 = (label, key, fallback) => el5(
+        "label",
+        { class: "renderer-slider renderer-colour" },
+        el5("span", {}, label),
+        el5("input", { type: "color", value: p[key] || fallback, "aria-label": label, oninput: (e) => this.setPref(key, e.target.value) })
+      );
+      const group = (legend, ...rows) => el5("fieldset", { class: "renderer-group" }, el5("legend", {}, legend), ...rows);
+      const avg = this.page?.average || [242, 235, 217];
+      return el5(
+        "div",
+        { class: "create-settings" },
+        ui_exports.hint("How the rooms page and the rooms look. A room's own Tint (inside it) wins over these.", { small: true }),
+        group(
+          "Rooms page",
+          slider2("Mask opacity", "mask", 0, 0.6),
+          colour2("Mask colour", "maskColour", "#000000")
+        ),
+        group(
+          "Squares",
+          slider2("Strength", "square", 0, 1.5),
+          colour2("Colour", "squareColour", "#000000"),
+          slider2("Glow", "glow", 0, 1),
+          slider2("Size", "cell", 70, 180, 1)
+        ),
+        group(
+          "Inside a room",
+          colour2("Tint", "tint", "#" + avg.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")),
+          el5("button", { type: "button", class: "btn small", onclick: () => {
+            this.setPref("tint", "");
+            this.app.shell?.refreshSettings?.();
+          } }, "Tint from the picture"),
+          slider2("Colour strength", "saturation", 0, 1),
+          slider2("Lightness", "light", 0.05, 0.95),
+          slider2("Messy lightness", "lightMessy", 0.05, 0.95)
+        ),
+        el5("button", { type: "button", class: "btn small", onclick: () => {
+          this.prefs = lookPrefs(LOOK);
+          this.storage.set("look", this.prefs);
+          this.repaint();
+          this.app.shell?.refreshSettings?.();
+        } }, "Back to defaults")
+      );
     }
     // The open room's colours, on the room page (and the menu's lines take its ink).
     paintRoom() {
