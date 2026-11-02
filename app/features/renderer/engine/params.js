@@ -1,6 +1,7 @@
 // Every parameter, with its default and the range its slider covers. Most are sliders; kind 'colour'
 // is a colour picker ('#rrggbb') and kind 'choice' a row of buttons, one per option. A key may be
-// listed in more than one group (the tint τ is in Colour and in Hue): they show the same value.
+// listed in more than one group: they show the same value. The tint τ is in group 'Tint', which no
+// fold shows: it has its own place, Settings → Colour, and every theme and page takes it from there.
 // Lengths and areas are in canvas units: the image's short side is 1.
 
 import { DEFAULT_TINT } from './colour.js';
@@ -11,7 +12,7 @@ export const PARAMS = [
   { group: 'Monochrome', key: 'dMin', label: 'Darkest d_min', min: 0, max: 1, step: 0.01, value: 0.65 },
   { group: 'Monochrome', key: 'dMax', label: 'Lightest d_max', min: 0, max: 1, step: 0.01, value: 0.97 },
 
-  { group: 'Colour', key: 'tint', kind: 'colour', label: 'Tint τ', value: DEFAULT_TINT },
+  { group: 'Tint', key: 'tint', kind: 'colour', label: 'Tint τ', value: DEFAULT_TINT },
   { group: 'Colour', key: 'baseL', label: 'Brightness ΔL', min: -0.2, max: 0.2, step: 0.005, value: 0 },
   { group: 'Colour', key: 'baseW', label: 'Warmth Δw', min: -0.06, max: 0.06, step: 0.001, value: 0 },
 
@@ -104,7 +105,6 @@ export const PARAMS = [
   { group: 'Life', key: 'alphaS', label: 'Spontaneity strength α_s', min: 0, max: 2, step: 0.01, value: 1 },
 
   // The Plain theme (engine/plain.js)
-  { group: 'Hue', key: 'tint', kind: 'colour', label: 'Tint τ, for a picture with no colour', aria: 'Tint τ for a picture with no colour', value: DEFAULT_TINT },
   { group: 'Hue', key: 'plainDL', label: 'Lightness shift ΔL', min: -0.4, max: 0.4, step: 0.01, value: 0 },
   { group: 'Hue', key: 'plainCS', label: 'Chroma × c', min: 0, max: 1.6, step: 0.01, value: 1 },
 
@@ -132,7 +132,6 @@ export const PARAMS = [
   { group: 'Glow', key: 'glowL', label: 'Glow lightness L_g', min: 0.5, max: 1, step: 0.01, value: 0.88 },
 
   // The Planar mode (engine/planar.js)
-  { group: 'Fog', key: 'tint', kind: 'colour', label: 'Tint τ, for a picture with no colour', aria: 'Tint τ for a picture with no colour', value: DEFAULT_TINT },
   { group: 'Fog', key: 'fogSigma', label: 'Coarseness σ', min: 0.05, max: 0.6, step: 0.005, value: 0.25 },
   { group: 'Fog', key: 'fogA', label: 'Unevenness A', min: 0, max: 0.3, step: 0.005, value: 0.08 },
   { group: 'Fog', key: 'fogLo', label: 'Darkest L_lo', min: 0, max: 1, step: 0.01, value: 0.45 },

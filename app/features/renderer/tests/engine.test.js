@@ -478,3 +478,37 @@ test('the glow is the same at the same moment, whichever way it got there', () =
   assert.deepEqual(g1.at(10), b);
   assert.ok(a.every((L) => L.a >= 0 && L.a <= P.glowA + 1e-9));
 });
+
+// ---------- The app's colours, from one tint (engine/palette.js) ----------
+
+import { roles, hexOf, tintFromPicture } from '../engine/palette.js';
+
+test('palette: the default tint gives the colours the app had before', () => {
+  const r = roles(DEFAULT_TINT);
+  assert.equal(hexOf(r.paper), DEFAULT_TINT);
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 3);
+  assert.ok(near(r.ink, [43, 42, 40]), hexOf(r.ink));
+  assert.ok(near(r.pale, [241, 232, 210]), hexOf(r.pale));
+  assert.ok(near(r.veil, [250, 247, 240]), hexOf(r.veil));
+});
+
+test('palette: every role takes the tint\'s hue, and a bad tint falls back to the default', () => {
+  const blue = roles('#d8e0ea');
+  for (const k of ['ink', 'pale', 'veil']) {
+    const [, , h] = oklabToOklch(hexToOklab(hexOf(blue[k])));
+    assert.ok(h > 220 && h < 290, `${k} ${h}`);
+  }
+  assert.deepEqual(roles('nope'), roles(DEFAULT_TINT));
+  for (const v of Object.values(roles('#00ff00')).flat()) assert.ok(v >= 0 && v <= 255);
+});
+
+test('palette: From the picture takes its hue at the tint\'s lightness, and nothing from a grey picture', () => {
+  const W = 32, H = 32, rgba = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) rgba.set([192, 96, 58, 255], 4 * i); // terracotta
+  const t = tintFromPicture(rgba, W, H, DEFAULT_TINT);
+  const [L, C, h] = oklabToOklch(hexToOklab(t));
+  const [L0] = oklabToOklch(hexToOklab(DEFAULT_TINT));
+  assert.ok(Math.abs(L - L0) < 0.01 && C <= 0.061 && h > 25 && h < 60, `${t} ${L} ${C} ${h}`);
+  rgba.fill(128);
+  assert.equal(tintFromPicture(rgba, W, H, DEFAULT_TINT), null);
+});

@@ -58,3 +58,4 @@
 .renderer-layer[hidden] { display: none; }
 .renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
 .renderer-choice { grid-column: 1 / -1; }
+.renderer-colour-pane { display: grid; gap: 10px; }

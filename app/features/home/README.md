@@ -18,6 +18,11 @@ sits small at the bottom. The three lines become a thin cross in the same place.
 tap anywhere empty (the cross included), Escape, back, or a swipe left. Create in the menu calls
 the same `create()` as the home page.
 
+Its colours (the ink of the words, the veil, Settings' pale page) are the app's palette, the CSS
+variables `--ink`, `--veil` and `--ink-rgb` / `--veil-rgb` that the Renderer sets from the one tint
+(Settings → Colour), with today's warm black and white as the fallback. The app is always light:
+app.json fixes `"appearance": "light"`, so Settings has no Appearance choice.
+
 ## Typeface
 
 Settings → Typeface. The choices are listed in `fonts.js`, the first one being the default

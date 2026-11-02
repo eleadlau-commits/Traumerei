@@ -749,6 +749,7 @@ dialog.dialog-box {
 .renderer-layer[hidden] { display: none; }
 .renderer-tabs[hidden], .renderer-fold[hidden], .renderer-marks[hidden] { display: none; }
 .renderer-choice { grid-column: 1 / -1; }
+.renderer-colour-pane { display: grid; gap: 10px; }
 
 /* ---- feature: create (style.css) ---- */
 /* Styles for Create. Class names start with "create-". The rooms page slides up over the home page,
@@ -759,11 +760,11 @@ dialog.dialog-box {
 :root {
   --create-strip: calc(64px + env(safe-area-inset-top));
   --create-ease: cubic-bezier(.22, .7, .18, 1);
-  --create-glow: rgb(255 236 190 / .55);
+  --create-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
   /* Every pop-up and panel: the same pale, blurred white. */
-  --create-panel: rgb(250 247 240 / .84);
-  --create-panel-ink: #2b2a28;
-  --create-panel-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 12px 40px rgb(0 0 0 / .12);
+  --create-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
+  --create-panel-ink: var(--ink, #2b2a28);
+  --create-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
 }
 
 .create {
@@ -842,8 +843,8 @@ dialog.dialog-box {
   display: flex;
   flex-direction: column;
   /* An opacity mask over the home picture itself, which is held still underneath. */
-  background: var(--create-mask, rgb(0 0 0 / .1));
-  box-shadow: 0 -1px 0 rgb(43 42 40 / .08), 0 -18px 40px rgb(43 42 40 / .08);
+  background: var(--create-mask, rgb(var(--ink-rgb, 43 42 40) / .1));
+  box-shadow: 0 -1px 0 rgb(var(--ink-rgb, 43 42 40) / .08), 0 -18px 40px rgb(var(--ink-rgb, 43 42 40) / .08);
   transform: translateY(100%);
   transition: transform .5s var(--create-ease);
 }
@@ -871,19 +872,19 @@ dialog.dialog-box {
   background: transparent;
   color: inherit;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(43 42 40 / .035);
+  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035);
   transition: box-shadow .3s, background-color .3s;
   display: grid;
   place-items: center;
   font: 300 22px/1 var(--home-font, inherit);
 }
 .create-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
-.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(0 0 0 / .03); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .14); }
+.create-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb, 43 42 40) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .14); }
 .create-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .create-grid.dragging .create-cell::after { content: ''; }
-.create-drop { pointer-events: none; z-index: 1; background: rgb(0 0 0 / .06); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .4); }
-.create-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(43 42 40 / .15); }
-.create-cell.target { background: rgb(0 0 0 / .05); box-shadow: inset 0 0 0 1px rgb(43 42 40 / .3); }
+.create-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb, 43 42 40) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .4); }
+.create-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .15); }
+.create-cell.target { background: rgb(var(--ink-rgb, 43 42 40) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .3); }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
 .create-tile {
@@ -903,9 +904,9 @@ dialog.dialog-box {
 .create-tile.lit {
   box-shadow:
     0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--create-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
-    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, rgb(255 244 214 / .35)) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
+    inset 0 0 32px color-mix(in srgb, var(--create-glow-in, color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
-.create-tile.deep { color: #f1e8d2; } /* a deep square: pale words */
+.create-tile.deep { color: var(--pale, #f1e8d2); } /* a deep square: pale words */
 .create-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
 .create-tile-label {
   position: absolute;
@@ -1010,27 +1011,7 @@ dialog.dialog-box {
 .create-add-note { font-size: 11px; letter-spacing: .04em; text-transform: none; opacity: .5; }
 .create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
-/* Panels over a room: the move bar, the tint panel. A veil of the room's own colour. */
-.create-tint {
-  position: absolute;
-  left: 50%;
-  bottom: calc(64px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px 22px;
-  max-width: calc(100% - 2 * var(--gutter));
-  box-sizing: border-box;
-  padding: 12px 20px;
-  background: var(--create-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--create-panel-shadow);
-  color: var(--create-panel-ink);
-  --room-ink: var(--create-panel-ink);
-}
+/* A slider or colour in a pop-up. */
 .create-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
 .create-slider span { opacity: .6; }
 .create-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
@@ -1154,7 +1135,7 @@ dialog.dialog-box {
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -1220,7 +1201,7 @@ dialog.dialog-box {
 }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(240 205 130 / .3); }
+.create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
 
 @media (max-width: 560px) {
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
@@ -1295,8 +1276,8 @@ dialog.dialog-box {
 
 /* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
 .create-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
-.create-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, #2b2a28) 55%, transparent); }
-.create-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, #2b2a28); }
+.create-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 55%, transparent); }
+.create-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, var(--ink, #2b2a28)); }
 .create-options {
   position: absolute;
   z-index: 3;
@@ -1320,7 +1301,7 @@ dialog.dialog-box {
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -1337,18 +1318,18 @@ dialog.dialog-box {
 .create-options .create-slider input[type="range"] { width: 110px; }
 
 /* Search (Ctrl+K): a quiet panel near the top. */
-.create-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(0 0 0 / .08); }
+.create-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
 .create-search-panel {
   position: absolute;
   left: 50%;
   top: 14vh;
   transform: translateX(-50%);
   width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(250 247 240 / .9);
+  background: rgb(var(--veil-rgb, 250 247 240) / .9);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(43 42 40 / .1), 0 18px 60px rgb(0 0 0 / .16);
-  color: var(--home-ink, #2b2a28);
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
+  color: var(--home-ink, var(--ink, #2b2a28));
   animation: create-unfold .2s var(--create-ease) both;
 }
 .create-search-field {
@@ -1361,7 +1342,7 @@ dialog.dialog-box {
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(43 42 40 / .12);
+  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .12);
   border-radius: 0;
   outline: none;
   box-shadow: none;
@@ -1372,7 +1353,7 @@ dialog.dialog-box {
   appearance: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
   display: flex; justify-content: space-between; align-items: baseline; gap: 20px; width: 100%; padding: 11px 20px; text-align: left;
 }
-.create-search-item.on, .create-search-item:hover { background: rgb(43 42 40 / .06); }
+.create-search-item.on, .create-search-item:hover { background: rgb(var(--ink-rgb, 43 42 40) / .06); }
 .create-search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .create-search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
 .create-search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
@@ -1387,9 +1368,9 @@ dialog.dialog-box {
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
-  color: var(--room-ink, var(--home-ink, #2b2a28));
+  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
 }
-.create:not(.in-room) .create-saved { color: var(--home-ink, #2b2a28); }
+.create:not(.in-room) .create-saved { color: var(--home-ink, var(--ink, #2b2a28)); }
 .create-saved.on { animation: create-saved 2.2s ease both; }
 @keyframes create-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
 .create-hint {
@@ -1405,9 +1386,9 @@ dialog.dialog-box {
   opacity: 0;
   pointer-events: none;
   transition: opacity .6s, transform .6s var(--create-ease);
-  color: var(--room-ink, var(--home-ink, #2b2a28));
+  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
 }
-.create:not(.in-room) .create-hint { color: var(--home-ink, #2b2a28); }
+.create:not(.in-room) .create-hint { color: var(--home-ink, var(--ink, #2b2a28)); }
 .create-hint.on { opacity: .6; transform: translate(-50%, 0); }
 @media (max-width: 560px) {
   .create-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -1425,7 +1406,7 @@ dialog.dialog-box {
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
 
 :root {
-  --home-ink: #2b2a28;
+  --home-ink: var(--ink, #2b2a28); /* the palette's ink (Renderer: Settings → Colour) */
   --home-font: "Tenor Sans", sans-serif;
 }
 
@@ -1515,9 +1496,9 @@ dialog.dialog-box {
    Folio's Menu still opens and closes it (tap the empty veil, Escape, back, swipe left);
    this only restyles it. Closing must finish within Menu.js's SLIDE_MS (280ms). */
 :root {
-  --veil-glow: rgb(255 253 248 / .78);
-  --veil-mid: rgb(250 247 240 / .55);
-  --veil-far: rgb(250 247 240 / .38);
+  --veil-glow: color-mix(in srgb, rgb(var(--veil-rgb, 250 247 240) / .78) 55%, rgb(255 255 255 / .78));
+  --veil-mid: rgb(var(--veil-rgb, 250 247 240) / .55);
+  --veil-far: rgb(var(--veil-rgb, 250 247 240) / .38);
 }
 dialog.menu-drawer { background: transparent; color: var(--home-ink); font-family: var(--home-font); }
 .menu-drawer::backdrop { background: transparent; }
@@ -1635,14 +1616,14 @@ dialog.menu-drawer::before {
    them, mostly by giving Folio's colour tokens the veil's ink inside them. */
 :is(dialog.settings-dialog, dialog.account-page, dialog.about-dialog) {
   --text: var(--home-ink);
-  --text-2: rgb(43 42 40 / .78);
-  --muted: rgb(43 42 40 / .58);
-  --line: rgb(43 42 40 / .14);
+  --text-2: rgb(var(--ink-rgb, 43 42 40) / .78);
+  --muted: rgb(var(--ink-rgb, 43 42 40) / .58);
+  --line: rgb(var(--ink-rgb, 43 42 40) / .14);
   --surface: transparent;
-  --surface-2: rgb(43 42 40 / .05);
+  --surface-2: rgb(var(--ink-rgb, 43 42 40) / .05);
   --accent: var(--home-ink);
-  --accent-ink: #fbf8f1;
-  --veil-ink-faint: rgb(43 42 40 / .35);
+  --accent-ink: var(--veil, #fbf8f1);
+  --veil-ink-faint: rgb(var(--ink-rgb, 43 42 40) / .35);
   width: 100%;
   max-width: none;
   height: 100%;
@@ -1674,7 +1655,7 @@ dialog.menu-drawer::before {
   right: 0;
   z-index: 1;
   height: calc(72px + env(safe-area-inset-top));
-  background: linear-gradient(rgb(250 247 240 / .9), rgb(250 247 240 / .6) 50%, rgb(250 247 240 / 0));
+  background: linear-gradient(rgb(var(--veil-rgb, 250 247 240) / .9), rgb(var(--veil-rgb, 250 247 240) / .6) 50%, rgb(var(--veil-rgb, 250 247 240) / 0));
   pointer-events: none;
   animation: veil-in .7s cubic-bezier(.22, .7, .18, 1) both;
 }
@@ -1886,7 +1867,7 @@ dialog.menu-drawer::before {
 }
 .settings-dialog input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--home-ink); }
 .settings-dialog input[type="range"]:focus-visible { outline: none; }
-.settings-dialog input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(43 42 40 / .15); }
+.settings-dialog input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(var(--ink-rgb, 43 42 40) / .15); }
 .settings-dialog .switch { width: 34px; height: 18px; }
 .settings-dialog .switch .slider { background: none; border: 1px solid var(--veil-ink-faint); }
 .settings-dialog .switch .slider::after { top: 3px; left: 3px; width: 10px; height: 10px; background: var(--veil-ink-faint); box-shadow: none; }
@@ -2664,7 +2645,8 @@ dialog.menu-drawer::before {
     constructor(app) {
       this.app = app;
       this.prefs = app.storage.area("folio");
-      startAppearance(this.prefs.get("appearance", "auto"));
+      this.fixed = ["auto", "light", "dark"].includes(app.config.appearance) ? app.config.appearance : null;
+      startAppearance(this.fixed || this.prefs.get("appearance", "auto"));
       this.restartNeeded = false;
       this.featuresOpen = false;
     }
@@ -2690,7 +2672,7 @@ dialog.menu-drawer::before {
         if (!body) return null;
         return el("section", { class: "settings-section" }, s.title && el("h3", { class: "sub-head" }, s.title), body);
       });
-      this.window.setContent(this.appearanceSection(), ...sections, this.featuresSection(), el(
+      this.window.setContent(this.fixed ? null : this.appearanceSection(), ...sections, this.featuresSection(), el(
         "section",
         { class: "settings-section about" },
         el("h3", { class: "sub-head" }, "About"),
@@ -3582,8 +3564,8 @@ dialog.menu-drawer::before {
     const out = new Float32Array(3 * n);
     for (let i = 0; i < n; i++) {
       const t = i / (n - 1);
-      const lin = oklabToLinear([0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t));
-      for (let k = 0; k < 3; k++) out[3 * i + k] = Math.max(0, lin[k]);
+      const lin2 = oklabToLinear([0, 1, 2].map((k) => ink[k] + (paper[k] - ink[k]) * t));
+      for (let k = 0; k < 3; k++) out[3 * i + k] = Math.max(0, lin2[k]);
     }
     return out;
   }
@@ -4086,27 +4068,27 @@ dialog.menu-drawer::before {
       const v = tb[p] < 0 ? 0 : tb[p] > 1 ? 1 : tb[p];
       const w = m ? m[p] : 1;
       for (let k = 0; k < 3; k++) lab[k] = ink[k] + (paper[k] - ink[k]) * v + w * delta[k];
-      const lin = oklabToLinear(lab);
-      for (let k = 0; k < 3; k++) out[q + k] = lin[k] < 0 ? 0 : lin[k];
+      const lin2 = oklabToLinear(lab);
+      for (let k = 0; k < 3; k++) out[q + k] = lin2[k] < 0 ? 0 : lin2[k];
     }
     return out;
   }
-  function paintLinear(lin, out = new Uint8ClampedArray(lin.length / 3 * 4)) {
-    for (let p = 0, q = 0; p < lin.length; p += 3, q += 4) {
+  function paintLinear(lin2, out = new Uint8ClampedArray(lin2.length / 3 * 4)) {
+    for (let p = 0, q = 0; p < lin2.length; p += 3, q += 4) {
       for (let c = 0; c < 3; c++) {
-        const y = lin[p + c];
+        const y = lin2[p + c];
         out[q + c] = SRGB_BYTE[Math.round(4095 * (y > 1 ? 1 : y))];
       }
       out[q + 3] = 255;
     }
     return out;
   }
-  function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, lin = null, out = new Uint8ClampedArray(Dw.length * 4)) {
+  function washiRGB(t, { Dw, Dk, C, S }, alpha, ramp, aw, ak, lin2 = null, out = new Uint8ClampedArray(Dw.length * 4)) {
     const n = ramp.length / 3 - 1;
     for (let p = 0, q = 0; p < Dw.length; p++, q += 4) {
       const v = t ? t[p] : 1;
-      const src = lin || ramp;
-      const r = lin ? 3 * p : 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
+      const src = lin2 || ramp;
+      const r = lin2 ? 3 * p : 3 * Math.round(n * (v < 0 ? 0 : v > 1 ? 1 : v));
       const lit = 1 + alpha * S[p];
       for (let c = 0; c < 3; c++) {
         const y = src[r + c] * Math.exp(-alpha * (Dw[p] * aw[c] + Dk[p] * ak[c] + C[p])) * lit;
@@ -4795,7 +4777,7 @@ dialog.menu-drawer::before {
     { group: "Monochrome", key: "gamma", label: "Gamma γ", min: 0.3, max: 3, step: 0.01, value: 1 },
     { group: "Monochrome", key: "dMin", label: "Darkest d_min", min: 0, max: 1, step: 0.01, value: 0.65 },
     { group: "Monochrome", key: "dMax", label: "Lightest d_max", min: 0, max: 1, step: 0.01, value: 0.97 },
-    { group: "Colour", key: "tint", kind: "colour", label: "Tint τ", value: DEFAULT_TINT },
+    { group: "Tint", key: "tint", kind: "colour", label: "Tint τ", value: DEFAULT_TINT },
     { group: "Colour", key: "baseL", label: "Brightness ΔL", min: -0.2, max: 0.2, step: 5e-3, value: 0 },
     { group: "Colour", key: "baseW", label: "Warmth Δw", min: -0.06, max: 0.06, step: 1e-3, value: 0 },
     { group: "Patches", key: "kappa", label: "Coverage κ", min: 0.02, max: 0.95, step: 0.01, value: 0.35 },
@@ -4875,7 +4857,6 @@ dialog.menu-drawer::before {
     { group: "Life", key: "sF", label: "Fade spread s_f", min: 0, max: 1.5, step: 0.01, value: 0.6 },
     { group: "Life", key: "alphaS", label: "Spontaneity strength α_s", min: 0, max: 2, step: 0.01, value: 1 },
     // The Plain theme (engine/plain.js)
-    { group: "Hue", key: "tint", kind: "colour", label: "Tint τ, for a picture with no colour", aria: "Tint τ for a picture with no colour", value: DEFAULT_TINT },
     { group: "Hue", key: "plainDL", label: "Lightness shift ΔL", min: -0.4, max: 0.4, step: 0.01, value: 0 },
     { group: "Hue", key: "plainCS", label: "Chroma × c", min: 0, max: 1.6, step: 0.01, value: 1 },
     { group: "Flow", key: "plainAlpha", label: "Lightness lift α", min: 0, max: 0.4, step: 5e-3, value: 0.07 },
@@ -4906,7 +4887,6 @@ dialog.menu-drawer::before {
     { group: "Glow", key: "glowDh", label: "Hue offset Δh (°)", min: -90, max: 90, step: 1, value: 14 },
     { group: "Glow", key: "glowL", label: "Glow lightness L_g", min: 0.5, max: 1, step: 0.01, value: 0.88 },
     // The Planar mode (engine/planar.js)
-    { group: "Fog", key: "tint", kind: "colour", label: "Tint τ, for a picture with no colour", aria: "Tint τ for a picture with no colour", value: DEFAULT_TINT },
     { group: "Fog", key: "fogSigma", label: "Coarseness σ", min: 0.05, max: 0.6, step: 5e-3, value: 0.25 },
     { group: "Fog", key: "fogA", label: "Unevenness A", min: 0, max: 0.3, step: 5e-3, value: 0.08 },
     { group: "Fog", key: "fogLo", label: "Darkest L_lo", min: 0, max: 1, step: 0.01, value: 0.45 },
@@ -5390,9 +5370,9 @@ dialog.menu-drawer::before {
     const m = fullMask(e, P, r);
     if (name2 === "mask") return { rgba: paint(maskTone(m), e.lut), width: W, height: H };
     const tb = baseTone(t, m);
-    const lin = delta ? shiftedLinear(tb, m, delta, e.ink, e.paper) : null;
-    if (name2 === "washi" || name2 === "living") return { rgba: washi(e, tb, P, lin), width: W, height: H };
-    return { rgba: lin ? paintLinear(lin) : paint(tb, e.lut), width: W, height: H };
+    const lin2 = delta ? shiftedLinear(tb, m, delta, e.ink, e.paper) : null;
+    if (name2 === "washi" || name2 === "living") return { rgba: washi(e, tb, P, lin2), width: W, height: H };
+    return { rgba: lin2 ? paintLinear(lin2) : paint(tb, e.lut), width: W, height: H };
   }
   function shift(e, P) {
     const dL = P.baseL || 0;
@@ -5401,10 +5381,10 @@ dialog.menu-drawer::before {
     const [, a, b] = oklchToOklab(0, dW, e.warmHue);
     return [dL, a, b];
   }
-  function washi(e, t, P, lin = null) {
+  function washi(e, t, P, lin2 = null) {
     const k = P.warmth;
     const aw = e.tanAbsorber.map((v, c) => k * v + (1 - k) * e.inkAbsorber[c]);
-    return washiRGB(t, pattern(e, P), P.alpha, e.ramp, aw, e.inkAbsorber, lin);
+    return washiRGB(t, pattern(e, P), P.alpha, e.ramp, aw, e.inkAbsorber, lin2);
   }
   function living(e, P, rgba) {
     colours(e, P);
@@ -5854,7 +5834,7 @@ dialog.menu-drawer::before {
     const s = Math.min(W, H);
     const sw = Math.max(2, Math.round(W / s * SAMPLE_SHORT));
     const sh = Math.max(2, Math.round(H / s * SAMPLE_SHORT));
-    const lin = new Float64Array(3 * sw * sh);
+    const lin2 = new Float64Array(3 * sw * sh);
     const count = new Float64Array(sw * sh);
     for (let y = 0; y < H; y++) {
       const j = Math.min(sh - 1, Math.floor(y * sh / H));
@@ -5862,9 +5842,9 @@ dialog.menu-drawer::before {
         const i = Math.min(sw - 1, Math.floor(x * sw / W));
         const c = j * sw + i;
         const q = 4 * (y * W + x);
-        lin[3 * c] += LINEAR_BYTE[rgba[q]];
-        lin[3 * c + 1] += LINEAR_BYTE[rgba[q + 1]];
-        lin[3 * c + 2] += LINEAR_BYTE[rgba[q + 2]];
+        lin2[3 * c] += LINEAR_BYTE[rgba[q]];
+        lin2[3 * c + 1] += LINEAR_BYTE[rgba[q + 1]];
+        lin2[3 * c + 2] += LINEAR_BYTE[rgba[q + 2]];
         count[c]++;
       }
     }
@@ -5872,7 +5852,7 @@ dialog.menu-drawer::before {
     let sumC = 0;
     for (let c = 0; c < sw * sh; c++) {
       const n = count[c] || 1;
-      const [L, a, b] = linearToOklab([lin[3 * c] / n, lin[3 * c + 1] / n, lin[3 * c + 2] / n]);
+      const [L, a, b] = linearToOklab([lin2[3 * c] / n, lin2[3 * c + 1] / n, lin2[3 * c + 2] / n]);
       lab.set([L, a, b], 3 * c);
       sumC += Math.hypot(a, b);
     }
@@ -5933,20 +5913,20 @@ dialog.menu-drawer::before {
     for (let c = 0; c < n; c++) shares[label[c]] += 1 / n;
     return centres.map((lab3, k) => ({ lab: lab3, share: shares[k] })).filter((p) => p.share > 0).sort((a, b) => b.share - a.share);
   }
-  function fogField(lab, sw, sh, pal, sigma2) {
+  function fogField(lab, sw, sh, pal2, sigma2) {
     const n = sw * sh;
-    const fields = pal.map(() => new Float32Array(n));
+    const fields = pal2.map(() => new Float32Array(n));
     for (let c = 0; c < n; c++) {
       let total = 0;
-      const e = pal.map((p) => Math.exp(-d2(lab, c, p.lab) / (2 * TAU_M * TAU_M)));
+      const e = pal2.map((p) => Math.exp(-d2(lab, c, p.lab) / (2 * TAU_M * TAU_M)));
       for (const v of e) total += v;
       if (!(total > 0)) {
         let bk = 0;
-        for (let k = 1; k < pal.length; k++) if (d2(lab, c, pal[k].lab) < d2(lab, c, pal[bk].lab)) bk = k;
+        for (let k = 1; k < pal2.length; k++) if (d2(lab, c, pal2[k].lab) < d2(lab, c, pal2[bk].lab)) bk = k;
         fields[bk][c] = 1;
         continue;
       }
-      for (let k = 0; k < pal.length; k++) fields[k][c] = e[k] / total;
+      for (let k = 0; k < pal2.length; k++) fields[k][c] = e[k] / total;
     }
     const s = Math.min(sw, sh);
     const M = fields.map((f) => blur(f, sw, sh, sigma2 * s));
@@ -5955,11 +5935,11 @@ dialog.menu-drawer::before {
       let total = 0;
       const w = M.map((m) => Math.max(0, m[c]) ** P_PURITY);
       for (const v of w) total += v;
-      for (let k = 0; k < pal.length; k++) {
-        const f = total > 0 ? w[k] / total : 1 / pal.length;
-        fog2[3 * c] += f * pal[k].lab[0];
-        fog2[3 * c + 1] += f * pal[k].lab[1];
-        fog2[3 * c + 2] += f * pal[k].lab[2];
+      for (let k = 0; k < pal2.length; k++) {
+        const f = total > 0 ? w[k] / total : 1 / pal2.length;
+        fog2[3 * c] += f * pal2[k].lab[0];
+        fog2[3 * c + 1] += f * pal2[k].lab[1];
+        fog2[3 * c + 2] += f * pal2[k].lab[2];
       }
     }
     return fog2;
@@ -5983,8 +5963,8 @@ dialog.menu-drawer::before {
     const X = W / Math.min(W, H);
     const Y = H / Math.min(W, H);
     const { lab, sw, sh, grey } = sample(rgba, W, H, P.tint);
-    const pal = kmeans(lab, sw * sh, seed);
-    const f = fogField(lab, sw, sh, pal, P.fogSigma);
+    const pal2 = kmeans(lab, sw * sh, seed);
+    const f = fogField(lab, sw, sh, pal2, P.fogSigma);
     const { U } = stream(seed, ":planar:fog");
     const nx = simplex(U);
     const ny = simplex(U);
@@ -6006,7 +5986,7 @@ dialog.menu-drawer::before {
         for (let ch = 0; ch < 3; ch++) rgb2[3 * (j * fw + i) + ch] = 255 * delinearise(out[ch]);
       }
     }
-    return { rgb: rgb2, fw, fh, palette: pal, grey, sw, sh };
+    return { rgb: rgb2, fw, fh, palette: pal2, grey, sw, sh };
   }
   function fogRGB({ rgb: rgb2, fw, fh }, W, H) {
     const out = new Uint8ClampedArray(4 * W * H);
@@ -6040,8 +6020,8 @@ dialog.menu-drawer::before {
     const i = Math.min(fog2.fw - 1, Math.max(0, Math.floor(x / X * fog2.fw)));
     const j = Math.min(fog2.fh - 1, Math.max(0, Math.floor(y / Y * fog2.fh)));
     const q = 3 * (j * fog2.fw + i);
-    const lin = [0, 1, 2].map((c) => LINEAR_BYTE[Math.max(0, Math.min(255, Math.round(fog2.rgb[q + c])))]);
-    const [, C, h] = oklabToOklch(linearToOklab(lin));
+    const lin2 = [0, 1, 2].map((c) => LINEAR_BYTE[Math.max(0, Math.min(255, Math.round(fog2.rgb[q + c])))]);
+    const [, C, h] = oklabToOklch(linearToOklab(lin2));
     return lchToLinear(L, C / 2, h).map((v) => Math.round(255 * delinearise(v)));
   }
   function fogOf(e, P) {
@@ -6290,6 +6270,38 @@ dialog.menu-drawer::before {
     };
   }
 
+  // dist/web/features/renderer/engine/palette.js
+  var fits = (rgb2) => rgb2.every((c) => c >= -1e-4 && c <= 1 + 1e-4);
+  function toBytes(L, C, h) {
+    let c = Math.max(0, C);
+    let lin2 = oklabToLinear(oklchToOklab(L, c, h));
+    for (let i = 0; i < 40 && !fits(lin2); i++) {
+      c *= 0.9;
+      lin2 = oklabToLinear(oklchToOklab(L, c, h));
+    }
+    return lin2.map((v) => Math.round(255 * delinearise(Math.min(1, Math.max(0, v)))));
+  }
+  var hexOf = (rgb2) => "#" + rgb2.map((v) => v.toString(16).padStart(2, "0")).join("");
+  function roles(tint = DEFAULT_TINT) {
+    const s = /^#[0-9a-f]{6}$/i.test(tint || "") ? tint : DEFAULT_TINT;
+    const [L, C, h] = oklabToOklch(hexToOklab(s));
+    return {
+      paper: toBytes(L, C, h),
+      ink: toBytes(0.285, 0.2 * C, h),
+      pale: toBytes(0.93, 1.2 * C, h),
+      veil: toBytes(0.977, 0.4 * C, h),
+      glow: toBytes(0.86, 0.1, h - 4)
+    };
+  }
+  var PICTURE_CHROMA = { share: 0.35, least: 0.015, most: 0.06 };
+  function tintFromPicture(rgba, W, H, tint = DEFAULT_TINT) {
+    const found = dominantHue(rgba, W, H, tint);
+    if (found.grey) return null;
+    const [L] = oklabToOklch(hexToOklab(tint));
+    const C = Math.min(PICTURE_CHROMA.most, Math.max(PICTURE_CHROMA.least, PICTURE_CHROMA.share * found.C));
+    return hexOf(toBytes(L, C, found.h));
+  }
+
   // dist/web/features/renderer/Renderer.js
   var { el: el4 } = ui_exports;
   var MAX_SIDE = 2048;
@@ -6315,9 +6327,49 @@ dialog.menu-drawer::before {
         mount: (container) => this.mount(container),
         render: () => this.draw()
       });
+      this.add("settings", { id: "renderer-colour", title: "Colour", order: 5, render: () => this.colourPane() });
       this.add("settings", { id: "renderer-theme", title: "Theme", order: 15, render: () => this.themes() });
       this.add("settings", { id: "renderer-advanced", title: "Advanced", order: 50, render: () => this.advanced() });
-      this.provide("backdrop", { colours: () => this.colours(), cover: (on) => this.hold(on) });
+      this.provide("backdrop", { colours: () => this.colours(), palette: () => this.palette, cover: (on) => this.hold(on) });
+      this.paint();
+    }
+    // The app's colours (engine/palette.js), all from the tint τ: set on the page as CSS variables
+    // (--paper, --ink, --pale, --veil, --glow, and each as --name-rgb: "r g b" for use with an
+    // alpha), for every feature's styles to use. Other pages hear of a change by 'palette' on document.
+    paint() {
+      const r = roles(this.P.tint);
+      this.palette = { tint: this.P.tint, ...Object.fromEntries(Object.entries(r).map(([k, v]) => [k, hexOf(v)])) };
+      const root = document.documentElement.style;
+      for (const [k, v] of Object.entries(r)) {
+        root.setProperty(`--${k}`, hexOf(v));
+        root.setProperty(`--${k}-rgb`, v.join(" "));
+      }
+      document.dispatchEvent(new CustomEvent("palette", { detail: this.palette }));
+    }
+    // Settings → Colour: the one tint everything takes its colour from.
+    colourPane() {
+      const set = (tint) => {
+        this.change("tint", tint);
+        this.controls?.set(this.P);
+        if (this.tintInput) this.tintInput.value = tint;
+      };
+      this.tintInput = el4("input", { type: "color", value: this.P.tint, "aria-label": "Tint", oninput: (e) => set(e.target.value) });
+      return el4(
+        "div",
+        { class: "renderer-colour-pane" },
+        el4("label", { class: "renderer-slider renderer-colour" }, el4("span", {}, "Tint"), this.tintInput),
+        ui_exports.hint("Every colour comes from this one: the paper, the words, the menu's veil and the rooms.", { small: true }),
+        el4(
+          "div",
+          { class: "renderer-buttons" },
+          el4("button", { type: "button", class: "btn small", onclick: () => {
+            const found = this.engine.rgba && tintFromPicture(this.engine.rgba, this.engine.image.W, this.engine.image.H, this.P.tint);
+            if (found) set(found);
+            else ui_exports.toast(this.source ? "This picture has almost no colour to take." : "Choose an image first (Advanced → Picture).");
+          } }, "From the picture"),
+          el4("button", { type: "button", class: "btn small", onclick: () => set(DEFAULT_TINT) }, "Back to defaults")
+        )
+      );
     }
     // The picture's average colour in its top and bottom thirds, as [r, g, b] (0–255), or null
     // when nothing is drawn yet. Read once from a small copy, so it costs almost nothing.
@@ -6554,6 +6606,7 @@ dialog.menu-drawer::before {
     change(key, value) {
       this.P[key] = value;
       this.storage.set("params", this.P);
+      if (key === "tint") this.paint();
       if (this.mode.liveKeys.includes(key)) {
         if (this.anim) this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
         return;
@@ -6564,8 +6617,9 @@ dialog.menu-drawer::before {
         this.draw();
       });
     }
+    // Advanced → Back to defaults: every theme's sliders. The tint is Settings → Colour's, and stays.
     reset() {
-      this.P = { ...DEFAULTS };
+      this.P = { ...DEFAULTS, tint: this.P.tint };
       this.storage.set("params", this.P);
       this.controls.set(this.P);
       this.draw();
@@ -7192,16 +7246,15 @@ dialog.menu-drawer::before {
   }
 
   // dist/web/features/create/look.js
-  var PAPER2 = [242, 235, 217];
+  var PALETTE = { paper: "#f2ebd9", ink: "#2b2a27", pale: "#f0e7d2", glow: "#efcc83" };
   var MASK = 0.1;
   var SQUARE = 0.6;
-  var LIGHT2 = 0.8;
-  var LIGHT_MESSY = 0.62;
+  var DEEPER = 0.35;
+  var LIGHT2 = 0.86;
+  var LIGHT_MESSY = 0.72;
+  var DARK2 = 0.6;
   var OPACITY = 1;
-  var SATURATION = 0.22;
-  var SPREAD = 0.05;
-  var INK2 = "#2b2a28";
-  var PALE = "#f1e8d2";
+  var SPREAD = 0.035;
   var hex = ([r, g, b]) => "#" + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("");
   function rgb(h) {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ""));
@@ -7211,38 +7264,39 @@ dialog.menu-drawer::before {
   }
   var clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   var css = (c, a = 1) => `rgb(${c.map(Math.round).join(" ")} / ${+a.toFixed(3)})`;
-  function toHsl([r, g, b]) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
-    if (max === min) return [0, 0, l];
-    const d = max - min;
-    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return [h / 6, s, l];
+  var lin = (c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  var delin = (c) => c <= 31308e-7 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+  function toOklch([R, G, B]) {
+    const [r, g, b] = [R, G, B].map((v) => lin(v / 255));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const Bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    return [L, Math.hypot(A, Bb), (Math.atan2(Bb, A) * 180 / Math.PI + 360) % 360];
   }
-  function fromHsl([h, s, l]) {
-    if (!s) return [l * 255, l * 255, l * 255];
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-    const f = (t) => {
-      t = (t + 1) % 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+  function linear(L, C, h) {
+    const t = h * Math.PI / 180, a = C * Math.cos(t), b = C * Math.sin(t);
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
+    ];
   }
-  var mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  function fromOklch([L, C, h]) {
+    let c = Math.max(0, C), v = linear(L, c, h);
+    for (let i = 0; i < 40 && v.some((x) => x < -1e-4 || x > 1 + 1e-4); i++) v = linear(L, c *= 0.9, h);
+    return v.map((x) => Math.round(255 * delin(clamp(x, 0, 1))));
+  }
   var LOOK = {
     mask: MASK,
     // the rooms page's mask: how much of it covers the picture
-    maskColour: "#000000",
     square: SQUARE,
     // how strong the rooms' squares are
-    squareColour: "#000000",
-    // a square's colour, when the room has no tint of its own
     glow: 0.55,
     // how brightly a room written in lately glows
     cell: 120,
@@ -7254,51 +7308,51 @@ dialog.menu-drawer::before {
     // a room's lightness inside, by default
     lightMessy: LIGHT_MESSY,
     // Messy thoughts' lightness inside
-    tint: "",
-    // the rooms' tint inside, by default ('' = the picture's own colour)
-    saturation: SATURATION,
-    // the most a room takes of the picture's colour
     tension: 0.5
     // Joyce's line: 0 lets pauses hang loose, 1 keeps it taut
   };
   function lookPrefs(saved) {
     const out = { ...LOOK };
     if (!saved || typeof saved !== "object") return out;
+    const old = saved.v !== 2;
     for (const [k, d] of Object.entries(LOOK)) {
+      if (old && (k === "light" || k === "lightMessy")) continue;
       const v = saved[k];
       if (typeof d === "number" && Number.isFinite(+v) && v !== "" && v != null) out[k] = +v;
-      if (typeof d === "string" && typeof v === "string" && (v === "" || /^#[0-9a-f]{6}$/i.test(v))) out[k] = v;
     }
-    if (!out.maskColour) out.maskColour = LOOK.maskColour;
-    if (!out.squareColour) out.squareColour = LOOK.squareColour;
     return out;
   }
-  function pageLook(colours2, prefs = LOOK) {
-    const top = colours2?.top || PAPER2, bottom = colours2?.bottom || PAPER2;
-    return { top: css(top), bottom: css(bottom), mask: css(rgb(prefs.maskColour) || [0, 0, 0], prefs.mask), average: mix(top, bottom, 0.5) };
+  var savedLook = (prefs) => ({ ...prefs, v: 2 });
+  var pal = (palette2) => ({ ...PALETTE, ...palette2 || {} });
+  function pageLook(colours2, prefs = LOOK, palette2 = PALETTE) {
+    const paper = rgb(pal(palette2).paper);
+    const top = colours2?.top || paper, bottom = colours2?.bottom || paper;
+    return { top: css(top), bottom: css(bottom), mask: css(rgb(pal(palette2).ink), prefs.mask) };
   }
-  function squareLook(room2, messy = false, prefs = LOOK) {
-    const l = room2?.light ?? (messy ? prefs.lightMessy : prefs.light);
-    const a = clamp((1 - l) * prefs.square * (room2?.opacity ?? OPACITY), 0, 0.95);
-    return { fill: css(rgb(room2?.tint) || rgb(prefs.squareColour) || [0, 0, 0], a), alpha: a };
+  function roomColour(room2, messy = false, prefs = LOOK, palette2 = PALETTE) {
+    const [, C, h] = toOklch(rgb(room2?.tint) || rgb(pal(palette2).paper));
+    const L = clamp(room2?.light ?? (messy ? prefs.lightMessy : prefs.light), 0.02, 0.99);
+    return [L, C, h];
   }
-  function roomLook(room2, average = PAPER2, messy = false, prefs = LOOK) {
-    const own = rgb(room2?.tint) || rgb(prefs.tint);
-    const tint = own || average;
-    const [h, s0] = toHsl(tint);
-    const s = own ? s0 : Math.min(s0, prefs.saturation);
-    const l = room2?.light ?? (messy ? prefs.lightMessy : prefs.light);
+  function squareLook(room2, messy = false, prefs = LOOK, palette2 = PALETTE) {
+    const [L, C, h] = roomColour(room2, messy, prefs, palette2);
+    const a = clamp(prefs.square * (1.1 - L) * (room2?.opacity ?? OPACITY), 0, 0.95);
+    return { fill: css(fromOklch([Math.max(0.03, L - DEEPER), C, h]), a), alpha: a };
+  }
+  function roomLook(room2, palette2 = PALETTE, messy = false, prefs = LOOK) {
+    const p = pal(palette2);
+    const [L, C, h] = roomColour(room2, messy, prefs, p);
     const a = room2?.opacity ?? OPACITY;
-    const at = (dl) => fromHsl([h, s, clamp(l + dl, 0, 1)]);
-    const dark = l < 0.55;
+    const at = (dl) => fromOklch([clamp(L + dl, 0, 1), C, h]);
+    const dark = L < DARK2;
     return {
       top: css(at(SPREAD), a),
       bottom: css(at(-SPREAD), a),
       flat: css(at(0), a),
-      ink: dark ? PALE : INK2,
+      ink: dark ? p.pale : p.ink,
       dark,
-      tint: hex(tint),
-      light: l,
+      colour: hex(at(0)),
+      light: L,
       opacity: a
     };
   }
@@ -7327,9 +7381,14 @@ dialog.menu-drawer::before {
       this.picker = ui_exports.filePicker("image/*");
       this.backdrop = this.use("backdrop");
       this.prefs = lookPrefs(this.storage.get("look"));
+      this.palette = this.backdrop?.palette?.() || PALETTE;
+      document.addEventListener("palette", (e) => {
+        this.palette = e.detail;
+        this.repaint();
+      });
       this.attention = loadLog(this.storage.get("attention"));
       this.build();
-      this.add("settings", { id: "create-rooms", title: "Rooms", order: 18, render: () => this.settingsPane() });
+      this.add("settings", { id: "create-rooms", title: "Rooms", order: 30, render: () => this.settingsPane() });
       this.provide("create", this);
       document.addEventListener("keydown", (e) => this.onKey(e));
       window.addEventListener("resize", () => {
@@ -7347,6 +7406,7 @@ dialog.menu-drawer::before {
       this.app.shell?.closeMenu?.();
       clearTimeout(this.closing);
       this.colours = this.backdrop?.colours?.();
+      this.palette = this.backdrop?.palette?.() || this.palette;
       this.paintPage();
       this.root.hidden = false;
       document.documentElement.classList.add("create-open");
@@ -7398,7 +7458,6 @@ dialog.menu-drawer::before {
       this.roomPage.hidden = false;
       this.root.classList.add("in-room");
       this.backBtn.setAttribute("aria-label", "Back to the rooms");
-      this.tinting = false;
       this.closeAdd();
       this.drawRoom();
       this.hint("room");
@@ -7494,7 +7553,6 @@ dialog.menu-drawer::before {
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             el5("div", { class: "create-add-rule" }),
-            this.addItem("Room settings", "Tint, lightness, opacity", () => this.toggleTint()),
             this.addItem("Keys", "?", () => this.showKeys())
           ),
           this.addBtn = el5(
@@ -7506,7 +7564,6 @@ dialog.menu-drawer::before {
         ),
         this.history,
         this.bar,
-        this.tintPanel = el5("div", { class: "create-tint", hidden: true }),
         this.sheet = el5("div", { class: "create-sheet", hidden: true }),
         this.input
       );
@@ -7589,7 +7646,7 @@ dialog.menu-drawer::before {
         }));
       }
       const tiles2 = all.map((r) => {
-        const look = squareLook(r, r.id === MESSY, this.prefs);
+        const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
         const written = roomThoughts(this.world, r.id);
         const count = written.length;
         const glow2 = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
@@ -7640,8 +7697,8 @@ dialog.menu-drawer::before {
       this.renaming = null;
       this.drawRooms();
     }
-    // A chosen room's options, beside its square: its name, Go in, its tint and lightness, its size,
-    // and Delete (not for Messy thoughts).
+    // A chosen room's options, beside its square: its name, Go in, its colour, lightness and opacity
+    // (the only place a room's colour is set), its size, Back to the tint, and Delete (not for Messy).
     roomOptions(r, cell, cols) {
       const step = cell + GRID.gap;
       const right = r.col + r.size + 1 + 2 <= cols;
@@ -7651,6 +7708,7 @@ dialog.menu-drawer::before {
         this.drawRoomsSoon();
       };
       const look = this.lookOf(r);
+      const lightness2 = el5("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set({ light: +e.target.value }) });
       const nameField = el5("input", {
         class: "create-options-name",
         value: r.name,
@@ -7676,17 +7734,23 @@ dialog.menu-drawer::before {
         },
         nameField,
         word("Go in", () => this.openRoom(r.id), "create-options-go"),
+        // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
         el5(
           "label",
           { class: "create-slider" },
-          el5("span", {}, "Tint"),
-          el5("input", { type: "color", value: look.tint, oninput: (e) => set({ tint: e.target.value }) })
+          el5("span", {}, "Colour"),
+          el5("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
+            const L = toOklch(rgb(e.target.value))[0];
+            set({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
+            lightness2.value = L;
+          } })
         ),
+        el5("label", { class: "create-slider" }, el5("span", {}, "Lightness"), lightness2),
         el5(
           "label",
           { class: "create-slider" },
-          el5("span", {}, "Lightness"),
-          el5("input", { type: "range", min: 0.05, max: 0.95, step: 0.01, value: look.light, oninput: (e) => set({ light: +e.target.value }) })
+          el5("span", {}, "Opacity"),
+          el5("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) })
         ),
         el5(
           "div",
@@ -7707,7 +7771,7 @@ dialog.menu-drawer::before {
         el5(
           "div",
           { class: "create-options-row" },
-          r.tint || r.light != null ? word("Its own colour again", () => {
+          r.tint || r.light != null || r.opacity != null ? word("Back to the tint", () => {
             delete r.tint;
             delete r.light;
             delete r.opacity;
@@ -7732,7 +7796,7 @@ dialog.menu-drawer::before {
         this.roomsFrame = 0;
         for (const tile of this.grid.querySelectorAll(".create-tile")) {
           const r = room(this.world, tile.dataset.room);
-          if (r) tile.style.setProperty("--square", squareLook(r, r.id === MESSY, this.prefs).fill);
+          if (r) tile.style.setProperty("--square", squareLook(r, r.id === MESSY, this.prefs, this.palette).fill);
         }
       });
     }
@@ -7847,21 +7911,23 @@ dialog.menu-drawer::before {
       return view3(this.world, this.roomId).mode;
     }
     lookOf(r) {
-      return roomLook(r, this.page?.average, r.id === MESSY, this.prefs);
+      return roomLook(r, this.palette, r.id === MESSY, this.prefs);
     }
     // The rooms page's colours, from the picture's (read when Create opened) and Settings → Rooms.
     paintPage() {
-      this.page = pageLook(this.colours, this.prefs);
+      this.page = pageLook(this.colours, this.prefs, this.palette);
       this.root.style.setProperty("--create-top", this.page.top);
       this.root.style.setProperty("--create-bottom", this.page.bottom);
       this.root.style.setProperty("--create-mask", this.page.mask);
-      this.root.style.setProperty("--create-glow", `rgb(255 236 190 / ${this.prefs.glow})`);
-      this.root.style.setProperty("--create-glow-in", `rgb(255 244 214 / ${(this.prefs.glow * 0.64).toFixed(3)})`);
+      const glow2 = rgb(this.palette.glow) || [239, 204, 131];
+      const lift = (t, a) => `rgb(${glow2.map((v) => Math.round(v + (255 - v) * t)).join(" ")} / ${a.toFixed(3)})`;
+      this.root.style.setProperty("--create-glow", lift(0.55, this.prefs.glow));
+      this.root.style.setProperty("--create-glow-in", lift(0.7, this.prefs.glow * 0.64));
     }
     // ---- Settings → Rooms ----
     setPref(key, value) {
       this.prefs = lookPrefs({ ...this.prefs, [key]: value });
-      this.storage.set("look", this.prefs);
+      this.storage.set("look", savedLook(this.prefs));
       this.repaint();
     }
     // Shows a change straight away, if Create is open.
@@ -7871,6 +7937,8 @@ dialog.menu-drawer::before {
       if (this.roomId) this.paintRoom();
       else this.drawRooms();
     }
+    // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
+    // colour from its pop-up on the rooms page.
     settingsPane() {
       const p = this.prefs;
       const slider2 = (label, key, min, max, step = 0.01) => {
@@ -7894,47 +7962,34 @@ dialog.menu-drawer::before {
           })
         );
       };
-      const colour2 = (label, key, fallback) => el5(
-        "label",
-        { class: "renderer-slider renderer-colour" },
-        el5("span", {}, label),
-        el5("input", { type: "color", value: p[key] || fallback, "aria-label": label, oninput: (e) => this.setPref(key, e.target.value) })
+      const fold2 = (title, ...rows) => el5(
+        "details",
+        { class: "advanced renderer-fold" },
+        el5("summary", {}, title),
+        el5("div", { class: "renderer-fold-body" }, el5("div", { class: "renderer-sliders" }, ...rows))
       );
-      const group = (legend, ...rows) => el5("fieldset", { class: "renderer-group" }, el5("legend", {}, legend), ...rows);
-      const avg = this.page?.average || [242, 235, 217];
       return el5(
         "div",
         { class: "create-settings" },
-        ui_exports.hint("How the rooms page and the rooms look. A room's own Tint (inside it) wins over these.", { small: true }),
-        group(
-          "Rooms page",
+        fold2(
+          "The rooms page",
           slider2("Mask opacity", "mask", 0, 0.6),
-          colour2("Mask colour", "maskColour", "#000000")
-        ),
-        group(
-          "Squares",
-          slider2("Strength", "square", 0, 1.5),
-          colour2("Colour", "squareColour", "#000000"),
+          slider2("Square strength", "square", 0, 1.5),
           slider2("Glow", "glow", 0, 1),
           slider2("Size", "cell", 70, 180, 1),
           slider2("Columns at least", "cols", 0, 30, 1),
           slider2("Rows at least", "rows", 0, 30, 1)
         ),
-        group(
+        fold2(
           "Inside a room",
-          colour2("Tint", "tint", "#" + avg.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")),
-          el5("button", { type: "button", class: "btn small", onclick: () => {
-            this.setPref("tint", "");
-            this.app.shell?.refreshSettings?.();
-          } }, "Tint from the picture"),
-          slider2("Colour strength", "saturation", 0, 1),
-          slider2("Lightness", "light", 0.05, 0.95),
-          slider2("Messy lightness", "lightMessy", 0.05, 0.95),
+          slider2("Lightness", "light", 0.05, 0.98),
+          slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           slider2("Line tension", "tension", 0, 1)
         ),
+        ui_exports.hint("A room's own colour is in its pop-up on the rooms page: click its square.", { small: true }),
         el5("button", { type: "button", class: "btn small", onclick: () => {
           this.prefs = lookPrefs(LOOK);
-          this.storage.set("look", this.prefs);
+          this.storage.set("look", savedLook(this.prefs));
           this.repaint();
           this.app.shell?.refreshSettings?.();
         } }, "Back to defaults")
@@ -8199,8 +8254,7 @@ dialog.menu-drawer::before {
         } else if (this.roomSel) {
           this.roomSel = null;
           this.drawRooms();
-        } else if (this.tinting) this.toggleTint();
-        else this.back();
+        } else this.back();
         return;
       }
       if (this.editing) return;
@@ -8752,50 +8806,6 @@ dialog.menu-drawer::before {
       v.y = at.y - (clientY - b.top - b.height / 2) / v.zoom;
       this.place();
     }
-    // ---- The room's own look: tint, lightness, opacity ----
-    toggleTint() {
-      this.tinting = !this.tinting;
-      this.drawTint();
-    }
-    drawTint() {
-      if (!this.tinting || !this.roomId) {
-        this.tintPanel.hidden = true;
-        return;
-      }
-      const r = room(this.world, this.roomId);
-      const look = this.lookOf(r);
-      const set = (fields) => {
-        update(this.world, r.id, fields);
-        this.paintRoom();
-        this.save();
-      };
-      const slider2 = (label, key, min, max, value) => el5(
-        "label",
-        { class: "create-slider" },
-        el5("span", {}, label),
-        el5("input", { type: "range", min, max, step: 0.01, value, oninput: (e) => set({ [key]: +e.target.value }) })
-      );
-      this.tintPanel.hidden = false;
-      this.tintPanel.replaceChildren(
-        el5(
-          "label",
-          { class: "create-slider" },
-          el5("span", {}, "Tint"),
-          el5("input", { type: "color", value: look.tint, oninput: (e) => set({ tint: e.target.value }) })
-        ),
-        slider2("Lightness", "light", 0.05, 0.95, look.light),
-        slider2("Opacity", "opacity", 0.3, 1, look.opacity),
-        el5("button", { type: "button", class: "create-word", onclick: () => {
-          delete r.tint;
-          delete r.light;
-          delete r.opacity;
-          this.paintRoom();
-          this.save();
-          this.drawTint();
-        } }, "Back to its own"),
-        el5("button", { type: "button", class: "create-word", onclick: () => this.toggleTint() }, "Done")
-      );
-    }
     // ---- Editing what is chosen: a pop-up beside it, like a room's options on the rooms page ----
     drawBar() {
       if (this.sel?.kind === "many") {
@@ -9246,7 +9256,8 @@ dialog.menu-drawer::before {
     "description": "A faint monochrome of a picture, cut by a seeded opacity mask.",
     "version": "1.0.0",
     "build": "",
-    "framework": "1.10.0",
+    "framework": "1.11.0",
+    "appearance": "light",
     "test": false
   };
   var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "create", "name": "Create", "description": "Rooms of thoughts: a grid of rooms under the veil, each a canvas to write in, seen through an ontological mode (Joyce or Pessoa).", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/create/Create.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["create"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }];
