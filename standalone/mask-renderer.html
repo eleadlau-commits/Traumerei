@@ -9596,6 +9596,22 @@ dialog.menu-drawer::before {
       this.showDraft();
       return true;
     }
+    // Opens a thought already written to write in, on the canvas where it is, the caret at its end.
+    // Only a line (a passage or a picture has its own sheet); not in a locked room.
+    editThought(id) {
+      const th = this.world.things[id];
+      if (!th || kindOf(th) !== "line" || this.locked) return false;
+      if (this.draft) this.commit();
+      this.sel = null;
+      this.lastTap = null;
+      this.draft = { train: groupOf(this.world, id)?.id || null, edit: id };
+      this.input.value = th.text || "";
+      this.input.focus({ preventScroll: true });
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+      this.drawWorld();
+      this.showDraft();
+      return true;
+    }
     stopWriting() {
       if (this.draft) this.commit();
       this.input.blur();
@@ -9738,7 +9754,7 @@ dialog.menu-drawer::before {
         thing = { ...pick, x: p.x, y: p.y, ...this.ont.live ? { live: true } : { placed: true } };
       }
       if (this.locked && thing) thing.still = true;
-      this.gesture = { kind: thing ? "drag" : "pan", thing, el: groupEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+      this.gesture = { kind: thing ? "drag" : "pan", thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
       if (e.pointerType !== "mouse") {
         const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
         clearTimeout(this.ctxTimer);
@@ -9865,7 +9881,9 @@ dialog.menu-drawer::before {
         const train = g.el?.dataset.group;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
-        this.lastTap = train ? { train, at: now } : null;
+        const n = g.at && this.lastTap?.thought === g.at && now - this.lastTap.at < 400 ? this.lastTap.n + 1 : 1;
+        this.lastTap = train || g.at ? { train, thought: g.at, n, at: now } : null;
+        if (n === 3 && this.editThought(g.at)) return;
         if (!g.thing && this.draft) this.stopWriting();
         this.drawWorld();
         return;
@@ -9968,6 +9986,7 @@ dialog.menu-drawer::before {
         ["Ctrl+Enter", "a new train"],
         ["Alt+P · Alt+I", "a passage · a picture"],
         ["Click · double-click", "choose a thought · its whole train"],
+        ["Triple-click", "write in a thought, where it is"],
         ["Right-click · Enter", "the properties of what is chosen"],
         ["Right-click the canvas", "Add, just there"],
         ["Drag the canvas", "a box to choose many"],
