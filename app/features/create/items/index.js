@@ -4,7 +4,8 @@
 //   name               what it is called in menus: 'Thought'
 //   tidy(fields, h)    its own fields, tidied, or null when it would be empty. h: { oneLine, lines }
 //   text(th)           its words as plain text (what search, peeks and folded groups read)
-//   node(th, el)       how it shows on a canvas (el is Folio's ui.el)
+//   node(th, el)       how it shows on a canvas (el is Folio's ui.el); words go through
+//                      maths(text) from ../maths.js, so $…$ and $$…$$ show as mathematics
 //
 // Ontologies never look at an item's kind: they place items, and ask these for the rest.
 // A new kind (a page of a PDF, say) is one new file, added to ITEMS below.

@@ -1,4 +1,6 @@
 // A passage: a title and a paragraph, or a small article.
+import { maths } from '../maths.js';
+
 export default {
   kind: 'passage',
   name: 'Passage',
@@ -8,6 +10,6 @@ export default {
   },
   text: (th) => [th.title, th.body].filter(Boolean).join(' — '),
   node: (th, el) => el('div', { class: 'create-passage', 'data-id': th.id },
-    th.title ? el('div', { class: 'create-passage-title' }, th.title) : null,
-    th.body ? el('div', { class: 'create-passage-body' }, th.body) : null),
+    th.title ? el('div', { class: 'create-passage-title' }, maths(th.title)) : null,
+    th.body ? el('div', { class: 'create-passage-body' }, maths(th.body)) : null),
 };

@@ -1,4 +1,6 @@
 // A picture: a small JPEG (a data: URL) and its caption.
+import { maths } from '../maths.js';
+
 export default {
   kind: 'picture',
   name: 'Picture',
@@ -9,5 +11,5 @@ export default {
   text: (th) => (th.text ? `[${th.text}]` : '[picture]'),
   node: (th, el) => el('figure', { class: 'create-picture', 'data-id': th.id },
     el('img', { src: th.src, alt: th.text || 'A picture', draggable: 'false' }),
-    th.text ? el('figcaption', {}, th.text) : null),
+    th.text ? el('figcaption', {}, maths(th.text)) : null),
 };

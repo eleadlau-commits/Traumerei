@@ -49,6 +49,7 @@ import {
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
+import { maths } from './maths.js';
 import { gather, FALLBACK } from './ontologies/index.js';
 import { clearSpace, clearSpot, OVERLAP } from './clear.js';
 import { visit, light, loadLog } from './attention.js';
@@ -113,6 +114,8 @@ export default class Create extends Feature {
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
+    // Mathematics' fonts arrive after the first drawing: measure again so nothing overlaps.
+    document.fonts?.addEventListener?.('loadingdone', () => { if (this.roomId) this.clearSoon(); });
     document.addEventListener('paste', (e) => this.onPaste(e));
     document.addEventListener('copy', (e) => this.onCopy(e));
   }
@@ -1371,8 +1374,8 @@ export default class Create extends Feature {
     if (kind === 'group') { // a folded group reads as one passage
       const body = thoughtText(this.world, th);
       return el('div', { class: 'create-passage folded', 'data-id': th.id },
-        th.title ? el('div', { class: 'create-passage-title' }, th.title) : null,
-        body ? el('div', { class: 'create-passage-body' }, body) : null);
+        th.title ? el('div', { class: 'create-passage-title' }, maths(th.title)) : null,
+        body ? el('div', { class: 'create-passage-body' }, maths(body)) : null);
     }
     return (ITEMS[kind] || ITEMS.line).node(th, el);
   }

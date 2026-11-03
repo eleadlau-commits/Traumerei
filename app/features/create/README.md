@@ -68,6 +68,28 @@ The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everyt
 the key `world3` (a world saved in an older shape is not kept) and follows the account like the settings. Other features reach it through the
 `create` service (`open()`).
 
+## Mathematics
+
+Any thought's words can hold LaTeX: `$…$` is inline maths and `$$…$$` is display maths, on a line
+of its own; `\$` is a dollar sign. This is for every kind of words: a line, a passage's title
+and body, a picture's caption, a folded group's title. The words are kept exactly as typed, so
+search, peeks, the Timeline and `text(th)` read the source, and the draft, edit in place and the
+sheet show the source too. Once a thought is kept, it shows drawn, in the thought's own colour and
+size. A formula that doesn't parse shows its source in a quiet rust and never breaks the canvas.
+
+A `$` opens only when something other than a space follows it, and closes only when something
+other than a space comes before it and no digit after it (Pandoc's rule), so "$5 and $6" stays
+words. Inline maths stays on one line; display maths may span lines. A `$` that never closes,
+and an empty `$$ $$`, stay as words.
+
+`maths.js` has `split(text)` (words into text, inline and display pieces, tested in
+`tests/maths.test.js`) and `maths(text)`, which every item's `node()` and the folded group call,
+so a new kind of item gets mathematics for free. The drawing is KaTeX 0.19.1 (`vendor/`, MIT,
+see `LICENSE-KaTeX.txt`): `katex.js` is its ESM build, minified with esbuild, and `katex.css`
+holds its 20 fonts as base64 woff2, so it works offline and in the one-file page (about 640 KB
+of the standalone file). KaTeX draws at once, so Joyce and clear.js measure each thought with
+its maths in it; when the fonts finish loading, the room is measured again.
+
 ## Editing, the line, the timeline
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a

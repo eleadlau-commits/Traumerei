@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "main": "Create.js",
   "styles": [
+    "vendor/katex.css",
     "style.css"
   ],
   "uses": [
