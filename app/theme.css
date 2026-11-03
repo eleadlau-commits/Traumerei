@@ -40,3 +40,8 @@
     --renderer-fail-soft: #43201d;
   }
 }
+
+/* The top bar spans the whole screen, so the menu sits at the far left however wide the window
+   is (the page's frame stops at 1440px and is centred; the bar no longer stays inside it). It then
+   mirrors Create's back arrow, which sits at the far right. */
+.app > .topbar { width: 100vw; margin-left: calc(50% - 50vw); }
