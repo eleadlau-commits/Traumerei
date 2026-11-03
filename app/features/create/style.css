@@ -26,12 +26,14 @@
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
+/* While Create is open the back arrow takes the corner and the menu steps right, beside it. */
+.create-open .topbar > .top-btn:first-child { margin-left: 48px; }
 
-/* The back arrow, top left beside the menu: home from the rooms page, the rooms from a room. */
+/* The back arrow, in the top-left corner with the menu beside it: home from the rooms page, the rooms from a room. */
 .create-back {
   position: fixed;
   top: calc(10px + env(safe-area-inset-top));
-  left: calc(var(--gutter) + 48px);
+  left: var(--gutter);
   width: 44px;
   height: 44px;
   padding: 10px;
@@ -159,17 +161,25 @@
   left: 10px;
   right: 10px;
   bottom: 9px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
   font-size: 11px;
+  line-height: 1.35;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.create-tile.messy .create-tile-label { left: 14px; bottom: 13px; font-size: 12px; }
-.create-tile-name { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.create-tile-count { opacity: .5; letter-spacing: .08em; }
+.create-tile.messy .create-tile-label { left: 14px; right: 14px; bottom: 13px; font-size: 12px; }
+/* The name wraps onto up to three lines (whole words where it can), clear of the count's corner. */
+.create-tile-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  padding-right: 22px;
+  opacity: .8;
+}
+/* The count, alone in the bottom-right corner. */
+.create-tile-count { position: absolute; right: 0; bottom: 0; opacity: .5; letter-spacing: .08em; }
 .create-name-field {
   width: 100%;
   min-width: 0;
@@ -440,7 +450,6 @@
 .create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
 
 @media (max-width: 560px) {
-  .create-search-btn { left: calc(var(--gutter) + 104px); transform: none; width: calc(100% - 2 * var(--gutter) - 104px); }
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
 }
 
@@ -805,6 +814,10 @@
 .create.up .create-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .create.in-room .create-search-btn { color: var(--room-ink); z-index: 6; }
 .create-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
+/* On a phone the bar starts after the arrow and the menu, so it never runs under them. */
+@media (max-width: 560px) {
+  .create-search-btn { left: calc(var(--gutter) + 104px); transform: none; width: calc(100% - 2 * var(--gutter) - 104px); }
+}
 
 /* ---- The rail on the left, under the menu: Rooms and the Archive (in a room, its modes) ---- */
 .create-rail {
@@ -888,7 +901,8 @@
 /* On a phone the rail lies along the top of the rooms page, and the keys aren't shown. */
 @media (max-width: 560px) {
   .create-rail { top: 10px; width: auto; display: flex; align-items: center; gap: 18px; }
-  .create-room .create-modes { top: calc(64px + env(safe-area-inset-top)); }
+  .create-room .create-modes { top: calc(94px + env(safe-area-inset-top)); } /* under the room's name */
+  .create-room .create-history { top: calc(124px + env(safe-area-inset-top)); }
   .create-rail-sub { margin: 0; padding-left: 0; }
   .create-room .create-history { left: 0; }
   .create-rail-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 0 4px; box-shadow: inset 0 -1px 0 transparent; }
