@@ -10,7 +10,12 @@
 //   point(w, room, id)    where a thought sits ({ x, y }, world units)
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits
 //   draftPoint(w, room)   (optional) where a thought being written shows
-//   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray
+//   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. A
+//                         folded group another ontology made is one thought here
+//                         (foldedFrom() in model.js), and waits in the tray until placed
+//   placed(w, room, id)   (optional) whether it has laid a thought out yet; without it, every
+//                         thought counts as laid out. Folding a group in a big room asks Replace
+//                         or Keep both when another ontology there has laid out its thoughts
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
@@ -36,7 +41,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

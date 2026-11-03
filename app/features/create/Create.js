@@ -1826,6 +1826,9 @@ export default class Create extends Feature {
           el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 ? word('Fold into one', () => this.foldTrain(th.id)) : null));
+      // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
+      const elsewhere = th.folded ? this.elsewhere(th) : [];
+      if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
     }
     const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
@@ -1917,12 +1920,37 @@ export default class Create extends Feature {
     this.historyTimer = setTimeout(() => this.drawHistory(), 60);
   }
 
+  // Folds a group, then asks for its name. In a big room where another ontology has laid its
+  // thoughts out, the same sheet asks how that ontology shows it: Replace or Keep both.
   foldTrain(trainId) {
+    const ask = this.elsewhere(this.world.things[trainId], true);
     if (!fold(this.world, trainId)) return;
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.openSheet(null, trainId); // name it
+    this.openSheet(null, trainId, null, ask);
+  }
+
+  // The other ontologies of a big room that show a group (laid out: only those that have placed
+  // some of its thoughts already).
+  elsewhere(g, laidOut = false) {
+    const r = room(this.world, g?.parent);
+    if (!g || !r || !isBig(r)) return [];
+    return this.ontologies.filter((o) => o.id !== g.of && (!laidOut
+      || !o.placed || g.members.some((id) => o.placed(this.world, r.id, id))));
+  }
+
+  // Replace · Keep both, for how `others` show a folded group.
+  keepChoice(others, keep, choose) {
+    const names = others.map((o) => o.name).join(' and ');
+    const pick = (label, value, note) => el('button', {
+      type: 'button', class: 'create-word', 'aria-pressed': String(keep === value), title: note,
+      onclick: (e) => { keep = value; choose(value); e.currentTarget.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
+    }, label);
+    return el('div', { class: 'create-options-row create-keep' },
+      el('span', { class: 'create-options-note' }, `In ${names}:`),
+      pick('Replace', false, 'The one folded thought takes the place of its thoughts'),
+      pick('Keep both', true, 'The folded thought is added beside its thoughts'));
   }
 
   unfoldTrain(id) {
@@ -1973,13 +2001,13 @@ export default class Create extends Feature {
 
   // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
   // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
-  openSheet(kind, id = null, src = null) {
+  openSheet(kind, id = null, src = null, ask = []) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.commit();
     const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;
-    this.editing = { kind, id, src: src || th?.src || null };
+    this.editing = { kind, id, src: src || th?.src || null, ask: ask.length > 0, keep: !!th?.keep };
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
@@ -1990,6 +2018,7 @@ export default class Create extends Feature {
     if (kind === 'group') {
       this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Name this train of thought', 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
       fields.push(this.sheetTitle, el('div', { class: 'create-sheet-preview' }, thoughtText(this.world, th)));
+      if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep) => { this.editing.keep = keep; this.sheetTitle.focus(); }));
     } else if (kind === 'passage') {
       this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
       this.sheetBody = el('textarea', { class: 'create-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
@@ -2013,7 +2042,10 @@ export default class Create extends Feature {
   keepSheet() {
     const ed = this.editing;
     if (!ed) return;
-    if (ed.kind === 'group') name(this.world, ed.id, this.sheetTitle.value);
+    if (ed.kind === 'group') {
+      name(this.world, ed.id, this.sheetTitle.value);
+      if (ed.ask) update(this.world, ed.id, { keep: ed.keep });
+    }
     else {
       const fields = ed.kind === 'passage'
         ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }

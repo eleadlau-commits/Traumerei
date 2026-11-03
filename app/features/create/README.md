@@ -42,6 +42,9 @@ What the home page's **Create** opens: rooms of thoughts.
   edit it.
 - **Folding.** Select a train and *Fold into one thought*, then name it. It shows as one thought
   (in Pessoa it floats as one); *Unfold* opens it again.
+  In a big room, folding also asks how the other ontologies show it: **Replace** (the one folded
+  thought takes the place of its thoughts) or **Keep both** (it is added beside them). It is the
+  same train either way, never a copy, and its pop-up can change the choice later.
 
 **Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
 kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*

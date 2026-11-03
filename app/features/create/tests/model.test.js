@@ -7,7 +7,7 @@ import {
   roomOf, thoughtText, randomSpot, view, roomAt, placeRoom, gridRooms,
   search, sizeRoom,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  roomsOn, toPage, pageCount, addPage, isBig, own, members, groupsOf, groupOf, join, declareGroups, isGroup,
+  roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -440,4 +440,19 @@ test('moving a group takes its thoughts to the other room, and they leave groups
   assert.ok(move(w, t.id, r.id, 1, 2));
   assert.equal(a.parent, r.id);
   assert.equal(w.things[s.id], undefined);
+});
+
+test('a folded group replaces its thoughts elsewhere, or keeps both; unfolding clears the choice', () => {
+  const w = emptyWorld();
+  const t = train(w, MESSY, 'a', 'b');
+  const ids = members(w, t.id).map((x) => x.id);
+  fold(w, t.id, 'Walk');
+  assert.deepEqual(pessoa.units(w, MESSY).map((u) => u.id), [t.id]); // Replace
+  update(w, t.id, { keep: true });
+  assert.deepEqual(pessoa.units(w, MESSY).map((u) => u.id).sort(), [t.id, ...ids].sort()); // Keep both: the same group, beside its thoughts
+  assert.deepEqual(foldedFrom(w, MESSY, 'pessoa').map((g) => g.id), [t.id]);
+  assert.deepEqual(foldedFrom(w, MESSY, 'joyce'), []); // Joyce's own
+  unfold(w, t.id);
+  assert.equal(t.keep, undefined);
+  assert.ok(fold(w, t.id, null, true) && t.keep);
 });

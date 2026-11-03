@@ -547,6 +547,8 @@
 .create-options-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
 .create-options-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
 .create-options .create-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
+.create-keep .create-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; opacity: 1; }
+.create-sheet .create-keep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
 .create-options-delete { opacity: .6; }
 .create-options-delete:hover { color: #8a2f22; opacity: 1; }
 .create-options .create-slider input[type="range"] { width: 110px; }
