@@ -4,21 +4,23 @@
 // picture itself, held still underneath (its spontaneity layer is off), so nothing is drawn while
 // it shows. It is a grid of square cells: each room is an opacity square on it (one cell; Messy
 // thoughts takes four at the top left), and a room written in lately glows. The rooms page has
-// pages (1 2 3 + along the bottom); a thin rail on the left, under the menu, holds Rooms and the
+// pages (1 2 3 + along the bottom); a thin rail on the left holds the menu (☰), Rooms and the
 // Archive. Typing anything on the rooms page opens Messy thoughts and starts writing there.
 //
-// Two kinds of room (model.js): a mode room holds thoughts, seen through one ontological mode
-// (Joyce or Pessoa, set in its properties on the grid that holds it); a Borges room holds rooms,
-// on a grid of its own like the rooms page. A new room (click an empty cell) asks which kind.
+// Two kinds of room (model.js): a mode room holds thoughts, seen through an ontological mode
+// (Joyce or Pessoa); a Borges room holds rooms, on a grid of its own like the rooms page. A small
+// mode room (1 × 1) keeps the one mode it was made with; a big one (Messy thoughts, or any 2 × 2
+// room) switches between the modes inside, at the top left. A new room (click an empty cell) asks which kind.
 // Going into a Borges room shows its grid, with a path at the top (Rooms › Theory); back goes up
 // one level.
 //
 // On a grid, a click chooses a square (an outline); a right-click (or a long press) opens its
-// properties beside it (name, Go in, mode, colour, lightness, opacity, size, doors, Lock, Archive,
+// properties beside it (name, Go in, colour, lightness, opacity, size, doors, Lock, Archive,
 // Delete); a double click or Enter goes in. Drag a square to move it; drop it on another to merge
 // the two into a Borges room (or, on a Borges room, to put it inside), on a page number to move it
-// to that page, on the path to take it up a level, or on Archive. Drag from a square's edge to
-// another square to make a door between them: the line thickens with use, and a room lists its
+// to that page, on the path to take it up a level, or on Archive. Inside a Borges room, drag from a
+// square's edge to another square to make a door between them (doors are only ever between rooms
+// inside Borges rooms, never on the rooms page): the line thickens with use, and a room lists its
 // doors under its name.
 //
 // A room fills the screen as one gradient of its own colour, with the back arrow to its grid.
@@ -52,7 +54,7 @@ import {
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, isBorges, roomsIn, roomPath,
   modeRooms, putRoom, merge, pageCount, addPage, addDoor, removeDoor, doorsOf, useDoor, doorWidth,
-  holds, inside,
+  holds, inside, canDoor, isBig,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { visit, light, loadLog } from './attention.js';
@@ -69,7 +71,7 @@ const KIND_NOTES = { joyce: 'thoughts joined by time', pessoa: 'each thought on 
 const UNDO = 60;           // how many steps back Ctrl+Z goes
 const SVG = 'http://www.w3.org/2000/svg';
 const HINTS = {
-  rooms: 'Click to choose · double-click to go in · right-click for properties · drag from an edge for a door · or just start typing',
+  rooms: 'Click to choose · double-click to go in · right-click for properties · or just start typing',
   room: 'Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes',
 };
 
@@ -146,7 +148,7 @@ export default class Create extends Feature {
     clearTimeout(this.closing);
     this.closing = setTimeout(() => {
       this.root.hidden = true;
-      document.documentElement.classList.remove('create-open');
+      document.documentElement.classList.remove('create-open', 'create-in-room');
     }, 520);
   }
 
@@ -191,6 +193,7 @@ export default class Create extends Feature {
     this.roomPage.hidden = true;
     this.roomsPage.hidden = false;
     this.root.classList.remove('in-room', 'expanding');
+    document.documentElement.classList.remove('create-in-room');
     this.expandVeil?.remove();
     this.backBtn.setAttribute('aria-label', 'Back to the home page');
     document.documentElement.classList.remove('create-dark');
@@ -231,6 +234,7 @@ export default class Create extends Feature {
     this.draft = null;
     this.roomPage.hidden = false;
     this.root.classList.add('in-room');
+    document.documentElement.classList.add('create-in-room');
     this.backBtn.setAttribute('aria-label', 'Back to the rooms');
     this.closeAdd();
     this.drawRoom();
@@ -360,12 +364,14 @@ export default class Create extends Feature {
       if (e.key === 'Escape') { e.preventDefault(); this.closeLights(); }
       if (e.key === 'Enter') { e.preventDefault(); const best = this.bestLit(); if (best) this.openRoom(best); }
     });
-    // The rail on the left, under the menu: the rooms, and the Archive with how many it holds. A
-    // room dragged onto Archive goes there.
+    // The rail on the left: the menu (☰, with Settings), the rooms, and the Archive. A room dragged
+    // onto Archive goes there.
+    this.railMenu = el('button', { type: 'button', class: 'create-rail-item create-rail-menu', 'aria-label': 'Menu', onclick: () => this.app.shell?.openMenu?.() },
+      ui.icon('<path d="M4 7h16M4 12h16M4 17h16"/>'));
     this.railRooms = el('button', { type: 'button', class: 'create-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); else if (this.inside) this.showGrid(null); } }, 'Rooms');
     this.shelfBtn = el('button', { type: 'button', class: 'create-rail-item create-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
-      el('span', {}, 'Archive'), this.shelfCount = el('span', { class: 'create-rail-count' }));
-    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn);
+      'Archive');
+    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Menu, rooms and the Archive' }, this.railMenu, this.railRooms, this.shelfBtn);
     this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
     // Where the grid is: Rooms › Theory › Ontology. Each word goes there; a room dropped on it goes there too.
     this.pathBar = el('nav', { class: 'create-path', 'aria-label': 'Where you are', hidden: true });
@@ -466,7 +472,6 @@ export default class Create extends Feature {
     const all = gridRooms(this.world, fit, parent, page);
     const shelved = archived(this.world);
     if (this.shelf && !shelved.length) this.shelf = false;
-    this.shelfCount.textContent = String(shelved.length);
     this.shelfBtn.setAttribute('aria-current', String(this.shelf));
     this.railRooms.setAttribute('aria-current', String(!this.shelf));
     this.shelfHead.hidden = !this.shelf;
@@ -683,7 +688,7 @@ export default class Create extends Feature {
       },
       onfocus: () => { if (this.roomPick !== r.id && !this.roomSel) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.create-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
       onpointerdown: (e) => this.onTileDown(e, r, tile),
-      onpointermove: (e) => { if (!e.buttons) tile.classList.toggle('edge', !this.shelf && this.nearEdge(e, tile)); },
+      onpointermove: (e) => { if (!e.buttons) tile.classList.toggle('edge', !this.shelf && !!this.inside && this.nearEdge(e, tile)); },
       onpointerleave: () => tile.classList.remove('edge'),
       oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.chooseRoom(r.id, true); this.held = null; },
     },
@@ -821,15 +826,10 @@ export default class Create extends Feature {
         onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
       }, r.desc || ''),
       word('Go in', () => this.openRoom(r.id), 'create-options-go'),
-      // A mode room's way of being seen: set here, on the grid that holds it, never inside.
-      borges
-        ? el('p', { class: 'create-options-note' }, `Borges · a room of rooms · ${n} inside`)
-        : el('div', { class: 'create-options-row create-options-modes', role: 'radiogroup', 'aria-label': 'Mode' },
-          el('span', { class: 'create-options-label' }, 'Mode'),
-          ...MODES.map((m) => el('button', {
-            type: 'button', class: 'create-word', role: 'radio', 'aria-checked': String(m.id === mode), 'aria-pressed': String(m.id === mode),
-            onclick: () => { const v = view(this.world, r.id); v.mode = m.id; v.timeline = false; this.save(); this.drawRooms(); },
-          }, m.name))),
+      // Its kind: a small room keeps its one mode; a big one switches inside.
+      el('p', { class: 'create-options-note' }, borges ? `Borges · a room of rooms · ${n} inside`
+        : isBig(r) ? `${MODES.map((m) => m.name).join(' · ')} · switched inside`
+          : `${MODES.find((m) => m.id === mode)?.name || 'Joyce'} · one mode`),
       // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
       el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
         el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
@@ -876,12 +876,14 @@ export default class Create extends Feature {
   // A room's name with the rooms it is inside: Theory › Ontology.
   pathName(r) { return [...roomPath(this.world, r.id), r].map((x) => x.name).join(' › '); }
 
-  // A room's doors, each going through (and wearing it in) or taken away; and Door to… any room.
+  // A room's doors, each going through (and wearing it in) or taken away; and Door to… any room
+  // inside a Borges room. A room on the rooms page itself has none.
   doorRows(r) {
+    if (!canDoor(this.world, r.id)) return null;
     const doors = doorsOf(this.world, r.id);
     const linked = new Set(doors.map((d) => d.other.id));
     const others = Object.values(this.world.things)
-      .filter((th) => kindOf(th) === 'room' && th.id !== r.id && !th.archived && !linked.has(th.id))
+      .filter((th) => canDoor(this.world, th.id) && th.id !== r.id && !th.archived && !linked.has(th.id))
       .sort((a, b) => this.pathName(a).localeCompare(this.pathName(b)));
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'A door to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
@@ -962,7 +964,7 @@ export default class Create extends Feature {
     if (e.button || e.target.closest('input, textarea, select')) return;
     if (e.ctrlKey && MAC) return; // a Mac's Ctrl+click is a right-click (oncontextmenu)
     const start = { x: e.clientX, y: e.clientY };
-    const door = !this.shelf && e.pointerType === 'mouse' && this.nearEdge(e, tile);
+    const door = !this.shelf && !!this.inside && e.pointerType === 'mouse' && this.nearEdge(e, tile); // doors only inside Borges rooms
     const grab = this.cellAt(e.clientX, e.clientY);
     const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
     let dragging = false, target = null, over = null;
@@ -1211,14 +1213,20 @@ export default class Create extends Feature {
     const v = view(this.world, this.roomId);
     // The room's mode, as a word (it is set from the room's properties on the grid that holds it);
     // hovering over Joyce unfolds the timeline.
-    const m = MODES.find((x) => x.id === this.mode) || MODES[0];
-    const label = el('span', { class: 'create-mode create-mode-label', title: 'The room\'s mode: set it from the room\'s properties (right-click its square)' }, m.name);
-    this.modes.replaceChildren(m.id !== 'joyce' ? label
-      : el('span', { class: 'create-mode-wrap' + (v.timeline ? ' open' : ''), tabindex: 0 }, label,
-        el('button', {
-          type: 'button', class: 'create-mode create-timeline-btn', 'aria-pressed': String(!!v.timeline),
-          onclick: () => this.toggleTimeline(),
-        }, 'Timeline')));
+    // A big room (Messy, or 2 × 2) switches between the modes here; a small one names its one mode.
+    // Hovering over Joyce unfolds the timeline.
+    const big = isBig(r);
+    this.modes.setAttribute('role', big ? 'radiogroup' : 'group');
+    const timeline = () => el('button', {
+      type: 'button', class: 'create-mode create-timeline-btn', 'aria-pressed': String(!!v.timeline && this.mode === 'joyce'),
+      onclick: () => this.toggleTimeline(),
+    }, 'Timeline');
+    const word = (m) => (big
+      ? el('button', { type: 'button', role: 'radio', class: 'create-mode', 'aria-checked': String(m.id === this.mode), onclick: () => this.setMode(m.id) }, m.name)
+      : el('span', { class: 'create-mode create-mode-label', title: 'A small room keeps one mode. Make it 2 × 2 to switch.' }, m.name));
+    const shown = big ? MODES : MODES.filter((m) => m.id === this.mode).slice(0, 1);
+    this.modes.replaceChildren(...(shown.length ? shown : [MODES[0]]).map((m) => (m.id !== 'joyce' ? word(m)
+      : el('span', { class: 'create-mode-wrap' + (v.timeline && this.mode === 'joyce' ? ' open' : ''), ...(big ? {} : { tabindex: 0 }) }, word(m), timeline()))));
     // Where it is (Rooms › Theory ›, when it is inside a Borges room), and its doors.
     const path = roomPath(this.world, r.id).map((x) => x.id);
     this.crumbPath.hidden = !path.length;
@@ -1246,9 +1254,20 @@ export default class Create extends Feature {
   get historyOpen() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
 
   toggleTimeline() {
-    if (this.mode !== 'joyce') return;
     const v = view(this.world, this.roomId);
+    if (this.mode !== 'joyce') { if (!isBig(room(this.world, this.roomId))) return; v.mode = 'joyce'; }
     v.timeline = !v.timeline;
+    this.sel = null;
+    this.save();
+    this.drawRoom();
+  }
+
+  // Only a big room switches its mode.
+  setMode(id) {
+    if (!isBig(room(this.world, this.roomId))) return;
+    const v = view(this.world, this.roomId);
+    v.mode = id;
+    v.timeline = false;
     this.sel = null;
     this.save();
     this.drawRoom();
