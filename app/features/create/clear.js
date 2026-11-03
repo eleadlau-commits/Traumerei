@@ -42,6 +42,27 @@ export function clearSpace(blocks, { gap = GAP, rounds = 40 } = {}) {
   return out;
 }
 
+// A spot for something new (size: { w, h }) inside box ({ x, y, w, h }) that overlaps none of
+// rects, with a gap; the top-left of it. Tries spread spots, then random ones; failing that, the
+// one farthest from the rest.
+export function clearSpot(box, rects, size, random = Math.random, { gap = GAP, tries = 80 } = {}) {
+  const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
+  const spots = [];
+  const cols = 5, rows = 5;
+  for (let i = 0; i < tries; i++) {
+    const p = i < cols * rows
+      ? { x: box.x + ((i % cols) + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i / cols) + random()) / rows * Math.max(0, box.h - size.h) }
+      : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
+    spots.push(p);
+  }
+  // Spread spots in a shuffled order, so a new train doesn't always land in the same corner.
+  const order = spots.map((p, i) => [random(), i]).sort((a, b) => a[0] - b[0]).map(([, i]) => spots[i]);
+  const free = order.find((p) => !hits(p));
+  if (free) return free;
+  const far = (p) => (rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0);
+  return order.reduce((best, p) => (far(p) > far(best) ? p : best), order[0]);
+}
+
 // The setting every ontology has: whether thoughts placed by hand may be overlapped (and are left
 // out of the pass), or stay clear (and the others move around them).
 export const OVERLAP = { key: 'overlap', label: 'Hand-placed can be overlapped', type: 'switch', default: true };
