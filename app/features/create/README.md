@@ -43,14 +43,22 @@ What the home page's **Create** opens: rooms of thoughts.
 - **Folding.** Select a train and *Fold into one thought*, then name it. It shows as one thought
   (in Pessoa it floats as one); *Unfold* opens it again.
 
-**Everything is a thought.** `model.js` has one object, the thought, of five kinds: line,
-passage, picture, train and room. Each sits inside another (`parent`): lines, passages and pictures
-in trains, trains in rooms, rooms in rooms or at the top. Moving, folding, naming and removing are
-the same operations for every kind. A folded train is the train itself shown as one thought, so
-unfolding never loses anything. Older saved data (the first prototype's shape) is converted on load.
+**Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
+kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*
+and *rooms*. Items and groups sit in a room. A group belongs to the ontology that made it (Joyce
+makes trains) and lists its items, so one item can be in groups of several ontologies. Each
+ontology says whether an item can be in **one** of its groups (a train) or in **many**. Every
+group can be folded, named, moved and deleted, and is always the same group, never a copy.
+Saved trains (where a thought sat inside its train) are converted on load.
+
+**Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa), or come from another feature
+through the slot `create.ontologies`. `ontologies/index.js` describes their shape: name, groups,
+units, where each sits, what a drag does, and optional tray, settings and moves. Each keeps its
+own data per room (`own()` in model.js: Pessoa's dragged places). A room whose ontology is
+missing is seen through Pessoa. For now Create still draws Joyce's canvas itself.
 
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
-the key `world` and follows the account like the settings. Other features reach it through the
+the key `world3` (the older shape stays under `world`, read once) and follows the account like the settings. Other features reach it through the
 `create` service (`open()`).
 
 ## Editing, the line, the timeline

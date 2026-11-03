@@ -4,11 +4,12 @@ import { test, assert } from 'folio/testing';
 import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
-  roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
+  roomOf, thoughtText, randomSpot, view, roomAt, placeRoom, gridRooms,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  roomsOn, toPage, pageCount, addPage, isBig, KINDS_OF_ROOM,
+  roomsOn, toPage, pageCount, addPage, isBig, own, members, groupsOf, groupOf, join, declareGroups, isGroup,
 } from '../model.js';
+import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 
 const train = (w, room = MESSY, ...texts) => {
   const t = startTrain(w, room, 0, 0);
@@ -37,15 +38,18 @@ test('the first prototype\'s world is turned into thoughts', () => {
   assert.deepEqual(trainThoughts(w, 't1').map((t) => t.text), ['hello']);
 });
 
-test('what can sit inside what', () => {
+test('what can sit inside what: items and groups in rooms, rooms at the top', () => {
   const w = emptyWorld();
   const t = startTrain(w, MESSY, 0, 0);
-  assert.ok(canHold(w, t.id, 'line'));
-  assert.ok(!canHold(w, MESSY, 'line'));
-  assert.ok(canHold(w, MESSY, 'train'));
+  assert.ok(canHold(w, MESSY, 'line'));
+  assert.ok(canHold(w, MESSY, 'group'));
+  assert.ok(!canHold(w, t.id, 'line')); // a group lists its items; they sit in the room
   assert.ok(!canHold(w, MESSY, 'room')); // rooms sit only on the rooms page
   assert.ok(canHold(w, null, 'room'));
   assert.ok(!canHold(w, t.id, 'room'));
+  const a = addThought(w, t.id, 'a');
+  assert.equal(a.parent, MESSY);
+  assert.deepEqual(t.members, [a.id]);
 });
 
 test('thoughts in a train keep the order they were written in', () => {
@@ -87,11 +91,12 @@ test('moving one thought into a room gives it a train there; the rest stays join
   const r = addRoom(w, 'Elsewhere');
   const t = train(w, MESSY, 'a', 'b', 'c');
   const b = trainThoughts(w, t.id)[1];
-  place(w, MESSY, b.id, 9, 9);
+  pessoa.drop(w, MESSY, b.id, 9, 9);
   assert.ok(move(w, b.id, r.id));
   assert.deepEqual(trainThoughts(w, t.id).map((th) => th.text), ['a', 'c']);
   assert.equal(roomThoughts(w, r.id)[0].text, 'b');
-  assert.equal(w.places[MESSY][b.id], undefined);
+  assert.equal(own(w, MESSY, 'pessoa')[b.id], undefined);
+  assert.equal(groupOf(w, b.id).parent, r.id);
 });
 
 test('a train left empty by a move is removed', () => {
@@ -102,12 +107,11 @@ test('a train left empty by a move is removed', () => {
   assert.equal(w.things[t.id], undefined);
 });
 
-test('a new room is Joyce by default, or Pessoa: the only kinds', () => {
+test('a new room is Joyce by default, or the ontology asked for', () => {
   const w = emptyWorld();
   const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, null, 6, {}, 'pessoa');
   assert.equal(view(w, j.id).mode, 'joyce');
   assert.equal(view(w, p.id).mode, 'pessoa');
-  assert.deepEqual(KINDS_OF_ROOM.map((k) => k.id), ['joyce', 'pessoa']);
   assert.ok(!move(w, j.id, p.id)); // a room never goes inside another
 });
 
@@ -140,6 +144,7 @@ test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 rooms are not', () => {
 
 test('a saved Borges room is taken apart: its rooms come out onto its page, and doors go', () => {
   const w = emptyWorld();
+  w.v = 2; // saved in the second shape: a thought inside its train
   w.pages = 2;
   w.things.b = { id: 'b', kind: 'room', parent: null, at: 1, name: 'Theory', form: 'borges', page: 1, col: 0, row: 0 };
   w.things.c = { id: 'c', kind: 'room', parent: 'b', at: 2, name: 'Ontology', col: 0, row: 0 };
@@ -152,6 +157,8 @@ test('a saved Borges room is taken apart: its rooms come out onto its page, and 
   assert.deepEqual([back.things.c.parent, back.things.c.page, back.things.d.parent, back.things.d.page], [null, 1, null, 1]);
   assert.ok(back.things.c.col !== back.things.d.col || back.things.c.row !== back.things.d.row);
   assert.equal(back.things.t.parent, MESSY);
+  assert.deepEqual(back.things.t.members, ['l']);
+  assert.equal(back.things.l.parent, MESSY);
   assert.equal(back.doors, undefined);
   assert.equal(back.things.c.form, undefined);
 });
@@ -218,12 +225,15 @@ test('the spiral moves outwards as thoughts are added', () => {
   assert.ok(r(30) > r(10) && r(10) > r(1));
 });
 
-test('a dragged Pessoa thought stays where it was put', () => {
+test('a dragged Pessoa thought stays where it was put, in Pessoa\'s own data', () => {
   const w = emptyWorld();
   const t = train(w, MESSY, 'x');
   const a = trainThoughts(w, t.id)[0];
-  place(w, MESSY, a.id, 123, 45);
-  assert.deepEqual(pessoaPoint(w, MESSY, a.id), { x: 123, y: 45 });
+  pessoa.drop(w, MESSY, a.id, 123, 45);
+  assert.deepEqual(pessoa.point(w, MESSY, a.id), { x: 123, y: 45 });
+  assert.deepEqual(w.own[MESSY].pessoa[a.id], { x: 123, y: 45 });
+  remove(w, a.id);
+  assert.equal(w.own[MESSY].pessoa[a.id], undefined);
 });
 
 test('a random spot is inside the box', () => {
@@ -296,7 +306,7 @@ test('Joyce: a train\'s thoughts sit a step apart until one is dragged, and stay
   s = trainSpots(w, t.id);
   assert.deepEqual(s[b.id], { x: 400, y: 500 });
   assert.deepEqual(s[c.id], { x: 400, y: 500 + STEP.line });
-  assert.equal(b.parent, t.id);
+  assert.equal(groupOf(w, b.id).id, t.id);
   assert.deepEqual(nextSpot(w, t.id), { x: 400, y: 500 + 2 * STEP.line });
   Object.assign(t, { x: 0, y: 0 }); // moving the train moves its dragged thoughts too
   assert.deepEqual(trainSpots(w, t.id)[b.id], { x: 300, y: 300 });
@@ -417,4 +427,70 @@ test('search lights count what each room holds, its name included', () => {
   assert.equal(topRoom(w, r.id).id, r.id);
   assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 3, [MESSY]: 1 });
   assert.deepEqual(roomHits(w, ''), {});
+});
+
+test('a saved world of the second shape: trains become Joyce\'s groups, places become Pessoa\'s', () => {
+  const w = loadWorld({ v: 2, pages: 1, things: {
+    messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
+    t1: { id: 't1', kind: 'train', parent: 'messy', at: 1, x: 5, y: 6, title: 'Walk', folded: true },
+    b: { id: 'b', kind: 'line', parent: 't1', at: 3, text: 'second' },
+    a: { id: 'a', kind: 'line', parent: 't1', at: 2, text: 'first', dx: 4, dy: 9 },
+  }, views: { messy: { mode: 'pessoa', x: 0, y: 0, zoom: 1 } }, places: { messy: { t1: { x: 70, y: 80 } } } });
+  assert.equal(w.v, 3);
+  const g = w.things.t1;
+  assert.ok(isGroup(g));
+  assert.deepEqual([g.of, g.title, g.folded, g.x, g.y], ['joyce', 'Walk', true, 5, 6]);
+  assert.deepEqual(g.members, ['a', 'b']);
+  assert.deepEqual([w.things.a.parent, w.things.a.dx], [MESSY, 4]);
+  assert.deepEqual(trainThoughts(w, 't1').map((x) => x.text), ['first', 'second']);
+  assert.equal(w.places, undefined);
+  assert.deepEqual(pessoa.point(w, MESSY, 't1'), { x: 70, y: 80 });
+  assert.deepEqual(pessoa.point(w, MESSY, 'a'), { x: 70, y: 80 }); // a thought in a folded group is where the group is
+  assert.equal(view(w, MESSY).mode, 'pessoa');
+  const again = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.deepEqual(again.things, w.things);
+});
+
+test('a train holds each thought in one train; an ontology of sets holds it in many', () => {
+  declareGroups('sets', { membership: 'many' });
+  const w = emptyWorld();
+  const t = train(w, MESSY, 'a', 'b');
+  const [a, b] = trainThoughts(w, t.id);
+  const t2 = startTrain(w, MESSY, 0, 0);
+  assert.ok(join(w, t2.id, a.id)); // a leaves its train for the new one
+  assert.deepEqual([t.members, t2.members], [[b.id], [a.id]]);
+  const s1 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Blue' });
+  const s2 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Night' });
+  assert.ok(join(w, s1.id, a.id) && join(w, s2.id, a.id) && join(w, s1.id, b.id));
+  assert.deepEqual(groupsOf(w, a.id).map((g) => g.id).sort(), [t2.id, s1.id, s2.id].sort());
+  remove(w, s1.id); // a set freed: its thoughts stay
+  assert.ok(w.things[a.id] && w.things[b.id]);
+  assert.deepEqual(groupsOf(w, a.id, 'sets').map((g) => g.id), [s2.id]);
+  remove(w, t2.id); // a train removed: its thoughts go, and leave the sets they were in
+  assert.equal(w.things[a.id], undefined);
+  assert.equal(w.things[s2.id], undefined); // left empty, so it goes
+});
+
+test('any group folds, and Pessoa floats a folded group as one thought', () => {
+  declareGroups('sets', { membership: 'many' });
+  const w = emptyWorld();
+  const t = train(w, MESSY, 'a', 'b');
+  const s = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Both' });
+  for (const th of members(w, t.id)) join(w, s.id, th.id);
+  assert.ok(fold(w, s.id));
+  assert.deepEqual(pessoa.units(w, MESSY).map((u) => u.id), [s.id]);
+  assert.equal(thoughtText(w, s), 'a\nb');
+});
+
+test('moving a group takes its thoughts to the other room, and they leave groups there', () => {
+  declareGroups('sets', { membership: 'many' });
+  const w = emptyWorld();
+  const r = addRoom(w, 'Elsewhere');
+  const t = train(w, MESSY, 'a');
+  const a = members(w, t.id)[0];
+  const s = create(w, MESSY, { kind: 'group', of: 'sets' });
+  join(w, s.id, a.id);
+  assert.ok(move(w, t.id, r.id, 1, 2));
+  assert.equal(a.parent, r.id);
+  assert.equal(w.things[s.id], undefined);
 });
