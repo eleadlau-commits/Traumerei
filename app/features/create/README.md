@@ -3,7 +3,7 @@
 What the home page's **Create** opens: rooms of thoughts.
 
 - **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
-  back arrow home in the top-left corner and the menu (☰) beside it. It is a light opacity mask (`look.js`) over the home picture
+  back arrow home in the top-right corner (the menu ☰ keeps the top-left one). It is a light opacity mask (`look.js`) over the home picture
   itself, which is held still underneath: its spontaneity layer is off while the rooms page
   shows (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
   is an opacity square on it: a deeper version of the room's own colour inside, (L_r − 0.35,
@@ -165,8 +165,7 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
 - **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
   dropped on a number moves there. Messy thoughts stays on page 1.
 - **The rail and the menu.** The menu (☰, with Settings) sits at the top left of the top bar on
-  every page. On the rooms page and inside a room the back arrow takes the corner and the menu
-  sits just beside it. Under it, on the rooms page, a thin rail
+  every page. On the rooms page and inside a room the back arrow sits in the top-right corner. Under it, on the rooms page, a thin rail
   holds *Rooms* and *Archive* (no count).
 - **Moving thoughts** (*Move to…*) lists every room, Messy thoughts first. Search and the timeline
   choose what they find without opening its properties.
