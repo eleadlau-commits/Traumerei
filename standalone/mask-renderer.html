@@ -1301,6 +1301,8 @@ dialog.dialog-box {
 .create-options-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
 .create-options-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
 .create-options .create-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
+.create-keep .create-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; opacity: 1; }
+.create-sheet .create-keep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
 .create-options-delete { opacity: .6; }
 .create-options-delete:hover { color: #8a2f22; opacity: 1; }
 .create-options .create-slider input[type="range"] { width: 110px; }
@@ -7239,7 +7241,7 @@ dialog.menu-drawer::before {
   var roomThoughts = roomItems;
   function roomUnits(w, roomId) {
     const folded = groupsIn(w, roomId).filter((g) => g.folded && members(w, g.id).length);
-    const hidden = new Set(folded.flatMap((g) => g.members));
+    const hidden = new Set(folded.filter((g) => !g.keep).flatMap((g) => g.members));
     return [...folded, ...roomItems(w, roomId).filter((th) => !hidden.has(th.id))].sort(byTime);
   }
   function view3(w, roomId) {
@@ -7291,6 +7293,7 @@ dialog.menu-drawer::before {
         title: oneLine(f.title)
       };
       if (f.folded) out2.folded = true;
+      if (f.keep) out2.keep = true;
       return out2;
     }
     const out = { kind, name: oneLine(f.name) || "Untitled" };
@@ -7345,6 +7348,7 @@ dialog.menu-drawer::before {
       next.members = th.members;
       next.of = th.of;
       if (!next.folded) delete th.folded;
+      if (!next.keep) delete th.keep;
     }
     if (kindOf(th) === "room") {
       for (const k of ["desc", "locked", "archived", "page", "col", "row"]) if (!(k in next)) delete th[k];
@@ -7404,15 +7408,16 @@ dialog.menu-drawer::before {
     const th = w.things[id];
     if (th) update(w, id, kindOf(th) === "room" ? { name: text } : { title: text });
   }
-  function fold(w, groupId, title) {
+  function fold(w, groupId, title, keep = false) {
     if (!isGroup(w.things[groupId])) return false;
-    update(w, groupId, { folded: true, ...title != null ? { title } : {} });
+    update(w, groupId, { folded: true, keep, ...title != null ? { title } : {} });
     return true;
   }
   function unfold(w, groupId) {
     const g = w.things[groupId];
     if (!isGroup(g) || !g.folded || shut(w, groupId)) return false;
     delete g.folded;
+    delete g.keep;
     return true;
   }
   function addRoom(w, text = "Untitled", now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
@@ -7774,12 +7779,12 @@ dialog.menu-drawer::before {
     order: 20,
     groups: null,
     units: (w, roomId) => roomUnits(w, roomId),
-    // Where it was dragged to, or its place on the spiral. A thought inside a folded group is where
-    // the group is.
+    // Where it was dragged to, or its place on the spiral. A thought hidden in a folded group
+    // (Replace) is where the group is.
     point(w, roomId, id) {
       const th = w.things[id];
       if (isLeaf(th)) {
-        const folded = groupsOf(w, id).find((g) => g.folded && g.parent === roomId);
+        const folded = groupsOf(w, id).find((g) => g.folded && !g.keep && g.parent === roomId);
         if (folded) id = folded.id;
       }
       const placed = own(w, roomId, "pessoa", false)[id];
@@ -7799,7 +7804,7 @@ dialog.menu-drawer::before {
   var BUILT_IN = [joyce_default, pessoa_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { draftPoint: "function", tray: "function", draw: "function" };
+  var MAY = { draftPoint: "function", tray: "function", draw: "function", placed: "function" };
   function missing2(o) {
     if (!o || typeof o !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k, t]) => typeof o[k] !== t || t === "string" && !o[k]).map(([k]) => k);
@@ -10131,6 +10136,11 @@ dialog.menu-drawer::before {
             th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 ? word("Fold into one", () => this.foldTrain(th.id)) : null
           )
         );
+        const elsewhere = th.folded ? this.elsewhere(th) : [];
+        if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => {
+          update(this.world, th.id, { keep });
+          done();
+        }));
       }
       const others = this.moveRooms();
       const pick = el5(
@@ -10244,12 +10254,44 @@ dialog.menu-drawer::before {
       clearTimeout(this.historyTimer);
       this.historyTimer = setTimeout(() => this.drawHistory(), 60);
     }
+    // Folds a group, then asks for its name. In a big room where another ontology has laid its
+    // thoughts out, the same sheet asks how that ontology shows it: Replace or Keep both.
     foldTrain(trainId) {
+      const ask = this.elsewhere(this.world.things[trainId], true);
       if (!fold(this.world, trainId)) return;
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.openSheet(null, trainId);
+      this.openSheet(null, trainId, null, ask);
+    }
+    // The other ontologies of a big room that show a group (laid out: only those that have placed
+    // some of its thoughts already).
+    elsewhere(g, laidOut = false) {
+      const r = room(this.world, g?.parent);
+      if (!g || !r || !isBig(r)) return [];
+      return this.ontologies.filter((o) => o.id !== g.of && (!laidOut || !o.placed || g.members.some((id) => o.placed(this.world, r.id, id))));
+    }
+    // Replace · Keep both, for how `others` show a folded group.
+    keepChoice(others, keep, choose) {
+      const names = others.map((o) => o.name).join(" and ");
+      const pick = (label, value, note) => el5("button", {
+        type: "button",
+        class: "create-word",
+        "aria-pressed": String(keep === value),
+        title: note,
+        onclick: (e) => {
+          keep = value;
+          choose(value);
+          e.currentTarget.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
+        }
+      }, label);
+      return el5(
+        "div",
+        { class: "create-options-row create-keep" },
+        el5("span", { class: "create-options-note" }, `In ${names}:`),
+        pick("Replace", false, "The one folded thought takes the place of its thoughts"),
+        pick("Keep both", true, "The folded thought is added beside its thoughts")
+      );
     }
     unfoldTrain(id) {
       unfold(this.world, id);
@@ -10294,7 +10336,7 @@ dialog.menu-drawer::before {
     }
     // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
     // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
-    openSheet(kind, id = null, src = null) {
+    openSheet(kind, id = null, src = null, ask = []) {
       if (!this.roomId) return;
       if (this.locked) {
         this.toast("This room is locked.");
@@ -10303,7 +10345,7 @@ dialog.menu-drawer::before {
       if (this.draft) this.commit();
       const th = id ? this.world.things[id] : null;
       kind = th ? kindOf(th) : kind;
-      this.editing = { kind, id, src: src || th?.src || null };
+      this.editing = { kind, id, src: src || th?.src || null, ask: ask.length > 0, keep: !!th?.keep };
       const keep = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
@@ -10317,6 +10359,10 @@ dialog.menu-drawer::before {
       if (kind === "group") {
         this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: "Name this train of thought", "aria-label": "Name", value: th.title || "", onkeydown: keys });
         fields.push(this.sheetTitle, el5("div", { class: "create-sheet-preview" }, thoughtText(this.world, th)));
+        if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep2) => {
+          this.editing.keep = keep2;
+          this.sheetTitle.focus();
+        }));
       } else if (kind === "passage") {
         this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
         this.sheetBody = el5("textarea", { class: "create-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
@@ -10343,8 +10389,10 @@ dialog.menu-drawer::before {
     keepSheet() {
       const ed = this.editing;
       if (!ed) return;
-      if (ed.kind === "group") name(this.world, ed.id, this.sheetTitle.value);
-      else {
+      if (ed.kind === "group") {
+        name(this.world, ed.id, this.sheetTitle.value);
+        if (ed.ask) update(this.world, ed.id, { keep: ed.keep });
+      } else {
         const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
         if (ed.id) update(this.world, ed.id, fields);
         else {

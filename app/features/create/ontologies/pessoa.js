@@ -26,12 +26,12 @@ export default {
 
   units: (w, roomId) => roomUnits(w, roomId),
 
-  // Where it was dragged to, or its place on the spiral. A thought inside a folded group is where
-  // the group is.
+  // Where it was dragged to, or its place on the spiral. A thought hidden in a folded group
+  // (Replace) is where the group is.
   point(w, roomId, id) {
     const th = w.things[id];
     if (isLeaf(th)) {
-      const folded = groupsOf(w, id).find((g) => g.folded && g.parent === roomId);
+      const folded = groupsOf(w, id).find((g) => g.folded && !g.keep && g.parent === roomId);
       if (folded) id = folded.id;
     }
     const placed = own(w, roomId, 'pessoa', false)[id];

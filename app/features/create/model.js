@@ -2,10 +2,12 @@
 //
 //   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
 //            kinds, such as a page of a PDF, are added there)
-//   group    { of, members, x, y, title, folded }   items held together by an ontology. `of` is the
-//            ontology that made it (Joyce makes trains); `members` lists its items. Folded, a
-//            group shows as one thought (its title). Every group follows the same rules: it can
-//            be folded, named, moved and deleted, and it is always the same group, never a copy.
+//   group    { of, members, x, y, title, folded, keep }   items held together by an ontology.
+//            `of` is the ontology that made it (Joyce makes trains); `members` lists its items.
+//            Folded, a group shows as one thought (its title); every other ontology then shows it
+//            as one thought too: in place of its items (Replace), or beside them (keep: Keep
+//            both). Every group follows the same rules: it can be folded, named, moved and
+//            deleted, and it is always the same group, never a copy.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size, page,             through an ontology; on the rooms page it is a
 //              desc, locked, archived }          square of size × size cells at (col, row).
@@ -172,13 +174,18 @@ export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g)
 // Every line, passage and picture in a room, in time order.
 export const roomThoughts = roomItems;
 
-// What floats on a canvas that places single thoughts (Pessoa): each item on its own, but a folded
-// group as the one thought it is, in place of its items.
+// What floats on a canvas that places single thoughts (Pessoa): each item on its own, and a folded
+// group as the one thought it is, in place of its items (or beside them, when it keeps both).
 export function roomUnits(w, roomId) {
   const folded = groupsIn(w, roomId).filter((g) => g.folded && members(w, g.id).length);
-  const hidden = new Set(folded.flatMap((g) => g.members));
+  const hidden = new Set(folded.filter((g) => !g.keep).flatMap((g) => g.members));
   return [...folded, ...roomItems(w, roomId).filter((th) => !hidden.has(th.id))].sort(byTime);
 }
+
+// The folded groups other ontologies made, which ontology `of` shows as one thought each: one with
+// a tray keeps them there until it places them.
+export const foldedFrom = (w, roomId, of) =>
+  groupsIn(w, roomId).filter((g) => g.folded && g.of !== of && members(w, g.id).length);
 
 export function lastWritten(w, roomId) {
   const all = roomThoughts(w, roomId);
@@ -240,6 +247,7 @@ function tidy(f) {
       members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
       x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
     if (f.folded) out.folded = true;
+    if (f.keep) out.keep = true;
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
@@ -288,7 +296,12 @@ export function update(w, id, fields, now = Date.now()) {
   if (!th || (kindOf(th) !== 'room' && shut(w, id))) return null; // a room itself can still be renamed, coloured or unlocked
   const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
-  if (isGroup(th)) { next.members = th.members; next.of = th.of; if (!next.folded) delete th.folded; }
+  if (isGroup(th)) {
+    next.members = th.members;
+    next.of = th.of;
+    if (!next.folded) delete th.folded;
+    if (!next.keep) delete th.keep;
+  }
   if (kindOf(th) === 'room') for (const k of ['desc', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   return th;
@@ -365,15 +378,17 @@ export function name(w, id, text) {
 }
 
 // A group folds into one thought, and unfolds back; its items and their order never change.
-export function fold(w, groupId, title) {
+// keep: other ontologies show it beside its items (Keep both), not in their place (Replace).
+export function fold(w, groupId, title, keep = false) {
   if (!isGroup(w.things[groupId])) return false;
-  update(w, groupId, { folded: true, ...(title != null ? { title } : {}) });
+  update(w, groupId, { folded: true, keep, ...(title != null ? { title } : {}) });
   return true;
 }
 export function unfold(w, groupId) {
   const g = w.things[groupId];
   if (!isGroup(g) || !g.folded || shut(w, groupId)) return false;
   delete g.folded;
+  delete g.keep;
   return true;
 }
 
