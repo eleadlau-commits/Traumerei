@@ -781,11 +781,11 @@ dialog.dialog-box {
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
 
-/* The back arrow, top right: home from the rooms page, the rooms from a room. */
+/* The back arrow, top left beside the menu: home from the rooms page, the rooms from a room. */
 .create-back {
   position: fixed;
   top: calc(10px + env(safe-area-inset-top));
-  right: var(--gutter);
+  left: calc(var(--gutter) + 48px);
   width: 44px;
   height: 44px;
   padding: 10px;
@@ -966,7 +966,7 @@ dialog.dialog-box {
 .create-room .create-history { left: calc(var(--gutter) + 72px); }
 .create-top {
   position: absolute;
-  top: calc(10px + env(safe-area-inset-top) + 5px);
+  top: calc(10px + env(safe-area-inset-top) + 46px); /* under the search bar */
   left: 50%;
   transform: translateX(-50%);
   max-width: 40vw;
@@ -1191,6 +1191,7 @@ dialog.dialog-box {
 .create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
 
 @media (max-width: 560px) {
+  .create-search-btn { left: calc(var(--gutter) + 104px); transform: none; width: calc(100% - 2 * var(--gutter) - 104px); }
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
 }
 
@@ -1530,17 +1531,25 @@ dialog.dialog-box {
 .create.expanding .create-room { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
 .create.expanding .create-back { color: var(--home-ink); }
 
-/* ---- Search, beside the back arrow ---- */
+/* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
 .create-search-btn {
   position: fixed;
-  top: calc(10px + env(safe-area-inset-top) + 8px);
-  right: calc(var(--gutter) + 56px);
-  display: inline-flex;
+  top: calc(10px + env(safe-area-inset-top) + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
+  padding: 6px 12px;
+  background: rgb(var(--veil-rgb, 250 247 240) / .55);
+  background-image: none;
   opacity: 0;
-  transition: opacity .4s, background-size .25s;
+  transition: opacity .4s, background-color .25s;
 }
+.create-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
+.create.up .create-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb, 250 247 240) / .8); }
 .create.up .create-search-btn { opacity: .66; }
 .create.up .create-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .create.in-room .create-search-btn { color: var(--room-ink); z-index: 6; }
@@ -1775,6 +1784,15 @@ dialog.menu-drawer::before {
   opacity: 0;
   transition: transform .25s ease, opacity .2s;
   pointer-events: none;
+}
+/* Once shown, the cross takes the pointer: a clear border widens the spot that shows the hand. */
+.menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 10px solid transparent;
+  background-clip: content-box;
+  box-sizing: content-box;
+  margin: -10px 0 0 -10px;
 }
 .menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
   opacity: .8;

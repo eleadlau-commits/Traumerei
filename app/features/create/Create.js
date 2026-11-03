@@ -345,7 +345,7 @@ export default class Create extends Feature {
 
     this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
-    // Search, beside the back arrow: the rooms page's lights, or a room's search of every room.
+    // Search, a bar in the middle of the top row: the rooms page's lights, or a room's search of every room.
     this.searchBtn = el('button', { type: 'button', class: 'create-word create-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => { if (this.roomId) this.openSearch(); else if (this.lights != null) this.closeLights(); else this.openLights(); } },
     el('span', {}, 'Search'), el('span', { class: 'create-search-key' }, KEY));
