@@ -49,6 +49,7 @@ import {
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
 import { gather, FALLBACK } from './ontologies/index.js';
+import { clearSpace, OVERLAP } from './clear.js';
 import { visit, light, loadLog } from './attention.js';
 import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOOK, PALETTE } from './look.js';
 
@@ -332,6 +333,7 @@ export default class Create extends Feature {
     }
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => { this.storage.set(WORLD, this.world); this.showSaved(); }, 250);
+    if (this.roomId) this.clearSoon();
   }
 
   snap() { const w = this.world; return JSON.stringify({ things: w.things, own: w.own, pages: w.pages }); }
@@ -995,6 +997,9 @@ export default class Create extends Feature {
 
   // ---- Ontology settings: global ones here, each room's own in its rail ----
 
+  // An ontology's settings, and the one every ontology has (clear space's overlap).
+  settingsOf(o) { return [...(o?.settings || []), OVERLAP]; }
+
   globalSetting(of, st) { const v = this.ontPrefs[of]?.[st.key]; return v !== undefined ? v : st.default; }
 
   setOntPref(of, key, value) {
@@ -1012,7 +1017,7 @@ export default class Create extends Feature {
 
   // The open room's value of one of its ontology's settings (an ontology reads it as c.setting(key)).
   setting(key, ont = this.ont) {
-    const st = (ont.settings || []).find((x) => x.key === key);
+    const st = this.settingsOf(ont).find((x) => x.key === key);
     return st ? roomSetting(this.world, this.roomId, ont.id, st, this.ontPrefs) : undefined;
   }
 
@@ -1074,9 +1079,9 @@ export default class Create extends Feature {
         slider('Messy lightness', 'lightMessy', 0.05, 0.98),
         // Each ontology's own settings (Joyce: its line's tension): the global ones, which a new
         // room starts from. Each room keeps its own (the ⚙ beside the mode in its rail).
-        ...this.ontologies.filter((o) => o.settings?.length).flatMap((o) => [
+        ...this.ontologies.flatMap((o) => [
           el('p', { class: 'create-settings-ont' }, o.name),
-          ...o.settings.map((st) => this.settingRow(st, this.globalSetting(o.id, st), (v) => this.setOntPref(o.id, st.key, v)))]),
+          ...this.settingsOf(o).map((st) => this.settingRow(st, this.globalSetting(o.id, st), (v) => this.setOntPref(o.id, st.key, v)))]),
         el('button', { type: 'button', class: 'btn small', onclick: () => this.applyToAllRooms() }, 'Apply to all rooms')),
       ui.hint('A room\'s own colour is in its pop-up on the rooms page: click its square.', { small: true }),
       el('button', { type: 'button', class: 'btn small', onclick: () => {
@@ -1124,7 +1129,7 @@ export default class Create extends Feature {
           onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, m.name)
         : el('span', { class: 'create-rail-item create-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
           onclick: () => this.toggleGear(m.id) }, m.name);
-      const gear = m.settings?.length ? el('button', {
+      const gear = this.settingsOf(m).length ? el('button', {
         type: 'button', class: 'create-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
         'aria-expanded': String(this.settingsFor === m.id), onclick: () => this.openRoomSettings(m.id),
       }, '⚙') : null;
@@ -1185,7 +1190,7 @@ export default class Create extends Feature {
         el('span', {}, o.name),
         el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close', onclick: close }, '×')),
       el('p', { class: 'create-room-settings-note' }, 'For this room only'),
-      ...o.settings.map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
+      ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
         this.storage.set(WORLD, this.world);
         this.drawWorld();
@@ -1256,6 +1261,65 @@ export default class Create extends Feature {
     }
     this.world$.replaceChildren(...nodes);
     this.drawBar();
+    this.clearSoon();
+  }
+
+  // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----
+
+  clearSoon() {
+    if (this.clearFrame) return;
+    this.clearFrame = requestAnimationFrame(() => { this.clearFrame = 0; this.clearRoom(); });
+  }
+
+  // Measures each block on the canvas (world units) and moves the ones that overlap. What was
+  // placed by hand is left out (it can be overlapped) or stays put while the rest moves around it,
+  // as the room's 'overlap' setting says. The thought being written stays where it is.
+  clearRoom(depth = 0) {
+    if (!this.roomId || this.root.hidden || this.locked || this.gesture?.moved || this.roomPage.hidden) return;
+    const w = this.world, ont = this.ont, roomId = this.roomId;
+    const overlap = this.setting('overlap') !== false;
+    const blocks = ont.blocks ? ont.blocks(w, roomId) : ont.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
+    const nodes = new Map();
+    for (const n of this.world$.querySelectorAll('[data-thought]')) nodes.set(n.dataset.thought, n);
+    const editing = this.draft?.edit || null;
+    const measured = [];
+    const origin = this.world$.getBoundingClientRect(), zoom = view(w, roomId).zoom || 1;
+    for (const b of blocks) {
+      if (b.hand && overlap) continue;
+      const els = b.thoughts.map((id) => nodes.get(id)).filter(Boolean);
+      if (b.tail && b.group) els.push(...this.world$.querySelectorAll(`div[data-group="${b.group}"]:not([data-thought])`));
+      if (!els.length) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const n of els) { // on the screen, then in world units (a thought may be centred by a transform)
+        const r = n.getBoundingClientRect();
+        x0 = Math.min(x0, (r.left - origin.left) / zoom); y0 = Math.min(y0, (r.top - origin.top) / zoom);
+        x1 = Math.max(x1, (r.right - origin.left) / zoom); y1 = Math.max(y1, (r.bottom - origin.top) / zoom);
+      }
+      const writing = (b.tail && this.draft?.train && this.draft.train === b.group && !this.draft.edit)
+        || (editing && (b.thoughts.includes(editing) || b.id === editing));
+      measured.push({ id: b.id, box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, fixed: !!b.hand || !!writing, at: b.at });
+    }
+    const moves = clearSpace(measured);
+    const ids = Object.keys(moves);
+    if (!ids.length) return;
+    const saved = this.snap() === this.lastSnap; // nothing waiting to be saved as its own step
+    for (const id of ids) {
+      const { dx, dy } = moves[id];
+      if (ont.shift) ont.shift(w, roomId, id, dx, dy);
+      else {
+        const p = ont.point(w, roomId, id);
+        if (p) ont.drop(w, roomId, id, p.x + dx, p.y + dy);
+      }
+    }
+    // The push belongs to the change that caused it: Ctrl+Z takes both back together.
+    if (saved) this.lastSnap = this.snap();
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => { this.storage.set(WORLD, this.world); }, 250);
+    // Redrawn at once (a second pass may find what the first push made overlap).
+    this.drawWorld();
+    cancelAnimationFrame(this.clearFrame);
+    this.clearFrame = 0;
+    if (depth < 2) this.clearRoom(depth + 1);
   }
 
   // The Timeline down the right: everything written in the room, in the order it was last changed

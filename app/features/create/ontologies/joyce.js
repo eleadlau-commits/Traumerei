@@ -104,6 +104,30 @@ export function tagName(w, trainId) {
 }
 
 
+// ---- Clear space: what moves together ----
+
+// A train's blocks: { id, thoughts, group, tail, hand, at }. id is the train (its start) or the
+// thought dragged on its own that starts the run; tail marks the run the train's next thought
+// joins; a folded train is one block.
+export function joyceBlocks(w, roomId) {
+  const out = [];
+  for (const t of roomTrains(w, roomId)) {
+    const all = trainThoughts(w, t.id);
+    const at = (ths) => Math.max(t.at ?? 0, ...ths.map((th) => th.at ?? 0));
+    if (t.folded) { out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at(all) }); continue; }
+    let run = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
+    const runs = [run];
+    for (const th of all) {
+      if (Number.isFinite(th.dx) && run.thoughts.length) runs.push(run = { id: th.id, thoughts: [], group: t.id, hand: true });
+      else if (Number.isFinite(th.dx)) { run.id = th.id; run.hand = true; }
+      run.thoughts.push(th.id);
+    }
+    run.tail = true;
+    for (const r of runs) out.push({ ...r, at: at(r.thoughts.map((id) => w.things[id])) });
+  }
+  return out;
+}
+
 // ---- The ontology ----
 
 export default {
@@ -125,12 +149,28 @@ export default {
     return t.folded ? { x: t.x, y: t.y } : trainSpots(w, t.id)[id] || null;
   },
 
-  // A train moves whole; a thought moves alone, and its train stays joined.
+  // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
+  // stays joined.
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th)) Object.assign(th, { x, y });
+    if (isGroup(th)) Object.assign(th, { x, y, hand: true });
     else nudge(w, id, x, y);
+  },
+
+  // Clear space (clear.js): a train is one block from its start, and one more from each thought
+  // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
+  // were placed by hand.
+  blocks: (w, roomId) => joyceBlocks(w, roomId),
+
+  shift(w, roomId, id, dx, dy) {
+    const th = w.things[id];
+    if (!th || shut(w, id)) return;
+    if (isGroup(th)) {
+      th.x += dx; th.y += dy;
+      // Thoughts dragged on their own stay where they are.
+      for (const m of trainThoughts(w, id)) if (Number.isFinite(m.dx)) { m.dx -= dx; m.dy -= dy; }
+    } else if (Number.isFinite(th.dx)) { th.dx += dx; th.dy += dy; }
   },
 
   // A thought's tag in the room's Timeline: its train.

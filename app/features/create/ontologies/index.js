@@ -31,6 +31,12 @@
 //                         own (the ⚙ beside the mode's name in the rail); the global ones are under
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
 //   moves                 (optional) [{ id, label, run(create) }], its own actions
+//   blocks(w, room)       (optional) clear space (clear.js): what moves together, as
+//                         [{ id, thoughts, group?, tail?, hand, at }]; hand: placed by hand.
+//                         Without it, each unit is a block, none by hand
+//   shift(w, room, id, dx, dy)   (optional) moves a block by dx, dy; without it, drop() to point + d
+//   Every ontology also has the setting 'overlap' (clear.js): whether what was placed by hand
+//   can be overlapped, or stays clear while the rest moves around it.
 //
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
@@ -43,7 +49,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
