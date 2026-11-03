@@ -1,4 +1,6 @@
 // A line: a passing thought, written until Enter. Ctrl+Enter puts a new line inside it.
+import { maths } from '../maths.js';
+
 export default {
   kind: 'line',
   name: 'Thought',
@@ -7,5 +9,5 @@ export default {
     return text ? { text } : null;
   },
   text: (th) => th.text || '',
-  node: (th, el) => el('span', { class: 'create-thought', 'data-id': th.id }, th.text),
+  node: (th, el) => el('span', { class: 'create-thought', 'data-id': th.id }, maths(th.text)),
 };

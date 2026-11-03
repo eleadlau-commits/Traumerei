@@ -949,3 +949,13 @@
 .create-note-x { font-size: 10px; font-style: normal; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 @media (max-width: 560px) { .create-note { top: calc(10px + env(safe-area-inset-top) + 48px); } }
 .create-leave .create-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
+
+/* Mathematics in a thought's words (maths.js, drawn by KaTeX: vendor/katex.css). It takes the
+   thought's own colour and size, like its words; a formula that doesn't parse shows its source
+   in a quiet rust. */
+.create-maths { white-space: normal; text-transform: none; letter-spacing: normal; }
+.create-maths .katex { font-size: 1em; color: inherit; }
+.create-maths.display { display: block; margin: .4em 0; }
+.create-maths .katex-display { margin: 0; }
+.create-maths.unparsed { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em;
+  color: color-mix(in srgb, #b0563f 62%, currentColor); opacity: .85; }
