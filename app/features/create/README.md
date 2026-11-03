@@ -80,6 +80,13 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
   pulling a thought far away makes it straight again (Line tension: the room's ⚙ beside Joyce). Drag a
   thought to move it alone; double-click a train to choose it whole, then drag it.
+- **Clear space** (`clear.js`): after any change (writing, deleting, editing, folding, a drag),
+  the room measures the real size of what is on its canvas and pushes apart anything that
+  overlaps, in every mode. Joyce's blocks are its trains (and each run started by a thought
+  dragged on its own); Pessoa's are its thoughts. The newer of two moves; the thought being
+  written stays put. Each room's ⚙ has *Hand-placed can be overlapped* (on by default): on, what
+  was dragged into place is left out; off, it stays where it is and the rest moves around it.
+  A push belongs to the change that caused it, so Ctrl+Z takes both back together.
 - **Timeline:** the quiet word under the modes. It opens a list down the right of everything
   written in the room, in any mode, in the order it was last changed (latest at the bottom),
   each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its train). Scroll it to see

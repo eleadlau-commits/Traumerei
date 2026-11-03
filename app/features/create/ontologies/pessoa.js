@@ -41,9 +41,25 @@ export default {
     return spiralPoint(i < 0 ? units.length : i, id);
   },
 
+  // Dragged: placed by hand.
   drop(w, roomId, id, x, y) {
     if (shut(w, roomId)) return;
     own(w, roomId, 'pessoa')[id] = { x, y };
+  },
+
+  // Clear space (clear.js): each thought is a block; one dragged was placed by hand. One pushed
+  // clear keeps its new place (marked auto, so it still counts as laid out by Pessoa).
+  blocks(w, roomId) {
+    const places = own(w, roomId, 'pessoa', false);
+    return roomUnits(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
+  },
+
+  shift(w, roomId, id, dx, dy) {
+    if (shut(w, roomId)) return;
+    const p = this.point(w, roomId, id);
+    if (!p) return;
+    const places = own(w, roomId, 'pessoa');
+    places[id] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy), ...(places[id] && !places[id].auto ? {} : { auto: true }) };
   },
 
   draftPoint: (w, roomId) => spiralPoint(roomUnits(w, roomId).length, 'draft'),
