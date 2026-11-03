@@ -290,6 +290,7 @@ export default class Create extends Feature {
   // put back when the room is gone into again.
   shelveDraft() {
     if (!this.roomId) return;
+    if (this.draft?.edit) this.commit(); // a thought opened again is simply kept
     const text = this.input.value;
     if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0 };
     else delete this.drafts[this.roomId];
@@ -410,7 +411,7 @@ export default class Create extends Feature {
     this.modes = el('nav', { class: 'create-rail create-modes', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'create-world' });
     this.stage = el('div', { class: 'create-stage', 'data-own-swipe': '' }, this.world$);
-    this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, autocomplete: 'off', spellcheck: 'false' });
+    this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
     this.bar = el('div', { class: 'create-options create-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.history = el('aside', { class: 'create-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
@@ -440,9 +441,15 @@ export default class Create extends Feature {
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
-    this.input.addEventListener('keydown', (e) => this.onInputKey(e));
-    this.input.addEventListener('blur', () => { if (this.draft && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } });
+    this.input.addEventListener('keydown', (e) => { this.onInputKey(e); requestAnimationFrame(() => this.paintDraft()); });
+    this.input.addEventListener('blur', () => { if (this.draft && !this.draft.edit && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } else this.paintDraft(); });
+    // The caret and the selection on the canvas follow the hidden box's.
+    document.addEventListener('selectionchange', () => { if (document.activeElement === this.input) this.paintDraft(); });
+    this.input.addEventListener('selectionchange', () => this.paintDraft());
+    this.input.addEventListener('focus', () => this.paintDraft());
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
+    // A press in the thought being written keeps the hidden box focused (and no page selection starts).
+    this.stage.addEventListener('mousedown', (e) => { if (e.target.closest?.('.create-draft')) e.preventDefault(); });
     this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
     this.stage.addEventListener('contextmenu', (e) => this.onContext(e));
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
@@ -1134,6 +1141,7 @@ export default class Create extends Feature {
     if (!this.roomId) return;
     const w = this.world;
     const nodes = [];
+    this.draftEl = null;
     if (this.ont.draw) nodes.push(...this.ont.draw(this));
     else {
       // An ontology without a canvas of its own    } else {
@@ -1147,7 +1155,7 @@ export default class Create extends Feature {
           style: `left:${p.x}px;top:${p.y}px`,
         }, this.thoughtNode(th)));
       }
-      if (this.draft) {
+      if (this.draft && !this.draft.edit) {
         const p = ont.draftPoint?.(w, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
         nodes.push(el('div', { class: 'create-float', style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
       }
@@ -1173,6 +1181,7 @@ export default class Create extends Feature {
 
   // One thought, drawn by its kind.
   thoughtNode(th) {
+    if (this.draft?.edit === th.id) return this.draftNode(); // a thought opened again to write in
     const kind = kindOf(th);
     if (kind === 'group') { // a folded group reads as one passage
       const body = thoughtText(this.world, th);
@@ -1184,8 +1193,89 @@ export default class Create extends Feature {
   }
 
   draftNode() {
-    this.draftEl = el('span', { class: 'create-thought create-draft' }, this.input.value);
+    this.draftEl = el('span', { class: 'create-thought create-draft' });
+    this.paintDraft();
     return this.draftEl;
+  }
+
+  // Draws the thought being written from the hidden box: its words, the selection, and the caret
+  // where the selection's moving end is.
+  paintDraft() {
+    const d = this.draftEl;
+    if (!d) return;
+    const v = this.input.value;
+    const a = this.input.selectionStart ?? v.length, b = this.input.selectionEnd ?? v.length;
+    const back = this.input.selectionDirection === 'backward';
+    const caret = document.activeElement === this.input || !d.isConnected ? el('span', { class: 'create-caret', 'aria-hidden': 'true' }) : null;
+    const parts = a === b
+      ? [v.slice(0, a), caret, v.slice(a)]
+      : [v.slice(0, a), back ? caret : null, el('span', { class: 'create-chosen' }, v.slice(a, b)), back ? null : caret, v.slice(b)];
+    // An empty thought, or one ending in a new line, still has a line for the caret to stand on.
+    if (!v || v.endsWith('\n')) parts.push(el('span', { class: 'create-pad', 'aria-hidden': 'true' }, '\u200b'));
+    d.replaceChildren(...parts.filter((p) => p != null && p !== '').map((p) => (p instanceof Node ? p : document.createTextNode(p))));
+  }
+
+  // Where each letter of the thought being written is on the screen (measured, not guessed).
+  letterBoxes() {
+    const out = [];
+    let i = 0;
+    const range = document.createRange();
+    for (const n of this.draftEl?.childNodes || []) {
+      if (n.classList?.contains('create-pad')) { out.push({ i, r: n.getBoundingClientRect(), end: true }); continue; }
+      const t = n.nodeType === 3 ? n : n.classList?.contains('create-chosen') ? n.firstChild : null;
+      if (!t) continue;
+      for (let k = 0; k < t.length; k++) {
+        range.setStart(t, k);
+        range.setEnd(t, k + 1);
+        const rs = range.getClientRects();
+        const r = rs[rs.length - 1];
+        if (r && (r.width || r.height)) out.push({ i: i + k, r, nl: t.data[k] === '\n' });
+      }
+      i += t.length;
+    }
+    return out;
+  }
+
+  // The place in the thought being written nearest a point on the screen.
+  offsetAt(x, y) {
+    const len = this.input.value.length;
+    const boxes = this.letterBoxes();
+    if (!boxes.length) return len;
+    const gap = (r) => (y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0);
+    const near = boxes.reduce((m, b) => (gap(b.r) < gap(m.r) ? b : m));
+    const mid = (near.r.top + near.r.bottom) / 2, half = (near.r.bottom - near.r.top) / 2 || 8;
+    const line = boxes.filter((b) => Math.abs((b.r.top + b.r.bottom) / 2 - mid) < half);
+    for (const b of line) if (b.end || b.nl || x < (b.r.left + b.r.right) / 2) return b.i;
+    return line[line.length - 1].i + 1;
+  }
+
+  // Chooses letters in the thought being written: from `anchor` to `focus` (the caret's end).
+  selectText(anchor, focus = anchor) {
+    this.input.setSelectionRange(Math.min(anchor, focus), Math.max(anchor, focus), focus < anchor ? 'backward' : 'forward');
+    this.input.focus({ preventScroll: true });
+    this.paintDraft();
+  }
+
+  // The word (or run of spaces, or one sign) at a place in the text.
+  static wordAround(v, i) {
+    const word = (c) => !!c && /[\p{L}\p{N}_'’]/u.test(c);
+    const space = (c) => !!c && c !== '\n' && /\s/.test(c);
+    let a = i, b = i;
+    const kind = word(v[i]) || word(v[i - 1]) ? word : space(v[i]) || space(v[i - 1]) ? space : null;
+    if (!kind) return [i, Math.min(v.length, i + 1)];
+    while (kind(v[a - 1])) a--;
+    while (kind(v[b])) b++;
+    return [a, b];
+  }
+
+  // Puts letters in the hidden box as if typed, so Ctrl+Z inside the thought can take them back.
+  typeIn(text) {
+    const box = this.input;
+    box.focus({ preventScroll: true });
+    if (!document.execCommand?.('insertText', false, text)) {
+      box.setRangeText(text, box.selectionStart, box.selectionEnd, 'end');
+      this.onInput();
+    }
   }
 
   // ---- Writing ----
@@ -1235,9 +1325,9 @@ export default class Create extends Feature {
       this.draft = this.target();
       this.sel = null;
     }
-    this.input.value += seed;
     this.input.focus({ preventScroll: true });
     this.drawWorld();
+    if (seed) this.typeIn(seed);
     this.showDraft();
   }
 
@@ -1248,7 +1338,7 @@ export default class Create extends Feature {
 
   onInput() {
     if (!this.draft) { this.beginWriting(); return; }
-    if (this.draftEl) this.draftEl.textContent = this.input.value;
+    this.paintDraft();
     this.showDraft();
   }
 
@@ -1257,6 +1347,22 @@ export default class Create extends Feature {
       e.preventDefault();
       if (e.code === 'KeyP') this.openSheet('passage'); else this.choosePicture();
       return;
+    }
+    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    // Ctrl+Z undoes typing inside the thought; once it is empty, it undoes whole steps again.
+    if (mod && !e.altKey && (k === 'z' || k === 'y') && !this.input.value) {
+      e.preventDefault();
+      if (this.draft?.edit) { this.draft = null; this.drawWorld(); return; } // let go of the thought opened again, unchanged
+      this.stopWriting();
+      this.undo(k === 'z' && !e.shiftKey);
+      return;
+    }
+    // Backspace in an empty thought goes back into the end of the one before it, as a line joins.
+    if (e.key === 'Backspace' && !e.altKey && !this.input.value) {
+      const was = this.draft;
+      if (!was && !this.fresh && !this.locked) this.draft = this.target(); // just after Enter: the next thought, not yet begun
+      if (this.stepBack()) { e.preventDefault(); return; }
+      this.draft = was;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1273,12 +1379,46 @@ export default class Create extends Feature {
     this.input.value = '';
     const d = this.draft;
     this.draft = null;
+    if (d?.edit) { // a thought opened again: kept as it is now, or gone if it was emptied
+      const th = this.world.things[d.edit];
+      if (th && !text.trim()) remove(this.world, d.edit);
+      else if (th && text !== th.text) update(this.world, d.edit, { text });
+      if (this.world.things[d.train]) this.current[this.roomId] = d.train;
+      this.save();
+      this.drawWorld();
+      return;
+    }
     if (!d || !text.trim()) { this.drawWorld(); return; }
     const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
     addThought(this.world, train.id, text);
     this.current[this.roomId] = train.id;
     this.save();
     this.drawWorld();
+  }
+
+  // Backspace in an empty thought: opens the thought before it in its train, the caret at its end.
+  // An emptied thought that was opened again goes first. Returns false when there is nothing before.
+  stepBack() {
+    const d = this.draft, w = this.world;
+    if (!d?.train || !w.things[d.train]) return false;
+    const list = trainThoughts(w, d.train);
+    const at = d.edit ? list.findIndex((th) => th.id === d.edit) : list.length;
+    const prev = list[at - 1];
+    if (d.edit) {
+      const t = w.things[d.train];
+      const spot = { x: t.x ?? 0, y: t.y ?? 0 };
+      remove(w, d.edit);
+      this.save();
+      this.draft = w.things[d.train] ? { train: d.train } : { train: null, ...spot };
+    }
+    if (prev && kindOf(prev) === 'line') {
+      this.draft = { train: d.train, edit: prev.id };
+      this.input.value = prev.text || '';
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+    } else if (!d.edit) return false;
+    this.drawWorld();
+    this.showDraft();
+    return true;
   }
 
   stopWriting() {
@@ -1288,7 +1428,7 @@ export default class Create extends Feature {
 
   // Keeps the thought being written on the screen, moving the view if it has gone off it.
   showDraft() {
-    if (!this.draftEl) return;
+    if (!this.draftEl?.isConnected) return;
     const r = this.draftEl.getBoundingClientRect();
     const b = this.stage.getBoundingClientRect();
     const pad = 60;
@@ -1373,6 +1513,24 @@ export default class Create extends Feature {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     this.stage.setPointerCapture(e.pointerId);
     if (pointers.size === 2) { this.gesture = { kind: 'pinch', ...this.pinchState() }; return; }
+    // In the thought being written: a click places the caret, a drag chooses letters, Shift extends.
+    if (this.draftEl?.isConnected && e.target.closest?.('.create-draft') && !(e.ctrlKey || e.metaKey) && !middle && !this.spaceDown) {
+      e.preventDefault();
+      const at = this.offsetAt(e.clientX, e.clientY);
+      const box = this.input;
+      // Presses close together count up, as a word processor's do: two choose the word, three the thought.
+      const now = Date.now(), last = this.lastPress;
+      const count = last && now - last.at < 500 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6 ? (last.count % 3) + 1 : 1;
+      this.lastPress = { at: now, x: e.clientX, y: e.clientY, count };
+      this.gesture = { kind: 'text', x0: e.clientX, y0: e.clientY, moved: false };
+      this.listen(e);
+      if (count === 2) { const [a, b] = Create.wordAround(box.value, at); this.gesture.anchor = a; this.selectText(a, b); return; }
+      if (count === 3) { this.gesture.anchor = 0; this.selectText(0, box.value.length); return; }
+      const anchor = e.shiftKey ? (box.selectionDirection === 'backward' ? box.selectionEnd : box.selectionStart) : at;
+      this.gesture.anchor = anchor;
+      this.selectText(anchor, at);
+      return;
+    }
 
     const v = view(this.world, this.roomId);
     const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
@@ -1434,6 +1592,7 @@ export default class Create extends Feature {
       this.zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, (g.z0 * d) / g.d0, g.mid);
       return;
     }
+    if (g.kind === 'text') { if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) >= 3) this.selectText(g.anchor, this.offsetAt(e.clientX, e.clientY)); return; }
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
@@ -1468,6 +1627,7 @@ export default class Create extends Feature {
     clearTimeout(this.ctxTimer);
     if (!g || g.kind === 'pinch') { this.save(); return; }
     if (g.ctx && !g.moved) { this.contextAt(g.ctx); return; } // a Mac's Ctrl+click
+    if (g.kind === 'text') { this.input.focus({ preventScroll: true }); return; }
     if (g.kind === 'box') { this.endBox(g); return; }
     if (g.kind === 'group') {
       if (!g.moved) { this.sel = null; this.drawWorld(); return; }
@@ -1499,16 +1659,20 @@ export default class Create extends Feature {
 
   // ---- Keys: delete, choose all, nudge, and the list of them all (?) ----
 
+  // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
+  // A plain Backspace never does: it is for letters.
+  deletes(e) { return e.key === 'Delete' || (MAC && e.metaKey && e.key === 'Backspace'); }
+
   // Returns true when the key was one of these, and was used.
   shortcut(e, mod) {
     const k = e.key;
     if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
     if (!this.roomId) {
       // A grid: Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in; the
-      // ContextMenu key (or Shift+F10) opens its properties; Backspace, with nothing chosen, goes up.
+      // ContextMenu key (or Shift+F10) opens its properties.
       const id = this.roomSel || this.roomPick;
       const r = id && room(this.world, id);
-      if ((k === 'Delete' || k === 'Backspace') && r && r.id !== MESSY && !shut(this.world, r.id)) {
+      if (this.deletes(e) && r && r.id !== MESSY && !shut(this.world, r.id)) {
         e.preventDefault();
         remove(this.world, r.id);
         this.roomSel = this.roomPick = null;
@@ -1536,8 +1700,8 @@ export default class Create extends Feature {
       return true;
     }
     if (!this.sel) return false;
-    if (this.locked && (k === 'Delete' || k === 'Backspace' || k.startsWith('Arrow'))) { e.preventDefault(); this.toast('This room is locked.'); return true; }
-    if (k === 'Delete' || k === 'Backspace') {
+    if (this.locked && (this.deletes(e) || k.startsWith('Arrow'))) { e.preventDefault(); this.toast('This room is locked.'); return true; }
+    if (this.deletes(e)) {
       e.preventDefault();
       const ids = this.sel.ids || [this.sel.id];
       ids.forEach((id) => remove(this.world, id));
@@ -1567,7 +1731,8 @@ export default class Create extends Feature {
       ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'],
       ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
       ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
-      ['Delete', 'delete what is chosen'], ['Arrows · Shift+arrows', 'nudge what is chosen'],
+      ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],
+      ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
     this.searchBox.replaceChildren(el('div', { class: 'create-search-panel create-keys-panel' },
@@ -1633,6 +1798,7 @@ export default class Create extends Feature {
   // (then drag it from any of its thoughts or its line); on a passage, picture or folded group
   // floating on its own, opens it to edit.
   onDouble(e) {
+    if (this.lastPress && Date.now() - this.lastPress.at < 600) return; // a double-click in the thought being written (onDown)
     window.getSelection?.()?.removeAllRanges();
     const groupEl = e.target.closest('[data-group]');
     if (groupEl) {
@@ -1985,9 +2151,13 @@ export default class Create extends Feature {
   onPaste(e) {
     if (this.root.hidden || !this.roomId || this.editing) return;
     const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'));
-    if (!file) return;
+    if (file) { e.preventDefault(); this.takePicture(file); return; }
+    // Words pasted on the canvas start a thought with them; several lines stay one thought.
+    if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    const text = (e.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+    if (!text.trim() || this.locked) return;
     e.preventDefault();
-    this.takePicture(file);
+    this.beginWriting(text);
   }
 
   async takePicture(file) {
