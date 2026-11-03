@@ -780,14 +780,13 @@ dialog.dialog-box {
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
-/* While Create is open the back arrow takes the corner and the menu steps right, beside it. */
-.create-open .topbar > .top-btn:first-child { margin-left: 48px; }
 
-/* The back arrow, in the top-left corner with the menu beside it: home from the rooms page, the rooms from a room. */
+/* The back arrow, in the top-right corner (the menu keeps the top-left one, as on every page):
+   home from the rooms page, the rooms from a room. */
 .create-back {
   position: fixed;
   top: calc(10px + env(safe-area-inset-top));
-  left: var(--gutter);
+  right: var(--gutter);
   width: 44px;
   height: 44px;
   padding: 10px;
@@ -1587,9 +1586,9 @@ dialog.dialog-box {
 .create.up .create-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .create.in-room .create-search-btn { color: var(--room-ink); z-index: 6; }
 .create-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
-/* On a phone the bar starts after the arrow and the menu, so it never runs under them. */
+/* On a phone the bar sits between the menu and the arrow, clear of both. */
 @media (max-width: 560px) {
-  .create-search-btn { left: calc(var(--gutter) + 104px); transform: none; width: calc(100% - 2 * var(--gutter) - 104px); }
+  .create-search-btn { left: calc(var(--gutter) + 56px); transform: none; width: calc(100% - 2 * var(--gutter) - 112px); }
 }
 
 /* ---- The rail on the left, under the menu: Rooms and the Archive (in a room, its modes) ---- */
