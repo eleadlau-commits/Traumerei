@@ -111,6 +111,7 @@ export default class Create extends Feature {
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
     document.addEventListener('paste', (e) => this.onPaste(e));
+    document.addEventListener('copy', (e) => this.onCopy(e));
   }
 
   savedWorld() { return this.storage.get(WORLD); }
@@ -1553,7 +1554,10 @@ export default class Create extends Feature {
     const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
     let thing = null;
     const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
-    if (e.ctrlKey || e.metaKey || middle || this.spaceDown) { e.preventDefault(); this.gesture = { kind: 'pan', ...pan }; } // Ctrl+drag (or Space+drag, or the middle button) moves the canvas
+    if (e.ctrlKey || e.metaKey || middle || this.spaceDown) { // Ctrl+drag (or Space+drag, or the middle button) moves the canvas; a Ctrl+click toggles one
+      e.preventDefault();
+      this.gesture = { kind: 'pan', ...pan, ...((e.ctrlKey || e.metaKey) && !middle ? { toggle: true, pick: this.picked(groupEl, thoughtEl) } : {}) };
+    }
     else if (this.sel?.kind === 'many' && hitId && this.isSel(hitId)) this.gesture = { kind: 'group', ...pan, from: this.groupSpots() };
     else if (!hitId && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan }; // a drag on the empty canvas draws a selection box
     if (this.gesture) { this.listen(e); return; }
@@ -1563,7 +1567,7 @@ export default class Create extends Feature {
       thing = { ...pick, x: p.x, y: p.y, ...(this.ont.live ? { live: true } : { placed: true }) };
     }
     if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
-    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, add: e.shiftKey, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     // A long press (touch, or a pen) opens the properties, or Add on the empty canvas.
     if (e.pointerType !== 'mouse') {
       const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
@@ -1644,6 +1648,8 @@ export default class Create extends Feature {
     clearTimeout(this.ctxTimer);
     if (!g || g.kind === 'pinch') { this.save(); return; }
     if (g.ctx && !g.moved) { this.contextAt(g.ctx); return; } // a Mac's Ctrl+click
+    if (g.toggle && !g.moved) { if (g.pick) this.chooseMore(g.pick, true); return; } // Ctrl+click (Cmd+click on a Mac): in or out of the choice
+    if (g.add && g.thing && !g.moved) { this.chooseMore(g.thing); return; } // Shift+click: added to the choice
     if (g.kind === 'text') { this.input.focus({ preventScroll: true }); return; }
     if (g.kind === 'box') { this.endBox(g); return; }
     if (g.kind === 'group') {
@@ -1751,6 +1757,7 @@ export default class Create extends Feature {
       ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'], ['Triple-click', 'write in a thought, where it is'],
       ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
       ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
+      ['Shift+click · Ctrl+click', 'add to the choice · in or out of it'], ['Ctrl+C · Ctrl+V', 'copy what is chosen · put a copy here'],
       ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],
       ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
@@ -1792,10 +1799,83 @@ export default class Create extends Feature {
       if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
       ids.add(n.dataset.thought || n.dataset.group);
     }
-    const all = [...ids];
-    this.sel = !all.length ? null : all.length === 1
-      ? { kind: isGroup(this.world.things[all[0]]) ? 'train' : 'thought', id: all[0] }
-      : { kind: 'many', ids: all };
+    this.sel = this.selOf([...ids]);
+    this.drawWorld();
+  }
+
+  // The choice for a list of ids: nothing, one thought or train, or many.
+  selOf(ids) {
+    if (!ids.length) return null;
+    if (ids.length > 1) return { kind: 'many', ids };
+    return { kind: isGroup(this.world.things[ids[0]]) ? 'train' : 'thought', id: ids[0] };
+  }
+
+  // Adds a thought (or a train) to what is chosen; `toggle` takes it out again if it is in.
+  chooseMore(pick, toggle = false) {
+    const ids = this.sel ? [...(this.sel.ids || [this.sel.id])] : [];
+    const i = ids.indexOf(pick.id);
+    if (i < 0) ids.push(pick.id);
+    else if (toggle) ids.splice(i, 1);
+    this.sel = this.selOf(ids);
+    this.barFor = null;
+    this.drawWorld();
+  }
+
+  // ---- Copying thoughts: Ctrl+C keeps what is chosen, Ctrl+V puts copies in this room (or another) ----
+
+  // The chosen thoughts and trains, as copies to make: their fields, and where each sat.
+  copyOf(ids) {
+    const w = this.world, out = [];
+    const fields = (th) => { const { id, parent, at, edited, members, ...f } = th; return f; };
+    for (const id of ids) {
+      const th = w.things[id];
+      if (!th) continue;
+      const train = isGroup(th) ? th : null;
+      if (!train && ids.some((o) => o !== id && isGroup(w.things[o]) && w.things[o].members?.includes(id))) continue; // its train is copied whole
+      if (train && train.of !== 'joyce') continue;
+      if (!train && !isLeaf(th)) continue;
+      const p = this.ont.point(w, this.roomId, id) || { x: train?.x ?? 0, y: train?.y ?? 0 };
+      out.push(train
+        ? { x: p.x, y: p.y, title: train.title || '', folded: !!train.folded, keep: !!train.keep, items: trainThoughts(w, id).map(fields) }
+        : { x: p.x, y: p.y, items: [fields(th)] });
+    }
+    return out;
+  }
+
+  onCopy(e) {
+    if (this.root.hidden || !this.roomId || !this.sel || this.editing) return;
+    if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    const units = this.copyOf(this.sel.ids || [this.sel.id]);
+    if (!units.length) return;
+    const text = units.map((u) => u.items.map((f) => thoughtText(this.world, f)).join('\n')).join('\n\n');
+    this.clip = { units, text };
+    e.clipboardData?.setData('text/plain', text);
+    e.preventDefault();
+    this.toast(`Copied${units.length > 1 ? ` ${units.length}` : ''}. Ctrl+V puts a copy in any room.`);
+  }
+
+  // Puts copies of the copied thoughts in the open room, around a free spot, as they sat, and chooses them.
+  pasteThoughts() {
+    if (this.locked) { this.toast('This room is locked.'); return; }
+    if (this.draft) this.stopWriting();
+    const w = this.world, units = this.clip.units;
+    const cx = units.reduce((a, u) => a + u.x, 0) / units.length, cy = units.reduce((a, u) => a + u.y, 0) / units.length;
+    const spot = this.freeSpot();
+    let now = Date.now();
+    const made = [];
+    for (const u of units) {
+      const train = startTrain(w, this.roomId, Math.round(spot.x + u.x - cx), Math.round(spot.y + u.y - cy), now);
+      if (!train) continue;
+      const items = u.items.map((f) => create(w, train.id, f, now++)).filter(Boolean);
+      if (!items.length) { remove(w, train.id); continue; }
+      if (u.title) train.title = u.title;
+      if (u.folded) train.folded = true;
+      if (u.keep) train.keep = true;
+      made.push(u.items.length === 1 && !u.title ? items[0].id : train.id);
+    }
+    if (!made.length) return;
+    this.sel = this.selOf(made);
+    this.save();
     this.drawWorld();
   }
 
@@ -2175,6 +2255,8 @@ export default class Create extends Feature {
     // Words pasted on the canvas start a thought with them; several lines stay one thought.
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     const text = (e.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+    // Thoughts copied here (Ctrl+C), as long as nothing else was copied since.
+    if (this.clip && (!text || text === this.clip.text)) { e.preventDefault(); this.pasteThoughts(); return; }
     if (!text.trim() || this.locked) return;
     e.preventDefault();
     this.beginWriting(text);
