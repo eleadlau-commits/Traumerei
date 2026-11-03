@@ -8,7 +8,7 @@
 // the left holds Rooms and the Archive (a grid of its own, where no room can be made). Typing
 // anything on the rooms page opens Messy thoughts and starts writing there.
 //
-// A room is seen through an ontological mode (model.js): Joyce or Pessoa. A small room (1 × 1)
+// A room is seen through an ontology (ontologies/: Joyce, Pessoa, …). A small room (1 × 1)
 // keeps the one mode it was made with; a big one (Messy thoughts, or any 2 × 2 room) switches
 // between them. A new room (click an empty cell) asks which.
 //
@@ -23,14 +23,9 @@
 // A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
 // writes a thought; Enter ends it. A click chooses a thought; a right-click (or long press, or
 // Enter) opens its properties beside it; a right-click on the empty canvas opens Add there.
-// - Joyce (the default): thoughts are joined by time into trains. Each thought stands on its own,
-//   joined to the next by a line: taut between quick thoughts, slack after a pause (model.js
-//   slack). Drag a thought to move it alone (the line follows); double-click a train to choose it
-//   whole, then drag it. Enter goes on with the train; Ctrl+Enter starts a new one. Hovering over
-//   Joyce drops down Timeline: a list down the left of everything written in the room, in the
-//   order it was last changed, with its train as a tag (Joyce's tags only).
-// - Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they
-//   were written, and can be dragged anywhere.
+// What is on the canvas, where it sits and what a drag does is the ontology's: see its file.
+// Create keeps no mode of its own. Writing is the same in every room: Enter goes on with the
+// train, and Ctrl+Enter starts a new one.
 // Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Keys. A
 // train can be folded into one thought, which you name, and unfolded again.
 // Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
@@ -40,17 +35,15 @@
 // ontology (ontologies/), which says what is on its canvas and where; more can come from other
 // features through the slot 'create.ontologies'.
 //
-// Saved data: 'world3' → see model.js. (An older copy of the app kept the second shape under
-// 'world'; it is read once, converted, and left as it was, so an old copy still open elsewhere
-// never reads the new shape.) It is saved with everything else, so it follows the
-// account like the settings do.
+// Saved data: 'world3' → see model.js. It is saved with everything else, so it follows the
+// account like the settings do. The older shape under 'world' is not read, and is cleared.
 
 import { Feature, ui } from 'folio';
 import {
-  MESSY, loadWorld, room, addRoom, name, view, startTrain, addThought,
+  MESSY, DEFAULT_MODE, loadWorld, room, addRoom, name, view, startTrain, addThought,
   create, update, remove, move, fold, unfold, kindOf, isLeaf, isGroup, groupOf, thoughtText, trainThoughts, roomThoughts,
   roomTrains, randomSpot, gridRooms, placeRoom,
-  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, hash, lastChanged,
+  search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
   addPage, isBig, rooms,
 } from './model.js';
@@ -66,9 +59,8 @@ const GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 72 }; // the rooms pa
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const KEY = MAC ? '⌘K' : 'Ctrl+K';
 const HOLD = 520;          // ms: a long press opens properties, as a right-click does
-const WORLD = 'world3';     // where the world is saved (model.js); 'world' held the older shape
+const WORLD = 'world3';     // where the world is saved (model.js)
 const UNDO = 60;           // how many steps back Ctrl+Z goes
-const SVG = 'http://www.w3.org/2000/svg';
 const HINTS = {
   rooms: 'Click to choose · double-click to go in · right-click for properties · or just start typing',
   room: 'Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes',
@@ -85,6 +77,7 @@ function enterKeeps(e) {
 
 export default class Create extends Feature {
   start() {
+    if (this.storage.has('world')) this.storage.set('world', null); // the older shape: not kept
     this.world = loadWorld(this.savedWorld());
     this.roomId = null;   // the open room, or null on the rooms page
     this.draft = null;    // the thought being written: { train | null, x, y }
@@ -120,7 +113,7 @@ export default class Create extends Feature {
     document.addEventListener('paste', (e) => this.onPaste(e));
   }
 
-  savedWorld() { return this.storage.get(WORLD) || this.storage.get('world'); }
+  savedWorld() { return this.storage.get(WORLD); }
 
   // ---- Opening and closing ----
 
@@ -919,7 +912,7 @@ export default class Create extends Feature {
 
   // A new room of a kind (its mode), in the cell asked for (or the first free one), with
   // its name ready to write.
-  newRoom(cell = null, kind = 'joyce') {
+  newRoom(cell = null, kind = DEFAULT_MODE) {
     const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
     this.making = null;
     if (!r) { this.toast('A room can\'t be made here.'); this.drawRooms(); return; }
@@ -964,6 +957,7 @@ export default class Create extends Feature {
   }
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
+  get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
 
   lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
 
@@ -1060,7 +1054,8 @@ export default class Create extends Feature {
     this.roomPage.classList.toggle('locked', !!this.locked);
     const v = view(this.world, this.roomId);
     // The rail, where the rooms page has Rooms and Archive: a big room (Messy, or 2 × 2) lists the
-    // modes and switches between them; a small one shows its one. Timeline sits under Joyce.
+    // ontologies and switches between them; a small one shows its one. An ontology's panel (Joyce's
+    // Timeline) sits under its name.
     const big = isBig(r);
     const items = [];
     for (const m of big ? this.ontologies : [this.ont]) {
@@ -1068,11 +1063,11 @@ export default class Create extends Feature {
       items.push(big
         ? el('button', { type: 'button', class: 'create-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on), onclick: () => this.setMode(m.id) }, m.name)
         : el('span', { class: 'create-rail-item create-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.' }, m.name));
-      if (m.id === 'joyce' && on) {
+      if (m.panel && on) {
         items.push(el('button', {
-          type: 'button', class: 'create-rail-item create-rail-sub', 'aria-pressed': String(!!v.timeline),
-          onclick: () => this.toggleTimeline(),
-        }, 'Timeline'));
+          type: 'button', class: 'create-rail-item create-rail-sub', 'aria-pressed': String(!!v[m.panel.key]),
+          onclick: () => this.togglePanel(),
+        }, m.panel.label));
       }
     }
     this.modes.setAttribute('role', big ? 'radiogroup' : 'group');
@@ -1090,12 +1085,13 @@ export default class Create extends Feature {
     this.drawRoom();
   }
 
-  get historyOpen() { return this.mode === 'joyce' && !!view(this.world, this.roomId).timeline; }
+  // The open ontology's panel (Joyce's Timeline), down the left.
+  get historyOpen() { const p = this.ont.panel; return !!p && !!view(this.world, this.roomId)[p.key]; }
 
-  toggleTimeline() {
-    const v = view(this.world, this.roomId);
-    if (this.mode !== 'joyce') { if (!isBig(room(this.world, this.roomId))) return; v.mode = 'joyce'; }
-    v.timeline = !v.timeline;
+  togglePanel() {
+    const v = view(this.world, this.roomId), p = this.ont.panel;
+    if (!p) return;
+    v[p.key] = !v[p.key];
     this.sel = null;
     this.save();
     this.drawRoom();
@@ -1106,7 +1102,7 @@ export default class Create extends Feature {
     if (!isBig(room(this.world, this.roomId))) return;
     const v = view(this.world, this.roomId);
     v.mode = id;
-    v.timeline = false;
+    for (const o of this.ontologies) if (o.panel) v[o.panel.key] = false;
     this.sel = null;
     this.save();
     this.drawRoom();
@@ -1138,59 +1134,9 @@ export default class Create extends Feature {
     if (!this.roomId) return;
     const w = this.world;
     const nodes = [];
-    if (this.mode === 'joyce') {
-      const svg = document.createElementNS(SVG, 'svg');
-      svg.setAttribute('class', 'create-strands');
-      const tension = this.prefs.tension ?? 0.5;
-      for (const t of roomTrains(w, this.roomId)) {
-        const chosen = (this.sel?.kind === 'train' && this.sel.id === t.id) || this.isSel(t.id);
-        if (t.folded) {
-          nodes.push(el('div', {
-            class: 'create-bead create-folded' + (chosen ? ' selected' : ''), 'data-train': t.id,
-            style: `left:${t.x}px;top:${t.y}px`,
-          }, this.thoughtNode(t)));
-          continue;
-        }
-        const spots = trainSpots(w, t.id);
-        const all = trainThoughts(w, t.id);
-        const knots = all.map((th) => ({ th, ...spots[th.id] }));
-        if (this.draft?.train === t.id) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
-        const g = document.createElementNS(SVG, 'g');
-        g.setAttribute('data-train', t.id);
-        g.setAttribute('class', 'create-strand' + (chosen ? ' selected' : ''));
-        for (let k = 1; k < knots.length; k++) {
-          const a = knots[k - 1], b = knots[k];
-          const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
-          const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
-          for (const cls of ['create-strand-hit', 'create-strand-line']) {
-            const path = document.createElementNS(SVG, 'path');
-            path.setAttribute('d', d);
-            path.setAttribute('class', cls);
-            g.append(path);
-          }
-        }
-        for (const k of knots) {
-          const dot = document.createElementNS(SVG, 'circle');
-          dot.setAttribute('cx', k.x - 14);
-          dot.setAttribute('cy', k.y + 15);
-          dot.setAttribute('r', 2.6);
-          dot.setAttribute('class', 'create-knot');
-          g.append(dot);
-        }
-        svg.append(g);
-        for (const k of knots) {
-          nodes.push(el('div', {
-            class: 'create-bead' + (chosen || this.isSel(k.th.id) ? ' selected' : '') + (this.found === k.th.id ? ' found' : ''),
-            'data-train': t.id, ...(k.draft ? {} : { 'data-thought': k.th.id }),
-            style: `left:${k.x}px;top:${k.y}px`,
-          }, k.draft ? this.draftNode() : this.thoughtNode(k.th)));
-        }
-      }
-      if (this.draft && !this.draft.train) {
-        nodes.push(el('div', { class: 'create-bead', style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
-      }
-      nodes.unshift(svg);
-    } else {
+    if (this.ont.draw) nodes.push(...this.ont.draw(this));
+    else {
+      // An ontology without a canvas of its own    } else {
       // Any other ontology: its units, each where it says.
       const ont = this.ont;
       for (const th of ont.units(w, this.roomId)) {
@@ -1210,30 +1156,19 @@ export default class Create extends Feature {
     this.drawBar();
   }
 
-  // The timeline: a list down the left of everything written in the room, in the order it was
-  // last changed (latest at the bottom), each with its time and its train as a tag. A click
-  // takes the view to it.
+  // The open ontology's panel down the left (Joyce's Timeline), with its name and a close cross.
   drawHistory() {
     if (!this.historyOpen) { this.history.hidden = true; return; }
-    const items = timeline(this.world, this.roomId);
-    const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const list = el('ol', { class: 'create-history-list' }, items.map(({ th, train }) => el('li', {},
-      el('button', {
-        type: 'button', class: 'create-history-item' + (this.sel?.id === th.id || this.sel?.id === train.id ? ' on' : ''),
-        style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
-        onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }),
-      },
-        el('span', { class: 'create-history-meta' },
-          el('span', { class: 'create-history-time' }, when(lastChanged(th))),
-          el('span', { class: 'create-tag' }, tagName(this.world, train.id))),
-        el('span', { class: 'create-history-text' }, thoughtText(this.world, th))))));
+    const p = this.ont.panel;
+    const list = p.render(this);
     this.history.hidden = false;
+    this.history.setAttribute('aria-label', p.label);
     this.history.replaceChildren(
       el('div', { class: 'create-history-head' },
-        el('span', {}, 'Timeline'),
-        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close the timeline', onclick: () => this.toggleTimeline() }, '×')),
-      items.length ? list : el('p', { class: 'create-history-none' }, 'Nothing written here yet'));
-    list.lastElementChild?.scrollIntoView?.({ block: 'end' });
+        el('span', {}, p.label),
+        el('button', { type: 'button', class: 'create-history-close', 'aria-label': `Close ${p.label}`, onclick: () => this.togglePanel() }, '×')),
+      list || el('p', { class: 'create-history-none' }, p.empty || 'Nothing here yet'));
+    list?.lastElementChild?.scrollIntoView?.({ block: 'end' });
   }
 
   // One thought, drawn by its kind.
@@ -1391,19 +1326,27 @@ export default class Create extends Feature {
     this.gesture = null;
     clearTimeout(this.ctxTimer);
     if (!this.roomId) return;
-    const trainEl = target.closest?.('[data-train]');
-    const thoughtEl = target.closest?.('[data-thought]');
-    const hit = thoughtEl?.dataset.thought || trainEl?.dataset.train;
+    const { groupEl, thoughtEl, hit } = this.hitAt(target);
     if (!hit) { this.openAddAt(x, y); return; }
     if (this.sel?.kind === 'many' && this.isSel(hit)) { this.openProps(this.sel); return; }
-    if (this.mode === 'joyce') {
-      const t = this.world.things[trainEl?.dataset.train];
-      const whole = !thoughtEl || t?.folded || (this.sel?.kind === 'train' && this.sel.id === t?.id);
-      this.openProps(whole ? { kind: 'train', id: t.id } : { kind: 'thought', id: thoughtEl.dataset.thought });
-    } else {
-      const id = thoughtEl.dataset.thought;
-      this.openProps({ kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id });
-    }
+    this.openProps(this.picked(groupEl, thoughtEl));
+  }
+
+  // What is under the pointer on the canvas: a thought (data-thought) and the group it is drawn in
+  // (data-group, when the ontology draws its groups, as Joyce does its trains).
+  hitAt(target) {
+    const groupEl = target.closest?.('[data-group]') || null;
+    const thoughtEl = target.closest?.('[data-thought]') || null;
+    return { groupEl, thoughtEl, hit: thoughtEl?.dataset.thought || groupEl?.dataset.group };
+  }
+
+  // What a tap there chooses: the whole group (from its line, a folded group, or a group already
+  // chosen), or the one thought.
+  picked(groupEl, thoughtEl) {
+    const g = groupEl && this.world.things[groupEl.dataset.group];
+    if (g && (!thoughtEl || g.folded || (this.sel?.kind === 'train' && this.sel.id === g.id))) return { kind: 'train', id: g.id };
+    const id = thoughtEl?.dataset.thought;
+    return id ? { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id } : null;
   }
 
   // Add, unfolded at a point on the canvas: what is made goes there.
@@ -1432,31 +1375,20 @@ export default class Create extends Feature {
     if (pointers.size === 2) { this.gesture = { kind: 'pinch', ...this.pinchState() }; return; }
 
     const v = view(this.world, this.roomId);
-    const trainEl = e.target.closest('[data-train]');
-    const thoughtEl = e.target.closest('[data-thought]');
+    const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
     let thing = null;
-    const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
     const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     if (e.ctrlKey || e.metaKey || middle || this.spaceDown) { e.preventDefault(); this.gesture = { kind: 'pan', ...pan }; } // Ctrl+drag (or Space+drag, or the middle button) moves the canvas
     else if (this.sel?.kind === 'many' && hitId && this.isSel(hitId)) this.gesture = { kind: 'group', ...pan, from: this.groupSpots() };
     else if (!hitId && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan }; // a drag on the empty canvas draws a selection box
     if (this.gesture) { this.listen(e); return; }
-    if (trainEl && this.mode === 'joyce') {
-      const t = this.world.things[trainEl.dataset.train];
-      const whole = !thoughtEl || (this.sel?.kind === 'train' && this.sel.id === t.id) || t.folded;
-      if (whole) thing = { kind: 'train', id: t.id, x: t.x, y: t.y, live: true };
-      else {
-        const id = thoughtEl.dataset.thought;
-        const p = trainSpots(this.world, t.id)[id];
-        thing = { kind: 'thought', id, x: p.x, y: p.y, live: true, bead: true };
-      }
-    } else if (thoughtEl && this.mode !== 'joyce') {
-      const id = thoughtEl.dataset.thought;
-      const p = this.ont.point(this.world, this.roomId, id) || { x: 0, y: 0 };
-      thing = { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id, x: p.x, y: p.y, placed: true };
+    const pick = this.picked(groupEl, thoughtEl);
+    if (pick) {
+      const p = this.ont.point(this.world, this.roomId, pick.id) || { x: 0, y: 0 };
+      thing = { ...pick, x: p.x, y: p.y, ...(this.ont.live ? { live: true } : { placed: true }) };
     }
     if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
-    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     // A long press (touch, or a pen) opens the properties, or Add on the empty canvas.
     if (e.pointerType !== 'mouse') {
       const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
@@ -1518,10 +1450,9 @@ export default class Create extends Feature {
       v.y = g.vy - dy / v.zoom;
       this.place();
     } else if (g.thing.live) {
-      // Joyce: the thought (or its whole train) moves, and the line follows it.
+      // A live ontology (Joyce): the thought (or its whole group) moves, and its line follows it.
       const x = Math.round(g.thing.x + dx / v.zoom), y = Math.round(g.thing.y + dy / v.zoom);
-      if (g.thing.bead) nudge(this.world, g.thing.id, x, y);
-      else Object.assign(this.world.things[g.thing.id], { x, y });
+      this.ont.drop(this.world, this.roomId, g.thing.id, x, y);
       if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => { this.liveFrame = 0; this.drawWorld(); });
     } else {
       const x = g.thing.x + dx / v.zoom, y = g.thing.y + dy / v.zoom;
@@ -1549,8 +1480,8 @@ export default class Create extends Feature {
       // selection. Double-click selects a whole train (onDouble).
       const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
       this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
-      // Two taps on the same train (the page is redrawn between them, so no dblclick comes).
-      const train = this.mode === 'joyce' && g.el?.dataset.train;
+      // Two taps on the same group (the page is redrawn between them, so no dblclick comes).
+      const train = g.el?.dataset.group;
       const now = Date.now();
       if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: 'train', id: train };
       this.lastTap = train ? { train, at: now } : null;
@@ -1671,10 +1602,10 @@ export default class Create extends Feature {
     }
     const r = g.rect;
     const ids = new Set();
-    for (const n of this.world$.querySelectorAll('[data-thought], .create-folded[data-train]')) {
+    for (const n of this.world$.querySelectorAll('[data-thought], .create-folded[data-group]')) {
       const q = n.getBoundingClientRect();
       if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
-      ids.add(n.dataset.thought || n.dataset.train);
+      ids.add(n.dataset.thought || n.dataset.group);
     }
     const all = [...ids];
     this.sel = !all.length ? null : all.length === 1
@@ -1698,13 +1629,14 @@ export default class Create extends Feature {
     if (this.world.things[id]) this.ont.drop(this.world, this.roomId, id, x, y);
   }
 
-  // Double-click: in Joyce, chooses the whole train (then drag it from any of its thoughts or its
-  // line); on a passage, picture or folded train in Pessoa, opens it to edit.
+  // Double-click: where an ontology draws its groups (Joyce's trains), chooses the whole group
+  // (then drag it from any of its thoughts or its line); on a passage, picture or folded group
+  // floating on its own, opens it to edit.
   onDouble(e) {
     window.getSelection?.()?.removeAllRanges();
-    const trainEl = e.target.closest('[data-train]');
-    if (this.mode === 'joyce' && trainEl) {
-      this.sel = { kind: 'train', id: trainEl.dataset.train };
+    const groupEl = e.target.closest('[data-group]');
+    if (groupEl) {
+      this.sel = { kind: 'train', id: groupEl.dataset.group };
       this.drawWorld();
       return;
     }
@@ -1906,7 +1838,8 @@ export default class Create extends Feature {
       el('option', { value: '+' }, 'A new room'));
     rows.push(el('div', { class: 'create-options-row' }, pick),
       el('div', { class: 'create-options-row' },
-        kind !== 'group' && this.mode === 'joyce' && groupOf(this.world, th.id) ? word('The whole train', () => this.openProps({ kind: 'train', id: groupOf(this.world, th.id).id })) : null,
+        kind !== 'group' && this.ont.groups && groupOf(this.world, th.id, this.mode)
+          ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: 'train', id: groupOf(this.world, th.id, this.mode).id })) : null,
         word('Delete', () => {
           remove(this.world, th.id);
           this.sel = null;

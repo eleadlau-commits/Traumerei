@@ -11,6 +11,16 @@
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits
 //   draftPoint(w, room)   (optional) where a thought being written shows
 //   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray
+//   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
+//                         line follows); otherwise the thought moves and drop() comes at the end
+//   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
+//                         floats at its point. c is Create: world, roomId, sel, isSel(id),
+//                         found, draft, prefs, el, thoughtNode(th), draftNode(). A node marked
+//                         data-thought is one thought; one marked data-group (with no
+//                         data-thought, or for a folded group) is the whole group, which a
+//                         double-click chooses
+//   panel                 (optional) { key, label, empty, render(c) }: a list down the left,
+//                         opened from under its name in the rail (Joyce: Timeline)
 //   settings              (optional) [{ key, label, min, max, step }], under Settings → Rooms →
 //                         Inside a room
 //   moves                 (optional) [{ id, label, run(create) }], its own actions
@@ -26,7 +36,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -34,6 +44,7 @@ export function missing(o) {
   const out = Object.entries(NEEDS).filter(([k, t]) => typeof o[k] !== t || (t === 'string' && !o[k])).map(([k]) => k);
   for (const [k, t] of Object.entries(MAY)) if (o[k] != null && typeof o[k] !== t) out.push(k);
   if (o.groups != null && !['one', 'many'].includes(o.groups.membership)) out.push('groups');
+  if (o.panel != null && (typeof o.panel.key !== 'string' || typeof o.panel.render !== 'function')) out.push('panel');
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
   return out;
 }

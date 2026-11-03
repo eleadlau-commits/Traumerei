@@ -7167,43 +7167,13 @@ dialog.menu-drawer::before {
     return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, pages: 1 };
   }
   function loadWorld(saved, now = Date.now()) {
-    let w = saved && typeof saved === "object" ? saved : {};
-    if (w.v !== 2 && w.v !== 3) w = fromV1(w, now);
-    if (w.v === 2) w = fromV2(w);
-    w = Object.assign(emptyWorld(now), w);
+    const w = Object.assign(emptyWorld(now), saved && typeof saved === "object" && saved.v === 3 ? saved : {});
     for (const key of ["things", "views", "own"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
-    delete w.doors;
     w.pages = Math.max(1, Math.floor(+w.pages) || 1);
     if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
-    const outer = (th) => {
-      let r = th;
-      while (r && r.parent != null && w.things[r.parent]) r = w.things[r.parent];
-      return r;
-    };
-    const rooms0 = Object.values(w.things).filter((th) => kindOf(th) === "room");
-    for (const th of rooms0) {
-      if (th.parent == null) continue;
-      const top = outer(th);
-      th.parent = null;
-      if (top?.page > 0) th.page = top.page;
-      else delete th.page;
-      delete th.col;
-      delete th.row;
-    }
-    for (const th of rooms0) {
-      if (th.form !== "borges") continue;
-      if (th.id === MESSY) {
-        delete th.form;
-        continue;
-      }
-      for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY;
-      delete w.things[th.id];
-      delete w.views[th.id];
-      delete w.own[th.id];
-    }
     for (const th of Object.values(w.things)) {
       if (kindOf(th) === "room") {
-        if (th.parent != null && !w.things[th.parent]) th.parent = null;
+        th.parent = null;
         continue;
       }
       if (kindOf(w.things[th.parent]) !== "room") th.parent = MESSY;
@@ -7215,49 +7185,12 @@ dialog.menu-drawer::before {
     }
     const messy = w.things[MESSY];
     messy.size = 2;
-    messy.parent = null;
     delete messy.page;
     if (messy.col == null) {
       messy.col = 0;
       messy.row = 0;
     }
     gridAll(w);
-    return w;
-  }
-  function fromV2(old) {
-    const w = { ...old, v: 3, things: { ...old.things || {} }, own: {} };
-    for (const [id, th] of Object.entries(w.things)) {
-      if (th?.kind !== "train") continue;
-      const { kind: _kind, ...rest } = th;
-      w.things[id] = { ...rest, kind: "group", of: "joyce", members: [] };
-    }
-    const items = Object.values(w.things).filter((th) => th && th.kind !== "group" && th.kind !== "room").sort(byTime);
-    for (const th of items) {
-      const g = w.things[th.parent];
-      if (g?.kind !== "group") continue;
-      g.members.push(th.id);
-      th.parent = g.parent;
-    }
-    for (const [roomId, places] of Object.entries(old.places || {})) {
-      if (places && typeof places === "object") w.own[roomId] = { pessoa: { ...places } };
-    }
-    delete w.places;
-    return w;
-  }
-  function fromV1(old, now) {
-    const w = { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
-    for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: "room", parent: null, at: r.at ?? now, name: r.name };
-    for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: "train", parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: "" };
-    for (const th of Object.values(old.thoughts || {})) {
-      const { room: _room, train, parts, ...rest } = th;
-      if (parts?.length) {
-        const t = w.things[train];
-        if (t) Object.assign(t, { folded: true, title: th.title || "" });
-        for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
-      } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
-    }
-    w.views = old.views || {};
-    w.places = old.places || {};
     return w;
   }
   var room = (w, id) => kindOf(w.things[id]) === "room" ? w.things[id] : null;
@@ -7568,73 +7501,6 @@ dialog.menu-drawer::before {
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
     return h >>> 0;
   }
-  var STEP2 = { line: 58, passage: 190, picture: 270, group: 190 };
-  var LINE = 29;
-  function stepAfter(th) {
-    const kind = kindOf(th);
-    if (kind !== "line") return STEP2[kind];
-    return STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
-  }
-  function trainSpots(w, trainId) {
-    const t = w.things[trainId];
-    const out = {};
-    if (!t) return out;
-    let x = t.x, y = t.y - STEP2.line;
-    let step = STEP2.line;
-    for (const th of trainThoughts(w, trainId)) {
-      if (Number.isFinite(th.dx)) {
-        x = t.x + th.dx;
-        y = t.y + th.dy;
-      } else y += step;
-      out[th.id] = { x, y };
-      step = stepAfter(th);
-    }
-    return out;
-  }
-  function nextSpot(w, trainId) {
-    const all = trainThoughts(w, trainId);
-    const t = w.things[trainId];
-    if (!all.length) return { x: t.x, y: t.y };
-    const last = all[all.length - 1];
-    const p = trainSpots(w, trainId)[last.id];
-    return { x: p.x, y: p.y + stepAfter(last) };
-  }
-  function nudge(w, id, x, y, now = Date.now()) {
-    const th = w.things[id];
-    const t = th && groupOf(w, id, "joyce");
-    if (!t || !isLeaf(th) || shut(w, id)) return false;
-    th.dx = Math.round(x - t.x);
-    th.dy = Math.round(y - t.y);
-    th.edited = now;
-    return true;
-  }
-  var PAUSE = { quick: 20, long: 3600 };
-  function slack(a, b, dist = 0, tension = 0.5) {
-    const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1e3);
-    const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
-    const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP2.line) / 520));
-    return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
-  }
-  function strand(p, q, k) {
-    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-    const bow = k * Math.max(26, d * 0.42);
-    const cx = mx + -dy / d * bow, cy = my + dx / d * bow;
-    const r = (v) => Math.round(v * 10) / 10;
-    return k < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
-  }
-  var lastChanged = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
-  function timeline(w, roomId) {
-    return roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id).map((th) => ({ th, train: t }))).sort((a, b) => lastChanged(a.th) - lastChanged(b.th) || byTime(a.th, b.th));
-  }
-  function tagName(w, trainId) {
-    const t = w.things[trainId];
-    if (!t) return "";
-    if (t.title) return t.title;
-    const first = trainThoughts(w, trainId)[0];
-    const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(" ") : "";
-    return words || "A train";
-  }
   function search(w, query, most = 30) {
     const q = oneLine(query).toLowerCase();
     if (!q) return [];
@@ -7702,12 +7568,83 @@ dialog.menu-drawer::before {
   }
 
   // dist/web/features/create/ontologies/joyce.js
+  var SVG = "http://www.w3.org/2000/svg";
+  var byTime2 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+  var STEP2 = { line: 58, passage: 190, picture: 270, group: 190 };
+  var LINE = 29;
+  function stepAfter(th) {
+    const kind = kindOf(th);
+    if (kind !== "line") return STEP2[kind];
+    return STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
+  }
+  function trainSpots(w, trainId) {
+    const t = w.things[trainId];
+    const out = {};
+    if (!t) return out;
+    let x = t.x, y = t.y - STEP2.line;
+    let step = STEP2.line;
+    for (const th of trainThoughts(w, trainId)) {
+      if (Number.isFinite(th.dx)) {
+        x = t.x + th.dx;
+        y = t.y + th.dy;
+      } else y += step;
+      out[th.id] = { x, y };
+      step = stepAfter(th);
+    }
+    return out;
+  }
+  function nextSpot(w, trainId) {
+    const all = trainThoughts(w, trainId);
+    const t = w.things[trainId];
+    if (!all.length) return { x: t.x, y: t.y };
+    const last = all[all.length - 1];
+    const p = trainSpots(w, trainId)[last.id];
+    return { x: p.x, y: p.y + stepAfter(last) };
+  }
+  function nudge(w, id, x, y, now = Date.now()) {
+    const th = w.things[id];
+    const t = th && groupOf(w, id, "joyce");
+    if (!t || !isLeaf(th) || shut(w, id)) return false;
+    th.dx = Math.round(x - t.x);
+    th.dy = Math.round(y - t.y);
+    th.edited = now;
+    return true;
+  }
+  var PAUSE = { quick: 20, long: 3600 };
+  function slack(a, b, dist = 0, tension = 0.5) {
+    const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1e3);
+    const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
+    const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP2.line) / 520));
+    return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
+  }
+  function strand(p, q, k) {
+    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+    const bow = k * Math.max(26, d * 0.42);
+    const cx = mx + -dy / d * bow, cy = my + dx / d * bow;
+    const r = (v) => Math.round(v * 10) / 10;
+    return k < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
+  }
+  var lastChanged = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
+  function timeline(w, roomId) {
+    return roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id).map((th) => ({ th, train: t }))).sort((a, b) => lastChanged(a.th) - lastChanged(b.th) || byTime2(a.th, b.th));
+  }
+  function tagName(w, trainId) {
+    const t = w.things[trainId];
+    if (!t) return "";
+    if (t.title) return t.title;
+    const first = trainThoughts(w, trainId)[0];
+    const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(" ") : "";
+    return words || "A train";
+  }
   var joyce_default = {
     id: "joyce",
     name: "Joyce",
     note: "thoughts joined by time",
     order: 10,
     groups: { form: "train", name: "Train", membership: "one" },
+    live: true,
+    // a drag moves the thought (or train) at once, so the line follows it
     // Each train's thoughts, or a folded train as one thought.
     units: (w, roomId) => roomTrains(w, roomId).flatMap((t) => t.folded ? [t] : trainThoughts(w, t.id)),
     point(w, roomId, id) {
@@ -7724,7 +7661,99 @@ dialog.menu-drawer::before {
       if (isGroup(th)) Object.assign(th, { x, y });
       else nudge(w, id, x, y);
     },
-    settings: [{ key: "tension", label: "Line tension", min: 0, max: 1 }]
+    settings: [{ key: "tension", label: "Line tension", min: 0, max: 1 }],
+    // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
+    // thoughts, a folded train as one block, and the thought being written.
+    draw(c) {
+      const w = c.world, el7 = c.el;
+      const nodes = [];
+      const svg = document.createElementNS(SVG, "svg");
+      svg.setAttribute("class", "create-strands");
+      const tension = c.prefs.tension ?? 0.5;
+      for (const t of roomTrains(w, c.roomId)) {
+        const chosen = c.sel?.kind === "train" && c.sel.id === t.id || c.isSel(t.id);
+        if (t.folded) {
+          nodes.push(el7("div", {
+            class: "create-bead create-folded" + (chosen ? " selected" : ""),
+            "data-group": t.id,
+            style: `left:${t.x}px;top:${t.y}px`
+          }, c.thoughtNode(t)));
+          continue;
+        }
+        const spots = trainSpots(w, t.id);
+        const knots = trainThoughts(w, t.id).map((th) => ({ th, ...spots[th.id] }));
+        if (c.draft?.train === t.id) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
+        const g = document.createElementNS(SVG, "g");
+        g.setAttribute("data-group", t.id);
+        g.setAttribute("class", "create-strand" + (chosen ? " selected" : ""));
+        for (let k = 1; k < knots.length; k++) {
+          const a = knots[k - 1], b = knots[k];
+          const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
+          const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
+          for (const cls of ["create-strand-hit", "create-strand-line"]) {
+            const path = document.createElementNS(SVG, "path");
+            path.setAttribute("d", d);
+            path.setAttribute("class", cls);
+            g.append(path);
+          }
+        }
+        for (const k of knots) {
+          const dot = document.createElementNS(SVG, "circle");
+          dot.setAttribute("cx", k.x - 14);
+          dot.setAttribute("cy", k.y + 15);
+          dot.setAttribute("r", 2.6);
+          dot.setAttribute("class", "create-knot");
+          g.append(dot);
+        }
+        svg.append(g);
+        for (const k of knots) {
+          nodes.push(el7("div", {
+            class: "create-bead" + (chosen || c.isSel(k.th.id) ? " selected" : "") + (c.found === k.th.id ? " found" : ""),
+            "data-group": t.id,
+            ...k.draft ? {} : { "data-thought": k.th.id },
+            style: `left:${k.x}px;top:${k.y}px`
+          }, k.draft ? c.draftNode() : c.thoughtNode(k.th)));
+        }
+      }
+      if (c.draft && !c.draft.train) {
+        nodes.push(el7("div", { class: "create-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+      }
+      return [svg, ...nodes];
+    },
+    // Timeline: a list down the left of everything written in the room, in the order it was last
+    // changed (latest at the bottom), each with its time and its train as a tag. A click takes the
+    // view to it.
+    panel: {
+      key: "timeline",
+      label: "Timeline",
+      empty: "Nothing written here yet",
+      render(c) {
+        const el7 = c.el;
+        const items = timeline(c.world, c.roomId);
+        const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+        if (!items.length) return null;
+        return el7("ol", { class: "create-history-list" }, items.map(({ th, train }) => el7(
+          "li",
+          {},
+          el7(
+            "button",
+            {
+              type: "button",
+              class: "create-history-item" + (c.sel?.id === th.id || c.sel?.id === train.id ? " on" : ""),
+              style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
+              onclick: () => c.goTo({ id: th.id, kind: kindOf(th), room: c.roomId })
+            },
+            el7(
+              "span",
+              { class: "create-history-meta" },
+              el7("span", { class: "create-history-time" }, when(lastChanged(th))),
+              el7("span", { class: "create-tag" }, tagName(c.world, train.id))
+            ),
+            el7("span", { class: "create-history-text" }, thoughtText(c.world, th))
+          )
+        )));
+      }
+    }
   };
 
   // dist/web/features/create/ontologies/pessoa.js
@@ -7770,12 +7799,13 @@ dialog.menu-drawer::before {
   var BUILT_IN = [joyce_default, pessoa_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { draftPoint: "function", tray: "function" };
+  var MAY = { draftPoint: "function", tray: "function", draw: "function" };
   function missing2(o) {
     if (!o || typeof o !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k, t]) => typeof o[k] !== t || t === "string" && !o[k]).map(([k]) => k);
     for (const [k, t] of Object.entries(MAY)) if (o[k] != null && typeof o[k] !== t) out.push(k);
     if (o.groups != null && !["one", "many"].includes(o.groups.membership)) out.push("groups");
+    if (o.panel != null && (typeof o.panel.key !== "string" || typeof o.panel.render !== "function")) out.push("panel");
     for (const k of ["settings", "moves"]) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
     return out;
   }
@@ -7949,7 +7979,6 @@ dialog.menu-drawer::before {
   var HOLD = 520;
   var WORLD = "world3";
   var UNDO = 60;
-  var SVG = "http://www.w3.org/2000/svg";
   var HINTS = {
     rooms: "Click to choose · double-click to go in · right-click for properties · or just start typing",
     room: "Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes"
@@ -7962,6 +7991,7 @@ dialog.menu-drawer::before {
   }
   var Create = class extends Feature {
     start() {
+      if (this.storage.has("world")) this.storage.set("world", null);
       this.world = loadWorld(this.savedWorld());
       this.roomId = null;
       this.draft = null;
@@ -8000,7 +8030,7 @@ dialog.menu-drawer::before {
       document.addEventListener("paste", (e) => this.onPaste(e));
     }
     savedWorld() {
-      return this.storage.get(WORLD) || this.storage.get("world");
+      return this.storage.get(WORLD);
     }
     // ---- Opening and closing ----
     open() {
@@ -8987,7 +9017,7 @@ dialog.menu-drawer::before {
     }
     // A new room of a kind (its mode), in the cell asked for (or the first free one), with
     // its name ready to write.
-    newRoom(cell = null, kind = "joyce") {
+    newRoom(cell = null, kind = DEFAULT_MODE) {
       const r = addRoom(this.world, "Untitled", Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
       this.making = null;
       if (!r) {
@@ -9043,6 +9073,10 @@ dialog.menu-drawer::before {
     get ont() {
       return this.ontology(this.mode);
     }
+    get el() {
+      return el5;
+    }
+    // for an ontology drawing its canvas (ontologies/index.js)
     lookOf(r) {
       return roomLook(r, this.palette, r.id === MESSY, this.prefs);
     }
@@ -9172,13 +9206,13 @@ dialog.menu-drawer::before {
       for (const m of big ? this.ontologies : [this.ont]) {
         const on = m.id === this.mode;
         items.push(big ? el5("button", { type: "button", class: "create-rail-item", role: "radio", "aria-checked": String(on), "aria-current": String(on), onclick: () => this.setMode(m.id) }, m.name) : el5("span", { class: "create-rail-item create-rail-fixed", "aria-current": "true", title: "A small room keeps one mode. Make it 2 × 2 to switch." }, m.name));
-        if (m.id === "joyce" && on) {
+        if (m.panel && on) {
           items.push(el5("button", {
             type: "button",
             class: "create-rail-item create-rail-sub",
-            "aria-pressed": String(!!v.timeline),
-            onclick: () => this.toggleTimeline()
-          }, "Timeline"));
+            "aria-pressed": String(!!v[m.panel.key]),
+            onclick: () => this.togglePanel()
+          }, m.panel.label));
         }
       }
       this.modes.setAttribute("role", big ? "radiogroup" : "group");
@@ -9194,16 +9228,15 @@ dialog.menu-drawer::before {
       this.renaming = this.roomId;
       this.drawRoom();
     }
+    // The open ontology's panel (Joyce's Timeline), down the left.
     get historyOpen() {
-      return this.mode === "joyce" && !!view3(this.world, this.roomId).timeline;
+      const p = this.ont.panel;
+      return !!p && !!view3(this.world, this.roomId)[p.key];
     }
-    toggleTimeline() {
-      const v = view3(this.world, this.roomId);
-      if (this.mode !== "joyce") {
-        if (!isBig(room(this.world, this.roomId))) return;
-        v.mode = "joyce";
-      }
-      v.timeline = !v.timeline;
+    togglePanel() {
+      const v = view3(this.world, this.roomId), p = this.ont.panel;
+      if (!p) return;
+      v[p.key] = !v[p.key];
       this.sel = null;
       this.save();
       this.drawRoom();
@@ -9213,7 +9246,7 @@ dialog.menu-drawer::before {
       if (!isBig(room(this.world, this.roomId))) return;
       const v = view3(this.world, this.roomId);
       v.mode = id;
-      v.timeline = false;
+      for (const o of this.ontologies) if (o.panel) v[o.panel.key] = false;
       this.sel = null;
       this.save();
       this.drawRoom();
@@ -9241,61 +9274,8 @@ dialog.menu-drawer::before {
       if (!this.roomId) return;
       const w = this.world;
       const nodes = [];
-      if (this.mode === "joyce") {
-        const svg = document.createElementNS(SVG, "svg");
-        svg.setAttribute("class", "create-strands");
-        const tension = this.prefs.tension ?? 0.5;
-        for (const t of roomTrains(w, this.roomId)) {
-          const chosen = this.sel?.kind === "train" && this.sel.id === t.id || this.isSel(t.id);
-          if (t.folded) {
-            nodes.push(el5("div", {
-              class: "create-bead create-folded" + (chosen ? " selected" : ""),
-              "data-train": t.id,
-              style: `left:${t.x}px;top:${t.y}px`
-            }, this.thoughtNode(t)));
-            continue;
-          }
-          const spots = trainSpots(w, t.id);
-          const all = trainThoughts(w, t.id);
-          const knots = all.map((th) => ({ th, ...spots[th.id] }));
-          if (this.draft?.train === t.id) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
-          const g = document.createElementNS(SVG, "g");
-          g.setAttribute("data-train", t.id);
-          g.setAttribute("class", "create-strand" + (chosen ? " selected" : ""));
-          for (let k = 1; k < knots.length; k++) {
-            const a = knots[k - 1], b = knots[k];
-            const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
-            const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
-            for (const cls of ["create-strand-hit", "create-strand-line"]) {
-              const path = document.createElementNS(SVG, "path");
-              path.setAttribute("d", d);
-              path.setAttribute("class", cls);
-              g.append(path);
-            }
-          }
-          for (const k of knots) {
-            const dot = document.createElementNS(SVG, "circle");
-            dot.setAttribute("cx", k.x - 14);
-            dot.setAttribute("cy", k.y + 15);
-            dot.setAttribute("r", 2.6);
-            dot.setAttribute("class", "create-knot");
-            g.append(dot);
-          }
-          svg.append(g);
-          for (const k of knots) {
-            nodes.push(el5("div", {
-              class: "create-bead" + (chosen || this.isSel(k.th.id) ? " selected" : "") + (this.found === k.th.id ? " found" : ""),
-              "data-train": t.id,
-              ...k.draft ? {} : { "data-thought": k.th.id },
-              style: `left:${k.x}px;top:${k.y}px`
-            }, k.draft ? this.draftNode() : this.thoughtNode(k.th)));
-          }
-        }
-        if (this.draft && !this.draft.train) {
-          nodes.push(el5("div", { class: "create-bead", style: `left:${this.draft.x}px;top:${this.draft.y}px` }, this.draftNode()));
-        }
-        nodes.unshift(svg);
-      } else {
+      if (this.ont.draw) nodes.push(...this.ont.draw(this));
+      else {
         const ont = this.ont;
         for (const th of ont.units(w, this.roomId)) {
           const p = ont.point(w, this.roomId, th.id) || { x: 0, y: 0 };
@@ -9313,47 +9293,26 @@ dialog.menu-drawer::before {
       this.world$.replaceChildren(...nodes);
       this.drawBar();
     }
-    // The timeline: a list down the left of everything written in the room, in the order it was
-    // last changed (latest at the bottom), each with its time and its train as a tag. A click
-    // takes the view to it.
+    // The open ontology's panel down the left (Joyce's Timeline), with its name and a close cross.
     drawHistory() {
       if (!this.historyOpen) {
         this.history.hidden = true;
         return;
       }
-      const items = timeline(this.world, this.roomId);
-      const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const list = el5("ol", { class: "create-history-list" }, items.map(({ th, train }) => el5(
-        "li",
-        {},
-        el5(
-          "button",
-          {
-            type: "button",
-            class: "create-history-item" + (this.sel?.id === th.id || this.sel?.id === train.id ? " on" : ""),
-            style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
-            onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId })
-          },
-          el5(
-            "span",
-            { class: "create-history-meta" },
-            el5("span", { class: "create-history-time" }, when(lastChanged(th))),
-            el5("span", { class: "create-tag" }, tagName(this.world, train.id))
-          ),
-          el5("span", { class: "create-history-text" }, thoughtText(this.world, th))
-        )
-      )));
+      const p = this.ont.panel;
+      const list = p.render(this);
       this.history.hidden = false;
+      this.history.setAttribute("aria-label", p.label);
       this.history.replaceChildren(
         el5(
           "div",
           { class: "create-history-head" },
-          el5("span", {}, "Timeline"),
-          el5("button", { type: "button", class: "create-history-close", "aria-label": "Close the timeline", onclick: () => this.toggleTimeline() }, "×")
+          el5("span", {}, p.label),
+          el5("button", { type: "button", class: "create-history-close", "aria-label": `Close ${p.label}`, onclick: () => this.togglePanel() }, "×")
         ),
-        items.length ? list : el5("p", { class: "create-history-none" }, "Nothing written here yet")
+        list || el5("p", { class: "create-history-none" }, p.empty || "Nothing here yet")
       );
-      list.lastElementChild?.scrollIntoView?.({ block: "end" });
+      list?.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
     // One thought, drawn by its kind.
     thoughtNode(th) {
@@ -9532,9 +9491,7 @@ dialog.menu-drawer::before {
       this.gesture = null;
       clearTimeout(this.ctxTimer);
       if (!this.roomId) return;
-      const trainEl = target.closest?.("[data-train]");
-      const thoughtEl = target.closest?.("[data-thought]");
-      const hit = thoughtEl?.dataset.thought || trainEl?.dataset.train;
+      const { groupEl, thoughtEl, hit } = this.hitAt(target);
       if (!hit) {
         this.openAddAt(x, y);
         return;
@@ -9543,14 +9500,22 @@ dialog.menu-drawer::before {
         this.openProps(this.sel);
         return;
       }
-      if (this.mode === "joyce") {
-        const t = this.world.things[trainEl?.dataset.train];
-        const whole = !thoughtEl || t?.folded || this.sel?.kind === "train" && this.sel.id === t?.id;
-        this.openProps(whole ? { kind: "train", id: t.id } : { kind: "thought", id: thoughtEl.dataset.thought });
-      } else {
-        const id = thoughtEl.dataset.thought;
-        this.openProps({ kind: isLeaf(this.world.things[id]) ? "thought" : "train", id });
-      }
+      this.openProps(this.picked(groupEl, thoughtEl));
+    }
+    // What is under the pointer on the canvas: a thought (data-thought) and the group it is drawn in
+    // (data-group, when the ontology draws its groups, as Joyce does its trains).
+    hitAt(target) {
+      const groupEl = target.closest?.("[data-group]") || null;
+      const thoughtEl = target.closest?.("[data-thought]") || null;
+      return { groupEl, thoughtEl, hit: thoughtEl?.dataset.thought || groupEl?.dataset.group };
+    }
+    // What a tap there chooses: the whole group (from its line, a folded group, or a group already
+    // chosen), or the one thought.
+    picked(groupEl, thoughtEl) {
+      const g = groupEl && this.world.things[groupEl.dataset.group];
+      if (g && (!thoughtEl || g.folded || this.sel?.kind === "train" && this.sel.id === g.id)) return { kind: "train", id: g.id };
+      const id = thoughtEl?.dataset.thought;
+      return id ? { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id } : null;
     }
     // Add, unfolded at a point on the canvas: what is made goes there.
     openAddAt(x, y) {
@@ -9579,10 +9544,8 @@ dialog.menu-drawer::before {
         return;
       }
       const v = view3(this.world, this.roomId);
-      const trainEl = e.target.closest("[data-train]");
-      const thoughtEl = e.target.closest("[data-thought]");
+      const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
       let thing = null;
-      const hitId = thoughtEl?.dataset.thought || trainEl?.dataset.train;
       const pan = { x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
       if (e.ctrlKey || e.metaKey || middle || this.spaceDown) {
         e.preventDefault();
@@ -9593,22 +9556,13 @@ dialog.menu-drawer::before {
         this.listen(e);
         return;
       }
-      if (trainEl && this.mode === "joyce") {
-        const t = this.world.things[trainEl.dataset.train];
-        const whole = !thoughtEl || this.sel?.kind === "train" && this.sel.id === t.id || t.folded;
-        if (whole) thing = { kind: "train", id: t.id, x: t.x, y: t.y, live: true };
-        else {
-          const id = thoughtEl.dataset.thought;
-          const p = trainSpots(this.world, t.id)[id];
-          thing = { kind: "thought", id, x: p.x, y: p.y, live: true, bead: true };
-        }
-      } else if (thoughtEl && this.mode !== "joyce") {
-        const id = thoughtEl.dataset.thought;
-        const p = this.ont.point(this.world, this.roomId, id) || { x: 0, y: 0 };
-        thing = { kind: isLeaf(this.world.things[id]) ? "thought" : "train", id, x: p.x, y: p.y, placed: true };
+      const pick = this.picked(groupEl, thoughtEl);
+      if (pick) {
+        const p = this.ont.point(this.world, this.roomId, pick.id) || { x: 0, y: 0 };
+        thing = { ...pick, x: p.x, y: p.y, ...this.ont.live ? { live: true } : { placed: true } };
       }
       if (this.locked && thing) thing.still = true;
-      this.gesture = { kind: thing ? "drag" : "pan", thing, el: trainEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+      this.gesture = { kind: thing ? "drag" : "pan", thing, el: groupEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
       if (e.pointerType !== "mouse") {
         const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
         clearTimeout(this.ctxTimer);
@@ -9683,8 +9637,7 @@ dialog.menu-drawer::before {
         this.place();
       } else if (g.thing.live) {
         const x = Math.round(g.thing.x + dx / v.zoom), y = Math.round(g.thing.y + dy / v.zoom);
-        if (g.thing.bead) nudge(this.world, g.thing.id, x, y);
-        else Object.assign(this.world.things[g.thing.id], { x, y });
+        this.ont.drop(this.world, this.roomId, g.thing.id, x, y);
         if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => {
           this.liveFrame = 0;
           this.drawWorld();
@@ -9725,7 +9678,7 @@ dialog.menu-drawer::before {
       if (!g.moved) {
         const keep = this.sel?.kind === "train" && g.thing?.kind === "train" && this.sel.id === g.thing.id;
         this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
-        const train = this.mode === "joyce" && g.el?.dataset.train;
+        const train = g.el?.dataset.group;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
         this.lastTap = train ? { train, at: now } : null;
@@ -9879,10 +9832,10 @@ dialog.menu-drawer::before {
       }
       const r = g.rect;
       const ids = /* @__PURE__ */ new Set();
-      for (const n of this.world$.querySelectorAll("[data-thought], .create-folded[data-train]")) {
+      for (const n of this.world$.querySelectorAll("[data-thought], .create-folded[data-group]")) {
         const q = n.getBoundingClientRect();
         if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
-        ids.add(n.dataset.thought || n.dataset.train);
+        ids.add(n.dataset.thought || n.dataset.group);
       }
       const all = [...ids];
       this.sel = !all.length ? null : all.length === 1 ? { kind: isGroup(this.world.things[all[0]]) ? "train" : "thought", id: all[0] } : { kind: "many", ids: all };
@@ -9901,13 +9854,14 @@ dialog.menu-drawer::before {
     putAt(id, x, y) {
       if (this.world.things[id]) this.ont.drop(this.world, this.roomId, id, x, y);
     }
-    // Double-click: in Joyce, chooses the whole train (then drag it from any of its thoughts or its
-    // line); on a passage, picture or folded train in Pessoa, opens it to edit.
+    // Double-click: where an ontology draws its groups (Joyce's trains), chooses the whole group
+    // (then drag it from any of its thoughts or its line); on a passage, picture or folded group
+    // floating on its own, opens it to edit.
     onDouble(e) {
       window.getSelection?.()?.removeAllRanges();
-      const trainEl = e.target.closest("[data-train]");
-      if (this.mode === "joyce" && trainEl) {
-        this.sel = { kind: "train", id: trainEl.dataset.train };
+      const groupEl = e.target.closest("[data-group]");
+      if (groupEl) {
+        this.sel = { kind: "train", id: groupEl.dataset.group };
         this.drawWorld();
         return;
       }
@@ -10199,7 +10153,7 @@ dialog.menu-drawer::before {
         el5(
           "div",
           { class: "create-options-row" },
-          kind !== "group" && this.mode === "joyce" && groupOf(this.world, th.id) ? word("The whole train", () => this.openProps({ kind: "train", id: groupOf(this.world, th.id).id })) : null,
+          kind !== "group" && this.ont.groups && groupOf(this.world, th.id, this.mode) ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: "train", id: groupOf(this.world, th.id, this.mode).id })) : null,
           word("Delete", () => {
             remove(this.world, th.id);
             this.sel = null;
