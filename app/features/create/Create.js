@@ -69,6 +69,15 @@ const HINTS = {
   room: 'Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes',
 };
 
+// One rule for every box: Enter keeps; Ctrl+Enter (Cmd+Enter) puts a new line in a box that takes lines.
+// Returns true when the box should be kept.
+function enterKeeps(e) {
+  e.preventDefault();
+  if (!(e.ctrlKey || e.metaKey)) return true;
+  if (e.target.tagName === 'TEXTAREA') e.target.setRangeText('\n', e.target.selectionStart, e.target.selectionEnd, 'end');
+  return false;
+}
+
 export default class Create extends Feature {
   start() {
     this.world = loadWorld(this.storage.get('world'));
@@ -170,8 +179,8 @@ export default class Create extends Feature {
     };
     text.onkeydown = (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); keep(); }
       if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+      if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep();
     };
     this.leaveBox.replaceChildren(
       el('div', { class: 'create-sheet-kind' }, 'Add a comment for next time?'),
@@ -179,7 +188,7 @@ export default class Create extends Feature {
       el('div', { class: 'create-sheet-words' },
         el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
         el('button', { type: 'button', class: 'create-word', onclick: () => this.close() }, 'Skip'),
-        el('span', { class: 'create-keys' }, 'Ctrl+Enter keeps it')));
+        el('span', { class: 'create-keys' }, 'Enter keeps it · Ctrl+Enter a new line')));
     this.leaveBox.hidden = false;
     text.focus();
   }
@@ -2029,7 +2038,7 @@ export default class Create extends Feature {
   }
 
   // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
-  // an existing thought (id). Keep (Ctrl+Enter) saves it; Escape or Cancel leaves it.
+  // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
   openSheet(kind, id = null, src = null) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
@@ -2040,7 +2049,7 @@ export default class Create extends Feature {
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.tagName === 'INPUT')) { e.preventDefault(); keep(); } // Enter keeps a name; a passage's body takes Ctrl+Enter
+      if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep(); // as everywhere: Enter keeps, Ctrl+Enter a new line
       if (e.key === 'Escape') { e.preventDefault(); this.closeSheet(); }
     };
     const fields = [];
@@ -2062,7 +2071,7 @@ export default class Create extends Feature {
       el('div', { class: 'create-sheet-words' },
         el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
         el('button', { type: 'button', class: 'create-word', onclick: () => this.closeSheet() }, 'Cancel'),
-        el('span', { class: 'create-keys' }, 'Ctrl+Enter keeps it')));
+        el('span', { class: 'create-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
     this.sheet.hidden = false;
     (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
   }
