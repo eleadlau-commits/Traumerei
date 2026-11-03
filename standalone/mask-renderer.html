@@ -781,11 +781,11 @@ dialog.dialog-box {
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
 
-/* The back arrow, top right: home from the rooms page, the rooms from a room. */
+/* The back arrow, top left beside the menu: home from the rooms page, the rooms from a room. */
 .create-back {
   position: fixed;
   top: calc(10px + env(safe-area-inset-top));
-  right: var(--gutter);
+  left: calc(var(--gutter) + 48px);
   width: 44px;
   height: 44px;
   padding: 10px;
@@ -966,7 +966,7 @@ dialog.dialog-box {
 .create-room .create-history { left: calc(var(--gutter) + 72px); }
 .create-top {
   position: absolute;
-  top: calc(10px + env(safe-area-inset-top) + 5px);
+  top: calc(10px + env(safe-area-inset-top) + 46px); /* under the search bar */
   left: 50%;
   transform: translateX(-50%);
   max-width: 40vw;
@@ -1191,6 +1191,7 @@ dialog.dialog-box {
 .create-room.dark :is(.create-bead, .create-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
 
 @media (max-width: 560px) {
+  .create-search-btn { left: calc(var(--gutter) + 104px); transform: none; width: calc(100% - 2 * var(--gutter) - 104px); }
   .create-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
 }
 
@@ -1530,17 +1531,25 @@ dialog.dialog-box {
 .create.expanding .create-room { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
 .create.expanding .create-back { color: var(--home-ink); }
 
-/* ---- Search, beside the back arrow ---- */
+/* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
 .create-search-btn {
   position: fixed;
-  top: calc(10px + env(safe-area-inset-top) + 8px);
-  right: calc(var(--gutter) + 56px);
-  display: inline-flex;
+  top: calc(10px + env(safe-area-inset-top) + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
+  padding: 6px 12px;
+  background: rgb(var(--veil-rgb, 250 247 240) / .55);
+  background-image: none;
   opacity: 0;
-  transition: opacity .4s, background-size .25s;
+  transition: opacity .4s, background-color .25s;
 }
+.create-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
+.create.up .create-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb, 250 247 240) / .8); }
 .create.up .create-search-btn { opacity: .66; }
 .create.up .create-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .create.in-room .create-search-btn { color: var(--room-ink); z-index: 6; }
@@ -1636,6 +1645,27 @@ dialog.dialog-box {
   .create-grid-wrap { padding: 48px var(--gutter) 64px; }
 }
 @media (hover: none) { .create-search-key { display: none; } }
+
+/* ---- Leaving: a comment for next time, and last time's comment under the search bar ---- */
+.create-leave { position: fixed; z-index: 21; color: var(--create-panel-ink); }
+.create-note {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top) + 46px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100% - 2 * var(--gutter)));
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: .03em;
+  opacity: .6;
+}
+.create.in-room .create-note { display: none; }
+.create-note-x { font-size: 10px; font-style: normal; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
+@media (max-width: 560px) { .create-note { top: calc(10px + env(safe-area-inset-top) + 48px); } }
+.create-leave .create-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -1775,6 +1805,15 @@ dialog.menu-drawer::before {
   opacity: 0;
   transition: transform .25s ease, opacity .2s;
   pointer-events: none;
+}
+/* Once shown, the cross takes the pointer: a clear border widens the spot that shows the hand. */
+.menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 10px solid transparent;
+  background-clip: content-box;
+  box-sizing: content-box;
+  margin: -10px 0 0 -10px;
 }
 .menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
   opacity: .8;
@@ -7710,6 +7749,12 @@ dialog.menu-drawer::before {
     rooms: "Click to choose · double-click to go in · right-click for properties · or just start typing",
     room: "Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes"
   };
+  function enterKeeps(e) {
+    e.preventDefault();
+    if (!(e.ctrlKey || e.metaKey)) return true;
+    if (e.target.tagName === "TEXTAREA") e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
+    return false;
+  }
   var Create = class extends Feature {
     start() {
       this.world = loadWorld(this.storage.get("world"));
@@ -7754,6 +7799,9 @@ dialog.menu-drawer::before {
       this.undoStack = [];
       this.redoStack = [];
       this.lastSnap = this.snap();
+      this.edited = /* @__PURE__ */ new Set();
+      this.leaving = false;
+      this.showNote();
       this.app.shell?.closeMenu?.();
       clearTimeout(this.closing);
       this.colours = this.backdrop?.colours?.();
@@ -7770,6 +7818,8 @@ dialog.menu-drawer::before {
       this.backdrop?.cover?.(true);
     }
     close() {
+      this.leaving = false;
+      this.leaveBox.hidden = true;
       this.closeSheet();
       this.closeSearch();
       this.closeLights();
@@ -7788,7 +7838,54 @@ dialog.menu-drawer::before {
     back() {
       if (this.roomId) this.showRooms();
       else if (this.shelf) this.toggleShelf();
+      else if (this.edited?.size && !this.leaving) this.askNote();
       else this.close();
+    }
+    // ---- A comment for next time ----
+    // Leaving after changing rooms: their squares glow, and a pop-up offers a line for next time.
+    askNote() {
+      this.leaving = true;
+      this.drawRooms();
+      const text = el5("textarea", { class: "create-sheet-body", rows: 3, placeholder: "Where you were, what to pick up next", "aria-label": "Comment for next time" });
+      const keep = () => {
+        const t = text.value.trim();
+        if (t) this.storage.set("note", { text: t, at: Date.now() });
+        this.close();
+      };
+      text.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          this.close();
+        }
+        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep();
+      };
+      this.leaveBox.replaceChildren(
+        el5("div", { class: "create-sheet-kind" }, "Add a comment for next time?"),
+        text,
+        el5(
+          "div",
+          { class: "create-sheet-words" },
+          el5("button", { type: "button", class: "create-word", onclick: keep }, "Keep"),
+          el5("button", { type: "button", class: "create-word", onclick: () => this.close() }, "Skip"),
+          el5("span", { class: "create-keys" }, "Enter keeps it · Ctrl+Enter a new line")
+        )
+      );
+      this.leaveBox.hidden = false;
+      text.focus();
+    }
+    // The comment left last time, faint under the search bar until it is dismissed.
+    showNote() {
+      const note = this.storage.get("note");
+      this.noteLine.hidden = !note?.text;
+      if (!note?.text) return;
+      this.noteLine.replaceChildren(
+        el5("span", {}, note.text),
+        el5("button", { type: "button", class: "create-word create-note-x", title: "Dismiss", onclick: () => {
+          this.storage.set("note", null);
+          this.noteLine.hidden = true;
+        } }, "dismiss")
+      );
     }
     // Shows a page of the rooms page.
     showPage(page = this.page) {
@@ -7908,6 +8005,7 @@ dialog.menu-drawer::before {
         if (this.undoStack.length > UNDO) this.undoStack.shift();
         this.redoStack = [];
         this.lastSnap = now;
+        if (this.roomId) this.edited?.add(this.roomId);
       }
       clearTimeout(this.saveTimer);
       this.saveTimer = setTimeout(() => {
@@ -8063,7 +8161,19 @@ dialog.menu-drawer::before {
       this.searchBox = el5("div", { class: "create-search", hidden: true, role: "dialog", "aria-label": "Search" });
       this.savedMark = el5("div", { class: "create-saved", "aria-live": "polite" });
       this.hintLine = el5("div", { class: "create-hint" });
-      this.root = el5("div", { class: "create", hidden: true }, this.roomsPage, this.roomPage, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
+      this.root = el5(
+        "div",
+        { class: "create", hidden: true },
+        this.roomsPage,
+        this.roomPage,
+        this.searchBtn,
+        this.backBtn,
+        this.searchBox,
+        this.savedMark,
+        this.hintLine,
+        this.noteLine = el5("div", { class: "create-note", hidden: true }),
+        this.leaveBox = el5("div", { class: "create-sheet create-leave", hidden: true, role: "dialog", "aria-label": "Comment for next time", onpointerdown: (e) => e.stopPropagation() })
+      );
       (document.getElementById("folio-root") || document.body).append(this.root);
       this.input.addEventListener("input", () => this.onInput());
       this.input.addEventListener("keydown", (e) => this.onInputKey(e));
@@ -8262,7 +8372,7 @@ dialog.menu-drawer::before {
       const tile = el5(
         "div",
         {
-          class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
+          class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
           role: "button",
           tabindex: 0,
           style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
@@ -10029,7 +10139,7 @@ dialog.menu-drawer::before {
       }
     }
     // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
-    // an existing thought (id). Keep (Ctrl+Enter) saves it; Escape or Cancel leaves it.
+    // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
     openSheet(kind, id = null, src = null) {
       if (!this.roomId) return;
       if (this.locked) {
@@ -10043,10 +10153,7 @@ dialog.menu-drawer::before {
       const keep = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.target.tagName === "INPUT")) {
-          e.preventDefault();
-          keep();
-        }
+        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep();
         if (e.key === "Escape") {
           e.preventDefault();
           this.closeSheet();
@@ -10073,7 +10180,7 @@ dialog.menu-drawer::before {
           { class: "create-sheet-words" },
           el5("button", { type: "button", class: "create-word", onclick: keep }, "Keep"),
           el5("button", { type: "button", class: "create-word", onclick: () => this.closeSheet() }, "Cancel"),
-          el5("span", { class: "create-keys" }, "Ctrl+Enter keeps it")
+          el5("span", { class: "create-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
         )
       );
       this.sheet.hidden = false;

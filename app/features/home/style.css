@@ -136,6 +136,15 @@ dialog.menu-drawer::before {
   transition: transform .25s ease, opacity .2s;
   pointer-events: none;
 }
+/* Once shown, the cross takes the pointer: a clear border widens the spot that shows the hand. */
+.menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 10px solid transparent;
+  background-clip: content-box;
+  box-sizing: content-box;
+  margin: -10px 0 0 -10px;
+}
 .menu-drawer.shown .menu-panel::before, .menu-drawer.shown .menu-panel::after {
   opacity: .8;
   transition: transform .5s cubic-bezier(.22, .7, .18, 1), opacity .3s;
