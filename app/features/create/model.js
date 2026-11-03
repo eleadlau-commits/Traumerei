@@ -63,38 +63,16 @@ export function emptyWorld(now = Date.now()) {
   return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, pages: 1 };
 }
 
-// A saved world, brought up to date and repaired: the messy room always exists; every room sits on
-// the rooms page; an item or group whose room is gone goes to the messy room, and a group forgets
-// members that are gone. Rooms of rooms (the old Borges rooms) are taken apart: the rooms they held
-// come out onto the rooms page, and the empty room goes. Doors went with them.
+// A saved world, repaired: the messy room always exists; every room sits on the rooms page; an
+// item or group whose room is gone goes to the messy room, and a group forgets members that are
+// gone. A world saved in an older shape is not kept: it starts afresh.
 export function loadWorld(saved, now = Date.now()) {
-  let w = saved && typeof saved === 'object' ? saved : {};
-  if (w.v !== 2 && w.v !== 3) w = fromV1(w, now);
-  if (w.v === 2) w = fromV2(w);
-  w = Object.assign(emptyWorld(now), w);
+  const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
   for (const key of ['things', 'views', 'own']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
-  delete w.doors;
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
-  const outer = (th) => { let r = th; while (r && r.parent != null && w.things[r.parent]) r = w.things[r.parent]; return r; };
-  const rooms0 = Object.values(w.things).filter((th) => kindOf(th) === 'room');
-  for (const th of rooms0) {
-    if (th.parent == null) continue;
-    const top = outer(th); // a room inside a room comes out to the page its outermost room is on
-    th.parent = null;
-    if (top?.page > 0) th.page = top.page; else delete th.page;
-    delete th.col; delete th.row;
-  }
-  for (const th of rooms0) {
-    if (th.form !== 'borges') continue;
-    if (th.id === MESSY) { delete th.form; continue; }
-    for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY; // what it held goes to Messy
-    delete w.things[th.id];
-    delete w.views[th.id];
-    delete w.own[th.id];
-  }
   for (const th of Object.values(w.things)) {
-    if (kindOf(th) === 'room') { if (th.parent != null && !w.things[th.parent]) th.parent = null; continue; }
+    if (kindOf(th) === 'room') { th.parent = null; continue; }
     if (kindOf(w.things[th.parent]) !== 'room') th.parent = MESSY;
   }
   for (const g of Object.values(w.things)) {
@@ -105,52 +83,9 @@ export function loadWorld(saved, now = Date.now()) {
   }
   const messy = w.things[MESSY];
   messy.size = 2;
-  messy.parent = null;
   delete messy.page;
   if (messy.col == null) { messy.col = 0; messy.row = 0; }
   gridAll(w);
-  return w;
-}
-
-// The second shape: a line, passage or picture sat inside its train (`parent`), and Pessoa's places
-// were kept apart. Trains become Joyce's groups, listing their thoughts, which now sit in the
-// room; Pessoa's places become its own data.
-function fromV2(old) {
-  const w = { ...old, v: 3, things: { ...(old.things || {}) }, own: {} };
-  for (const [id, th] of Object.entries(w.things)) {
-    if (th?.kind !== 'train') continue;
-    const { kind: _kind, ...rest } = th;
-    w.things[id] = { ...rest, kind: 'group', of: 'joyce', members: [] };
-  }
-  const items = Object.values(w.things).filter((th) => th && th.kind !== 'group' && th.kind !== 'room').sort(byTime);
-  for (const th of items) {
-    const g = w.things[th.parent];
-    if (g?.kind !== 'group') continue;
-    g.members.push(th.id);
-    th.parent = g.parent;
-  }
-  for (const [roomId, places] of Object.entries(old.places || {})) {
-    if (places && typeof places === 'object') w.own[roomId] = { pessoa: { ...places } };
-  }
-  delete w.places;
-  return w;
-}
-
-// The first prototype's shape (rooms, trains and thoughts kept apart), turned into the second.
-function fromV1(old, now) {
-  const w = { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
-  for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: 'room', parent: null, at: r.at ?? now, name: r.name };
-  for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: 'train', parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: '' };
-  for (const th of Object.values(old.thoughts || {})) {
-    const { room: _room, train, parts, ...rest } = th;
-    if (parts?.length) { // a folded passage: its parts come back, and the train is folded
-      const t = w.things[train];
-      if (t) Object.assign(t, { folded: true, title: th.title || '' });
-      for (const p of parts) w.things[p.id] = { ...p, kind: kindOf(p), parent: train };
-    } else w.things[th.id] = { ...rest, kind: kindOf(th), parent: train };
-  }
-  w.views = old.views || {};
-  w.places = old.places || {};
   return w;
 }
 
@@ -543,96 +478,6 @@ export function hash(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
-}
-
-// ---- Joyce: each thought of a train on its own, joined by a line ----
-
-// How far below the one before a thought sits, until it is dragged somewhere else.
-export const STEP = { line: 58, passage: 190, picture: 270, group: 190 };
-const LINE = 29; // each extra line of a thought written over several lines
-
-// How far below a thought the next one sits.
-export function stepAfter(th) {
-  const kind = kindOf(th);
-  if (kind !== 'line') return STEP[kind];
-  return STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
-}
-
-// Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or
-// a step below the one before.
-export function trainSpots(w, trainId) {
-  const t = w.things[trainId];
-  const out = {};
-  if (!t) return out;
-  let x = t.x, y = t.y - STEP.line;
-  let step = STEP.line;
-  for (const th of trainThoughts(w, trainId)) {
-    if (Number.isFinite(th.dx)) { x = t.x + th.dx; y = t.y + th.dy; }
-    else y += step;
-    out[th.id] = { x, y };
-    step = stepAfter(th);
-  }
-  return out;
-}
-
-// Where the next thought of a train goes.
-export function nextSpot(w, trainId) {
-  const all = trainThoughts(w, trainId);
-  const t = w.things[trainId];
-  if (!all.length) return { x: t.x, y: t.y };
-  const last = all[all.length - 1];
-  const p = trainSpots(w, trainId)[last.id];
-  return { x: p.x, y: p.y + stepAfter(last) };
-}
-
-// Drags one thought of a train to (x, y); its train stays joined.
-export function nudge(w, id, x, y, now = Date.now()) {
-  const th = w.things[id];
-  const t = th && groupOf(w, id, 'joyce');
-  if (!t || !isLeaf(th) || shut(w, id)) return false;
-  th.dx = Math.round(x - t.x);
-  th.dy = Math.round(y - t.y);
-  th.edited = now;
-  return true;
-}
-
-// How slack the line between two thoughts is (0 taut … 1 loose): thoughts written close together
-// are joined taut; a longer pause leaves slack. Pulled far apart, the line goes straight again.
-export const PAUSE = { quick: 20, long: 3600 }; // seconds
-export function slack(a, b, dist = 0, tension = 0.5) {
-  const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1000);
-  const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
-  const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP.line) / 520));
-  return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
-}
-
-// The line from p to q with that slack, as an SVG path: straight when taut, a soft curve when loose.
-export function strand(p, q, k) {
-  const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-  const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-  const bow = k * Math.max(26, d * 0.42);
-  const cx = mx + (-dy / d) * bow, cy = my + (dx / d) * bow;
-  const r = (v) => Math.round(v * 10) / 10;
-  return k < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
-}
-
-// ---- The timeline: a room's thoughts on one line, in the order they were last changed ----
-
-export const lastChanged = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
-export function timeline(w, roomId) {
-  return roomTrains(w, roomId)
-    .flatMap((t) => trainThoughts(w, t.id).map((th) => ({ th, train: t })))
-    .sort((a, b) => lastChanged(a.th) - lastChanged(b.th) || byTime(a.th, b.th));
-}
-
-// A train as a tag: its title, or its first words.
-export function tagName(w, trainId) {
-  const t = w.things[trainId];
-  if (!t) return '';
-  if (t.title) return t.title;
-  const first = trainThoughts(w, trainId)[0];
-  const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(' ') : '';
-  return words || 'A train';
 }
 
 // ---- Search: every thought, group and room whose words hold the query ----

@@ -5,11 +5,12 @@ import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
   roomOf, thoughtText, randomSpot, view, roomAt, placeRoom, gridRooms,
-  trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
+  search, sizeRoom,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, toPage, pageCount, addPage, isBig, own, members, groupsOf, groupOf, join, declareGroups, isGroup,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
+import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
 
 const train = (w, room = MESSY, ...texts) => {
   const t = startTrain(w, room, 0, 0);
@@ -23,19 +24,15 @@ test('a new world has only Messy thoughts, seen in Joyce', () => {
   assert.equal(view(w, MESSY).mode, 'joyce');
 });
 
-test('a saved world without the messy room gets it back', () => {
-  const w = loadWorld({ v: 2, things: { r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'Other' } } });
-  assert.deepEqual(rooms(w).map((r) => r.id).sort(), [MESSY, 'r1'].sort());
+test('a world saved in an older shape is not kept: it starts afresh', () => {
+  const w = loadWorld({ v: 2, things: { t: { id: 't', kind: 'train', parent: 'messy', at: 1 } }, places: {} });
+  assert.deepEqual(Object.keys(w.things), [MESSY]);
+  assert.equal(w.v, 3);
 });
 
-test('the first prototype\'s world is turned into thoughts', () => {
-  const w = loadWorld({
-    rooms: [{ id: 'messy', name: 'Messy thoughts', at: 0 }, { id: 'r1', name: 'Other', at: 1 }],
-    trains: { t1: { id: 't1', room: 'r1', x: 5, y: 6, at: 2 } },
-    thoughts: { h1: { id: 'h1', room: 'r1', train: 't1', text: 'hello', at: 3 } },
-  });
-  assert.equal(roomOf(w, 'h1').id, 'r1');
-  assert.deepEqual(trainThoughts(w, 't1').map((t) => t.text), ['hello']);
+test('a saved world without the messy room gets it back', () => {
+  const w = loadWorld({ v: 3, things: { r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'Other' } } });
+  assert.deepEqual(rooms(w).map((r) => r.id).sort(), [MESSY, 'r1'].sort());
 });
 
 test('what can sit inside what: items and groups in rooms, rooms at the top', () => {
@@ -142,34 +139,6 @@ test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 rooms are not', () => {
   assert.ok(isBig(r));
 });
 
-test('a saved Borges room is taken apart: its rooms come out onto its page, and doors go', () => {
-  const w = emptyWorld();
-  w.v = 2; // saved in the second shape: a thought inside its train
-  w.pages = 2;
-  w.things.b = { id: 'b', kind: 'room', parent: null, at: 1, name: 'Theory', form: 'borges', page: 1, col: 0, row: 0 };
-  w.things.c = { id: 'c', kind: 'room', parent: 'b', at: 2, name: 'Ontology', col: 0, row: 0 };
-  w.things.d = { id: 'd', kind: 'room', parent: 'c', at: 3, name: 'Deep', col: 1, row: 0 };
-  w.things.t = { id: 't', kind: 'train', parent: 'b', at: 4, x: 0, y: 0 };
-  w.things.l = { id: 'l', kind: 'line', parent: 't', at: 4, text: 'stray' };
-  w.doors = { x: { id: 'x', a: 'c', b: 'd', uses: 2, at: 1 } };
-  const back = loadWorld(JSON.parse(JSON.stringify(w)));
-  assert.equal(back.things.b, undefined);
-  assert.deepEqual([back.things.c.parent, back.things.c.page, back.things.d.parent, back.things.d.page], [null, 1, null, 1]);
-  assert.ok(back.things.c.col !== back.things.d.col || back.things.c.row !== back.things.d.row);
-  assert.equal(back.things.t.parent, MESSY);
-  assert.deepEqual(back.things.t.members, ['l']);
-  assert.equal(back.things.l.parent, MESSY);
-  assert.equal(back.doors, undefined);
-  assert.equal(back.things.c.form, undefined);
-});
-
-test('a saved room inside a mode room goes back to the top', () => {
-  const w = emptyWorld();
-  w.things.r9 = { id: 'r9', kind: 'room', parent: MESSY, at: 1, name: 'Stray' };
-  const back = loadWorld(w);
-  assert.equal(back.things.r9.parent, null);
-});
-
 test('removing a room removes what is in it; Messy thoughts stays', () => {
   const w = emptyWorld();
   const r = addRoom(w);
@@ -270,7 +239,7 @@ test('rooms move to free squares only', () => {
 });
 
 test('a saved world gets its rooms placed on the grid without overlaps', () => {
-  const w = loadWorld({ v: 2, things: {
+  const w = loadWorld({ v: 3, things: {
     messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
     r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'One', col: 1, row: 0 },
     r2: { id: 'r2', kind: 'room', parent: null, at: 2, name: 'Two' },
@@ -427,28 +396,6 @@ test('search lights count what each room holds, its name included', () => {
   assert.equal(topRoom(w, r.id).id, r.id);
   assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 3, [MESSY]: 1 });
   assert.deepEqual(roomHits(w, ''), {});
-});
-
-test('a saved world of the second shape: trains become Joyce\'s groups, places become Pessoa\'s', () => {
-  const w = loadWorld({ v: 2, pages: 1, things: {
-    messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
-    t1: { id: 't1', kind: 'train', parent: 'messy', at: 1, x: 5, y: 6, title: 'Walk', folded: true },
-    b: { id: 'b', kind: 'line', parent: 't1', at: 3, text: 'second' },
-    a: { id: 'a', kind: 'line', parent: 't1', at: 2, text: 'first', dx: 4, dy: 9 },
-  }, views: { messy: { mode: 'pessoa', x: 0, y: 0, zoom: 1 } }, places: { messy: { t1: { x: 70, y: 80 } } } });
-  assert.equal(w.v, 3);
-  const g = w.things.t1;
-  assert.ok(isGroup(g));
-  assert.deepEqual([g.of, g.title, g.folded, g.x, g.y], ['joyce', 'Walk', true, 5, 6]);
-  assert.deepEqual(g.members, ['a', 'b']);
-  assert.deepEqual([w.things.a.parent, w.things.a.dx], [MESSY, 4]);
-  assert.deepEqual(trainThoughts(w, 't1').map((x) => x.text), ['first', 'second']);
-  assert.equal(w.places, undefined);
-  assert.deepEqual(pessoa.point(w, MESSY, 't1'), { x: 70, y: 80 });
-  assert.deepEqual(pessoa.point(w, MESSY, 'a'), { x: 70, y: 80 }); // a thought in a folded group is where the group is
-  assert.equal(view(w, MESSY).mode, 'pessoa');
-  const again = loadWorld(JSON.parse(JSON.stringify(w)));
-  assert.deepEqual(again.things, w.things);
 });
 
 test('a train holds each thought in one train; an ontology of sets holds it in many', () => {
