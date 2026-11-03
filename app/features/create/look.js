@@ -97,7 +97,6 @@ export const LOOK = {
   rows: 0,
   light: LIGHT,        // a room's lightness inside, by default
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
-  tension: 0.5,       // Joyce's line: 0 lets pauses hang loose, 1 keeps it taut
   vivid: VIVID,       // how strongly a square shows its room's colour
   peek: 0,            // a square's last thoughts: 0 when hovered over, 1 always
 };

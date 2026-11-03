@@ -8,6 +8,7 @@ import {
   search, sizeRoom,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
+  roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -455,4 +456,23 @@ test('a folded group replaces its thoughts elsewhere, or keeps both; unfolding c
   unfold(w, t.id);
   assert.equal(t.keep, undefined);
   assert.ok(fold(w, t.id, null, true) && t.keep);
+});
+
+test('each room keeps its own ontology settings; global ones fill in, reset and apply to all', () => {
+  const w = emptyWorld();
+  const s = { key: 'tension', default: 0.5 };
+  const a = addRoom(w, 'A'), b = addRoom(w, 'B');
+  assert.equal(roomSetting(w, a.id, 'joyce', s), 0.5); // the default
+  assert.equal(roomSetting(w, a.id, 'joyce', s, { joyce: { tension: 0.2 } }), 0.2); // the global one
+  seedRoomSettings(w, b.id, { joyce: { tension: 0.9 } });
+  setRoomSetting(w, a.id, 'joyce', 'tension', 0.7);
+  assert.equal(roomSetting(w, a.id, 'joyce', s, { joyce: { tension: 0.2 } }), 0.7);
+  assert.equal(roomSetting(w, b.id, 'joyce', s, { joyce: { tension: 0.2 } }), 0.9); // kept from when it was made
+  resetRoomSettings(w, a.id, 'joyce');
+  assert.equal(roomSetting(w, a.id, 'joyce', s, { joyce: { tension: 0.2 } }), 0.2);
+  const g = { joyce: { tension: 0.3 } };
+  applySettingsToAll(w, g);
+  g.joyce.tension = 1; // a copy, not the same object
+  for (const id of [a.id, b.id, MESSY]) assert.equal(roomSetting(w, id, 'joyce', s), 0.3);
+  assert.deepEqual(loadWorld(JSON.parse(JSON.stringify(w))).settings[b.id], { joyce: { tension: 0.3 } });
 });

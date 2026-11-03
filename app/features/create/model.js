@@ -28,6 +28,7 @@
 //   things: { [id]: thought },
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
+//   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
 //   pages:  n                                     how many pages the rooms page has (at least 1)
 // }
 //
@@ -62,7 +63,7 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, pages: 1 };
+  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, pages: 1 };
 }
 
 // A saved world, repaired: the messy room always exists; every room sits on the rooms page; an
@@ -70,7 +71,7 @@ export function emptyWorld(now = Date.now()) {
 // gone. A world saved in an older shape is not kept: it starts afresh.
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'views', 'own']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'views', 'own', 'settings']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
   for (const th of Object.values(w.things)) {
@@ -210,6 +211,42 @@ function forget(w, id, roomId = null) {
     if (roomId != null && r !== roomId) continue;
     for (const data of Object.values(mine || {})) if (data && typeof data === 'object') delete data[id];
   }
+}
+
+// ---- Each room's ontology settings ----
+// A room keeps its own value for each of an ontology's settings (ontologies/index.js). Where it has
+// none, the global one (Settings → Rooms) counts, then the setting's own default. A new room starts
+// with a copy of the global ones; "Apply to all rooms" copies them into every room again.
+
+const copy = (o) => JSON.parse(JSON.stringify(o || {}));
+
+// The value of an ontology's setting s ({ key, default }) in a room. globals: { [ontology]: { key: value } }.
+export function roomSetting(w, roomId, of, s, globals = {}) {
+  const mine = w.settings?.[roomId]?.[of]?.[s.key];
+  if (mine !== undefined) return mine;
+  const global = globals?.[of]?.[s.key];
+  return global !== undefined ? global : s.default;
+}
+
+export function setRoomSetting(w, roomId, of, key, value) {
+  const r = ((w.settings ||= {})[roomId] ||= {});
+  (r[of] ||= {})[key] = value;
+}
+
+// A room's settings for one ontology go back to the global ones (and follow them from then on).
+export function resetRoomSettings(w, roomId, of) {
+  if (w.settings?.[roomId]) delete w.settings[roomId][of];
+}
+
+// A room starts from the global settings.
+export function seedRoomSettings(w, roomId, globals = {}) {
+  (w.settings ||= {})[roomId] = copy(globals);
+}
+
+// Every room, archived ones too, takes the global settings.
+export function applySettingsToAll(w, globals = {}) {
+  w.settings = {};
+  for (const th of Object.values(w.things)) if (kindOf(th) === 'room') w.settings[th.id] = copy(globals);
 }
 
 // The words of a thought, as plain text.

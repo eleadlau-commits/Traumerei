@@ -9,8 +9,8 @@ test('every built-in ontology has the parts it needs', () => {
   assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa']);
   assert.ok(BUILT_IN.some((o) => o.id === FALLBACK));
   const joyce = BUILT_IN.find((o) => o.id === 'joyce');
-  assert.equal(typeof joyce.draw, 'function'); // Joyce draws its own canvas and has Timeline
-  assert.equal(joyce.panel.key, 'timeline');
+  assert.equal(typeof joyce.draw, 'function'); // Joyce draws its own canvas
+  assert.equal(joyce.settings.find((s) => s.key === 'tension').default, 0.5);
 });
 
 test('ontologies from other features join the built-in ones; broken or repeated ones are skipped', () => {

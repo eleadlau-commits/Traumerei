@@ -1,14 +1,14 @@
 // Joyce: thoughts joined by time into trains, each read like a paragraph. Each thought stands on
 // its own, joined to the next by a line: taut between quick thoughts, slack after a pause, and
-// straight again when pulled far apart (Settings → Rooms → Line tension). Drag a thought to move it
-// alone (the line follows); double-click a train to choose it whole, then drag it. Enter goes on
-// with the same train; Ctrl+Enter starts a new one. Timeline (under Joyce in the rail) lists
-// everything written in the room, in the order it was last changed, with its train as a tag.
+// straight again when pulled far apart (Line tension: each room's own, from the ⚙ beside Joyce in
+// the rail). Drag a thought to move it alone (the line follows); double-click a train to choose it
+// whole, then drag it. Enter goes on with the same train; Ctrl+Enter starts a new one. In the
+// room's Timeline (any mode), a thought's train is its tag.
 //
 // A train is a group that holds each thought in only one train. Joyce places everything, so it
 // has no tray. Its arrangement lives on the trains (x, y) and their thoughts (dx, dy).
 
-import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, hash } from '../model.js';
+import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText } from '../model.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
@@ -133,7 +133,13 @@ export default {
     else nudge(w, id, x, y);
   },
 
-  settings: [{ key: 'tension', label: 'Line tension', min: 0, max: 1 }],
+  // A thought's tag in the room's Timeline: its train.
+  tag(w, id) {
+    const t = groupOf(w, id, 'joyce');
+    return t ? { id: t.id, name: tagName(w, t.id) } : null;
+  },
+
+  settings: [{ key: 'tension', label: 'Line tension', min: 0, max: 1, default: 0.5 }],
 
   // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
   // thoughts, a folded train as one block, and the thought being written.
@@ -142,7 +148,7 @@ export default {
     const nodes = [];
     const svg = document.createElementNS(SVG, 'svg');
     svg.setAttribute('class', 'create-strands');
-    const tension = c.prefs.tension ?? 0.5;
+    const tension = c.setting('tension');
     for (const t of roomTrains(w, c.roomId)) {
       const chosen = (c.sel?.kind === 'train' && c.sel.id === t.id) || c.isSel(t.id);
       if (t.folded) {
@@ -192,28 +198,4 @@ export default {
     return [svg, ...nodes];
   },
 
-  // Timeline: a list down the left of everything written in the room, in the order it was last
-  // changed (latest at the bottom), each with its time and its train as a tag. A click takes the
-  // view to it.
-  panel: {
-    key: 'timeline',
-    label: 'Timeline',
-    empty: 'Nothing written here yet',
-    render(c) {
-      const el = c.el;
-      const items = timeline(c.world, c.roomId);
-      const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      if (!items.length) return null;
-      return el('ol', { class: 'create-history-list' }, items.map(({ th, train }) => el('li', {},
-        el('button', {
-          type: 'button', class: 'create-history-item' + (c.sel?.id === th.id || c.sel?.id === train.id ? ' on' : ''),
-          style: `--tag:hsl(${hash(train.id) % 360} 32% 46%)`,
-          onclick: () => c.goTo({ id: th.id, kind: kindOf(th), room: c.roomId }),
-        },
-          el('span', { class: 'create-history-meta' },
-            el('span', { class: 'create-history-time' }, when(lastChanged(th))),
-            el('span', { class: 'create-tag' }, tagName(c.world, train.id))),
-          el('span', { class: 'create-history-text' }, thoughtText(c.world, th))))));
-    },
-  },
 };

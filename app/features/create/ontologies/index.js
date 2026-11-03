@@ -20,14 +20,16 @@
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
 //                         floats at its point. c is Create: world, roomId, sel, isSel(id),
-//                         found, draft, prefs, el, thoughtNode(th), draftNode(). A node marked
+//                         found, draft, prefs, setting(key), el, thoughtNode(th), draftNode(). A node marked
 //                         data-thought is one thought; one marked data-group (with no
 //                         data-thought, or for a folded group) is the whole group, which a
 //                         double-click chooses
-//   panel                 (optional) { key, label, empty, render(c) }: a list down the left,
-//                         opened from under its name in the rail (Joyce: Timeline)
-//   settings              (optional) [{ key, label, min, max, step }], under Settings → Rooms →
-//                         Inside a room
+//   tag(w, id)            (optional) a thought's tag in the room's Timeline ({ id, name }, or
+//                         null): Joyce, its train
+//   settings              (optional) its settings: sliders { key, label, min, max, step, default }
+//                         or switches { key, label, type: 'switch', default }. Each room keeps its
+//                         own (the ⚙ beside the mode's name in the rail); the global ones are under
+//                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
 //   moves                 (optional) [{ id, label, run(create) }], its own actions
 //
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
@@ -41,7 +43,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -49,7 +51,6 @@ export function missing(o) {
   const out = Object.entries(NEEDS).filter(([k, t]) => typeof o[k] !== t || (t === 'string' && !o[k])).map(([k]) => k);
   for (const [k, t] of Object.entries(MAY)) if (o[k] != null && typeof o[k] !== t) out.push(k);
   if (o.groups != null && !['one', 'many'].includes(o.groups.membership)) out.push('groups');
-  if (o.panel != null && (typeof o.panel.key !== 'string' || typeof o.panel.render !== 'function')) out.push('panel');
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
   return out;
 }

@@ -12,7 +12,8 @@ What the home page's **Create** opens: rooms of thoughts.
   four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
   a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** has two folds: *The rooms page* (mask
   opacity, square strength, glow, size, columns and rows at least) and *Inside a room* (lightness,
-  Messy's lightness, Joyce's line tension). Every colour comes from the app's palette (Settings →
+  Messy's lightness, and the global ontology settings such as Joyce's line tension, with *Apply
+  to all rooms*). Every colour comes from the app's palette (Settings →
   Colour, the Renderer's one tint): the mask is its ink, and a room with no colour of its own
   takes its paper. While the rooms page shows, the home picture's
   spontaneity layer is turned off. *Rooms*,
@@ -27,8 +28,11 @@ What the home page's **Create** opens: rooms of thoughts.
 - **Ontological modes**, in a rail on the left of a room, where *Rooms* and *Archive* sit on the
   rooms page; the current one is marked. A small room (1 × 1) keeps the one mode it was made with,
   and the rail only names it. A big room (Messy thoughts, or any 2 × 2 room) lists them all and
-  switches with a click; a big room made small again keeps the mode it has then. Under *Joyce*,
-  *Timeline* opens the list of its thoughts by time.
+  switches with a click; a big room made small again keeps the mode it has then. Hovering over a
+  mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
+  for that mode in a card beside the rail, with *Reset to global*. Each room keeps its own; a new
+  room starts from the global ones. Under a hairline, *Timeline* opens the list of its thoughts by
+  time down the right, in any mode.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random
     place. A train can't be broken: it is dragged, and moved, whole.
@@ -57,7 +61,7 @@ group can be folded, named, moved and deleted, and is always the same group, nev
 through the slot `create.ontologies`. `ontologies/index.js` describes their shape: name, groups,
 units, where each sits, what a drag does, and optional tray, settings and moves. Each keeps its
 own data per room (`own()` in model.js: Pessoa's dragged places). An ontology can draw its own
-canvas (Joyce's line and trains) and have a panel down the left (Joyce's Timeline); Create keeps
+canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train); Create keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
@@ -74,11 +78,11 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Joyce's line:** each thought stands on its own, joined to the next by a line. Its tension
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
-  pulling a thought far away makes it straight again (Settings → Rooms → Line tension). Drag a
+  pulling a thought far away makes it straight again (Line tension: the room's ⚙ beside Joyce). Drag a
   thought to move it alone; double-click a train to choose it whole, then drag it.
-- **Timeline:** hover over Joyce and Timeline drops down below it. It opens a list down the
-  left of everything written in the room, in the order it was last changed (latest at the
-  bottom), each with its time and its train as a tag (Joyce's tags only). Scroll it to see
+- **Timeline:** the quiet word under the modes. It opens a list down the right of everything
+  written in the room, in any mode, in the order it was last changed (latest at the bottom),
+  each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its train). Scroll it to see
   everything; a click takes the view to that thought.
 - **Editing:** a click on a thought (or a double click on a train) only chooses it. A right-click
   (or a long press, or Enter) opens its properties beside it, in the rooms page's style: edit its words (a passage's title and body, a picture's caption, a
