@@ -891,3 +891,24 @@
   .create-grid-wrap { padding: 48px var(--gutter) 64px; }
 }
 @media (hover: none) { .create-search-key { display: none; } }
+
+/* ---- Leaving: a comment for next time, and last time's comment under the search bar ---- */
+.create-leave { position: fixed; z-index: 21; color: var(--create-panel-ink); }
+.create-note {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top) + 46px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100% - 2 * var(--gutter)));
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: .03em;
+  opacity: .6;
+}
+.create.in-room .create-note { display: none; }
+.create-note-x { font-size: 10px; font-style: normal; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
+@media (max-width: 560px) { .create-note { top: calc(10px + env(safe-area-inset-top) + 48px); } }
+.create-leave .create-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }

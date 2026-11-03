@@ -111,6 +111,9 @@ export default class Create extends Feature {
     this.undoStack = [];
     this.redoStack = [];
     this.lastSnap = this.snap();
+    this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
+    this.leaving = false;
+    this.showNote();
     this.app.shell?.closeMenu?.();
     clearTimeout(this.closing);
     this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
@@ -128,6 +131,8 @@ export default class Create extends Feature {
   }
 
   close() {
+    this.leaving = false;
+    this.leaveBox.hidden = true;
     this.closeSheet();
     this.closeSearch();
     this.closeLights();
@@ -147,7 +152,45 @@ export default class Create extends Feature {
   back() {
     if (this.roomId) this.showRooms();
     else if (this.shelf) this.toggleShelf();
+    else if (this.edited?.size && !this.leaving) this.askNote();
     else this.close();
+  }
+
+  // ---- A comment for next time ----
+
+  // Leaving after changing rooms: their squares glow, and a pop-up offers a line for next time.
+  askNote() {
+    this.leaving = true;
+    this.drawRooms();
+    const text = el('textarea', { class: 'create-sheet-body', rows: 3, placeholder: 'Where you were, what to pick up next', 'aria-label': 'Comment for next time' });
+    const keep = () => {
+      const t = text.value.trim();
+      if (t) this.storage.set('note', { text: t, at: Date.now() });
+      this.close();
+    };
+    text.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); keep(); }
+      if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+    };
+    this.leaveBox.replaceChildren(
+      el('div', { class: 'create-sheet-kind' }, 'Add a comment for next time?'),
+      text,
+      el('div', { class: 'create-sheet-words' },
+        el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'create-word', onclick: () => this.close() }, 'Skip'),
+        el('span', { class: 'create-keys' }, 'Ctrl+Enter keeps it')));
+    this.leaveBox.hidden = false;
+    text.focus();
+  }
+
+  // The comment left last time, faint under the search bar until it is dismissed.
+  showNote() {
+    const note = this.storage.get('note');
+    this.noteLine.hidden = !note?.text;
+    if (!note?.text) return;
+    this.noteLine.replaceChildren(el('span', {}, note.text),
+      el('button', { type: 'button', class: 'create-word create-note-x', title: 'Dismiss', onclick: () => { this.storage.set('note', null); this.noteLine.hidden = true; } }, 'dismiss'));
   }
 
   // Shows a page of the rooms page.
@@ -270,6 +313,7 @@ export default class Create extends Feature {
       if (this.undoStack.length > UNDO) this.undoStack.shift();
       this.redoStack = [];
       this.lastSnap = now;
+      if (this.roomId) this.edited?.add(this.roomId);
     }
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => { this.storage.set('world', this.world); this.showSaved(); }, 250);
@@ -379,7 +423,9 @@ export default class Create extends Feature {
     this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
     this.savedMark = el('div', { class: 'create-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'create-hint' });
-    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
+    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine,
+      this.noteLine = el('div', { class: 'create-note', hidden: true }),
+      this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -543,7 +589,7 @@ export default class Create extends Feature {
     const tile = el('div', {
       class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
         + (this.roomPick === r.id ? ' picked' : '')
-        + (this.lastRoom === r.id ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
+        + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
       style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
       'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
