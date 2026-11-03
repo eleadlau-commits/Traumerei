@@ -780,8 +780,6 @@ dialog.dialog-box {
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
-/* On the rooms page the menu sits in the rail instead (inside a room it stays at the top left). */
-.create-open:not(.create-in-room) .topbar .top-btn { visibility: hidden; }
 
 /* The back arrow, top right: home from the rooms page, the rooms from a room. */
 .create-back {
@@ -960,7 +958,12 @@ dialog.dialog-box {
 .create-stage.panning { cursor: grab; }
 .create-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
-.create-modes { position: absolute; top: calc(10px + env(safe-area-inset-top) + 5px); left: calc(var(--gutter) + 64px); display: flex; gap: 22px; }
+/* A room's rail, where the rooms page has Rooms and Archive: its modes, and Timeline under Joyce. */
+.create-room .create-modes { top: calc(var(--create-strip) + 32px); z-index: 3; }
+.create-rail-fixed { cursor: default; }
+.create-rail-sub { margin-top: -10px; padding-left: 20px; font-size: 9px; }
+.create-rail-sub[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+.create-room .create-history { left: calc(var(--gutter) + 72px); }
 .create-top {
   position: absolute;
   top: calc(10px + env(safe-area-inset-top) + 5px);
@@ -1154,24 +1157,6 @@ dialog.dialog-box {
   background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
 .create-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
 
-/* Joyce's word, and the Timeline it unfolds when hovered. */
-.create-mode-wrap { position: relative; display: inline-block; }
-/* Timeline drops down below Joyce when it is hovered. */
-.create-timeline-btn {
-  position: absolute;
-  left: 0;
-  top: 100%;
-  margin-top: 10px;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: opacity .25s, transform .3s var(--create-ease);
-}
-.create-mode-wrap::after { content: ''; position: absolute; left: 0; right: -40px; top: 100%; height: 44px; } /* keeps the hover while the pointer goes down */
-.create-mode-wrap:not(:hover):not(:focus-within)::after { pointer-events: none; }
-.create-mode-wrap:is(:hover, :focus-within, .open) .create-timeline-btn { opacity: .8; transform: none; pointer-events: auto; z-index: 1; }
-.create-timeline-btn[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
 
 .create-draft { opacity: 1; }
 .create-draft::after {
@@ -1501,7 +1486,10 @@ dialog.dialog-box {
 .create-grid.lights .create-tile.found .create-peek { top: 28px; }
 
 /* The Archive: a page of its own, reached from the rail on the left. */
-.create-shelf-none { grid-column: 1 / -1; text-align: center; font-size: 13px; letter-spacing: .12em; opacity: .55; }
+/* Its empty cells make nothing. */
+.create-cell.inert { cursor: default; }
+.create-cell.inert::after { content: none; }
+.create-cell.inert:hover { background: transparent; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035); }
 .create-shelf-head { text-align: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin: 0 0 24px; }
 .create-rooms.shelf { background: color-mix(in srgb, var(--create-mask, rgb(43 42 40 / .1)) 100%, rgb(var(--ink-rgb, 43 42 40) / .12)); }
 .create-rooms.shelf .create-tile { filter: saturate(.7); }
@@ -1558,7 +1546,7 @@ dialog.dialog-box {
 .create.in-room .create-search-btn { color: var(--room-ink); z-index: 6; }
 .create-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
 
-/* ---- The rail on the left: the menu (☰), Rooms, and the Archive ---- */
+/* ---- The rail on the left, under the menu: Rooms and the Archive (in a room, its modes) ---- */
 .create-rail {
   position: absolute;
   z-index: 2;
@@ -1592,17 +1580,8 @@ dialog.dialog-box {
 }
 .create-rail-item:is(:hover, :focus-visible) { opacity: .85; outline: none; }
 .create-rail-item[aria-current="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
-.create-rail-menu { padding: 0; margin: 0 0 6px; opacity: .8; }
-.create-rail-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; }
-.create-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
-/* ---- Where the grid is: Rooms › Theory › Ontology ---- */
-.create-path { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: -14px 0 18px; }
-.create-path-sep { opacity: .4; font-size: 12px; }
-.create-path-item[aria-current] { opacity: 1; cursor: default; }
-.create-crumb-path { margin: 0 0 2px; }
-.create-crumb-path .create-word { font-size: 10px; padding: 2px; }
-.drop-on.create-word, .create-path-item.drop-on { opacity: 1; background-size: calc(100% - 4px - .22em) 1px; }
+.create-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
 /* ---- The pages of the rooms page: 1 2 3 + ---- */
 .create-pages {
@@ -1617,30 +1596,9 @@ dialog.dialog-box {
 .create-page { font-size: 12px; letter-spacing: .1em; padding: 4px 3px; }
 .create-page.drop-on { opacity: 1; background-size: calc(100% - 4px - .1em) 1px; }
 
-/* ---- A Borges room: a room of rooms ---- */
-/* Its square bears a small mark of four squares; its grid is veiled in its own colour. */
-.create-tile-borges {
-  position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 9px;
-  height: 9px;
-  opacity: .55;
-  background:
-    linear-gradient(currentColor, currentColor) 0 0 / 4px 4px no-repeat,
-    linear-gradient(currentColor, currentColor) 5px 0 / 4px 4px no-repeat,
-    linear-gradient(currentColor, currentColor) 0 5px / 4px 4px no-repeat,
-    linear-gradient(currentColor, currentColor) 5px 5px / 4px 4px no-repeat;
-}
-.create-rooms.borges::before { content: ''; position: absolute; inset: 0; background: var(--grid-veil); opacity: .3; pointer-events: none; }
-.create-rooms.entering .create-grid-wrap { animation: create-enter .45s var(--create-ease) both; }
-@keyframes create-enter { from { opacity: 0; transform: scale(.975); } }
-
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .create-tile.picked { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 70%, transparent); outline-offset: 3px; }
-.create-tile.edge { cursor: crosshair; }
 .create-tile.dragging { pointer-events: none; }
-.create-tile.drop-on::after, .create-tile.merge-target::after { box-shadow: inset 0 0 0 2px var(--home-ink, var(--ink, #2b2a28)); }
 
 /* A new room: its kinds, beside the empty cell. */
 .create-kind {
@@ -1664,51 +1622,18 @@ dialog.dialog-box {
 .create-kind:is(:hover, :focus-visible) { outline: none; opacity: 1; }
 .create-kind:is(:hover, :focus-visible) .create-kind-name { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
 
-/* ---- Doors: lines between squares, thicker with use ---- */
-.create-doors {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 1;
-  fill: none;
-  stroke: var(--home-ink, var(--ink, #2b2a28));
-  stroke-opacity: .3;
-  stroke-linecap: round;
-}
-.create-door-draft { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 7; }
-.create-door-draft line { stroke: var(--home-ink, var(--ink, #2b2a28)); stroke-opacity: .55; stroke-width: 1.2; stroke-dasharray: 4 5; }
-.create-options-doors { display: grid; gap: 2px; }
-.create-options-door { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.create-options-door .create-word { font-size: 11px; letter-spacing: .14em; text-align: left; }
-.create-door-off { appearance: none; border: 0; background: none; color: inherit; font: inherit; font-size: 15px; line-height: 1; padding: 2px 4px; opacity: .45; cursor: pointer; }
-.create-door-off:is(:hover, :focus-visible) { opacity: 1; outline: none; }
-/* Inside a room, its doors under its name. */
-.create-crumb-doors { margin-top: 6px; display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 2px 14px; }
-.create-crumb-doors-label { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; opacity: .4; }
-.create-crumb-door { font-size: 11px; letter-spacing: .16em; padding: 2px; opacity: var(--door, .5); }
-
-/* A room's mode, as a word: it is set from the room's properties on its grid. */
-.create-mode-label { cursor: default; opacity: .7; }
-.create-options-modes { flex-wrap: nowrap; gap: 12px; }
-.create-options-modes .create-word { font-size: 12px; letter-spacing: .16em; }
-.create:not(.in-room) .create-hint { bottom: calc(52px + env(safe-area-inset-bottom)); }
-.create-mode-label:hover { background-size: 0 1px; }
-.create-mode-wrap:focus-visible { outline: none; }
-
 /* Add, opened by a right-click on the canvas: there, at the pointer. */
 .create-add-menu.at { position: fixed; bottom: auto; z-index: 8; }
 
 /* On a phone the rail lies along the top of the rooms page, and the keys aren't shown. */
 @media (max-width: 560px) {
   .create-rail { top: 10px; width: auto; display: flex; align-items: center; gap: 18px; }
-  .create-rail-menu { margin: 0; }
+  .create-room .create-modes { top: calc(64px + env(safe-area-inset-top)); }
+  .create-rail-sub { margin: 0; padding-left: 0; }
+  .create-room .create-history { left: 0; }
   .create-rail-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 0 4px; box-shadow: inset 0 -1px 0 transparent; }
   .create-rail-item[aria-current="true"] { box-shadow: inset 0 -1px 0 currentColor; }
   .create-grid-wrap { padding: 48px var(--gutter) 64px; }
-  .create-path { margin-top: -4px; }
 }
 @media (hover: none) { .create-search-key { display: none; } }
 
@@ -5243,15 +5168,15 @@ dialog.menu-drawer::before {
     const ys = cuts(n, Y);
     let cells2 = [];
     for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) cells2.push([xs[i], ys[j], xs[i + 1], ys[j + 1]]);
-    const merge2 = stream(seed, ":planar:net:merge");
+    const merge = stream(seed, ":planar:net:merge");
     const same = (a, b) => Math.abs(a - b) < EPS;
     const joins = (a, b) => (same(a[2], b[0]) || same(b[2], a[0])) && same(a[1], b[1]) && same(a[3], b[3]) || (same(a[3], b[1]) || same(b[3], a[1])) && same(a[0], b[0]) && same(a[2], b[2]);
     const target = Math.max(1, Math.round(m * n * (1 - P.netMu)));
     for (let tries = 0; cells2.length > target && tries < 50 * m * n; tries++) {
-      const a = cells2[Math.floor(merge2.U() * cells2.length)];
+      const a = cells2[Math.floor(merge.U() * cells2.length)];
       const nb = cells2.filter((b2) => b2 !== a && joins(a, b2));
       if (!nb.length) continue;
-      const b = nb[Math.floor(merge2.U() * nb.length)];
+      const b = nb[Math.floor(merge.U() * nb.length)];
       cells2 = cells2.filter((c) => c !== a && c !== b);
       cells2.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
     }
@@ -7138,8 +7063,7 @@ dialog.menu-drawer::before {
     { id: "pessoa", name: "Pessoa" }
   ];
   var DEFAULT_MODE = "joyce";
-  var BORGES = "borges";
-  var KINDS_OF_ROOM = [...MODES2.map((m) => ({ id: m.id, name: m.name })), { id: BORGES, name: "Borges" }];
+  var KINDS_OF_ROOM = MODES2.map((m) => ({ id: m.id, name: m.name }));
   var LEAVES = ["line", "passage", "picture"];
   var KINDS = [...LEAVES, "train", "room"];
   var kindOf = (th) => KINDS.includes(th?.kind) ? th.kind : "line";
@@ -7151,19 +7075,43 @@ dialog.menu-drawer::before {
   }
   var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts", col: 0, row: 0, size: 2 });
   function emptyWorld(now = Date.now()) {
-    return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, doors: {}, pages: 1 };
+    return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
   }
   function loadWorld(saved, now = Date.now()) {
     let w = saved && typeof saved === "object" ? saved : {};
     if (w.v !== 2) w = fromV1(w, now);
     w = Object.assign(emptyWorld(now), w);
-    for (const key of ["things", "views", "places", "doors"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
+    for (const key of ["things", "views", "places"]) if (!w[key] || typeof w[key] !== "object") w[key] = {};
+    delete w.doors;
     w.pages = Math.max(1, Math.floor(+w.pages) || 1);
     if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
+    const outer = (th) => {
+      let r = th;
+      while (r && r.parent != null && w.things[r.parent]) r = w.things[r.parent];
+      return r;
+    };
+    const rooms0 = Object.values(w.things).filter((th) => kindOf(th) === "room");
+    for (const th of rooms0) {
+      if (th.parent == null) continue;
+      const top = outer(th);
+      th.parent = null;
+      if (top?.page > 0) th.page = top.page;
+      else delete th.page;
+      delete th.col;
+      delete th.row;
+    }
+    for (const th of rooms0) {
+      if (th.form !== "borges") continue;
+      if (th.id === MESSY) {
+        delete th.form;
+        continue;
+      }
+      for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY;
+      delete w.things[th.id];
+      delete w.views[th.id];
+      delete w.places[th.id];
+    }
     for (const th of Object.values(w.things)) {
-      const p = w.things[th.parent];
-      if (kindOf(th) === "room" && th.parent != null && !isBorges(p)) th.parent = null;
-      else if (kindOf(th) === "train" && isBorges(p)) th.parent = MESSY;
       if (th.parent == null || w.things[th.parent]) continue;
       if (kindOf(th) === "room") th.parent = null;
       else if (kindOf(th) === "train") th.parent = MESSY;
@@ -7173,13 +7121,10 @@ dialog.menu-drawer::before {
     messy.size = 2;
     messy.parent = null;
     delete messy.page;
-    delete messy.form;
     if (messy.col == null) {
       messy.col = 0;
       messy.row = 0;
     }
-    for (const [id, d] of Object.entries(w.doors)) if (!room(w, d?.a) || !room(w, d?.b) || d.a === d.b) delete w.doors[id];
-    tidyDoors(w);
     gridAll(w);
     return w;
   }
@@ -7201,18 +7146,11 @@ dialog.menu-drawer::before {
   }
   var room = (w, id) => kindOf(w.things[id]) === "room" ? w.things[id] : null;
   var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-  var isBorges = (th) => kindOf(th) === "room" && th.form === BORGES;
-  var isBig = (th) => kindOf(th) === "room" && !isBorges(th) && (th.id === MESSY || (th.size || 1) > 1);
+  var isBig = (th) => kindOf(th) === "room" && (th.id === MESSY || (th.size || 1) > 1);
   var children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
   var rooms = (w) => children(w, null).filter((th) => kindOf(th) === "room" && !th.archived);
-  var archived = (w) => Object.values(w.things).filter((th) => kindOf(th) === "room" && th.archived).sort(byTime);
-  var modeRooms = (w) => Object.values(w.things).filter((th) => kindOf(th) === "room" && !isBorges(th) && !th.archived).sort(byTime);
-  var roomsIn = (w, parent = null, page = 0) => children(w, parent).filter((th) => kindOf(th) === "room" && !th.archived && (parent != null || (th.page || 0) === page));
-  function roomPath(w, id) {
-    const out = [];
-    for (let th = w.things[w.things[id]?.parent]; th; th = w.things[th.parent]) if (kindOf(th) === "room") out.unshift(th);
-    return out;
-  }
+  var archived = (w) => children(w, null).filter((th) => kindOf(th) === "room" && th.archived).sort((a, b) => (+a.archived || 0) - (+b.archived || 0) || a.at - b.at);
+  var roomsOn = (w, page = 0) => rooms(w).filter((th) => (th.page || 0) === page);
   function shut(w, id) {
     for (let th = w.things[id]; th; th = w.things[th.parent]) if (kindOf(th) === "room" && th.locked) return true;
     return false;
@@ -7288,11 +7226,10 @@ dialog.menu-drawer::before {
     if (desc) out.desc = desc;
     if (f.locked) out.locked = true;
     if (f.archived) {
-      out.archived = true;
+      out.archived = Number.isFinite(f.archived) ? f.archived : true;
       delete out.col;
       delete out.row;
     }
-    if (f.form === BORGES) out.form = BORGES;
     if (Number.isInteger(f.page) && f.page > 0) out.page = f.page;
     return out;
   }
@@ -7300,8 +7237,8 @@ dialog.menu-drawer::before {
     const p = parent == null ? null : w.things[parent];
     if (parent != null && !p) return false;
     if (LEAVES.includes(kind)) return kindOf(p) === "train" && p != null;
-    if (kind === "train") return p != null && kindOf(p) === "room" && !isBorges(p);
-    if (kind === "room") return p == null || isBorges(p);
+    if (kind === "train") return p != null && kindOf(p) === "room";
+    if (kind === "room") return p == null;
     return false;
   }
   function create(w, parent, fields, now = Date.now()) {
@@ -7333,7 +7270,6 @@ dialog.menu-drawer::before {
     delete w.things[id];
     for (const r of Object.keys(w.places)) delete w.places[r][id];
     delete w.views[id];
-    for (const [d, door] of Object.entries(w.doors || {})) if (door.a === id || door.b === id) delete w.doors[d];
     const p = w.things[th.parent];
     if (p && kindOf(p) === "train" && !children(w, p.id).length) remove(w, p.id);
   }
@@ -7378,14 +7314,14 @@ dialog.menu-drawer::before {
     return true;
   }
   function addRoom(w, text = "Untitled", now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
-    const parent = where.parent ?? null, page = parent == null ? where.page || 0 : 0;
-    const r = create(w, parent, { kind: "room", name: text, ...cell || {}, page, ...kind === BORGES ? { form: BORGES } : {} }, now);
+    const page = where.page || 0;
+    const r = create(w, null, { kind: "room", name: text, ...cell || {}, page }, now);
     if (!r) return null;
-    if (kind !== BORGES && MODES2.some((m) => m.id === kind)) view3(w, r.id).mode = kind;
+    if (MODES2.some((m) => m.id === kind)) view3(w, r.id).mode = kind;
     if (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols)) {
       delete r.col;
       delete r.row;
-      gridRooms(w, cols, parent, page);
+      gridRooms(w, cols, page);
     }
     return r;
   }
@@ -7394,28 +7330,23 @@ dialog.menu-drawer::before {
     for (let dc = 0; dc < (r.size || 1); dc++) for (let dr = 0; dr < (r.size || 1); dr++) out.push([r.col + dc, r.row + dr]);
     return out;
   }
-  function roomAt(w, col, row, except = null, parent = null, page = 0) {
-    return roomsIn(w, parent, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
+  function roomAt(w, col, row, except = null, page = 0) {
+    return roomsOn(w, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
   }
   function placeRoom(w, id, col, row, cols = Infinity) {
     const r = room(w, id);
     if (!r || r.locked || r.archived || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
     const want = cells({ ...r, col, row });
-    if (want.some(([c, rr]) => roomAt(w, c, rr, id, r.parent ?? null, r.page || 0))) return false;
+    if (want.some(([c, rr]) => roomAt(w, c, rr, id, r.page || 0))) return false;
     r.col = col;
     r.row = row;
     return true;
   }
   function gridAll(w, cols = 6) {
-    const grids = /* @__PURE__ */ new Set();
-    for (const th of Object.values(w.things)) if (kindOf(th) === "room" && !th.archived) grids.add(`${th.parent ?? ""}|${th.parent == null ? th.page || 0 : 0}`);
-    for (const g of grids) {
-      const [p, page] = g.split("|");
-      gridRooms(w, cols, p || null, +page);
-    }
+    for (const page of new Set(rooms(w).map((r) => r.page || 0))) gridRooms(w, cols, page);
   }
-  function gridRooms(w, cols = 6, parent = null, page = 0) {
-    const all = roomsIn(w, parent, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
+  function gridRooms(w, cols = 6, page = 0) {
+    const all = roomsOn(w, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
     const taken = /* @__PURE__ */ new Set();
     const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
     for (const r of all) {
@@ -7431,78 +7362,23 @@ dialog.menu-drawer::before {
       }
       for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
     }
-    return roomsIn(w, parent, page);
+    return roomsOn(w, page);
   }
-  function putRoom(w, id, into = null, cols = 6, page = 0) {
+  function toPage(w, id, page = 0, cols = 6) {
     const r = room(w, id);
-    const p = into == null ? null : room(w, into);
-    if (!r || id === MESSY || r.locked || into != null && (!isBorges(p) || inside2(w, into, id) || shut(w, into))) return false;
-    r.parent = into ?? null;
+    if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
     delete r.col;
     delete r.row;
-    delete r.archived;
-    if (into == null && page > 0) r.page = page;
+    if (page > 0) r.page = page;
     else delete r.page;
-    gridRooms(w, cols, r.parent, r.page || 0);
-    tidyDoors(w);
+    gridRooms(w, cols, page);
     return true;
-  }
-  function merge(w, a, b, now = Date.now(), cols = 6) {
-    const A = room(w, a), B = room(w, b);
-    if (!A || !B || a === b || a === MESSY || b === MESSY || A.locked || B.locked || inside2(w, b, a)) return null;
-    if (isBorges(B)) return putRoom(w, a, b, cols) ? B : null;
-    const where = { parent: B.parent ?? null, page: B.page || 0 };
-    const C = create(w, where.parent, { kind: "room", name: "Untitled", form: BORGES, size: B.size || 1, page: where.page }, now);
-    if (!C) return null;
-    const at = { col: B.col, row: B.row };
-    B.parent = C.id;
-    delete B.page;
-    B.col = 0;
-    B.row = 0;
-    A.parent = C.id;
-    delete A.page;
-    delete A.col;
-    delete A.row;
-    if (at.col != null) {
-      C.col = at.col;
-      C.row = at.row;
-    }
-    gridRooms(w, cols, C.id, 0);
-    gridRooms(w, cols, where.parent, where.page);
-    return C;
   }
   var pageCount = (w) => Math.max(w.pages || 1, ...rooms(w).map((r) => (r.page || 0) + 1));
   function addPage(w) {
     w.pages = pageCount(w) + 1;
     return w.pages - 1;
   }
-  var canDoor = (w, id) => !!room(w, id) && isBorges(w.things[w.things[id].parent]);
-  function tidyDoors(w) {
-    for (const [id, d] of Object.entries(w.doors || {})) if (!canDoor(w, d.a) || !canDoor(w, d.b)) delete w.doors[id];
-  }
-  function addDoor(w, a, b, now = Date.now()) {
-    if (!canDoor(w, a) || !canDoor(w, b) || a === b) return null;
-    w.doors ||= {};
-    const had = Object.values(w.doors).find((d3) => d3.a === a && d3.b === b || d3.a === b && d3.b === a);
-    if (had) return had;
-    const d = { id: uid("d"), a, b, uses: 0, at: now };
-    w.doors[d.id] = d;
-    return d;
-  }
-  function removeDoor(w, id) {
-    if (w.doors?.[id]) {
-      delete w.doors[id];
-      return true;
-    }
-    return false;
-  }
-  var doorsOf = (w, id) => Object.values(w.doors || {}).filter((d) => d.a === id || d.b === id).map((d) => ({ door: d, other: room(w, d.a === id ? d.b : d.a) })).filter((x) => x.other).sort((x, y) => y.door.uses - x.door.uses || x.door.at - y.door.at);
-  function useDoor(w, id) {
-    const d = w.doors?.[id];
-    if (d) d.uses = (d.uses || 0) + 1;
-    return d || null;
-  }
-  var doorWidth = (d) => 1 + 1.4 * Math.log2(1 + (d?.uses || 0));
   var startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: "train", x, y }, now);
   var addThought = (w, trainId, text, now) => create(w, trainId, { kind: "line", text }, now);
   var SPIRAL = { step: 230, gap: 190 };
@@ -7641,10 +7517,10 @@ dialog.menu-drawer::before {
     else delete r.locked;
     return true;
   }
-  function archive(w, id) {
+  function archive(w, id, now = Date.now()) {
     const r = room(w, id);
     if (!r || id === MESSY || r.locked || r.archived) return false;
-    r.archived = true;
+    r.archived = now;
     delete r.col;
     delete r.row;
     return true;
@@ -7653,19 +7529,12 @@ dialog.menu-drawer::before {
     const r = room(w, id);
     if (!r || !r.archived) return false;
     delete r.archived;
-    if (r.parent != null && !isBorges(w.things[r.parent])) {
-      r.parent = null;
-      delete r.page;
-      tidyDoors(w);
-    }
-    if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.parent ?? null, r.page || 0);
+    if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.page || 0);
     return true;
   }
   function peek(w, roomId, most = 3) {
-    if (isBorges(w.things[roomId])) return children(w, roomId).filter((th) => kindOf(th) === "room").slice(0, most).map((r) => r.name);
     return roomThoughts(w, roomId).slice(-most).map((th) => oneLine(thoughtText(w, th))).filter(Boolean);
   }
-  var holds = (w, id) => children(w, id).filter((th) => kindOf(th) === "room");
 
   // dist/web/features/create/picture.js
   var SIDE = 720;
@@ -7834,8 +7703,7 @@ dialog.menu-drawer::before {
   var MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var KEY = MAC ? "⌘K" : "Ctrl+K";
   var HOLD = 520;
-  var EDGE = 11;
-  var KIND_NOTES = { joyce: "thoughts joined by time", pessoa: "each thought on its own", [BORGES]: "a room of rooms" };
+  var KIND_NOTES = { joyce: "thoughts joined by time", pessoa: "each thought on its own" };
   var UNDO = 60;
   var SVG = "http://www.w3.org/2000/svg";
   var HINTS = {
@@ -7854,8 +7722,6 @@ dialog.menu-drawer::before {
       this.roomPick = null;
       this.roomSel = null;
       this.making = null;
-      this.merging = null;
-      this.inside = null;
       this.page = 0;
       this.barFor = null;
       this.editing = null;
@@ -7894,7 +7760,6 @@ dialog.menu-drawer::before {
       this.palette = this.backdrop?.palette?.() || this.palette;
       this.paintPage();
       this.shelf = false;
-      this.inside = null;
       this.page = 0;
       this.roomPick = null;
       this.root.hidden = false;
@@ -7919,29 +7784,19 @@ dialog.menu-drawer::before {
         document.documentElement.classList.remove("create-open", "create-in-room");
       }, 520);
     }
-    // Back: from a room to the grid that holds it; from the Archive to the rooms; from a Borges
-    // room's grid up one level; from the rooms page home.
+    // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.
     back() {
       if (this.roomId) this.showRooms();
       else if (this.shelf) this.toggleShelf();
-      else if (this.inside) this.upLevel();
       else this.close();
     }
-    // Up one level, out of the Borges room whose grid shows; it is left chosen.
-    upLevel() {
-      const r = room(this.world, this.inside);
-      this.showGrid(r && isBorges(room(this.world, r.parent)) ? r.parent : null, r?.page || 0);
-      this.roomPick = r?.id || null;
-      this.drawRooms();
-    }
-    // Shows a grid: inside a Borges room, or a page of the rooms page (parent null).
-    showGrid(parent = null, page = this.page) {
+    // Shows a page of the rooms page.
+    showPage(page = this.page) {
       if (this.roomId) this.showRooms();
       this.closeLights();
-      this.inside = parent;
-      if (parent == null) this.page = page;
+      this.page = page;
       this.shelf = false;
-      this.roomPick = this.roomSel = this.making = this.merging = null;
+      this.roomPick = this.roomSel = this.making = null;
       this.renaming = null;
       this.grid.parentElement?.scrollTo?.(0, 0);
       this.drawRooms();
@@ -7952,7 +7807,7 @@ dialog.menu-drawer::before {
       this.stopWriting();
       this.roomId = null;
       this.sel = null;
-      this.roomSel = this.making = this.merging = null;
+      this.roomSel = this.making = null;
       this.closeAdd();
       this.roomPage.hidden = true;
       this.roomsPage.hidden = false;
@@ -7963,30 +7818,11 @@ dialog.menu-drawer::before {
       document.documentElement.classList.remove("create-dark");
       this.drawRooms();
     }
-    // Goes into a room: a mode room's canvas, or a Borges room's grid. Back then goes to the grid
-    // that holds it (or the Archive, if it was opened from there).
+    // Goes into a room. Back then goes to its page (or the Archive, if it was opened from there).
     openRoom(id) {
       const r = room(this.world, id);
       if (!r) return;
-      if (!this.shelf) {
-        const p = room(this.world, r.parent);
-        this.inside = isBorges(p) ? p.id : null;
-        if (!this.inside) this.page = r.page || 0;
-      }
-      if (isBorges(r) && !r.archived) {
-        this.attention = loadLog(this.storage.get("attention"));
-        visit(this.attention, id);
-        this.storage.set("attention", this.attention);
-        this.showGrid(id);
-        this.roomsPage.classList.remove("entering");
-        void this.roomsPage.offsetWidth;
-        this.roomsPage.classList.add("entering");
-        return;
-      }
-      if (isBorges(r)) {
-        this.toast("Restore it to go in: its rooms are on its grid.");
-        return;
-      }
+      if (!this.shelf) this.page = r.page || 0;
       this.closeLights();
       this.attention = loadLog(this.storage.get("attention"));
       visit(this.attention, id);
@@ -8081,7 +7917,7 @@ dialog.menu-drawer::before {
     }
     snap() {
       const w = this.world;
-      return JSON.stringify({ things: w.things, places: w.places, doors: w.doors, pages: w.pages });
+      return JSON.stringify({ things: w.things, places: w.places, pages: w.pages });
     }
     undo(back = true) {
       const from = back ? this.undoStack : this.redoStack, to = back ? this.redoStack : this.undoStack;
@@ -8091,10 +7927,10 @@ dialog.menu-drawer::before {
       }
       to.push(this.lastSnap);
       this.lastSnap = from.pop();
-      const { things, places, doors = {}, pages = 1 } = JSON.parse(this.lastSnap);
-      Object.assign(this.world, { things, places, doors, pages });
+      const { things, places, pages = 1 } = JSON.parse(this.lastSnap);
+      Object.assign(this.world, { things, places, pages });
       this.sel = null;
-      this.roomSel = this.making = this.merging = null;
+      this.roomSel = this.making = null;
       this.draft = null;
       clearTimeout(this.saveTimer);
       this.storage.set("world", this.world);
@@ -8146,14 +7982,8 @@ dialog.menu-drawer::before {
           if (best) this.openRoom(best);
         }
       });
-      this.railMenu = el5(
-        "button",
-        { type: "button", class: "create-rail-item create-rail-menu", "aria-label": "Menu", onclick: () => this.app.shell?.openMenu?.() },
-        ui_exports.icon('<path d="M4 7h16M4 12h16M4 17h16"/>')
-      );
       this.railRooms = el5("button", { type: "button", class: "create-rail-item", onclick: () => {
         if (this.shelf) this.toggleShelf();
-        else if (this.inside) this.showGrid(null);
       } }, "Rooms");
       this.shelfBtn = el5(
         "button",
@@ -8162,16 +7992,15 @@ dialog.menu-drawer::before {
         } },
         "Archive"
       );
-      this.rail = el5("nav", { class: "create-rail", "aria-label": "Menu, rooms and the Archive" }, this.railMenu, this.railRooms, this.shelfBtn);
+      this.rail = el5("nav", { class: "create-rail", "aria-label": "Rooms and the Archive" }, this.railRooms, this.shelfBtn);
       this.shelfHead = el5("div", { class: "create-shelf-head", hidden: true }, "Archive");
-      this.pathBar = el5("nav", { class: "create-path", "aria-label": "Where you are", hidden: true });
       this.pagesBar = el5("nav", { class: "create-pages", "aria-label": "Pages" });
       this.roomsPage = el5(
         "section",
         { class: "create-rooms", "aria-label": "Rooms" },
         this.lightsBar,
         this.rail,
-        el5("div", { class: "create-grid-wrap" }, this.pathBar, this.shelfHead, this.grid),
+        el5("div", { class: "create-grid-wrap" }, this.shelfHead, this.grid),
         this.pagesBar
       );
       this.backBtn = el5(
@@ -8195,9 +8024,7 @@ dialog.menu-drawer::before {
         el5("span", { class: "create-search-key" }, KEY)
       );
       this.crumbName = el5("button", { type: "button", class: "create-crumb create-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
-      this.crumbPath = el5("nav", { class: "create-path create-crumb-path", "aria-label": "Where you are", hidden: true });
-      this.crumbDoors = el5("div", { class: "create-crumb-doors", hidden: true });
-      this.modes = el5("div", { class: "create-modes", "aria-label": "Ontological mode" });
+      this.modes = el5("nav", { class: "create-rail create-modes", "aria-label": "Ontological mode" });
       this.world$ = el5("div", { class: "create-world" });
       this.stage = el5("div", { class: "create-stage", "data-own-swipe": "" }, this.world$);
       this.input = el5("textarea", { class: "create-input", "aria-label": "Write a thought", rows: 1, autocomplete: "off", spellcheck: "false" });
@@ -8208,7 +8035,7 @@ dialog.menu-drawer::before {
         { class: "create-room", hidden: true, "aria-label": "Room" },
         this.stage,
         this.modes,
-        el5("div", { class: "create-top" }, this.crumbPath, this.crumbName, this.crumbDesc = el5("div", { class: "create-crumb-desc" }), this.crumbDoors),
+        el5("div", { class: "create-top" }, this.crumbName, this.crumbDesc = el5("div", { class: "create-crumb-desc" })),
         el5(
           "div",
           { class: "create-add" },
@@ -8276,11 +8103,7 @@ dialog.menu-drawer::before {
       const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
       return { cols, cell };
     }
-    // The grid that shows: { parent, page }.
-    get grid$() {
-      return { parent: this.inside, page: this.inside ? 0 : this.page };
-    }
-    // For each room on the grid (ids), how many thoughts and rooms in it hold the words.
+    // For each room shown (ids), how many thoughts in it (and its name) hold the words.
     hitsOn(ids, query = this.lights) {
       const out = {};
       if (!query?.trim()) return out;
@@ -8296,21 +8119,16 @@ dialog.menu-drawer::before {
     }
     drawRooms() {
       const now = Date.now();
-      if (this.inside && !(isBorges(room(this.world, this.inside)) && !room(this.world, this.inside).archived)) this.inside = null;
       this.page = Math.min(this.page, pageCount(this.world) - 1);
       const { cols: fit, cell } = this.gridSize();
-      const { parent, page } = this.grid$;
-      const all = gridRooms(this.world, fit, parent, page);
+      const all = gridRooms(this.world, fit, this.page);
       const shelved = archived(this.world);
-      if (this.shelf && !shelved.length) this.shelf = false;
       this.shelfBtn.setAttribute("aria-current", String(this.shelf));
       this.railRooms.setAttribute("aria-current", String(!this.shelf));
       this.shelfHead.hidden = !this.shelf;
       this.roomsPage.classList.toggle("shelf", this.shelf);
-      this.drawPath();
       this.drawPages();
-      this.paintGrid();
-      this.backBtn.setAttribute("aria-label", this.shelf ? "Back to the rooms" : this.inside ? "Up a level" : "Back to the home page");
+      this.backBtn.setAttribute("aria-label", this.shelf ? "Back to the rooms" : "Back to the home page");
       this.grid.classList.toggle("peek-always", this.prefs.peek >= 0.5);
       const shown2 = new Set((this.shelf ? shelved : all).map((r) => r.id));
       if (!shown2.has(this.roomPick)) this.roomPick = null;
@@ -8328,7 +8146,7 @@ dialog.menu-drawer::before {
       const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
       const height = this.grid.parentElement?.clientHeight || window.innerHeight;
       const rows = Math.max(
-        Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)) - (this.inside ? 1 : 0),
+        Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)),
         this.prefs.rows || 0,
         ...all.map((r) => r.row + r.size + 1)
       );
@@ -8352,7 +8170,7 @@ dialog.menu-drawer::before {
           onclick: () => this.onCell(col, row),
           oncontextmenu: (e) => {
             e.preventDefault();
-            this.roomSel = this.merging = null;
+            this.roomSel = null;
             this.roomPick = null;
             this.making = { col, row };
             this.drawRooms();
@@ -8363,19 +8181,16 @@ dialog.menu-drawer::before {
       const panels = [];
       const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
       if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
-      const into = this.merging && all.find((r) => r.id === this.merging.b);
-      if (into && room(this.world, this.merging.a)) panels.push(this.mergeOptions(room(this.world, this.merging.a), into, cell, cols));
-      else this.merging = null;
       if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
-      this.grid.replaceChildren(this.doorLines(all, cell), ...empty, ...tiles2, ...panels);
+      this.grid.replaceChildren(...empty, ...tiles2, ...panels);
       this.grid.querySelector(".create-name-field")?.focus();
       if (!this.root.hidden) this.hint("rooms");
     }
     // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
     // of room to make there.
     onCell(col, row) {
-      if (this.roomSel || this.merging || this.making) {
-        this.roomSel = this.merging = this.making = null;
+      if (this.roomSel || this.making) {
+        this.roomSel = this.making = null;
         this.drawRooms();
         return;
       }
@@ -8410,69 +8225,9 @@ dialog.menu-drawer::before {
         ))
       );
     }
-    // A room dropped on another: merge the two into a Borges room, or put it inside a Borges room.
-    mergeOptions(a, b, cell, cols) {
-      const into = isBorges(b);
-      const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
-      return el5(
-        "div",
-        this.beside(b, cell, cols, " create-merge"),
-        el5("div", { class: "create-options-label" }, into ? "Put inside" : "Merge"),
-        el5("p", { class: "create-options-note" }, into ? `Put ${a.name} inside ${b.name}?` : `Make a Borges room here holding ${a.name} and ${b.name}?`),
-        el5(
-          "div",
-          { class: "create-options-row" },
-          word(into ? "Put inside" : "Merge", () => {
-            const c = merge(this.world, a.id, b.id, Date.now(), this.cols || 6);
-            this.merging = null;
-            if (!c) {
-              this.toast("Those two can't be merged.");
-              this.drawRooms();
-              return;
-            }
-            this.save();
-            if (!into) this.renaming = c.id;
-            this.roomPick = c.id;
-            this.drawRooms();
-            this.grid.querySelector(".create-name-field")?.select();
-            this.toast(into ? `${a.name} is inside ${b.name}.` : "Merged. Name the new room.");
-          }, "create-options-go"),
-          word("Cancel", () => {
-            this.merging = null;
-            this.drawRooms();
-          })
-        )
-      );
-    }
-    // The path to the grid that shows: Rooms › Theory › Ontology.
-    trail(ids) {
-      const items = [{ id: null, name: "Rooms" }, ...ids.map((id) => room(this.world, id)).filter(Boolean)];
-      const out = [];
-      items.forEach((r, i) => {
-        if (i) out.push(el5("span", { class: "create-path-sep", "aria-hidden": "true" }, "›"));
-        out.push(el5("button", {
-          type: "button",
-          class: "create-word create-path-item",
-          "data-into": r.id ?? "",
-          onclick: () => r.id ? this.openRoom(r.id) : this.showGrid(null)
-        }, r.name));
-      });
-      return out;
-    }
-    drawPath() {
-      const ids = this.inside && !this.shelf ? [...roomPath(this.world, this.inside).map((r) => r.id), this.inside] : [];
-      this.pathBar.hidden = !ids.length;
-      if (!ids.length) {
-        this.pathBar.replaceChildren();
-        return;
-      }
-      const items = this.trail(ids);
-      items.at(-1).setAttribute("aria-current", "page");
-      this.pathBar.replaceChildren(...items);
-    }
     drawPages() {
       const n = pageCount(this.world);
-      this.pagesBar.hidden = !!this.inside || this.shelf;
+      this.pagesBar.hidden = this.shelf;
       this.pagesBar.replaceChildren(
         ...Array.from({ length: n }, (_, i) => el5("button", {
           type: "button",
@@ -8480,52 +8235,22 @@ dialog.menu-drawer::before {
           "data-page": i,
           "aria-label": `Page ${i + 1}`,
           ...i === this.page ? { "aria-current": "page" } : {},
-          onclick: () => this.showGrid(null, i)
+          onclick: () => this.showPage(i)
         }, String(i + 1))),
         el5("button", { type: "button", class: "create-word create-page", "aria-label": "A new page", title: "A new page", onclick: () => {
           const i = addPage(this.world);
           this.save();
-          this.showGrid(null, i);
+          this.showPage(i);
         } }, "+")
       );
-    }
-    // A Borges room's grid is veiled in the room's own colour.
-    paintGrid() {
-      const r = !this.shelf && this.inside && room(this.world, this.inside);
-      this.roomsPage.classList.toggle("borges", !!r);
-      if (r) {
-        const look = this.lookOf(r);
-        this.roomsPage.style.setProperty("--grid-veil", `linear-gradient(${look.top}, ${look.bottom})`);
-      }
-    }
-    // The doors between rooms on this grid: lines from square to square, thicker the more used.
-    doorLines(all, cell) {
-      const svg = document.createElementNS(SVG, "svg");
-      svg.setAttribute("class", "create-doors");
-      svg.setAttribute("aria-hidden", "true");
-      const step = cell + GRID.gap;
-      const at = new Map(all.map((r) => [r.id, { x: (r.col + (r.size || 1) / 2) * step - GRID.gap / 2, y: (r.row + (r.size || 1) / 2) * step - GRID.gap / 2 }]));
-      for (const d of Object.values(this.world.doors || {})) {
-        const p = at.get(d.a), q = at.get(d.b);
-        if (!p || !q) continue;
-        const line = document.createElementNS(SVG, "path");
-        const dx = q.x - p.x, dy = q.y - p.y, k = 0.12 * Math.sign(dx || 1);
-        const mx = (p.x + q.x) / 2 - dy * k, my = (p.y + q.y) / 2 + dx * k;
-        line.setAttribute("d", `M${p.x},${p.y} Q${mx},${my} ${q.x},${q.y}`);
-        line.setAttribute("stroke-width", doorWidth(d).toFixed(2));
-        line.setAttribute("data-door", d.id);
-        svg.append(line);
-      }
-      return svg;
     }
     // One room's square: its colour, its light, its name and count; its last thoughts (the peek);
     // a glow if it was the last room gone into, a dot if a thought was left half written there, a
     // thin bar along its top if it is locked, and how many finds it holds while the lights are on.
     tile(r, now = Date.now(), hits = null) {
       const look = squareLook(r, r.id === MESSY, this.prefs, this.palette);
-      const borges = isBorges(r);
-      const written = borges ? [] : roomThoughts(this.world, r.id);
-      const count = borges ? holds(this.world, r.id).length : written.length;
+      const written = roomThoughts(this.world, r.id);
+      const count = written.length;
       const glow2 = light(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
       const lit = glow2 > 0.04;
       const name2 = this.renaming === r.id ? this.nameField(r, () => {
@@ -8537,11 +8262,11 @@ dialog.menu-drawer::before {
       const tile = el5(
         "div",
         {
-          class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (borges ? " borges" : "") + (this.merging?.b === r.id ? " merge-target" : "") + (this.lastRoom === r.id ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
+          class: "create-tile" + (lit ? " lit" : "") + (r.id === MESSY ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
           role: "button",
           tabindex: 0,
           style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
-          "aria-label": borges ? `${r.name}, a Borges room of ${count} room${count === 1 ? "" : "s"}` : `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
+          "aria-label": `${r.name}, ${count} thought${count === 1 ? "" : "s"}`,
           "aria-selected": String(this.roomPick === r.id),
           "data-room": r.id,
           "aria-expanded": String(this.roomSel === r.id),
@@ -8571,10 +8296,6 @@ dialog.menu-drawer::before {
             }
           },
           onpointerdown: (e) => this.onTileDown(e, r, tile),
-          onpointermove: (e) => {
-            if (!e.buttons) tile.classList.toggle("edge", !this.shelf && !!this.inside && this.nearEdge(e, tile));
-          },
-          onpointerleave: () => tile.classList.remove("edge"),
           oncontextmenu: (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -8595,25 +8316,36 @@ dialog.menu-drawer::before {
           { class: "create-tile-label" },
           name2,
           el5("span", { class: "create-tile-count" }, count ? String(count) : "")
-        ),
-        borges ? el5("span", { class: "create-tile-borges", "aria-hidden": "true" }) : null
+        )
       );
       return tile;
     }
     // ---- The Archive: rooms taken off the grid, on a page of their own ----
     toggleShelf() {
       this.shelf = !this.shelf;
-      this.roomSel = this.roomPick = this.making = this.merging = null;
+      this.roomSel = this.roomPick = this.making = null;
       this.drawRooms();
       this.grid.parentElement?.scrollTo?.(0, 0);
     }
-    // The archived rooms, in rows, in the order they were made. A click shows Restore, Go in and
-    // Delete; a double click goes in.
+    // The archived rooms, on a grid like the rooms page's, in the order they were archived. Its empty
+    // cells make nothing. A click chooses a room; a right-click shows Go in, Restore and Delete; a
+    // double click goes in.
     drawShelf(shelved, cols, cell, hits) {
       this.cols = cols;
       this.grid.style.setProperty("--cols", cols);
       this.grid.style.setProperty("--cell", cell + "px");
       this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
+      const height = this.grid.parentElement?.clientHeight || window.innerHeight;
+      const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)), Math.ceil(shelved.length / cols) + 1);
+      const empty = [];
+      for (let i = shelved.length; i < rows * cols; i++) {
+        empty.push(el5("div", { class: "create-cell inert", "aria-hidden": "true", style: `grid-column:${i % cols + 1};grid-row:${Math.floor(i / cols) + 1}`, onclick: () => {
+          if (this.roomSel || this.roomPick) {
+            this.roomSel = this.roomPick = null;
+            this.drawRooms();
+          }
+        } }));
+      }
       const tiles2 = shelved.map((r, i) => {
         const t = this.tile({ ...r, size: 1 }, Date.now(), hits);
         t.style.gridColumn = `${i % cols + 1}`;
@@ -8623,19 +8355,16 @@ dialog.menu-drawer::before {
       });
       const at = shelved.findIndex((r) => r.id === this.roomSel);
       const panel = at < 0 ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
-      this.grid.replaceChildren(...tiles2, ...panel ? [panel] : []);
-      if (!shelved.length) this.grid.replaceChildren(el5("p", { class: "create-shelf-none" }, "Nothing in the Archive"));
+      this.grid.replaceChildren(...empty, ...tiles2, ...panel ? [panel] : []);
     }
     shelfOptions(r, col, row, cell, cols) {
       const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
-      const from = roomPath(this.world, r.id).map((p) => p.name).join(" › ");
       return el5(
         "div",
         this.beside({ col, row }, cell, cols),
         el5("div", { class: "create-options-label" }, r.name),
         r.desc ? el5("p", { class: "create-options-note" }, r.desc) : null,
-        from ? el5("p", { class: "create-options-note" }, `From ${from}`) : null,
-        isBorges(r) ? null : word("Go in", () => this.openRoom(r.id), "create-options-go"),
+        word("Go in", () => this.openRoom(r.id), "create-options-go"),
         word("Restore", () => {
           restore(this.world, r.id, null, this.gridSize().cols);
           this.roomSel = null;
@@ -8667,17 +8396,16 @@ dialog.menu-drawer::before {
       this.lightsField.value = "";
       if (!this.roomId && !this.root.hidden) this.drawRooms();
     }
-    // The room the lights found most in, on the grid that shows.
+    // The room the lights found most in, on the page that shows.
     bestLit() {
-      const { parent, page } = this.grid$;
-      const ids = new Set((this.shelf ? archived(this.world) : roomsIn(this.world, parent, page)).map((r) => r.id));
+      const ids = new Set((this.shelf ? archived(this.world) : roomsOn(this.world, this.page)).map((r) => r.id));
       const hits = this.hitsOn(ids);
       return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
     // A click on a square chooses it (an outline); the properties wait for a right-click.
     pickRoom(id) {
       if (this.roomSel && this.roomSel !== id) this.roomSel = null;
-      this.making = this.merging = null;
+      this.making = null;
       this.roomPick = id;
       this.drawRooms();
       this.grid.querySelector(`.create-tile[data-room="${id}"]`)?.focus({ preventScroll: true });
@@ -8686,15 +8414,14 @@ dialog.menu-drawer::before {
     chooseRoom(id, open = false) {
       this.roomSel = open || this.roomSel !== id ? id : null;
       this.roomPick = id;
-      this.making = this.merging = null;
+      this.making = null;
       this.renaming = null;
       this.drawRooms();
     }
-    // A room's properties, beside its square: its name and description, Go in, its mode (the only
-    // place a room's mode is set), its colour, lightness and opacity (the only place its colour is
-    // set), its size, its doors, Back to the tint, Lock, Archive and Delete (not for Messy).
+    // A room's properties, beside its square: its name and description, Go in, its mode (one, or
+    // all of them for a big room), its colour, lightness and opacity (the only place its colour is
+    // set), its size, Back to the tint, Lock, Archive and Delete (not for Messy).
     roomOptions(r, cell, cols) {
-      const borges = isBorges(r);
       const set = (fields) => {
         update(this.world, r.id, fields);
         this.save();
@@ -8719,7 +8446,6 @@ dialog.menu-drawer::before {
       });
       const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
       const mode = view3(this.world, r.id).mode;
-      const n = borges ? holds(this.world, r.id).length : 0;
       const panel = el5(
         "div",
         this.beside(r, cell, cols),
@@ -8746,7 +8472,7 @@ dialog.menu-drawer::before {
         }, r.desc || ""),
         word("Go in", () => this.openRoom(r.id), "create-options-go"),
         // Its kind: a small room keeps its one mode; a big one switches inside.
-        el5("p", { class: "create-options-note" }, borges ? `Borges · a room of rooms · ${n} inside` : isBig(r) ? `${MODES2.map((m) => m.name).join(" · ")} · switched inside` : `${MODES2.find((m) => m.id === mode)?.name || "Joyce"} · one mode`),
+        el5("p", { class: "create-options-note" }, isBig(r) ? `${MODES2.map((m) => m.name).join(" · ")} · switched inside` : `${MODES2.find((m) => m.id === mode)?.name || "Joyce"} · one mode`),
         // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
         el5(
           "label",
@@ -8769,19 +8495,18 @@ dialog.menu-drawer::before {
           "div",
           { class: "create-options-row" },
           el5("span", { class: "create-options-label" }, "Size"),
-          ...[1, 2].map((n2) => el5("button", {
+          ...[1, 2].map((n) => el5("button", {
             type: "button",
             class: "create-word",
-            "aria-pressed": String((r.size || 1) === n2),
+            "aria-pressed": String((r.size || 1) === n),
             onclick: () => {
-              if (sizeRoom(this.world, r.id, n2, this.cols)) {
+              if (sizeRoom(this.world, r.id, n, this.cols)) {
                 this.save();
                 this.drawRooms();
               } else this.toast("There isn't room for it to grow here. Move it first.");
             }
-          }, n2 === 1 ? "1 × 1" : "2 × 2"))
+          }, n === 1 ? "1 × 1" : "2 × 2"))
         ),
-        this.doorRows(r),
         el5(
           "div",
           { class: "create-options-row" },
@@ -8810,63 +8535,11 @@ dialog.menu-drawer::before {
             this.roomSel = this.roomPick = null;
             this.save();
             this.drawRooms();
-            this.toast(`Deleted ${r.name}${n ? ` and the ${n} room${n === 1 ? "" : "s"} in it` : ""}. Ctrl+Z brings it back.`);
+            this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
           }, "create-options-delete") : null
         )
       );
       return panel;
-    }
-    // A room's name with the rooms it is inside: Theory › Ontology.
-    pathName(r) {
-      return [...roomPath(this.world, r.id), r].map((x) => x.name).join(" › ");
-    }
-    // A room's doors, each going through (and wearing it in) or taken away; and Door to… any room
-    // inside a Borges room. A room on the rooms page itself has none.
-    doorRows(r) {
-      if (!canDoor(this.world, r.id)) return null;
-      const doors = doorsOf(this.world, r.id);
-      const linked = new Set(doors.map((d) => d.other.id));
-      const others = Object.values(this.world.things).filter((th) => canDoor(this.world, th.id) && th.id !== r.id && !th.archived && !linked.has(th.id)).sort((a, b) => this.pathName(a).localeCompare(this.pathName(b)));
-      const pick = el5(
-        "select",
-        {
-          class: "create-edit-move",
-          "aria-label": "A door to a room",
-          onkeydown: (e) => e.stopPropagation(),
-          onchange: (e) => {
-            const to = room(this.world, e.target.value);
-            if (!to) return;
-            addDoor(this.world, r.id, to.id);
-            this.save();
-            this.drawRooms();
-            this.toast(`A door between ${r.name} and ${to.name}`);
-          }
-        },
-        el5("option", { value: "" }, "Door to…"),
-        ...others.map((o) => el5("option", { value: o.id }, this.pathName(o)))
-      );
-      return el5(
-        "div",
-        { class: "create-options-doors" },
-        doors.length ? el5("span", { class: "create-options-label" }, "Doors") : null,
-        ...doors.map(({ door, other }) => el5(
-          "div",
-          { class: "create-options-door" },
-          el5("button", { type: "button", class: "create-word", onclick: () => this.goThrough(door.id, other.id) }, this.pathName(other)),
-          el5("button", { type: "button", class: "create-door-off", "aria-label": `Take away the door to ${other.name}`, title: "Take the door away", onclick: () => {
-            removeDoor(this.world, door.id);
-            this.save();
-            this.drawRooms();
-          } }, "×")
-        )),
-        others.length ? pick : null
-      );
-    }
-    // Through a door: it is worn in a little, and the room on the other side opens.
-    goThrough(doorId, to) {
-      useDoor(this.world, doorId);
-      this.save();
-      this.openRoom(to);
     }
     // Redraws the squares on the next frame (sliders move many times a frame).
     drawRoomsSoon() {
@@ -8886,34 +8559,22 @@ dialog.menu-drawer::before {
       const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
       return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
     }
-    // True if a pointer is within EDGE px of a square's edge (a door starts there).
-    nearEdge(e, tile) {
-      const b = tile.getBoundingClientRect();
-      const d = Math.min(e.clientX - b.left, b.right - e.clientX, e.clientY - b.top, b.bottom - e.clientY);
-      return d >= 0 && d < EDGE;
-    }
-    // What is under a point while a square is dragged: a page number, a word of the path, the
-    // Archive, or another square.
+    // What is under a point while a square is dragged: a page number, or the Archive.
     dropAt(x, y) {
       const n = document.elementFromPoint(x, y);
       const page = n?.closest?.("[data-page]");
       if (page) return { page: +page.dataset.page, el: page };
-      const up = n?.closest?.("[data-into]");
-      if (up) return { into: up.dataset.into || null, el: up };
       const shelf = n?.closest?.('[data-drop="archive"]');
       if (shelf) return { archive: true, el: shelf };
-      const t = n?.closest?.(".create-tile");
-      if (t) return { room: t.dataset.room, el: t };
       return null;
     }
     // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
-    // moves it to the cell it is let go over, if that is free, or onto what is there (see dropAt).
-    // From its edge, a drag draws a door to another square.
+    // moves it to the cell it is let go over, if that is free (a room dropped on another snaps
+    // back), or onto a page number or Archive.
     onTileDown(e, r, tile) {
       if (e.button || e.target.closest("input, textarea, select")) return;
       if (e.ctrlKey && MAC) return;
       const start = { x: e.clientX, y: e.clientY };
-      const door = !this.shelf && !!this.inside && e.pointerType === "mouse" && this.nearEdge(e, tile);
       const grab = this.cellAt(e.clientX, e.clientY);
       const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
       let dragging = false, target = null, over = null;
@@ -8935,7 +8596,7 @@ dialog.menu-drawer::before {
           return;
         }
         const size = r.size || 1;
-        const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, this.grid$.parent, this.grid$.page));
+        const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, this.page));
         drop.hidden = false;
         drop.classList.toggle("taken", !free);
         drop.style.gridColumn = `${c.col + 1} / span ${size}`;
@@ -8945,36 +8606,10 @@ dialog.menu-drawer::before {
         for (const x of this.root.querySelectorAll(".drop-on")) if (x !== n) x.classList.remove("drop-on");
         n?.classList.add("drop-on");
       };
-      let line = null;
-      const mid = () => {
-        const b = tile.getBoundingClientRect();
-        return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
-      };
-      const drawLine = (ev) => {
-        if (!line) {
-          line = document.createElementNS(SVG, "svg");
-          line.setAttribute("class", "create-door-draft");
-          line.append(document.createElementNS(SVG, "line"));
-          this.root.append(line);
-        }
-        const m = mid(), l = line.firstChild;
-        l.setAttribute("x1", m.x);
-        l.setAttribute("y1", m.y);
-        l.setAttribute("x2", ev.clientX);
-        l.setAttribute("y2", ev.clientY);
-      };
       const moveFn = (ev) => {
         const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
         if (!dragging && Math.hypot(dx, dy) < 5) return;
         clearTimeout(hold);
-        if (door) {
-          dragging = true;
-          drawLine(ev);
-          const t = this.dropAt(ev.clientX, ev.clientY);
-          over = t?.room && t.room !== r.id ? t : null;
-          lit(over?.el);
-          return;
-        }
         if (r.locked || r.archived) return;
         if (!dragging) {
           dragging = true;
@@ -8984,13 +8619,8 @@ dialog.menu-drawer::before {
         }
         tile.style.transform = `translate(${dx}px, ${dy}px)`;
         over = this.dropAt(ev.clientX, ev.clientY);
-        if (over?.room === r.id) over = null;
-        if (over?.room) {
-          const b = room(this.world, over.room);
-          if (!b || b.locked || b.id === MESSY || r.id === MESSY) over = null;
-        }
-        if (over?.into !== void 0 && (over.into || null) === this.inside) over = null;
-        if (over?.archive && r.id === MESSY) over = null;
+        if (over?.page === (r.page || 0)) over = null;
+        if ((over?.archive || over?.page != null) && r.id === MESSY) over = null;
         lit(over?.el);
         target = over ? null : spot2(ev);
         mark(target);
@@ -9003,7 +8633,6 @@ dialog.menu-drawer::before {
         mark(null);
         drop.remove();
         lit(null);
-        line?.remove();
         tile.classList.remove("dragging");
         this.grid.classList.remove("dragging");
       };
@@ -9018,30 +8647,12 @@ dialog.menu-drawer::before {
           else this.pickRoom(r.id);
           return;
         }
-        if (door) {
-          const b = over && room(this.world, over.room);
-          if (b && addDoor(this.world, r.id, b.id)) {
-            this.save();
-            this.toast(`A door between ${r.name} and ${b.name}`);
-          }
-          this.drawRooms();
-          return;
-        }
         tile.style.transform = "";
         const cols = this.cols || this.gridSize().cols;
-        if (over?.room) {
-          this.merging = { a: r.id, b: over.room };
-          this.roomPick = over.room;
-        } else if (over?.page != null) {
-          if (putRoom(this.world, r.id, null, cols, over.page)) {
+        if (over?.page != null) {
+          if (toPage(this.world, r.id, over.page, cols)) {
             this.save();
             this.toast(`${r.name} is on page ${over.page + 1}.`);
-          }
-        } else if (over && "into" in over) {
-          const into = over.into || null;
-          if (putRoom(this.world, r.id, into, cols, into ? 0 : this.page)) {
-            this.save();
-            this.toast(`${r.name} is in ${into ? room(this.world, into).name : "Rooms"}.`);
           }
         } else if (over?.archive) {
           if (archive(this.world, r.id)) {
@@ -9055,10 +8666,10 @@ dialog.menu-drawer::before {
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     }
-    // A new room of a kind (a mode, or Borges), in the cell asked for (or the first free one), with
+    // A new room of a kind (its mode), in the cell asked for (or the first free one), with
     // its name ready to write.
     newRoom(cell = null, kind = "joyce") {
-      const r = addRoom(this.world, "Untitled", Date.now(), cell, this.cols || this.gridSize().cols, this.grid$, kind);
+      const r = addRoom(this.world, "Untitled", Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
       this.making = null;
       if (!r) {
         this.toast("A room can't be made here.");
@@ -9226,31 +8837,21 @@ dialog.menu-drawer::before {
       this.roomPage.classList.toggle("locked", !!this.locked);
       const v = view3(this.world, this.roomId);
       const big = isBig(r);
+      const items = [];
+      for (const m of big ? MODES2 : MODES2.filter((x) => x.id === this.mode).slice(0, 1)) {
+        const on = m.id === this.mode;
+        items.push(big ? el5("button", { type: "button", class: "create-rail-item", role: "radio", "aria-checked": String(on), "aria-current": String(on), onclick: () => this.setMode(m.id) }, m.name) : el5("span", { class: "create-rail-item create-rail-fixed", "aria-current": "true", title: "A small room keeps one mode. Make it 2 × 2 to switch." }, m.name));
+        if (m.id === "joyce" && on) {
+          items.push(el5("button", {
+            type: "button",
+            class: "create-rail-item create-rail-sub",
+            "aria-pressed": String(!!v.timeline),
+            onclick: () => this.toggleTimeline()
+          }, "Timeline"));
+        }
+      }
       this.modes.setAttribute("role", big ? "radiogroup" : "group");
-      const timeline2 = () => el5("button", {
-        type: "button",
-        class: "create-mode create-timeline-btn",
-        "aria-pressed": String(!!v.timeline && this.mode === "joyce"),
-        onclick: () => this.toggleTimeline()
-      }, "Timeline");
-      const word = (m) => big ? el5("button", { type: "button", role: "radio", class: "create-mode", "aria-checked": String(m.id === this.mode), onclick: () => this.setMode(m.id) }, m.name) : el5("span", { class: "create-mode create-mode-label", title: "A small room keeps one mode. Make it 2 × 2 to switch." }, m.name);
-      const shown2 = big ? MODES2 : MODES2.filter((m) => m.id === this.mode).slice(0, 1);
-      this.modes.replaceChildren(...(shown2.length ? shown2 : [MODES2[0]]).map((m) => m.id !== "joyce" ? word(m) : el5("span", { class: "create-mode-wrap" + (v.timeline && this.mode === "joyce" ? " open" : ""), ...big ? {} : { tabindex: 0 } }, word(m), timeline2())));
-      const path = roomPath(this.world, r.id).map((x) => x.id);
-      this.crumbPath.hidden = !path.length;
-      this.crumbPath.replaceChildren(...path.length ? this.trail(path) : []);
-      const doors = doorsOf(this.world, r.id);
-      this.crumbDoors.hidden = !doors.length;
-      this.crumbDoors.replaceChildren(...doors.length ? [
-        el5("span", { class: "create-crumb-doors-label" }, "Doors"),
-        ...doors.map(({ door, other }) => el5("button", {
-          type: "button",
-          class: "create-word create-crumb-door",
-          style: `--door:${Math.min(1, 0.45 + door.uses * 0.06).toFixed(2)}`,
-          title: `Go through to ${this.pathName(other)}`,
-          onclick: () => this.goThrough(door.id, other.id)
-        }, other.name))
-      ] : []);
+      this.modes.replaceChildren(...items);
       this.root.dataset.mode = this.mode;
       this.root.classList.toggle("history-open", this.historyOpen);
       this.drawHistory();
@@ -9474,8 +9075,8 @@ dialog.menu-drawer::before {
         } else if (this.sel) {
           this.sel = null;
           this.drawWorld();
-        } else if (!this.roomId && (this.roomSel || this.making || this.merging)) {
-          this.roomSel = this.making = this.merging = null;
+        } else if (!this.roomId && (this.roomSel || this.making)) {
+          this.roomSel = this.making = null;
           this.drawRooms();
         } else if (!this.roomId && this.roomPick) {
           this.roomPick = null;
@@ -10280,7 +9881,7 @@ dialog.menu-drawer::before {
           }
         },
         el5("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el5("option", { value: r.id }, this.pathName(r))),
+        ...others.map((r) => el5("option", { value: r.id }, r.name)),
         el5("option", { value: "+" }, "A new room")
       );
       rows.push(
@@ -10328,7 +9929,7 @@ dialog.menu-drawer::before {
           }
         },
         el5("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el5("option", { value: r.id }, this.pathName(r))),
+        ...others.map((r) => el5("option", { value: r.id }, r.name)),
         el5("option", { value: "+" }, "A new room")
       );
       this.bar.hidden = false;
@@ -10351,9 +9952,9 @@ dialog.menu-drawer::before {
       this.positionEdit();
       this.drawHistorySoon();
     }
-    // The rooms a thought can be moved to: every mode room (not this one, nor a locked one).
+    // The rooms a thought can be moved to: every room (not this one, nor a locked one).
     moveRooms() {
-      return modeRooms(this.world).filter((r) => r.id !== this.roomId && !shut(this.world, r.id)).sort((a, b) => a.id === MESSY ? -1 : b.id === MESSY ? 1 : this.pathName(a).localeCompare(this.pathName(b)));
+      return rooms(this.world).filter((r) => r.id !== this.roomId && !shut(this.world, r.id)).sort((a, b) => a.id === MESSY ? -1 : b.id === MESSY ? 1 : a.name.localeCompare(b.name));
     }
     // The pop-up sits beside what is chosen, and follows it as the view moves.
     positionEdit() {

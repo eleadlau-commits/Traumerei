@@ -7,24 +7,19 @@
 //                                             written; folded, it shows as one thought (its title)
 //   room     { name, tint, light, opacity,    a thought that holds thoughts, seen through a mode;
 //              col, row, size, page,          on the rooms page it is a square of size × size cells
-//              desc, locked, archived,        at (col, row) of the grid. desc: a line or two about
-//              form }                         it. locked: nothing in it can change, and its square
+//              desc, locked, archived }       at (col, row) of the grid. desc: a line or two about
+//                                             it. locked: nothing in it can change, and its square
 //                                             stays where it is. archived: off the grid, on the
 //                                             Archive page (and still found by search).
-//                                             form 'borges': a room of rooms (see below).
-//                                             page: which page of the rooms page it is on (top only)
+//                                             page: which page of the rooms page it is on
 //
-// Two kinds of room. A mode room holds trains, seen through an ontological mode (Joyce, Pessoa;
-// its view's mode): a small room (1 × 1) holds the one it was made with; a big room (Messy
-// thoughts, or any 2 × 2 room) holds them all and switches between them inside. A Borges room
-// (form: 'borges') holds rooms instead, on a grid of its own like the rooms page: the rooms page's
-// own kind, discrete sets each thing is in once. Rooms sit at the top (parent null, the rooms page,
-// on one of its pages) or inside a Borges room. Doors (world.doors) link two rooms that are both
-// inside Borges rooms (never on the rooms page itself), across Borges rooms too, and thicken with use.
+// A room holds trains, seen through an ontological mode (Joyce, Pessoa; its view's mode): a small
+// room (1 × 1) holds the one it was made with; a big room (Messy thoughts, or any 2 × 2 room)
+// holds them all and switches between them inside. Rooms sit only on the rooms page.
 //
 // Every thought has { id, kind, parent, at }. `parent` is the thought it sits inside: a line,
-// passage or picture sits in a train; a train sits in a room; a room sits in a room, or at the top
-// (parent null) where the rooms page shows it. So moving, folding, naming and tinting are the same
+// passage or picture sits in a train; a train sits in a room; a room sits at the top (parent
+// null) where the rooms page shows it. So moving, folding, naming and tinting are the same
 // few operations whatever the thought is. A train's order is time, and is never broken.
 //
 // world = {
@@ -32,7 +27,6 @@
 //   things: { [id]: thought },
 //   views:  { [room]: { mode, x, y, zoom } }        each room's mode and where it was looked at
 //   places: { [room]: { [thought]: { x, y } } }     Pessoa: where a thought was dragged to
-//   doors:  { [id]: { a, b, uses, at } }            a door between rooms a and b
 //   pages:  n                                       how many pages the rooms page has (at least 1)
 // }
 //
@@ -44,8 +38,7 @@ export const MODES = [
   { id: 'pessoa', name: 'Pessoa' },
 ];
 export const DEFAULT_MODE = 'joyce';
-export const BORGES = 'borges'; // the room of rooms
-export const KINDS_OF_ROOM = [...MODES.map((m) => ({ id: m.id, name: m.name })), { id: BORGES, name: 'Borges' }];
+export const KINDS_OF_ROOM = MODES.map((m) => ({ id: m.id, name: m.name }));
 export const LEAVES = ['line', 'passage', 'picture'];
 export const KINDS = [...LEAVES, 'train', 'room'];
 export const kindOf = (th) => (KINDS.includes(th?.kind) ? th.kind : 'line');
@@ -60,23 +53,39 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, doors: {}, pages: 1 };
+  return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
 }
 
-// A saved world, brought up to date and repaired: the messy room always exists; a train whose
-// room is gone goes to the messy room, a room whose room is gone goes to the top, and a line,
-// passage or picture whose train is gone is dropped.
+// A saved world, brought up to date and repaired: the messy room always exists; every room sits on
+// the rooms page; a train whose room is gone goes to the messy room, and a line, passage or picture
+// whose train is gone is dropped. Rooms of rooms (the old Borges rooms) are taken apart: the rooms
+// they held come out onto the rooms page, and the empty room goes. Doors went with them.
 export function loadWorld(saved, now = Date.now()) {
   let w = saved && typeof saved === 'object' ? saved : {};
   if (w.v !== 2) w = fromV1(w, now);
   w = Object.assign(emptyWorld(now), w);
-  for (const key of ['things', 'views', 'places', 'doors']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'views', 'places']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  delete w.doors;
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
+  const outer = (th) => { let r = th; while (r && r.parent != null && w.things[r.parent]) r = w.things[r.parent]; return r; };
+  const rooms0 = Object.values(w.things).filter((th) => kindOf(th) === 'room');
+  for (const th of rooms0) {
+    if (th.parent == null) continue;
+    const top = outer(th); // a room inside a room comes out to the page its outermost room is on
+    th.parent = null;
+    if (top?.page > 0) th.page = top.page; else delete th.page;
+    delete th.col; delete th.row;
+  }
+  for (const th of rooms0) {
+    if (th.form !== 'borges') continue;
+    if (th.id === MESSY) { delete th.form; continue; }
+    for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY; // a stray train goes to Messy
+    delete w.things[th.id];
+    delete w.views[th.id];
+    delete w.places[th.id];
+  }
   for (const th of Object.values(w.things)) {
-    const p = w.things[th.parent];
-    if (kindOf(th) === 'room' && th.parent != null && !isBorges(p)) th.parent = null; // rooms sit only at the top or in a Borges room
-    else if (kindOf(th) === 'train' && isBorges(p)) th.parent = MESSY;
     if (th.parent == null || w.things[th.parent]) continue;
     if (kindOf(th) === 'room') th.parent = null;
     else if (kindOf(th) === 'train') th.parent = MESSY;
@@ -86,10 +95,7 @@ export function loadWorld(saved, now = Date.now()) {
   messy.size = 2;
   messy.parent = null;
   delete messy.page;
-  delete messy.form;
   if (messy.col == null) { messy.col = 0; messy.row = 0; }
-  for (const [id, d] of Object.entries(w.doors)) if (!room(w, d?.a) || !room(w, d?.b) || d.a === d.b) delete w.doors[id];
-  tidyDoors(w);
   gridAll(w);
   return w;
 }
@@ -119,28 +125,19 @@ export const room = (w, id) => (kindOf(w.things[id]) === 'room' ? w.things[id] :
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
-export const isBorges = (th) => kindOf(th) === 'room' && th.form === BORGES;
 // A big room (Messy thoughts, or any 2 × 2 mode room) switches between the modes inside; a small
 // one keeps the mode it was made with.
-export const isBig = (th) => kindOf(th) === 'room' && !isBorges(th) && (th.id === MESSY || (th.size || 1) > 1);
+export const isBig = (th) => kindOf(th) === 'room' && (th.id === MESSY || (th.size || 1) > 1);
 
 export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
 
 // The rooms at the top (the rooms page, every page), oldest first; archived ones are on the Archive page.
 export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && !th.archived);
-// Every archived room, wherever it was.
-export const archived = (w) => Object.values(w.things).filter((th) => kindOf(th) === 'room' && th.archived).sort(byTime);
-// Every room that holds thoughts (not a Borges room), not archived: where a thought can be moved to.
-export const modeRooms = (w) => Object.values(w.things).filter((th) => kindOf(th) === 'room' && !isBorges(th) && !th.archived).sort(byTime);
-// The rooms on one grid: inside a Borges room, or on one page of the rooms page (parent null).
-export const roomsIn = (w, parent = null, page = 0) => children(w, parent)
-  .filter((th) => kindOf(th) === 'room' && !th.archived && (parent != null || (th.page || 0) === page));
-// The rooms a room is inside, from the top down (not itself).
-export function roomPath(w, id) {
-  const out = [];
-  for (let th = w.things[w.things[id]?.parent]; th; th = w.things[th.parent]) if (kindOf(th) === 'room') out.unshift(th);
-  return out;
-}
+// The archived rooms, in the order they were archived (`archived` holds when).
+export const archived = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && th.archived)
+  .sort((a, b) => (+a.archived || 0) - (+b.archived || 0) || a.at - b.at);
+// The rooms on one page of the rooms page.
+export const roomsOn = (w, page = 0) => rooms(w).filter((th) => (th.page || 0) === page);
 
 // True if `id` is a locked room, or is somewhere inside one: then nothing about it can change.
 export function shut(w, id) {
@@ -238,20 +235,19 @@ function tidy(f) {
   const desc = lines(f.desc).slice(0, DESC);
   if (desc) out.desc = desc;
   if (f.locked) out.locked = true;
-  if (f.archived) { out.archived = true; delete out.col; delete out.row; }
-  if (f.form === BORGES) out.form = BORGES;
+  if (f.archived) { out.archived = Number.isFinite(f.archived) ? f.archived : true; delete out.col; delete out.row; }
   if (Number.isInteger(f.page) && f.page > 0) out.page = f.page;
   return out;
 }
 
 // What can sit inside what: lines, passages and pictures in trains, trains in mode rooms, rooms
-// in Borges rooms or at the top (null).
+// at the top (null).
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
   if (LEAVES.includes(kind)) return kindOf(p) === 'train' && p != null;
-  if (kind === 'train') return p != null && kindOf(p) === 'room' && !isBorges(p);
-  if (kind === 'room') return p == null || isBorges(p);
+  if (kind === 'train') return p != null && kindOf(p) === 'room';
+  if (kind === 'room') return p == null;
   return false;
 }
 
@@ -286,7 +282,6 @@ export function remove(w, id) {
   delete w.things[id];
   for (const r of Object.keys(w.places)) delete w.places[r][id];
   delete w.views[id];
-  for (const [d, door] of Object.entries(w.doors || {})) if (door.a === id || door.b === id) delete w.doors[d];
   const p = w.things[th.parent];
   if (p && kindOf(p) === 'train' && !children(w, p.id).length) remove(w, p.id);
 }
@@ -342,16 +337,16 @@ export function unfold(w, trainId) {
 
 // ---- Shortcuts the screens use ----
 
-// A new room on a grid (`where`: { parent, page }), in `cell` if it is free, or the first free one.
-// `kind`: a mode ('joyce', 'pessoa') or BORGES.
+// A new room on a page of the rooms page (`where`: { page }), in `cell` if it is free, or the first
+// free one. `kind`: its mode ('joyce', 'pessoa').
 export function addRoom(w, text = 'Untitled', now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
-  const parent = where.parent ?? null, page = parent == null ? where.page || 0 : 0;
-  const r = create(w, parent, { kind: 'room', name: text, ...(cell || {}), page, ...(kind === BORGES ? { form: BORGES } : {}) }, now);
+  const page = where.page || 0;
+  const r = create(w, null, { kind: 'room', name: text, ...(cell || {}), page }, now);
   if (!r) return null;
-  if (kind !== BORGES && MODES.some((m) => m.id === kind)) view(w, r.id).mode = kind;
+  if (MODES.some((m) => m.id === kind)) view(w, r.id).mode = kind;
   if (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols)) {
     delete r.col; delete r.row;
-    gridRooms(w, cols, parent, page);
+    gridRooms(w, cols, page);
   }
   return r;
 }
@@ -365,36 +360,31 @@ export function cells(r) {
   return out;
 }
 
-// The room at a cell of a grid (other than `except`), or null.
-export function roomAt(w, col, row, except = null, parent = null, page = 0) {
-  return roomsIn(w, parent, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
+// The room at a cell of a page (other than `except`), or null.
+export function roomAt(w, col, row, except = null, page = 0) {
+  return roomsOn(w, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
 }
 
-// Puts a room at (col, row) of its own grid if all its cells are free. Returns whether it moved.
+// Puts a room at (col, row) of its page if all its cells are free. Returns whether it moved.
 export function placeRoom(w, id, col, row, cols = Infinity) {
   const r = room(w, id);
   if (!r || r.locked || r.archived || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
   const want = cells({ ...r, col, row });
-  if (want.some(([c, rr]) => roomAt(w, c, rr, id, r.parent ?? null, r.page || 0))) return false;
+  if (want.some(([c, rr]) => roomAt(w, c, rr, id, r.page || 0))) return false;
   r.col = col;
   r.row = row;
   return true;
 }
 
-// Every grid's rooms given a place.
+// Every page's rooms given a place.
 export function gridAll(w, cols = 6) {
-  const grids = new Set();
-  for (const th of Object.values(w.things)) if (kindOf(th) === 'room' && !th.archived) grids.add(`${th.parent ?? ''}|${th.parent == null ? th.page || 0 : 0}`);
-  for (const g of grids) {
-    const [p, page] = g.split('|');
-    gridRooms(w, cols, p || null, +page);
-  }
+  for (const page of new Set(rooms(w).map((r) => r.page || 0))) gridRooms(w, cols, page);
 }
 
-// Gives every room on one grid without a place the first free cell (left to right, top to bottom,
-// `cols` wide), and returns the grid's rooms.
-export function gridRooms(w, cols = 6, parent = null, page = 0) {
-  const all = roomsIn(w, parent, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
+// Gives every room on one page without a place the first free cell (left to right, top to bottom,
+// `cols` wide), and returns the page's rooms.
+export function gridRooms(w, cols = 6, page = 0) {
+  const all = roomsOn(w, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
   const taken = new Set();
   const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
   for (const r of all) {
@@ -406,73 +396,24 @@ export function gridRooms(w, cols = 6, parent = null, page = 0) {
     }
     for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
   }
-  return roomsIn(w, parent, page);
+  return roomsOn(w, page);
 }
 
-// ---- Rooms of rooms, pages and doors ----
+// ---- Pages ----
 
-// Puts a room into a Borges room (or at the top, on `page`), at the first free cell there.
-export function putRoom(w, id, into = null, cols = 6, page = 0) {
+// Moves a room to another page, at the first free cell there (not Messy thoughts, nor a locked room).
+export function toPage(w, id, page = 0, cols = 6) {
   const r = room(w, id);
-  const p = into == null ? null : room(w, into);
-  if (!r || id === MESSY || r.locked || (into != null && (!isBorges(p) || inside(w, into, id) || shut(w, into)))) return false;
-  r.parent = into ?? null;
-  delete r.col; delete r.row; delete r.archived;
-  if (into == null && page > 0) r.page = page; else delete r.page;
-  gridRooms(w, cols, r.parent, r.page || 0);
-  tidyDoors(w);
+  if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
+  delete r.col; delete r.row;
+  if (page > 0) r.page = page; else delete r.page;
+  gridRooms(w, cols, page);
   return true;
-}
-
-// Merges two rooms. Dropped on a Borges room, a room goes inside it; otherwise a new Borges room
-// takes the second room's cell and holds both. Returns the Borges room, or null.
-export function merge(w, a, b, now = Date.now(), cols = 6) {
-  const A = room(w, a), B = room(w, b);
-  if (!A || !B || a === b || a === MESSY || b === MESSY || A.locked || B.locked || inside(w, b, a)) return null;
-  if (isBorges(B)) return putRoom(w, a, b, cols) ? B : null;
-  const where = { parent: B.parent ?? null, page: B.page || 0 };
-  const C = create(w, where.parent, { kind: 'room', name: 'Untitled', form: BORGES, size: B.size || 1, page: where.page }, now);
-  if (!C) return null;
-  const at = { col: B.col, row: B.row };
-  B.parent = C.id; delete B.page; B.col = 0; B.row = 0;
-  A.parent = C.id; delete A.page; delete A.col; delete A.row;
-  if (at.col != null) { C.col = at.col; C.row = at.row; }
-  gridRooms(w, cols, C.id, 0);
-  gridRooms(w, cols, where.parent, where.page);
-  return C;
 }
 
 // The rooms page's pages: at least one, and enough for every room on them.
 export const pageCount = (w) => Math.max(w.pages || 1, ...rooms(w).map((r) => (r.page || 0) + 1));
 export function addPage(w) { w.pages = pageCount(w) + 1; return w.pages - 1; }
-
-// A room can have doors only while it is inside a Borges room (never on the rooms page itself).
-export const canDoor = (w, id) => !!room(w, id) && isBorges(w.things[w.things[id].parent]);
-// Takes away the doors of rooms that can no longer have them (moved out to the rooms page).
-export function tidyDoors(w) {
-  for (const [id, d] of Object.entries(w.doors || {})) if (!canDoor(w, d.a) || !canDoor(w, d.b)) delete w.doors[id];
-}
-// A door between two rooms inside Borges rooms (never a room and itself, never twice). Returns it.
-export function addDoor(w, a, b, now = Date.now()) {
-  if (!canDoor(w, a) || !canDoor(w, b) || a === b) return null;
-  w.doors ||= {};
-  const had = Object.values(w.doors).find((d) => (d.a === a && d.b === b) || (d.a === b && d.b === a));
-  if (had) return had;
-  const d = { id: uid('d'), a, b, uses: 0, at: now };
-  w.doors[d.id] = d;
-  return d;
-}
-export function removeDoor(w, id) { if (w.doors?.[id]) { delete w.doors[id]; return true; } return false; }
-// A room's doors: each with the room on its other side.
-export const doorsOf = (w, id) => Object.values(w.doors || {})
-  .filter((d) => d.a === id || d.b === id)
-  .map((d) => ({ door: d, other: room(w, d.a === id ? d.b : d.a) }))
-  .filter((x) => x.other)
-  .sort((x, y) => y.door.uses - x.door.uses || x.door.at - y.door.at);
-// Going through a door wears it in.
-export function useDoor(w, id) { const d = w.doors?.[id]; if (d) d.uses = (d.uses || 0) + 1; return d || null; }
-// How thick a door's line is drawn, from how often it has been gone through.
-export const doorWidth = (d) => 1 + 1.4 * Math.log2(1 + (d?.uses || 0));
 export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'train', x, y }, now);
 export const addThought = (w, trainId, text, now) => create(w, trainId, { kind: 'line', text }, now);
 
@@ -653,10 +594,10 @@ export function lock(w, id, on = true) {
 }
 
 // Takes a room off the grid to the Archive page (not Messy thoughts, nor a locked room).
-export function archive(w, id) {
+export function archive(w, id, now = Date.now()) {
   const r = room(w, id);
   if (!r || id === MESSY || r.locked || r.archived) return false;
-  r.archived = true;
+  r.archived = now;
   delete r.col;
   delete r.row;
   return true;
@@ -667,28 +608,21 @@ export function restore(w, id, cell = null, cols = 6) {
   const r = room(w, id);
   if (!r || !r.archived) return false;
   delete r.archived;
-  if (r.parent != null && !isBorges(w.things[r.parent])) { r.parent = null; delete r.page; tidyDoors(w); }
-  if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.parent ?? null, r.page || 0);
+  if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.page || 0);
   return true;
 }
 
 // The last few things written in a room (newest last), as plain text, for its square's peek.
 export function peek(w, roomId, most = 3) {
-  if (isBorges(w.things[roomId])) return children(w, roomId).filter((th) => kindOf(th) === 'room').slice(0, most).map((r) => r.name);
   return roomThoughts(w, roomId).slice(-most).map((th) => oneLine(thoughtText(w, th))).filter(Boolean);
 }
 
-// Search lights: for each room on a grid (inside `parent`, or at the top), how many of its
-// thoughts (and rooms) hold the query.
-export function roomHits(w, query, parent = null) {
+// Search lights: for each room, how many of its thoughts (and its name) hold the query.
+export function roomHits(w, query) {
   const out = {};
   for (const f of search(w, query, Infinity)) {
-    let at = null;
-    for (let th = w.things[f.id]; th; th = w.things[th.parent]) if (kindOf(th) === 'room' && (th.parent ?? null) === parent) { at = th; break; }
+    const at = topRoom(w, f.id);
     if (at) out[at.id] = (out[at.id] || 0) + 1;
   }
   return out;
 }
-
-// A Borges room's peek: the names of the rooms it holds.
-export const holds = (w, id) => children(w, id).filter((th) => kindOf(th) === 'room');

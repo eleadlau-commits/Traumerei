@@ -7,7 +7,7 @@ import {
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  BORGES, isBorges, roomsIn, roomPath, modeRooms, putRoom, merge, pageCount, addPage, addDoor, doorsOf, useDoor, doorWidth, canDoor, isBig,
+  roomsOn, toPage, pageCount, addPage, isBig, KINDS_OF_ROOM,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -43,12 +43,9 @@ test('what can sit inside what', () => {
   assert.ok(canHold(w, t.id, 'line'));
   assert.ok(!canHold(w, MESSY, 'line'));
   assert.ok(canHold(w, MESSY, 'train'));
-  assert.ok(!canHold(w, MESSY, 'room')); // a mode room holds thoughts; rooms go in a Borges room
+  assert.ok(!canHold(w, MESSY, 'room')); // rooms sit only on the rooms page
   assert.ok(canHold(w, null, 'room'));
   assert.ok(!canHold(w, t.id, 'room'));
-  const b = addRoom(w, 'Theory', 1, null, 6, {}, BORGES);
-  assert.ok(canHold(w, b.id, 'room'));
-  assert.ok(!canHold(w, b.id, 'train'));
 });
 
 test('thoughts in a train keep the order they were written in', () => {
@@ -105,50 +102,13 @@ test('a train left empty by a move is removed', () => {
   assert.equal(w.things[t.id], undefined);
 });
 
-test('rooms can go inside Borges rooms, but never inside themselves', () => {
+test('a new room is Joyce by default, or Pessoa: the only kinds', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, null, 6, {}, BORGES);
-  const b = addRoom(w, 'B', 2, null, 6, {}, BORGES);
-  const c = addRoom(w, 'C');
-  assert.ok(move(w, b.id, a.id));
-  assert.deepEqual(children(w, a.id).map((x) => x.id), [b.id]);
-  assert.ok(!move(w, a.id, b.id));
-  assert.ok(!move(w, a.id, a.id));
-  assert.ok(!move(w, a.id, c.id)); // not into a mode room
-  assert.ok(putRoom(w, c.id, b.id));
-  assert.deepEqual(roomPath(w, c.id).map((r) => r.name), ['A', 'B']);
-  assert.ok(!putRoom(w, a.id, b.id)); // never inside itself
-  assert.ok(!putRoom(w, MESSY, a.id)); // Messy thoughts stays at the top
-});
-
-test('a new room is a mode room (Joyce by default, or Pessoa) or a Borges room', () => {
-  const w = emptyWorld();
-  const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, null, 6, {}, 'pessoa'), b = addRoom(w, 'B', 1, null, 6, {}, BORGES);
+  const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, null, 6, {}, 'pessoa');
   assert.equal(view(w, j.id).mode, 'joyce');
   assert.equal(view(w, p.id).mode, 'pessoa');
-  assert.ok(isBorges(b) && !isBorges(j));
-  const inner = addRoom(w, 'Inner', 1, { col: 2, row: 1 }, 6, { parent: b.id });
-  assert.equal(inner.parent, b.id);
-  assert.deepEqual([inner.col, inner.row], [2, 1]);
-  assert.deepEqual(roomsIn(w, b.id).map((r) => r.id), [inner.id]);
-  assert.deepEqual(peek(w, b.id), ['Inner']);
-  assert.ok(!modeRooms(w).some((r) => r.id === b.id));
-});
-
-test('merge: a room dropped on another makes a Borges room in its cell, holding both', () => {
-  const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, { col: 4, row: 0 });
-  const b = addRoom(w, 'B', 2, { col: 5, row: 2 });
-  const c = merge(w, a.id, b.id, 3);
-  assert.ok(isBorges(c));
-  assert.deepEqual([c.col, c.row, c.parent], [5, 2, null]);
-  assert.deepEqual(roomsIn(w, c.id).map((r) => r.id).sort(), [a.id, b.id].sort());
-  assert.equal(roomAt(w, 4, 0), null);
-  const d = addRoom(w, 'D', 4);
-  assert.equal(merge(w, d.id, c.id, 5), c); // dropped on a Borges room, it goes inside
-  assert.equal(d.parent, c.id);
-  assert.equal(merge(w, MESSY, c.id), null);
-  assert.equal(merge(w, c.id, a.id), null); // not into what it holds
+  assert.deepEqual(KINDS_OF_ROOM.map((k) => k.id), ['joyce', 'pessoa']);
+  assert.ok(!move(w, j.id, p.id)); // a room never goes inside another
 });
 
 test('pages: rooms on the rooms page sit on one page each, with grids of their own', () => {
@@ -159,54 +119,41 @@ test('pages: rooms on the rooms page sit on one page each, with grids of their o
   const r = addRoom(w, 'Two', 1, { col: 0, row: 0 }, 6, { page: 1 });
   assert.equal(r.page, 1);
   assert.deepEqual([r.col, r.row], [0, 0]); // Messy's cells are on page 0
-  assert.equal(roomAt(w, 0, 0, null, null, 1).id, r.id);
+  assert.equal(roomAt(w, 0, 0, null, 1).id, r.id);
   assert.equal(roomAt(w, 0, 0).id, MESSY);
   assert.equal(pageCount(w), 2);
-  assert.ok(putRoom(w, r.id, null, 6, 0));
+  assert.deepEqual(roomsOn(w, 1).map((x) => x.id), [r.id]);
+  assert.ok(!toPage(w, MESSY, 1)); // Messy thoughts stays on page 1
+  assert.ok(toPage(w, r.id, 0));
   assert.equal(r.page, undefined);
   assert.ok(!(r.col === 0 && r.row === 0));
 });
 
-test('doors link two rooms, once, wear in with use, and go when a room goes', () => {
+test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 rooms are not', () => {
   const w = emptyWorld();
-  const t = addRoom(w, 'T', 1, null, 6, {}, BORGES), u = addRoom(w, 'U', 1, null, 6, {}, BORGES);
-  const a = addRoom(w, 'A', 2, null, 6, { parent: t.id }), b = addRoom(w, 'B', 2, null, 6, { parent: u.id });
-  const d = addDoor(w, a.id, b.id, 1); // across Borges rooms
-  assert.equal(addDoor(w, b.id, a.id), d);
-  assert.equal(addDoor(w, a.id, a.id), null);
-  assert.deepEqual(doorsOf(w, a.id).map((x) => x.other.id), [b.id]);
-  assert.equal(doorWidth(d), 1);
-  useDoor(w, d.id); useDoor(w, d.id); useDoor(w, d.id);
-  assert.ok(doorWidth(d) > 3);
-  const back = loadWorld(JSON.parse(JSON.stringify(w)));
-  assert.equal(Object.keys(back.doors).length, 1);
-  remove(w, b.id);
-  assert.deepEqual(doorsOf(w, a.id), []);
-});
-
-test('doors only inside Borges rooms, never on the rooms page; they go when a room leaves', () => {
-  const w = emptyWorld();
-  const top = addRoom(w, 'Top'), t = addRoom(w, 'T', 1, null, 6, {}, BORGES);
-  const a = addRoom(w, 'A', 2, null, 6, { parent: t.id }), b = addRoom(w, 'B', 2, null, 6, { parent: t.id });
-  assert.equal(addDoor(w, top.id, a.id), null);
-  assert.equal(addDoor(w, MESSY, a.id), null);
-  assert.equal(canDoor(w, t.id), false);
-  assert.ok(addDoor(w, a.id, b.id));
-  assert.ok(putRoom(w, a.id, null));
-  assert.deepEqual(doorsOf(w, b.id), []);
-  w.doors.x = { id: 'x', a: top.id, b: b.id, uses: 0, at: 1 }; // a saved door to the rooms page is dropped
-  assert.equal(Object.keys(loadWorld(JSON.parse(JSON.stringify(w))).doors).length, 0);
-});
-
-test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 and Borges rooms are not', () => {
-  const w = emptyWorld();
-  const r = addRoom(w, 'R'), t = addRoom(w, 'T', 1, null, 6, {}, BORGES);
+  const r = addRoom(w, 'R');
   assert.ok(isBig(w.things[MESSY]));
   assert.ok(!isBig(r));
   r.size = 2;
   assert.ok(isBig(r));
-  t.size = 2;
-  assert.ok(!isBig(t));
+});
+
+test('a saved Borges room is taken apart: its rooms come out onto its page, and doors go', () => {
+  const w = emptyWorld();
+  w.pages = 2;
+  w.things.b = { id: 'b', kind: 'room', parent: null, at: 1, name: 'Theory', form: 'borges', page: 1, col: 0, row: 0 };
+  w.things.c = { id: 'c', kind: 'room', parent: 'b', at: 2, name: 'Ontology', col: 0, row: 0 };
+  w.things.d = { id: 'd', kind: 'room', parent: 'c', at: 3, name: 'Deep', col: 1, row: 0 };
+  w.things.t = { id: 't', kind: 'train', parent: 'b', at: 4, x: 0, y: 0 };
+  w.things.l = { id: 'l', kind: 'line', parent: 't', at: 4, text: 'stray' };
+  w.doors = { x: { id: 'x', a: 'c', b: 'd', uses: 2, at: 1 } };
+  const back = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.equal(back.things.b, undefined);
+  assert.deepEqual([back.things.c.parent, back.things.c.page, back.things.d.parent, back.things.d.page], [null, 1, null, 1]);
+  assert.ok(back.things.c.col !== back.things.d.col || back.things.c.row !== back.things.d.row);
+  assert.equal(back.things.t.parent, MESSY);
+  assert.equal(back.doors, undefined);
+  assert.equal(back.things.c.form, undefined);
 });
 
 test('a saved room inside a mode room goes back to the top', () => {
@@ -462,18 +409,12 @@ test('a square peeks at the last things written in its room', () => {
   assert.deepEqual(peek(w, MESSY, 1), ['four']);
 });
 
-test('search lights count what each room at the top holds, rooms inside rooms included', () => {
+test('search lights count what each room holds, its name included', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Ontology', 1, null, 6, {}, BORGES);
-  const a = create(w, r.id, { kind: 'room', name: 'Facade notes' });
-  train(w, a.id, 'the facade is the work', 'a facade of rooms');
-  const inner = create(w, r.id, { kind: 'room', name: 'Facades' });
-  train(w, inner.id, 'facade again');
+  const r = addRoom(w, 'Facade notes');
+  train(w, r.id, 'the facade is the work', 'a facade of rooms');
   train(w, MESSY, 'facade, messily', 'nothing');
-  assert.equal(topRoom(w, inner.id).id, r.id);
-  assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 5, [MESSY]: 1 });
-  const inR = roomHits(w, 'facade', r.id);
-  assert.equal(inR[a.id], 3);
-  assert.equal(inR[inner.id], 2);
+  assert.equal(topRoom(w, r.id).id, r.id);
+  assert.deepEqual(roomHits(w, 'facade'), { [r.id]: 3, [MESSY]: 1 });
   assert.deepEqual(roomHits(w, ''), {});
 });
