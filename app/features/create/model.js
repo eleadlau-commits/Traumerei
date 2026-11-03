@@ -1,48 +1,55 @@
-// Create's world, thought first. There is one kind of object, the thought, and everything is one:
+// Create's world. Everything in it is a thought, of three sorts:
 //
-//   line     { text }                         a passing thought, written until Enter
-//   passage  { title, body }                  a paragraph, or a small article
-//   picture  { src, text }                    a picture (a small JPEG data: URL) and its caption
-//   train    { x, y, title, folded }          thoughts joined by time, read in the order they were
-//                                             written; folded, it shows as one thought (its title)
-//   room     { name, tint, light, opacity,    a thought that holds thoughts, seen through a mode;
-//              col, row, size, page,          on the rooms page it is a square of size × size cells
-//              desc, locked, archived }       at (col, row) of the grid. desc: a line or two about
-//                                             it. locked: nothing in it can change, and its square
-//                                             stays where it is. archived: off the grid, on the
-//                                             Archive page (and still found by search).
-//                                             page: which page of the rooms page it is on
+//   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
+//            kinds, such as a page of a PDF, are added there)
+//   group    { of, members, x, y, title, folded }   items held together by an ontology. `of` is the
+//            ontology that made it (Joyce makes trains); `members` lists its items. Folded, a
+//            group shows as one thought (its title). Every group follows the same rules: it can
+//            be folded, named, moved and deleted, and it is always the same group, never a copy.
+//   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
+//              col, row, size, page,             through an ontology; on the rooms page it is a
+//              desc, locked, archived }          square of size × size cells at (col, row).
+//                                                desc: a line or two about it. locked: nothing in
+//                                                it can change. archived: on the Archive page.
 //
-// A room holds trains, seen through an ontological mode (Joyce, Pessoa; its view's mode): a small
-// room (1 × 1) holds the one it was made with; a big room (Messy thoughts, or any 2 × 2 room)
-// holds them all and switches between them inside. Rooms sit only on the rooms page.
+// Every thought has { id, kind, parent, at }. An item's and a group's `parent` is its room; a
+// room's is null (the rooms page). An item is in a group because the group lists it, so one item
+// can be in groups of several ontologies at once. Each ontology declares whether an item can be
+// in one of its groups (a train) or in several (later, Perec's sets): see declareGroups.
 //
-// Every thought has { id, kind, parent, at }. `parent` is the thought it sits inside: a line,
-// passage or picture sits in a train; a train sits in a room; a room sits at the top (parent
-// null) where the rooms page shows it. So moving, folding, naming and tinting are the same
-// few operations whatever the thought is. A train's order is time, and is never broken.
+// A small room (1 × 1) holds the one ontology it was made with; a big room (Messy thoughts, or any
+// 2 × 2 room) holds them all over the same thoughts and switches between them inside (its view's
+// mode). The ontologies themselves are in ontologies/.
 //
 // world = {
-//   v: 2,
+//   v: 3,
 //   things: { [id]: thought },
-//   views:  { [room]: { mode, x, y, zoom } }        each room's mode and where it was looked at
-//   places: { [room]: { [thought]: { x, y } } }     Pessoa: where a thought was dragged to
-//   pages:  n                                       how many pages the rooms page has (at least 1)
+//   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
+//   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
+//   pages:  n                                     how many pages the rooms page has (at least 1)
 // }
 //
 // No screen here, so it can be tested on its own (tests/model.test.js).
 
+import { ITEMS } from './items/index.js';
+
 export const MESSY = 'messy';
-export const MODES = [
-  { id: 'joyce', name: 'Joyce' },
-  { id: 'pessoa', name: 'Pessoa' },
-];
 export const DEFAULT_MODE = 'joyce';
-export const KINDS_OF_ROOM = MODES.map((m) => ({ id: m.id, name: m.name }));
-export const LEAVES = ['line', 'passage', 'picture'];
-export const KINDS = [...LEAVES, 'train', 'room'];
+export const LEAVES = Object.keys(ITEMS); // the kinds of item
+export const KINDS = [...LEAVES, 'group', 'room'];
 export const kindOf = (th) => (KINDS.includes(th?.kind) ? th.kind : 'line');
 export const isLeaf = (th) => LEAVES.includes(kindOf(th));
+export const isItem = isLeaf;
+export const isGroup = (th) => kindOf(th) === 'group';
+
+// How each ontology's groups hold their items: 'one' (an item is in at most one of its groups,
+// and deleting the group deletes its items, as with trains) or 'many' (an item can be in several,
+// and deleting the group frees them). An ontology not declared holds them as 'one'.
+const MEMBERSHIP = { joyce: 'one' };
+export function declareGroups(of, groups) {
+  if (groups?.membership === 'many' || groups?.membership === 'one') MEMBERSHIP[of] = groups.membership;
+}
+export const membership = (of) => MEMBERSHIP[of] || 'one';
 
 let counter = 0;
 export function uid(prefix = 'x') {
@@ -53,18 +60,19 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
+  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, pages: 1 };
 }
 
 // A saved world, brought up to date and repaired: the messy room always exists; every room sits on
-// the rooms page; a train whose room is gone goes to the messy room, and a line, passage or picture
-// whose train is gone is dropped. Rooms of rooms (the old Borges rooms) are taken apart: the rooms
-// they held come out onto the rooms page, and the empty room goes. Doors went with them.
+// the rooms page; an item or group whose room is gone goes to the messy room, and a group forgets
+// members that are gone. Rooms of rooms (the old Borges rooms) are taken apart: the rooms they held
+// come out onto the rooms page, and the empty room goes. Doors went with them.
 export function loadWorld(saved, now = Date.now()) {
   let w = saved && typeof saved === 'object' ? saved : {};
-  if (w.v !== 2) w = fromV1(w, now);
+  if (w.v !== 2 && w.v !== 3) w = fromV1(w, now);
+  if (w.v === 2) w = fromV2(w);
   w = Object.assign(emptyWorld(now), w);
-  for (const key of ['things', 'views', 'places']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'views', 'own']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   delete w.doors;
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
@@ -80,16 +88,20 @@ export function loadWorld(saved, now = Date.now()) {
   for (const th of rooms0) {
     if (th.form !== 'borges') continue;
     if (th.id === MESSY) { delete th.form; continue; }
-    for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY; // a stray train goes to Messy
+    for (const c of Object.values(w.things)) if (c.parent === th.id) c.parent = MESSY; // what it held goes to Messy
     delete w.things[th.id];
     delete w.views[th.id];
-    delete w.places[th.id];
+    delete w.own[th.id];
   }
   for (const th of Object.values(w.things)) {
-    if (th.parent == null || w.things[th.parent]) continue;
-    if (kindOf(th) === 'room') th.parent = null;
-    else if (kindOf(th) === 'train') th.parent = MESSY;
-    else delete w.things[th.id];
+    if (kindOf(th) === 'room') { if (th.parent != null && !w.things[th.parent]) th.parent = null; continue; }
+    if (kindOf(w.things[th.parent]) !== 'room') th.parent = MESSY;
+  }
+  for (const g of Object.values(w.things)) {
+    if (!isGroup(g)) continue;
+    g.members = [...new Set(Array.isArray(g.members) ? g.members : [])]
+      .filter((id) => isLeaf(w.things[id]) && w.things[id].parent === g.parent);
+    if (typeof g.of !== 'string' || !g.of) g.of = DEFAULT_MODE;
   }
   const messy = w.things[MESSY];
   messy.size = 2;
@@ -100,9 +112,33 @@ export function loadWorld(saved, now = Date.now()) {
   return w;
 }
 
-// The first prototype's shape (rooms, trains and thoughts kept apart), turned into thoughts.
+// The second shape: a line, passage or picture sat inside its train (`parent`), and Pessoa's places
+// were kept apart. Trains become Joyce's groups, listing their thoughts, which now sit in the
+// room; Pessoa's places become its own data.
+function fromV2(old) {
+  const w = { ...old, v: 3, things: { ...(old.things || {}) }, own: {} };
+  for (const [id, th] of Object.entries(w.things)) {
+    if (th?.kind !== 'train') continue;
+    const { kind: _kind, ...rest } = th;
+    w.things[id] = { ...rest, kind: 'group', of: 'joyce', members: [] };
+  }
+  const items = Object.values(w.things).filter((th) => th && th.kind !== 'group' && th.kind !== 'room').sort(byTime);
+  for (const th of items) {
+    const g = w.things[th.parent];
+    if (g?.kind !== 'group') continue;
+    g.members.push(th.id);
+    th.parent = g.parent;
+  }
+  for (const [roomId, places] of Object.entries(old.places || {})) {
+    if (places && typeof places === 'object') w.own[roomId] = { pessoa: { ...places } };
+  }
+  delete w.places;
+  return w;
+}
+
+// The first prototype's shape (rooms, trains and thoughts kept apart), turned into the second.
 function fromV1(old, now) {
-  const w = emptyWorld(now);
+  const w = { v: 2, things: { [MESSY]: messyRoom(now) }, views: {}, places: {}, pages: 1 };
   for (const r of old.rooms || []) w.things[r.id] = { id: r.id, kind: 'room', parent: null, at: r.at ?? now, name: r.name };
   for (const t of Object.values(old.trains || {})) w.things[t.id] = { id: t.id, kind: 'train', parent: t.room, at: t.at ?? now, x: t.x, y: t.y, title: '' };
   for (const th of Object.values(old.thoughts || {})) {
@@ -125,8 +161,8 @@ export const room = (w, id) => (kindOf(w.things[id]) === 'room' ? w.things[id] :
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
-// A big room (Messy thoughts, or any 2 × 2 mode room) switches between the modes inside; a small
-// one keeps the mode it was made with.
+// A big room (Messy thoughts, or any 2 × 2 room) switches between the ontologies inside; a small
+// one keeps the one it was made with.
 export const isBig = (th) => kindOf(th) === 'room' && (th.id === MESSY || (th.size || 1) > 1);
 
 export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
@@ -159,16 +195,55 @@ export function roomOf(w, id) {
   return th || null;
 }
 
-export const trainThoughts = (w, trainId) => children(w, trainId).filter(isLeaf);
-export const roomTrains = (w, roomId) =>
-  children(w, roomId).filter((th) => kindOf(th) === 'train' && trainThoughts(w, th.id).length);
+// ---- Groups ----
+
+// A group's items, in the order they were written.
+export function members(w, groupId) {
+  const g = w.things[groupId];
+  return isGroup(g) ? g.members.map((id) => w.things[id]).filter(isLeaf).sort(byTime) : [];
+}
+// The groups in a room (of one ontology, or of all).
+export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
+// The groups an item is in (of one ontology, or of all); and the first of them.
+export const groupsOf = (w, id, of = null) => Object.values(w.things)
+  .filter((g) => isGroup(g) && g.members.includes(id) && (of == null || g.of === of)).sort(byTime);
+export const groupOf = (w, id, of = DEFAULT_MODE) => groupsOf(w, id, of)[0] || null;
+// The items in a room, in the order they were written.
+export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
+
+// Puts an item into a group (of its room). Where the group's ontology lets an item be in only one
+// of its groups, the item leaves the one it was in.
+export function join(w, groupId, id) {
+  const g = w.things[groupId], th = w.things[id];
+  if (!isGroup(g) || !isLeaf(th) || th.parent !== g.parent || g.members.includes(id)) return false;
+  if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
+  g.members.push(id);
+  return true;
+}
+
+// Takes an item out of a group; a group left empty goes.
+export function leave(w, groupId, id) {
+  const g = w.things[groupId];
+  if (!isGroup(g)) return false;
+  g.members = g.members.filter((m) => m !== id);
+  if (!g.members.length) { delete w.things[groupId]; forget(w, groupId); }
+  return true;
+}
+
+// Joyce's names for the same things.
+export const trainThoughts = members;
+export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g) => members(w, g.id).length);
 
 // Every line, passage and picture in a room, in time order.
-export const roomThoughts = (w, roomId) => roomTrains(w, roomId).flatMap((t) => trainThoughts(w, t.id)).sort(byTime);
+export const roomThoughts = roomItems;
 
-// What floats in Pessoa: each thought on its own, but a folded train as the one thought it is.
-export const roomUnits = (w, roomId) =>
-  roomTrains(w, roomId).flatMap((t) => (t.folded ? [t] : trainThoughts(w, t.id))).sort(byTime);
+// What floats on a canvas that places single thoughts (Pessoa): each item on its own, but a folded
+// group as the one thought it is, in place of its items.
+export function roomUnits(w, roomId) {
+  const folded = groupsIn(w, roomId).filter((g) => g.folded && members(w, g.id).length);
+  const hidden = new Set(folded.flatMap((g) => g.members));
+  return [...folded, ...roomItems(w, roomId).filter((th) => !hidden.has(th.id))].sort(byTime);
+}
 
 export function lastWritten(w, roomId) {
   const all = roomThoughts(w, roomId);
@@ -180,15 +255,27 @@ export function view(w, roomId) {
   return w.views[roomId];
 }
 
+// An ontology's own data in a room: a plain object it keeps what it likes in, saved with the world.
+// What it keeps under a thought's id is forgotten when that thought is removed or moved out.
+// make: false only reads it (an empty object when there is none yet, not saved).
+export function own(w, roomId, of, make = true) {
+  if (!make) return w.own[roomId]?.[of] || {};
+  const r = (w.own[roomId] ||= {});
+  return (r[of] ||= {});
+}
+function forget(w, id, roomId = null) {
+  for (const [r, mine] of Object.entries(w.own)) {
+    if (roomId != null && r !== roomId) continue;
+    for (const data of Object.values(mine || {})) if (data && typeof data === 'object') delete data[id];
+  }
+}
+
 // The words of a thought, as plain text.
 export function thoughtText(w, th) {
-  switch (kindOf(th)) {
-    case 'passage': return [th.title, th.body].filter(Boolean).join(' — ');
-    case 'picture': return th.text ? `[${th.text}]` : '[picture]';
-    case 'train': return trainThoughts(w, th.id).map((x) => thoughtText(w, x)).join('\n');
-    case 'room': return th.name || '';
-    default: return th.text || '';
-  }
+  const kind = kindOf(th);
+  if (kind === 'group') return members(w, th.id).map((x) => thoughtText(w, x)).join('\n');
+  if (kind === 'room') return th.name || '';
+  return ITEMS[kind].text(th);
 }
 
 // ---- Making and changing thoughts ----
@@ -198,31 +285,25 @@ const lines = (s) => String(s ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n
 export const DESC = 280; // a room's description, at most this many letters
 const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
-// A line, passage or picture keeps where it was dragged to in its train (dx, dy from the train's
-// corner), and when it was last changed.
+// An item keeps where it was dragged to in its train (dx, dy from the train's corner), and when it
+// was last changed.
 function spot(f, out) {
   if (Number.isFinite(f.dx) && Number.isFinite(f.dy)) { out.dx = Math.round(f.dx); out.dy = Math.round(f.dy); }
   if (Number.isFinite(f.edited)) out.edited = f.edited;
   return out;
 }
 
-// A thought's own fields, tidied; null when a line, passage or picture would be empty.
+// A thought's own fields, tidied; null when an item would be empty.
 function tidy(f) {
   const kind = kindOf(f);
-  if (kind === 'line') {
-    const text = lines(String(f.text ?? '').split('\n').map(oneLine).join('\n'));
-    return text ? spot(f, { kind, text }) : null;
+  if (LEAVES.includes(kind)) {
+    const own = ITEMS[kind].tidy(f, { oneLine, lines });
+    return own ? spot(f, { kind, ...own }) : null;
   }
-  if (kind === 'passage') {
-    const title = oneLine(f.title), body = lines(f.body);
-    return title || body ? spot(f, { kind, title, body }) : null;
-  }
-  if (kind === 'picture') {
-    const src = typeof f.src === 'string' && f.src.startsWith('data:image/') ? f.src : '';
-    return src ? spot(f, { kind, src, text: oneLine(f.text) }) : null;
-  }
-  if (kind === 'train') {
-    const out = { kind, x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
+  if (kind === 'group') {
+    const out = { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
+      members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
+      x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
     if (f.folded) out.folded = true;
     return out;
   }
@@ -240,50 +321,57 @@ function tidy(f) {
   return out;
 }
 
-// What can sit inside what: lines, passages and pictures in trains, trains in mode rooms, rooms
-// at the top (null).
+// What can sit inside what: items and groups in rooms, rooms at the top (null).
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
-  if (LEAVES.includes(kind)) return kindOf(p) === 'train' && p != null;
-  if (kind === 'train') return p != null && kindOf(p) === 'room';
+  if (LEAVES.includes(kind) || kind === 'group') return p != null && kindOf(p) === 'room';
   if (kind === 'room') return p == null;
   return false;
 }
 
-// Puts a new thought inside `parent`. Returns it, or null (adding nothing) if it would be empty
-// or can't go there.
+// Puts a new thought inside `parent`: a room, or (for an item) a group, which it joins in the
+// group's room. Returns it, or null (adding nothing) if it would be empty or can't go there.
 export function create(w, parent, fields, now = Date.now()) {
   const th = tidy(fields);
-  if (!th || !canHold(w, parent, th.kind) || (parent != null && shut(w, parent))) return null;
-  Object.assign(th, { id: uid(th.kind[0]), parent: parent ?? null, at: now });
+  if (!th) return null;
+  const p = parent == null ? null : w.things[parent];
+  const group = isLeaf(th) && isGroup(p) ? p : null;
+  const at = group ? group.parent : parent;
+  if (!canHold(w, at, th.kind) || (at != null && shut(w, at))) return null;
+  if (isGroup(th)) th.members = [];
+  Object.assign(th, { id: uid(th.kind[0]), parent: at ?? null, at: now });
   w.things[th.id] = th;
+  if (group) join(w, group.id, th.id);
   return th;
 }
 
-// Changes a thought's own fields (never its kind, place or time). A line, passage or picture
-// left empty is removed.
+// Changes a thought's own fields (never its kind, place, time or members). An item left empty is
+// removed.
 export function update(w, id, fields, now = Date.now()) {
   const th = w.things[id];
   if (!th || (kindOf(th) !== 'room' && shut(w, id))) return null; // a room itself can still be renamed, coloured or unlocked
   const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
-  if (kindOf(th) === 'train' && !next.folded) delete th.folded;
+  if (isGroup(th)) { next.members = th.members; next.of = th.of; if (!next.folded) delete th.folded; }
   if (kindOf(th) === 'room') for (const k of ['desc', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   return th;
 }
 
-// Removes a thought and everything inside it; a train left empty goes too. Messy thoughts stays.
+// Removes a thought and everything inside it: a room's items and groups; a group's items too, when
+// its ontology holds each item in only one group (a train). An item leaves every group it was in,
+// and a group left empty goes. Messy thoughts stays.
 export function remove(w, id) {
   const th = w.things[id];
   if (!th || id === MESSY || shut(w, id)) return;
-  for (const c of children(w, id)) remove(w, c.id);
   delete w.things[id];
-  for (const r of Object.keys(w.places)) delete w.places[r][id];
+  for (const c of children(w, id)) remove(w, c.id);
+  if (isGroup(th) && membership(th.of) === 'one') for (const m of th.members) remove(w, m);
+  if (isLeaf(th)) for (const g of groupsOf(w, id)) leave(w, g.id, id);
+  forget(w, id);
   delete w.views[id];
-  const p = w.things[th.parent];
-  if (p && kindOf(p) === 'train' && !children(w, p.id).length) remove(w, p.id);
+  delete w.own[id];
 }
 
 // ---- The shared operations ----
@@ -294,56 +382,75 @@ export function inside(w, id, ancestor) {
   return false;
 }
 
-// Moves a thought into `into` (a room, or a train). A train or a room just changes parent; a
-// line, passage or picture put into a room gets a train of its own there (at x, y), and the rest
-// of its old train stays joined. Never into itself.
-export function move(w, id, into, x = 0, y = 0) {
-  const th = w.things[id];
-  if (!th || !w.things[into] || th.parent === into || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
-  const fromRoom = roomOf(w, kindOf(th) === 'room' ? th.parent : id);
-  let target = into;
-  if (isLeaf(th) && kindOf(w.things[into]) === 'room') target = create(w, into, { kind: 'train', x, y }, th.at)?.id;
-  if (!target || !canHold(w, target, kindOf(th))) return false;
-  const old = th.parent;
-  th.parent = target;
-  if (kindOf(th) === 'train') { th.x = Math.round(x); th.y = Math.round(y); }
-  if (fromRoom && w.places[fromRoom.id]) {
-    delete w.places[fromRoom.id][id];
-    for (const c of children(w, id)) delete w.places[fromRoom.id][c.id];
-  }
-  const was = w.things[old];
-  if (was && kindOf(was) === 'train' && !children(w, old).length) remove(w, old);
-  return true;
+// An item comes into another room: it leaves its groups in the old one, and what was kept about it
+// there is forgotten.
+function rehome(w, th, to) {
+  const from = th.parent;
+  for (const g of groupsOf(w, th.id)) if (g.parent === from) leave(w, g.id, th.id);
+  forget(w, th.id, from);
+  th.parent = to;
 }
 
-// Names a thought: a room's name, a train's or a passage's title.
+// Moves a thought into `into` (a room, or a group). A group moves to another room with its items;
+// an item put into a group joins it; an item put into a room gets a train of its own there (at x,
+// y: Joyce holds every item in a train), and the rest of its old train stays joined. Never into
+// itself.
+export function move(w, id, into, x = 0, y = 0) {
+  const th = w.things[id], to = w.things[into];
+  if (!th || !to || th.parent === into && !isLeaf(th) || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
+  if (isGroup(th)) {
+    if (kindOf(to) !== 'room') return false;
+    const from = th.parent;
+    for (const m of members(w, id)) {
+      for (const g of groupsOf(w, m.id)) if (g.id !== id && g.parent === from) leave(w, g.id, m.id);
+      forget(w, m.id, from);
+      m.parent = into;
+    }
+    forget(w, id, from);
+    Object.assign(th, { parent: into, x: Math.round(x), y: Math.round(y) });
+    return true;
+  }
+  if (!isLeaf(th)) return false; // a room never goes inside anything
+  if (isGroup(to)) {
+    if (to.members.includes(id)) return false;
+    if (th.parent !== to.parent) rehome(w, th, to.parent);
+    return join(w, into, id);
+  }
+  if (kindOf(to) !== 'room') return false;
+  const train = create(w, into, { kind: 'group', of: 'joyce', x, y }, th.at);
+  if (!train) return false;
+  rehome(w, th, into);
+  return join(w, train.id, id);
+}
+
+// Names a thought: a room's name, a group's or a passage's title.
 export function name(w, id, text) {
   const th = w.things[id];
   if (th) update(w, id, kindOf(th) === 'room' ? { name: text } : { title: text });
 }
 
-// A train folds into one thought, and unfolds back; its thoughts and their order never change.
-export function fold(w, trainId, title) {
-  if (kindOf(w.things[trainId]) !== 'train') return false;
-  update(w, trainId, { folded: true, ...(title != null ? { title } : {}) });
+// A group folds into one thought, and unfolds back; its items and their order never change.
+export function fold(w, groupId, title) {
+  if (!isGroup(w.things[groupId])) return false;
+  update(w, groupId, { folded: true, ...(title != null ? { title } : {}) });
   return true;
 }
-export function unfold(w, trainId) {
-  const t = w.things[trainId];
-  if (kindOf(t) !== 'train' || !t.folded || shut(w, trainId)) return false;
-  delete t.folded;
+export function unfold(w, groupId) {
+  const g = w.things[groupId];
+  if (!isGroup(g) || !g.folded || shut(w, groupId)) return false;
+  delete g.folded;
   return true;
 }
 
 // ---- Shortcuts the screens use ----
 
 // A new room on a page of the rooms page (`where`: { page }), in `cell` if it is free, or the first
-// free one. `kind`: its mode ('joyce', 'pessoa').
+// free one. `kind`: its ontology ('joyce', 'pessoa', …).
 export function addRoom(w, text = 'Untitled', now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
   const page = where.page || 0;
   const r = create(w, null, { kind: 'room', name: text, ...(cell || {}), page }, now);
   if (!r) return null;
-  if (MODES.some((m) => m.id === kind)) view(w, r.id).mode = kind;
+  if (typeof kind === 'string' && kind) view(w, r.id).mode = kind;
   if (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols)) {
     delete r.col; delete r.row;
     gridRooms(w, cols, page);
@@ -414,36 +521,10 @@ export function toPage(w, id, page = 0, cols = 6) {
 // The rooms page's pages: at least one, and enough for every room on them.
 export const pageCount = (w) => Math.max(w.pages || 1, ...rooms(w).map((r) => (r.page || 0) + 1));
 export function addPage(w) { w.pages = pageCount(w) + 1; return w.pages - 1; }
-export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'train', x, y }, now);
+export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'group', of: 'joyce', x, y }, now);
 export const addThought = (w, trainId, text, now) => create(w, trainId, { kind: 'line', text }, now);
 
 // ---- Where things go ----
-
-// Pessoa's loose spiral: the i-th thought (in time order) sits on an Archimedean spiral r = bθ,
-// spaced evenly along its length, nudged a little by its id so it doesn't look ruled.
-export const SPIRAL = { step: 230, gap: 190 }; // px between neighbours along the spiral; between turns
-export function spiralPoint(i, id = '') {
-  const b = SPIRAL.gap / (2 * Math.PI);
-  const theta = Math.sqrt((2 * SPIRAL.step * (i + 0.6)) / b);
-  const r = b * theta;
-  const h = hash(id);
-  const jx = ((h & 0xff) / 255 - 0.5) * 36;
-  const jy = (((h >> 8) & 0xff) / 255 - 0.5) * 28;
-  return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
-}
-
-export function pessoaPoint(w, roomId, id) {
-  const placed = w.places[roomId]?.[id];
-  if (placed) return placed;
-  const units = roomUnits(w, roomId);
-  const i = units.findIndex((u) => u.id === id);
-  return spiralPoint(i < 0 ? units.length : i, id);
-}
-
-export function place(w, roomId, id, x, y) {
-  if (shut(w, roomId)) return;
-  (w.places[roomId] ||= {})[id] = { x, y };
-}
 
 // A random spot in the box { x, y, w, h } (world units), as far as it can find from the points
 // already there: the best of a few random tries.
@@ -467,7 +548,7 @@ export function hash(s) {
 // ---- Joyce: each thought of a train on its own, joined by a line ----
 
 // How far below the one before a thought sits, until it is dragged somewhere else.
-export const STEP = { line: 58, passage: 190, picture: 270, train: 190 };
+export const STEP = { line: 58, passage: 190, picture: 270, group: 190 };
 const LINE = 29; // each extra line of a thought written over several lines
 
 // How far below a thought the next one sits.
@@ -507,8 +588,8 @@ export function nextSpot(w, trainId) {
 // Drags one thought of a train to (x, y); its train stays joined.
 export function nudge(w, id, x, y, now = Date.now()) {
   const th = w.things[id];
-  const t = th && w.things[th.parent];
-  if (!t || !isLeaf(th) || kindOf(t) !== 'train' || shut(w, id)) return false;
+  const t = th && groupOf(w, id, 'joyce');
+  if (!t || !isLeaf(th) || shut(w, id)) return false;
   th.dx = Math.round(x - t.x);
   th.dy = Math.round(y - t.y);
   th.edited = now;
@@ -554,7 +635,7 @@ export function tagName(w, trainId) {
   return words || 'A train';
 }
 
-// ---- Search: every thought, train and room whose words hold the query ----
+// ---- Search: every thought, group and room whose words hold the query ----
 
 export function search(w, query, most = 30) {
   const q = oneLine(query).toLowerCase();
@@ -562,7 +643,7 @@ export function search(w, query, most = 30) {
   const out = [];
   for (const th of Object.values(w.things).sort(byTime).reverse()) {
     const kind = kindOf(th);
-    const text = kind === 'train' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
+    const text = kind === 'group' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
     if (!oneLine(text).toLowerCase().includes(q)) continue;
     const r = roomOf(w, kind === 'room' ? th.id : th.id);
     out.push({ id: th.id, kind, text, room: r?.id ?? null, roomName: r?.name ?? '' });
