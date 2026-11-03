@@ -7,7 +7,7 @@ import {
   roomOf, thoughtText, spiralPoint, pessoaPoint, place, randomSpot, view, roomAt, placeRoom, gridRooms,
   trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, search, sizeRoom, STEP, stepAfter,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  BORGES, isBorges, roomsIn, roomPath, modeRooms, putRoom, merge, pageCount, addPage, addDoor, doorsOf, useDoor, doorWidth,
+  BORGES, isBorges, roomsIn, roomPath, modeRooms, putRoom, merge, pageCount, addPage, addDoor, doorsOf, useDoor, doorWidth, canDoor, isBig,
 } from '../model.js';
 
 const train = (w, room = MESSY, ...texts) => {
@@ -169,8 +169,9 @@ test('pages: rooms on the rooms page sit on one page each, with grids of their o
 
 test('doors link two rooms, once, wear in with use, and go when a room goes', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A'), b = addRoom(w, 'B');
-  const d = addDoor(w, a.id, b.id, 1);
+  const t = addRoom(w, 'T', 1, null, 6, {}, BORGES), u = addRoom(w, 'U', 1, null, 6, {}, BORGES);
+  const a = addRoom(w, 'A', 2, null, 6, { parent: t.id }), b = addRoom(w, 'B', 2, null, 6, { parent: u.id });
+  const d = addDoor(w, a.id, b.id, 1); // across Borges rooms
   assert.equal(addDoor(w, b.id, a.id), d);
   assert.equal(addDoor(w, a.id, a.id), null);
   assert.deepEqual(doorsOf(w, a.id).map((x) => x.other.id), [b.id]);
@@ -181,6 +182,31 @@ test('doors link two rooms, once, wear in with use, and go when a room goes', ()
   assert.equal(Object.keys(back.doors).length, 1);
   remove(w, b.id);
   assert.deepEqual(doorsOf(w, a.id), []);
+});
+
+test('doors only inside Borges rooms, never on the rooms page; they go when a room leaves', () => {
+  const w = emptyWorld();
+  const top = addRoom(w, 'Top'), t = addRoom(w, 'T', 1, null, 6, {}, BORGES);
+  const a = addRoom(w, 'A', 2, null, 6, { parent: t.id }), b = addRoom(w, 'B', 2, null, 6, { parent: t.id });
+  assert.equal(addDoor(w, top.id, a.id), null);
+  assert.equal(addDoor(w, MESSY, a.id), null);
+  assert.equal(canDoor(w, t.id), false);
+  assert.ok(addDoor(w, a.id, b.id));
+  assert.ok(putRoom(w, a.id, null));
+  assert.deepEqual(doorsOf(w, b.id), []);
+  w.doors.x = { id: 'x', a: top.id, b: b.id, uses: 0, at: 1 }; // a saved door to the rooms page is dropped
+  assert.equal(Object.keys(loadWorld(JSON.parse(JSON.stringify(w))).doors).length, 0);
+});
+
+test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 and Borges rooms are not', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'R'), t = addRoom(w, 'T', 1, null, 6, {}, BORGES);
+  assert.ok(isBig(w.things[MESSY]));
+  assert.ok(!isBig(r));
+  r.size = 2;
+  assert.ok(isBig(r));
+  t.size = 2;
+  assert.ok(!isBig(t));
 });
 
 test('a saved room inside a mode room goes back to the top', () => {
