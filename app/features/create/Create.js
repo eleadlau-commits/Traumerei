@@ -44,7 +44,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms,
+  addPage, isBig, rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -98,6 +98,8 @@ export default class Create extends Feature {
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
+    // The global ontology settings ({ [ontology]: { key: value } }): what a new room starts with.
+    this.ontPrefs = this.storage.get('ontologies') || {};
     // The app's colours (Renderer, Settings → Colour), and any change to them.
     this.palette = this.backdrop?.palette?.() || PALETTE;
     document.addEventListener('palette', (e) => { this.palette = e.detail; this.repaint(); });
@@ -250,6 +252,7 @@ export default class Create extends Feature {
     this.roomId = id;
     this.sel = null;
     this.draft = null;
+    this.gearFor = this.settingsFor = null;
     this.roomPage.hidden = false;
     this.root.classList.add('in-room');
     document.documentElement.classList.add('create-in-room');
@@ -921,6 +924,7 @@ export default class Create extends Feature {
   // its name ready to write.
   newRoom(cell = null, kind = DEFAULT_MODE) {
     const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
+    if (r) seedRoomSettings(this.world, r.id, this.ontPrefs);
     this.making = null;
     if (!r) { this.toast('A room can\'t be made here.'); this.drawRooms(); return; }
     this.save();
@@ -989,6 +993,48 @@ export default class Create extends Feature {
     this.repaint();
   }
 
+  // ---- Ontology settings: global ones here, each room's own in its rail ----
+
+  globalSetting(of, st) { const v = this.ontPrefs[of]?.[st.key]; return v !== undefined ? v : st.default; }
+
+  setOntPref(of, key, value) {
+    (this.ontPrefs[of] ||= {})[key] = value;
+    this.storage.set('ontologies', this.ontPrefs);
+  }
+
+  // Every room takes the global settings.
+  applyToAllRooms() {
+    applySettingsToAll(this.world, this.ontPrefs);
+    this.storage.set(WORLD, this.world);
+    this.toast('Every room now has the global settings.');
+    this.repaint();
+  }
+
+  // The open room's value of one of its ontology's settings (an ontology reads it as c.setting(key)).
+  setting(key, ont = this.ont) {
+    const st = (ont.settings || []).find((x) => x.key === key);
+    return st ? roomSetting(this.world, this.roomId, ont.id, st, this.ontPrefs) : undefined;
+  }
+
+  // One setting as a row: a slider, or an on/off switch (type: 'switch').
+  settingRow(st, value, onChange) {
+    if (st.type === 'switch') {
+      return el('label', { class: 'renderer-slider create-switch-row' }, el('span', {}, st.label), el('span'),
+        ui.toggle({ checked: !!value, label: st.label, onChange }));
+    }
+    const out = el('output', { class: 'renderer-value' }, String(value));
+    return el('label', { class: 'renderer-slider' }, el('span', {}, st.label), out,
+      el('input', { type: 'range', min: st.min, max: st.max, step: st.step ?? 0.01, value, 'aria-label': st.label,
+        oninput: (e) => { out.textContent = e.target.value; onChange(+e.target.value); } }));
+  }
+
+  // A plain new room (Move to… → a new room), starting from the global settings.
+  addPlainRoom() {
+    const r = addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6);
+    seedRoomSettings(this.world, r.id, this.ontPrefs);
+    return r.id;
+  }
+
   // Shows a change straight away, if Create is open.
   repaint() {
     this.paintPage();
@@ -1026,12 +1072,18 @@ export default class Create extends Feature {
       fold('Inside a room',
         slider('Lightness', 'light', 0.05, 0.98),
         slider('Messy lightness', 'lightMessy', 0.05, 0.98),
-        // Each ontology's own settings (Joyce: its line's tension).
-        ...this.ontologies.flatMap((o) => (o.settings || []).map((s) => slider(s.label, s.key, s.min, s.max, s.step)))),
+        // Each ontology's own settings (Joyce: its line's tension): the global ones, which a new
+        // room starts from. Each room keeps its own (the ⚙ beside the mode in its rail).
+        ...this.ontologies.filter((o) => o.settings?.length).flatMap((o) => [
+          el('p', { class: 'create-settings-ont' }, o.name),
+          ...o.settings.map((st) => this.settingRow(st, this.globalSetting(o.id, st), (v) => this.setOntPref(o.id, st.key, v)))]),
+        el('button', { type: 'button', class: 'btn small', onclick: () => this.applyToAllRooms() }, 'Apply to all rooms')),
       ui.hint('A room\'s own colour is in its pop-up on the rooms page: click its square.', { small: true }),
       el('button', { type: 'button', class: 'btn small', onclick: () => {
         this.prefs = lookPrefs(LOOK);
         this.storage.set('look', savedLook(this.prefs));
+        this.ontPrefs = {};
+        this.storage.set('ontologies', this.ontPrefs);
         this.repaint();
         this.app.shell?.refreshSettings?.();
       } }, 'Back to defaults'));
@@ -1061,23 +1113,31 @@ export default class Create extends Feature {
     this.roomPage.classList.toggle('locked', !!this.locked);
     const v = view(this.world, this.roomId);
     // The rail, where the rooms page has Rooms and Archive: a big room (Messy, or 2 × 2) lists the
-    // ontologies and switches between them; a small one shows its one. An ontology's panel (Joyce's
-    // Timeline) sits under its name.
+    // ontologies and switches between them; a small one shows its one. Hovering over a mode shows a
+    // small ⚙ beside it, which opens this room's settings for it. Under a hairline, Timeline.
     const big = isBig(r);
     const items = [];
     for (const m of big ? this.ontologies : [this.ont]) {
       const on = m.id === this.mode;
-      items.push(big
-        ? el('button', { type: 'button', class: 'create-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on), onclick: () => this.setMode(m.id) }, m.name)
-        : el('span', { class: 'create-rail-item create-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.' }, m.name));
-      if (m.panel && on) {
-        items.push(el('button', {
-          type: 'button', class: 'create-rail-item create-rail-sub', 'aria-pressed': String(!!v[m.panel.key]),
-          onclick: () => this.togglePanel(),
-        }, m.panel.label));
-      }
+      const word = big
+        ? el('button', { type: 'button', class: 'create-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
+          onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, m.name)
+        : el('span', { class: 'create-rail-item create-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
+          onclick: () => this.toggleGear(m.id) }, m.name);
+      const gear = m.settings?.length ? el('button', {
+        type: 'button', class: 'create-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
+        'aria-expanded': String(this.settingsFor === m.id), onclick: () => this.openRoomSettings(m.id),
+      }, '⚙') : null;
+      items.push(el('div', { class: 'create-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
-    this.modes.setAttribute('role', big ? 'radiogroup' : 'group');
+    items.push(el('div', { class: 'create-rail-rule', 'aria-hidden': 'true' }));
+    items.push(el('button', {
+      type: 'button', class: 'create-rail-item create-rail-view', 'aria-pressed': String(this.historyOpen),
+      onclick: () => this.togglePanel(),
+    }, 'Timeline'));
+    const card = this.settingsFor && this.roomSettingsCard();
+    if (card) items.push(card);
+    this.modes.setAttribute('role', 'group');
     this.modes.replaceChildren(...items);
     this.root.dataset.mode = this.mode;
     this.root.classList.toggle('history-open', this.historyOpen);
@@ -1092,16 +1152,49 @@ export default class Create extends Feature {
     this.drawRoom();
   }
 
-  // The open ontology's panel (Joyce's Timeline), down the left.
-  get historyOpen() { const p = this.ont.panel; return !!p && !!view(this.world, this.roomId)[p.key]; }
+  // The room's Timeline, down the right: a view of its thoughts in time, in any mode.
+  get historyOpen() { return !!this.roomId && !!view(this.world, this.roomId).timeline; }
 
   togglePanel() {
-    const v = view(this.world, this.roomId), p = this.ont.panel;
-    if (!p) return;
-    v[p.key] = !v[p.key];
-    this.sel = null;
+    const v = view(this.world, this.roomId);
+    v.timeline = !v.timeline;
     this.save();
     this.drawRoom();
+  }
+
+  // Touch has no hover: tapping the current mode shows its ⚙ (and tapping again hides it).
+  toggleGear(id) {
+    this.gearFor = this.gearFor === id ? null : id;
+    this.drawRoom();
+  }
+
+  openRoomSettings(id) {
+    this.settingsFor = this.settingsFor === id ? null : id;
+    this.gearFor = null;
+    this.drawRoom();
+  }
+
+  // This room's settings for one ontology, in a card beside the rail, with Reset to global.
+  roomSettingsCard() {
+    const o = this.ontologies.find((x) => x.id === this.settingsFor);
+    if (!o) return null;
+    const close = () => { this.settingsFor = null; this.drawRoom(); };
+    return el('div', { class: 'create-options create-room-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
+      onpointerdown: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } } },
+      el('div', { class: 'create-room-settings-head' },
+        el('span', {}, o.name),
+        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close', onclick: close }, '×')),
+      el('p', { class: 'create-room-settings-note' }, 'For this room only'),
+      ...o.settings.map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
+        setRoomSetting(this.world, this.roomId, o.id, st.key, v);
+        this.storage.set(WORLD, this.world);
+        this.drawWorld();
+      })),
+      el('button', { type: 'button', class: 'create-word create-room-settings-reset', onclick: () => {
+        resetRoomSettings(this.world, this.roomId, o.id);
+        this.storage.set(WORLD, this.world);
+        this.drawRoom();
+      } }, 'Reset to global'));
   }
 
   // Only a big room switches its mode.
@@ -1109,8 +1202,9 @@ export default class Create extends Feature {
     if (!isBig(room(this.world, this.roomId))) return;
     const v = view(this.world, this.roomId);
     v.mode = id;
-    for (const o of this.ontologies) if (o.panel) v[o.panel.key] = false;
     this.sel = null;
+    this.gearFor = null;
+    if (this.settingsFor) this.settingsFor = id;
     this.save();
     this.drawRoom();
   }
@@ -1164,18 +1258,33 @@ export default class Create extends Feature {
     this.drawBar();
   }
 
-  // The open ontology's panel down the left (Joyce's Timeline), with its name and a close cross.
+  // The Timeline down the right: everything written in the room, in the order it was last changed
+  // (latest at the bottom), each with its time and, where the mode groups thoughts, its group as a
+  // tag (Joyce: its train). A click takes the view to it.
   drawHistory() {
     if (!this.historyOpen) { this.history.hidden = true; return; }
-    const p = this.ont.panel;
-    const list = p.render(this);
+    const w = this.world, ont = this.ont;
+    const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
+    const items = roomThoughts(w, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
+    const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const list = items.length ? el('ol', { class: 'create-history-list' }, items.map((th) => {
+      const tag = ont.tag?.(w, th.id) || null;
+      return el('li', {}, el('button', {
+        type: 'button', class: 'create-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
+        style: tag ? `--tag:hsl(${hash(tag.id) % 360} 32% 46%)` : '',
+        onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }),
+      },
+        el('span', { class: 'create-history-meta' },
+          el('span', { class: 'create-history-time' }, when(changed(th))),
+          tag ? el('span', { class: 'create-tag' }, tag.name) : null),
+        el('span', { class: 'create-history-text' }, thoughtText(w, th))));
+    })) : null;
     this.history.hidden = false;
-    this.history.setAttribute('aria-label', p.label);
     this.history.replaceChildren(
       el('div', { class: 'create-history-head' },
-        el('span', {}, p.label),
-        el('button', { type: 'button', class: 'create-history-close', 'aria-label': `Close ${p.label}`, onclick: () => this.togglePanel() }, '×')),
-      list || el('p', { class: 'create-history-none' }, p.empty || 'Nothing here yet'));
+        el('span', {}, 'Timeline'),
+        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() }, '×')),
+      list || el('p', { class: 'create-history-none' }, 'Nothing written here yet'));
     list?.lastElementChild?.scrollIntoView?.({ block: 'end' });
   }
 
@@ -2098,7 +2207,7 @@ export default class Create extends Feature {
     const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
-        const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
+        const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (to) this.moveTo(to);
       } },
       el('option', { value: '' }, 'Move to…'),
@@ -2127,7 +2236,7 @@ export default class Create extends Feature {
     const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
-        const to = e.target.value === '+' ? addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6).id : e.target.value;
+        const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (!to) return;
         const v = view(this.world, to);
         ids.forEach((id, i) => move(this.world, id, to, Math.round(v.x - 200 + (i % 4) * 220), Math.round(v.y - 120 + Math.floor(i / 4) * 140)));
