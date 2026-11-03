@@ -80,7 +80,7 @@ export default class Create extends Feature {
     if (this.storage.has('world')) this.storage.set('world', null); // the older shape: not kept
     this.world = loadWorld(this.savedWorld());
     this.roomId = null;   // the open room, or null on the rooms page
-    this.draft = null;    // the thought being written: { train | null, x, y }
+    this.draft = null;    // the thought being written: { train | null, x, y }, or { train, edit } for a thought opened again
     this.current = {};    // per room: the train Enter goes on with
     this.fresh = false;   // Ctrl+Enter was pressed: the next thought starts a new train
     this.sel = null;      // { kind: 'train' | 'thought', id }
@@ -1421,6 +1421,23 @@ export default class Create extends Feature {
     return true;
   }
 
+  // Opens a thought already written to write in, on the canvas where it is, the caret at its end.
+  // Only a line (a passage or a picture has its own sheet); not in a locked room.
+  editThought(id) {
+    const th = this.world.things[id];
+    if (!th || kindOf(th) !== 'line' || this.locked) return false;
+    if (this.draft) this.commit();
+    this.sel = null;
+    this.lastTap = null;
+    this.draft = { train: groupOf(this.world, id)?.id || null, edit: id };
+    this.input.value = th.text || '';
+    this.input.focus({ preventScroll: true });
+    this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+    this.drawWorld();
+    this.showDraft();
+    return true;
+  }
+
   stopWriting() {
     if (this.draft) this.commit();
     this.input.blur();
@@ -1546,7 +1563,7 @@ export default class Create extends Feature {
       thing = { ...pick, x: p.x, y: p.y, ...(this.ont.live ? { live: true } : { placed: true }) };
     }
     if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
-    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     // A long press (touch, or a pen) opens the properties, or Add on the empty canvas.
     if (e.pointerType !== 'mouse') {
       const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
@@ -1644,7 +1661,10 @@ export default class Create extends Feature {
       const train = g.el?.dataset.group;
       const now = Date.now();
       if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: 'train', id: train };
-      this.lastTap = train ? { train, at: now } : null;
+      // Three taps on the same thought open it to write in, just where it is.
+      const n = g.at && this.lastTap?.thought === g.at && now - this.lastTap.at < 400 ? this.lastTap.n + 1 : 1;
+      this.lastTap = train || g.at ? { train, thought: g.at, n, at: now } : null;
+      if (n === 3 && this.editThought(g.at)) return;
       if (!g.thing && this.draft) this.stopWriting();
       this.drawWorld();
       return;
@@ -1728,7 +1748,7 @@ export default class Create extends Feature {
   showKeys() {
     const rows = [
       ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
-      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'],
+      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'], ['Triple-click', 'write in a thought, where it is'],
       ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
       ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
       ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],

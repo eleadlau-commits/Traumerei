@@ -97,6 +97,8 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   the one before it, and a thought emptied that way goes. Ctrl+Z undoes typing inside a thought,
   and whole steps outside it. Words pasted on the canvas start a thought, several lines staying
   one thought. Backspace never deletes a chosen thing: Delete does (on a Mac, Cmd+Backspace too).
+- **Edit in place:** a triple-click on a thought opens it to write in, on the canvas where it is,
+  with the same editor (Enter keeps it; emptied, it goes). A double-click still chooses the train.
 - **Choosing many:** drag on the empty canvas to draw a selection box; the chosen thoughts move
   together when one is dragged, and can be moved to a room or deleted together. **Ctrl+drag**
   (or two fingers on a phone) moves the canvas. Names keep with Enter.
