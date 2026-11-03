@@ -404,18 +404,21 @@
 .create-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
 
 
-.create-draft { opacity: 1; }
-.create-draft::after {
+/* The thought being written: its real caret and selection, drawn from the hidden box. */
+.create-draft { opacity: 1; white-space: pre-wrap; cursor: text; }
+.create-draft * { pointer-events: none; }
+.create-caret { position: relative; }
+.create-caret::after {
   content: "";
-  display: inline-block;
+  position: absolute;
+  left: -.5px;
+  top: 0;
+  bottom: 0;
   width: 1px;
-  height: 1.05em;
-  margin-left: 2px;
-  vertical-align: -.15em;
   background: currentColor;
   animation: create-caret 1.1s steps(1) infinite;
 }
-.create-draft:empty::after { margin-left: 0; }
+.create-chosen { background: color-mix(in srgb, var(--room-ink, currentColor) 22%, transparent); }
 @keyframes create-caret { 50% { opacity: 0; } }
 
 /* Pessoa: each thought floats on its own, centred on its place. */

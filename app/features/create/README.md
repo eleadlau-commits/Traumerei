@@ -89,6 +89,14 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   canvas opens Add at the pointer, and what is made goes just there.
 - **Search** (top right, beside the back arrow, or Ctrl+K / ⌘K) searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.
+- **Writing** works as in any text editor. The thought being written shows its real caret and
+  selection (drawn from a hidden box, each letter measured on the screen): click to place the
+  caret, drag or double-click to choose letters (three clicks, the whole thought), Shift to
+  extend; Ctrl+arrows, Home and End, Ctrl+C, X and V. Backspace deletes the letter before the
+  caret (Ctrl+Backspace a word, Delete forwards); in an empty thought it goes back into the end of
+  the one before it, and a thought emptied that way goes. Ctrl+Z undoes typing inside a thought,
+  and whole steps outside it. Words pasted on the canvas start a thought, several lines staying
+  one thought. Backspace never deletes a chosen thing: Delete does (on a Mac, Cmd+Backspace too).
 - **Choosing many:** drag on the empty canvas to draw a selection box; the chosen thoughts move
   together when one is dragged, and can be moved to a room or deleted together. **Ctrl+drag**
   (or two fingers on a phone) moves the canvas. Names keep with Enter.

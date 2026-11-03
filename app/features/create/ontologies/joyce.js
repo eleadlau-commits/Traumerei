@@ -154,7 +154,7 @@ export default {
       }
       const spots = trainSpots(w, t.id);
       const knots = trainThoughts(w, t.id).map((th) => ({ th, ...spots[th.id] }));
-      if (c.draft?.train === t.id) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
+      if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
       const g = document.createElementNS(SVG, 'g');
       g.setAttribute('data-group', t.id);
       g.setAttribute('class', 'create-strand' + (chosen ? ' selected' : ''));
