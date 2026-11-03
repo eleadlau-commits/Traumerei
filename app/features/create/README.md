@@ -24,9 +24,11 @@ What the home page's **Create** opens: rooms of thoughts.
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
   a trackpad's two-finger scroll moves around. Type anywhere to write a thought; Enter ends it.
   On a phone, *Write* opens the keyboard. Escape goes back to the rooms (and from there, home).
-- **Ontological modes**, at the top left of a room. A small room (1 × 1) keeps the one mode it
-  was made with, and only names it. A big room (Messy thoughts, or any 2 × 2 room) holds them all
-  and switches between them there; a big room made small again keeps the mode it has then.
+- **Ontological modes**, in a rail on the left of a room, where *Rooms* and *Archive* sit on the
+  rooms page; the current one is marked. A small room (1 × 1) keeps the one mode it was made with,
+  and the rail only names it. A big room (Messy thoughts, or any 2 × 2 room) lists them all and
+  switches with a click; a big room made small again keeps the mode it has then. Under *Joyce*,
+  *Timeline* opens the list of its thoughts by time.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random
     place. A train can't be broken: it is dragged, and moved, whole.
@@ -55,7 +57,7 @@ the key `world` and follows the account like the settings. Other features reach 
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a
   right-click (or a long press, the ContextMenu key, Shift+F10) shows its properties beside it
-  (name, description, Go in, its kind, colour, lightness, opacity, size 1 × 1 or 2 × 2, doors, Back
+  (name, description, Go in, its kind, colour, lightness, opacity, size 1 × 1 or 2 × 2, Back
   to the tint, Lock, Archive, Delete); a double click or Enter goes in. A colour picked there is the room's colour inside, its
   lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
@@ -106,45 +108,32 @@ the key `world` and follows the account like the settings. Other features reach 
   its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
 - **Description:** a line or two about a room, written in its pop-up; it shows under the room's
   name inside, and in its peek.
-- **Archive** (in a room's pop-up): the room leaves the grid for the Archive, a page of its own
-  reached from *Archive* in the rail on the left (Escape, back or *Rooms* goes back). There a click shows
-  Go in, Restore (to the first free cell) and Delete. Archived rooms are still found by search.
+- **Archive** (in a room's pop-up, or drop a square on *Archive* in the rail): the room leaves the
+  grid for the Archive, a page of its own reached from *Archive* in the rail on the left (Escape,
+  back or *Rooms* goes back). It has the same grid lines as the rooms page, with the rooms in the
+  order they were archived, but its empty cells make no rooms. A click on a room shows Go in,
+  Restore (to the first free cell) and Delete. Archived rooms are still found by search.
 - **Colour:** a square shows its room's colour more vividly than before: (L − 0.25, vivid × C, h)
   at α = strength × (1.2 − L) × opacity (Settings → Rooms → Colour strength, 1.6 by default).
 - **Going in:** the square grows to fill the screen in the room's own colour, then fades into the
   room (skipped when the system asks for less motion). The room takes typing at once.
 
-## Step 2: Borges rooms, doors, merging, pages
+## Step 2: kinds of room, pages, the rail
 
-- **Two kinds of room.** A *mode room* holds thoughts, seen through one mode (Joyce or Pessoa). A
-  **Borges room** holds rooms instead, on a grid of its own like the rooms page: discrete sets,
-  each room in one place. A click on an empty cell asks which kind the new room is (Joyce ·
-  Pessoa · Borges); a right-click there does too. A Borges square carries a small mark of four
-  squares, its count is the rooms it holds, and its peek shows their names.
-- **Going in and back.** Going into a Borges room shows its grid, veiled in the room's own colour,
-  with a path at the top (Rooms › Theory › Ontology) whose words go there. Back (or Escape) goes up
-  one level, leaving the room you came out of chosen. Inside a room in a Borges room the path
-  shows above its name.
-- **Merging.** Drag a square onto another and confirm: the two become a new Borges room in that
-  cell (name it), holding both. Dropped on a Borges room, a square is put inside it. Messy thoughts
-  and locked rooms don't merge. Dropping a square on a word of the path takes it up there; on
-  *Archive*, archives it.
-- **Doors** are only ever between rooms inside Borges rooms, never on the rooms page itself (a room
-  moved out to the rooms page loses its doors). Inside a Borges room, drag from near a square's
-  edge (the pointer turns to a cross) to another square to make a door between them; or *Door to…*
-  in its properties, which reaches any room inside any Borges room (doors cross Borges rooms). On a grid a door is a slightly slack line between
-  the two squares, thicker the more it is gone through. A room lists its doors under its name
-  inside; a click goes through (and wears it in). Its properties list them too, each with × to
-  take it away.
-- **Pages.** The rooms page has pages, *1 2 3 +* along the bottom (a Borges room's grid has none).
-  *+* makes a new one; a square dropped on a number moves there. Messy thoughts stays on page 1.
-- **The rail.** A thin rail on the left of the rooms page: the menu (☰, with Settings), *Rooms*
-  and *Archive*. Inside a room the menu stays at the top left.
-- **Moving thoughts** (*Move to…*) lists every mode room, wherever it is, by its path. Search and
-  the timeline choose what they find without opening its properties.
+- **Kinds.** A click (or a right-click) on an empty cell asks which kind the new room is:
+  *Joyce · Pessoa*. Rooms sit only on the rooms page; nothing nests. A square dropped on another
+  square goes back to its place.
+- **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
+  dropped on a number moves there. Messy thoughts stays on page 1.
+- **The rail and the menu.** The menu (☰, with Settings) sits at the top left of the top bar on
+  every page: home, the rooms page and inside a room. Under it, on the rooms page, a thin rail
+  holds *Rooms* and *Archive* (no count).
+- **Moving thoughts** (*Move to…*) lists every room, Messy thoughts first. Search and the timeline
+  choose what they find without opening its properties.
 - On a Mac, Ctrl+click is a right-click; Ctrl+drag still moves the canvas.
 
-In `model.js`: a room's `form: 'borges'`, its `page` (top only); `world.doors` and `world.pages`.
-`addRoom` takes the grid (`{ parent, page }`) and the kind; `putRoom`, `merge`, `addPage`,
-`addDoor`, `removeDoor`, `doorsOf`, `useDoor` and `doorWidth` do the rest. A room sits only at the
-top or inside a Borges room; a train only in a mode room (a saved world is repaired on load).
+In `model.js`: a room's `page` and `archived` (when); `world.pages`. `addRoom` takes the page and
+the kind; `toPage`, `addPage`, `archive` and `restore` do the rest. A train sits in any room, a room
+only on the rooms page. Borges rooms, doors and merging were tried in an earlier version and taken
+out; a saved world that has them is repaired on load (rooms inside a Borges room come out onto the
+rooms page in free cells, and doors are dropped).
