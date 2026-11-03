@@ -1,7 +1,8 @@
 // Tests for clear space: overlapping blocks are pushed apart; fixed ones stay.
 
 import { test, assert } from 'folio/testing';
-import { clearSpace } from '../clear.js';
+import { clearSpace, clearSpot } from '../clear.js';
+import { setHeights, clearHeights, stepAfter, STEP } from '../ontologies/joyce.js';
 
 const box = (x, y, w, h) => ({ x, y, w, h });
 
@@ -35,4 +36,25 @@ test('a pile of blocks ends with none overlapping', () => {
     const hit = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
     assert.ok(!hit, `${i} and ${j} overlap`);
   }
+});
+
+test('a new spot is clear of what is drawn', () => {
+  let seed = 7;
+  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const rects = [box(0, 0, 400, 300)];
+  const p = clearSpot(box(0, 0, 800, 600), rects, { w: 200, h: 50 }, random, { gap: 10 });
+  const hit = p.x < 410 && p.y < 310;
+  assert.ok(!hit, JSON.stringify(p));
+});
+
+test('Joyce steps by a thought\'s measured height once it has been drawn', () => {
+  clearHeights();
+  const th = { id: 'h1', kind: 'line', text: 'long' };
+  assert.equal(stepAfter(th), STEP.line); // a guess, until drawn
+  assert.equal(setHeights(new Map([['h1', { h: 120 }]])), true);
+  assert.equal(stepAfter(th), 120 + 29);
+  assert.equal(setHeights(new Map([['h1', { h: 120.5 }]])), false); // too small a change to redraw
+  setHeights(new Map([['h1', { h: 10 }]]));
+  assert.equal(stepAfter(th), STEP.line); // never closer than a line's step
+  clearHeights();
 });

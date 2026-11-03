@@ -35,6 +35,8 @@
 //                         [{ id, thoughts, group?, tail?, hand, at }]; hand: placed by hand.
 //                         Without it, each unit is a block, none by hand
 //   shift(w, room, id, dx, dy)   (optional) moves a block by dx, dy; without it, drop() to point + d
+//   measured(sizes)       (optional) each thought's size as drawn (Map id → { w, h }, world units),
+//                         after each drawing; return true to be drawn again (Joyce: steps fit text)
 //   Every ontology also has the setting 'overlap' (clear.js): whether what was placed by hand
 //   can be overlapped, or stays clear while the rest moves around it.
 //
@@ -49,7 +51,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

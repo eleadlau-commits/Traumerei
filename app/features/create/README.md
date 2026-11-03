@@ -80,6 +80,9 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
   pulling a thought far away makes it straight again (Line tension: the room's ⚙ beside Joyce). Drag a
   thought to move it alone; double-click a train to choose it whole, then drag it.
+- **Spacing that fits the text:** in a Joyce train, each thought sits below the one before by that
+  thought's real height as drawn (and a gap), so one that wraps onto several lines never runs
+  into the next. A new train starts in clear space on the screen, away from everything drawn.
 - **Clear space** (`clear.js`): after any change (writing, deleting, editing, folding, a drag),
   the room measures the real size of what is on its canvas and pushes apart anything that
   overlaps, in every mode. Joyce's blocks are its trains (and each run started by a thought

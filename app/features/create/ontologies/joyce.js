@@ -17,13 +17,31 @@ const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
 // How far below the one before a thought sits, until it is dragged somewhere else.
 export const STEP = { line: 58, passage: 190, picture: 270, group: 190 };
-const LINE = 29; // each extra line of a thought written over several lines
+const LINE = 29; // each extra line of a thought written over several lines; the gap under a thought
 
-// How far below a thought the next one sits.
+// Each thought's height as drawn (world units), measured after each drawing (measured() below),
+// so a thought that wraps onto several lines pushes the next one down by as much.
+const HEIGHTS = new Map();
+
+// Takes the heights just measured ({ id: { h } }); true if any changed enough to draw again.
+export function setHeights(sizes) {
+  let changed = false;
+  for (const [id, { h }] of sizes) {
+    const was = HEIGHTS.get(id);
+    if (!(h > 0)) continue;
+    if (was == null || Math.abs(was - h) > 1) { HEIGHTS.set(id, h); changed = true; }
+  }
+  return changed;
+}
+export const clearHeights = () => HEIGHTS.clear();
+
+// How far below a thought the next one sits: its real height and a gap, once it has been drawn;
+// until then, a guess from the lines written.
 export function stepAfter(th) {
   const kind = kindOf(th);
-  if (kind !== 'line') return STEP[kind];
-  return STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
+  const guess = kind !== 'line' ? STEP[kind] : STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
+  const h = HEIGHTS.get(th.id);
+  return h > 0 ? Math.max(STEP[kind] ?? STEP.line, Math.ceil(h) + LINE) : guess;
 }
 
 // Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or
@@ -162,6 +180,9 @@ export default {
   // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
   // were placed by hand.
   blocks: (w, roomId) => joyceBlocks(w, roomId),
+
+  // Each thought's height as drawn: the steps in a train follow them.
+  measured: (sizes) => setHeights(sizes),
 
   shift(w, roomId, id, dx, dy) {
     const th = w.things[id];

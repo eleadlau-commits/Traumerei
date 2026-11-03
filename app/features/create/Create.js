@@ -49,7 +49,7 @@ import {
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
 import { gather, FALLBACK } from './ontologies/index.js';
-import { clearSpace, OVERLAP } from './clear.js';
+import { clearSpace, clearSpot, OVERLAP } from './clear.js';
 import { visit, light, loadLog } from './attention.js';
 import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOOK, PALETTE } from './look.js';
 
@@ -1277,6 +1277,17 @@ export default class Create extends Feature {
   clearRoom(depth = 0) {
     if (!this.roomId || this.root.hidden || this.locked || this.gesture?.moved || this.roomPage.hidden) return;
     const w = this.world, ont = this.ont, roomId = this.roomId;
+    // The ontology hears each thought's real size first (Joyce steps its trains by them).
+    if (ont.measured && depth < 3) {
+      const sizes = new Map([...this.drawnRects()].filter(([id]) => w.things[id]));
+      if (ont.measured(sizes)) {
+        this.drawWorld();
+        cancelAnimationFrame(this.clearFrame);
+        this.clearFrame = 0;
+        this.clearRoom(depth + 1);
+        return;
+      }
+    }
     const overlap = this.setting('overlap') !== false;
     const blocks = ont.blocks ? ont.blocks(w, roomId) : ont.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
     const nodes = new Map();
@@ -1504,9 +1515,27 @@ export default class Create extends Feature {
     this.showDraft();
   }
 
+  // Where a new train starts: a clear space on the screen, away from everything already drawn
+  // (measured as drawn, so a long train counts all the way down).
   freeSpot() {
-    const taken = roomTrains(this.world, this.roomId).map((t) => ({ x: t.x, y: t.y }));
-    return randomSpot(this.visibleBox(), taken);
+    const rects = [...this.drawnRects().values()];
+    const NEW = { w: 340, h: 64 }; // room for a new thought's first line or two
+    const p = clearSpot(this.visibleBox(), rects.map((r) => ({ ...r, x: r.x + 20 })), NEW);
+    return { x: Math.round(p.x + 20), y: Math.round(p.y) }; // the thought's words start right of its knot
+  }
+
+  // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
+  // group drawn as one (a folded train, or a thought being written in a train).
+  drawnRects() {
+    const out = new Map();
+    const origin = this.world$.getBoundingClientRect(), zoom = view(this.world, this.roomId).zoom || 1;
+    let k = 0;
+    for (const n of this.world$.querySelectorAll('[data-thought], div[data-group]')) {
+      const r = n.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      out.set(n.dataset.thought || `g${k++}`, { x: (r.left - origin.left) / zoom, y: (r.top - origin.top) / zoom, w: r.width / zoom, h: r.height / zoom });
+    }
+    return out;
   }
 
   onInput() {

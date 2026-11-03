@@ -7633,10 +7633,24 @@ dialog.menu-drawer::before {
   var SVG = "http://www.w3.org/2000/svg";
   var STEP2 = { line: 58, passage: 190, picture: 270, group: 190 };
   var LINE = 29;
+  var HEIGHTS = /* @__PURE__ */ new Map();
+  function setHeights(sizes) {
+    let changed = false;
+    for (const [id, { h }] of sizes) {
+      const was = HEIGHTS.get(id);
+      if (!(h > 0)) continue;
+      if (was == null || Math.abs(was - h) > 1) {
+        HEIGHTS.set(id, h);
+        changed = true;
+      }
+    }
+    return changed;
+  }
   function stepAfter(th) {
     const kind = kindOf(th);
-    if (kind !== "line") return STEP2[kind];
-    return STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
+    const guess = kind !== "line" ? STEP2[kind] : STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
+    const h = HEIGHTS.get(th.id);
+    return h > 0 ? Math.max(STEP2[kind] ?? STEP2.line, Math.ceil(h) + LINE) : guess;
   }
   function trainSpots(w, trainId) {
     const t = w.things[trainId];
@@ -7747,6 +7761,8 @@ dialog.menu-drawer::before {
     // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
     // were placed by hand.
     blocks: (w, roomId) => joyceBlocks(w, roomId),
+    // Each thought's height as drawn: the steps in a train follow them.
+    measured: (sizes) => setHeights(sizes),
     shift(w, roomId, id, dx, dy) {
       const th = w.things[id];
       if (!th || shut(w, id)) return;
@@ -7885,7 +7901,7 @@ dialog.menu-drawer::before {
   var BUILT_IN = [joyce_default, pessoa_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { draftPoint: "function", tray: "function", draw: "function", placed: "function", tag: "function", blocks: "function", shift: "function" };
+  var MAY = { draftPoint: "function", tray: "function", draw: "function", placed: "function", tag: "function", blocks: "function", shift: "function", measured: "function" };
   function missing2(o) {
     if (!o || typeof o !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k, t]) => typeof o[k] !== t || t === "string" && !o[k]).map(([k]) => k);
@@ -7945,6 +7961,20 @@ dialog.menu-drawer::before {
       if (dx || dy) out[b.id] = { dx, dy };
     }
     return out;
+  }
+  function clearSpot(box, rects, size, random = Math.random, { gap = GAP, tries = 80 } = {}) {
+    const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
+    const spots = [];
+    const cols = 5, rows = 5;
+    for (let i = 0; i < tries; i++) {
+      const p = i < cols * rows ? { x: box.x + (i % cols + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i / cols) + random()) / rows * Math.max(0, box.h - size.h) } : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
+      spots.push(p);
+    }
+    const order = spots.map((p, i) => [random(), i]).sort((a, b) => a[0] - b[0]).map(([, i]) => spots[i]);
+    const free = order.find((p) => !hits(p));
+    if (free) return free;
+    const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
+    return order.reduce((best, p) => far(p) > far(best) ? p : best, order[0]);
   }
   var OVERLAP = { key: "overlap", label: "Hand-placed can be overlapped", type: "switch", default: true };
 
@@ -9587,6 +9617,16 @@ dialog.menu-drawer::before {
     clearRoom(depth = 0) {
       if (!this.roomId || this.root.hidden || this.locked || this.gesture?.moved || this.roomPage.hidden) return;
       const w = this.world, ont = this.ont, roomId = this.roomId;
+      if (ont.measured && depth < 3) {
+        const sizes = new Map([...this.drawnRects()].filter(([id]) => w.things[id]));
+        if (ont.measured(sizes)) {
+          this.drawWorld();
+          cancelAnimationFrame(this.clearFrame);
+          this.clearFrame = 0;
+          this.clearRoom(depth + 1);
+          return;
+        }
+      }
       const overlap = this.setting("overlap") !== false;
       const blocks = ont.blocks ? ont.blocks(w, roomId) : ont.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
       const nodes = /* @__PURE__ */ new Map();
@@ -9839,9 +9879,26 @@ dialog.menu-drawer::before {
       if (seed) this.typeIn(seed);
       this.showDraft();
     }
+    // Where a new train starts: a clear space on the screen, away from everything already drawn
+    // (measured as drawn, so a long train counts all the way down).
     freeSpot() {
-      const taken = roomTrains(this.world, this.roomId).map((t) => ({ x: t.x, y: t.y }));
-      return randomSpot(this.visibleBox(), taken);
+      const rects = [...this.drawnRects().values()];
+      const NEW = { w: 340, h: 64 };
+      const p = clearSpot(this.visibleBox(), rects.map((r) => ({ ...r, x: r.x + 20 })), NEW);
+      return { x: Math.round(p.x + 20), y: Math.round(p.y) };
+    }
+    // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
+    // group drawn as one (a folded train, or a thought being written in a train).
+    drawnRects() {
+      const out = /* @__PURE__ */ new Map();
+      const origin = this.world$.getBoundingClientRect(), zoom = view3(this.world, this.roomId).zoom || 1;
+      let k = 0;
+      for (const n of this.world$.querySelectorAll("[data-thought], div[data-group]")) {
+        const r = n.getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        out.set(n.dataset.thought || `g${k++}`, { x: (r.left - origin.left) / zoom, y: (r.top - origin.top) / zoom, w: r.width / zoom, h: r.height / zoom });
+      }
+      return out;
     }
     onInput() {
       if (!this.draft) {
