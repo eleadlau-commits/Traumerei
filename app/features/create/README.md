@@ -3,7 +3,7 @@
 What the home page's **Create** opens: rooms of thoughts.
 
 - **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
-  back arrow (top right) home. It is a light opacity mask (`look.js`) over the home picture
+  back arrow home in the top-left corner and the menu (☰) beside it. It is a light opacity mask (`look.js`) over the home picture
   itself, which is held still underneath: its spontaneity layer is off while the rooms page
   shows (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
   is an opacity square on it: a deeper version of the room's own colour inside, (L_r − 0.35,
@@ -87,7 +87,7 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys. A right-click on the empty
   canvas opens Add at the pointer, and what is made goes just there.
-- **Search** (top right, beside the back arrow, or Ctrl+K / ⌘K) searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
+- **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
   quiet *Saved* shows in the corner, and a line of help the first time each page is seen.
 - **Writing** works as in any text editor. The thought being written shows its real caret and
   selection (drawn from a hidden box, each letter measured on the screen): click to place the
@@ -151,7 +151,8 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
 - **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
   dropped on a number moves there. Messy thoughts stays on page 1.
 - **The rail and the menu.** The menu (☰, with Settings) sits at the top left of the top bar on
-  every page: home, the rooms page and inside a room. Under it, on the rooms page, a thin rail
+  every page. On the rooms page and inside a room the back arrow takes the corner and the menu
+  sits just beside it. Under it, on the rooms page, a thin rail
   holds *Rooms* and *Archive* (no count).
 - **Moving thoughts** (*Move to…*) lists every room, Messy thoughts first. Search and the timeline
   choose what they find without opening its properties.

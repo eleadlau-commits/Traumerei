@@ -1,7 +1,6 @@
 // Create: rooms of thoughts. Create (on the home page, or in the menu) slides the rooms page up
-// from the bottom, leaving a strip of the home page at the top with the menu (☰, top left, where it
-// is on every page), and a back arrow (top right) home with Search (Ctrl+K, ⌘K on a Mac) beside
-// it. The page is a light opacity mask over the home picture itself, held still underneath (its
+// from the bottom, leaving a strip of the home page at the top with a back arrow home in the top-left
+// corner, the menu (☰) beside it, and Search (Ctrl+K, ⌘K on a Mac) in the middle. The page is a light opacity mask over the home picture itself, held still underneath (its
 // spontaneity layer is off), so nothing is drawn while it shows. It is a grid of square cells:
 // each room is an opacity square on it (one cell; Messy thoughts takes four at the top left), and a
 // room written in lately glows. The rooms page has pages (1 2 3 + along the bottom); a thin rail on
@@ -18,7 +17,7 @@
 // move it to that page, or onto Archive.
 //
 // A room fills the screen as one gradient of its own colour, laid out like the rooms page: the back
-// arrow (to the rooms) and Search at the top right, its name at the top, and a rail on the left
+// arrow (to the rooms) in the corner, the menu beside it and Search in the middle, its name at the top, and a rail on the left
 // with its modes, where a big room switches between them (and Joyce has Timeline under it).
 // A room is a canvas: drag to move around, wheel / pinch / Ctrl+wheel to zoom. Typing anywhere
 // writes a thought; Enter ends it. A click chooses a thought; a right-click (or long press, or
@@ -602,7 +601,7 @@ export default class Create extends Feature {
     const lit = glow > 0.04;
     const name = this.renaming === r.id
       ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
-      : el('span', { class: 'create-tile-name' }, r.name);
+      : el('span', { class: 'create-tile-name', title: r.name }, r.name);
     const lines = peek(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
