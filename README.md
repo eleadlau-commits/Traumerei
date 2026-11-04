@@ -10,9 +10,18 @@ feature in `app/features/renderer/`, and its rendering engine is in
 
 ## Open it
 
+**Live:** <https://eleadlau-commits.github.io/Traumerei/>
+
 **Without anything installed:** double-click `standalone/mask-renderer.html`. It's the whole page
-in one file, made by `python standalone.py` (which needs Node.js for esbuild). Run that again
-after changing anything in `app/`.
+in one file, made by `python standalone.py` (which needs Node.js for esbuild).
+
+## Publishing
+
+You never rebuild the live copy by hand. After each merge to `main`, the **Publish live copy**
+action (`.github/workflows/publish.yml`) runs `python standalone.py`, commits the new
+`standalone/mask-renderer.html` to `main`, and GitHub Pages shows it about a minute later. Pull
+requests should not change that file; if you run `standalone.py` locally, don't commit the
+result.
 
 **While working on it:** from this folder,
 

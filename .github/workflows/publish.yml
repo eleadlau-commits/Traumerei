@@ -1,0 +1,44 @@
+# Rebuilds the live copy (standalone/mask-renderer.html) after every merge to main and commits it,
+# so GitHub Pages (served from main) shows the new version a minute later.
+# Pull requests never need to touch that file.
+name: Publish live copy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['standalone/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build the one-file page
+        run: python standalone.py
+      - name: Commit it to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898599+github-actions[bot]@users.noreply.github.com"
+          git add standalone/mask-renderer.html
+          if git diff --cached --quiet; then
+            echo "The live copy is already up to date."
+            exit 0
+          fi
+          git commit -m "Rebuild the live copy"
+          git push origin HEAD:main
