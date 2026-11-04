@@ -38,44 +38,35 @@ export function keepWords(w, chapterId, id, text, prev = null, now = Date.now())
   return th;
 }
 
-export function openDocument(c, chapterId) {
+// A group's thoughts as paragraphs to write in, for the document pop-up and the content editor
+// (editor.js). Click a line to write in it; Enter keeps it and starts the next thought after it,
+// Ctrl+Enter is a new line inside it, Backspace in an empty one goes back into the one before,
+// and a thought emptied goes. Escape stops writing (then escaped()). A passage or picture shows as
+// it is. kept(): after each thought kept (the world is saved). gone(): the group went.
+// Returns { node, more, keep, draw, write, writing }.
+export function paragraphs(c, groupId, { locked = false, kept = () => {}, gone = () => {}, escaped = () => {} } = {}) {
   const w = () => c.world;
-  const g = w().things[chapterId];
-  if (!isGroup(g)) return;
-  if (c.draft) c.commit();
-  const locked = !!shut(w(), chapterId);
   let writing = null; // { id | null, prev, box }
-  let paras = null;
-
   const grow = (t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; };
-  const thoughts = () => members(w(), chapterId);
+  const thoughts = () => members(w(), groupId);
+  const node = c.el('div', { class: 'room-doc-paras' });
 
   // Keeps the paragraph being written, if any. Returns the thought it became, or null.
   const keep = () => {
     if (!writing) return null;
     const { id, prev, box } = writing;
     writing = null;
-    const th = keepWords(w(), chapterId, id, box.value, prev);
+    const th = keepWords(w(), groupId, id, box.value, prev);
     c.save();
+    kept();
     return th;
   };
-
-  const close = () => {
-    keep();
-    if (!w().things[chapterId] || !members(w(), chapterId).length) c.sel = null;
-    c.editing = null;
-    c.docEl.hidden = true;
-    c.docEl.replaceChildren();
-    document.removeEventListener('pointerdown', outside, true);
-    c.drawWorld();
-  };
-  const outside = (e) => { if (!sheet.contains(e.target)) close(); };
 
   // Starts writing in a paragraph (id), or in a new one after `prev` (id null).
   const write = (id, prev = null, caret = 'end') => {
     if (locked) return;
     const before = keep();
-    if (!w().things[chapterId]) { close(); return; }
+    if (!w().things[groupId]) { gone(); return; }
     // A new thought after one that was just emptied (and so went) follows the one before that.
     if (!id && prev && !w().things[prev]) prev = before?.id || null;
     const th = id ? w().things[id] : null;
@@ -85,7 +76,7 @@ export function openDocument(c, chapterId) {
     box.addEventListener('input', () => grow(box));
     box.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); keep(); draw(); sheet.focus({ preventScroll: true }); return; }
+      if (e.key === 'Escape') { e.preventDefault(); keep(); draw(); escaped(); return; }
       if (e.key === 'Backspace' && !box.value && !e.isComposing) {
         // Back into the end of the thought before (this one, empty, goes).
         const list = thoughts();
@@ -98,8 +89,8 @@ export function openDocument(c, chapterId) {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) { box.setRangeText('\n', box.selectionStart, box.selectionEnd, 'end'); grow(box); return; }
       if (!box.value.trim() && !id) { keep(); draw(); return; } // Enter on an empty new one: done writing
-      const kept = keep();
-      write(null, kept?.id || prev);
+      const k = keep();
+      write(null, k?.id || prev);
     });
     draw();
     box.focus({ preventScroll: true });
@@ -111,7 +102,7 @@ export function openDocument(c, chapterId) {
 
   // The paragraphs, with the one being written as a box in its place.
   const draw = () => {
-    if (!w().things[chapterId]) { close(); return; }
+    if (!w().things[groupId]) { gone(); return; }
     const list = thoughts();
     const out = [];
     const fresh = writing && !writing.id ? writing : null;
@@ -126,30 +117,52 @@ export function openDocument(c, chapterId) {
       } else out.push(c.el('div', { class: 'room-doc-para room-doc-item' }, c.thoughtNode(th)));
       if (fresh && fresh.prev === th.id) out.push(c.el('div', { class: 'room-doc-para writing' }, fresh.box));
     }
-    paras.replaceChildren(...out);
+    node.replaceChildren(...out);
     if (writing) requestAnimationFrame(() => writing && grow(writing.box));
   };
+
+  const more = locked ? null : c.el('button', {
+    type: 'button', class: 'room-doc-more', 'aria-label': 'Write the next thought',
+    onclick: () => { const list = thoughts(); write(null, list.at(-1)?.id || null); },
+  }, '+');
+  return { node, more, keep, draw, write, get writing() { return !!writing; } };
+}
+
+export function openDocument(c, chapterId) {
+  const w = () => c.world;
+  const g = w().things[chapterId];
+  if (!isGroup(g)) return;
+  if (c.draft) c.commit();
+  const locked = !!shut(w(), chapterId);
+  const thoughts = () => members(w(), chapterId);
+
+  const close = () => {
+    paras.keep();
+    if (!w().things[chapterId] || !members(w(), chapterId).length) c.sel = null;
+    c.editing = null;
+    c.docEl.hidden = true;
+    c.docEl.replaceChildren();
+    document.removeEventListener('pointerdown', outside, true);
+    c.drawWorld();
+  };
+  const outside = (e) => { if (!sheet.contains(e.target)) close(); };
+  const paras = paragraphs(c, chapterId, { locked, gone: () => close(), escaped: () => sheet.focus({ preventScroll: true }) });
 
   const title = c.el('input', {
     class: 'room-doc-title', value: g.title || '', placeholder: 'Name this chapter', 'aria-label': 'The chapter\'s name',
     onkeydown: (e) => {
       e.stopPropagation();
       if (e.key === 'Escape') { e.preventDefault(); title.blur(); sheet.focus({ preventScroll: true }); }
-      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); title.blur(); const list = thoughts(); if (!list.length) write(null); }
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); title.blur(); const list = thoughts(); if (!list.length) paras.write(null); }
     },
     onchange: () => { name(w(), chapterId, title.value); c.save(); },
   });
   if (locked) title.setAttribute('readonly', '');
-  paras = c.el('div', { class: 'room-doc-paras' });
-  const more = locked ? null : c.el('button', {
-    type: 'button', class: 'room-doc-more', 'aria-label': 'Write the next thought',
-    onclick: () => { const list = thoughts(); write(null, list.at(-1)?.id || null); },
-  }, '+');
   const sheet = c.el('div', { class: 'room-doc', role: 'dialog', 'aria-label': 'Chapter', tabindex: '-1' },
     c.el('div', { class: 'room-doc-head' },
       c.el('span', { class: 'room-doc-kind' }, 'Chapter'),
       c.el('button', { type: 'button', class: 'room-doc-close', 'aria-label': 'Close', onclick: close }, '×')),
-    title, paras, more,
+    title, paras.node, paras.more,
     c.el('div', { class: 'room-keys' }, locked ? 'This room is locked · Esc closes'
       : 'Click a paragraph to write · Enter keeps it · Ctrl+Enter a new line · Esc closes'));
   sheet.addEventListener('keydown', (e) => {
@@ -161,7 +174,7 @@ export function openDocument(c, chapterId) {
   c.editing = { kind: 'document', id: chapterId, close };
   c.docEl.replaceChildren(sheet);
   c.docEl.hidden = false;
-  draw();
+  paras.draw();
   sheet.focus({ preventScroll: true });
   // A click outside closes it (after this click, which opened it, is over).
   setTimeout(() => { if (!c.docEl.hidden) document.addEventListener('pointerdown', outside, true); }, 0);

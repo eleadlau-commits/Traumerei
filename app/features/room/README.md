@@ -84,7 +84,8 @@ room, through the `rooms` service. The `Room` class is written across several fi
 `Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space, Timeline), `writing.js` (thoughts, the draft, the caret),
 `gestures.js` (pointer, keys, selection, copy and paste, opening Search) and `bars.js` (pop-ups, tray,
-sheets, pictures). Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
+sheets, pictures). `editor.js` (the content editor) and `document.js` (a closed chapter as a
+document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
 A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); the room
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
@@ -110,8 +111,16 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its train). Scroll it to see
   everything; a click takes the view to that thought.
 - **Editing:** a click on a thought (or a double click on a train) only chooses it. A right-click
-  (or a long press, or Enter) opens its properties beside it, in the rooms page's style: edit its words (a passage's title and body, a picture's caption, a
-  train's name), fold or unfold a train, move it to another room, or delete it. In a thought's
+  (or a long press, or Enter) opens the **content editor** (`editor.js`) in the side panel on the
+  right, and the room moves over. At its top is what the old pop-up had: edit its words (a
+  passage's title and body, a picture's caption, a train's or chapter's name), fold or unfold it,
+  the mode's own rows (Russell's arrows), move it to another room, or delete it. Under that, a
+  group's thoughts show as paragraphs to write in, as in a closed chapter's document (click one to
+  write; Enter keeps it and starts the next; Ctrl+Enter a new line; Backspace in an empty one goes
+  back). A small *Source* at the foot opens the group (or the group a thought is in) as room
+  Markdown in the source editor, in the same panel. While the editor shows, a click on another
+  thought, group or train switches it there; Escape or × closes it. Several things chosen together
+  still get the small pop-up beside them, and with no panel feature the pop-up is used for all. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys, and (with the roomfile
