@@ -33,6 +33,7 @@
 //   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
 //   pages:  n                                     how many pages the rooms page has (at least 1)
 //   tagGroups: { [tag]: group }                   the group each tag is in (tag in lower case)
+//   tagsMade: [tag], groupsMade: [group]          tags and groups made with + (they show with no rooms)
 // }
 //
 // No screen here, so it can be tested on its own (tests/model.test.js).
@@ -66,7 +67,7 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, pages: 1 };
+  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
 }
 
 // A saved world, repaired: the messy room always exists; every room sits on the rooms page; an
@@ -75,6 +76,7 @@ export function emptyWorld(now = Date.now()) {
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
   for (const key of ['things', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
   for (const th of Object.values(w.things)) {
@@ -649,8 +651,8 @@ export function removeTag(w, id, text) {
   return true;
 }
 
-// Every tag on the rooms page (and in the Archive too, with shelf), with how many rooms have it:
-// [{ tag, n }], the ontologies' first (in their order), then the rest by name.
+// Every tag on the rooms page (and in the Archive too, with shelf), with how many rooms have it
+// (a tag made with + and on no room yet has 0): [{ tag, n }], the ontologies' first (in their order), then the rest by name.
 export function allTags(w, ontologies = [], shelf = false) {
   const counts = new Map();
   const all = shelf ? [...rooms(w), ...archived(w)] : rooms(w);
@@ -661,6 +663,7 @@ export function allTags(w, ontologies = [], shelf = false) {
       counts.set(key, { tag: had?.tag || tag, n: (had?.n || 0) + 1 });
     }
   }
+  for (const tag of w.tagsMade || []) if (!counts.has(tag.toLowerCase())) counts.set(tag.toLowerCase(), { tag, n: 0 });
   const order = ontologies.map((o) => o.name.toLowerCase());
   const rank = (t) => { const i = order.indexOf(t.tag.toLowerCase()); return i < 0 ? order.length : i; };
   return [...counts.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
@@ -688,7 +691,7 @@ export function setTagGroup(w, tag, group, ontologies = []) {
   const t = tidyTag(tag), g = tidyTag(group);
   if (!t || isMode(t, ontologies) || (g && same(g, ONTOLOGY))) return false;
   const groups = (w.tagGroups ||= {});
-  const name = Object.values(groups).find((x) => g && same(x, g)) || g; // an existing group keeps its spelling
+  const name = [...Object.values(groups), ...(w.groupsMade || [])].find((x) => g && same(x, g)) || g; // an existing group keeps its spelling
   const key = t.toLowerCase();
   if ((groups[key] || '') === name) return false;
   if (name) groups[key] = name; else delete groups[key];
@@ -696,13 +699,15 @@ export function setTagGroup(w, tag, group, ontologies = []) {
 }
 
 // The names of the groups there are: Ontology first, then the rest by name.
-export const groupNames = (w) => [ONTOLOGY, ...[...new Set(Object.values(w.tagGroups || {}))]
+export const groupNames = (w) => [ONTOLOGY, ...[...new Set([...Object.values(w.tagGroups || {}), ...(w.groupsMade || [])])]
   .filter((g, i, all) => all.findIndex((x) => same(x, g)) === i).sort((a, b) => a.localeCompare(b))];
 
 // Every tag (as allTags) under its group: [{ group, tags: [{ tag, n }] }], Ontology first, then
-// the groups by name, then the tags in none (group null). Groups with no tags are left out.
+// the groups by name, then the tags in none (group null). A group made with + shows with no tags;
+// other groups with no tags are left out.
 export function tagsByGroup(w, ontologies = [], shelf = false) {
   const out = new Map();
+  for (const g of w.groupsMade || []) if (!same(g, ONTOLOGY) && !out.has(g.toLowerCase())) out.set(g.toLowerCase(), { group: g, tags: [] });
   for (const t of allTags(w, ontologies, shelf)) {
     const g = tagGroup(w, t.tag, ontologies);
     const key = g ? g.toLowerCase() : '';
@@ -716,45 +721,23 @@ export function tagsByGroup(w, ontologies = [], shelf = false) {
 // True if a room has a tag (whatever its case).
 export const hasTag = (w, id, tag, ontologies = []) => roomTags(w, id, ontologies).some((o) => same(o.tag, tidyTag(tag)));
 
-// Arrange by group: lays one page's rooms out again, once, in districts, one for each tag of a
-// group (Ontology: Joyce, Pessoa, Russell; Subject: Algebra, Topology, …). A room goes with its
-// first tag in the group; a big room, which has every mode, has a district of its own first when
-// arranging by Ontology; rooms with no tag in the group come last. Each district starts on a new
-// row, a row apart from the last, rooms oldest first, left to right `cols` wide. Messy thoughts and
-// locked rooms stay where they are. Returns the districts: [{ tag, rooms: [id] }] (tag null: none).
-export function arrangeBy(w, group = ONTOLOGY, page = 0, cols = 6, ontologies = []) {
-  const stay = (r) => r.id === MESSY || r.locked;
-  const all = roomsOn(w, page);
-  const taken = new Set();
-  for (const r of all.filter(stay)) if (r.col != null) for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
-  const byOntology = same(group, ONTOLOGY);
-  const order = byOntology ? ontologies.map((o) => o.name) : null;
-  const EVERY = 'Every mode';
-  const districts = new Map();
-  for (const r of all.filter((r) => !stay(r))) {
-    const tags = roomTags(w, r.id, ontologies).filter((o) => same(tagGroup(w, o.tag, ontologies) || '', group));
-    const tag = byOntology && isBig(r) ? EVERY : tags[0]?.tag ?? null;
-    const key = tag == null ? '\u0000none' : tag.toLowerCase();
-    if (!districts.has(key)) districts.set(key, { tag, rooms: [] });
-    districts.get(key).rooms.push(r);
-  }
-  const rank = (d) => (d.tag == null ? Infinity : d.tag === EVERY ? -1 : order ? order.findIndex((n) => same(n, d.tag)) : 0);
-  const sorted = [...districts.values()].sort((a, b) => rank(a) - rank(b) || (a.tag || '').localeCompare(b.tag || ''));
-  const free = (r, col, row) => col + (r.size || 1) <= cols && cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
-  let start = 0;
-  for (const d of sorted) {
-    let last = start - 1;
-    for (const r of d.rooms) {
-      for (let i = start * cols; ; i++) {
-        const col = i % cols, row = Math.floor(i / cols);
-        if (free(r, col, row)) { r.col = col; r.row = row; break; }
-      }
-      for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
-      last = Math.max(last, r.row + (r.size || 1) - 1);
-    }
-    start = last + 2;
-  }
-  return sorted.map((d) => ({ tag: d.tag, rooms: d.rooms.map((r) => r.id) }));
+// Makes a tag with + before any room has it (it shows with 0 rooms), in a group (or none).
+// False if it is empty or a mode's; a tag there already just moves to the group.
+export function makeTag(w, text, group = '', ontologies = []) {
+  const tag = tidyTag(text);
+  if (!tag || isMode(tag, ontologies)) return false;
+  const made = (w.tagsMade ||= []);
+  const had = allTags(w, ontologies, true).some((t) => same(t.tag, tag));
+  if (!had) made.push(tag);
+  return setTagGroup(w, tag, group, ontologies) || !had;
+}
+
+// Makes a group with + before it has any tags. False if it is empty, Ontology, or there already.
+export function makeGroup(w, text) {
+  const g = tidyTag(text);
+  if (!g || groupNames(w).some((x) => same(x, g))) return false;
+  (w.groupsMade ||= []).push(g);
+  return true;
 }
 
 // The last few things written in a room (newest last), as plain text, for its square's peek.

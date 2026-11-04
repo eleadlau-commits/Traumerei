@@ -1108,35 +1108,56 @@
 }
 .create-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
 
-/* The rail's Tags: under a hairline, a quiet list of every tag and how many rooms have it. */
+/* The rail's Arrange by: under a hairline, None and the tag groups; a group opens to its tags. */
 .create-tags-btn.on { opacity: 1; }
-.create-tag-list { display: grid; gap: 6px; margin-top: -8px; width: 100%; }
+.create-tag-list { display: grid; gap: 4px; margin-top: -8px; width: 100%; }
 .create-tag-list[hidden] { display: none; }
-.create-tag-pick {
+.create-tag-head, .create-tag-pick, .create-tag-plus {
   appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
-  padding: 1px 0 1px 10px; display: flex; gap: 6px; align-items: baseline; justify-content: flex-start;
-  text-align: left; font: inherit; font-size: 11px; letter-spacing: .03em; line-height: 1.25; color: inherit;
-  opacity: .5; cursor: pointer; box-shadow: inset 1px 0 0 transparent; transition: opacity .2s, box-shadow .25s;
+  display: flex; gap: 6px; align-items: baseline; justify-content: flex-start;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  box-shadow: inset 1px 0 0 transparent; transition: opacity .2s, box-shadow .25s;
 }
+/* None and a group's name: small capitals, like the rail's words. */
+.create-tag-head {
+  width: 100%; padding: 3px 0 3px 10px; font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; opacity: .5;
+}
+.create-tag-head:is(:hover, :focus-visible) { opacity: .85; outline: none; }
+.create-tag-head[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.create-tag-head[aria-expanded="true"] { opacity: .85; }
+.create-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 12px; transition: transform .25s var(--create-ease); }
+.create-tag-head[aria-expanded="true"] .create-tag-caret { transform: rotate(90deg); }
+.create-tag-tags { display: grid; gap: 4px; padding: 3px 0 6px 10px; }
+/* A tag: its name and how many rooms have it. One of your own can be dragged onto a square. */
+.create-tag-pick {
+  padding: 1px 0 1px 10px; font-size: 11px; letter-spacing: .03em; line-height: 1.25; opacity: .5;
+}
+.create-tag-pick.draggable { cursor: grab; touch-action: none; }
 .create-tag-pick:is(:hover, :focus-visible) { opacity: .85; outline: none; }
 .create-tag-pick[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
 .create-tag-name { overflow-wrap: anywhere; }
 .create-tag-n { font-size: 10px; opacity: .6; font-variant-numeric: tabular-nums; }
+.create-tag-plus { padding: 1px 0 1px 10px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.25; opacity: .4; }
+.create-tag-plus > span { font-size: 13px; font-weight: 300; letter-spacing: 0; }
+.create-tag-list > .create-tag-plus { margin-top: 4px; }
+.create-tag-plus:is(:hover, :focus-visible) { opacity: .9; outline: none; }
+.create-group-edit { padding-left: 10px; }
+.create-group-field, .create-group-field:focus, .create-make-field, .create-make-field:focus { width: 130px; opacity: 1; border-bottom-color: currentColor; }
+/* A tag being dragged onto a square: a small chip at the pointer; the square under it outlined. */
+.create-tag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none !important;
+  padding: 3px 9px; font-size: 11px; letter-spacing: .03em; white-space: nowrap;
+  background: var(--create-panel); color: var(--create-panel-ink); box-shadow: var(--create-panel-shadow);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.create-grid.tag-dragging, .create-grid.tag-dragging .create-tile { cursor: copy; }
+.create-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
 @media (max-width: 560px) {
   .create-rail { flex-wrap: wrap; right: var(--gutter); }
   .create-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
-  .create-tag-pick { padding: 2px 0; }
+  .create-tag-head, .create-tag-pick, .create-group-edit, .create-tag-tags { width: auto; padding-left: 0; }
+  .create-tag-tags { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0; }
 }
-/* A group's heading in the Tags list (Ontology, your own, Other), and the field that names a tag's group. */
-.create-tag-group { margin-top: 6px; padding-left: 10px; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; opacity: .35; }
-.create-tag-group:first-child { margin-top: 0; }
-.create-group-edit { padding-left: 10px; }
-.create-group-field, .create-group-field:focus { width: 100px; opacity: 1; border-bottom-color: currentColor; }
-@media (max-width: 560px) { .create-tag-group { margin-top: 0; padding-left: 0; } }
-/* Arrange by, at the foot of the Tags list: a word for each group. */
-.create-tag-arrange { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; box-shadow: inset 0 1px 0 rgb(var(--ink-rgb, 43 42 40) / .12); }
-.create-tag-arrange .create-tag-pick { font-style: italic; }
-@media (max-width: 560px) { .create-tag-arrange { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; box-shadow: none; } }
 
 /* Russell: a closed chapter shows only its name; a click opens it as a document. */
 .create-russell-closed { cursor: pointer; }
