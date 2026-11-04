@@ -45,7 +45,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, groupNames, ONTOLOGY, arrangeBy, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
+  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, groupNames, ONTOLOGY, makeTag, makeGroup, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -100,8 +100,10 @@ export default class Create extends Feature {
     this.shelf = false;   // the Archive page is showing, instead of the grid
     this.lights = null;   // the rooms page's search lights: what is being looked for, or null
     this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
-    this.regrouping = null; // the tag whose group is being typed in the Tags list
-    this.tagsOpen = false; // the rail's Tags list is open
+    this.regrouping = null; // the tag whose group is being typed in the Arrange by list
+    this.tagsOpen = false; // the rail's Arrange by list is open
+    this.openGroup = null; // the group open in it (its name in lower case; '' for Other), or null
+    this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
@@ -403,11 +405,12 @@ export default class Create extends Feature {
     this.railRooms = el('button', { type: 'button', class: 'create-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
     this.shelfBtn = el('button', { type: 'button', class: 'create-rail-item create-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
       'Archive');
-    // Under a hairline, Tags: a list of every tag with how many rooms have it. Picking one dims the
-    // rooms without it, as the search lights do (nothing hides or moves); picking it again, or
-    // Escape, lets go.
+    // Under a hairline, Arrange by: None, then the tag groups, each opening to its tags with how
+    // many rooms have each. Picking a tag dims the rooms without it, as the search lights do
+    // (nothing hides or moves); None, picking it again, or Escape, lets go. + makes groups and tags,
+    // and a tag dragged onto a square is added to that room.
     this.tagsBtn = el('button', { type: 'button', class: 'create-rail-item create-tags-btn', 'aria-expanded': 'false',
-      onclick: () => { this.tagsOpen = !this.tagsOpen; if (!this.tagsOpen) this.tagLight = null; this.drawRooms(); } }, 'Tags');
+      onclick: () => { this.tagsOpen = !this.tagsOpen; this.makingTag = null; this.drawRooms(); } }, 'Arrange by');
     this.tagsList = el('div', { class: 'create-tag-list', hidden: true, role: 'list' });
     // The rooms page's pages, in the rail under Archive: 1 2 3 +. A room dropped on a number goes to that page.
     this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
@@ -732,11 +735,13 @@ export default class Create extends Feature {
       }, 'create-options-delete'));
   }
 
-  // ---- Tags, in the rail: every tag and how many rooms have it ----
+  // ---- Arrange by, in the rail: the tag groups, their tags, and how many rooms have each ----
 
-  // The tags under their groups: a small heading for each (Ontology first, Other last, shown only
-  // when there are groups of your own). A right-click on a tag (a long press on a phone) asks
-  // for its group: typed there, or as "Group: tag" in a room's + tag.
+  // None first (every room bright), then each group (Ontology first, Other last, for the tags in
+  // none). A click on a group opens it to its tags; a click on a tag lights its rooms and dims the
+  // rest. A right-click on a tag (a long press on a phone) asks for its group. + under a group's
+  // tags makes a tag there; + at the foot makes a group. A tag (not a mode's) dragged onto a
+  // square is added to that room.
   drawTags() {
     const onts = this.ontologies;
     const grouped = tagsByGroup(this.world, onts, this.shelf);
@@ -746,38 +751,117 @@ export default class Create extends Feature {
     this.tagsBtn.classList.toggle('on', !!this.tagLight);
     this.tagsList.hidden = !this.tagsOpen;
     if (!this.tagsOpen) return;
-    const mine = grouped.some((g) => g.group && g.group !== ONTOLOGY);
+    const keyOf = (g) => (g.group || '').toLowerCase();
+    if (this.tagLight && this.openGroup == null) this.openGroup = (tagGroup(this.world, this.tagLight, onts) || '').toLowerCase();
     const pick = (t) => {
       const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
       if (this.regrouping?.toLowerCase() === t.tag.toLowerCase()) return this.groupField(t.tag);
       const mode = tagGroup(this.world, t.tag, onts) === ONTOLOGY;
       let timer = 0;
       return el('button', {
-        type: 'button', class: 'create-tag-pick', role: 'listitem', 'aria-pressed': String(on),
-        title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · right-click to put it in a group'}`,
+        type: 'button', class: 'create-tag-pick' + (mode ? '' : ' draggable'), role: 'listitem', 'aria-pressed': String(on),
+        title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · drag onto a room to tag it · right-click to put it in a group'}`,
         onclick: () => { if (this.heldTag) { this.heldTag = false; return; } this.tagLight = on ? null : t.tag; this.drawRooms(); },
         oncontextmenu: (e) => { e.preventDefault(); if (!mode) { this.regrouping = t.tag; this.drawTags(); } },
-        onpointerdown: (e) => { if (e.pointerType !== 'mouse' && !mode) timer = setTimeout(() => { this.heldTag = true; this.regrouping = t.tag; this.drawTags(); }, HOLD); },
+        onpointerdown: (e) => {
+          if (mode) return;
+          if (e.pointerType !== 'mouse') timer = setTimeout(() => { this.heldTag = true; this.regrouping = t.tag; this.drawTags(); }, HOLD);
+          this.dragTag(e, t.tag, () => clearTimeout(timer));
+        },
         onpointerup: () => clearTimeout(timer), onpointerleave: () => clearTimeout(timer),
       }, el('span', { class: 'create-tag-name' }, t.tag), el('span', { class: 'create-tag-n' }, String(t.n)));
     };
-    // At the foot, Arrange by: one word for each group, which lays this page out in its districts.
-    const groups = grouped.filter((g) => g.group).map((g) => g.group);
-    this.tagsList.replaceChildren(...grouped.flatMap((g) => [
-      g.group || mine ? el('div', { class: 'create-tag-group', 'aria-hidden': 'true' }, g.group || 'Other') : null,
-      ...g.tags.map(pick),
-    ]), this.shelf || !groups.length ? null : el('div', { class: 'create-tag-arrange' },
-      el('div', { class: 'create-tag-group' }, 'Arrange by'),
-      ...groups.map((g) => el('button', { type: 'button', class: 'create-tag-pick', title: `Lay this page out in districts, one for each ${g} tag`, onclick: () => this.arrange(g) }, g))));
+    const plus = (group, label) => this.makingTag && this.makingTag.group === group
+      ? this.makeField(group)
+      : el('button', { type: 'button', class: 'create-tag-plus', title: label, 'aria-label': label,
+        onclick: () => { this.makingTag = { group }; this.drawTags(); } }, el('span', { 'aria-hidden': 'true' }, '+'), group == null ? 'group' : 'tag');
+    const none = !this.tagLight;
+    this.tagsList.replaceChildren(
+      el('button', { type: 'button', class: 'create-tag-head', role: 'listitem', 'aria-pressed': String(none),
+        title: 'Every room bright', onclick: () => { this.tagLight = null; this.openGroup = null; this.makingTag = null; this.drawRooms(); } }, 'None'),
+      ...grouped.map((g) => {
+        const key = keyOf(g), open = this.openGroup === key;
+        const lit = this.tagLight && (tagGroup(this.world, this.tagLight, onts) || '').toLowerCase() === key;
+        return el('div', { class: 'create-tag-fold' + (open ? ' open' : ''), role: 'listitem' },
+          el('button', { type: 'button', class: 'create-tag-head', 'aria-expanded': String(open), 'aria-pressed': String(!!lit),
+            onclick: () => { this.openGroup = open ? null : key; this.makingTag = null; this.drawTags(); } },
+          el('span', {}, g.group || 'Other'), el('span', { class: 'create-tag-caret', 'aria-hidden': 'true' }, '›')),
+          open ? el('div', { class: 'create-tag-tags', role: 'list' },
+            ...g.tags.map(pick),
+            g.group === ONTOLOGY ? null : plus(g.group || '', `A new tag${g.group ? ' in ' + g.group : ''}`)) : null);
+      }),
+      plus(null, 'A new group'));
   }
 
-  // Arrange by group (model.js): this page's rooms laid out again, once. Ctrl+Z puts them back.
-  arrange(group) {
-    const out = arrangeBy(this.world, group, this.page, this.gridSize().cols, this.ontologies);
-    this.roomSel = this.roomPick = this.making = null;
-    this.save();
-    this.drawRooms();
-    this.toast(out.length ? `Arranged by ${group}: ${out.length} district${out.length === 1 ? '' : 's'}. Ctrl+Z puts them back.` : 'Nothing here to arrange.');
+  // The + field: a new tag in a group (Enter makes it; it shows with 0 rooms until dragged onto
+  // one), or a new group (Enter makes it and opens it). Escape, or an empty Enter, leaves it.
+  makeField(group) {
+    const forGroup = group == null;
+    const done = (keep, value) => {
+      this.makingTag = null;
+      if (keep && value.trim()) {
+        if (forGroup ? makeGroup(this.world, value) : makeTag(this.world, value, group, this.ontologies)) {
+          this.save();
+          if (forGroup) this.openGroup = tidyTag(value).toLowerCase();
+        }
+      }
+      this.drawTags();
+    };
+    const field = el('input', {
+      class: 'create-tag-field create-make-field', placeholder: forGroup ? 'New group' : 'New tag',
+      'aria-label': forGroup ? 'A new group' : 'A new tag', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); done(true, e.target.value); }
+        if (e.key === 'Escape') { e.preventDefault(); done(false); }
+      },
+      onblur: (e) => { if (this.makingTag) done(true, e.target.value); },
+    });
+    queueMicrotask(() => field.focus({ preventScroll: true })); // once it is on the page, before the next key
+    return el('div', { class: 'create-group-edit', role: 'listitem' }, field);
+  }
+
+  // Dragging a tag from the Arrange by list: a small chip follows the pointer, and the square it is
+  // let go over gets the tag. A press that doesn't move stays a click.
+  dragTag(e, tag, moved) {
+    if (e.button) return;
+    const start = { x: e.clientX, y: e.clientY };
+    let chip = null, over = null;
+    const tileAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.create-tile[data-room]') || null;
+    const move = (ev) => {
+      if (!chip) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+        moved();
+        chip = el('div', { class: 'create-tag-ghost', 'aria-hidden': 'true' }, tag);
+        this.root.append(chip);
+        this.grid.classList.add('tag-dragging');
+      }
+      chip.style.transform = `translate(${ev.clientX + 10}px, ${ev.clientY + 8}px)`;
+      const t = tileAt(ev);
+      if (t !== over) { over?.classList.remove('tag-over'); over = t; over?.classList.add('tag-over'); }
+    };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (!chip) return;
+      chip.remove();
+      this.grid.classList.remove('tag-dragging');
+      over?.classList.remove('tag-over');
+      this.heldTag = true; // the click that follows the drop does nothing
+      setTimeout(() => { this.heldTag = false; }, 0);
+      const id = ev.type === 'pointerup' && tileAt(ev)?.dataset.room;
+      const r = id && room(this.world, id);
+      if (!r) return;
+      if (addTag(this.world, id, tag, this.ontologies)) {
+        this.save();
+        this.drawRooms();
+        this.toast(`${r.name} is tagged ${tag}.`);
+      } else this.toast(`${r.name} has ${tag} already.`);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.

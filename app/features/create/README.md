@@ -25,19 +25,17 @@ What the home page's **Create** opens: rooms of thoughts.
   Russell) for a big room. *+ tag* adds one of its own, suggesting the tags other rooms have
   (Enter adds it; Backspace in the empty field takes off the last). Tags are the same whatever
   their case, and show only in properties and the tags list, never on the squares.
-  Under a hairline below *Archive*, **Tags** opens a quiet list of every tag with how many rooms
-  have it. Picking one dims the rooms without it, as the search lights do (nothing hides or
-  moves); picking it again, or Escape, lets go. In the rooms page's Search, **#tag** does the same
-  (it lights the rooms with a tag that starts so).
-  **Tag groups.** A tag can be in one group, so tags of a kind sit together under a small heading
-  in the list. *Ontology* holds the modes and can't change. Make your own by typing *Subject:
-  Algebra* in a room's + tag, or right-click a tag in the list (a long press on a phone) and type
-  its group (empty takes it out). Tags in no group are under *Other*.
-  **Arrange by.** At the foot of the list, a word for each group lays the page out again, once, in
-  districts: one for each of the group's tags, a room going with its first tag in it, the rooms
-  with none last. By *Ontology*, the big rooms (every mode) have a district of their own first.
-  Each district starts on a new row with an empty row before it; Messy thoughts and locked rooms
-  stay where they are. Ctrl+Z puts the rooms back.
+  Under a hairline below *Archive* (and the page numbers), **Arrange by** opens a quiet list:
+  *None*, then each tag group (Ontology first, *Other* last for the tags in no group). A click on
+  a group opens it to its tags, each with how many rooms have it. Picking a tag lights its rooms
+  and dims the rest, as the search lights do: nothing hides or moves. *None*, picking the tag
+  again, or Escape makes every room bright again. In the rooms page's Search, **#tag** does the
+  same (it lights the rooms with a tag that starts so).
+  **Making tags.** *+ group* at the foot of the list makes a group; *+ tag* under an open group's
+  tags makes a tag in it. A tag made so shows 0 until a room has it. **Drag a tag** (not a mode's)
+  from the list onto a square to add it to that room; take it off in the room's properties.
+  Right-click a tag in the list (a long press on a phone) to type its group (empty takes it out);
+  *Subject: Algebra* in a room's + tag also works. *Ontology* holds the modes and can't change.
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
