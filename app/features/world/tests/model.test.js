@@ -1,4 +1,4 @@
-// Tests for Create's world: everything is a thought.
+// Tests for the world: everything is a thought.
 
 import { test, assert } from 'folio/testing';
 import {

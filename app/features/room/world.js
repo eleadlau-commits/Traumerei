@@ -1,7 +1,7 @@
-// What Create uses from the world feature (app/features/world): its rules, by name. A feature
-// can't import another's files, so these are bound from the world service's `lib` when Create
-// starts (bind, in Create.start), and its files import them from here. This list is
-// everything Create needs of the world's rules.
+// What the room uses from the world feature (app/features/world): its rules, by name. A feature
+// can't import another's files, so these are bound from the world service's `lib` when the room
+// starts (bind, in Room.start), and its files import them from here. This list is
+// everything the room needs of the world's rules.
 
 export let
   room, view, shut, MESSY, name, create, update, remove, move, fold, unfold, kindOf, groupOf,

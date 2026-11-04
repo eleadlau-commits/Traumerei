@@ -1,6 +1,6 @@
-// Part of Create. Pointer and keys in a room: dragging, pinching, keyboard shortcuts, choosing several things,
+// Part of the room feature. Pointer and keys in a room: dragging, pinching, keyboard shortcuts, choosing several things,
 // copy and paste of thoughts, double-click, the Add menu, Search (Ctrl+K) and the wheel.
-// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+// Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
   room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
@@ -18,7 +18,7 @@ export class Gestures {
     this.stage.setPointerCapture(e.pointerId);
     if (pointers.size === 2) { this.gesture = { kind: 'pinch', ...this.pinchState() }; return; }
     // In the thought being written: a click places the caret, a drag chooses letters, Shift extends.
-    if (this.draftEl?.isConnected && e.target.closest?.('.create-draft') && !(e.ctrlKey || e.metaKey) && !middle && !this.spaceDown) {
+    if (this.draftEl?.isConnected && e.target.closest?.('.room-draft') && !(e.ctrlKey || e.metaKey) && !middle && !this.spaceDown) {
       e.preventDefault();
       const at = this.offsetAt(e.clientX, e.clientY);
       const box = this.input;
@@ -28,7 +28,7 @@ export class Gestures {
       this.lastPress = { at: now, x: e.clientX, y: e.clientY, count };
       this.gesture = { kind: 'text', x0: e.clientX, y0: e.clientY, moved: false };
       this.listen(e);
-      if (count === 2) { const [a, b] = Create.wordAround(box.value, at); this.gesture.anchor = a; this.selectText(a, b); return; }
+      if (count === 2) { const [a, b] = this.wordAround(box.value, at); this.gesture.anchor = a; this.selectText(a, b); return; }
       if (count === 3) { this.gesture.anchor = 0; this.selectText(0, box.value.length); return; }
       const anchor = e.shiftKey ? (box.selectionDirection === 'backward' ? box.selectionEnd : box.selectionStart) : at;
       this.gesture.anchor = anchor;
@@ -239,9 +239,9 @@ export class Gestures {
       ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
-    this.searchBox.replaceChildren(el('div', { class: 'create-search-panel create-keys-panel' },
-      el('div', { class: 'create-options-label' }, 'Keys'),
-      el('dl', { class: 'create-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
+    this.searchBox.replaceChildren(el('div', { class: 'room-search-panel room-keys-panel' },
+      el('div', { class: 'room-options-label' }, 'Keys'),
+      el('dl', { class: 'room-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
     this.searchBox.hidden = false;
     this.searchBox.onpointerdown = () => this.closeSearch();
     const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeSearch(); document.removeEventListener('keydown', close, true); };
@@ -254,7 +254,7 @@ export class Gestures {
 
   drawBox(g, e) {
     const b = this.stage.getBoundingClientRect();
-    if (!this.box) { this.box = el('div', { class: 'create-box' }); this.stage.append(this.box); }
+    if (!this.box) { this.box = el('div', { class: 'room-box' }); this.stage.append(this.box); }
     const x = Math.min(g.x0, e.clientX) - b.left, y = Math.min(g.y0, e.clientY) - b.top;
     Object.assign(this.box.style, { left: `${x}px`, top: `${y}px`, width: `${Math.abs(e.clientX - g.x0)}px`, height: `${Math.abs(e.clientY - g.y0)}px` });
     g.rect = { left: Math.min(g.x0, e.clientX), top: Math.min(g.y0, e.clientY), right: Math.max(g.x0, e.clientX), bottom: Math.max(g.y0, e.clientY) };
@@ -271,7 +271,7 @@ export class Gestures {
     }
     const r = g.rect;
     const ids = new Set();
-    for (const n of this.world$.querySelectorAll('[data-thought], .create-folded[data-group]')) {
+    for (const n of this.world$.querySelectorAll('[data-thought], .room-folded[data-group]')) {
       const q = n.getBoundingClientRect();
       if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
       ids.add(n.dataset.thought || n.dataset.group);
@@ -390,8 +390,8 @@ export class Gestures {
   // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
 
   addItem(label, note, fn, keep = true) {
-    return el('button', { type: 'button', class: 'create-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
-      el('span', {}, label), el('span', { class: 'create-add-note' }, note));
+    return el('button', { type: 'button', class: 'room-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
+      el('span', {}, label), el('span', { class: 'room-add-note' }, note));
   }
 
   toggleAdd() {
@@ -420,17 +420,17 @@ export class Gestures {
 
   openSearch() {
     if (this.draft) this.commit();
-    const field = el('input', { class: 'create-search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
-    const list = el('div', { class: 'create-search-list', role: 'listbox' });
+    const field = el('input', { class: 'room-search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
+    const list = el('div', { class: 'room-search-list', role: 'listbox' });
     let found = [], at = 0;
     const show = () => {
       found = search(this.world, field.value);
       at = Math.min(at, Math.max(0, found.length - 1));
       list.replaceChildren(...found.map((f, i) => el('button', {
-        type: 'button', class: 'create-search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
+        type: 'button', class: 'room-search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
         onclick: () => this.goTo(f),
-      }, el('span', { class: 'create-search-text' }, f.text), el('span', { class: 'create-search-room' }, f.kind === 'room' ? 'Room' : f.roomName))),
-      field.value.trim() && !found.length ? el('p', { class: 'create-search-none' }, 'Nothing yet with those words') : '');
+      }, el('span', { class: 'room-search-text' }, f.text), el('span', { class: 'room-search-room' }, f.kind === 'room' ? 'Room' : f.roomName))),
+      field.value.trim() && !found.length ? el('p', { class: 'room-search-none' }, 'Nothing yet with those words') : '');
     };
     field.addEventListener('input', () => { at = 0; show(); });
     field.addEventListener('keydown', (e) => {
@@ -440,7 +440,7 @@ export class Gestures {
       if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, at - 1); show(); }
       if (e.key === 'Enter' && found[at]) { e.preventDefault(); this.goTo(found[at]); }
     });
-    this.searchBox.replaceChildren(el('div', { class: 'create-search-panel' }, field, list));
+    this.searchBox.replaceChildren(el('div', { class: 'room-search-panel' }, field, list));
     this.searchBox.hidden = false;
     this.searchBox.onpointerdown = (e) => { if (e.target === this.searchBox) this.closeSearch(); };
     field.focus();

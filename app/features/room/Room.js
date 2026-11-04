@@ -1,11 +1,11 @@
-// Create, inside a room. A room fills the screen as one gradient of its own colour, laid out like
+// The room feature: inside a room. A room fills the screen as one gradient of its own colour, laid out like
 // the rooms page: the back arrow (to the rooms) top right, the menu top left and Search in the
 // middle, its name at the top, and a rail on the left with its modes, where a big room switches
 // between them (and Timeline under them). A room is a canvas: drag to move around, wheel / pinch /
 // Ctrl+wheel to zoom. Typing anywhere writes a thought; Enter ends it. A click chooses a thought; a
 // right-click (or long press, or Enter) opens its properties beside it; a right-click on the empty
 // canvas opens Add there. What is on the canvas, where it sits and what a drag does is the
-// ontology's (the world feature's ontologies/). Create keeps no mode of its own. Writing is the
+// ontology's (the world feature's ontologies/). This feature keeps no mode of its own. Writing is the
 // same in every room: Enter goes on with the train, and Ctrl+Enter starts a new one.
 // Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Keys. A
 // train can be folded into one thought, which you name, and unfolded again.
@@ -23,12 +23,12 @@ import { Feature, ui } from 'folio';
 import { bind, room, view, shut, MESSY, roomLook } from './world.js';
 import { openDocument } from './document.js';
 import { el, MAC, KEY, HINT } from './shared.js';
-import { RoomView } from './room.js';
+import { RoomView } from './view.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
 
-export default class Create extends Feature {
+export default class Room extends Feature {
   start() {
     // The saved world, its rules, saving and undo, the ontologies, the look and the palette are the
     // world feature's (its service; world.js binds its rules for the files here).
@@ -60,7 +60,7 @@ export default class Create extends Feature {
     });
     this.on('room:open', (o) => this.enter(o));
     this.build();
-    this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 30, render: () => this.settingsPane() });
+    this.add('settings', { id: 'room-look', title: 'Rooms', order: 30, render: () => this.settingsPane() });
     this.add('rooms.room', {
       leave: () => this.leave(),                // leaves the open room; returns its id, if it showed
       hasDraft: (id) => !!this.drafts[id],      // a thought was left half written there
@@ -93,7 +93,7 @@ export default class Create extends Feature {
     this.draft = null;
     this.gearFor = this.settingsFor = null;
     this.root.hidden = false;
-    document.documentElement.classList.add('create-in-room');
+    document.documentElement.classList.add('room-open');
     this.closeAdd();
     this.drawRoom();
     if (from) this.expand(from);
@@ -117,7 +117,7 @@ export default class Create extends Feature {
     clearTimeout(this.expandTimer);
     this.root.classList.remove('expanding');
     this.root.hidden = true;
-    document.documentElement.classList.remove('create-in-room', 'create-dark');
+    document.documentElement.classList.remove('room-open', 'room-dark');
     return from;
   }
 
@@ -137,7 +137,7 @@ export default class Create extends Feature {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const look = this.lookOf(room(this.world, this.roomId));
     const W = window.innerWidth, H = window.innerHeight;
-    const veil = el('div', { class: 'create-expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
+    const veil = el('div', { class: 'room-expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
     this.expandVeil = veil;
     this.root.classList.add('expanding');
     this.root.append(veil);
@@ -213,51 +213,51 @@ export default class Create extends Feature {
   // ---- Building the pages ----
 
   build() {
-    this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the rooms', onclick: () => this.back() },
+    this.backBtn = el('button', { type: 'button', class: 'room-back', 'aria-label': 'Back to the rooms', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
     // Search, a bar in the middle of the top row: a search of every room.
-    this.searchBtn = el('button', { type: 'button', class: 'create-word create-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
+    this.searchBtn = el('button', { type: 'button', class: 'room-word room-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.openSearch() },
-    el('span', {}, 'Search'), el('span', { class: 'create-search-key' }, KEY));
-    this.crumbName = el('button', { type: 'button', class: 'create-crumb create-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
+    el('span', {}, 'Search'), el('span', { class: 'room-search-key' }, KEY));
+    this.crumbName = el('button', { type: 'button', class: 'room-crumb room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
     // between them; a small one names its one), and Timeline under Joyce.
-    this.modes = el('nav', { class: 'create-rail create-modes', 'aria-label': 'Ontological mode' });
-    this.world$ = el('div', { class: 'create-world' });
-    this.stage = el('div', { class: 'create-stage', 'data-own-swipe': '' }, this.world$);
-    this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
-    this.bar = el('div', { class: 'create-options create-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
-    this.history = el('aside', { class: 'create-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
-    this.trayEl = el('div', { class: 'create-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
-    this.roomPage = el('section', { class: 'create-room', 'aria-label': 'Room' },
+    this.modes = el('nav', { class: 'room-rail room-modes', 'aria-label': 'Ontological mode' });
+    this.world$ = el('div', { class: 'room-world' });
+    this.stage = el('div', { class: 'room-stage', 'data-own-swipe': '' }, this.world$);
+    this.input = el('textarea', { class: 'room-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
+    this.bar = el('div', { class: 'room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
+    this.history = el('aside', { class: 'room-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
+    this.trayEl = el('div', { class: 'room-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
+    this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
       this.modes,
-      el('div', { class: 'create-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'create-crumb-desc' })),
-      el('div', { class: 'create-add' },
-        this.addMenu = el('div', { class: 'create-add-menu', hidden: true, role: 'menu' },
+      el('div', { class: 'room-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'room-crumb-desc' })),
+      el('div', { class: 'room-add' },
+        this.addMenu = el('div', { class: 'room-add-menu', hidden: true, role: 'menu' },
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
-          ...(this.files ? [el('div', { class: 'create-add-rule' }),
+          ...(this.files ? [el('div', { class: 'room-add-rule' }),
             this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
             this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false)] : []),
-          el('div', { class: 'create-add-rule' }),
+          el('div', { class: 'room-add-rule' }),
           this.addItem('Keys', '?', () => this.showKeys(), false)),
-        this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
-          el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
+        this.addBtn = el('button', { type: 'button', class: 'room-word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
+          el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
       this.trayEl,
       this.bar,
-      this.sheet = el('div', { class: 'create-sheet', hidden: true }),
-      this.docEl = el('div', { class: 'create-doc-veil', hidden: true }),
+      this.sheet = el('div', { class: 'room-sheet', hidden: true }),
+      this.docEl = el('div', { class: 'room-doc-veil', hidden: true }),
       this.input);
 
-    this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
-    this.savedMark = el('div', { class: 'create-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'create-hint' });
+    this.searchBox = el('div', { class: 'room-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
+    this.savedMark = el('div', { class: 'room-saved', 'aria-live': 'polite' });
+    this.hintLine = el('div', { class: 'room-hint' });
     // A small wordmark beside the menu (☰), as on the rooms page.
-    this.wordmark = el('div', { class: 'create-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'create up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
+    this.wordmark = el('div', { class: 'room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -269,14 +269,14 @@ export default class Create extends Feature {
     this.input.addEventListener('focus', () => this.paintDraft());
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
     // A press in the thought being written keeps the hidden box focused (and no page selection starts).
-    this.stage.addEventListener('mousedown', (e) => { if (e.target.closest?.('.create-draft')) e.preventDefault(); });
+    this.stage.addEventListener('mousedown', (e) => { if (e.target.closest?.('.room-draft')) e.preventDefault(); });
     this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
     this.stage.addEventListener('contextmenu', (e) => this.onContext(e));
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });
     document.addEventListener('pointerdown', (e) => {
       this.hintLine.classList.remove('on');
-      if (!this.addMenu.hidden && !e.target.closest('.create-add-menu, .create-add-btn')) this.closeAdd();
+      if (!this.addMenu.hidden && !e.target.closest('.room-add-menu, .room-add-btn')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.listenForFiles();
@@ -294,7 +294,7 @@ export default class Create extends Feature {
   groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
   openDocument(id) { openDocument(this, id); } // a group as a document (document.js)
 
-  // ---- Room Markdown: the roomfile feature does the work; Create says where ----
+  // ---- Room Markdown: the roomfile feature does the work; this feature says where ----
 
   // A room Markdown file dropped on a room: its groups and thoughts join it.
   listenForFiles() {
@@ -327,9 +327,9 @@ export default class Create extends Feature {
 
 }
 
-// Create is one class, written in several files: room.js (a room and its settings), writing.js,
+// Room is one class, written in several files: view.js (a room and its settings), writing.js,
 // gestures.js (pointer and keys) and bars.js (pop-ups). Each holds a class
-// whose methods (and getters, and statics) are copied onto Create here.
+// whose methods (and getters, and statics) are copied onto Room here.
 function mixIn(target, ...parts) {
   for (const part of parts) {
     for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(part.prototype))) {
@@ -340,4 +340,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Create, RoomView, Writing, Gestures, Bars);
+mixIn(Room, RoomView, Writing, Gestures, Bars);

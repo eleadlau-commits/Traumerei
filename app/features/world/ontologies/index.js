@@ -21,7 +21,7 @@
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
-//                         floats at its point. c is Create: world, roomId, sel, isSel(id),
+//                         floats at its point. c is the room feature: world, roomId, sel, isSel(id),
 //                         found, draft, prefs, setting(key), el, thoughtNode(th), draftNode(). A node marked
 //                         data-thought is one thought; one marked data-group (with no
 //                         data-thought, or for a folded group) is the whole group, which a
@@ -41,9 +41,9 @@
 //                         and whatever a move put in for (c.write({ x, y, for }) starts one).
 //                         Without it, a Joyce train at x, y. An ontology without groups writes
 //                         into Joyce's trains
-//   press(c, e)           (optional) a press on the canvas, before Create's own: return true when
+//   press(c, e)           (optional) a press on the canvas, before the room's own: return true when
 //                         it took it (Russell: a drag from a chapter's foot draws an arrow)
-//   open(c, id)           (optional) a tap on a thought or group, before Create chooses it: return
+//   open(c, id)           (optional) a tap on a thought or group, before the room chooses it: return
 //                         true when it took it (Russell: a closed chapter opens as a document)
 //   props(c, th)          (optional) more rows (DOM nodes) for the pop-up of what is chosen
 //                         (Russell: what a chapter forgets about each parent)

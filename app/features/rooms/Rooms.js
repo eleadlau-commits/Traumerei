@@ -11,7 +11,7 @@
 // properties beside it; a double click or Enter goes in. Drag a square to move it: to a free cell,
 // onto a floor, or onto Archive. The grid itself is grid.js.
 //
-// This feature owns the page and going in and out of Create. Inside a room is the room feature's:
+// This feature owns the page and going in and out of the rooms page and rooms. Inside a room is the room feature's:
 // going in, this page sends 'room:open' ({ id, from, seed }) and zooms out of the way; the room
 // comes back through this feature's `rooms` service (showRooms). It also offers `create` (open)
 // to the home page. The world is the world feature's (its service; world.js binds its rules).

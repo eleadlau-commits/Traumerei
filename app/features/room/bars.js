@@ -1,6 +1,6 @@
-// Part of Create. The pop-ups in a room: a thing's properties, the loose-thought tray, the bar for several
+// Part of the room feature. The pop-ups in a room: a thing's properties, the loose-thought tray, the bar for several
 // chosen things, folding trains, pictures, the Passage / Picture sheet, and moving thoughts to another room.
-// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+// Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
   MESSY, room, name, view, create, update, remove, move, fold, unfold, kindOf, groupOf,
@@ -27,24 +27,24 @@ export class Bars {
     if (this.locked) { // read only: the words, and nothing to change
       this.bar.hidden = false;
       this.bar.replaceChildren(
-        el('div', { class: 'create-options-label' }, 'Locked'),
-        el('p', { class: 'create-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+        el('div', { class: 'room-options-label' }, 'Locked'),
+        el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
       this.positionEdit();
       this.drawHistorySoon();
       return;
     }
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
-    const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
-    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const field = (value, label, onchange, cls = 'room-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'room-word ' + extra, onclick: fn }, label);
     const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const gname = kind === 'group' ? this.groupName(th) : 'Train';
     const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
-    rows.push(el('div', { class: 'create-options-label' }, title));
+    rows.push(el('div', { class: 'room-options-label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
-      const text = el('textarea', { class: 'create-edit-text create-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
+      const text = el('textarea', { class: 'room-edit-text room-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
         oninput: (e) => grow(e.target),
         onkeydown: (e) => {
           e.stopPropagation();
@@ -64,17 +64,17 @@ export class Bars {
     }
     if (kind === 'passage') {
       rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
-      const body = el('textarea', { class: 'create-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
+      const body = el('textarea', { class: 'room-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
         onchange: (e) => { update(this.world, th.id, { body: e.target.value }); done(); } });
       body.value = th.body || '';
       rows.push(body, word('Open it large', () => this.openSheet(null, th.id)));
     }
-    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'room-edit-text'));
     if (kind === 'group') {
       const n = trainThoughts(this.world, th.id).length;
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
-        el('div', { class: 'create-options-row' },
-          el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
+        el('div', { class: 'room-options-row' },
+          el('span', { class: 'room-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null));
       // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
@@ -83,11 +83,11 @@ export class Bars {
     }
     // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
     // those that fit.
-    try { rows.push(...(this.ont.props?.(this, th) || [])); } catch (err) { console.warn('Create: props', err); }
+    try { rows.push(...(this.ont.props?.(this, th) || [])); } catch (err) { console.warn('Room: props', err); }
     const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
-    if (moves.length) rows.push(el('div', { class: 'create-options-row create-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
+    if (moves.length) rows.push(el('div', { class: 'room-options-row room-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
     const others = this.moveRooms();
-    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+    const pick = el('select', { class: 'room-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (to) this.moveTo(to);
@@ -95,8 +95,8 @@ export class Bars {
       el('option', { value: '' }, 'Move to…'),
       ...others.map((r) => el('option', { value: r.id }, r.name)),
       el('option', { value: '+' }, 'A new room'));
-    rows.push(el('div', { class: 'create-options-row' }, pick),
-      el('div', { class: 'create-options-row' },
+    rows.push(el('div', { class: 'room-options-row' }, pick),
+      el('div', { class: 'room-options-row' },
         kind !== 'group' && this.ont.groups && groupOf(this.world, th.id, this.mode)
           ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: 'train', id: groupOf(this.world, th.id, this.mode).id })) : null,
         word('Delete', () => {
@@ -104,7 +104,7 @@ export class Bars {
           this.sel = null;
           done();
           this.toast(`Deleted. Ctrl+Z brings it back.`);
-        }, 'create-options-delete')));
+        }, 'room-options-delete')));
     this.bar.hidden = false;
     this.bar.replaceChildren(...rows);
     this.positionEdit();
@@ -133,13 +133,13 @@ export class Bars {
     const items = this.roomId ? this.trayItems() : [];
     if (!items.length) { this.trayEl.hidden = true; this.trayEl.replaceChildren(); return; }
     const open = !!this.trayOpen;
-    const word = el('button', { type: 'button', class: 'create-word create-tray-btn', 'aria-expanded': String(open),
+    const word = el('button', { type: 'button', class: 'room-word room-tray-btn', 'aria-expanded': String(open),
       title: 'Thoughts not placed in this mode yet. Drag one onto the room.',
       onclick: () => { this.trayOpen = !open; this.drawTray(); } }, `Loose · ${items.length}`);
-    const row = open ? el('div', { class: 'create-tray-row', role: 'list' }, items.map((th) => el('div', {
-      class: 'create-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
+    const row = open ? el('div', { class: 'room-tray-row', role: 'list' }, items.map((th) => el('div', {
+      class: 'room-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
       onpointerdown: (e) => this.trayDrag(e, th.id),
-    }, el('span', { class: 'create-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
+    }, el('span', { class: 'room-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
     this.trayEl.hidden = false;
     this.trayEl.replaceChildren(...(row ? [row] : []), word);
   }
@@ -154,7 +154,7 @@ export class Bars {
     const r = card.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
     const ghost = card.cloneNode(true);
-    ghost.classList.add('create-tray-ghost');
+    ghost.classList.add('room-tray-ghost');
     Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
     this.root.append(ghost);
     const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
@@ -180,7 +180,7 @@ export class Bars {
     if (this.locked) { this.bar.hidden = true; return; }
     const ids = this.sel.ids.filter((id) => this.world.things[id]);
     const others = this.moveRooms();
-    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+    const pick = el('select', { class: 'room-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
         const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (!to) return;
@@ -196,11 +196,11 @@ export class Bars {
       el('option', { value: '+' }, 'A new room'));
     this.bar.hidden = false;
     this.bar.replaceChildren(
-      el('div', { class: 'create-options-label' }, `${ids.length} chosen`),
-      el('p', { class: 'create-options-note' }, 'Drag any of them to move them together.'),
-      el('div', { class: 'create-options-row' }, pick),
-      el('div', { class: 'create-options-row' },
-        el('button', { type: 'button', class: 'create-word create-options-delete', onclick: () => {
+      el('div', { class: 'room-options-label' }, `${ids.length} chosen`),
+      el('p', { class: 'room-options-note' }, 'Drag any of them to move them together.'),
+      el('div', { class: 'room-options-row' }, pick),
+      el('div', { class: 'room-options-row' },
+        el('button', { type: 'button', class: 'room-word room-options-delete', onclick: () => {
           ids.forEach((id) => remove(this.world, id));
           this.sel = null;
           this.save();
@@ -264,11 +264,11 @@ export class Bars {
   keepChoice(others, keep, choose) {
     const names = others.map((o) => o.name).join(' and ');
     const pick = (label, value, note) => el('button', {
-      type: 'button', class: 'create-word', 'aria-pressed': String(keep === value), title: note,
+      type: 'button', class: 'room-word', 'aria-pressed': String(keep === value), title: note,
       onclick: (e) => { keep = value; choose(value); e.currentTarget.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
     }, label);
-    return el('div', { class: 'create-options-row create-keep' },
-      el('span', { class: 'create-options-note' }, `In ${names}:`),
+    return el('div', { class: 'room-options-row room-keep' },
+      el('span', { class: 'room-options-note' }, `In ${names}:`),
       pick('Replace', false, 'The one folded thought takes the place of its thoughts'),
       pick('Keep both', true, 'The folded thought is added beside its thoughts'));
   }
@@ -342,25 +342,25 @@ export class Bars {
     };
     const fields = [];
     if (kind === 'group') {
-      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
-      fields.push(this.sheetTitle, el('div', { class: 'create-sheet-preview' }, thoughtText(this.world, th)));
+      this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
+      fields.push(this.sheetTitle, el('div', { class: 'room-sheet-preview' }, thoughtText(this.world, th)));
       if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep) => { this.editing.keep = keep; this.sheetTitle.focus(); }));
     } else if (kind === 'passage') {
-      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
-      this.sheetBody = el('textarea', { class: 'create-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
+      this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
+      this.sheetBody = el('textarea', { class: 'room-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
       this.sheetBody.value = th?.body || '';
       fields.push(this.sheetTitle, this.sheetBody);
     } else {
-      this.sheetCaption = el('input', { class: 'create-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
-      fields.push(el('img', { class: 'create-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
+      this.sheetCaption = el('input', { class: 'room-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
+      fields.push(el('img', { class: 'room-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
     this.sheet.replaceChildren(
-      el('div', { class: 'create-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
+      el('div', { class: 'room-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
       ...fields,
-      el('div', { class: 'create-sheet-words' },
-        el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
-        el('button', { type: 'button', class: 'create-word', onclick: () => this.closeSheet() }, 'Cancel'),
-        el('span', { class: 'create-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
+      el('div', { class: 'room-sheet-words' },
+        el('button', { type: 'button', class: 'room-word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'room-word', onclick: () => this.closeSheet() }, 'Cancel'),
+        el('span', { class: 'room-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
     this.sheet.hidden = false;
     (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
   }

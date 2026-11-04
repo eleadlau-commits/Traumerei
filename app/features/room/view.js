@@ -1,6 +1,6 @@
-// Part of Create. A room: its look and settings (Settings → Rooms, a room's ⚙), its rail and modes, laying out
+// Part of the room feature. A room: its look and settings (Settings → Rooms, a room's ⚙), its rail and modes, laying out
 // its canvas, clearing space between thoughts, and the Timeline.
-// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+// Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
   room, addRoom, view, create, fold, kindOf, thoughtText, roomThoughts, peek, isBig,
@@ -46,7 +46,7 @@ export class RoomView {
   // One setting as a row: a slider, or an on/off switch (type: 'switch').
   settingRow(st, value, onChange) {
     if (st.type === 'switch') {
-      return el('label', { class: 'renderer-slider create-switch-row' }, el('span', {}, st.label), el('span'),
+      return el('label', { class: 'renderer-slider room-switch-row' }, el('span', {}, st.label), el('span'),
         ui.toggle({ checked: !!value, label: st.label, onChange }));
     }
     const out = el('output', { class: 'renderer-value' }, String(value));
@@ -79,7 +79,7 @@ export class RoomView {
     };
     const fold = (title, ...rows) => el('details', { class: 'advanced renderer-fold' }, el('summary', {}, title),
       el('div', { class: 'renderer-fold-body' }, el('div', { class: 'renderer-sliders' }, ...rows)));
-    return el('div', { class: 'create-settings' },
+    return el('div', { class: 'room-settings' },
       fold('The rooms page',
         slider('Mask opacity', 'mask', 0, 0.6),
         slider('Square strength', 'square', 0, 1.5),
@@ -99,7 +99,7 @@ export class RoomView {
         // Each ontology's own settings (Joyce: its line's tension): the global ones, which a new
         // room starts from. Each room keeps its own (the ⚙ beside the mode in its rail).
         ...this.ontologies.flatMap((o) => [
-          el('p', { class: 'create-settings-ont' }, o.name),
+          el('p', { class: 'room-settings-ont' }, o.name),
           ...this.settingsOf(o).map((st) => this.settingRow(st, this.globalSetting(o.id, st), (v) => this.setOntPref(o.id, st.key, v)))]),
         el('button', { type: 'button', class: 'btn small', onclick: () => this.applyToAllRooms() }, 'Apply to all rooms')),
       ui.hint('A room\'s own colour is in its pop-up on the rooms page: click its square.', { small: true }),
@@ -119,7 +119,7 @@ export class RoomView {
       this.root.style.setProperty(k, v);
     }
     this.roomPage.classList.toggle('dark', look.dark);
-    document.documentElement.classList.toggle('create-dark', look.dark);
+    document.documentElement.classList.toggle('room-dark', look.dark);
     return look;
   }
 
@@ -142,19 +142,19 @@ export class RoomView {
     for (const m of big ? this.ontologies : [this.ont]) {
       const on = m.id === this.mode;
       const word = big
-        ? el('button', { type: 'button', class: 'create-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
+        ? el('button', { type: 'button', class: 'room-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
           onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, m.name)
-        : el('span', { class: 'create-rail-item create-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
+        : el('span', { class: 'room-rail-item room-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
           onclick: () => this.toggleGear(m.id) }, m.name);
       const gear = this.settingsOf(m).length ? el('button', {
-        type: 'button', class: 'create-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
+        type: 'button', class: 'room-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
         'aria-expanded': String(this.settingsFor === m.id), onclick: () => this.openRoomSettings(m.id),
       }, '⚙') : null;
-      items.push(el('div', { class: 'create-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
+      items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
-    items.push(el('div', { class: 'create-rail-rule', 'aria-hidden': 'true' }));
+    items.push(el('div', { class: 'room-rail-rule', 'aria-hidden': 'true' }));
     items.push(el('button', {
-      type: 'button', class: 'create-rail-item create-rail-view', 'aria-pressed': String(this.historyOpen),
+      type: 'button', class: 'room-rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
       onclick: () => this.togglePanel(),
     }, 'Timeline'));
     const card = this.settingsFor && this.roomSettingsCard();
@@ -178,7 +178,7 @@ export class RoomView {
       done();
     };
     const field = el('input', {
-      class: 'create-name-field', value: r.name, 'aria-label': 'Room name', maxlength: 60,
+      class: 'room-name-field', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') finish(true);
@@ -222,18 +222,18 @@ export class RoomView {
     const o = this.ontologies.find((x) => x.id === this.settingsFor);
     if (!o) return null;
     const close = () => { this.settingsFor = null; this.drawRoom(); };
-    return el('div', { class: 'create-options create-room-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
+    return el('div', { class: 'room-options room-mode-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
       onpointerdown: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } } },
-      el('div', { class: 'create-room-settings-head' },
+      el('div', { class: 'room-mode-settings-head' },
         el('span', {}, o.name),
-        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close', onclick: close }, '×')),
-      el('p', { class: 'create-room-settings-note' }, 'For this room only'),
+        el('button', { type: 'button', class: 'room-history-close', 'aria-label': 'Close', onclick: close }, '×')),
+      el('p', { class: 'room-mode-settings-note' }, 'For this room only'),
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
         this.w.write();
         this.drawWorld();
       })),
-      el('button', { type: 'button', class: 'create-word create-room-settings-reset', onclick: () => {
+      el('button', { type: 'button', class: 'room-word room-mode-settings-reset', onclick: () => {
         resetRoomSettings(this.world, this.roomId, o.id);
         this.w.write();
         this.drawRoom();
@@ -287,14 +287,14 @@ export class RoomView {
       for (const th of ont.units(w, this.roomId)) {
         const p = ont.point(w, this.roomId, th.id) || { x: 0, y: 0 };
         nodes.push(el('div', {
-          class: 'create-float' + (this.isSel(th.id) ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
+          class: 'room-float' + (this.isSel(th.id) ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
           'data-thought': th.id,
           style: `left:${p.x}px;top:${p.y}px`,
         }, this.thoughtNode(th)));
       }
       if (this.draft && !this.draft.edit) {
         const p = ont.draftPoint?.(w, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
-        nodes.push(el('div', { class: 'create-float', style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+        nodes.push(el('div', { class: 'room-float', style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
       }
     }
     this.world$.replaceChildren(...nodes);
@@ -380,24 +380,24 @@ export class RoomView {
     const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
     const items = roomThoughts(w, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
     const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const list = items.length ? el('ol', { class: 'create-history-list' }, items.map((th) => {
+    const list = items.length ? el('ol', { class: 'room-history-list' }, items.map((th) => {
       const tag = ont.tag?.(w, th.id) || null;
       return el('li', {}, el('button', {
-        type: 'button', class: 'create-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
+        type: 'button', class: 'room-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
         style: tag ? `--tag:hsl(${hash(tag.id) % 360} 32% 46%)` : '',
         onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }),
       },
-        el('span', { class: 'create-history-meta' },
-          el('span', { class: 'create-history-time' }, when(changed(th))),
-          tag ? el('span', { class: 'create-tag' }, tag.name) : null),
-        el('span', { class: 'create-history-text' }, thoughtText(w, th))));
+        el('span', { class: 'room-history-meta' },
+          el('span', { class: 'room-history-time' }, when(changed(th))),
+          tag ? el('span', { class: 'room-tag' }, tag.name) : null),
+        el('span', { class: 'room-history-text' }, thoughtText(w, th))));
     })) : null;
     this.history.hidden = false;
     this.history.replaceChildren(
-      el('div', { class: 'create-history-head' },
+      el('div', { class: 'room-history-head' },
         el('span', {}, 'Timeline'),
-        el('button', { type: 'button', class: 'create-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() }, '×')),
-      list || el('p', { class: 'create-history-none' }, 'Nothing written here yet'));
+        el('button', { type: 'button', class: 'room-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() }, '×')),
+      list || el('p', { class: 'room-history-none' }, 'Nothing written here yet'));
     list?.lastElementChild?.scrollIntoView?.({ block: 'end' });
   }
 }

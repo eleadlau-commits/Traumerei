@@ -10,7 +10,7 @@ export default {
   },
   text: (th) => (th.text ? `[${th.text}]` : '[picture]'),
   // In room Markdown (the roomfile feature's format.js): ![caption](data:image/… or https://…). An https picture
-  // keeps its address (url) until Create fetches it; one it can't becomes a line saying so.
+  // keeps its address (url) until the room fetches it; one it can't becomes a line saying so.
   md: {
     order: 10,
     read(lines, i) {
@@ -21,7 +21,7 @@ export default {
     },
     write: (th) => `![${th.text || ''}](${th.src})`,
   },
-  node: (th, el) => el('figure', { class: 'create-picture', 'data-id': th.id },
+  node: (th, el) => el('figure', { class: 'room-picture', 'data-id': th.id },
     el('img', { src: th.src, alt: th.text || 'A picture', draggable: 'false' }),
     th.text ? el('figcaption', {}, maths(th.text)) : null),
 };

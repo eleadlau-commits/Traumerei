@@ -29,5 +29,5 @@ export default {
     },
     write: (th) => th.text.split('\n').map((l, k) => (k ? (l ? '  ' + l : '') : '- ' + l)).join('\n'),
   },
-  node: (th, el) => el('span', { class: 'create-thought', 'data-id': th.id }, maths(th.text)),
+  node: (th, el) => el('span', { class: 'room-thought', 'data-id': th.id }, maths(th.text)),
 };

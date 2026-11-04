@@ -1,6 +1,6 @@
-// Part of Create. Writing in a room: drawing thoughts and the draft, the caret and selection in a thought, typing,
+// Part of the room feature. Writing in a room: drawing thoughts and the draft, the caret and selection in a thought, typing,
 // Enter / Ctrl+Enter, editing a thought again, right-click and Add.
-// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+// Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
@@ -16,15 +16,15 @@ export class Writing {
     const kind = kindOf(th);
     if (kind === 'group') { // a folded group reads as one passage
       const body = thoughtText(this.world, th);
-      return el('div', { class: 'create-passage folded', 'data-id': th.id },
-        th.title ? el('div', { class: 'create-passage-title' }, maths(th.title)) : null,
-        body ? el('div', { class: 'create-passage-body' }, maths(body)) : null);
+      return el('div', { class: 'room-passage folded', 'data-id': th.id },
+        th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
+        body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
     }
     return (ITEMS[kind] || ITEMS.line).node(th, el);
   }
 
   draftNode() {
-    this.draftEl = el('span', { class: 'create-thought create-draft' });
+    this.draftEl = el('span', { class: 'room-thought room-draft' });
     this.paintDraft();
     return this.draftEl;
   }
@@ -37,12 +37,12 @@ export class Writing {
     const v = this.input.value;
     const a = this.input.selectionStart ?? v.length, b = this.input.selectionEnd ?? v.length;
     const back = this.input.selectionDirection === 'backward';
-    const caret = document.activeElement === this.input || !d.isConnected ? el('span', { class: 'create-caret', 'aria-hidden': 'true' }) : null;
+    const caret = document.activeElement === this.input || !d.isConnected ? el('span', { class: 'room-caret', 'aria-hidden': 'true' }) : null;
     const parts = a === b
       ? [v.slice(0, a), caret, v.slice(a)]
-      : [v.slice(0, a), back ? caret : null, el('span', { class: 'create-chosen' }, v.slice(a, b)), back ? null : caret, v.slice(b)];
+      : [v.slice(0, a), back ? caret : null, el('span', { class: 'room-chosen' }, v.slice(a, b)), back ? null : caret, v.slice(b)];
     // An empty thought, or one ending in a new line, still has a line for the caret to stand on.
-    if (!v || v.endsWith('\n')) parts.push(el('span', { class: 'create-pad', 'aria-hidden': 'true' }, '\u200b'));
+    if (!v || v.endsWith('\n')) parts.push(el('span', { class: 'room-pad', 'aria-hidden': 'true' }, '\u200b'));
     d.replaceChildren(...parts.filter((p) => p != null && p !== '').map((p) => (p instanceof Node ? p : document.createTextNode(p))));
   }
 
@@ -52,8 +52,8 @@ export class Writing {
     let i = 0;
     const range = document.createRange();
     for (const n of this.draftEl?.childNodes || []) {
-      if (n.classList?.contains('create-pad')) { out.push({ i, r: n.getBoundingClientRect(), end: true }); continue; }
-      const t = n.nodeType === 3 ? n : n.classList?.contains('create-chosen') ? n.firstChild : null;
+      if (n.classList?.contains('room-pad')) { out.push({ i, r: n.getBoundingClientRect(), end: true }); continue; }
+      const t = n.nodeType === 3 ? n : n.classList?.contains('room-chosen') ? n.firstChild : null;
       if (!t) continue;
       for (let k = 0; k < t.length; k++) {
         range.setStart(t, k);
@@ -88,7 +88,7 @@ export class Writing {
   }
 
   // The word (or run of spaces, or one sign) at a place in the text.
-  static wordAround(v, i) {
+  wordAround(v, i) {
     const word = (c) => !!c && /[\p{L}\p{N}_'’]/u.test(c);
     const space = (c) => !!c && c !== '\n' && /\s/.test(c);
     let a = i, b = i;

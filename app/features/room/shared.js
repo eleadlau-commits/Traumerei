@@ -1,4 +1,4 @@
-// Part of Create: what its files share (sizes, keys, and the one rule for Enter).
+// Part of the room feature: what its files share (sizes, keys, and the one rule for Enter).
 
 import { ui } from 'folio';
 

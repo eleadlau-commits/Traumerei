@@ -1,4 +1,4 @@
-// Create's world. Everything in it is a thought, of three sorts:
+// The world. Everything in it is a thought, of three sorts:
 //
 //   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
 //            kinds, such as a page of a PDF, are added there)
