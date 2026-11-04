@@ -96,7 +96,11 @@ export class RoomsPage {
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
         onclick: () => this.onCell(col, row),
-        oncontextmenu: (e) => { e.preventDefault(); this.roomSel = null; this.roomPick = null; this.making = { col, row }; this.drawRooms(); },
+        // A right-click opens a small menu with Import file… (a left click shows the kinds of room).
+        oncontextmenu: (e) => {
+          e.preventDefault(); this.roomSel = null; this.roomPick = null; this.making = { col, row, menu: true }; this.drawRooms();
+          this.grid.querySelector('.create-cell-menu button')?.focus({ preventScroll: true });
+        },
       }));
     }
 
@@ -104,7 +108,7 @@ export class RoomsPage {
     const panels = [];
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
     if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
-    if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
+    if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.grid.querySelector('.create-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
@@ -142,6 +146,15 @@ export class RoomsPage {
       // Or a room from a room Markdown file (files.js), in this cell.
       el('button', { type: 'button', class: 'create-kind create-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
         el('span', { class: 'create-kind-name' }, 'Import a room…'), el('span', { class: 'create-add-note' }, 'from a .md file')));
+  }
+
+  // The menu a right-click on an empty cell opens: Import file…, a room from a room Markdown file
+  // (files.js), placed in this cell.
+  cellMenu(c, cell, cols) {
+    return el('div', { ...this.beside(c, cell, cols, ' create-kinds create-cell-menu'), role: 'menu' },
+      el('button', { type: 'button', class: 'create-kind create-kind-import', role: 'menuitem',
+        onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, { col: c.col, row: c.row }); } },
+      el('span', { class: 'create-kind-name' }, 'Import file…'), el('span', { class: 'create-add-note' }, '.md')));
   }
 
   drawPages() {
