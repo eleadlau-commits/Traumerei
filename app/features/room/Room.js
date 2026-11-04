@@ -246,7 +246,8 @@ export default class Room extends Feature {
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           ...(this.files ? [el('div', { class: 'room-add-rule' }),
             this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
-            this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false)] : []),
+            this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
+            ...(this.files.canEdit ? [this.addItem('Edit room as Markdown', 'in the panel', () => this.editAsMarkdown(), false)] : [])] : []),
           el('div', { class: 'room-add-rule' }),
           this.addItem('Keys', '?', () => this.showKeys(), false)),
         this.addBtn = el('button', { type: 'button', class: 'room-word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
@@ -330,6 +331,22 @@ export default class Room extends Feature {
 
   // Downloads a room as <its name>.md (a locked room too).
   exportRoomFile(id = this.roomId) { this.files?.exportRoom(id); }
+
+  // A group (or, with none, the whole room) as room Markdown in the source editor, in the side
+  // panel; Apply puts it back as one step (read only in a locked room).
+  async editAsMarkdown(groupId = null) {
+    if (!this.roomId || !this.files?.canEdit) return;
+    const roomId = this.roomId;
+    const o = { ok: () => this.roomId === roomId, before: () => { if (this.draft) this.commit(); } };
+    this.barFor = null; // the properties pop-up gives way to the panel
+    this.drawWorld();
+    const done = groupId ? await this.files.editGroup(roomId, groupId, o) : await this.files.editRoom(roomId, o);
+    if (!done || this.roomId !== roomId) return;
+    this.sel = null;
+    this.save();
+    this.drawRoom();
+    this.toast('Applied. Ctrl+Z takes it back.');
+  }
 
 }
 

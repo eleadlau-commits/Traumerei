@@ -74,7 +74,7 @@ and an empty `$$ $$`, stay as words.
 
 `maths.js` has `split(text)` (words into text, inline and display pieces, tested in
 `tests/maths.test.js`) and `maths(text)`, which every item's `node()` and the folded group call,
-so a new kind of item gets mathematics for free. The drawing is KaTeX 0.19.1 (`vendor/`, MIT,
+so a new kind of item gets mathematics for free, and `broken(text)`, the formulas in some words that KaTeX can't draw (with their line), for whoever wants to warn before they are kept. The drawing is KaTeX 0.19.1 (`vendor/`, MIT,
 see `LICENSE-KaTeX.txt`): `katex.js` is its ESM build, minified with esbuild, and `katex.css`
 holds its 20 fonts as base64 woff2, so it works offline and in the one-file page (about 640 KB
 of the standalone file). KaTeX draws at once, so Joyce and clear.js measure each thought with

@@ -1,7 +1,7 @@
 // Tests for mathematics in a thought's words (maths.js).
 
 import { test, assert } from 'folio/testing';
-import { split, maths } from '../maths.js';
+import { split, maths, broken } from '../maths.js';
 
 const T = (value) => ({ type: 'text', value });
 const I = (value) => ({ type: 'inline', value });
@@ -69,4 +69,13 @@ test('drawn: the line breaks around display maths are left out', () => {
   assert.equal(parts[0], 'Then');
   assert.ok(parts[1].classList.contains('display'));
   assert.equal(parts[2], 'so.');
+});
+
+test('broken: the formulas KaTeX can\'t draw, with the line they start on', () => {
+  assert.deepEqual(broken('no maths, $5 and $6'), []);
+  assert.deepEqual(broken('fine $x^2$ here'), []);
+  assert.deepEqual(broken('one\ntwo $\\frac{1$ and\n$$\n\\badcommand\n$$'), [
+    { tex: '\\frac{1', display: false, line: 1 },
+    { tex: '\n\\badcommand\n', display: true, line: 2 },
+  ]);
 });

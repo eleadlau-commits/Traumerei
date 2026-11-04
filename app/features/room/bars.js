@@ -28,7 +28,8 @@ export class Bars {
       this.bar.hidden = false;
       this.bar.replaceChildren(
         el('div', { class: 'room-options-label' }, 'Locked'),
-        el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+        el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
+        kind === 'group' && this.files?.canEdit ? el('button', { type: 'button', class: 'room-word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : '');
       this.positionEdit();
       this.drawHistorySoon();
       return;
@@ -76,7 +77,8 @@ export class Bars {
         el('div', { class: 'room-options-row' },
           el('span', { class: 'room-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
-            : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null));
+            : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null,
+          this.files?.canEdit ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
       // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
       const elsewhere = th.folded ? this.elsewhere(th) : [];
       if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
