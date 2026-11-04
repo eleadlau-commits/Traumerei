@@ -35,7 +35,7 @@ export default class Panel extends Feature {
     this.body = el('div', { class: 'panel-body' });
     this.edge = el('div', { class: 'panel-edge', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Drag to change the width',
       title: 'Drag to change the width · double-click for the usual width', onpointerdown: (e) => this.drag(e), ondblclick: () => this.setWidth(WIDTH) });
-    this.root = el('aside', { class: 'panel', hidden: true, 'aria-label': 'Side panel',
+    this.root = el('aside', { class: 'side-panel', hidden: true, 'aria-label': 'Side panel',
       onpointerdown: (e) => e.stopPropagation(),
       onkeydown: (e) => {
         e.stopPropagation(); // the room's keys stay the room's

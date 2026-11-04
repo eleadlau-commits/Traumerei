@@ -1,10 +1,11 @@
-/* The side panel, docked on the right. Class names start with "panel-". It has the palette's pale,
+/* The side panel, docked on the right. Class names start with "panel-" (its own box is
+   .side-panel, since Folio's look has a .panel of its own, rounded, which must not leak in). It has the palette's pale,
    blurred veil, like the room's pop-ups, in the app's typeface; editors put their own content in
    .panel-body. */
 
 :root { --panel-width: 0px; }
 
-.panel {
+.side-panel {
   --panel-ink: var(--ink, #2b2a28);
   --panel-line: rgb(var(--ink-rgb, 43 42 40) / .12);
   position: fixed;
@@ -13,6 +14,8 @@
   top: 0;
   bottom: 0;
   width: 480px;
+  margin: 0;
+  border-radius: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -24,7 +27,7 @@
   font-family: var(--home-font);
   animation: panel-in .3s ease both;
 }
-.panel[hidden] { display: none; }
+.side-panel[hidden] { display: none; }
 @keyframes panel-in { from { opacity: 0; transform: translateX(12px); } }
 
 .panel-head {
