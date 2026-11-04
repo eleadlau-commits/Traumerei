@@ -6,7 +6,7 @@ import {
   MESSY, DEFAULT_MODE, room, addRoom, name, create, update, remove, move, fold, roomThoughts,
   gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore, peek,
   DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
-  tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
+  tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings, allTags,
 } from './model.js';
 import { light } from './attention.js';
 import { squareLook, toOklch, rgb } from './look.js';
@@ -138,7 +138,10 @@ export class RoomsPage {
     return el('div', this.beside(c, cell, cols, ' create-kinds'),
       el('div', { class: 'create-options-label' }, 'A new room'),
       ...this.ontologies.map((k) => el('button', { type: 'button', class: 'create-kind', onclick: () => this.newRoom(c, k.id) },
-        el('span', { class: 'create-kind-name' }, k.name), el('span', { class: 'create-add-note' }, k.note || ''))));
+        el('span', { class: 'create-kind-name' }, k.name), el('span', { class: 'create-add-note' }, k.note || ''))),
+      // Or a room from a room Markdown file (files.js), in this cell.
+      el('button', { type: 'button', class: 'create-kind create-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
+        el('span', { class: 'create-kind-name' }, 'Import a room…'), el('span', { class: 'create-add-note' }, 'from a .md file')));
   }
 
   drawPages() {
@@ -511,6 +514,8 @@ export class RoomsPage {
           this.drawRooms();
           this.toast(`${r.name} is in the Archive.`);
         }) : null,
+        // Taken out as room Markdown (files.js); a locked room too.
+        word('Export as Markdown', () => this.exportRoomFile(r.id)),
         r.id !== MESSY && !r.locked ? word('Delete', () => {
           remove(this.world, r.id);
           this.roomSel = this.roomPick = null;

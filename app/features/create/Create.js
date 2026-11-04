@@ -50,6 +50,7 @@ import { RoomView } from './room.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
+import { Files } from './files.js';
 
 export default class Create extends Feature {
   start() {
@@ -90,6 +91,9 @@ export default class Create extends Feature {
     this.defineSlot('create.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see create/ontologies/index.js).');
     this.build();
     this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 30, render: () => this.settingsPane() });
+    // In the menu, on the rooms page: a new room from a room Markdown file (files.js).
+    this.add('header.buttons', { id: 'create-import', label: 'Import a room…', icon: 'book', order: 40,
+      visible: () => !!this.root && !this.root.hidden && !this.roomId, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); else if (!this.root.hidden) this.drawRooms(); });
@@ -485,6 +489,9 @@ export default class Create extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           el('div', { class: 'create-add-rule' }),
+          this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
+          this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
+          el('div', { class: 'create-add-rule' }),
           this.addItem('Keys', '?', () => this.showKeys(), false)),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
@@ -502,7 +509,8 @@ export default class Create extends Feature {
     this.wordmark = el('div', { class: 'create-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
     this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine,
       this.noteLine = el('div', { class: 'create-note', hidden: true }),
-      this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
+      this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }),
+      this.importBox = el('div', { class: 'create-sheet create-leave create-import', hidden: true, role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -524,6 +532,7 @@ export default class Create extends Feature {
       if (!this.addMenu.hidden && !e.target.closest('.create-add-menu, .create-add-btn')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    this.listenForFiles();
   }
 
   // ---- A room ----
@@ -546,7 +555,8 @@ export default class Create extends Feature {
 }
 
 // Create is one class, written in several files: rooms.js (the rooms page), room.js (a room and its
-// settings), writing.js, gestures.js (pointer and keys) and bars.js (pop-ups). Each holds a class
+// settings), writing.js, gestures.js (pointer and keys), bars.js (pop-ups) and files.js (room
+// Markdown in and out). Each holds a class
 // whose methods (and getters, and statics) are copied onto Create here.
 function mixIn(target, ...parts) {
   for (const part of parts) {
@@ -558,4 +568,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Create, RoomsPage, RoomView, Writing, Gestures, Bars);
+mixIn(Create, RoomsPage, RoomView, Writing, Gestures, Bars, Files);
