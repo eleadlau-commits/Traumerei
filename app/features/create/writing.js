@@ -3,7 +3,7 @@
 // Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
 
 import {
-  MESSY, DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
+  DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, ITEMS, maths,
 } from './world.js';
 import { clearSpot } from './clear.js';
@@ -112,11 +112,11 @@ export class Writing {
   // ---- Writing ----
 
   onKey(e) {
-    if (this.root.hidden || document.querySelector('dialog[open]')) return;
+    if (e.defaultPrevented || this.root.hidden || document.querySelector('dialog[open]')) return; // (the rooms page took it)
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     this.hintLine.classList.remove('on');
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); if (this.roomId) this.openSearch(); else this.openLights(); return; }
+    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openSearch(); return; }
     if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && !this.editing) {
       e.preventDefault();
       this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey);
@@ -127,9 +127,6 @@ export class Writing {
       else if (!this.addMenu.hidden) this.closeAdd();
       else if (this.roomId && this.sel && this.barFor) { this.barFor = null; this.drawBar(); }
       else if (this.sel) { this.sel = null; this.drawWorld(); }
-      else if (!this.roomId && (this.roomSel || this.making)) { this.roomSel = this.making = null; this.drawRooms(); }
-      else if (!this.roomId && this.roomPick) { this.roomPick = null; this.drawRooms(); }
-      else if (!this.roomId && this.lights != null) this.closeLights();
       else this.back();
       return;
     }
@@ -145,7 +142,6 @@ export class Writing {
     if (e.target.closest?.('button') && e.key === ' ') return; // Space on a word presses it
     if (e.key === ' ' && !this.draft) return; // a lone Space is held to move around (Space+drag)
     e.preventDefault();
-    if (!this.roomId) this.openRoom(MESSY);
     this.beginWriting(e.key);
   }
 

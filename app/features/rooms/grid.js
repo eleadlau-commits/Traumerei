@@ -1,17 +1,17 @@
-// Part of Create. The rooms page: its grid of squares, pages, Archive shelf, Arrange by (tags) list, search lights,
-// a room's properties beside its square, dragging squares, and making a room.
-// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+// Part of the rooms feature. The rooms page: its grid of squares, floors, Archive shelf, Arrange by
+// (tags) list, search lights, a room's properties beside its square, dragging squares, and making a
+// room. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 
 import {
-  MESSY, DEFAULT_MODE, room, addRoom, name, create, update, remove, move, fold, roomThoughts,
+  MESSY, DEFAULT_MODE, room, addRoom, name, update, remove, move, fold, roomThoughts,
   gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore,
   peek, DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, light, squareLook, toOklch, rgb,
+  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb,
 } from './world.js';
 import { el, GRID, MAC, HOLD } from './shared.js';
 
-export class RoomsPage {
+export class RoomsGrid {
   // ---- The rooms page ----
 
   // How many columns fit, and how big a cell is.
@@ -91,14 +91,14 @@ export class RoomsPage {
       if (taken.has(`${col},${row}`)) continue;
       const making = this.making?.col === col && this.making?.row === row;
       empty.push(el('button', {
-        type: 'button', class: 'create-cell' + (making ? ' target' : ''), 'aria-label': 'New room here',
+        type: 'button', class: 'rooms-cell' + (making ? ' target' : ''), 'aria-label': 'New room here',
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
         onclick: () => this.onCell(col, row),
         // A right-click opens a small menu with Import file… (a left click shows the kinds of room).
         oncontextmenu: (e) => {
           e.preventDefault(); if (!this.files) return; this.roomSel = null; this.roomPick = null; this.making = { col, row, menu: true }; this.drawRooms();
-          this.grid.querySelector('.create-cell-menu button')?.focus({ preventScroll: true });
+          this.grid.querySelector('.rooms-cell-menu button')?.focus({ preventScroll: true });
         },
       }));
     }
@@ -109,7 +109,7 @@ export class RoomsPage {
     if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
     if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
-    this.grid.querySelector('.create-name-field')?.focus();
+    this.grid.querySelector('.rooms-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
   }
 
@@ -120,7 +120,7 @@ export class RoomsPage {
     this.roomPick = null;
     this.making = { col, row };
     this.drawRooms();
-    this.grid.querySelector('.create-kinds button')?.focus({ preventScroll: true });
+    this.grid.querySelector('.rooms-kinds button')?.focus({ preventScroll: true });
   }
 
   // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
@@ -129,7 +129,7 @@ export class RoomsPage {
     const size = c.size || 1;
     const right = c.col + size + 1 + 2 <= cols;
     return {
-      class: 'create-options' + (right ? '' : ' left') + extra,
+      class: 'rooms-options' + (right ? '' : ' left') + extra,
       style: right ? `left:${(c.col + size) * step + 4}px;top:${c.row * step}px` : `right:${(cols - c.col) * step + 4 - GRID.gap}px;top:${c.row * step}px`,
       onpointerdown: (e) => e.stopPropagation(),
       oncontextmenu: (e) => e.stopPropagation(),
@@ -138,22 +138,22 @@ export class RoomsPage {
 
   // The kinds of room a new one can be, beside the empty cell clicked.
   kindOptions(c, cell, cols) {
-    return el('div', this.beside(c, cell, cols, ' create-kinds'),
-      el('div', { class: 'create-options-label' }, 'A new room'),
-      ...this.ontologies.map((k) => el('button', { type: 'button', class: 'create-kind', onclick: () => this.newRoom(c, k.id) },
-        el('span', { class: 'create-kind-name' }, k.name), el('span', { class: 'create-add-note' }, k.note || ''))),
+    return el('div', this.beside(c, cell, cols, ' rooms-kinds'),
+      el('div', { class: 'rooms-options-label' }, 'A new room'),
+      ...this.ontologies.map((k) => el('button', { type: 'button', class: 'rooms-kind', onclick: () => this.newRoom(c, k.id) },
+        el('span', { class: 'rooms-kind-name' }, k.name), el('span', { class: 'rooms-add-note' }, k.note || ''))),
       // Or a room from a room Markdown file (the roomfile feature), in this cell.
-      this.files && el('button', { type: 'button', class: 'create-kind create-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
-        el('span', { class: 'create-kind-name' }, 'Import a room…'), el('span', { class: 'create-add-note' }, 'from a .md file')));
+      this.files && el('button', { type: 'button', class: 'rooms-kind rooms-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
+        el('span', { class: 'rooms-kind-name' }, 'Import a room…'), el('span', { class: 'rooms-add-note' }, 'from a .md file')));
   }
 
   // The menu a right-click on an empty cell opens: Import file…, a room from a room Markdown file
   // (the roomfile feature), placed in this cell.
   cellMenu(c, cell, cols) {
-    return el('div', { ...this.beside(c, cell, cols, ' create-kinds create-cell-menu'), role: 'menu' },
-      el('button', { type: 'button', class: 'create-kind create-kind-import', role: 'menuitem',
+    return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds rooms-cell-menu'), role: 'menu' },
+      el('button', { type: 'button', class: 'rooms-kind rooms-kind-import', role: 'menuitem',
         onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, { col: c.col, row: c.row }); } },
-      el('span', { class: 'create-kind-name' }, 'Import file…'), el('span', { class: 'create-add-note' }, '.md')));
+      el('span', { class: 'rooms-kind-name' }, 'Import file…'), el('span', { class: 'rooms-add-note' }, '.md')));
   }
 
   drawPages() {
@@ -161,11 +161,11 @@ export class RoomsPage {
     this.pagesBar.hidden = this.shelf;
     this.pagesBar.replaceChildren(
       ...Array.from({ length: n }, (_, i) => el('button', {
-        type: 'button', class: 'create-rail-item create-page', 'data-page': i,
+        type: 'button', class: 'rooms-rail-item rooms-page', 'data-page': i,
         ...(i === this.page ? { 'aria-current': 'page' } : {}),
         onclick: () => this.showPage(i),
       }, `Floor ${i + 1}`)),
-      el('button', { type: 'button', class: 'create-rail-item create-page create-page-new', onclick: () => {
+      el('button', { type: 'button', class: 'rooms-rail-item rooms-page rooms-page-new', onclick: () => {
         const i = addPage(this.world);
         this.save();
         this.showPage(i);
@@ -183,11 +183,11 @@ export class RoomsPage {
     const lit = glow > 0.04;
     const name = this.renaming === r.id
       ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
-      : el('span', { class: 'create-tile-name', title: r.name }, r.name);
+      : el('span', { class: 'rooms-tile-name', title: r.name }, r.name);
     const lines = peek(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
-      class: 'create-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
+      class: 'rooms-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
         + (this.roomPick === r.id ? ' picked' : '')
         + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
@@ -202,18 +202,18 @@ export class RoomsPage {
         if (e.key === ' ') { e.preventDefault(); this.pickRoom(r.id); }
         if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); this.chooseRoom(r.id, true); }
       },
-      onfocus: () => { if (this.roomPick !== r.id && !this.roomSel) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.create-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
+      onfocus: () => { if (this.roomPick !== r.id && !this.roomSel) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.rooms-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
       onpointerdown: (e) => this.onTileDown(e, r, tile),
       oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.chooseRoom(r.id, true); this.held = null; },
     },
-      lines.length || r.desc ? el('div', { class: 'create-peek', 'aria-hidden': 'true' },
-        r.desc ? el('div', { class: 'create-peek-desc' }, r.desc) : null,
-        ...lines.map((t) => el('div', { class: 'create-peek-line' }, t))) : null,
-      this.drafts[r.id] ? el('span', { class: 'create-tile-dot', title: 'A thought left half written' }) : null,
-      typeof found === 'number' && found ? el('span', { class: 'create-tile-found' }, String(found)) : null,
-      el('div', { class: 'create-tile-label' },
+      lines.length || r.desc ? el('div', { class: 'rooms-peek', 'aria-hidden': 'true' },
+        r.desc ? el('div', { class: 'rooms-peek-desc' }, r.desc) : null,
+        ...lines.map((t) => el('div', { class: 'rooms-peek-line' }, t))) : null,
+      this.room?.hasDraft(r.id) ? el('span', { class: 'rooms-tile-dot', title: 'A thought left half written' }) : null,
+      typeof found === 'number' && found ? el('span', { class: 'rooms-tile-found' }, String(found)) : null,
+      el('div', { class: 'rooms-tile-label' },
         name,
-        el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
+        el('span', { class: 'rooms-tile-count' }, count ? String(count) : '')));
     return tile;
   }
 
@@ -238,7 +238,7 @@ export class RoomsPage {
     const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)), Math.ceil(shelved.length / cols) + 1);
     const empty = [];
     for (let i = shelved.length; i < rows * cols; i++) {
-      empty.push(el('div', { class: 'create-cell inert', 'aria-hidden': 'true', style: `grid-column:${(i % cols) + 1};grid-row:${Math.floor(i / cols) + 1}`, onclick: () => { if (this.roomSel || this.roomPick) { this.roomSel = this.roomPick = null; this.drawRooms(); } } }));
+      empty.push(el('div', { class: 'rooms-cell inert', 'aria-hidden': 'true', style: `grid-column:${(i % cols) + 1};grid-row:${Math.floor(i / cols) + 1}`, onclick: () => { if (this.roomSel || this.roomPick) { this.roomSel = this.roomPick = null; this.drawRooms(); } } }));
     }
     const tiles = shelved.map((r, i) => {
       const t = this.tile({ ...r, size: 1 }, Date.now(), hits);
@@ -253,11 +253,11 @@ export class RoomsPage {
   }
 
   shelfOptions(r, col, row, cell, cols) {
-    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'rooms-word ' + extra, onclick: fn }, label);
     return el('div', this.beside({ col, row }, cell, cols),
-      el('div', { class: 'create-options-label' }, r.name),
-      r.desc ? el('p', { class: 'create-options-note' }, r.desc) : null,
-      word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      el('div', { class: 'rooms-options-label' }, r.name),
+      r.desc ? el('p', { class: 'rooms-options-note' }, r.desc) : null,
+      word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
       word('Restore', () => {
         restore(this.world, r.id, null, this.gridSize().cols);
         this.roomSel = null;
@@ -271,7 +271,7 @@ export class RoomsPage {
         this.save();
         this.drawRooms();
         this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-      }, 'create-options-delete'));
+      }, 'rooms-options-delete'));
   }
 
   // ---- Arrange by, in the rail: the tag groups, their tags, and how many rooms have each ----
@@ -298,7 +298,7 @@ export class RoomsPage {
       const mode = tagGroup(this.world, t.tag, onts) === ONTOLOGY;
       let timer = 0;
       return el('button', {
-        type: 'button', class: 'create-tag-pick' + (mode ? '' : ' draggable'), role: 'listitem', 'aria-pressed': String(on),
+        type: 'button', class: 'rooms-tag-pick' + (mode ? '' : ' draggable'), role: 'listitem', 'aria-pressed': String(on),
         title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · drag onto a room to tag it · right-click to put it in a group'}`,
         onclick: () => { if (this.heldTag) { this.heldTag = false; return; } this.tagLight = on ? null : t.tag; this.drawRooms(); },
         oncontextmenu: (e) => { e.preventDefault(); if (!mode) { this.regrouping = t.tag; this.drawTags(); } },
@@ -308,24 +308,24 @@ export class RoomsPage {
           this.dragTag(e, t.tag, () => clearTimeout(timer));
         },
         onpointerup: () => clearTimeout(timer), onpointerleave: () => clearTimeout(timer),
-      }, el('span', { class: 'create-tag-name' }, t.tag), el('span', { class: 'create-tag-n' }, String(t.n)));
+      }, el('span', { class: 'rooms-tag-name' }, t.tag), el('span', { class: 'rooms-tag-n' }, String(t.n)));
     };
     const plus = (group, label) => this.makingTag && this.makingTag.group === group
       ? this.makeField(group)
-      : el('button', { type: 'button', class: 'create-tag-plus', title: label, 'aria-label': label,
+      : el('button', { type: 'button', class: 'rooms-tag-plus', title: label, 'aria-label': label,
         onclick: () => { this.makingTag = { group }; this.drawTags(); } }, el('span', { 'aria-hidden': 'true' }, '+'), group == null ? 'group' : 'tag');
     const none = !this.tagLight;
     this.tagsList.replaceChildren(
-      el('button', { type: 'button', class: 'create-tag-head', role: 'listitem', 'aria-pressed': String(none),
+      el('button', { type: 'button', class: 'rooms-tag-head', role: 'listitem', 'aria-pressed': String(none),
         title: 'Every room bright', onclick: () => { this.tagLight = null; this.openGroup = null; this.makingTag = null; this.drawRooms(); } }, 'None'),
       ...grouped.map((g) => {
         const key = keyOf(g), open = this.openGroup === key;
         const lit = this.tagLight && (tagGroup(this.world, this.tagLight, onts) || '').toLowerCase() === key;
-        return el('div', { class: 'create-tag-fold' + (open ? ' open' : ''), role: 'listitem' },
-          el('button', { type: 'button', class: 'create-tag-head', 'aria-expanded': String(open), 'aria-pressed': String(!!lit),
+        return el('div', { class: 'rooms-tag-fold' + (open ? ' open' : ''), role: 'listitem' },
+          el('button', { type: 'button', class: 'rooms-tag-head', 'aria-expanded': String(open), 'aria-pressed': String(!!lit),
             onclick: () => { this.openGroup = open ? null : key; this.makingTag = null; this.drawTags(); } },
-          el('span', {}, g.group || 'Other'), el('span', { class: 'create-tag-caret', 'aria-hidden': 'true' }, '›')),
-          open ? el('div', { class: 'create-tag-tags', role: 'list' },
+          el('span', {}, g.group || 'Other'), el('span', { class: 'rooms-tag-caret', 'aria-hidden': 'true' }, '›')),
+          open ? el('div', { class: 'rooms-tag-tags', role: 'list' },
             ...g.tags.map(pick),
             g.group === ONTOLOGY ? null : plus(g.group || '', `A new tag${g.group ? ' in ' + g.group : ''}`)) : null);
       }),
@@ -347,7 +347,7 @@ export class RoomsPage {
       this.drawTags();
     };
     const field = el('input', {
-      class: 'create-tag-field create-make-field', placeholder: forGroup ? 'New group' : 'New tag',
+      class: 'rooms-tag-field rooms-make-field', placeholder: forGroup ? 'New group' : 'New tag',
       'aria-label': forGroup ? 'A new group' : 'A new tag', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
@@ -357,7 +357,7 @@ export class RoomsPage {
       onblur: (e) => { if (this.makingTag) done(true, e.target.value); },
     });
     queueMicrotask(() => field.focus({ preventScroll: true })); // once it is on the page, before the next key
-    return el('div', { class: 'create-group-edit', role: 'listitem' }, field);
+    return el('div', { class: 'rooms-group-edit', role: 'listitem' }, field);
   }
 
   // Dragging a tag from the Arrange by list: a small chip follows the pointer, and the square it is
@@ -366,12 +366,12 @@ export class RoomsPage {
     if (e.button) return;
     const start = { x: e.clientX, y: e.clientY };
     let chip = null, over = null;
-    const tileAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.create-tile[data-room]') || null;
+    const tileAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.rooms-tile[data-room]') || null;
     const move = (ev) => {
       if (!chip) {
         if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
         moved();
-        chip = el('div', { class: 'create-tag-ghost', 'aria-hidden': 'true' }, tag);
+        chip = el('div', { class: 'rooms-tag-ghost', 'aria-hidden': 'true' }, tag);
         this.root.append(chip);
         this.grid.classList.add('tag-dragging');
       }
@@ -410,10 +410,10 @@ export class RoomsPage {
       if (keep && setTagGroup(this.world, tag, value, this.ontologies)) this.save();
       this.drawTags();
     };
-    const list = el('datalist', { id: 'create-group-list' }, ...groupNames(this.world).slice(1).map((g) => el('option', { value: g })));
+    const list = el('datalist', { id: 'rooms-group-list' }, ...groupNames(this.world).slice(1).map((g) => el('option', { value: g })));
     const field = el('input', {
-      class: 'create-tag-field create-group-field', value: tagGroup(this.world, tag, this.ontologies) || '', placeholder: `${tag} in…`,
-      'aria-label': `The group ${tag} is in`, list: 'create-group-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      class: 'rooms-tag-field rooms-group-field', value: tagGroup(this.world, tag, this.ontologies) || '', placeholder: `${tag} in…`,
+      'aria-label': `The group ${tag} is in`, list: 'rooms-group-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); done(true, e.target.value); }
@@ -422,7 +422,7 @@ export class RoomsPage {
       onblur: (e) => { if (this.regrouping) done(true, e.target.value); },
     });
     requestAnimationFrame(() => { field.focus({ preventScroll: true }); field.select(); });
-    return el('div', { class: 'create-group-edit', role: 'listitem' }, field, list);
+    return el('div', { class: 'rooms-group-edit', role: 'listitem' }, field, list);
   }
 
   // ---- Search lights ----
@@ -440,7 +440,7 @@ export class RoomsPage {
     this.lights = null;
     this.lightsBar.hidden = true;
     this.lightsField.value = '';
-    if (!this.roomId && !this.root.hidden) this.drawRooms();
+    if (!this.inRoom && !this.root.hidden) this.drawRooms();
   }
 
   // The room the lights found most in, on the page that shows.
@@ -456,7 +456,7 @@ export class RoomsPage {
     this.making = null;
     this.roomPick = id;
     this.drawRooms();
-    this.grid.querySelector(`.create-tile[data-room="${id}"]`)?.focus({ preventScroll: true });
+    this.grid.querySelector(`.rooms-tile[data-room="${id}"]`)?.focus({ preventScroll: true });
   }
 
   // Opens (or, with open false, toggles) a room's properties beside its square.
@@ -476,44 +476,44 @@ export class RoomsPage {
     const look = this.lookOf(r);
     const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
     const nameField = el('input', {
-      class: 'create-options-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
+      class: 'rooms-options-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
       onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
     });
-    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'rooms-word ' + extra, onclick: fn }, label);
     const panel = el('div', this.beside(r, cell, cols),
       nameField,
       // A line or two about the room: shown under its name inside, and in its square's peek.
       el('textarea', {
-        class: 'create-options-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
+        class: 'rooms-options-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
         onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
         onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
       }, r.desc || ''),
-      word('Go in', () => this.openRoom(r.id), 'create-options-go'),
+      word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
       // Its kind: a small room keeps its one mode; a big one switches inside.
       // (its tags below name the modes).
-      el('p', { class: 'create-options-note' }, isBig(r) ? 'Every mode · switched inside' : 'One mode'),
+      el('p', { class: 'rooms-options-note' }, isBig(r) ? 'Every mode · switched inside' : 'One mode'),
       this.tagsRow(r),
       // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
-      el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Colour'),
         el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
           const L = toOklch(rgb(e.target.value))[0];
           set({ tint: e.target.value, light: Math.round(L * 1000) / 1000 });
           lightness.value = L;
         } })),
-      el('label', { class: 'create-slider' }, el('span', {}, 'Lightness'), lightness),
-      el('label', { class: 'create-slider' }, el('span', {}, 'Opacity'),
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Lightness'), lightness),
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Opacity'),
         el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) })),
-      r.locked ? null : el('div', { class: 'create-options-row' },
-        el('span', { class: 'create-options-label' }, 'Size'),
+      r.locked ? null : el('div', { class: 'rooms-options-row' },
+        el('span', { class: 'rooms-options-label' }, 'Size'),
         ...[1, 2].map((n) => el('button', {
-          type: 'button', class: 'create-word', 'aria-pressed': String((r.size || 1) === n),
+          type: 'button', class: 'rooms-word', 'aria-pressed': String((r.size || 1) === n),
           onclick: () => {
             if (sizeRoom(this.world, r.id, n, this.cols)) { this.save(); this.drawRooms(); }
             else this.toast('There isn\'t room for it to grow here. Move it first.');
           },
         }, n === 1 ? '1 × 1' : '2 × 2'))),
-      el('div', { class: 'create-options-row' },
+      el('div', { class: 'rooms-options-row' },
         r.tint || r.light != null || r.opacity != null ? word('Back to the tint', () => {
           delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
         }) : null,
@@ -534,7 +534,7 @@ export class RoomsPage {
           this.save();
           this.drawRooms();
           this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-        }, 'create-options-delete') : null));
+        }, 'rooms-options-delete') : null));
     return panel;
   }
 
@@ -545,10 +545,10 @@ export class RoomsPage {
     const mine = roomTags(this.world, r.id, onts);
     const had = new Set(mine.map((o) => o.tag.toLowerCase()));
     const after = (fn) => { if (fn()) { this.save(); this.tagFocus = r.id; this.drawRooms(); } };
-    const list = el('datalist', { id: 'create-tag-list' },
+    const list = el('datalist', { id: 'rooms-tag-list' },
       ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el('option', { value: t.tag })));
     const field = el('input', {
-      class: 'create-tag-field', placeholder: '+ tag', title: 'A tag, or Group: tag', 'aria-label': 'Add a tag', list: 'create-tag-list', maxlength: 61, autocomplete: 'off', spellcheck: 'false',
+      class: 'rooms-tag-field', placeholder: '+ tag', title: 'A tag, or Group: tag', 'aria-label': 'Add a tag', list: 'rooms-tag-list', maxlength: 61, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value; after(() => addTag(this.world, r.id, v, onts)); }
@@ -557,10 +557,10 @@ export class RoomsPage {
       },
     });
     if (this.tagFocus === r.id) { this.tagFocus = null; requestAnimationFrame(() => field.focus({ preventScroll: true })); }
-    return el('div', { class: 'create-tags', role: 'group', 'aria-label': 'Tags' },
-      ...mine.map((o) => el('span', { class: 'create-chip' + (o.auto ? ' auto' : ''), title: o.auto ? 'Its mode: always a tag' : '' },
+    return el('div', { class: 'rooms-tags', role: 'group', 'aria-label': 'Tags' },
+      ...mine.map((o) => el('span', { class: 'rooms-chip' + (o.auto ? ' auto' : ''), title: o.auto ? 'Its mode: always a tag' : '' },
         o.tag,
-        o.auto ? null : el('button', { type: 'button', class: 'create-chip-x', 'aria-label': `Take off ${o.tag}`, onclick: () => after(() => removeTag(this.world, r.id, o.tag)) }, '×'))),
+        o.auto ? null : el('button', { type: 'button', class: 'rooms-chip-x', 'aria-label': `Take off ${o.tag}`, onclick: () => after(() => removeTag(this.world, r.id, o.tag)) }, '×'))),
       field, list);
   }
 
@@ -569,7 +569,7 @@ export class RoomsPage {
     if (this.roomsFrame) return;
     this.roomsFrame = requestAnimationFrame(() => {
       this.roomsFrame = 0;
-      for (const tile of this.grid.querySelectorAll('.create-tile')) {
+      for (const tile of this.grid.querySelectorAll('.rooms-tile')) {
         const r = room(this.world, tile.dataset.room);
         if (r) tile.style.setProperty('--square', squareLook(r, r.id === MESSY, this.prefs, this.palette).fill);
       }
@@ -612,7 +612,7 @@ export class RoomsPage {
       return at && { col: at.col - offset.col, row: at.row - offset.row };
     };
     // Where it would land: a shadow the room's own size (2 × 2 for a big room), faint if taken.
-    const drop = el('div', { class: 'create-drop', hidden: true });
+    const drop = el('div', { class: 'rooms-drop', hidden: true });
     this.grid.append(drop);
     const mark = (c) => {
       if (!c) { drop.hidden = true; return; }
@@ -689,7 +689,7 @@ export class RoomsPage {
     this.renaming = r.id;
     this.roomPick = r.id;
     this.drawRooms();
-    this.grid.querySelector('.create-name-field')?.select();
+    this.grid.querySelector('.rooms-name-field')?.select();
   }
 
   // An input for a room's name: Enter or leaving it keeps the name, Escape keeps the old one.
@@ -702,7 +702,7 @@ export class RoomsPage {
       done();
     };
     const field = el('input', {
-      class: 'create-name-field', value: r.name, 'aria-label': 'Room name', maxlength: 60,
+      class: 'rooms-name-field', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') finish(true);

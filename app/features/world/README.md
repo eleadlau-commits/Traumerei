@@ -1,9 +1,9 @@
 # World
 
 The saved world of rooms and thoughts, and everything true of it without a screen: its rules,
-saving and undo, the ontologies, the rooms' look and the attention log. Create (the rooms page
-and the rooms) draws it; this feature never touches the screen, except that an ontology draws
-its own canvas when Create asks it to.
+saving and undo, the ontologies, the rooms' look and the attention log. The rooms page (the rooms
+feature) and an open room (Create) draw it; this feature never touches the screen, except that
+an ontology draws its own canvas when the room asks it to.
 
 ## The world service
 
@@ -27,7 +27,8 @@ list is everything it offers:
 | `attention`, `visit(roomId)` | The attention log (`attention.js`), and going into a room. Saved as 'attention'. |
 
 **Events:** `world:saved` (the world was written down after a `save()`), `world:changed`
-(`{ undone }`, after `undo()`), `world:palette` (the app's colours changed).
+(`{ undone }`, after `undo()`), `world:palette` (the app's colours changed), `world:look`
+(Settings → Rooms' look changed).
 
 **Slot:** `world.ontologies`, for a whole ontology from another feature (shape in
 `ontologies/index.js`).

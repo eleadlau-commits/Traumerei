@@ -1,16 +1,16 @@
 {
   "name": "Create",
-  "description": "Rooms of thoughts: a grid of rooms under the veil, each a canvas to write in, seen through an ontological mode (Joyce or Pessoa).",
+  "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).",
   "version": "0.1.0",
   "main": "Create.js",
   "styles": [
     "style.css"
   ],
   "uses": [
-    "renderer",
     "roomfile"
   ],
   "requires": [
-    "world"
+    "world",
+    "rooms"
   ]
 }

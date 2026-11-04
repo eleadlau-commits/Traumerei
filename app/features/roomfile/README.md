@@ -1,7 +1,7 @@
 # Room files
 
-A room in and out as one plain Markdown file ("room Markdown"). Create says where (a cell and
-floor, a room, a spot in it) and puts the choices in its menus; this feature reads the file, shows
+A room in and out as one plain Markdown file ("room Markdown"). The rooms page and the room say
+where (a cell and floor, a room, a spot in it) and put the choices in their menus; this feature reads the file, shows
 the card, changes the world and downloads. The world itself is the world feature's.
 
 ## The roomfile service

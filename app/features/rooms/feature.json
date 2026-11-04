@@ -1,0 +1,16 @@
+{
+  "name": "Rooms",
+  "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.",
+  "version": "0.1.0",
+  "main": "Rooms.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "world"
+  ],
+  "uses": [
+    "renderer",
+    "roomfile"
+  ]
+}

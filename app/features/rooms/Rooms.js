@@ -1,0 +1,502 @@
+// The rooms page. Create (on the home page, or in the menu) slides it up from the bottom, leaving
+// a strip of the home page at the top with the menu (☰) in the top-left corner, as on every page,
+// a back arrow home in the top-right one, and Search (Ctrl+K, ⌘K on a Mac) in the middle. The
+// page is a light opacity mask over the home picture itself, held still underneath (its
+// spontaneity layer is off). It is a grid of square cells: each room is an opacity square on it
+// (one cell; Messy thoughts takes four at the top left), and a room written in lately glows. A rail
+// on the left holds Rooms, the floors, the Archive (a grid of its own, where no room can be made)
+// and Arrange by. Typing anything here opens Messy thoughts and starts writing there.
+//
+// On the grid, a click chooses a square (an outline); a right-click (or a long press) opens its
+// properties beside it; a double click or Enter goes in. Drag a square to move it: to a free cell,
+// onto a floor, or onto Archive. The grid itself is grid.js.
+//
+// This feature owns the page and going in and out of Create. Inside a room is the room feature's:
+// going in, this page sends 'room:open' ({ id, from, seed }) and zooms out of the way; the room
+// comes back through this feature's `rooms` service (showRooms). It also offers `create` (open)
+// to the home page. The world is the world feature's (its service; world.js binds its rules).
+//
+// Saved data: 'lastRoom' (its square glows), 'note' (the comment for next time), 'hinted'.
+
+import { Feature, ui } from 'folio';
+import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb } from './world.js';
+import { el, MAC, KEY, HINT, enterKeeps } from './shared.js';
+import { RoomsGrid } from './grid.js';
+
+export default class Rooms extends Feature {
+  start() {
+    this.w = this.use('world');
+    bind(this.w.lib);
+    this.inRoom = null;   // the room gone into (the room feature shows it), or null
+    this.renaming = null; // a room id whose name is being edited on its square
+    this.roomPick = null; // the room chosen (outlined) on a grid
+    this.roomSel = null;  // the room whose properties show beside it
+    this.making = null;   // an empty cell clicked: { col, row }, where the new room's kinds show
+    this.page = 0;        // the floor that shows
+    this.lastRoom = this.storage.get('lastRoom') || null; // the room last gone into: its square glows
+    this.shelf = false;   // the Archive page is showing, instead of the grid
+    this.lights = null;   // the search lights: what is being looked for, or null
+    this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
+    this.regrouping = null; // the tag whose group is being typed in the Arrange by list
+    this.tagsOpen = false; // the rail's Arrange by list is open
+    this.openGroup = null; // the group open in it (its name in lower case; '' for Other), or null
+    this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
+    this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
+
+    this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
+    this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
+    this.build();
+    this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
+    this.on('world:look', () => this.repaint());    // Settings → Rooms changed
+    this.on('world:saved', () => { if (!this.inRoom) this.showSaved(); });
+    this.on('world:changed', ({ undone }) => {      // a step undone or redone
+      this.roomSel = this.making = null;
+      if (this.inRoom) return;
+      this.showSaved(undone ? 'Undone' : 'Redone');
+      this.drawRooms();
+    });
+    this.on('room:changed', (id) => this.edited.add(id)); // a room was written in
+    // In the menu, on the rooms page: a new room from a room Markdown file (the roomfile feature).
+    if (this.files) this.add('header.buttons', { id: 'rooms-import', label: 'Import a room…', icon: 'book', order: 40,
+      visible: () => !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
+    this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.');
+    this.provide('create', { open: () => this.open() });
+    const w = this;
+    this.provide('rooms', {
+      openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
+      showRooms: () => this.showRooms(),   // back to this page, from a room
+      get cols() { return w.cols; },       // how many columns the grid has
+    });
+    document.addEventListener('keydown', (e) => this.onKey(e));
+    window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
+  }
+
+  // What the world feature holds, read through its service.
+  get world() { return this.w.world; }
+  get prefs() { return this.w.prefs; }       // Settings → Rooms' look (look.js)
+  get ontPrefs() { return this.w.globals; }  // the global ontology settings: what a new room starts with
+  get palette() { return this.w.palette; }   // the app's colours
+  get attention() { return this.w.attention; }
+  get ontologies() { return this.w.ontologies; }
+
+  // The open room (the room feature fills the rooms.room slot), if it is there.
+  get room() { return this.slot('rooms.room').items[0] || null; }
+
+  lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
+
+  // ---- Opening and closing ----
+
+  open() {
+    this.w.load(); // it may have arrived from the account meanwhile
+    this.w.begin();
+    this.edited = new Set();
+    this.leaving = false;
+    this.showNote();
+    this.app.shell?.closeMenu?.();
+    clearTimeout(this.closing);
+    this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
+    this.w.refreshPalette();
+    this.paintPage();
+    this.shelf = false;
+    this.page = 0;
+    this.roomPick = null;
+    this.root.hidden = false;
+    document.documentElement.classList.add('rooms-open');
+    this.showRooms();
+    this.root.getBoundingClientRect(); // so the slide starts from below
+    this.root.classList.add('up');
+    this.backdrop?.cover?.(true);
+  }
+
+  close() {
+    this.leaving = false;
+    this.leaveBox.hidden = true;
+    this.closeKeys();
+    this.closeLights();
+    this.files?.cancel();
+    this.room?.leave();
+    this.backdrop?.cover?.(false);
+    this.root.classList.remove('up');
+    
+    clearTimeout(this.closing);
+    this.closing = setTimeout(() => {
+      this.root.hidden = true;
+      document.documentElement.classList.remove('rooms-open');
+    }, 520);
+  }
+
+  // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.
+  back() {
+    if (this.inRoom) this.showRooms();
+    else if (this.tagLight) { this.tagLight = null; this.drawRooms(); }
+    else if (this.shelf) this.toggleShelf();
+    else if (this.edited?.size && !this.leaving) this.askNote();
+    else this.close();
+  }
+
+  // ---- A comment for next time ----
+
+  // Leaving after changing rooms: their squares glow, and a pop-up offers a line for next time.
+  askNote() {
+    this.leaving = true;
+    this.drawRooms();
+    const text = el('textarea', { class: 'rooms-sheet-body', rows: 3, placeholder: 'Where you were, what to pick up next', 'aria-label': 'Comment for next time' });
+    const keep = () => {
+      const t = text.value.trim();
+      if (t) this.storage.set('note', { text: t, at: Date.now() });
+      this.close();
+    };
+    text.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+      if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep();
+    };
+    this.leaveBox.replaceChildren(
+      el('div', { class: 'rooms-sheet-kind' }, 'Add a comment for next time?'),
+      text,
+      el('div', { class: 'rooms-sheet-words' },
+        el('button', { type: 'button', class: 'rooms-word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'rooms-word', onclick: () => this.close() }, 'Skip'),
+        el('span', { class: 'rooms-keys' }, 'Enter keeps it · Ctrl+Enter a new line')));
+    this.leaveBox.hidden = false;
+    text.focus();
+  }
+
+  // The comment left last time, faint under the search bar until it is dismissed.
+  showNote() {
+    const note = this.storage.get('note');
+    this.noteLine.hidden = !note?.text;
+    if (!note?.text) return;
+    this.noteLine.replaceChildren(el('span', {}, note.text),
+      el('button', { type: 'button', class: 'rooms-word rooms-note-x', title: 'Dismiss', onclick: () => { this.storage.set('note', null); this.noteLine.hidden = true; } }, 'dismiss'));
+  }
+
+  // Shows a floor of the rooms page.
+  showPage(page = this.page) {
+    if (this.inRoom) this.showRooms();
+    this.closeLights();
+    const from = this.shelf ? null : this.page;
+    const old = from != null && from !== page && !this.roomsPage.hidden ? this.grid.cloneNode(true) : null;
+    const oldTop = this.grid.parentElement?.scrollTop || 0;
+    this.page = page;
+    this.shelf = false;
+    this.roomPick = this.roomSel = this.making = null;
+    this.renaming = null;
+    this.grid.parentElement?.scrollTo?.(0, 0);
+    this.drawRooms();
+    if (old) this.scrollPage(old, oldTop, page > from);
+  }
+
+  // Going to another floor scrolls: to a later one the old one goes up and away and the new one
+  // comes up from below; to an earlier one, the other way.
+  scrollPage(old, oldTop, down) {
+    const wrap = this.grid.parentElement;
+    if (!wrap?.animate || this.grid.animate == null || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    this.pageGhost?.remove();
+    const H = wrap.clientHeight, d = down ? 1 : -1;
+    old.classList.add('rooms-page-ghost');
+    old.setAttribute('aria-hidden', 'true');
+    old.inert = true;
+    Object.assign(old.style, { position: 'absolute', top: `${this.grid.offsetTop - oldTop}px`, left: `${this.grid.offsetLeft}px`, margin: '0' });
+    wrap.append(old);
+    this.pageGhost = old;
+    const timing = { duration: 560, easing: 'cubic-bezier(.65, 0, .25, 1)' };
+    old.animate([{ transform: 'none' }, { transform: `translateY(${-d * H}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
+    this.grid.animate([{ transform: `translateY(${d * H}px)` }, { transform: 'none' }], timing);
+  }
+
+  // Back to the rooms page (from a room, the room feature leaves it, and its square takes it back).
+  showRooms() {
+    this.inRoom = null; // first, so a save made on the way out shows here
+    const from = this.room?.leave() || null; // the room that showed, if one did
+    this.roomSel = this.making = null;
+    this.roomsPage.hidden = false;
+    this.root.classList.remove('in-room');
+    this.backBtn.setAttribute('aria-label', 'Back to the home page');
+    this.drawRooms();
+    if (from && !this.root.hidden) this.shrink(from);
+  }
+
+  // Goes into a room (with `seed`, the first letters of a thought to write there): the room
+  // feature shows it, zooming in from its square when it is on the page. Back then goes to its
+  // floor (or the Archive, if it was opened from there).
+  openRoom(id, seed = '') {
+    const r = room(this.world, id);
+    if (!r || !this.room) return;
+    if (!this.shelf) this.page = r.page || 0;
+    this.closeLights();
+    this.w.visit(id);
+    this.lastRoom = id;
+    this.storage.set('lastRoom', id);
+    const tile = !this.inRoom && !this.roomsPage.hidden && this.grid.querySelector(`.rooms-tile[data-room="${id}"]`);
+    const from = tile ? tile.getBoundingClientRect() : null;
+    this.inRoom = id;
+    this.root.classList.add('in-room');
+    this.emit('room:open', { id, from, seed });
+    if (from) this.zoomOut(from); else this.roomsPage.hidden = true;
+  }
+
+  // Going in, the rooms page swells about the square and fades (the room grows out of the square
+  // over it), and then hides.
+  zoomOut(a) {
+    clearTimeout(this.zoomTimer);
+    this.shrinkVeil?.remove();
+    this.zoomAnim?.cancel();
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.roomsPage.hidden = true; return; }
+    this.zoomRooms(a, true);
+    this.zoomTimer = setTimeout(() => {
+      if (this.inRoom) this.roomsPage.hidden = true;
+      this.zoomAnim?.cancel();
+    }, 500);
+  }
+
+  // Leaving zooms out, the other way: the room shrinks back into its square while the rooms page
+  // settles from swollen to its place around it.
+  shrink(id) {
+    this.shrinkVeil?.remove();
+    clearTimeout(this.zoomTimer);
+    this.zoomAnim?.cancel();
+    const tile = this.grid.querySelector(`.rooms-tile[data-room="${id}"]`);
+    const r = room(this.world, id);
+    if (!tile || !r || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const look = this.lookOf(r);
+    const a = tile.getBoundingClientRect();
+    const W = window.innerWidth, H = window.innerHeight;
+    const veil = el('div', { class: 'rooms-expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
+    this.shrinkVeil = veil;
+    this.root.append(veil);
+    veil.getBoundingClientRect();
+    veil.style.transform = `translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})`;
+    veil.style.opacity = '0';
+    veil.style.transition = 'transform .5s cubic-bezier(.65, 0, .25, 1), opacity .5s cubic-bezier(.7, 0, .9, .4)';
+    this.zoomRooms(a, false);
+    this.zoomTimer = setTimeout(() => veil.remove(), 520);
+  }
+
+  // The rooms page swelling about a square (going in), or settling back from swollen (coming out).
+  zoomRooms(a, going) {
+    const page = this.roomsPage;
+    if (!page.animate) return;
+    const box = page.getBoundingClientRect();
+    const scale = Math.min(6, Math.max(2.2, window.innerWidth / Math.max(1, a.width) / 2));
+    const origin = `${a.left + a.width / 2 - box.left}px ${a.top + a.height / 2 - box.top}px`;
+    const swollen = { transform: `scale(${scale})`, opacity: 0, transformOrigin: origin };
+    const still = { transform: 'none', opacity: 1, transformOrigin: origin };
+    this.zoomAnim = page.animate(going ? [still, swollen] : [swollen, still],
+      { duration: going ? 500 : 520, easing: 'cubic-bezier(.65, 0, .25, 1)', fill: going ? 'forwards' : 'none' });
+  }
+
+  // A change to the rooms (the world feature saves it; Ctrl+Z can take it back).
+  save() { this.w.save(); }
+
+  undo(back = true) {
+    if (!this.w.undo(back)) this.toast(back ? 'Nothing to undo' : 'Nothing to redo');
+  }
+
+  // A quiet word in the corner when the world has been written down.
+  showSaved(word = 'Saved') {
+    this.savedMark.textContent = word;
+    this.savedMark.classList.remove('on');
+    void this.savedMark.offsetWidth;
+    this.savedMark.classList.add('on');
+  }
+
+  // A line of help, once, the first time the page is seen. It fades on the first key or click.
+  hint() {
+    if (this.storage.get('hinted')) return;
+    this.storage.set('hinted', true);
+    this.hintLine.textContent = HINT;
+    this.hintLine.classList.add('on');
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => this.hintLine.classList.remove('on'), 9000);
+  }
+
+  // ---- The look: the picture's colours (read when Create opened) and Settings → Rooms ----
+
+  paintPage() {
+    const page = pageLook(this.colours, this.prefs, this.palette);
+    this.root.style.setProperty('--rooms-top', page.top);
+    this.root.style.setProperty('--rooms-bottom', page.bottom);
+    this.root.style.setProperty('--rooms-mask', page.mask);
+    // A lit room's glow: the palette's glow, lightened toward white.
+    const glow = rgb(this.palette.glow) || [239, 204, 131];
+    const lift = (t, a) => `rgb(${glow.map((v) => Math.round(v + (255 - v) * t)).join(' ')} / ${a.toFixed(3)})`;
+    this.root.style.setProperty('--rooms-glow', lift(0.55, this.prefs.glow));
+    this.root.style.setProperty('--rooms-glow-in', lift(0.7, this.prefs.glow * 0.64));
+  }
+
+  // Shows a change straight away, if the page shows.
+  repaint() {
+    this.paintPage();
+    if (!this.root.hidden && !this.inRoom) this.drawRooms();
+  }
+
+  // ---- Keys ----
+
+  onKey(e) {
+    if (this.root.hidden || this.inRoom || document.querySelector('dialog[open]')) return;
+    if (e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    this.hintLine.classList.remove('on');
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openLights(); return; }
+    if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
+      e.preventDefault();
+      this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey);
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (this.roomSel || this.making) { this.roomSel = this.making = null; this.drawRooms(); }
+      else if (this.roomPick) { this.roomPick = null; this.drawRooms(); }
+      else if (this.lights != null) this.closeLights();
+      else this.back();
+      return;
+    }
+    if (this.shortcut(e, mod)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    if (e.target.closest?.('button') && e.key === ' ') return; // Space on a word presses it
+    if (e.key === ' ') return; // a lone Space does nothing here
+    e.preventDefault();
+    this.openRoom(MESSY, e.key); // typing anything starts a thought in Messy thoughts
+  }
+
+  // ?: the keys. On a grid, Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in;
+  // the ContextMenu key (or Shift+F10) opens its properties. True when the key was used.
+  shortcut(e, mod) {
+    const k = e.key;
+    if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
+    const id = this.roomSel || this.roomPick;
+    const r = id && room(this.world, id);
+    const deletes = k === 'Delete' || (MAC && e.metaKey && k === 'Backspace');
+    if (deletes && r && r.id !== MESSY && !shut(this.world, r.id)) {
+      e.preventDefault();
+      remove(this.world, r.id);
+      this.roomSel = this.roomPick = null;
+      this.save();
+      this.drawRooms();
+      this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+      return true;
+    }
+    if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
+    if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
+    return false;
+  }
+
+  // The keys, in a panel (the same list a room shows).
+  showKeys() {
+    const rows = [
+      ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
+      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'], ['Triple-click', 'write in a thought, where it is'],
+      ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
+      ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
+      ['Shift+click · Ctrl+click', 'add to the choice · in or out of it'], ['Ctrl+C · Ctrl+V', 'copy what is chosen · put a copy here'],
+      ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],
+      ['Arrows · Shift+arrows', 'nudge what is chosen'],
+      [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
+    ];
+    this.keysBox.replaceChildren(el('div', { class: 'rooms-search-panel rooms-keys-panel' },
+      el('div', { class: 'rooms-options-label' }, 'Keys'),
+      el('dl', { class: 'rooms-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
+    this.keysBox.hidden = false;
+    this.keysBox.onpointerdown = () => this.closeKeys();
+    const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeKeys(); document.removeEventListener('keydown', close, true); };
+    document.addEventListener('keydown', close, true);
+  }
+
+  closeKeys() {
+    if (this.keysBox.hidden) return;
+    this.keysBox.hidden = true;
+    this.keysBox.replaceChildren();
+  }
+
+  // ---- Room Markdown: the roomfile feature does the work; this page says where ----
+
+  // On the rooms page: a new room from a file, in `cell` (or the first free one).
+  async importRoomFile(file = null, cell = null) {
+    if (!this.files) return;
+    const page = this.shelf ? 0 : this.page;
+    const r = await this.files.importRoom({ file, cell, page, cols: this.cols || this.gridSize().cols, ok: () => !this.root.hidden });
+    if (!r) return;
+    this.making = this.roomSel = null;
+    this.roomPick = r.id;
+    this.save();
+    if (this.inRoom) this.showRooms();
+    if (this.shelf) this.toggleShelf();
+    if (this.page !== page) this.showPage(page); else this.drawRooms();
+    this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
+  }
+
+  // Downloads a room as <its name>.md (a locked room too).
+  exportRoomFile(id) { this.files?.exportRoom(id); }
+
+  // ---- Building the page ----
+
+  build() {
+    this.grid = el('div', { class: 'rooms-grid' });
+    // Search lights (Ctrl+K): the rooms without the words dim.
+    this.lightsField = el('input', { class: 'rooms-lights-field', placeholder: 'Light the rooms that hold… (or #tag)', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
+    this.lightsBar = el('div', { class: 'rooms-lights', hidden: true }, this.lightsField,
+      this.lightsNote = el('span', { class: 'rooms-lights-note' }));
+    this.lightsField.addEventListener('input', () => { this.lights = this.lightsField.value; this.drawRooms(); });
+    this.lightsField.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); this.closeLights(); }
+      if (e.key === 'Enter') { e.preventDefault(); const best = this.bestLit(); if (best) this.openRoom(best); }
+    });
+    // The rail on the left, under the menu: the rooms, and the Archive. A room dragged onto Archive
+    // goes there.
+    this.railRooms = el('button', { type: 'button', class: 'rooms-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
+    this.shelfBtn = el('button', { type: 'button', class: 'rooms-rail-item rooms-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
+      'Archive');
+    // Under a hairline, Arrange by: None, then the tag groups, each opening to its tags with how
+    // many rooms have each. Picking a tag dims the rooms without it, as the search lights do
+    // (nothing hides or moves); None, picking it again, or Escape, lets go. + makes groups and tags,
+    // and a tag dragged onto a square is added to that room.
+    this.tagsBtn = el('button', { type: 'button', class: 'rooms-rail-item rooms-tags-btn', 'aria-expanded': 'false',
+      onclick: () => { this.tagsOpen = !this.tagsOpen; this.makingTag = null; this.drawRooms(); } }, 'Arrange by');
+    this.tagsList = el('div', { class: 'rooms-tag-list', hidden: true, role: 'list' });
+    // The floors, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor. A room
+    // dropped on a floor goes to that floor.
+    this.pagesBar = el('nav', { class: 'rooms-pages', 'aria-label': 'Floors' });
+    this.rail = el('nav', { class: 'rooms-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
+      el('div', { class: 'rooms-rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
+    this.shelfHead = el('div', { class: 'rooms-shelf-head', hidden: true }, 'Archive');
+    this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
+      this.lightsBar,
+      this.rail,
+      el('div', { class: 'rooms-grid-wrap' }, this.shelfHead, this.grid));
+
+    this.backBtn = el('button', { type: 'button', class: 'rooms-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
+      ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
+    // Search, a bar in the middle of the top row: the search lights.
+    this.searchBtn = el('button', { type: 'button', class: 'rooms-word rooms-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
+      onclick: () => { if (this.lights != null) this.closeLights(); else this.openLights(); } },
+    el('span', {}, 'Search'), el('span', { class: 'rooms-search-key' }, KEY));
+    this.keysBox = el('div', { class: 'rooms-search', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
+    this.savedMark = el('div', { class: 'rooms-saved', 'aria-live': 'polite' });
+    this.hintLine = el('div', { class: 'rooms-hint' });
+    // A small wordmark beside the menu (☰).
+    this.wordmark = el('div', { class: 'rooms-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine,
+      this.noteLine = el('div', { class: 'rooms-note', hidden: true }),
+      this.leaveBox = el('div', { class: 'rooms-sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
+    (document.getElementById('folio-root') || document.body).append(this.root);
+    document.addEventListener('pointerdown', () => this.hintLine.classList.remove('on'));
+
+    // A room Markdown file dropped on the page: a new room, in the first free cell.
+    const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');
+    this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+    this.root.addEventListener('drop', (e) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
+      if (!file) { this.toast('Only a room Markdown file (.md) can be dropped here.'); return; }
+      this.importRoomFile(file);
+    });
+  }
+}
+
+// The grid (grid.js) is written as a class of its own, whose methods are copied onto Rooms here, so
+// `this` there is this feature.
+for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(RoomsGrid.prototype))) {
+  if (key !== 'constructor') Object.defineProperty(Rooms.prototype, key, d);
+}
