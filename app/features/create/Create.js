@@ -47,7 +47,6 @@ import { RoomView } from './room.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
-import { Files } from './files.js';
 
 export default class Create extends Feature {
   start() {
@@ -79,12 +78,13 @@ export default class Create extends Feature {
     this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
+    this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:saved', () => this.showSaved());
     this.build();
     this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 30, render: () => this.settingsPane() });
-    // In the menu, on the rooms page: a new room from a room Markdown file (files.js).
-    this.add('header.buttons', { id: 'create-import', label: 'Import a room…', icon: 'book', order: 40,
+    // In the menu, on the rooms page: a new room from a room Markdown file (the roomfile feature).
+    if (this.files) this.add('header.buttons', { id: 'create-import', label: 'Import a room…', icon: 'book', order: 40,
       visible: () => !!this.root && !this.root.hidden && !this.roomId, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.provide('create', this);
     document.addEventListener('keydown', (e) => this.onKey(e));
@@ -132,6 +132,7 @@ export default class Create extends Feature {
     this.closeSheet();
     this.closeSearch();
     this.closeLights();
+    this.files?.cancel();
     this.shelveDraft();
     this.stopWriting();
     this.backdrop?.cover?.(false);
@@ -464,9 +465,9 @@ export default class Create extends Feature {
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
-          el('div', { class: 'create-add-rule' }),
-          this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
-          this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
+          ...(this.files ? [el('div', { class: 'create-add-rule' }),
+            this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
+            this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false)] : []),
           el('div', { class: 'create-add-rule' }),
           this.addItem('Keys', '?', () => this.showKeys(), false)),
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
@@ -485,8 +486,7 @@ export default class Create extends Feature {
     this.wordmark = el('div', { class: 'create-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
     this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine,
       this.noteLine = el('div', { class: 'create-note', hidden: true }),
-      this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }),
-      this.importBox = el('div', { class: 'create-sheet create-leave create-import', hidden: true, role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() }));
+      this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -523,11 +523,56 @@ export default class Create extends Feature {
   groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
   openDocument(id) { openDocument(this, id); } // a group as a document (document.js)
 
+  // ---- Room Markdown: the roomfile feature does the work; Create says where ----
+
+  // Files dropped anywhere in Create: on the rooms page a new room, in a room into it.
+  listenForFiles() {
+    const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');
+    this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+    this.root.addEventListener('drop', (e) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
+      if (!file) { this.toast('Only a room Markdown file (.md) can be dropped here.'); return; }
+      if (this.roomId) this.importIntoRoom(file); else this.importRoomFile(file);
+    });
+  }
+
+  // On the rooms page: a new room from a file, in `cell` (or the first free one).
+  async importRoomFile(file = null, cell = null) {
+    if (!this.files) return;
+    const page = this.shelf ? 0 : this.page;
+    const r = await this.files.importRoom({ file, cell, page, cols: this.cols || this.gridSize().cols, ok: () => !this.root.hidden });
+    if (!r) return;
+    this.making = this.roomSel = null;
+    this.roomPick = r.id;
+    this.save();
+    if (this.roomId) this.showRooms();
+    if (this.shelf) this.toggleShelf();
+    if (this.page !== page) this.showPage(page); else this.drawRooms();
+    this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
+  }
+
+  // In a room: the file's groups and thoughts join it, as its own mode sees them.
+  async importIntoRoom(file = null) {
+    if (!this.roomId || !this.files) return;
+    const roomId = this.roomId;
+    const done = await this.files.importInto(roomId, {
+      file, at: () => this.freeSpot(), ok: () => this.roomId === roomId, before: () => { if (this.draft) this.commit(); } });
+    if (!done) return;
+    this.sel = null;
+    this.save();
+    this.drawRoom();
+    this.toast('Imported. Ctrl+Z takes it back.');
+  }
+
+  // Downloads a room as <its name>.md (a locked room too).
+  exportRoomFile(id = this.roomId) { this.files?.exportRoom(id); }
+
 }
 
 // Create is one class, written in several files: rooms.js (the rooms page), room.js (a room and its
-// settings), writing.js, gestures.js (pointer and keys), bars.js (pop-ups) and files.js (room
-// Markdown in and out). Each holds a class
+// settings), writing.js, gestures.js (pointer and keys) and bars.js (pop-ups). Each holds a class
 // whose methods (and getters, and statics) are copied onto Create here.
 function mixIn(target, ...parts) {
   for (const part of parts) {
@@ -539,4 +584,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Create, RoomsPage, RoomView, Writing, Gestures, Bars, Files);
+mixIn(Create, RoomsPage, RoomView, Writing, Gestures, Bars);

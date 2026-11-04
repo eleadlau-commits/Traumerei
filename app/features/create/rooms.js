@@ -97,7 +97,7 @@ export class RoomsPage {
         onclick: () => this.onCell(col, row),
         // A right-click opens a small menu with Import file… (a left click shows the kinds of room).
         oncontextmenu: (e) => {
-          e.preventDefault(); this.roomSel = null; this.roomPick = null; this.making = { col, row, menu: true }; this.drawRooms();
+          e.preventDefault(); if (!this.files) return; this.roomSel = null; this.roomPick = null; this.making = { col, row, menu: true }; this.drawRooms();
           this.grid.querySelector('.create-cell-menu button')?.focus({ preventScroll: true });
         },
       }));
@@ -142,13 +142,13 @@ export class RoomsPage {
       el('div', { class: 'create-options-label' }, 'A new room'),
       ...this.ontologies.map((k) => el('button', { type: 'button', class: 'create-kind', onclick: () => this.newRoom(c, k.id) },
         el('span', { class: 'create-kind-name' }, k.name), el('span', { class: 'create-add-note' }, k.note || ''))),
-      // Or a room from a room Markdown file (files.js), in this cell.
-      el('button', { type: 'button', class: 'create-kind create-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
+      // Or a room from a room Markdown file (the roomfile feature), in this cell.
+      this.files && el('button', { type: 'button', class: 'create-kind create-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
         el('span', { class: 'create-kind-name' }, 'Import a room…'), el('span', { class: 'create-add-note' }, 'from a .md file')));
   }
 
   // The menu a right-click on an empty cell opens: Import file…, a room from a room Markdown file
-  // (files.js), placed in this cell.
+  // (the roomfile feature), placed in this cell.
   cellMenu(c, cell, cols) {
     return el('div', { ...this.beside(c, cell, cols, ' create-kinds create-cell-menu'), role: 'menu' },
       el('button', { type: 'button', class: 'create-kind create-kind-import', role: 'menuitem',
@@ -526,8 +526,8 @@ export class RoomsPage {
           this.drawRooms();
           this.toast(`${r.name} is in the Archive.`);
         }) : null,
-        // Taken out as room Markdown (files.js); a locked room too.
-        word('Export as Markdown', () => this.exportRoomFile(r.id)),
+        // Taken out as room Markdown (the roomfile feature); a locked room too.
+        this.files ? word('Export as Markdown', () => this.exportRoomFile(r.id)) : null,
         r.id !== MESSY && !r.locked ? word('Delete', () => {
           remove(this.world, r.id);
           this.roomSel = this.roomPick = null;

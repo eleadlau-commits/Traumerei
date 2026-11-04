@@ -1248,12 +1248,6 @@
 .create-doc .create-keys { opacity: .45; font-size: 12px; }
 @media (max-width: 560px) { .create-doc { padding: 20px 20px 16px; } }
 
-/* ---- Room Markdown: the quiet card before an import (files.js) ---- */
-.create-import { gap: 12px; }
-.create-import-title { font-size: 18px; letter-spacing: .04em; }
-.create-import-sum { font-size: 15px; opacity: .8; }
-.create-import-report { margin: 0; padding: 0 0 0 1.1em; font-size: 13px; line-height: 1.5; opacity: .6; max-height: 12em; overflow: auto; }
-.create-import-report li + li { margin-top: 4px; }
-.create-import .create-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
+/* Import a room… among an empty cell's choices (the roomfile feature) */
 .create-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
 .create-cell-menu .create-kind-import { margin-top: 0; padding-top: 7px; border-top: 0; }

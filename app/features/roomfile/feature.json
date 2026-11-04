@@ -1,0 +1,12 @@
+{
+  "name": "Room files",
+  "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.",
+  "version": "0.1.0",
+  "main": "Roomfile.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "world"
+  ]
+}
