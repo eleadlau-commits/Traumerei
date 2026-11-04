@@ -1,45 +1,25 @@
-# Create
+# Create (a room)
 
-What the home page's **Create** opens: rooms of thoughts.
+An open room of thoughts: a canvas to write in, seen through an ontological mode. The rooms page,
+where rooms are made and gone into, is the **rooms** feature's (`app/features/rooms`); it says
+which room to open, and this feature shows it and writes in it.
 
-- **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
-  back arrow home in the top-right corner (the menu ☰ keeps the top-left one). It is a light opacity mask (`look.js`) over the home picture
-  itself, which is held still underneath: its spontaneity layer is off while the rooms page
-  shows (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
-  is an opacity square on it: a deeper version of the room's own colour inside, (L_r − 0.35,
-  C_r, h_r) in OKLCh, at α = strength × (1.1 − L_r) × opacity, so a darker room is a deeper
-  square; a room written in during the last day glows. **Messy thoughts** is always there,
-  four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
-  a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** has two folds: *The rooms page* (mask
-  opacity, square strength, glow, size, columns and rows at least) and *Inside a room* (lightness,
-  Messy's lightness, and the global ontology settings such as Joyce's line tension, with *Apply
-  to all rooms*). Every colour comes from the app's palette (Settings →
-  Colour, the Renderer's one tint): the mask is its ink, and a room with no colour of its own
-  takes its paper. While the rooms page shows, the home picture's
-  spontaneity layer is turned off. *Rooms*,
-  *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
-  to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
-  place.**
-- **Tags.** A room's properties (right-click its square) list its tags as small chips. Its mode is
-  always one of them and can't be taken off: a small room's one mode, or all three (Joyce, Pessoa,
-  Russell) for a big room. *+ tag* adds one of its own, suggesting the tags other rooms have
-  (Enter adds it; Backspace in the empty field takes off the last). Tags are the same whatever
-  their case, and show only in properties and the tags list, never on the squares.
-  Under a hairline below *Archive* (and the page numbers), **Arrange by** opens a quiet list:
-  *None*, then each tag group (Ontology first, *Other* last for the tags in no group). A click on
-  a group opens it to its tags, each with how many rooms have it. Picking a tag lights its rooms
-  and dims the rest, as the search lights do: nothing hides or moves. *None*, picking the tag
-  again, or Escape makes every room bright again. In the rooms page's Search, **#tag** does the
-  same (it lights the rooms with a tag that starts so).
-  **Making tags.** *+ group* at the foot of the list makes a group; *+ tag* under an open group's
-  tags makes a tag in it. A tag made so shows 0 until a room has it. **Drag a tag** (not a mode's)
-  from the list onto a square to add it to that room; take it off in the room's properties.
-  Right-click a tag in the list (a long press on a phone) to type its group (empty takes it out);
-  *Subject: Algebra* in a room's + tag also works. *Ontology* holds the modes and can't change.
-- **Motion.** Going into a room zooms in: its square grows to fill the screen while the rooms
-  page swells and fades behind it. Leaving zooms out the other way, the room shrinking back into
-  its square. Going to a later page scrolls down to it, an earlier one up. (None of it with
-  reduced motion.)
+## How it talks to the rooms page
+
+It fills the rooms feature's `rooms.room` slot with one item:
+
+| Member | What it does |
+|---|---|
+| `leave()` | Leaves the open room (its sheet, search and draft put away) and hides it. Returns the room's id if it showed, else `null`. |
+| `hasDraft(id)` | Whether a thought was left half written in room `id`. |
+
+It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, the square's
+rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
+each saved step. It uses the `rooms` service to go back to the rooms page or into another room.
+It offers no service of its own.
+
+## What it does
+
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
@@ -96,24 +76,18 @@ What the home page's **Create** opens: rooms of thoughts.
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
 saving and undo are the **world** feature's (`app/features/world`, see its README); Create
 reaches them through the `world` service (`this.w`), and `world.js` here binds the rules it
-uses, so every file imports them from there. The `Create` class is written across several files:
-`Create.js` (starting, opening and closing, building the page), `rooms.js` (the rooms
-page), `room.js` (a room, its rail and settings, clear space, Timeline), `writing.js` (thoughts,
-the draft, the caret), `gestures.js` (pointer, keys, selection, copy and paste, Search) and
-`bars.js` (pop-ups, tray, sheets, pictures). Each part is a class whose methods `mixIn` (end of
-`Create.js`) copies onto `Create`, so `this` is always the feature. `shared.js` holds the
-constants they share. Other features reach Create through the `create` service (`open()`).
+uses, so every file imports them from there. It goes back to the rooms page, or into another
+room, through the `rooms` service. The `Create` class is written across several files:
+`Create.js` (starting, entering and leaving a room, building the page), `room.js` (a room, its
+rail and settings, clear space, Timeline), `writing.js` (thoughts, the draft, the caret),
+`gestures.js` (pointer, keys, selection, copy and paste, Search) and `bars.js` (pop-ups, tray,
+sheets, pictures). Each part is a class whose methods `mixIn` (end of `Create.js`) copies onto
+`Create`, so `this` is always the feature. `shared.js` holds the constants they share.
 A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); Create
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
 
 ## Editing, the line, the timeline
 
-- **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a
-  right-click (or a long press, the ContextMenu key, Shift+F10) shows its properties beside it
-  (name, description, Go in, its kind, colour, lightness, opacity, size 1 × 1 or 2 × 2, Back
-  to the tint, Lock, Archive, Delete); a double click or Enter goes in. A colour picked there is the room's colour inside, its
-  lightness included; the square shows a deeper version of it.
-  There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Joyce's line:** each thought stands on its own, joined to the next by a line. Its tension
   comes from time: thoughts written close together are joined taut, a pause leaves slack, and
   pulling a thought far away makes it straight again (Line tension: the room's ⚙ beside Joyce). Drag a
@@ -140,7 +114,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys. A right-click on the empty
   canvas opens Add at the pointer, and what is made goes just there.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
-  quiet *Saved* shows in the corner, and a line of help the first time each page is seen.
+  quiet *Saved* shows in the corner, and a line of help the first time a room is seen.
 - **Writing** works as in any text editor. The thought being written shows its real caret and
   selection (drawn from a hidden box, each letter measured on the screen): click to place the
   caret, drag or double-click to choose letters (three clicks, the whole thought), Shift to
@@ -160,55 +134,5 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   (or two fingers on a phone) moves the canvas. Names keep with Enter.
 - Every pop-up and panel (Add, the sheet, the timeline, a thing's edit pop-up)
   shares one pale, blurred style: the palette's veil.
-- **The grid grows:** there is always a spare column and row past the furthest room, and the
-  page scrolls; Settings → Rooms sets columns and rows at least.
-- **Lights:** a room's glow follows your attention lately: going in and writing there light it,
-  and the light fades over a day or two (`attention.js`, saved as 'attention').
-- **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen (or the chosen
-  room on the rooms page); arrows nudge it (Shift for bigger steps); Enter opens the chosen room;
-  ? (or Add → Keys) lists them all. Ctrl+drag, Space+drag or the middle button move the canvas.
-
-## The rooms page, step 1
-
-- **Peek:** a square shows the last thing written in its room (Messy thoughts, the last three),
-  and its description, in small faint words: when hovered over by default, or always (Settings →
-  Rooms → Peek).
-- **The last room** gone into has a soft outline of light. **A dot** (top right) marks a room where
-  a thought was left half written: leaving a room keeps the unfinished thought (saved as
-  'drafts'), and going back in puts it back where it was.
-- **Search lights:** Ctrl+K on the rooms page opens a field at the top; the rooms without the
-  words dim, and the others show how many things in them hold the words. Enter goes into the
-  room with the most; Escape puts the lights out. (Inside a room, Ctrl+K still searches every
-  room in a list.)
-- **Lock** (in a room's pop-up): nothing in a locked room can be written, moved or deleted, and its
-  square keeps its place on the grid (no dragging, no resizing, no Delete). A thin bar runs along
-  its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
-- **Description:** a line or two about a room, written in its pop-up; it shows under the room's
-  name inside, and in its peek.
-- **Archive** (in a room's pop-up, or drop a square on *Archive* in the rail): the room leaves the
-  grid for the Archive, a page of its own reached from *Archive* in the rail on the left (Escape,
-  back or *Rooms* goes back). It has the same grid lines as the rooms page, with the rooms in the
-  order they were archived, but its empty cells make no rooms. A click on a room shows Go in,
-  Restore (to the first free cell) and Delete. Archived rooms are still found by search.
-- **Colour:** a square shows its room's colour more vividly than before: (L − 0.25, vivid × C, h)
-  at α = strength × (1.2 − L) × opacity (Settings → Rooms → Colour strength, 1.6 by default).
-- **Going in:** the square grows to fill the screen in the room's own colour, then fades into the
-  room (skipped when the system asks for less motion). The room takes typing at once.
-
-## Step 2: kinds of room, pages, the rail
-
-- **Kinds.** A click (or a right-click) on an empty cell asks which kind the new room is:
-  *Joyce · Pessoa*. Rooms sit only on the rooms page; nothing nests. A square dropped on another
-  square goes back to its place.
-- **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
-  dropped on a number moves there. Messy thoughts stays on page 1.
-- **The rail and the menu.** The menu (☰, with Settings) sits at the top left of the top bar on
-  every page. On the rooms page and inside a room the back arrow sits in the top-right corner. Under it, on the rooms page, a thin rail
-  holds *Rooms* and *Archive* (no count).
-- **Moving thoughts** (*Move to…*) lists every room, Messy thoughts first. Search and the timeline
-  choose what they find without opening its properties.
-- On a Mac, Ctrl+click is a right-click; Ctrl+drag still moves the canvas.
-
-In `model.js`: a room's `page` and `archived` (when); `world.pages`. `addRoom` takes the page and
-the kind; `toPage`, `addPage`, `archive` and `restore` do the rest. A train sits in any room, a room
-only on the rooms page.
+- **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
+  (Shift for bigger steps); ? (or Add → Keys) lists them all. Ctrl+drag, Space+drag or the middle button move the canvas.

@@ -3,8 +3,8 @@
 // Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
 
 import {
-  MESSY, room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
-  trainThoughts, search, shut, rooms,
+  room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
+  trainThoughts, search, rooms,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 
@@ -188,24 +188,6 @@ export class Gestures {
   shortcut(e, mod) {
     const k = e.key;
     if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
-    if (!this.roomId) {
-      // A grid: Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in; the
-      // ContextMenu key (or Shift+F10) opens its properties.
-      const id = this.roomSel || this.roomPick;
-      const r = id && room(this.world, id);
-      if (this.deletes(e) && r && r.id !== MESSY && !shut(this.world, r.id)) {
-        e.preventDefault();
-        remove(this.world, r.id);
-        this.roomSel = this.roomPick = null;
-        this.save();
-        this.drawRooms();
-        this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-        return true;
-      }
-      if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
-      if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
-      return false;
-    }
     if ((k === 'Enter' && !mod && !e.shiftKey) || k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) {
       // In a room: Enter (or the ContextMenu key) opens the properties of what is chosen.
       if (!this.sel) return false;

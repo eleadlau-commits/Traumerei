@@ -117,5 +117,6 @@ export default class World extends Feature {
   setLook(prefs) {
     this.prefs = lookPrefs(prefs);
     this.storage.set('look', savedLook(this.prefs));
+    this.emit('world:look', this.prefs);
   }
 }

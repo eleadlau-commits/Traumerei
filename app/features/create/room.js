@@ -3,35 +3,19 @@
 // Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
 
 import {
-  MESSY, room, addRoom, view, create, fold, kindOf, thoughtText, roomThoughts, peek, isBig,
+  room, addRoom, view, create, fold, kindOf, thoughtText, roomThoughts, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  hash, light, pageLook, roomLook, rgb,
+  hash, light,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
 import { el } from './shared.js';
 
 export class RoomView {
-  lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
-
-  // The rooms page's colours, from the picture's (read when Create opened) and Settings → Rooms.
-  paintPage() {
-    this.page = pageLook(this.colours, this.prefs, this.palette);
-    this.root.style.setProperty('--create-top', this.page.top);
-    this.root.style.setProperty('--create-bottom', this.page.bottom);
-    this.root.style.setProperty('--create-mask', this.page.mask);
-    // A lit room's glow: the palette's glow, lightened toward white.
-    const glow = rgb(this.palette.glow) || [239, 204, 131];
-    const lift = (t, a) => `rgb(${glow.map((v) => Math.round(v + (255 - v) * t)).join(' ')} / ${a.toFixed(3)})`;
-    this.root.style.setProperty('--create-glow', lift(0.55, this.prefs.glow));
-    this.root.style.setProperty('--create-glow-in', lift(0.7, this.prefs.glow * 0.64));
-  }
-
   // ---- Settings → Rooms ----
 
   setPref(key, value) {
-    this.w.setLook(key, value);
-    this.repaint();
+    this.w.setLook(key, value); // the rooms page and the open room repaint ('world:look')
   }
 
   // ---- Ontology settings: global ones here, each room's own in its rail ----
@@ -73,17 +57,14 @@ export class RoomView {
 
   // A plain new room (Move to… → a new room), starting from the global settings.
   addPlainRoom() {
-    const r = addRoom(this.world, 'Untitled', Date.now(), null, this.cols || 6);
+    const r = addRoom(this.world, 'Untitled', Date.now(), null, this.rooms.cols || 6);
     seedRoomSettings(this.world, r.id, this.ontPrefs);
     return r.id;
   }
 
-  // Shows a change straight away, if Create is open.
+  // Shows a change straight away, in the open room.
   repaint() {
-    this.paintPage();
-    if (this.root.hidden) return;
     if (this.roomId) this.paintRoom();
-    else this.drawRooms();
   }
 
   // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
@@ -185,6 +166,27 @@ export class RoomView {
     this.drawHistory();
     this.place();
     this.drawWorld();
+  }
+
+  // An input for the room's name: Enter or leaving it keeps the name, Escape keeps the old one.
+  nameField(r, done) {
+    let finished = false;
+    const finish = (keep) => {
+      if (finished) return;
+      finished = true;
+      if (keep) { name(this.world, r.id, field.value); this.save(); }
+      done();
+    };
+    const field = el('input', {
+      class: 'create-name-field', value: r.name, 'aria-label': 'Room name', maxlength: 60,
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') finish(true);
+        if (e.key === 'Escape') finish(false);
+      },
+      onblur: () => finish(true),
+    });
+    return field;
   }
 
   renameOpenRoom() {
