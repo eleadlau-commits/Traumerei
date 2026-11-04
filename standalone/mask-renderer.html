@@ -1820,6 +1820,40 @@ dialog.dialog-box {
 .create-russell-forgets { display: grid; gap: 4px; }
 .create-russell-label.left { transform: translateX(-100%); text-align: right; }
 
+/* A room's tags, in its pop-up only (never on its square): chips, and a "+ tag" field. */
+.create-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.create-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: .06em;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--ink-rgb, 43 42 40) / .22);
+}
+.create-chip.auto { border-style: dashed; opacity: .7; }
+.create-chip-x { font: inherit; font-size: 12px; line-height: 1; color: inherit; background: none; border: 0; padding: 0 0 0 2px; min-height: 0; cursor: pointer; opacity: .5; }
+.create-chip-x:hover { opacity: 1; }
+.create-tag-field {
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .06em;
+  width: 72px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  padding: 3px 0;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+  opacity: .6;
+}
+.create-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
@@ -5361,8 +5395,8 @@ dialog.menu-drawer::before {
     let cells2 = [];
     for (let i2 = 0; i2 < m2; i2++) for (let j = 0; j < n; j++) cells2.push([xs[i2], ys[j], xs[i2 + 1], ys[j + 1]]);
     const merge = stream(seed, ":planar:net:merge");
-    const same = (a, b) => Math.abs(a - b) < EPS;
-    const joins = (a, b) => (same(a[2], b[0]) || same(b[2], a[0])) && same(a[1], b[1]) && same(a[3], b[3]) || (same(a[3], b[1]) || same(b[3], a[1])) && same(a[0], b[0]) && same(a[2], b[2]);
+    const same2 = (a, b) => Math.abs(a - b) < EPS;
+    const joins = (a, b) => (same2(a[2], b[0]) || same2(b[2], a[0])) && same2(a[1], b[1]) && same2(a[3], b[3]) || (same2(a[3], b[1]) || same2(b[3], a[1])) && same2(a[0], b[0]) && same2(a[2], b[2]);
     const target = Math.max(1, Math.round(m2 * n * (1 - P.netMu)));
     for (let tries = 0; cells2.length > target && tries < 50 * m2 * n; tries++) {
       const a = cells2[Math.floor(merge.U() * cells2.length)];
@@ -11327,6 +11361,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var oneLine = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
   var lines = (s) => String(s ?? "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   var DESC = 280;
+  var TAG = 30;
+  var tidyTag = (s) => oneLine(s).replace(/^#+\s*/, "").slice(0, TAG).trim();
+  var same = (a, b) => a.toLowerCase() === b.toLowerCase();
+  function tidyTags(list) {
+    const out = [];
+    for (const t of Array.isArray(list) ? list : []) {
+      const tag = tidyTag(t);
+      if (tag && !out.some((o2) => same(o2, tag))) out.push(tag);
+    }
+    return out;
+  }
   var clamp01 = (v2, d) => Number.isFinite(+v2) ? Math.min(1, Math.max(0, +v2)) : d;
   function spot(f2, out) {
     if (Number.isFinite(f2.dx) && Number.isFinite(f2.dy)) {
@@ -11366,6 +11411,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     out.size = f2.size === 2 ? 2 : 1;
     const desc = lines(f2.desc).slice(0, DESC);
     if (desc) out.desc = desc;
+    const tags = tidyTags(f2.tags);
+    if (tags.length) out.tags = tags;
     if (f2.locked) out.locked = true;
     if (f2.archived) {
       out.archived = Number.isFinite(f2.archived) ? f2.archived : true;
@@ -11410,7 +11457,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!next.keep) delete th.keep;
     }
     if (kindOf(th) === "room") {
-      for (const k2 of ["desc", "locked", "archived", "page", "col", "row"]) if (!(k2 in next)) delete th[k2];
+      for (const k2 of ["desc", "tags", "locked", "archived", "page", "col", "row"]) if (!(k2 in next)) delete th[k2];
     }
     Object.assign(th, next);
     return th;
@@ -11608,6 +11655,45 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete r.archived;
     if (!cell || !placeRoom(w2, id, cell.col, cell.row, cols)) gridRooms(w2, cols, r.page || 0);
     return true;
+  }
+  function roomTags(w2, id, ontologies = []) {
+    const r = room(w2, id);
+    if (!r) return [];
+    const mode = view3(w2, id).mode;
+    const names = isBig(r) ? ontologies.map((o2) => o2.name) : [ontologies.find((o2) => o2.id === mode)?.name || ""].filter(Boolean);
+    const out = names.map((tag) => ({ tag, auto: true }));
+    for (const tag of r.tags || []) if (!out.some((o2) => same(o2.tag, tag))) out.push({ tag, auto: false });
+    return out;
+  }
+  function addTag(w2, id, text, ontologies = []) {
+    const r = room(w2, id), tag = tidyTag(text);
+    if (!r || !tag || roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tag))) return false;
+    r.tags = [...r.tags || [], tag];
+    return true;
+  }
+  function removeTag(w2, id, text) {
+    const r = room(w2, id);
+    if (!r?.tags?.some((t) => same(t, text))) return false;
+    r.tags = r.tags.filter((t) => !same(t, text));
+    if (!r.tags.length) delete r.tags;
+    return true;
+  }
+  function allTags(w2, ontologies = [], shelf = false) {
+    const counts2 = /* @__PURE__ */ new Map();
+    const all = shelf ? [...rooms(w2), ...archived(w2)] : rooms(w2);
+    for (const r of all) {
+      for (const { tag } of roomTags(w2, r.id, ontologies)) {
+        const key = tag.toLowerCase();
+        const had = counts2.get(key);
+        counts2.set(key, { tag: had?.tag || tag, n: (had?.n || 0) + 1 });
+      }
+    }
+    const order = ontologies.map((o2) => o2.name.toLowerCase());
+    const rank = (t) => {
+      const i2 = order.indexOf(t.tag.toLowerCase());
+      return i2 < 0 ? order.length : i2;
+    };
+    return [...counts2.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
   }
   function peek(w2, roomId, most = 3) {
     return roomThoughts(w2, roomId).slice(-most).map((th) => oneLine(thoughtText(w2, th))).filter(Boolean);
@@ -13452,7 +13538,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawRooms();
     }
     // A room's properties, beside its square: its name and description, Go in, its mode (one, or
-    // all of them for a big room), its colour, lightness and opacity (the only place its colour is
+    // all of them for a big room), its tags, its colour, lightness and opacity (the only place its colour is
     // set), its size, Back to the tint, Lock, Archive and Delete (not for Messy).
     roomOptions(r, cell, cols) {
       const set = (fields) => {
@@ -13478,7 +13564,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       });
       const word = (label, fn, extra = "") => el5("button", { type: "button", class: "create-word " + extra, onclick: fn }, label);
-      const mode = view3(this.world, r.id).mode;
       const panel = el5(
         "div",
         this.beside(r, cell, cols),
@@ -13505,7 +13590,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }, r.desc || ""),
         word("Go in", () => this.openRoom(r.id), "create-options-go"),
         // Its kind: a small room keeps its one mode; a big one switches inside.
-        el5("p", { class: "create-options-note" }, isBig(r) ? `${this.ontologies.map((m2) => m2.name).join(" · ")} · switched inside` : `${this.ontology(mode).name} · one mode`),
+        // (its tags below name the modes).
+        el5("p", { class: "create-options-note" }, isBig(r) ? "Every mode · switched inside" : "One mode"),
+        this.tagsRow(r),
         // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
         el5(
           "label",
@@ -13573,6 +13660,63 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         )
       );
       return panel;
+    }
+    // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
+    // a ×), and a "+ tag" field that suggests the tags other rooms have. Enter adds what is typed.
+    tagsRow(r) {
+      const onts = this.ontologies;
+      const mine = roomTags(this.world, r.id, onts);
+      const had = new Set(mine.map((o2) => o2.tag.toLowerCase()));
+      const after = (fn) => {
+        if (fn()) {
+          this.save();
+          this.tagFocus = r.id;
+          this.drawRooms();
+        }
+      };
+      const list = el5(
+        "datalist",
+        { id: "create-tag-list" },
+        ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el5("option", { value: t.tag }))
+      );
+      const field3 = el5("input", {
+        class: "create-tag-field",
+        placeholder: "+ tag",
+        "aria-label": "Add a tag",
+        list: "create-tag-list",
+        maxlength: 30,
+        autocomplete: "off",
+        spellcheck: "false",
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const v2 = e.target.value;
+            after(() => addTag(this.world, r.id, v2, onts));
+          }
+          if (e.key === "Escape") e.target.blur();
+          if (e.key === "Backspace" && !e.target.value) {
+            const last = mine.filter((o2) => !o2.auto).pop();
+            if (last) after(() => removeTag(this.world, r.id, last.tag));
+          }
+        }
+      });
+      if (this.tagFocus === r.id) {
+        this.tagFocus = null;
+        requestAnimationFrame(() => field3.focus({ preventScroll: true }));
+      }
+      return el5(
+        "div",
+        { class: "create-tags", role: "group", "aria-label": "Tags" },
+        ...mine.map((o2) => el5(
+          "span",
+          { class: "create-chip" + (o2.auto ? " auto" : ""), title: o2.auto ? "Its mode: always a tag" : "" },
+          o2.tag,
+          o2.auto ? null : el5("button", { type: "button", class: "create-chip-x", "aria-label": `Take off ${o2.tag}`, onclick: () => after(() => removeTag(this.world, r.id, o2.tag)) }, "×")
+        )),
+        field3,
+        list
+      );
     }
     // Redraws the squares on the next frame (sliders move many times a frame).
     drawRoomsSoon() {

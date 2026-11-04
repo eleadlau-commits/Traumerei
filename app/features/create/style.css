@@ -1056,3 +1056,37 @@
 .create-russell-pick:hover { outline: 1px dashed color-mix(in srgb, var(--room-ink) 50%, transparent); outline-offset: 7px; }
 .create-russell-forgets { display: grid; gap: 4px; }
 .create-russell-label.left { transform: translateX(-100%); text-align: right; }
+
+/* A room's tags, in its pop-up only (never on its square): chips, and a "+ tag" field. */
+.create-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.create-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: .06em;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--ink-rgb, 43 42 40) / .22);
+}
+.create-chip.auto { border-style: dashed; opacity: .7; }
+.create-chip-x { font: inherit; font-size: 12px; line-height: 1; color: inherit; background: none; border: 0; padding: 0 0 0 2px; min-height: 0; cursor: pointer; opacity: .5; }
+.create-chip-x:hover { opacity: 1; }
+.create-tag-field {
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .06em;
+  width: 72px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  padding: 3px 0;
+  min-height: 0;
+  outline: none;
+  box-shadow: none;
+  opacity: .6;
+}
+.create-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }

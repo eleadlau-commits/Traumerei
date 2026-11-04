@@ -20,6 +20,11 @@ What the home page's **Create** opens: rooms of thoughts.
   *New room* and *Settings* (the app's Settings) are along the bottom; double-click a room's name
   to rename it. **Typing anything here opens Messy thoughts and starts writing there, at a random
   place.**
+- **Tags.** A room's properties (right-click its square) list its tags as small chips. Its mode is
+  always one of them and can't be taken off: a small room's one mode, or all three (Joyce, Pessoa,
+  Russell) for a big room. *+ tag* adds one of its own, suggesting the tags other rooms have
+  (Enter adds it; Backspace in the empty field takes off the last). Tags are the same whatever
+  their case, and show only in properties and the tags list, never on the squares.
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
