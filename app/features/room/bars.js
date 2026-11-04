@@ -7,32 +7,60 @@ import {
   thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms, shrinkPicture, ITEMS,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
+import { openEditor } from './editor.js';
 
 export class Bars {
-  // Chooses something and opens its properties (a right-click, a long press, Enter).
+  // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
+  // panel's content editor (editor.js) when there is a panel, else in the pop-up beside it. Many
+  // things chosen together always get the pop-up.
   openProps(sel) {
     this.sel = sel;
-    this.barFor = this.selKey(sel);
     if (this.draft) this.stopWriting();
+    if (this.panel && sel?.kind !== 'many') {
+      this.barFor = null;
+      openEditor(this, sel.id).then(() => this.drawWorld());
+      return;
+    }
+    this.barFor = this.selKey(sel);
     this.drawWorld();
     this.bar.querySelector('textarea, input')?.focus({ preventScroll: true });
   }
 
+  // While the content editor shows, it follows what is chosen: a click on another thought, group
+  // or train switches it there. Then it shows what changed.
+  followEditor() {
+    const ed = this.editor;
+    if (!ed || !this.panel?.isOpen('content')) return;
+    const id = this.sel && this.sel.kind !== 'many' ? this.sel.id : null;
+    if (id && id !== ed.id && this.world.things[id]) { ed.keep(); openEditor(this, id); return; }
+    ed.refresh();
+  }
+
   drawBar() {
+    this.followEditor();
     if (!this.sel || this.barFor !== this.selKey()) { this.barFor = null; this.bar.hidden = true; this.drawHistorySoon(); return; }
     if (this.sel?.kind === 'many') { this.drawManyBar(); return; }
     const th = this.sel && this.world.things[this.sel.id];
     if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
+    this.bar.hidden = false;
+    this.bar.replaceChildren(...this.propRows(th));
+    this.positionEdit();
+    this.drawHistorySoon();
+  }
+
+  kindName(th) { return ITEMS[kindOf(th)]?.name || 'Thought'; }
+
+  // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
+  // group's name), folding, the ontology's own rows and moves, Move to and Delete. inPanel: for the
+  // content editor, which shows a group's thoughts itself and has Source at its foot.
+  propRows(th, inPanel = false) {
     const kind = kindOf(th);
     if (this.locked) { // read only: the words, and nothing to change
-      this.bar.hidden = false;
-      this.bar.replaceChildren(
+      return [
         el('div', { class: 'room-options-label' }, 'Locked'),
-        el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
-        kind === 'group' && this.files?.canEdit ? el('button', { type: 'button', class: 'room-word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : '');
-      this.positionEdit();
-      this.drawHistorySoon();
-      return;
+        kind === 'group' && inPanel ? null : el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
+        kind === 'group' && !inPanel && this.files?.canEdit ? el('button', { type: 'button', class: 'room-word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
+      ].filter(Boolean);
     }
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
     const field = (value, label, onchange, cls = 'room-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
@@ -42,7 +70,7 @@ export class Bars {
     const rows = [];
     const gname = kind === 'group' ? this.groupName(th) : 'Train';
     const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
-    rows.push(el('div', { class: 'room-options-label' }, title));
+    if (!inPanel) rows.push(el('div', { class: 'room-options-label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
       const text = el('textarea', { class: 'room-edit-text room-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
@@ -78,7 +106,7 @@ export class Bars {
           el('span', { class: 'room-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null,
-          this.files?.canEdit ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
+          this.files?.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
       // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
       const elsewhere = th.folded ? this.elsewhere(th) : [];
       if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
@@ -100,17 +128,14 @@ export class Bars {
     rows.push(el('div', { class: 'room-options-row' }, pick),
       el('div', { class: 'room-options-row' },
         kind !== 'group' && this.ont.groups && groupOf(this.world, th.id, this.mode)
-          ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: 'train', id: groupOf(this.world, th.id, this.mode).id })) : null,
+          ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => { const g = groupOf(this.world, th.id, this.mode).id; this.sel = { kind: 'train', id: g }; this.openProps(this.sel); }) : null,
         word('Delete', () => {
           remove(this.world, th.id);
           this.sel = null;
           done();
           this.toast(`Deleted. Ctrl+Z brings it back.`);
         }, 'room-options-delete')));
-    this.bar.hidden = false;
-    this.bar.replaceChildren(...rows);
-    this.positionEdit();
-    this.drawHistorySoon();
+    return rows;
   }
 
   // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn

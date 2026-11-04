@@ -829,7 +829,7 @@
 .room-doc-para { white-space: pre-line; cursor: text; border-radius: 2px; }
 .room-doc-para:not(.writing):not(.room-doc-item):hover { background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
 .room-doc-item { cursor: default; }
-.room-doc textarea.room-doc-box {
+.room-doc textarea.room-doc-box, .room-editor textarea.room-doc-box {
   display: block;
   min-height: 0;
   border-radius: 0;
@@ -848,10 +848,44 @@
   color: inherit;
   outline: none;
 }
-.room-doc textarea.room-doc-box:focus { border-color: color-mix(in srgb, var(--room-ink) 35%, transparent); box-shadow: none; outline: none; }
+.room-editor textarea.room-doc-box:focus, .room-doc textarea.room-doc-box:focus { border-color: color-mix(in srgb, var(--room-ink) 35%, transparent); box-shadow: none; outline: none; }
 .room-doc-box::placeholder { color: inherit; opacity: .35; }
 .room-doc-more { justify-self: start; background: none; border: 0; color: inherit; font: inherit; font-size: 18px; opacity: .35; cursor: pointer; padding: 0; }
 .room-doc-more:hover { opacity: .8; }
 .room-doc .room-keys { opacity: .45; font-size: 12px; }
 @media (max-width: 560px) { .room-doc { padding: 20px 20px 16px; } }
 
+
+/* The content editor (editor.js), in the side panel on the right: the pop-up's rows at the top, then
+   the thoughts as paragraphs, then a small Source at the foot. The panel gives the veil. */
+.room-editor {
+  --room-ink: var(--panel-ink, var(--ink, #2b2a28));
+  display: grid;
+  align-content: start;
+  gap: 22px;
+  padding-bottom: 8px;
+  outline: none;
+}
+.room-editor-top { display: grid; gap: 12px; }
+.room-editor-top .room-word { justify-self: start; }
+.room-editor-top .room-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
+.room-editor-top .room-options-name { font-size: 15px; }
+.room-editor-top .room-edit-body { min-height: 10em; }
+.room-editor-content { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--room-ink) 12%, transparent); }
+.room-editor-content:empty { display: none; }
+.room-editor .room-doc-paras { font-size: 15.5px; line-height: 1.65; }
+.room-editor-foot { display: flex; justify-content: flex-end; }
+.room-editor-source {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: .45;
+  cursor: pointer;
+}
+.room-editor-source:is(:hover, :focus-visible) { opacity: .9; outline: none; text-decoration: underline; text-underline-offset: 5px; }

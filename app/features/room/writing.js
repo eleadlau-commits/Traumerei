@@ -124,6 +124,7 @@ export class Writing {
     }
     if (e.key === 'Escape') {
       if (this.editing?.close) this.editing.close(); // a chapter open as a document
+      else if (this.panel?.isOpen()) this.panel.close(); // the side panel (the content editor, the source)
       else if (!this.addMenu.hidden) this.closeAdd();
       else if (this.roomId && this.sel && this.barFor) { this.barFor = null; this.drawBar(); }
       else if (this.sel) { this.sel = null; this.drawWorld(); }
