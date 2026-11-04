@@ -5,10 +5,11 @@
 // whole, then drag it. Enter goes on with the same train; Ctrl+Enter starts a new one. In the
 // room's Timeline (any mode), a thought's train is its tag.
 //
-// A train is a group that holds each thought in only one train. Joyce places everything, so it
-// has no tray. Its arrangement lives on the trains (x, y) and their thoughts (dx, dy).
+// A train is a group that holds each thought in only one train. A thought in no train (written
+// in another mode of a big room) waits in the tray; dragged out of it, it starts a train where it
+// is let go. Its arrangement lives on the trains (x, y) and their thoughts (dx, dy).
 
-import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText } from '../model.js';
+import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join } from '../model.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
@@ -168,13 +169,20 @@ export default {
   },
 
   // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
-  // stays joined.
+  // stays joined. A thought from the tray starts a train there.
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
     if (isGroup(th)) Object.assign(th, { x, y, hand: true });
-    else nudge(w, id, x, y);
+    else if (isLeaf(th) && !groupOf(w, id, 'joyce')) {
+      const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
+      if (t) { join(w, t.id, id); t.hand = true; }
+    } else nudge(w, id, x, y);
   },
+
+  // The thoughts in no train yet, oldest first.
+  tray: (w, roomId) => roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
+  placed: (w, roomId, id) => !!groupOf(w, id, 'joyce') || isGroup(w.things[id]),
 
   // Clear space (clear.js): a train is one block from its start, and one more from each thought
   // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,

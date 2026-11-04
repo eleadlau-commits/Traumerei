@@ -1723,6 +1723,59 @@ dialog.dialog-box {
 .create-maths.unparsed { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em;
   color: color-mix(in srgb, #b0563f 62%, currentColor); opacity: .85; }
 
+/* The tray: thoughts the mode hasn't placed yet, along the foot of the room. A quiet word opens a
+   row of them; each is dragged onto the canvas. */
+.create-tray {
+  position: absolute;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: min(760px, calc(100vw - 2 * var(--gutter) - 220px));
+  z-index: 2;
+}
+.create-tray-row {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 8px;
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
+  scrollbar-width: thin;
+  animation: create-unfold .22s var(--create-ease) both;
+}
+.create-tray-item {
+  flex: none;
+  width: 168px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  background: color-mix(in srgb, var(--room-ink) 5%, transparent);
+}
+.create-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
+.create-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.create-tray-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  cursor: grabbing;
+  background: var(--create-panel);
+  color: var(--create-panel-ink);
+  box-shadow: var(--create-panel-shadow);
+  opacity: .92;
+}
+.create-moves { flex-wrap: wrap; }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
@@ -11449,7 +11502,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return w2.pages - 1;
   }
   var startTrain = (w2, roomId, x, y, now) => create(w2, roomId, { kind: "group", of: "joyce", x, y }, now);
-  var addThought = (w2, trainId, text, now) => create(w2, trainId, { kind: "line", text }, now);
   function randomSpot(box, taken = [], random = Math.random, tries = 24) {
     let best = null;
     let bestD = -1;
@@ -11655,13 +11707,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return t.folded ? { x: t.x, y: t.y } : trainSpots(w2, t.id)[id] || null;
     },
     // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
-    // stays joined.
+    // stays joined. A thought from the tray starts a train there.
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
       if (isGroup(th)) Object.assign(th, { x, y, hand: true });
-      else nudge(w2, id, x, y);
+      else if (isLeaf(th) && !groupOf(w2, id, "joyce")) {
+        const t = create(w2, roomId, { kind: "group", of: "joyce", x: Math.round(x), y: Math.round(y) }, th.at);
+        if (t) {
+          join(w2, t.id, id);
+          t.hand = true;
+        }
+      } else nudge(w2, id, x, y);
     },
+    // The thoughts in no train yet, oldest first.
+    tray: (w2, roomId) => roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, "joyce")),
+    placed: (w2, roomId, id) => !!groupOf(w2, id, "joyce") || isGroup(w2.things[id]),
     // Clear space (clear.js): a train is one block from its start, and one more from each thought
     // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
     // were placed by hand.
@@ -11806,13 +11867,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var BUILT_IN = [joyce_default, pessoa_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { draftPoint: "function", tray: "function", draw: "function", placed: "function", tag: "function", blocks: "function", shift: "function", measured: "function" };
+  var MAY = { draftPoint: "function", tray: "function", draw: "function", placed: "function", tag: "function", blocks: "function", shift: "function", measured: "function", begin: "function" };
   function missing2(o2) {
     if (!o2 || typeof o2 !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k2, t]) => typeof o2[k2] !== t || t === "string" && !o2[k2]).map(([k2]) => k2);
     for (const [k2, t] of Object.entries(MAY)) if (o2[k2] != null && typeof o2[k2] !== t) out.push(k2);
     if (o2.groups != null && !["one", "many"].includes(o2.groups.membership)) out.push("groups");
     for (const k2 of ["settings", "moves"]) if (o2[k2] != null && !Array.isArray(o2[k2])) out.push(k2);
+    if (Array.isArray(o2.moves) && o2.moves.some((m2) => !m2 || typeof m2.label !== "string" || typeof m2.run !== "function")) out.push("moves");
     return out;
   }
   function gather(extra = [], warn = () => {
@@ -12273,7 +12335,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!this.roomId) return;
       if (this.draft?.edit) this.commit();
       const text = this.input.value;
-      if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0 };
+      if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0, ...this.draft.for ? { for: this.draft.for } : {} };
       else delete this.drafts[this.roomId];
       this.storage.set("drafts", this.drafts);
       this.draft = null;
@@ -12287,7 +12349,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.storage.set("drafts", this.drafts);
       if (this.locked) return;
       const t = d.train && this.world.things[d.train];
-      this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y };
+      this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...d.for ? { for: d.for } : {} };
       this.input.value = d.text;
       this.input.focus({ preventScroll: true });
       this.drawWorld();
@@ -12429,6 +12491,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.input = el5("textarea", { class: "create-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
       this.bar = el5("div", { class: "create-options create-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
       this.history = el5("aside", { class: "create-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
+      this.trayEl = el5("div", { class: "create-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
       this.roomPage = el5(
         "section",
         { class: "create-room", hidden: true, "aria-label": "Room" },
@@ -12455,6 +12518,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           )
         ),
         this.history,
+        this.trayEl,
         this.bar,
         this.sheet = el5("div", { class: "create-sheet", hidden: true }),
         this.input
@@ -13509,6 +13573,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       this.world$.replaceChildren(...nodes);
       this.drawBar();
+      this.drawTray();
       this.clearSoon();
     }
     // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----
@@ -13871,11 +13936,40 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawWorld();
         return;
       }
-      const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
-      addThought(this.world, train.id, text);
-      this.current[this.roomId] = train.id;
+      this.keepNew(d, { kind: "line", text });
       this.save();
       this.drawWorld();
+    }
+    // The ontology new thoughts are written into: the room's, or Joyce's trains when it makes no
+    // groups of its own (Pessoa).
+    get writer() {
+      return this.ont.groups ? this.ont : this.ontology(DEFAULT_MODE);
+    }
+    // Keeps a new thought (fields) from draft d: into the group it goes on with, or one the writing
+    // ontology begins (ontologies/index.js: begin), or loose in the room when it begins none. Returns
+    // the thought, or null.
+    keepNew(d, fields, now = Date.now()) {
+      const w2 = this.world, wr2 = this.writer;
+      let g2 = d.train && w2.things[d.train];
+      const made = !g2;
+      if (!g2) g2 = wr2.begin ? wr2.begin(w2, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null }, now) : startTrain(w2, this.roomId, d.x ?? 0, d.y ?? 0, now);
+      const th = create(w2, g2 ? g2.id : this.roomId, fields, now);
+      if (!th && made && g2 && w2.things[g2.id]) remove(w2, g2.id);
+      if (th && g2 && w2.things[g2.id]) this.current[this.roomId] = g2.id;
+      else if (th) delete this.current[this.roomId];
+      return th;
+    }
+    // Starts writing a new thought at x, y (world units), with no group to go on with; for is kept
+    // with it and handed to the writing ontology's begin (a move's own note: say, the chapter it is
+    // a child of).
+    write({ x, y, for: note = null } = {}) {
+      if (!this.roomId || this.locked) return;
+      if (this.draft) this.commit();
+      this.sel = null;
+      this.draft = { train: null, x: Math.round(x ?? 0), y: Math.round(y ?? 0), ...note != null ? { for: note } : {} };
+      this.input.focus({ preventScroll: true });
+      this.drawWorld();
+      this.showDraft();
     }
     // Backspace in an empty thought: opens the thought before it in its train, the caret at its end.
     // An emptied thought that was opened again goes first. Returns false when there is nothing before.
@@ -13909,7 +14003,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.draft) this.commit();
       this.sel = null;
       this.lastTap = null;
-      this.draft = { train: groupOf(this.world, id)?.id || null, edit: id };
+      this.draft = { train: groupOf(this.world, id, this.writer.id)?.id || null, edit: id };
       this.input.value = th.text || "";
       this.input.focus({ preventScroll: true });
       this.input.setSelectionRange(this.input.value.length, this.input.value.length);
@@ -14664,7 +14758,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawWorld();
       };
       const rows = [];
-      const title = kind === "group" ? th.folded ? "A folded train" : "Train" : ITEMS[kind]?.name || "Thought";
+      const gname = kind === "group" && this.ontologies.find((o2) => o2.id === th.of)?.groups?.name || "Train";
+      const title = kind === "group" ? th.folded ? `A folded ${gname.toLowerCase()}` : gname : ITEMS[kind]?.name || "Thought";
       rows.push(el5("div", { class: "create-options-label" }, title));
       if (kind === "line") {
         const text = el5("textarea", {
@@ -14721,7 +14816,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (kind === "group") {
         const n = trainThoughts(this.world, th.id).length;
         rows.push(
-          field3(th.title, "Name this train", (e) => {
+          field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
             name(this.world, th.id, e.target.value);
             done();
           }),
@@ -14738,6 +14833,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           done();
         }));
       }
+      const moves = (this.ont.moves || []).filter((m2) => {
+        try {
+          return !m2.when || m2.when(this);
+        } catch {
+          return false;
+        }
+      });
+      if (moves.length) rows.push(el5("div", { class: "create-options-row create-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
       const others = this.moveRooms();
       const pick = el5(
         "select",
@@ -14772,6 +14875,86 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.bar.replaceChildren(...rows);
       this.positionEdit();
       this.drawHistorySoon();
+    }
+    // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn
+    // again and the change saved as one step.
+    runMove(m2) {
+      if (this.locked) return;
+      m2.run(this);
+      this.save();
+      if (!this.draft) this.drawWorld();
+    }
+    // ---- The tray: thoughts the ontology hasn't placed yet, along the foot of the room ----
+    // A quiet word ("Loose · 3") opens a row of them; one dragged onto the canvas goes where it is
+    // let go (the ontology's drop()). Only an ontology with a tray has one, and only when it holds
+    // something.
+    trayItems() {
+      try {
+        return this.ont.tray?.(this.world, this.roomId) || [];
+      } catch {
+        return [];
+      }
+    }
+    drawTray() {
+      const items = this.roomId ? this.trayItems() : [];
+      if (!items.length) {
+        this.trayEl.hidden = true;
+        this.trayEl.replaceChildren();
+        return;
+      }
+      const open = !!this.trayOpen;
+      const word = el5("button", {
+        type: "button",
+        class: "create-word create-tray-btn",
+        "aria-expanded": String(open),
+        title: "Thoughts not placed in this mode yet. Drag one onto the room.",
+        onclick: () => {
+          this.trayOpen = !open;
+          this.drawTray();
+        }
+      }, `Loose · ${items.length}`);
+      const row = open ? el5("div", { class: "create-tray-row", role: "list" }, items.map((th) => el5("div", {
+        class: "create-tray-item",
+        role: "listitem",
+        "data-tray": th.id,
+        title: "Drag onto the room",
+        onpointerdown: (e) => this.trayDrag(e, th.id)
+      }, el5("span", { class: "create-tray-text" }, kindOf(th) === "picture" ? th.text || "A picture" : thoughtText(this.world, th))))) : null;
+      this.trayEl.hidden = false;
+      this.trayEl.replaceChildren(...row ? [row] : [], word);
+    }
+    // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
+    // canvas, the ontology places it there.
+    trayDrag(e, id) {
+      if (e.button !== 0 || this.locked) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const card = e.currentTarget;
+      const r = card.getBoundingClientRect();
+      const off = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const ghost = card.cloneNode(true);
+      ghost.classList.add("create-tray-ghost");
+      Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
+      this.root.append(ghost);
+      const move2 = (ev) => {
+        ghost.style.left = `${ev.clientX - off.x}px`;
+        ghost.style.top = `${ev.clientY - off.y}px`;
+      };
+      const up = (ev) => {
+        document.removeEventListener("pointermove", move2);
+        document.removeEventListener("pointerup", up);
+        document.removeEventListener("pointercancel", up);
+        ghost.remove();
+        const over = document.elementFromPoint(ev.clientX, ev.clientY);
+        if (ev.type !== "pointerup" || !over || !this.stage.contains(over) || !this.world.things[id]) return;
+        const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
+        this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
+        this.save();
+        this.drawWorld();
+      };
+      document.addEventListener("pointermove", move2);
+      document.addEventListener("pointerup", up);
+      document.addEventListener("pointercancel", up);
     }
     // Many things chosen with the box: move them to a room together, or delete them.
     drawManyBar() {
@@ -14905,7 +15088,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const cur = this.current[this.roomId];
       const t = this.world.things[cur];
-      if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
+      if (!this.fresh && t?.parent === this.roomId && !t.folded && t.of === this.writer.id) return { train: cur };
       const spot2 = this.freeSpot();
       this.fresh = false;
       return { train: null, x: Math.round(spot2.x), y: Math.round(spot2.y) };
@@ -15004,10 +15187,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
         if (ed.id) update(this.world, ed.id, fields);
         else {
-          const t = this.target();
-          const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
-          if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
-          else if (!t.train) remove(this.world, train.id);
+          this.keepNew(this.target(), fields);
         }
       }
       this.save();
