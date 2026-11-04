@@ -1,4 +1,4 @@
-/* The side panel, docked on the left. Class names start with "panel-". It has the palette's pale,
+/* The side panel, docked on the right. Class names start with "panel-". It has the palette's pale,
    blurred veil, like the room's pop-ups, in the app's typeface; editors put their own content in
    .panel-body. */
 
@@ -9,7 +9,7 @@
   --panel-line: rgb(var(--ink-rgb, 43 42 40) / .12);
   position: fixed;
   z-index: 40;
-  left: 0;
+  right: 0;
   top: 0;
   bottom: 0;
   width: 480px;
@@ -19,13 +19,13 @@
   background: rgb(var(--veil-rgb, 250 247 240) / .94);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 1px 0 0 var(--panel-line), 8px 0 32px rgb(var(--ink-rgb, 43 42 40) / .08);
+  box-shadow: -1px 0 0 var(--panel-line), -8px 0 32px rgb(var(--ink-rgb, 43 42 40) / .08);
   color: var(--panel-ink);
   font-family: var(--home-font);
   animation: panel-in .3s ease both;
 }
 .panel[hidden] { display: none; }
-@keyframes panel-in { from { opacity: 0; transform: translateX(-12px); } }
+@keyframes panel-in { from { opacity: 0; transform: translateX(12px); } }
 
 .panel-head {
   flex: none;
@@ -56,12 +56,12 @@
 
 .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px calc(16px + env(safe-area-inset-bottom)); }
 
-/* The right edge: drag it to change the width. */
+/* The left edge: drag it to change the width. */
 .panel-edge {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: -4px;
+  left: -4px;
   width: 8px;
   cursor: col-resize;
   touch-action: none;

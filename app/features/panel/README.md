@@ -1,10 +1,10 @@
 # Side panel
 
-A page docked on the left of the screen that other features open their editors in: the room's
+A page docked on the right of the screen that other features open their editors in: the room's
 content editor, the source editor. One thing shows in it at a time; opening another asks the one
 that shows first (it may have changes) and then takes its place. Escape or × closes it.
 
-Its right edge is dragged to set its width (at least 300 px, at most 70% of the window), which is
+Its left edge is dragged to set its width (at least 300 px, at most 70% of the window), which is
 remembered; a double-click on the edge sets it back to 480 px. Whatever sits beside it moves over
 rather than being covered: while it shows, its width is the CSS variable `--panel-width` on
 `<html>` (`0px` when it is shut), and every change of width is sent as `panel:resized`.

@@ -1,5 +1,5 @@
-// The side panel: a page docked on the left that other features open their editors in (the
-// source editor, the content editor). One thing shows in it at a time. Its right edge is dragged
+// The side panel: a page docked on the right that other features open their editors in (the
+// source editor, the content editor). One thing shows in it at a time. Its left edge is dragged
 // to set its width, which is remembered; a double-click on the edge sets it back. While it shows,
 // its width is published as the CSS variable --panel-width on <html> (0px when it is shut) and in
 // the event 'panel:resized', so whatever sits beside it (the room) moves over instead of being
@@ -108,7 +108,7 @@ export default class Panel extends Feature {
     e.preventDefault();
     this.edge.setPointerCapture?.(e.pointerId);
     document.documentElement.classList.add('panel-dragging');
-    const move = (ev) => this.setWidth(ev.clientX, false);
+    const move = (ev) => this.setWidth(window.innerWidth - ev.clientX, false);
     const up = () => {
       this.edge.removeEventListener('pointermove', move);
       this.edge.removeEventListener('pointerup', up);
