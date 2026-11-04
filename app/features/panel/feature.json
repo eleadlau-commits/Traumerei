@@ -1,0 +1,9 @@
+{
+  "name": "Side panel",
+  "description": "A panel docked on the right, its width set by dragging its edge and remembered, that other features open their editors in. Whatever is beside it moves over.",
+  "version": "0.1.0",
+  "main": "Panel.js",
+  "styles": [
+    "style.css"
+  ]
+}

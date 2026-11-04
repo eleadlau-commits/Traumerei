@@ -22,6 +22,9 @@
   font-family: var(--home-font);
 }
 .room > * { pointer-events: auto; }
+/* While the side panel (the panel feature) shows on the right, the room moves over beside it: its
+   width is --panel-width, and the transform makes the room's fixed parts sit in the room. */
+.panel-open .room { right: var(--panel-width, 0px); transform: translateZ(0); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
 .room-dark .topbar .top-btn { color: var(--room-ink); }
