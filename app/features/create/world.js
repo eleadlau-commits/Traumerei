@@ -1,34 +1,32 @@
 // What Create uses from the world feature (app/features/world): its rules, by name. A feature
 // can't import another's files, so these are bound from the world service's `lib` when Create
-// starts (bind, in Create.start), and every file here imports them from this one place. This list
-// is everything Create needs of the world's rules; the service itself (this.w) is the rest.
+// starts (bind, in Create.start), and its files import them from here. This list is
+// everything Create needs of the world's rules.
 
 export let
-  DEFAULT_MODE, DESC, MESSY, ONTOLOGY, addPage, addRoom, addTag, allTags, applySettingsToAll,
-  archive, archived, cells, create, fold, gridRooms, groupOf, groupsIn, hasTag, hash, isBig,
-  isGroup, isLeaf, kindOf, lock, makeGroup, makeTag, members, move, name, own, pageCount, peek,
-  placeRoom, randomSpot, remove, removeTag, resetRoomSettings, restore, room, roomAt, roomItems,
-  roomSetting, roomTags, roomThoughts, roomTrains, rooms, roomsOn, search, seedRoomSettings,
-  setRoomSetting, setTagGroup, shut, sizeRoom, startTrain, tagGroup, tagsByGroup, thoughtText,
-  tidyTag, toPage, trainThoughts, unfold, update, view, ITEMS, maths, pageLook, rgb, roomLook,
-  squareLook, toOklch, light, keepOrShrink, shrinkPicture, stepAfter, arrowsInto, link;
+  room, view, shut, MESSY, name, create, update, remove, move, fold, unfold, kindOf, groupOf,
+  thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
+  isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
+  seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, gridRooms, placeRoom, sizeRoom, cells,
+  roomAt, lock, archive, archived, restore, DESC, roomsOn, toPage, pageCount, addPage, roomTags,
+  addTag, removeTag, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag,
+  makeGroup, allTags, ITEMS, maths, pageLook, roomLook, rgb, squareLook, toOklch, light,
+  shrinkPicture;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
   ({
-    DEFAULT_MODE, DESC, MESSY, ONTOLOGY, addPage, addRoom, addTag, allTags, applySettingsToAll,
-    archive, archived, cells, create, fold, gridRooms, groupOf, groupsIn, hasTag, hash, isBig,
-    isGroup, isLeaf, kindOf, lock, makeGroup, makeTag, members, move, name, own, pageCount, peek,
-    placeRoom, randomSpot, remove, removeTag, resetRoomSettings, restore, room, roomAt,
-    roomItems, roomSetting, roomTags, roomThoughts, roomTrains, rooms, roomsOn, search,
-    seedRoomSettings, setRoomSetting, setTagGroup, shut, sizeRoom, startTrain, tagGroup,
-    tagsByGroup, thoughtText, tidyTag, toPage, trainThoughts, unfold, update, view,
+    room, view, shut, MESSY, name, create, update, remove, move, fold, unfold, kindOf, groupOf,
+    thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
+    isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
+    seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, gridRooms, placeRoom, sizeRoom, cells,
+    roomAt, lock, archive, archived, restore, DESC, roomsOn, toPage, pageCount, addPage, roomTags,
+    addTag, removeTag, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag,
+    makeGroup, allTags,
   } = lib.model);
   ({ ITEMS } = lib.items);
   ({ maths } = lib.maths);
-  ({ pageLook, rgb, roomLook, squareLook, toOklch } = lib.look);
+  ({ pageLook, roomLook, rgb, squareLook, toOklch } = lib.look);
   ({ light } = lib.attention);
-  ({ keepOrShrink, shrinkPicture } = lib.picture);
-  ({ stepAfter } = lib.joyce);
-  ({ arrowsInto, link } = lib.russell);
+  ({ shrinkPicture } = lib.picture);
 }

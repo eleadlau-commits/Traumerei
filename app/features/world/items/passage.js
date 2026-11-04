@@ -9,7 +9,7 @@ export default {
     return title || body ? { title, body } : null;
   },
   text: (th) => [th.title, th.body].filter(Boolean).join(' — '),
-  // In room Markdown (../roomfile.js): "### Title" and the paragraphs under it, blank lines
+  // In room Markdown (the roomfile feature's format.js): "### Title" and the paragraphs under it, blank lines
   // between them, until the next thing; a bare ### for no title. A paragraph with no ### above it
   // is a passage of its own. Lines that would read as something else get a backslash (h.escape).
   md: {

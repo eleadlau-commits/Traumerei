@@ -1,0 +1,62 @@
+/* Room files: the quiet card before an import. Class names start with "roomfile-". It looks like
+   Create's pop-ups: the palette's pale, blurred veil, in the app's typeface. */
+
+.roomfile-card {
+  --roomfile-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
+  --roomfile-ink: var(--ink, #2b2a28);
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100% - 160px);
+  overflow: auto;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12px;
+  padding: 26px 28px 18px;
+  background: var(--roomfile-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
+  color: var(--roomfile-ink);
+  font-family: var(--home-font);
+  animation: roomfile-in .35s ease both;
+}
+@keyframes roomfile-in { from { opacity: 0; } }
+.roomfile-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
+.roomfile-title { font-size: 18px; letter-spacing: .04em; }
+.roomfile-sum { font-size: 15px; opacity: .8; }
+.roomfile-report { margin: 0; padding: 0 0 0 1.1em; font-size: 13px; line-height: 1.5; opacity: .6; max-height: 12em; overflow: auto; }
+.roomfile-report li + li { margin-top: 4px; }
+.roomfile-words { display: flex; align-items: baseline; gap: 22px; }
+.roomfile-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
+
+/* Plain words: a hairline comes under them on hover. */
+.roomfile-word {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 6px 2px;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: .66;
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px 100%;
+  background-size: 0 1px;
+  transition: opacity .2s, background-size .25s;
+  -webkit-tap-highlight-color: transparent;
+}
+.roomfile-word:is(:hover, :focus-visible) {
+  opacity: 1;
+  background-size: calc(100% - 4px - .22em) 1px;
+  outline: none;
+}
