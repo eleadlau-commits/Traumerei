@@ -273,8 +273,9 @@
 .create-crumb-name .create-name-field { width: 18ch; letter-spacing: .1em; }
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
-.create-add { position: absolute; left: calc(var(--gutter) + 12px); bottom: calc(18px + env(safe-area-inset-bottom)); }
-.create-add-btn { display: inline-flex; align-items: baseline; gap: 8px; }
+/* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
+.create-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(18px + env(safe-area-inset-bottom)); }
+.create-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
 .create-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--create-ease); }
 .create-add-btn.open .create-add-plus { transform: rotate(45deg); }
 .create-add-menu {
@@ -282,8 +283,8 @@
   left: -12px;
   bottom: calc(100% + 10px);
   display: grid;
-  min-width: 300px;
-  padding: 8px 0;
+  min-width: 400px;
+  padding: 10px 0;
   background: var(--create-panel);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -292,6 +293,8 @@
   --room-ink: var(--create-panel-ink);
   animation: create-unfold .22s var(--create-ease) both;
 }
+/* Loose · n, at the foot of the room: the rail's size too. */
+.create-tray-btn { font-size: 15px; }
 @keyframes create-unfold { from { opacity: 0; transform: translateY(6px); } }
 .create-add-item {
   appearance: none;
@@ -303,15 +306,15 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 18px;
-  padding: 8px 16px;
+  padding: 10px 18px;
   text-align: left;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: .16em;
   text-transform: uppercase;
   cursor: pointer;
 }
 .create-add-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 7%, transparent); }
-.create-add-note { font-size: 11px; letter-spacing: .04em; text-transform: none; opacity: .5; }
+.create-add-note { font-size: 12.5px; letter-spacing: .04em; text-transform: none; opacity: .5; }
 .create-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
 
 /* A slider or colour in a pop-up. */
@@ -388,7 +391,7 @@
   justify-content: space-between;
   align-items: baseline;
   padding: 14px var(--gutter) 10px 18px;
-  font-size: 12px;
+  font-size: 15px;
   letter-spacing: .2em;
   text-transform: uppercase;
 }
