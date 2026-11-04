@@ -283,7 +283,7 @@
   left: -12px;
   bottom: calc(100% + 10px);
   display: grid;
-  min-width: 340px;
+  min-width: 400px;
   padding: 10px 0;
   background: var(--create-panel);
   -webkit-backdrop-filter: blur(14px);
