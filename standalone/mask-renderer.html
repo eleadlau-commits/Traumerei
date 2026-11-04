@@ -2130,6 +2130,92 @@ dialog.menu-drawer::before {
   .menu-drawer.shown .menu-panel::after { transform: rotate(-45deg); }
 }
 
+/* ---- feature: panel (style.css) ---- */
+/* The side panel, docked on the right. Class names start with "panel-" (its own box is
+   .side-panel, since Folio's look has a .panel of its own, rounded, which must not leak in). It has the palette's pale,
+   blurred veil, like the room's pop-ups, in the app's typeface; editors put their own content in
+   .panel-body. */
+
+:root { --panel-width: 0px; }
+
+.side-panel {
+  --panel-ink: var(--ink, #2b2a28);
+  --panel-line: rgb(var(--ink-rgb, 43 42 40) / .12);
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 480px;
+  margin: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--veil-rgb, 250 247 240) / .94);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: -1px 0 0 var(--panel-line), -8px 0 32px rgb(var(--ink-rgb, 43 42 40) / .08);
+  color: var(--panel-ink);
+  font-family: var(--home-font);
+  animation: panel-in .3s ease both;
+}
+.side-panel[hidden] { display: none; }
+@keyframes panel-in { from { opacity: 0; transform: translateX(12px); } }
+
+.panel-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: calc(18px + env(safe-area-inset-top)) 18px 12px 24px;
+}
+.panel-names { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.panel-kind { font-size: 11px; letter-spacing: .24em; text-transform: uppercase; opacity: .45; }
+.panel-kind:empty { display: none; }
+.panel-title { font-size: 17px; letter-spacing: .04em; overflow-wrap: anywhere; }
+.panel-close {
+  flex: none;
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  opacity: .5;
+  cursor: pointer;
+}
+.panel-close:is(:hover, :focus-visible) { opacity: 1; outline: none; }
+
+.panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px calc(16px + env(safe-area-inset-bottom)); }
+
+/* The left edge: drag it to change the width. */
+.panel-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.panel-edge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.panel-edge:hover::after, .panel-dragging .panel-edge::after { opacity: .25; }
+.panel-dragging, .panel-dragging * { cursor: col-resize !important; user-select: none !important; }
+
 /* ---- feature: search (style.css) ---- */
 /* Styles for Search. Class names start with "search-". A quiet panel near the top, over a faint
    shade of the whole screen, in the palette's veil like every pop-up. */
@@ -2207,6 +2293,9 @@ dialog.menu-drawer::before {
   font-family: var(--home-font);
 }
 .room > * { pointer-events: auto; }
+/* While the side panel (the panel feature) shows on the right, the room moves over beside it: its
+   width is --panel-width, and the transform makes the room's fixed parts sit in the room. */
+.panel-open .room { right: var(--panel-width, 0px); transform: translateZ(0); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
 .room-dark .topbar .top-btn { color: var(--room-ink); }
@@ -12012,7 +12101,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => th.text.split("\n").map((l2, k2) => k2 ? l2 ? "  " + l2 : "" : "- " + l2).join("\n")
     },
-    node: (th, el10) => el10("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
+    node: (th, el11) => el11("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
   };
 
   // dist/web/features/world/items/passage.js
@@ -12046,11 +12135,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th, h) => [th.title ? `### ${th.title}` : "###", ...th.body ? th.body.split("\n").map(h.escape) : []].join("\n")
     },
-    node: (th, el10) => el10(
+    node: (th, el11) => el11(
       "div",
       { class: "room-passage", "data-id": th.id },
-      th.title ? el10("div", { class: "room-passage-title" }, maths(th.title)) : null,
-      th.body ? el10("div", { class: "room-passage-body" }, maths(th.body)) : null
+      th.title ? el11("div", { class: "room-passage-title" }, maths(th.title)) : null,
+      th.body ? el11("div", { class: "room-passage-body" }, maths(th.body)) : null
     )
   };
 
@@ -12075,11 +12164,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => `![${th.text || ""}](${th.src})`
     },
-    node: (th, el10) => el10(
+    node: (th, el11) => el11(
       "figure",
       { class: "room-picture", "data-id": th.id },
-      el10("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
-      th.text ? el10("figcaption", {}, maths(th.text)) : null
+      el11("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
+      th.text ? el11("figcaption", {}, maths(th.text)) : null
     )
   };
 
@@ -13073,7 +13162,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
     // thoughts, a folded train as one block, and the thought being written.
     draw(c) {
-      const w2 = c.world, el10 = c.el;
+      const w2 = c.world, el11 = c.el;
       const nodes = [];
       const svg2 = document.createElementNS(SVG, "svg");
       svg2.setAttribute("class", "room-strands");
@@ -13081,7 +13170,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const t of roomTrains(w2, c.roomId)) {
         const chosen = c.sel?.kind === "train" && c.sel.id === t.id || c.isSel(t.id);
         if (t.folded) {
-          nodes.push(el10("div", {
+          nodes.push(el11("div", {
             class: "room-bead room-folded" + (chosen ? " selected" : ""),
             "data-group": t.id,
             style: `left:${t.x}px;top:${t.y}px`
@@ -13115,7 +13204,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         svg2.append(g2);
         for (const k2 of knots) {
-          nodes.push(el10("div", {
+          nodes.push(el11("div", {
             class: "room-bead" + (chosen || c.isSel(k2.th.id) ? " selected" : "") + (c.found === k2.th.id ? " found" : ""),
             "data-group": t.id,
             ...k2.draft ? {} : { "data-thought": k2.th.id },
@@ -13124,7 +13213,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       }
       if (c.draft && !c.draft.train) {
-        nodes.push(el10("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes.push(el11("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [svg2, ...nodes];
     }
@@ -13653,7 +13742,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
     // arrows down to its children with their labels, and the thought being written.
     draw(c) {
-      const w2 = c.world, el10 = c.el, roomId = c.roomId;
+      const w2 = c.world, el11 = c.el, roomId = c.roomId;
       const all = boxes(w2, roomId);
       const layer = svg("svg", { class: "room-strands room-russell-arrows" });
       const defs = svg("defs");
@@ -13672,7 +13761,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const two = parentsOf(w2, roomId, to).length > 1;
           const left = two && q.x < p.x;
           const x = two ? p.x : q.x, y = two ? p.y + 10 : q.y - 52;
-          nodes.push(el10("div", {
+          nodes.push(el11("div", {
             class: "room-russell-label" + (left ? " left" : ""),
             "data-group": to,
             title: "What the child forgets",
@@ -13687,17 +13776,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const chosen = c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id);
         const cls = "room-bead" + (picking ? " room-russell-pick" : "");
         if (g2.folded) {
-          nodes.push(el10("div", {
+          nodes.push(el11("div", {
             class: cls + " room-folded room-russell-closed" + (chosen ? " selected" : ""),
             "data-group": g2.id,
             title: "Click to open",
             style: `left:${at2.x}px;top:${at2.y}px`
-          }, el10("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
+          }, el11("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
           const spots2 = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
             const sp = spots2[th.id];
-            nodes.push(el10("div", {
+            nodes.push(el11("div", {
               class: cls + (chosen || c.isSel(th.id) ? " selected" : "") + (c.found === th.id ? " found" : ""),
               "data-group": g2.id,
               "data-thought": th.id,
@@ -13707,18 +13796,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (c.draft?.train === g2.id && !c.draft.edit) {
             const last = members(w2, g2.id).at(-1);
             const y = last ? spots2[last.id].y + stepAfter(last) : at2.y;
-            nodes.push(el10("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
+            nodes.push(el11("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
         if (!g2.folded) layer.append(svg("path", { class: "room-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - 14} ${at2.y + 6}L${at2.x - 14} ${at2.y + size.h - 4}` }));
-        if (g2.title && !g2.folded) nodes.push(el10("div", { class: "room-russell-title", "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y - 30}px` }, g2.title));
+        if (g2.title && !g2.folded) nodes.push(el11("div", { class: "room-russell-title", "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y - 30}px` }, g2.title));
         if (!c.locked) {
           const f2 = foot(at2, size);
-          nodes.push(el10("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
+          nodes.push(el11("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
         }
       }
       if (c.draft && !c.draft.train && !c.draft.edit) {
-        nodes.push(el10("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes.push(el11("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [layer, ...nodes];
     },
@@ -16275,8 +16364,156 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
-  // dist/web/features/search/Search.js
+  // dist/web/features/panel/Panel.js
   var { el: el8 } = ui_exports;
+  var WIDTH = 480;
+  var LEAST = 300;
+  var MOST2 = 0.7;
+  var Panel = class extends Feature {
+    start() {
+      this.width = this.fit(this.storage.get("width", WIDTH));
+      this.shown = null;
+      const panel = this;
+      this.provide("panel", {
+        open: (o2) => this.open(o2),
+        close: (key = null, force = false) => this.close(key, force),
+        isOpen: (key = null) => !!this.shown && (key == null || this.shown.key === key),
+        get width() {
+          return panel.shown ? panel.width : 0;
+        }
+      });
+      this.build();
+      window.addEventListener("resize", () => {
+        if (this.shown) this.setWidth(this.width, false);
+      });
+    }
+    fit(px) {
+      return Math.round(Math.max(LEAST, Math.min(+px || WIDTH, Math.max(LEAST, window.innerWidth * MOST2))));
+    }
+    build() {
+      this.titleEl = el8("div", { class: "panel-title" });
+      this.kindEl = el8("div", { class: "panel-kind" });
+      this.body = el8("div", { class: "panel-body" });
+      this.edge = el8("div", {
+        class: "panel-edge",
+        role: "separator",
+        "aria-orientation": "vertical",
+        "aria-label": "Drag to change the width",
+        title: "Drag to change the width · double-click for the usual width",
+        onpointerdown: (e) => this.drag(e),
+        ondblclick: () => this.setWidth(WIDTH)
+      });
+      this.root = el8(
+        "aside",
+        {
+          class: "side-panel",
+          hidden: true,
+          "aria-label": "Side panel",
+          onpointerdown: (e) => e.stopPropagation(),
+          onkeydown: (e) => {
+            e.stopPropagation();
+            if (e.key === "Escape" && !e.defaultPrevented) {
+              e.preventDefault();
+              this.close();
+            }
+          }
+        },
+        el8(
+          "header",
+          { class: "panel-head" },
+          el8("div", { class: "panel-names" }, this.kindEl, this.titleEl),
+          el8("button", { type: "button", class: "panel-close", "aria-label": "Close", title: "Close (Escape)", onclick: () => this.close() }, "×")
+        ),
+        this.body,
+        this.edge
+      );
+      for (const type of ["keyup", "paste", "copy", "cut", "wheel"]) this.root.addEventListener(type, (e) => e.stopPropagation());
+      (document.getElementById("folio-root") || document.body).append(this.root);
+    }
+    // Shows `body` (a node) in the panel, in place of whatever showed there (which is asked first, and
+    // closed). kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of
+    // true) when it may close. onClose(): it closed. Resolves with { close, setTitle, setKind } or
+    // null when what showed would not close.
+    async open({ key = "panel", kind = "", title = "", body, beforeClose = null, onClose = null } = {}) {
+      if (this.shown && !await this.close()) return null;
+      const shown2 = this.shown = { key, beforeClose, onClose };
+      this.kindEl.textContent = kind;
+      this.titleEl.textContent = title;
+      this.body.replaceChildren(body || "");
+      this.root.hidden = false;
+      this.setWidth(this.width, false);
+      document.documentElement.classList.add("panel-open");
+      return {
+        close: (force = false) => this.shown === shown2 ? this.close(null, force) : Promise.resolve(true),
+        setTitle: (t) => {
+          if (this.shown === shown2) this.titleEl.textContent = t;
+        },
+        setKind: (t) => {
+          if (this.shown === shown2) this.kindEl.textContent = t;
+        },
+        get open() {
+          return this.shown === shown2;
+        }
+      };
+    }
+    // Closes what shows (only if it is `key`, given). Resolves true when the panel is shut.
+    async close(key = null, force = false) {
+      const shown2 = this.shown;
+      if (!shown2) return true;
+      if (key != null && shown2.key !== key) return true;
+      if (!force && shown2.beforeClose) {
+        let ok = false;
+        try {
+          ok = await shown2.beforeClose();
+        } catch {
+          ok = true;
+        }
+        if (!ok || this.shown !== shown2) return false;
+      }
+      this.shown = null;
+      this.root.hidden = true;
+      this.body.replaceChildren();
+      document.documentElement.classList.remove("panel-open");
+      this.publish(0);
+      try {
+        shown2.onClose?.();
+      } catch (err) {
+        console.warn("Panel: onClose", err);
+      }
+      return true;
+    }
+    setWidth(px, keep = true) {
+      this.width = this.fit(px);
+      if (keep) this.storage.set("width", this.width);
+      this.root.style.width = `${this.width}px`;
+      if (this.shown) this.publish(this.width);
+    }
+    publish(px) {
+      document.documentElement.style.setProperty("--panel-width", `${px}px`);
+      this.emit("panel:resized", { width: px });
+    }
+    // The edge dragged: the width follows the pointer, and is remembered when let go.
+    drag(e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      this.edge.setPointerCapture?.(e.pointerId);
+      document.documentElement.classList.add("panel-dragging");
+      const move4 = (ev) => this.setWidth(window.innerWidth - ev.clientX, false);
+      const up = () => {
+        this.edge.removeEventListener("pointermove", move4);
+        this.edge.removeEventListener("pointerup", up);
+        this.edge.removeEventListener("pointercancel", up);
+        document.documentElement.classList.remove("panel-dragging");
+        this.setWidth(this.width);
+      };
+      this.edge.addEventListener("pointermove", move4);
+      this.edge.addEventListener("pointerup", up);
+      this.edge.addEventListener("pointercancel", up);
+    }
+  };
+
+  // dist/web/features/search/Search.js
+  var { el: el9 } = ui_exports;
   var Search = class extends Feature {
     start() {
       this.w = this.use("world");
@@ -16289,7 +16526,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return !!box && !box.hidden;
         }
       });
-      const box = this.box = el8("div", { class: "search", hidden: true, role: "dialog", "aria-label": "Search" });
+      const box = this.box = el9("div", { class: "search", hidden: true, role: "dialog", "aria-label": "Search" });
       box.onpointerdown = (e) => {
         if (e.target === box) this.close();
       };
@@ -16297,21 +16534,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     open() {
       const { search: search4 } = this.w.lib.model;
-      const field3 = el8("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
-      const list2 = el8("div", { class: "search-list", role: "listbox" });
+      const field3 = el9("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
+      const list2 = el9("div", { class: "search-list", role: "listbox" });
       let found = [], at2 = 0;
       const show = () => {
         found = search4(this.w.world, field3.value);
         at2 = Math.min(at2, Math.max(0, found.length - 1));
         list2.replaceChildren(
-          ...found.map((f2, i2) => el8("button", {
+          ...found.map((f2, i2) => el9("button", {
             type: "button",
             class: "search-item" + (i2 === at2 ? " on" : ""),
             role: "option",
             "aria-selected": String(i2 === at2),
             onclick: () => this.pick(f2)
-          }, el8("span", { class: "search-text" }, f2.text), el8("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
-          field3.value.trim() && !found.length ? el8("p", { class: "search-none" }, "Nothing yet with those words") : ""
+          }, el9("span", { class: "search-text" }, f2.text), el9("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
+          field3.value.trim() && !found.length ? el9("p", { class: "search-none" }, "Nothing yet with those words") : ""
         );
       };
       field3.addEventListener("input", () => {
@@ -16339,7 +16576,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.pick(found[at2]);
         }
       });
-      this.box.replaceChildren(el8("div", { class: "search-panel" }, field3, list2));
+      this.box.replaceChildren(el9("div", { class: "search-panel" }, field3, list2));
       this.box.hidden = false;
       field3.focus();
     }
@@ -16645,7 +16882,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/room/shared.js
-  var { el: el9 } = ui_exports;
+  var { el: el10 } = ui_exports;
   var ZOOM = { min: 0.25, max: 4 };
   var MAC2 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var KEY3 = MAC2 ? "⌘K" : "Ctrl+K";
@@ -16741,21 +16978,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // One setting as a row: a slider, or an on/off switch (type: 'switch').
     settingRow(st, value, onChange) {
       if (st.type === "switch") {
-        return el9(
+        return el10(
           "label",
           { class: "renderer-slider room-switch-row" },
-          el9("span", {}, st.label),
-          el9("span"),
+          el10("span", {}, st.label),
+          el10("span"),
           ui_exports.toggle({ checked: !!value, label: st.label, onChange })
         );
       }
-      const out = el9("output", { class: "renderer-value" }, String(value));
-      return el9(
+      const out = el10("output", { class: "renderer-value" }, String(value));
+      return el10(
         "label",
         { class: "renderer-slider" },
-        el9("span", {}, st.label),
+        el10("span", {}, st.label),
         out,
-        el9("input", {
+        el10("input", {
           type: "range",
           min: st.min,
           max: st.max,
@@ -16784,13 +17021,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingsPane() {
       const p = this.prefs;
       const slider2 = (label, key, min, max, step = 0.01) => {
-        const out = el9("output", { class: "renderer-value" }, String(p[key]));
-        return el9(
+        const out = el10("output", { class: "renderer-value" }, String(p[key]));
+        return el10(
           "label",
           { class: "renderer-slider" },
-          el9("span", {}, label),
+          el10("span", {}, label),
           out,
-          el9("input", {
+          el10("input", {
             type: "range",
             min,
             max,
@@ -16804,13 +17041,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows) => el9(
+      const fold4 = (title, ...rows) => el10(
         "details",
         { class: "advanced renderer-fold" },
-        el9("summary", {}, title),
-        el9("div", { class: "renderer-fold-body" }, el9("div", { class: "renderer-sliders" }, ...rows))
+        el10("summary", {}, title),
+        el10("div", { class: "renderer-fold-body" }, el10("div", { class: "renderer-sliders" }, ...rows))
       );
-      return el9(
+      return el10(
         "div",
         { class: "room-settings" },
         fold4(
@@ -16823,16 +17060,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Columns at least", "cols", 0, 30, 1),
           slider2("Rows at least", "rows", 0, 30, 1),
           // A square's last thoughts: shown when it is hovered over, or always.
-          el9(
+          el10(
             "label",
             { class: "renderer-slider" },
-            el9("span", {}, "Peek"),
-            el9("span"),
-            el9(
+            el10("span", {}, "Peek"),
+            el10("span"),
+            el10(
               "select",
               { "aria-label": "Peek", onchange: (e) => this.setPref("peek", +e.target.value) },
-              el9("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
-              el9("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
+              el10("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
+              el10("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
             )
           )
         ),
@@ -16841,13 +17078,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           ...this.ontologies.flatMap((o2) => [
-            el9("p", { class: "room-settings-ont" }, o2.name),
+            el10("p", { class: "room-settings-ont" }, o2.name),
             ...this.settingsOf(o2).map((st) => this.settingRow(st, this.globalSetting(o2.id, st), (v2) => this.setOntPref(o2.id, st.key, v2)))
           ]),
-          el9("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
+          el10("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
         ),
         ui_exports.hint("A room's own colour is in its pop-up on the rooms page: click its square.", { small: true }),
-        el9("button", { type: "button", class: "btn small", onclick: () => {
+        el10("button", { type: "button", class: "btn small", onclick: () => {
           this.w.resetLook();
           this.w.resetGlobals();
           this.repaint();
@@ -16884,7 +17121,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const items = [];
       for (const m2 of big ? this.ontologies : [this.ont]) {
         const on = m2.id === this.mode;
-        const word = big ? el9("button", {
+        const word = big ? el10("button", {
           type: "button",
           class: "room-rail-item",
           role: "radio",
@@ -16894,13 +17131,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (on) this.toggleGear(m2.id);
             else this.setMode(m2.id);
           }
-        }, m2.name) : el9("span", {
+        }, m2.name) : el10("span", {
           class: "room-rail-item room-rail-fixed",
           "aria-current": "true",
           title: "A small room keeps one mode. Make it 2 × 2 to switch.",
           onclick: () => this.toggleGear(m2.id)
         }, m2.name);
-        const gear = this.settingsOf(m2).length ? el9("button", {
+        const gear = this.settingsOf(m2).length ? el10("button", {
           type: "button",
           class: "room-gear",
           "aria-label": `${m2.name} settings for this room`,
@@ -16908,10 +17145,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-expanded": String(this.settingsFor === m2.id),
           onclick: () => this.openRoomSettings(m2.id)
         }, "⚙") : null;
-        items.push(el9("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
+        items.push(el10("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
-      items.push(el9("div", { class: "room-rail-rule", "aria-hidden": "true" }));
-      items.push(el9("button", {
+      items.push(el10("div", { class: "room-rail-rule", "aria-hidden": "true" }));
+      items.push(el10("button", {
         type: "button",
         class: "room-rail-item room-rail-view",
         "aria-pressed": String(this.historyOpen),
@@ -16939,7 +17176,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         done();
       };
-      const field3 = el9("input", {
+      const field3 = el10("input", {
         class: "room-name-field",
         value: r.name,
         "aria-label": "Room name",
@@ -16986,7 +17223,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.settingsFor = null;
         this.drawRoom();
       };
-      return el9(
+      return el10(
         "div",
         {
           class: "room-options room-mode-settings",
@@ -17000,19 +17237,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           }
         },
-        el9(
+        el10(
           "div",
           { class: "room-mode-settings-head" },
-          el9("span", {}, o2.name),
-          el9("button", { type: "button", class: "room-history-close", "aria-label": "Close", onclick: close }, "×")
+          el10("span", {}, o2.name),
+          el10("button", { type: "button", class: "room-history-close", "aria-label": "Close", onclick: close }, "×")
         ),
-        el9("p", { class: "room-mode-settings-note" }, "For this room only"),
+        el10("p", { class: "room-mode-settings-note" }, "For this room only"),
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
           this.w.write();
           this.drawWorld();
         })),
-        el9("button", { type: "button", class: "room-word room-mode-settings-reset", onclick: () => {
+        el10("button", { type: "button", class: "room-word room-mode-settings-reset", onclick: () => {
           resetRoomSettings2(this.world, this.roomId, o2.id);
           this.w.write();
           this.drawRoom();
@@ -17059,7 +17296,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const ont = this.ont;
         for (const th of ont.units(w2, this.roomId)) {
           const p = ont.point(w2, this.roomId, th.id) || { x: 0, y: 0 };
-          nodes.push(el9("div", {
+          nodes.push(el10("div", {
             class: "room-float" + (this.isSel(th.id) ? " selected" : "") + (this.found === th.id ? " found" : ""),
             "data-thought": th.id,
             style: `left:${p.x}px;top:${p.y}px`
@@ -17067,7 +17304,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         if (this.draft && !this.draft.edit) {
           const p = ont.draftPoint?.(w2, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
-          nodes.push(el9("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+          nodes.push(el10("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
         }
       }
       this.world$.replaceChildren(...nodes);
@@ -17153,9 +17390,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
       const items = roomThoughts3(w2, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const list2 = items.length ? el9("ol", { class: "room-history-list" }, items.map((th) => {
+      const list2 = items.length ? el10("ol", { class: "room-history-list" }, items.map((th) => {
         const tag = ont.tag?.(w2, th.id) || null;
-        return el9("li", {}, el9(
+        return el10("li", {}, el10(
           "button",
           {
             type: "button",
@@ -17163,24 +17400,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             style: tag ? `--tag:hsl(${hash2(tag.id) % 360} 32% 46%)` : "",
             onclick: () => this.goTo({ id: th.id, kind: kindOf3(th), room: this.roomId })
           },
-          el9(
+          el10(
             "span",
             { class: "room-history-meta" },
-            el9("span", { class: "room-history-time" }, when(changed(th))),
-            tag ? el9("span", { class: "room-tag" }, tag.name) : null
+            el10("span", { class: "room-history-time" }, when(changed(th))),
+            tag ? el10("span", { class: "room-tag" }, tag.name) : null
           ),
-          el9("span", { class: "room-history-text" }, thoughtText2(w2, th))
+          el10("span", { class: "room-history-text" }, thoughtText2(w2, th))
         ));
       })) : null;
       this.history.hidden = false;
       this.history.replaceChildren(
-        el9(
+        el10(
           "div",
           { class: "room-history-head" },
-          el9("span", {}, "Timeline"),
-          el9("button", { type: "button", class: "room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() }, "×")
+          el10("span", {}, "Timeline"),
+          el10("button", { type: "button", class: "room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() }, "×")
         ),
-        list2 || el9("p", { class: "room-history-none" }, "Nothing written here yet")
+        list2 || el10("p", { class: "room-history-none" }, "Nothing written here yet")
       );
       list2?.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
@@ -17194,17 +17431,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const kind = kindOf3(th);
       if (kind === "group") {
         const body = thoughtText2(this.world, th);
-        return el9(
+        return el10(
           "div",
           { class: "room-passage folded", "data-id": th.id },
-          th.title ? el9("div", { class: "room-passage-title" }, maths2(th.title)) : null,
-          body ? el9("div", { class: "room-passage-body" }, maths2(body)) : null
+          th.title ? el10("div", { class: "room-passage-title" }, maths2(th.title)) : null,
+          body ? el10("div", { class: "room-passage-body" }, maths2(body)) : null
         );
       }
-      return (ITEMS3[kind] || ITEMS3.line).node(th, el9);
+      return (ITEMS3[kind] || ITEMS3.line).node(th, el10);
     }
     draftNode() {
-      this.draftEl = el9("span", { class: "room-thought room-draft" });
+      this.draftEl = el10("span", { class: "room-thought room-draft" });
       this.paintDraft();
       return this.draftEl;
     }
@@ -17216,9 +17453,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const v2 = this.input.value;
       const a = this.input.selectionStart ?? v2.length, b = this.input.selectionEnd ?? v2.length;
       const back = this.input.selectionDirection === "backward";
-      const caret = document.activeElement === this.input || !d.isConnected ? el9("span", { class: "room-caret", "aria-hidden": "true" }) : null;
-      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el9("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
-      if (!v2 || v2.endsWith("\n")) parts.push(el9("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
+      const caret = document.activeElement === this.input || !d.isConnected ? el10("span", { class: "room-caret", "aria-hidden": "true" }) : null;
+      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el10("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
+      if (!v2 || v2.endsWith("\n")) parts.push(el10("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
       d.replaceChildren(...parts.filter((p) => p != null && p !== "").map((p) => p instanceof Node ? p : document.createTextNode(p)));
     }
     // Where each letter of the thought being written is on the screen (measured, not guessed).
@@ -17887,11 +18124,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ["Escape", "let go, or go back"],
         ["?", "these keys"]
       ];
-      this.keysBox.replaceChildren(el9(
+      this.keysBox.replaceChildren(el10(
         "div",
         { class: "room-search-panel room-keys-panel" },
-        el9("div", { class: "room-options-label" }, "Keys"),
-        el9("dl", { class: "room-keys-list" }, rows.flatMap(([a, b]) => [el9("dt", {}, a), el9("dd", {}, b)]))
+        el10("div", { class: "room-options-label" }, "Keys"),
+        el10("dl", { class: "room-keys-list" }, rows.flatMap(([a, b]) => [el10("dt", {}, a), el10("dd", {}, b)]))
       ));
       this.keysBox.hidden = false;
       this.keysBox.onpointerdown = () => this.closeSearch();
@@ -17910,7 +18147,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drawBox(g2, e) {
       const b = this.stage.getBoundingClientRect();
       if (!this.box) {
-        this.box = el9("div", { class: "room-box" });
+        this.box = el10("div", { class: "room-box" });
         this.stage.append(this.box);
       }
       const x = Math.min(g2.x0, e.clientX) - b.left, y = Math.min(g2.y0, e.clientY) - b.top;
@@ -18043,14 +18280,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
     addItem(label, note, fn, keep = true) {
-      return el9(
+      return el10(
         "button",
         { type: "button", class: "room-add-item", role: "menuitem", onclick: () => {
           this.closeAdd(keep);
           fn();
         } },
-        el9("span", {}, label),
-        el9("span", { class: "room-add-note" }, note)
+        el10("span", {}, label),
+        el10("span", { class: "room-add-note" }, note)
       );
     }
     toggleAdd() {
@@ -18173,8 +18410,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.locked) {
         this.bar.hidden = false;
         this.bar.replaceChildren(
-          el9("div", { class: "room-options-label" }, "Locked"),
-          el9("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))
+          el10("div", { class: "room-options-label" }, "Locked"),
+          el10("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))
         );
         this.positionEdit();
         this.drawHistorySoon();
@@ -18184,8 +18421,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.stopPropagation();
         if (e.key === "Escape" || e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur();
       };
-      const field3 = (value, label, onchange, cls = "room-options-name") => el9("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
-      const word = (label, fn, extra = "") => el9("button", { type: "button", class: "room-word " + extra, onclick: fn }, label);
+      const field3 = (value, label, onchange, cls = "room-options-name") => el10("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
+      const word = (label, fn, extra = "") => el10("button", { type: "button", class: "room-word " + extra, onclick: fn }, label);
       const grow = (t) => {
         t.style.height = "auto";
         t.style.height = t.scrollHeight + "px";
@@ -18197,9 +18434,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const rows = [];
       const gname = kind === "group" ? this.groupName(th) : "Train";
       const title = kind === "group" ? th.folded ? `A folded ${gname.toLowerCase()}` : gname : ITEMS3[kind]?.name || "Thought";
-      rows.push(el9("div", { class: "room-options-label" }, title));
+      rows.push(el10("div", { class: "room-options-label" }, title));
       if (kind === "line") {
-        const text = el9("textarea", {
+        const text = el10("textarea", {
           class: "room-edit-text room-edit-lines",
           rows: 1,
           placeholder: "The thought",
@@ -18233,7 +18470,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           update4(this.world, th.id, { title: e.target.value });
           done();
         }));
-        const body = el9("textarea", {
+        const body = el10("textarea", {
           class: "room-edit-body",
           rows: 5,
           "aria-label": "Passage",
@@ -18257,10 +18494,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             name4(this.world, th.id, e.target.value);
             done();
           }),
-          el9(
+          el10(
             "div",
             { class: "room-options-row" },
-            el9("span", { class: "room-options-note" }, `${n} thought${n === 1 ? "" : "s"}`),
+            el10("span", { class: "room-options-note" }, `${n} thought${n === 1 ? "" : "s"}`),
             th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 || this.ont.open ? word("Fold into one", () => this.foldTrain(th.id)) : null
           )
         );
@@ -18282,9 +18519,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return false;
         }
       });
-      if (moves.length) rows.push(el9("div", { class: "room-options-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
+      if (moves.length) rows.push(el10("div", { class: "room-options-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
       const others = this.moveRooms();
-      const pick = el9(
+      const pick = el10(
         "select",
         {
           class: "room-edit-move",
@@ -18295,13 +18532,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (to) this.moveTo(to);
           }
         },
-        el9("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el9("option", { value: r.id }, r.name)),
-        el9("option", { value: "+" }, "A new room")
+        el10("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el10("option", { value: r.id }, r.name)),
+        el10("option", { value: "+" }, "A new room")
       );
       rows.push(
-        el9("div", { class: "room-options-row" }, pick),
-        el9(
+        el10("div", { class: "room-options-row" }, pick),
+        el10(
           "div",
           { class: "room-options-row" },
           kind !== "group" && this.ont.groups && groupOf2(this.world, th.id, this.mode) ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: "train", id: groupOf2(this.world, th.id, this.mode).id })) : null,
@@ -18345,7 +18582,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const open = !!this.trayOpen;
-      const word = el9("button", {
+      const word = el10("button", {
         type: "button",
         class: "room-word room-tray-btn",
         "aria-expanded": String(open),
@@ -18355,13 +18592,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawTray();
         }
       }, `Loose · ${items.length}`);
-      const row = open ? el9("div", { class: "room-tray-row", role: "list" }, items.map((th) => el9("div", {
+      const row = open ? el10("div", { class: "room-tray-row", role: "list" }, items.map((th) => el10("div", {
         class: "room-tray-item",
         role: "listitem",
         "data-tray": th.id,
         title: "Drag onto the room",
         onpointerdown: (e) => this.trayDrag(e, th.id)
-      }, el9("span", { class: "room-tray-text" }, kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))))) : null;
+      }, el10("span", { class: "room-tray-text" }, kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))))) : null;
       this.trayEl.hidden = false;
       this.trayEl.replaceChildren(...row ? [row] : [], word);
     }
@@ -18406,7 +18643,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const ids = this.sel.ids.filter((id) => this.world.things[id]);
       const others = this.moveRooms();
-      const pick = el9(
+      const pick = el10(
         "select",
         {
           class: "room-edit-move",
@@ -18423,19 +18660,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.toast(`Moved ${ids.length} to ${room4(this.world, to).name}`);
           }
         },
-        el9("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el9("option", { value: r.id }, r.name)),
-        el9("option", { value: "+" }, "A new room")
+        el10("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el10("option", { value: r.id }, r.name)),
+        el10("option", { value: "+" }, "A new room")
       );
       this.bar.hidden = false;
       this.bar.replaceChildren(
-        el9("div", { class: "room-options-label" }, `${ids.length} chosen`),
-        el9("p", { class: "room-options-note" }, "Drag any of them to move them together."),
-        el9("div", { class: "room-options-row" }, pick),
-        el9(
+        el10("div", { class: "room-options-label" }, `${ids.length} chosen`),
+        el10("p", { class: "room-options-note" }, "Drag any of them to move them together."),
+        el10("div", { class: "room-options-row" }, pick),
+        el10(
           "div",
           { class: "room-options-row" },
-          el9("button", { type: "button", class: "room-word room-options-delete", onclick: () => {
+          el10("button", { type: "button", class: "room-word room-options-delete", onclick: () => {
             ids.forEach((id) => remove3(this.world, id));
             this.sel = null;
             this.save();
@@ -18495,7 +18732,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Replace · Keep both, for how `others` show a folded group.
     keepChoice(others, keep, choose) {
       const names = others.map((o2) => o2.name).join(" and ");
-      const pick = (label, value, note) => el9("button", {
+      const pick = (label, value, note) => el10("button", {
         type: "button",
         class: "room-word",
         "aria-pressed": String(keep === value),
@@ -18506,10 +18743,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           e.currentTarget.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
         }
       }, label);
-      return el9(
+      return el10(
         "div",
         { class: "room-options-row room-keep" },
-        el9("span", { class: "room-options-note" }, `In ${names}:`),
+        el10("span", { class: "room-options-note" }, `In ${names}:`),
         pick("Replace", false, "The one folded thought takes the place of its thoughts"),
         pick("Keep both", true, "The folded thought is added beside its thoughts")
       );
@@ -18590,30 +18827,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const fields = [];
       if (kind === "group") {
-        this.sheetTitle = el9("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
-        fields.push(this.sheetTitle, el9("div", { class: "room-sheet-preview" }, thoughtText2(this.world, th)));
+        this.sheetTitle = el10("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        fields.push(this.sheetTitle, el10("div", { class: "room-sheet-preview" }, thoughtText2(this.world, th)));
         if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep2) => {
           this.editing.keep = keep2;
           this.sheetTitle.focus();
         }));
       } else if (kind === "passage") {
-        this.sheetTitle = el9("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
-        this.sheetBody = el9("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
+        this.sheetTitle = el10("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
+        this.sheetBody = el10("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
         this.sheetBody.value = th?.body || "";
         fields.push(this.sheetTitle, this.sheetBody);
       } else {
-        this.sheetCaption = el9("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
-        fields.push(el9("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
+        this.sheetCaption = el10("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
+        fields.push(el10("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
       this.sheet.replaceChildren(
-        el9("div", { class: "room-sheet-kind" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
+        el10("div", { class: "room-sheet-kind" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
         ...fields,
-        el9(
+        el10(
           "div",
           { class: "room-sheet-words" },
-          el9("button", { type: "button", class: "room-word", onclick: keep }, "Keep"),
-          el9("button", { type: "button", class: "room-word", onclick: () => this.closeSheet() }, "Cancel"),
-          el9("span", { class: "room-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
+          el10("button", { type: "button", class: "room-word", onclick: keep }, "Keep"),
+          el10("button", { type: "button", class: "room-word", onclick: () => this.closeSheet() }, "Cancel"),
+          el10("span", { class: "room-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
         )
       );
       this.sheet.hidden = false;
@@ -18674,6 +18911,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drafts = this.storage.get("drafts", {}) || {};
       this.files = this.use("roomfile");
       this.finder = this.use("search");
+      this.panel = this.use("panel");
+      this.on("panel:resized", () => {
+        if (this.roomId) this.place();
+      });
       this.on("world:palette", () => this.repaint());
       this.on("world:look", () => this.repaint());
       this.on("world:saved", () => {
@@ -18755,6 +18996,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const from = this.root.hidden ? null : this.roomId;
       this.closeSheet();
       this.closeSearch();
+      this.panel?.close(null, true);
       this.shelveDraft();
       this.stopWriting();
       this.roomId = null;
@@ -18785,7 +19027,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       const look = this.lookOf(room4(this.world, this.roomId));
       const W2 = window.innerWidth, H3 = window.innerHeight;
-      const veil = el9("div", { class: "room-expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})` });
+      const veil = el10("div", { class: "room-expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})` });
       this.expandVeil = veil;
       this.root.classList.add("expanding");
       this.root.append(veil);
@@ -18854,12 +19096,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Building the pages ----
     build() {
-      this.backBtn = el9(
+      this.backBtn = el10(
         "button",
         { type: "button", class: "room-back", "aria-label": "Back to the rooms", onclick: () => this.back() },
         ui_exports.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>')
       );
-      this.searchBtn = el9(
+      this.searchBtn = el10(
         "button",
         {
           type: "button",
@@ -18867,60 +19109,60 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-keyshortcuts": MAC2 ? "Meta+K" : "Control+K",
           onclick: () => this.openSearch()
         },
-        el9("span", {}, "Search"),
-        el9("span", { class: "room-search-key" }, KEY3)
+        el10("span", {}, "Search"),
+        el10("span", { class: "room-search-key" }, KEY3)
       );
       this.searchBtn.hidden = !this.finder;
-      this.crumbName = el9("button", { type: "button", class: "room-crumb room-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
-      this.modes = el9("nav", { class: "room-rail room-modes", "aria-label": "Ontological mode" });
-      this.world$ = el9("div", { class: "room-world" });
-      this.stage = el9("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
-      this.input = el9("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
-      this.bar = el9("div", { class: "room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.history = el9("aside", { class: "room-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
-      this.trayEl = el9("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.roomPage = el9(
+      this.crumbName = el10("button", { type: "button", class: "room-crumb room-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
+      this.modes = el10("nav", { class: "room-rail room-modes", "aria-label": "Ontological mode" });
+      this.world$ = el10("div", { class: "room-world" });
+      this.stage = el10("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
+      this.input = el10("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
+      this.bar = el10("div", { class: "room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.history = el10("aside", { class: "room-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
+      this.trayEl = el10("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.roomPage = el10(
         "section",
         { class: "room-page", "aria-label": "Room" },
         this.stage,
         this.modes,
-        el9("div", { class: "room-top" }, this.crumbName, this.crumbDesc = el9("div", { class: "room-crumb-desc" })),
-        el9(
+        el10("div", { class: "room-top" }, this.crumbName, this.crumbDesc = el10("div", { class: "room-crumb-desc" })),
+        el10(
           "div",
           { class: "room-add" },
-          this.addMenu = el9(
+          this.addMenu = el10(
             "div",
             { class: "room-add-menu", hidden: true, role: "menu" },
             this.addItem("Thought", "Just type", () => this.beginWriting()),
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             ...this.files ? [
-              el9("div", { class: "room-add-rule" }),
+              el10("div", { class: "room-add-rule" }),
               this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false),
               this.addItem("Export as Markdown", ".md", () => this.exportRoomFile(), false)
             ] : [],
-            el9("div", { class: "room-add-rule" }),
+            el10("div", { class: "room-add-rule" }),
             this.addItem("Keys", "?", () => this.showKeys(), false)
           ),
-          this.addBtn = el9(
+          this.addBtn = el10(
             "button",
             { type: "button", class: "room-word room-add-btn", "aria-haspopup": "menu", "aria-expanded": "false", onclick: () => this.toggleAdd() },
-            el9("span", { class: "room-add-plus", "aria-hidden": "true" }, "+"),
+            el10("span", { class: "room-add-plus", "aria-hidden": "true" }, "+"),
             "Add"
           )
         ),
         this.history,
         this.trayEl,
         this.bar,
-        this.sheet = el9("div", { class: "room-sheet", hidden: true }),
-        this.docEl = el9("div", { class: "room-doc-veil", hidden: true }),
+        this.sheet = el10("div", { class: "room-sheet", hidden: true }),
+        this.docEl = el10("div", { class: "room-doc-veil", hidden: true }),
         this.input
       );
-      this.keysBox = el9("div", { class: "room-search", hidden: true, role: "dialog", "aria-label": "Keys" });
-      this.savedMark = el9("div", { class: "room-saved", "aria-live": "polite" });
-      this.hintLine = el9("div", { class: "room-hint" });
-      this.wordmark = el9("div", { class: "room-wordmark", "aria-hidden": "true" }, "Traumerei");
-      this.root = el9("div", { class: "room up in-room", hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
+      this.keysBox = el10("div", { class: "room-search", hidden: true, role: "dialog", "aria-label": "Keys" });
+      this.savedMark = el10("div", { class: "room-saved", "aria-live": "polite" });
+      this.hintLine = el10("div", { class: "room-hint" });
+      this.wordmark = el10("div", { class: "room-wordmark", "aria-hidden": "true" }, "Traumerei");
+      this.root = el10("div", { class: "room up in-room", hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
       (document.getElementById("folio-root") || document.body).append(this.root);
       this.input.addEventListener("input", () => this.onInput());
       this.input.addEventListener("keydown", (e) => {
@@ -18979,7 +19221,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.ontology(this.mode);
     }
     get el() {
-      return el9;
+      return el10;
     }
     // for an ontology drawing its canvas (ontologies/index.js)
     groupName(g2) {
@@ -19059,10 +19301,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var url4 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature4;"], { type: "text/javascript" }));
   globalThis.__folioFeature5 = Home;
   var url5 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature5;"], { type: "text/javascript" }));
-  globalThis.__folioFeature6 = Search;
+  globalThis.__folioFeature6 = Panel;
   var url6 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature6;"], { type: "text/javascript" }));
-  globalThis.__folioFeature7 = Room;
+  globalThis.__folioFeature7 = Search;
   var url7 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature7;"], { type: "text/javascript" }));
+  globalThis.__folioFeature8 = Room;
+  var url8 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature8;"], { type: "text/javascript" }));
   var config = {
     "id": "mask-renderer",
     "name": "Träumerei",
@@ -19073,8 +19317,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.1.0", "requires": ["world"], "uses": ["renderer", "roomfile"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
-  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }]).start();
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.1.0", "requires": ["world"], "uses": ["renderer", "roomfile"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "panel", "name": "Side panel", "description": "A panel docked on the right, its width set by dragging its edge and remembered, that other features open their editors in. Whatever is beside it moves over.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/panel/Panel.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "panel"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
 </script>
