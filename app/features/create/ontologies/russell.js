@@ -144,7 +144,7 @@ const widest = (w, id) => Math.max(0, WIDTHS.get(id) || 0, ...members(w, id).map
 
 export function chapterSize(w, id) {
   const g = w.things[id];
-  if (g?.folded) return { w: widest(w, id) || LAYOUT.width, h: STEP.group };
+  if (g?.folded) return { w: Math.max(LAYOUT.least, widest(w, id) || LAYOUT.width), h: STEP.line }; // closed: only its name
   const ths = members(w, id);
   const h = LAYOUT.head + ths.reduce((s, th, i) => s + (i < ths.length - 1 ? stepAfter(th) : Math.max(STEP.line, stepAfter(th) - 29)), 0);
   return { w: Math.max(LAYOUT.least, Math.min(LAYOUT.width, widest(w, id) || LAYOUT.width)), h: Math.max(STEP.line, h) };
@@ -498,7 +498,11 @@ export default {
       const chosen = (c.sel?.kind === 'train' && c.sel.id === g.id) || c.isSel(g.id);
       const cls = 'create-bead' + (picking ? ' create-russell-pick' : '');
       if (g.folded) {
-        nodes.push(el('div', { class: cls + ' create-folded' + (chosen ? ' selected' : ''), 'data-group': g.id, style: `left:${at.x}px;top:${at.y}px` }, c.thoughtNode(g)));
+        // A closed chapter: only its name. A click opens it as a document (open, below).
+        nodes.push(el('div', {
+          class: cls + ' create-folded create-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id,
+          title: 'Click to open', style: `left:${at.x}px;top:${at.y}px`,
+        }, el('span', { class: 'create-thought', 'data-id': g.id }, maths(chapterName(w, g.id)))));
       } else {
         const spots = chapterSpots(w, g.id, at);
         for (const th of members(w, g.id)) {
@@ -515,7 +519,7 @@ export default {
         }
       }
       // The chapter's hairline, down its left, and its name over it.
-      layer.append(svg('path', { class: 'create-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
+      if (!g.folded) layer.append(svg('path', { class: 'create-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
       if (g.title && !g.folded) nodes.push(el('div', { class: 'create-russell-title', 'data-group': g.id, style: `left:${at.x}px;top:${at.y - 30}px` }, g.title));
       if (!c.locked) {
         const f = foot(at, size);
@@ -526,6 +530,14 @@ export default {
       nodes.push(el('div', { class: 'create-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
     }
     return [layer, ...nodes];
+  },
+
+  // A tap on a closed (folded) chapter opens it as a document (document.js).
+  open(c, id) {
+    const g = c.world.things[id];
+    if (!isGroup(g) || g.of !== ID || !g.folded) return false;
+    c.openDocument(id);
+    return true;
   },
 
   // A thought's tag in the Timeline: its chapter.

@@ -51,6 +51,7 @@ import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
 import { maths } from './maths.js';
 import { gather, FALLBACK } from './ontologies/index.js';
+import { openDocument } from './document.js';
 import { clearSpace, clearSpot, OVERLAP } from './clear.js';
 import { visit, light, loadLog } from './attention.js';
 import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOOK, PALETTE } from './look.js';
@@ -452,6 +453,7 @@ export default class Create extends Feature {
       this.trayEl,
       this.bar,
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
+      this.docEl = el('div', { class: 'create-doc-veil', hidden: true }),
       this.input);
 
     this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
@@ -1099,6 +1101,8 @@ export default class Create extends Feature {
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
+  groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
+  openDocument(id) { openDocument(this, id); } // a group as a document (document.js)
 
   lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
 
@@ -1605,7 +1609,8 @@ export default class Create extends Feature {
       return;
     }
     if (e.key === 'Escape') {
-      if (!this.addMenu.hidden) this.closeAdd();
+      if (this.editing?.close) this.editing.close(); // a chapter open as a document
+      else if (!this.addMenu.hidden) this.closeAdd();
       else if (this.roomId && this.sel && this.barFor) { this.barFor = null; this.drawBar(); }
       else if (this.sel) { this.sel = null; this.drawWorld(); }
       else if (!this.roomId && (this.roomSel || this.making)) { this.roomSel = this.making = null; this.drawRooms(); }
@@ -2028,6 +2033,8 @@ export default class Create extends Feature {
     if (!g.moved) {
       // A tap: on a thought (or a folded train, or a line) selects it; on empty space clears the
       // selection. Double-click selects a whole train (onDouble).
+      // The ontology's own tap (Russell: a closed chapter opens as a document).
+      if (g.thing && this.ont.open?.(this, g.thing.id)) return;
       const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
       this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
       // Two taps on the same group (the page is redrawn between them, so no dblclick comes).
@@ -2422,7 +2429,7 @@ export default class Create extends Feature {
     const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
-    const gname = (kind === 'group' && this.ontologies.find((o) => o.id === th.of)?.groups?.name) || 'Train';
+    const gname = kind === 'group' ? this.groupName(th) : 'Train';
     const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
     rows.push(el('div', { class: 'create-options-label' }, title));
     if (kind === 'line') {
@@ -2459,7 +2466,7 @@ export default class Create extends Feature {
         el('div', { class: 'create-options-row' },
           el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
-            : n > 1 ? word('Fold into one', () => this.foldTrain(th.id)) : null));
+            : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null));
       // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
       const elsewhere = th.folded ? this.elsewhere(th) : [];
       if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
@@ -2725,7 +2732,7 @@ export default class Create extends Feature {
     };
     const fields = [];
     if (kind === 'group') {
-      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Name this train of thought', 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
+      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
       fields.push(this.sheetTitle, el('div', { class: 'create-sheet-preview' }, thoughtText(this.world, th)));
       if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep) => { this.editing.keep = keep; this.sheetTitle.focus(); }));
     } else if (kind === 'passage') {
@@ -2738,7 +2745,7 @@ export default class Create extends Feature {
       fields.push(el('img', { class: 'create-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
     this.sheet.replaceChildren(
-      el('div', { class: 'create-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: 'A folded train' }[kind]),
+      el('div', { class: 'create-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
       ...fields,
       el('div', { class: 'create-sheet-words' },
         el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
