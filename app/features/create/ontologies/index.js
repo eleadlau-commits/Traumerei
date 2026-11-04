@@ -43,6 +43,8 @@
 //                         into Joyce's trains
 //   press(c, e)           (optional) a press on the canvas, before Create's own: return true when
 //                         it took it (Russell: a drag from a chapter's foot draws an arrow)
+//   open(c, id)           (optional) a tap on a thought or group, before Create chooses it: return
+//                         true when it took it (Russell: a closed chapter opens as a document)
 //   props(c, th)          (optional) more rows (DOM nodes) for the pop-up of what is chosen
 //                         (Russell: what a chapter forgets about each parent)
 //   blocks(w, room)       (optional) clear space (clear.js): what moves together, as

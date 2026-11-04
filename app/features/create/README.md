@@ -68,6 +68,14 @@ What the home page's **Create** opens: rooms of thoughts.
     parent* and *Remove arrow*, and a line for each arrow into it: what it forgets about that
     parent ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
+    **A closed chapter.** *Fold into one* in a chapter's pop-up (it asks for a name) closes it:
+    only its name shows on the canvas. A click opens it as a document (`document.js`): a pop-up
+    with its name and its thoughts in order as flowing paragraphs, maths drawn. Click a paragraph
+    to write in it; Enter keeps it and starts the next thought just after it, Ctrl+Enter is a new
+    line, Backspace in an empty one goes back into the one before, and a thought emptied goes. Esc
+    stops writing; Esc again, ×, or a click outside closes it. Each paragraph is still its own
+    thought, so search, the Timeline and the other modes see them one by one. *Unfold* opens the
+    chapter on the canvas again.
 - **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
   say); Russell, those in no chapter. *Loose · n* at the foot of the room opens them in a row;
   drag one onto the room to place it (Joyce: a train of its own; Russell: into the chapter it is
