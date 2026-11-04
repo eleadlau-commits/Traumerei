@@ -8,5 +8,8 @@
   ],
   "requires": [
     "world"
+  ],
+  "uses": [
+    "source"
   ]
 }

@@ -114,7 +114,10 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   train's name), fold or unfold a train, move it to another room, or delete it. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
-- **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys. A right-click on the empty
+- **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys, and (with the roomfile
+  feature) *Import into this room…*, *Export as Markdown* and *Edit room as Markdown*, which opens
+  the whole room as room Markdown in the source editor on the right. A group's pop-up has *Edit as
+  Markdown* for just that group. A right-click on the empty
   canvas opens Add at the pointer, and what is made goes just there.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
   panel (`app/features/search`), which searches every room; a find opened there (`search:found`)

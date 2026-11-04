@@ -1,0 +1,12 @@
+{
+  "name": "Source editor",
+  "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.",
+  "version": "0.1.0",
+  "main": "Source.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "panel"
+  ]
+}

@@ -14,9 +14,13 @@ the card, changes the world and downloads. The world itself is the world feature
 | `importRoom({ file, cell, page, cols, ok })` | A new room from `file` (picked, if none) in `cell` (or the first free one) of floor `page`. `ok()` says whether it is still wanted, before the card and on Import. Resolves with the new room once it is in the world, or `null`. The caller saves. |
 | `importInto(roomId, { file, at, ok, before })` | The file's groups and thoughts into a room (not a locked one). `at()` is where new trains start; `before()` runs just before the world changes. Resolves `true` once they are in, else `false`. The caller saves. |
 | `exportRoom(id)` | Downloads the room as `<its name>.md` (a locked room too). |
+| `canEdit` | Whether editing as Markdown is there (it needs the source editor feature). |
+| `editGroup(roomId, groupId, { before, ok })` | The group as room Markdown in the source editor (read only in a locked room). `before()` runs just before Apply changes the world; `ok()` says whether it is still wanted. Resolves `true` once Apply has changed the world, else `false` when it closes. The caller saves (one step). |
+| `editRoom(roomId, { before, ok })` | The same for the whole room. |
 | `cancel()` | Closes the card, if it shows. |
 
-It sends no events and has no slots.
+It uses the `source` service (the source editor) when it is there. It sends no events and has
+no slots.
 
 ## What it does
 
@@ -97,8 +101,44 @@ A passage with no title.
   Importing into a room, a parent can also be a chapter already there. Any other attribute (and
   in Joyce and Pessoa, every one) is kept with the group and written back out.
 
+## Editing as Markdown
+
+A chapter (or a train, or any group) can be taken out as room Markdown, changed, and put straight
+back, so it can be handed to Claude and Claude's rewrite pasted in without making a second copy.
+*Edit as Markdown* in a group's pop-up, or *Edit room as Markdown* in a room's Add, opens it in the
+source editor, in the panel on the right: the text exactly as Export would write it, with a line
+above it on what the text holds and what Apply would change, checked as you type (see the source
+feature's README for its words). Pictures show as short references (`![A caption](picture:3)`) that
+read back as the same pictures; Download writes them out in full.
+
+**Apply, for one group,** replaces it in place: it keeps its id, its place, its fold, its children
+and every arrow from it. Thoughts whose words are unchanged are kept as they are (their time and
+glow, and any other mode's groups they are in); new and changed ones are made, in the text's order,
+and the ones gone are deleted (one another mode's group holds only leaves this one). The heading
+wins: a new title renames it, `> folded` folds or unfolds it, its other attributes are kept as
+written, and Russell's `parent` and `forgets` move its arrows through Russell's own rules. Each
+change is listed before Apply ("A1 Vector spaces: parent Ch 2 Matrices → Ch 1 Arrays"); an arrow
+Russell refuses (a loop, a third parent) is listed and left as it was, and the rest applies. More
+`##` headings are added as new groups, and thoughts above the first one as loose ones, and the
+editor says so first. Text with no `##` at all is the group's thoughts, its heading left alone. A
+heading with nothing under it leaves the group as it is.
+
+**Apply, for the whole room,** matches each `##` to a group of the room's mode by its title
+(trimmed, any case; untitled ones in order). Matched groups are replaced as above, new headings are
+added, and groups not in the text are listed and left alone unless *Remove groups not in the text*
+is ticked. A heading that matches two groups is reported and added as new. The loose thoughts are
+replaced like a group's, and changes to the front matter (name, description, tags, colour, mode
+settings) are listed and made; the mode itself doesn't change here, and Ctrl+Z doesn't take mode
+settings back.
+
+**Importing into a room** uses the same replace: when a heading in the file matches a group
+already there, the card offers *Replace matching groups* or *Add all as new* (or Cancel).
+
+Apply is one step: one Ctrl+Z takes all of it back. A locked room opens read only (Copy and
+Download).
+
 `format.js` reads and writes the format with no screen (`parse`, `importRoom`, `importInto`,
-`exportRoom`, tested in `tests/roomfile.test.js`); each kind of item says how it reads and writes
+`exportRoom`, and for editing `exportGroup`, `plan` and `apply`, tested in `tests/roomfile.test.js`); each kind of item says how it reads and writes
 itself next to its `tidy()` and `text()` (`md` in the world feature's `items/`). `Roomfile.js` is
-the screen side: the card, fetching pictures, downloading files. `world.js` lists the world's
+the screen side: the card, fetching pictures, downloading files, and what it hands the source editor. `world.js` lists the world's
 rules it uses.

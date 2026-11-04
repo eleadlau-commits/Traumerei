@@ -6,23 +6,31 @@
 // The world is the world feature's.
 
 import { Feature, ui } from 'folio';
-import { bind, room, shut, keepOrShrink } from './world.js';
-import { parse, say, importRoom, importInto, exportRoom, fileName, copyWorld, unfetched } from './format.js';
+import { bind, room, shut, keepOrShrink, chapterName, isGroup } from './world.js';
+import {
+  parse, say, importRoom, importInto, exportRoom, exportGroup, plan, apply, shortPictures, badMaths,
+  fileName, copyWorld, unfetched,
+} from './format.js';
 
 const { el } = ui;
 const MD = /\.(md|markdown|txt)$/i;
 const isRoomFile = (f) => !!f && (MD.test(f.name || '') || /markdown/.test(f.type || ''));
 const REPORT = 8; // lines of the report the card shows
+const count = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
 export default class Roomfile extends Feature {
   start() {
     this.w = this.use('world');
     bind(this.w.lib);
+    this.source = this.use('source'); // the source editor, for editing as Markdown, or null
     this.provide('roomfile', {
       isRoomFile,
       importRoom: (o) => this.importRoom(o),
       importInto: (roomId, o) => this.importInto(roomId, o),
       exportRoom: (id) => this.exportRoom(id),
+      canEdit: !!this.source,
+      editGroup: (roomId, groupId, o) => this.edit(roomId, { scope: 'group', groupId, ...o }),
+      editRoom: (roomId, o) => this.edit(roomId, { scope: 'room', ...o }),
       cancel: () => this.card?.close(),
     });
   }
@@ -37,13 +45,19 @@ export default class Roomfile extends Feature {
   async read(file) {
     let text;
     try { text = await file.text(); } catch { this.toast('That file couldn\'t be read.'); return null; }
-    const parsed = parse(text);
+    return this.fetchPictures(parse(text));
+  }
+
+  // The text read's pictures at an address (or as data) fetched and shrunk; a short reference
+  // (picture:3, from the Markdown window) is left for plan() to read.
+  async fetchPictures(parsed) {
     const lists = [parsed.loose, ...parsed.groups.map((g) => g.items)];
-    if (lists.some((l) => l.some((x) => x.kind === 'picture' && x.url))) this.toast('Fetching pictures…');
+    const wanted = (x) => x.kind === 'picture' && !/^picture:\d+$/.test(x.url || '');
+    if (lists.some((l) => l.some((x) => wanted(x) && x.url))) this.toast('Fetching pictures…');
     for (const list of lists) {
       for (let k = 0; k < list.length; k++) {
         const it = list[k];
-        if (it.kind !== 'picture') continue;
+        if (!wanted(it)) continue;
         try {
           let blob;
           if (it.src) blob = await (await fetch(it.src)).blob();
@@ -83,7 +97,8 @@ export default class Roomfile extends Feature {
   }
 
   // A file's groups and thoughts into a room, as its own mode sees them. at(): where new trains
-  // start; ok(): whether it is still wanted; before(): called just before the world changes.
+  // start; ok(): whether it is still wanted; before(): called just before the world changes. When
+  // a heading matches a group already there, the card offers to replace the matching groups.
   // Resolves true once they are in the world (the caller saves).
   async importInto(roomId, { file = null, at = () => null, ok = () => true, before = () => {} } = {}) {
     if (shut(this.w.world, roomId)) { this.toast('This room is locked.'); return false; }
@@ -93,40 +108,111 @@ export default class Roomfile extends Feature {
     if (!parsed || !ok()) return false;
     const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at() });
     const dry = importInto(copyWorld(this.w.world), roomId, parsed, opts());
-    if (!await this.ask('Import into this room', room(this.w.world, roomId)?.name || '', dry)) return false;
-    if (!ok() || shut(this.w.world, roomId)) return false;
+    const p = plan(this.w.world, roomId, parsed, { scope: 'import', ontologies: this.w.ontologies });
+    const name = room(this.w.world, roomId)?.name || '';
+    let choice;
+    if (p.replace.length) {
+      const n = p.replace.length, word = p.word;
+      choice = await this.ask('Import into this room', name, {
+        sum: `${say(dry.made)}. ${n} ${n === 1 ? `${word} has` : `${word}s have`} the name of one already here.`,
+        report: [...p.arrowChanges, ...p.report],
+        buttons: [['replace', 'Replace matching groups'], ['add', 'Add all as new']],
+      });
+    } else choice = (await this.ask('Import into this room', name, dry)) ? 'add' : null;
+    if (!choice || !ok() || shut(this.w.world, roomId)) return false;
     before();
-    importInto(this.w.world, roomId, parsed, opts());
+    if (choice === 'replace') apply(this.w.world, roomId, plan(this.w.world, roomId, parsed, { scope: 'import', ontologies: this.w.ontologies }));
+    else importInto(this.w.world, roomId, parsed, opts());
     return true;
   }
 
+  // ---- Editing as Markdown, in the source editor ----
+
+  // A group (scope 'group', groupId) or the whole room (scope 'room') as room Markdown in the
+  // source editor, with what Apply would do checked as it is typed. A locked room shows it read
+  // only. before(): called just before the world changes; ok(): whether it is still wanted.
+  // Resolves true once Apply has changed the world (the caller saves, as one step).
+  async edit(roomId, { scope, groupId = null, before = () => {}, ok = () => true }) {
+    const w = () => this.w.world;
+    if (!this.source) return false;
+    if (!room(w(), roomId) || (scope === 'group' && !isGroup(w().things[groupId]))) return false;
+    const pictures = shortPictures();
+    const ontologies = () => this.w.ontologies;
+    const write = () => (scope === 'group' ? exportGroup(w(), roomId, groupId, { pictures }) : exportRoom(w(), roomId, { ontologies: ontologies(), pictures }));
+    const title = scope === 'group' ? chapterName(w(), groupId) || 'Untitled' : room(w(), roomId).name;
+    const readOnly = shut(w(), roomId);
+    const opts = { scope, groupId, ontologies: ontologies(), pictures };
+    const check = (text, chosen = {}) => {
+      const parsed = parse(text);
+      const p = plan(w(), roomId, parsed, opts);
+      const n = { groups: parsed.groups.length, thoughts: parsed.loose.length + parsed.groups.reduce((s, g) => s + g.items.length, 0) };
+      const holds = `${count(n.groups, p.word)}, ${count(n.thoughts, 'thought')}`;
+      const c = p.counts;
+      const doing = c && !readOnly ? [c.kept && `${c.kept} kept`, c.made && `${c.made} new`, c.deleted && `${c.deleted} deleted`].filter(Boolean).join(', ') : '';
+      const t = (id) => `"${w().things[id]?.title || `an untitled ${p.word}`}"`;
+      const missing = p.missing.map(t);
+      const changes = readOnly ? [] : [
+        ...p.meta.map((m) => m.text),
+        ...p.renames.map((r) => `${r.from ? `"${r.from}"` : `The untitled ${p.word}`} is renamed "${r.to}"`),
+        ...p.folds.map((f) => `${t(f.id)} is ${f.folded ? 'folded' : 'unfolded'}`),
+        ...p.arrowChanges,
+        ...p.add.filter((g) => g.items.length).map((g) => `A new ${p.word}: ${g.title ? `"${g.title}"` : 'untitled'}`),
+        ...(p.looseAdd?.length ? [`${count(p.looseAdd.length, 'thought')} above the first heading ${p.looseAdd.length === 1 ? 'is' : 'are'} added as loose`] : []),
+        ...(missing.length ? [`${chosen.remove ? 'Removed' : 'Not in the text, left as they are'}: ${missing.join(', ')}`] : []),
+      ];
+      const report = [...p.report, ...badMaths(text).map((b) => `Line ${b.line}: KaTeX can't draw ${b.tex.length > 50 ? b.tex.slice(0, 47) + '…' : b.tex}`)];
+      return {
+        summary: [holds, doing].filter(Boolean).join(' · '), changes, report,
+        options: scope === 'room' ? [{ key: 'remove', label: `Remove ${p.word}s not in the text`, show: !!missing.length }] : [],
+        blocked: !p.of,
+      };
+    };
+    const applyText = async (text, chosen = {}) => {
+      const parsed = await this.fetchPictures(parse(text));
+      if (!ok() || shut(w(), roomId)) return false;
+      const p = plan(w(), roomId, parsed, opts);
+      if (!p.of) { this.toast(p.report.at(-1) || 'That couldn\'t be applied.'); return false; }
+      before();
+      apply(w(), roomId, p, { removeMissing: !!chosen.remove });
+      return true;
+    };
+    return this.source.open({
+      kind: scope === 'group' ? 'Source' : 'Source · whole room', title, text: write(), readOnly,
+      fileName: fileName(title), full: (t) => pictures.full(t), reset: write,
+      options: scope === 'room' ? [{ key: 'remove', label: 'Remove groups not in the text', value: false }] : [],
+      check, apply: readOnly ? null : applyText,
+    });
+  }
+
   // The quiet card: what will arrive ("12 groups, 85 thoughts, 2 pictures") and what couldn't be
-  // read, with Import (Enter) and Cancel (Escape). Resolves true for Import.
-  ask(kind, title, { made, report }) {
+  // read, with Import (Enter) and Cancel (Escape); or, given buttons ([[value, label], …]), a choice
+  // between them (the first is Enter's). Resolves true for Import, the button's value, or null.
+  ask(kind, title, { made = null, report = [], sum = null, buttons = null }) {
     this.card?.close();
     return new Promise((resolve) => {
       const box = el('div', { class: 'roomfile-card', role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() });
-      const close = (yes = false) => { box.remove(); if (this.card === card) this.card = null; resolve(yes); };
-      const card = { close };
+      const close = (yes = null) => { box.remove(); if (this.card === card) this.card = null; resolve(yes); };
+      const card = { close: () => close(null) };
       this.card = card;
       const shown = report.slice(0, REPORT);
-      const any = made.groups || made.thoughts;
+      const any = buttons || made.groups || made.thoughts;
+      const choices = buttons || (any ? [[true, 'Import']] : []);
       box.append(...[
         el('div', { class: 'roomfile-kind' }, kind),
         el('div', { class: 'roomfile-title' }, title),
-        el('div', { class: 'roomfile-sum' }, any ? say(made) : 'Nothing to bring in'),
+        el('div', { class: 'roomfile-sum' }, sum || (any ? say(made) : 'Nothing to bring in')),
         report.length ? el('ul', { class: 'roomfile-report', 'aria-label': 'What couldn\'t be read' },
           ...shown.map((r) => el('li', {}, r)),
           report.length > REPORT ? el('li', {}, `and ${report.length - REPORT} more`) : null) : null,
         el('div', { class: 'roomfile-words' },
-          any ? el('button', { type: 'button', class: 'roomfile-word roomfile-go', onclick: () => close(true) }, 'Import') : null,
+          ...choices.map(([value, label], k) => el('button', { type: 'button', class: 'roomfile-word' + (k ? '' : ' roomfile-go'), onclick: () => close(value) }, label)),
           el('button', { type: 'button', class: 'roomfile-word', onclick: () => close() }, 'Cancel'),
-          el('span', { class: 'roomfile-keys' }, 'Enter imports · Escape cancels')),
+          el('span', { class: 'roomfile-keys' }, choices.length ? `Enter ${buttons ? 'replaces' : 'imports'} · Escape cancels` : 'Escape cancels')),
       ].filter(Boolean));
       box.onkeydown = (e) => {
         e.stopPropagation();
         if (e.key === 'Escape') { e.preventDefault(); close(); }
-        if (e.key === 'Enter' && !e.target.matches('button')) { e.preventDefault(); close(true); }
+        if (e.key === 'Enter' && !e.target.matches('button') && choices.length) { e.preventDefault(); close(choices[0][0]); }
       };
       (document.getElementById('folio-root') || document.body).append(box);
       (box.querySelector('.roomfile-go') || box.querySelector('button'))?.focus({ preventScroll: true });

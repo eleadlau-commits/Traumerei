@@ -60,6 +60,27 @@ function closing(s, from, display) {
   return -1;
 }
 
+// The formulas in some words that KaTeX can't draw: [{ tex, display, line }], line counted from 0
+// within the words. (The roomfile feature's Markdown window lists them before anything changes.)
+export function broken(text) {
+  const s = String(text ?? '');
+  if (!s.includes('$')) return [];
+  const out = [];
+  let from = 0;
+  for (const p of split(s)) {
+    if (p.type === 'text') continue;
+    const open = p.type === 'display' ? '$$' : '$';
+    const at = s.indexOf(open + p.value, from);
+    if (at >= 0) from = at + open.length + p.value.length;
+    try {
+      katex.renderToString(p.value, { displayMode: p.type === 'display', throwOnError: true, strict: 'ignore' });
+    } catch {
+      out.push({ tex: p.value, display: p.type === 'display', line: at < 0 ? 0 : (s.slice(0, at).match(/\n/g) || []).length });
+    }
+  }
+  return out;
+}
+
 // Formulas already drawn, as HTML (a room is redrawn after every change).
 const DRAWN = new Map();
 const KEEP = 800;

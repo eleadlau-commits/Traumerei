@@ -6,7 +6,7 @@ import { bind } from '../world.js';
 import { emptyWorld, MESSY, members, groupsIn, roomItems, room, view, own, lock, create, addRoom } from '../../world/model.js';
 import { BUILT_IN } from '../../world/ontologies/index.js';
 import { arrows, chapterName, parentsOf, layout } from '../../world/ontologies/russell.js';
-import { parse, summary, importInto, importRoom, exportRoom, escape, unescape, fileName, groupsFor } from '../format.js';
+import { parse, summary, importInto, importRoom, exportRoom, escape, unescape, fileName, groupsFor, exportGroup, plan, apply, shortPictures, badMaths } from '../format.js';
 
 bind(lib); // the world's rules, as roomfile gets them from the world service
 
@@ -300,4 +300,194 @@ test('a file name is the room\'s name', () => {
   assert.equal(fileName('a/b: c?'), 'a b c.md');
   assert.equal(fileName(''), 'Untitled.md');
   assert.ok(room);
+});
+
+// ---- Editing as Markdown ----
+
+const snap = (w) => JSON.stringify(w);
+// The book as a room, with a picture in Matrices.
+function book() {
+  const w = emptyWorld(1);
+  const { room: r } = importRoom(w, parse(BOOK), { ontologies, now: NOW });
+  const g = (t) => groupNamed(w, r.id, t);
+  create(w, g('Matrices').id, { kind: 'picture', src: PIC, text: 'A sketch' }, NOW + 50);
+  return { w, id: r.id, g };
+}
+const edit = (w, id, gid, text, o = {}) => {
+  const p = plan(w, id, parse(text), { scope: 'group', groupId: gid, ontologies, now: NOW + 1000, ...o });
+  return { p, out: apply(w, id, p, { now: NOW + 1000, ...o }) };
+};
+
+test('editing: exportGroup then apply with the same text changes nothing', () => {
+  const { w, id, g } = book();
+  for (const t of ['Arrays', 'Matrices', 'Spectral theorem']) {
+    const pictures = shortPictures();
+    const text = exportGroup(w, id, g(t).id, { pictures });
+    if (t === 'Matrices') assert.match(text, /!\[A sketch\]\(picture:1\)/);
+    const before = snap(w);
+    const { p } = edit(w, id, g(t).id, text, { pictures });
+    assert.deepEqual(p.report, []);
+    assert.deepEqual(p.arrowChanges, []);
+    assert.equal(p.counts.made + p.counts.deleted, 0);
+    assert.equal(snap(w), before, t);
+  }
+  // The whole room too.
+  const pictures = shortPictures();
+  const before = snap(w);
+  const p = plan(w, id, parse(exportRoom(w, id, { ontologies, pictures })), { scope: 'room', ontologies, pictures });
+  assert.deepEqual([p.add.length, p.missing.length, p.meta.length, p.report.length], [0, 0, 0, 0]);
+  apply(w, id, p, { removeMissing: true });
+  assert.equal(snap(w), before);
+});
+
+test('editing: replacing a chapter keeps its id, place, children and arrows; same words keep their thoughts', () => {
+  const { w, id, g } = book();
+  const m = g('Matrices');
+  m.x = 77; m.hand = 'hand';
+  const kept = members(w, m.id)[0];
+  const kids = ['Inner products', 'Eigenvalues'].map((t) => g(t).id);
+  const { p } = edit(w, id, m.id, '## Matrices {parent="Arrays" forgets="the individual equations"}\n- arrays that act\n- a new one\n### Why\nBecause $A x$.');
+  assert.deepEqual(p.arrowChanges, []);
+  const after = w.things[m.id];
+  assert.ok(after && after.x === 77 && after.hand === 'hand');
+  const ths = members(w, m.id);
+  assert.deepEqual(ths.map((th) => th.kind), ['line', 'line', 'passage']);
+  assert.equal(ths[0].id, kept.id);
+  assert.equal(ths[0].at, kept.at);
+  assert.ok(!w.things[Object.keys(w.things).find((k) => w.things[k].kind === 'picture')]); // the picture is gone
+  for (const k of kids) assert.deepEqual(parentsOf(w, id, k), [m.id]);
+  assert.deepEqual(parentsOf(w, id, m.id), [g('Arrays').id]);
+});
+
+test('editing: a thought another mode\'s group holds leaves this group only', () => {
+  const w = emptyWorld(1);
+  importInto(w, MESSY, parse('## Train\n- a\n- b'), { ontologies, now: NOW });
+  const train = groupNamed(w, MESSY, 'Train');
+  const b = members(w, train.id)[1];
+  const ch = create(w, MESSY, { kind: 'group', of: 'russell' }, NOW + 5);
+  w.things[ch.id].members.push(b.id);
+  edit(w, MESSY, train.id, '## Train\n- a\n- c');
+  assert.ok(w.things[b.id]);
+  assert.deepEqual(members(w, ch.id).map((th) => th.text), ['b']);
+  assert.deepEqual(members(w, train.id).map((th) => th.text), ['a', 'c']);
+});
+
+test('editing: a changed title renames, and new thoughts go between in order', () => {
+  const { w, id, g } = book();
+  const a = g('Arrays');
+  const { p } = edit(w, id, a.id, '## Arrays of numbers\n> folded\n- first\n- tables of numbers\n- last');
+  assert.deepEqual(p.renames.map((r) => [r.from, r.to]), [['Arrays', 'Arrays of numbers']]);
+  assert.deepEqual(p.folds, [{ id: a.id, folded: true }]);
+  assert.equal(w.things[a.id].title, 'Arrays of numbers');
+  assert.ok(w.things[a.id].folded);
+  assert.deepEqual(members(w, a.id).map((th) => th.text), ['first', 'tables of numbers', 'last']);
+  // Matrices still points at it, by id.
+  assert.deepEqual(parentsOf(w, id, g('Matrices').id), [a.id]);
+});
+
+test('editing: a changed parent relinks; one that would make a loop is refused and the rest applies', () => {
+  const { w, id, g } = book();
+  const ev = g('Eigenvalues');
+  let { p } = edit(w, id, ev.id, '## Eigenvalues {parent="Arrays" forgets="all of it"}\n- directions that stay');
+  assert.deepEqual(p.arrowChanges, ['Eigenvalues: parent Matrices → Arrays']);
+  assert.deepEqual(parentsOf(w, id, ev.id), [g('Arrays').id]);
+  assert.equal(arrows(w, id).find((x) => x.to === ev.id).label, 'all of it');
+  // Arrays under Spectral theorem would close a loop: refused, the words still change.
+  ({ p } = edit(w, id, g('Arrays').id, '## Arrays {parent="Spectral theorem"}\n- tables of numbers, now'));
+  assert.match(p.arrowChanges[0], /Arrays: parent Spectral theorem refused \(that arrow would make a loop\)/);
+  assert.match(p.report.join('\n'), /wasn't drawn: that arrow would make a loop/);
+  assert.deepEqual(parentsOf(w, id, g('Arrays').id), []);
+  assert.deepEqual(members(w, g('Arrays').id).map((th) => th.text), ['tables of numbers, now']);
+  // A swap whose new parent is refused keeps the old arrow.
+  edit(w, id, g('Matrices').id, '## Matrices {parent="Spectral theorem"}\n- arrays that act');
+  assert.deepEqual(parentsOf(w, id, g('Matrices').id), [g('Arrays').id]);
+});
+
+test('editing: extra headings are added as new groups, loose thoughts as loose', () => {
+  const { w, id, g } = book();
+  const { p } = edit(w, id, g('Arrays').id, '- loose above\n## Arrays\n- tables of numbers\n## Vectors {parent="Arrays"}\n- arrows\n## Empty');
+  assert.deepEqual(p.add.map((s) => s.title), ['Vectors', 'Empty']);
+  const v = groupNamed(w, id, 'Vectors');
+  assert.ok(v);
+  assert.deepEqual(parentsOf(w, id, v.id), [g('Arrays').id]);
+  assert.ok(roomItems(w, id).some((th) => th.text === 'loose above' && !groupsIn(w, id).some((gr) => gr.members.includes(th.id))));
+  assert.match(p.report.join('\n'), /"Empty" has nothing under it/);
+  assert.ok(!groupNamed(w, id, 'Empty'));
+});
+
+test('editing: with no ## the text is the group\'s thoughts; an empty heading leaves it as it is', () => {
+  const { w, id, g } = book();
+  const a = g('Arrays');
+  edit(w, id, a.id, '- one\n- two');
+  assert.equal(w.things[a.id].title, 'Arrays');
+  assert.deepEqual(members(w, a.id).map((th) => th.text), ['one', 'two']);
+  const before = snap(w);
+  const { p } = edit(w, id, a.id, '## Arrays');
+  assert.match(p.report.join('\n'), /nothing under it, so that chapter was left as it is/);
+  assert.equal(snap(w), before);
+});
+
+test('editing a room: headings matched by title, new ones added, missing ones listed and removed only when asked', () => {
+  const { w, id, g } = book();
+  const text = ['---', 'room: Linear algebra', 'kind: russell', 'description: Now with a line', '---', '- a loose one',
+    '## arrays ', '- tables of numbers', '## Matrices {parent="Arrays"}', '- arrays that act', '## Determinants {parent="Matrices"}', '- volume'].join('\n');
+  const p = plan(w, id, parse(text), { scope: 'room', ontologies, now: NOW + 1000 });
+  assert.deepEqual(p.replace.map((x) => w.things[x.id].title), ['Arrays', 'Matrices']);
+  assert.deepEqual(p.add.map((s) => s.title), ['Determinants']);
+  assert.deepEqual(p.missing.map((x) => w.things[x].title).sort(), ['Eigenvalues', 'Inner products', 'Spectral theorem']);
+  assert.deepEqual(p.renames.map((r) => r.to), ['arrays']);
+  assert.deepEqual(p.meta.map((m) => m.text), ['Description: nothing → "Now with a line"']);
+  assert.ok(p.arrowChanges.includes('Matrices: forgets "the individual equations" → nothing (about arrays)'));
+  apply(w, id, p);
+  assert.equal(groupsIn(w, id, 'russell').length, 6);
+  assert.equal(room(w, id).desc, 'Now with a line');
+  assert.deepEqual(roomItems(w, id).filter((th) => !groupsIn(w, id).some((gr) => gr.members.includes(th.id))).map((th) => th.text), ['a loose one']);
+  // Asked to, the groups not in the text go.
+  const w2 = book().w;
+  const id2 = Object.values(w2.things).find((th) => th.kind === 'room' && th.name === 'Linear algebra').id;
+  const p2 = plan(w2, id2, parse(text), { scope: 'room', ontologies });
+  apply(w2, id2, p2, { removeMissing: true });
+  assert.deepEqual(groupsIn(w2, id2, 'russell').map((x) => x.title).sort(), ['Determinants', 'Matrices', 'arrays']);
+});
+
+test('editing a room: a heading that matches two groups is reported and added as new', () => {
+  const { w, id } = into('joyce', '## Twice\n- a\n## Twice\n- b\n## Once\n- c');
+  const p = plan(w, id, parse('## twice\n- x\n## Once\n- c'), { scope: 'room', ontologies });
+  assert.match(p.report.join('\n'), /"twice" matches 2 trains, so it will be added as a new one/);
+  assert.deepEqual(p.add.map((s) => s.title), ['twice']);
+  assert.equal(p.replace.length, 1);
+});
+
+test('editing: apply then undo gives back the exact world', () => {
+  const { w, id, g } = book();
+  const before = snap(w);
+  const undoSnap = JSON.stringify({ things: w.things, own: w.own, pages: w.pages }); // what World keeps per step
+  edit(w, id, g('Eigenvalues').id, '## Eigen {parent="Arrays" status="draft"}\n> folded\n- new words\n## More\n- m');
+  assert.ok(snap(w) !== before);
+  Object.assign(w, JSON.parse(undoSnap));
+  assert.equal(snap(w), before);
+});
+
+test('editing: importing a file can replace matching groups', () => {
+  const { w, id, g } = book();
+  const a = g('Arrays').id;
+  const p = plan(w, id, parse('---\nroom: Ignored\n---\n- loose\n## Arrays\n- rewritten\n## Fresh\n- f'), { scope: 'import', ontologies });
+  assert.deepEqual(p.replace.map((x) => x.id), [a]);
+  assert.deepEqual(p.add.map((s) => s.title), ['Fresh']);
+  assert.deepEqual([p.missing.length, p.meta.length], [0, 0]);
+  apply(w, id, p);
+  assert.deepEqual(members(w, a).map((th) => th.text), ['rewritten']);
+  assert.equal(room(w, id).name, 'Linear algebra');
+  assert.ok(roomItems(w, id).some((th) => th.text === 'loose'));
+});
+
+test('editing: pictures as short references, full data to download; bad maths found by line', () => {
+  const pics = shortPictures();
+  assert.equal(pics.ref(PIC), 'picture:1');
+  assert.equal(pics.ref(PIC), 'picture:1');
+  assert.equal(pics.full('## A\n![cap](picture:1)\n![x](picture:9)'), `## A\n![cap](${PIC})\n![x](picture:9)`);
+  const { w, id, g } = book();
+  const { p } = edit(w, id, g('Arrays').id, '## Arrays\n![lost](picture:4)');
+  assert.match(p.report.join('\n'), /couldn't be fetched/);
+  assert.deepEqual(badMaths('## A $x$\n- fine $y$\n### T\nok\n$\\frac{1$ bad\n- $$\\nope$$'), [{ line: 5, tex: '\\frac{1' }, { line: 6, tex: '\\nope' }]);
 });

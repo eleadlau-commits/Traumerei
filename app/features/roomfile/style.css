@@ -30,7 +30,7 @@
 .roomfile-sum { font-size: 15px; opacity: .8; }
 .roomfile-report { margin: 0; padding: 0 0 0 1.1em; font-size: 13px; line-height: 1.5; opacity: .6; max-height: 12em; overflow: auto; }
 .roomfile-report li + li { margin-top: 4px; }
-.roomfile-words { display: flex; align-items: baseline; gap: 22px; }
+.roomfile-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
 .roomfile-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
 
 /* Plain words: a hairline comes under them on hover. */
@@ -45,6 +45,7 @@
   font-size: 13px;
   letter-spacing: .22em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: inherit;
   opacity: .66;
   cursor: pointer;
