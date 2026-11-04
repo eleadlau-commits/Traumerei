@@ -129,9 +129,9 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
 }
 :is(.word, .btn, .seg button):disabled { opacity: .3; cursor: default; background-size: 0 1px; }
 
-/* A panel or pop-up: the pale veil, blurred behind, with a hairline edge; the ink and the typeface. */
+/* A panel or pop-up: the pale veil, blurred behind, with a hairline edge; the ink and the typeface.
+   Look only: its place, size and padding are the feature's. */
 .panel {
-  padding: 18px;
   border-radius: 0;
   background: var(--surface);
   -webkit-backdrop-filter: var(--blur);
