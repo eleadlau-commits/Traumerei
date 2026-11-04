@@ -768,6 +768,7 @@ dialog.dialog-box {
 
 :root {
   --create-strip: calc(64px + env(safe-area-inset-top));
+  --create-rail: 206px; /* the rail on the left: 72px and one grid column (a cell and its gap) more */
   --create-ease: cubic-bezier(.22, .7, .18, 1);
   --create-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
   /* Every pop-up and panel: the same pale, blurred white. */
@@ -860,7 +861,7 @@ dialog.dialog-box {
 }
 .create.up .create-rooms { transform: none; transition-duration: .6s; }
 
-.create-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + 72px); position: relative; z-index: 1; }
+.create-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--create-rail)); position: relative; z-index: 1; }
 /* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
    takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
 .create-grid {
@@ -929,14 +930,15 @@ dialog.dialog-box {
   text-transform: uppercase;
 }
 .create-tile.messy .create-tile-label { left: 14px; right: 14px; bottom: 13px; font-size: 12px; }
-/* The name wraps onto up to three lines (whole words where it can), clear of the count's corner. */
+/* The name wraps onto up to three lines, only between words, clear of the count's corner. */
 .create-tile-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal; /* a name breaks only between words */
   word-break: normal;
+  hyphens: none;
   padding-right: 22px;
   opacity: .8;
 }
@@ -991,7 +993,7 @@ dialog.dialog-box {
 .create-rail-rule { width: 22px; height: 1px; margin-left: 10px; background: currentColor; opacity: .2; }
 .create-rail-view[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
 /* This room's settings for a mode: a card beside the rail. */
-.create-room-settings { top: -8px; left: 84px; width: 240px; cursor: default; }
+.create-room-settings { top: -8px; left: calc(var(--create-rail) - 8px); width: 240px; cursor: default; }
 .create-room-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .create-room-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .create-room-settings .renderer-slider { font-size: 13px; }
@@ -1606,7 +1608,7 @@ dialog.dialog-box {
   z-index: 2;
   top: 32px;
   left: var(--gutter);
-  width: 60px;
+  width: calc(var(--create-rail) - 24px);
   display: grid;
   gap: 18px;
   justify-items: start;
@@ -1637,17 +1639,9 @@ dialog.dialog-box {
 
 .create-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
-/* ---- The pages of the rooms page: 1 2 3 + ---- */
-.create-pages {
-  position: absolute;
-  z-index: 2;
-  left: 50%;
-  bottom: calc(12px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  display: flex;
-  gap: 16px;
-}
-.create-page { font-size: 12px; letter-spacing: .1em; padding: 4px 3px; }
+/* ---- The pages of the rooms page, in the rail under Archive: 1 2 3 + ---- */
+.create-pages { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: -6px; padding-left: 7px; }
+.create-page { font-size: 11px; letter-spacing: .1em; padding: 3px 3px; }
 .create-page.drop-on { opacity: 1; background-size: calc(100% - 4px - .1em) 1px; }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
@@ -1689,6 +1683,7 @@ dialog.dialog-box {
   .create-rail-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 0 4px; box-shadow: inset 0 -1px 0 transparent; }
   .create-rail-item[aria-current="true"] { box-shadow: inset 0 -1px 0 currentColor; }
   .create-grid-wrap { padding: 48px var(--gutter) 64px; }
+  .create-pages { margin: 0; padding: 0; }
 }
 @media (hover: none) { .create-search-key { display: none; } }
 
@@ -1856,7 +1851,7 @@ dialog.dialog-box {
 
 /* The rail's Tags: under a hairline, a quiet list of every tag and how many rooms have it. */
 .create-tags-btn.on { opacity: 1; }
-.create-tag-list { display: grid; gap: 6px; margin-top: -8px; width: 62px; }
+.create-tag-list { display: grid; gap: 6px; margin-top: -8px; width: 100%; }
 .create-tag-list[hidden] { display: none; }
 .create-tag-pick {
   appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
@@ -13125,7 +13120,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/create/Create.js
   var { el: el5 } = ui_exports;
   var ZOOM = { min: 0.25, max: 4 };
-  var GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 72 };
+  var GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 206 };
   var MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var KEY = MAC ? "⌘K" : "Ctrl+K";
   var HOLD = 520;
@@ -13506,24 +13501,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       }, "Tags");
       this.tagsList = el5("div", { class: "create-tag-list", hidden: true, role: "list" });
+      this.pagesBar = el5("nav", { class: "create-pages", "aria-label": "Pages" });
       this.rail = el5(
         "nav",
         { class: "create-rail", "aria-label": "Rooms and the Archive" },
         this.railRooms,
         this.shelfBtn,
+        this.pagesBar,
         el5("div", { class: "create-rail-rule", "aria-hidden": "true" }),
         this.tagsBtn,
         this.tagsList
       );
       this.shelfHead = el5("div", { class: "create-shelf-head", hidden: true }, "Archive");
-      this.pagesBar = el5("nav", { class: "create-pages", "aria-label": "Pages" });
       this.roomsPage = el5(
         "section",
         { class: "create-rooms", "aria-label": "Rooms" },
         this.lightsBar,
         this.rail,
-        el5("div", { class: "create-grid-wrap" }, this.shelfHead, this.grid),
-        this.pagesBar
+        el5("div", { class: "create-grid-wrap" }, this.shelfHead, this.grid)
       );
       this.backBtn = el5(
         "button",
@@ -13705,7 +13700,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawShelf(shelved, fit, cell, hits);
         return;
       }
-      const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
+      const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size));
       const height = this.grid.parentElement?.clientHeight || window.innerHeight;
       const rows = Math.max(
         Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)),
