@@ -5,7 +5,7 @@
 import {
   MESSY, room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
   trainThoughts, search, shut, rooms,
-} from './model.js';
+} from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 
 export class Gestures {

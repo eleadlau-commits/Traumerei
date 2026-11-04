@@ -1,10 +1,14 @@
 // Tests for room Markdown: reading a file, bringing it into a room, and writing a room back out.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, MESSY, members, groupsIn, roomItems, room, view, own, lock, create, addRoom } from '../model.js';
-import { BUILT_IN } from '../ontologies/index.js';
-import { arrows, chapterName, parentsOf, layout } from '../ontologies/russell.js';
+import * as lib from '../../world/lib.js';
+import { bind } from '../world.js';
+import { emptyWorld, MESSY, members, groupsIn, roomItems, room, view, own, lock, create, addRoom } from '../../world/model.js';
+import { BUILT_IN } from '../../world/ontologies/index.js';
+import { arrows, chapterName, parentsOf, layout } from '../../world/ontologies/russell.js';
 import { parse, summary, importInto, importRoom, exportRoom, escape, unescape, fileName, groupsFor } from '../roomfile.js';
+
+bind(lib); // the world's rules, as Create gets them from the world service
 
 const ontologies = BUILT_IN;
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';

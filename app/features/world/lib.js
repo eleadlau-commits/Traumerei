@@ -1,0 +1,13 @@
+// The world's rules, by module, for other features: they can't import this folder's files, so
+// they get these through the world service (`lib`). None of them touches the screen.
+
+export * as model from './model.js';          // the world: rooms, items, groups, tags, pages
+export * as items from './items/index.js';    // ITEMS: the kinds of item (line, passage, picture)
+export * as maths from './maths.js';          // split, maths: LaTeX in a thought's words
+export * as look from './look.js';            // colours: a room's, a square's, the rooms page's
+export * as attention from './attention.js';  // a room's light from your visits
+export * as picture from './picture.js';      // shrinkPicture, keepOrShrink
+export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, FALLBACK
+export * as joyce from './ontologies/joyce.js';
+export * as pessoa from './ontologies/pessoa.js';
+export * as russell from './ontologies/russell.js';

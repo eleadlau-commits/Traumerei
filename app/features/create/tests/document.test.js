@@ -1,9 +1,13 @@
 // Tests for a chapter open as a document: writing in its paragraphs keeps the chapter's order.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, create, members, MESSY } from '../model.js';
-import { addChapter } from '../ontologies/russell.js';
+import * as lib from '../../world/lib.js';
+import { bind } from '../world.js';
+import { emptyWorld, create, members, MESSY } from '../../world/model.js';
+import { addChapter } from '../../world/ontologies/russell.js';
 import { keepWords, between } from '../document.js';
+
+bind(lib); // the world's rules, as Create gets them from the world service
 
 function chapter(...texts) {
   const w = emptyWorld(1);

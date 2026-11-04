@@ -8,8 +8,6 @@ export const GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 206 }; // the 
 export const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 export const KEY = MAC ? '⌘K' : 'Ctrl+K';
 export const HOLD = 520;          // ms: a long press opens properties, as a right-click does
-export const WORLD = 'world3';     // where the world is saved (model.js)
-export const UNDO = 60;           // how many steps back Ctrl+Z goes
 export const HINTS = {
   rooms: 'Click to choose · double-click to go in · right-click for properties · or just start typing',
   room: 'Type anywhere to write · Enter ends a thought · click to choose · right-click for properties · Ctrl+K searches · Ctrl+Z undoes',

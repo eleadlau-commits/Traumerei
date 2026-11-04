@@ -8,8 +8,7 @@
 // end of the one before. A thought emptied goes. Escape stops writing, and Escape again (or a click
 // outside) closes the document. A passage or picture in the chapter shows as it is, not written in.
 
-import { members, isGroup, update, remove, create, name, kindOf, shut } from './model.js';
-import { maths } from './maths.js';
+import { members, isGroup, update, remove, create, name, kindOf, shut, maths } from './world.js';
 
 // The `at` for a thought written just after `prev` (and before `next`): members are kept in the
 // order they were written, so a thought put between two takes a time between theirs.

@@ -4,10 +4,8 @@
 
 import {
   MESSY, DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
-  groupOf, thoughtText, trainThoughts,
-} from './model.js';
-import { ITEMS } from './items/index.js';
-import { maths } from './maths.js';
+  groupOf, thoughtText, trainThoughts, ITEMS, maths,
+} from './world.js';
 import { clearSpot } from './clear.js';
 import { el } from './shared.js';
 

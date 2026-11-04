@@ -6,9 +6,8 @@
 // Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
 
 import { ui } from 'folio';
-import { room } from './model.js';
+import { room, keepOrShrink } from './world.js';
 import { parse, say, importRoom, importInto, exportRoom, fileName, copyWorld, unfetched } from './roomfile.js';
-import { keepOrShrink } from './picture.js';
 import { el } from './shared.js';
 
 const MD = /\.(md|markdown|txt)$/i;

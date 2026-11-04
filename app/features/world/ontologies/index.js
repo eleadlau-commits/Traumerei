@@ -1,5 +1,5 @@
 // Ontologies: the ways a room can see its thoughts. Each is one file here, or an item another
-// feature adds to the slot 'create.ontologies' (so switching that feature off takes the mode away).
+// feature adds to the slot 'world.ontologies' (so switching that feature off takes the mode away).
 // A room whose ontology is missing is seen through Pessoa. An ontology is shaped:
 //
 //   id, name, note        'pessoa', 'Pessoa', 'each thought on its own'
