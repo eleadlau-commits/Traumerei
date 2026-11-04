@@ -36,6 +36,10 @@ What the home page's **Create** opens: rooms of thoughts.
   from the list onto a square to add it to that room; take it off in the room's properties.
   Right-click a tag in the list (a long press on a phone) to type its group (empty takes it out);
   *Subject: Algebra* in a room's + tag also works. *Ontology* holds the modes and can't change.
+- **Motion.** Going into a room zooms in: its square grows to fill the screen while the rooms
+  page swells and fades behind it. Leaving zooms out the other way, the room shrinking back into
+  its square. Going to a later page scrolls down to it, an earlier one up. (None of it with
+  reduced motion.)
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;

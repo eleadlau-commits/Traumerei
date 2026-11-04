@@ -222,15 +222,38 @@ export default class Create extends Feature {
   showPage(page = this.page) {
     if (this.roomId) this.showRooms();
     this.closeLights();
+    const from = this.shelf ? null : this.page;
+    const old = from != null && from !== page && !this.roomsPage.hidden ? this.grid.cloneNode(true) : null;
+    const oldTop = this.grid.parentElement?.scrollTop || 0;
     this.page = page;
     this.shelf = false;
     this.roomPick = this.roomSel = this.making = null;
     this.renaming = null;
     this.grid.parentElement?.scrollTo?.(0, 0);
     this.drawRooms();
+    if (old) this.scrollPage(old, oldTop, page > from);
+  }
+
+  // Going to another page scrolls: to a later page the old one goes up and away and the new one
+  // comes up from below; to an earlier one, the other way.
+  scrollPage(old, oldTop, down) {
+    const wrap = this.grid.parentElement;
+    if (!wrap?.animate || this.grid.animate == null || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    this.pageGhost?.remove();
+    const H = wrap.clientHeight, d = down ? 1 : -1;
+    old.classList.add('create-page-ghost');
+    old.setAttribute('aria-hidden', 'true');
+    old.inert = true;
+    Object.assign(old.style, { position: 'absolute', top: `${this.grid.offsetTop - oldTop}px`, left: `${this.grid.offsetLeft}px`, margin: '0' });
+    wrap.append(old);
+    this.pageGhost = old;
+    const timing = { duration: 560, easing: 'cubic-bezier(.65, 0, .25, 1)' };
+    old.animate([{ transform: 'none' }, { transform: `translateY(${-d * H}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
+    this.grid.animate([{ transform: `translateY(${d * H}px)` }, { transform: 'none' }], timing);
   }
 
   showRooms() {
+    const from = this.roomId && !this.roomPage.hidden ? this.roomId : null;
     this.closeSheet();
     this.shelveDraft();
     this.stopWriting();
@@ -246,6 +269,7 @@ export default class Create extends Feature {
     this.backBtn.setAttribute('aria-label', 'Back to the home page');
     document.documentElement.classList.remove('create-dark');
     this.drawRooms();
+    if (from && !this.root.hidden) this.shrink(from);
   }
 
   // Goes into a room. Back then goes to its page (or the Archive, if it was opened from there).
@@ -276,12 +300,14 @@ export default class Create extends Feature {
     this.hint('room');
   }
 
-  // The square grows into the room: a veil of the room's own colour starts on the square and
-  // fills the screen, then the room shows under it and the veil fades. The room is ready (and
-  // can be typed in) at once; only what is seen waits.
+  // Going in zooms in: the square grows into the room (a veil of the room's own colour starts on
+  // the square and fills the screen) while the rooms page swells and fades behind it, as if you
+  // were walking into the square. Then the room shows under the veil and the veil fades. The room
+  // is ready (and can be typed in) at once; only what is seen waits.
   expand(tile) {
     this.expandVeil?.remove();
     clearTimeout(this.expandTimer);
+    this.zoomAnim?.cancel();
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.roomsPage.hidden = true; return; }
     const look = this.lookOf(room(this.world, this.roomId));
     const a = tile.getBoundingClientRect();
@@ -293,12 +319,50 @@ export default class Create extends Feature {
     veil.getBoundingClientRect();
     veil.classList.add('go');
     veil.style.transform = 'none';
+    this.zoomRooms(a, true);
     this.expandTimer = setTimeout(() => {
       this.root.classList.remove('expanding');
       if (this.roomId) this.roomsPage.hidden = true;
+      this.zoomAnim?.cancel();
       veil.classList.add('done');
       this.expandTimer = setTimeout(() => veil.remove(), 260);
-    }, 430);
+    }, 500);
+  }
+
+  // Leaving zooms out, the other way: the room shrinks back into its square while the rooms page
+  // settles from swollen to its place around it.
+  shrink(id) {
+    this.expandVeil?.remove();
+    clearTimeout(this.expandTimer);
+    this.zoomAnim?.cancel();
+    const tile = this.grid.querySelector(`.create-tile[data-room="${id}"]`);
+    const r = room(this.world, id);
+    if (!tile || !r || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const look = this.lookOf(r);
+    const a = tile.getBoundingClientRect();
+    const W = window.innerWidth, H = window.innerHeight;
+    const veil = el('div', { class: 'create-expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
+    this.expandVeil = veil;
+    this.root.append(veil);
+    veil.getBoundingClientRect();
+    veil.style.transform = `translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})`;
+    veil.style.opacity = '0';
+    veil.style.transition = 'transform .5s cubic-bezier(.65, 0, .25, 1), opacity .5s cubic-bezier(.7, 0, .9, .4)';
+    this.zoomRooms(a, false);
+    this.expandTimer = setTimeout(() => veil.remove(), 520);
+  }
+
+  // The rooms page swelling about a square (going in), or settling back from swollen (coming out).
+  zoomRooms(a, going) {
+    const page = this.roomsPage;
+    if (!page.animate) return;
+    const box = page.getBoundingClientRect();
+    const scale = Math.min(6, Math.max(2.2, window.innerWidth / Math.max(1, a.width) / 2));
+    const origin = `${a.left + a.width / 2 - box.left}px ${a.top + a.height / 2 - box.top}px`;
+    const swollen = { transform: `scale(${scale})`, opacity: 0, transformOrigin: origin };
+    const still = { transform: 'none', opacity: 1, transformOrigin: origin };
+    this.zoomAnim = page.animate(going ? [still, swollen] : [swollen, still],
+      { duration: going ? 500 : 520, easing: 'cubic-bezier(.65, 0, .25, 1)', fill: going ? 'forwards' : 'none' });
   }
 
   // A thought left half written when leaving a room is kept for it (its square shows a dot), and
