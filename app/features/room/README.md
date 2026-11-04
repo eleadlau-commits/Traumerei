@@ -17,6 +17,8 @@ It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, t
 rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
 each saved step. It uses the `rooms` service to go back to the rooms page or into another room.
 It opens Search through the `search` service and listens to `search:found`.
+Its editors open in the side panel on the left (the `panel` service); while the panel shows,
+the room moves over beside it (`--panel-width`, `panel:resized`), and leaving the room closes it.
 It offers no service of its own.
 
 ## What it does

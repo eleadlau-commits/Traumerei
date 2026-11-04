@@ -48,6 +48,8 @@ export default class Room extends Feature {
 
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
+    this.panel = this.use('panel');       // the side panel on the left that editors open in, or null
+    this.on('panel:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
@@ -110,6 +112,7 @@ export default class Room extends Feature {
     const from = this.root.hidden ? null : this.roomId;
     this.closeSheet();
     this.closeSearch();
+    this.panel?.close(null, true);
     this.shelveDraft();
     this.stopWriting();
     this.roomId = null;
