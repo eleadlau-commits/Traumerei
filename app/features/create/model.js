@@ -716,6 +716,47 @@ export function tagsByGroup(w, ontologies = [], shelf = false) {
 // True if a room has a tag (whatever its case).
 export const hasTag = (w, id, tag, ontologies = []) => roomTags(w, id, ontologies).some((o) => same(o.tag, tidyTag(tag)));
 
+// Arrange by group: lays one page's rooms out again, once, in districts, one for each tag of a
+// group (Ontology: Joyce, Pessoa, Russell; Subject: Algebra, Topology, …). A room goes with its
+// first tag in the group; a big room, which has every mode, has a district of its own first when
+// arranging by Ontology; rooms with no tag in the group come last. Each district starts on a new
+// row, a row apart from the last, rooms oldest first, left to right `cols` wide. Messy thoughts and
+// locked rooms stay where they are. Returns the districts: [{ tag, rooms: [id] }] (tag null: none).
+export function arrangeBy(w, group = ONTOLOGY, page = 0, cols = 6, ontologies = []) {
+  const stay = (r) => r.id === MESSY || r.locked;
+  const all = roomsOn(w, page);
+  const taken = new Set();
+  for (const r of all.filter(stay)) if (r.col != null) for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+  const byOntology = same(group, ONTOLOGY);
+  const order = byOntology ? ontologies.map((o) => o.name) : null;
+  const EVERY = 'Every mode';
+  const districts = new Map();
+  for (const r of all.filter((r) => !stay(r))) {
+    const tags = roomTags(w, r.id, ontologies).filter((o) => same(tagGroup(w, o.tag, ontologies) || '', group));
+    const tag = byOntology && isBig(r) ? EVERY : tags[0]?.tag ?? null;
+    const key = tag == null ? '\u0000none' : tag.toLowerCase();
+    if (!districts.has(key)) districts.set(key, { tag, rooms: [] });
+    districts.get(key).rooms.push(r);
+  }
+  const rank = (d) => (d.tag == null ? Infinity : d.tag === EVERY ? -1 : order ? order.findIndex((n) => same(n, d.tag)) : 0);
+  const sorted = [...districts.values()].sort((a, b) => rank(a) - rank(b) || (a.tag || '').localeCompare(b.tag || ''));
+  const free = (r, col, row) => col + (r.size || 1) <= cols && cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
+  let start = 0;
+  for (const d of sorted) {
+    let last = start - 1;
+    for (const r of d.rooms) {
+      for (let i = start * cols; ; i++) {
+        const col = i % cols, row = Math.floor(i / cols);
+        if (free(r, col, row)) { r.col = col; r.row = row; break; }
+      }
+      for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+      last = Math.max(last, r.row + (r.size || 1) - 1);
+    }
+    start = last + 2;
+  }
+  return sorted.map((d) => ({ tag: d.tag, rooms: d.rooms.map((r) => r.id) }));
+}
+
 // The last few things written in a room (newest last), as plain text, for its square's peek.
 export function peek(w, roomId, most = 3) {
   return roomThoughts(w, roomId).slice(-most).map((th) => oneLine(thoughtText(w, th))).filter(Boolean);

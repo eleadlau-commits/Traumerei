@@ -45,7 +45,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, groupNames, ONTOLOGY, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
+  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, groupNames, ONTOLOGY, arrangeBy, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -758,10 +758,23 @@ export default class Create extends Feature {
         onpointerup: () => clearTimeout(timer), onpointerleave: () => clearTimeout(timer),
       }, el('span', { class: 'create-tag-name' }, t.tag), el('span', { class: 'create-tag-n' }, String(t.n)));
     };
+    // At the foot, Arrange by: one word for each group, which lays this page out in its districts.
+    const groups = grouped.filter((g) => g.group).map((g) => g.group);
     this.tagsList.replaceChildren(...grouped.flatMap((g) => [
       g.group || mine ? el('div', { class: 'create-tag-group', 'aria-hidden': 'true' }, g.group || 'Other') : null,
       ...g.tags.map(pick),
-    ]));
+    ]), this.shelf || !groups.length ? null : el('div', { class: 'create-tag-arrange' },
+      el('div', { class: 'create-tag-group' }, 'Arrange by'),
+      ...groups.map((g) => el('button', { type: 'button', class: 'create-tag-pick', title: `Lay this page out in districts, one for each ${g} tag`, onclick: () => this.arrange(g) }, g))));
+  }
+
+  // Arrange by group (model.js): this page's rooms laid out again, once. Ctrl+Z puts them back.
+  arrange(group) {
+    const out = arrangeBy(this.world, group, this.page, this.gridSize().cols, this.ontologies);
+    this.roomSel = this.roomPick = this.making = null;
+    this.save();
+    this.drawRooms();
+    this.toast(out.length ? `Arranged by ${group}: ${out.length} district${out.length === 1 ? '' : 's'}. Ctrl+Z puts them back.` : 'Nothing here to arrange.');
   }
 
   // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.

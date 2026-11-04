@@ -33,6 +33,11 @@ What the home page's **Create** opens: rooms of thoughts.
   in the list. *Ontology* holds the modes and can't change. Make your own by typing *Subject:
   Algebra* in a room's + tag, or right-click a tag in the list (a long press on a phone) and type
   its group (empty takes it out). Tags in no group are under *Other*.
+  **Arrange by.** At the foot of the list, a word for each group lays the page out again, once, in
+  districts: one for each of the group's tags, a room going with its first tag in it, the rooms
+  with none last. By *Ontology*, the big rooms (every mode) have a district of their own first.
+  Each district starts on a new row with an empty row before it; Messy thoughts and locked rooms
+  stay where they are. Ctrl+Z puts the rooms back.
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
