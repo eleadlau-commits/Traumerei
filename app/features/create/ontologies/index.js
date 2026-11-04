@@ -41,6 +41,10 @@
 //                         and whatever a move put in for (c.write({ x, y, for }) starts one).
 //                         Without it, a Joyce train at x, y. An ontology without groups writes
 //                         into Joyce's trains
+//   press(c, e)           (optional) a press on the canvas, before Create's own: return true when
+//                         it took it (Russell: a drag from a chapter's foot draws an arrow)
+//   props(c, th)          (optional) more rows (DOM nodes) for the pop-up of what is chosen
+//                         (Russell: what a chapter forgets about each parent)
 //   blocks(w, room)       (optional) clear space (clear.js): what moves together, as
 //                         [{ id, thoughts, group?, tail?, hand, at }]; hand: placed by hand.
 //                         Without it, each unit is a block, none by hand
@@ -56,12 +60,13 @@
 import { declareGroups } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
+import russell from './russell.js';
 
-export const BUILT_IN = [joyce, pessoa];
+export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

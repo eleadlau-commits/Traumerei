@@ -39,6 +39,21 @@ What the home page's **Create** opens: rooms of thoughts.
   - **Pessoa**. Every thought floats on its own, laid on a loose spiral outwards in the order
     they were written, and can be dragged anywhere (Pessoa keeps its own places; Joyce is not
     changed by them).
+  - **Russell**. Chapters in a tree, each an abstraction of the one above it. A chapter holds
+    its thoughts in order, read top to bottom like a train. Arrows go from a parent chapter down to
+    its children: any number of children, usually one parent, at most two (a *junction*). An
+    arrow that would make a loop is refused. The tree lays itself out: the roots at the top, each
+    generation a level lower, siblings side by side, a junction under both its parents. A chapter
+    dragged somewhere stays there, and its children still hang under it. Drag from the small
+    circle at a chapter's foot onto another chapter to draw an arrow. A chapter's pop-up has *New
+    child chapter* (the chapter and its arrow are made when its first thought is kept), *Add second
+    parent* and *Remove arrow*, and a line for each arrow into it: what it forgets about that
+    parent ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Enter
+    goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
+- **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
+  say); Russell, those in no chapter. *Loose · n* at the foot of the room opens them in a row;
+  drag one onto the room to place it (Joyce: a train of its own; Russell: into the chapter it is
+  let go on, or a new chapter of its own on the empty canvas).
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
   *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.
 - **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*
@@ -57,11 +72,13 @@ makes trains) and lists its items, so one item can be in groups of several ontol
 ontology says whether an item can be in **one** of its groups (a train) or in **many**. Every
 group can be folded, named, moved and deleted, and is always the same group, never a copy.
 
-**Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa), or come from another feature
+**Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa, Russell), or come from another feature
 through the slot `create.ontologies`. `ontologies/index.js` describes their shape: name, groups,
-units, where each sits, what a drag does, and optional tray, settings and moves. Each keeps its
-own data per room (`own()` in model.js: Pessoa's dragged places). An ontology can draw its own
-canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train); Create keeps
+units, where each sits, what a drag does, and optional tray, settings, moves (shown in the pop-up
+of what is chosen), its own presses and pop-up rows, and `begin` (which group a new thought joins,
+or none, so it waits in the tray). Each keeps its own data per room (`own()` in model.js: Pessoa's
+dragged places, Russell's arrows and their labels). An ontology can draw its own
+canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); Create keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under

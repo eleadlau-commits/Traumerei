@@ -7,7 +7,7 @@ import { membership, emptyWorld, create, groupOf, MESSY } from '../model.js';
 
 test('every built-in ontology has the parts it needs', () => {
   for (const o of BUILT_IN) assert.deepEqual(missing(o), [], o.id);
-  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa']);
+  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa', 'russell']);
   assert.ok(BUILT_IN.some((o) => o.id === FALLBACK));
   const joyce = BUILT_IN.find((o) => o.id === 'joyce');
   assert.equal(typeof joyce.draw, 'function'); // Joyce draws its own canvas
@@ -21,7 +21,7 @@ test('ontologies from other features join the built-in ones; broken or repeated 
   };
   const skipped = [];
   const all = gather([extra, { id: 'half', name: 'Half' }, { ...BUILT_IN[0] }], (o, lacks) => skipped.push([o.id, lacks]));
-  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'sets']);
+  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'russell', 'sets']);
   assert.deepEqual(skipped, [['half', ['note', 'units', 'point', 'drop']]]);
   assert.equal(membership('sets'), 'many');
   assert.equal(membership('joyce'), 'one');
