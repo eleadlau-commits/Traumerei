@@ -453,7 +453,7 @@ export default {
     if (!isGroup(th) || th.of !== ID) return [];
     const { parents, labels } = arrowsInto(c.world, c.roomId, th.id);
     return parents.map((p) => c.el('label', { class: 'room-russell-forgets' },
-      c.el('span', { class: 'room-options-note' }, `From ${chapterName(c.world, p)}, it forgets`),
+      c.el('span', { class: 'pop-note' }, `From ${chapterName(c.world, p)}, it forgets`),
       c.el('input', {
         class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it forgets about ${chapterName(c.world, p)}`,
         onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },

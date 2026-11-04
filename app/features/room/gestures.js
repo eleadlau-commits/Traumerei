@@ -239,9 +239,9 @@ export class Gestures {
       ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
-    this.keysBox.replaceChildren(el('div', { class: 'room-search-panel room-keys-panel' },
-      el('div', { class: 'room-options-label' }, 'Keys'),
-      el('dl', { class: 'room-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
+    this.keysBox.replaceChildren(el('div', { class: 'panel top-sheet room-keys-panel' },
+      el('div', { class: 'label' }, 'Keys'),
+      el('dl', { class: 'keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
     this.keysBox.hidden = false;
     this.keysBox.onpointerdown = () => this.closeSearch();
     const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeSearch(); document.removeEventListener('keydown', close, true); };
@@ -390,8 +390,8 @@ export class Gestures {
   // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
 
   addItem(label, note, fn, keep = true) {
-    return el('button', { type: 'button', class: 'room-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
-      el('span', {}, label), el('span', { class: 'room-add-note' }, note));
+    return el('button', { type: 'button', class: 'pick room-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
+      el('span', {}, label), el('span', { class: 'pick-note' }, note));
   }
 
   toggleAdd() {

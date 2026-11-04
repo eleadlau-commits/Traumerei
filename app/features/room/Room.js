@@ -219,52 +219,52 @@ export default class Room extends Feature {
   // ---- Building the pages ----
 
   build() {
-    this.backBtn = el('button', { type: 'button', class: 'room-back', 'aria-label': 'Back to the rooms', onclick: () => this.back() },
+    this.backBtn = el('button', { type: 'button', class: 'back-btn room-back', 'aria-label': 'Back to the rooms', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
     // Search, a bar in the middle of the top row: a search of every room.
-    this.searchBtn = el('button', { type: 'button', class: 'room-word room-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
+    this.searchBtn = el('button', { type: 'button', class: 'word find-btn room-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.openSearch() },
-    el('span', {}, 'Search'), el('span', { class: 'room-search-key' }, KEY));
+    el('span', {}, 'Search'), el('span', { class: 'find-key' }, KEY));
     this.searchBtn.hidden = !this.finder; // no Search without the search feature
-    this.crumbName = el('button', { type: 'button', class: 'room-crumb room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
+    this.crumbName = el('button', { type: 'button', class: 'word room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
     // between them; a small one names its one), and Timeline under Joyce.
-    this.modes = el('nav', { class: 'room-rail room-modes', 'aria-label': 'Ontological mode' });
+    this.modes = el('nav', { class: 'rail room-rail room-modes', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'room-world' });
     this.stage = el('div', { class: 'room-stage', 'data-own-swipe': '' }, this.world$);
     this.input = el('textarea', { class: 'room-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
-    this.bar = el('div', { class: 'room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
-    this.history = el('aside', { class: 'room-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
+    this.bar = el('div', { class: 'panel pop room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
+    this.history = el('aside', { class: 'panel room-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
     this.trayEl = el('div', { class: 'room-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
       this.modes,
       el('div', { class: 'room-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'room-crumb-desc' })),
       el('div', { class: 'room-add' },
-        this.addMenu = el('div', { class: 'room-add-menu', hidden: true, role: 'menu' },
+        this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' },
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
-          ...(this.files ? [el('div', { class: 'room-add-rule' }),
+          ...(this.files ? [el('div', { class: 'pick-rule' }),
             this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
             this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
             ...(this.files.canEdit ? [this.addItem('Edit room as Markdown', 'in the panel', () => this.editAsMarkdown(), false)] : [])] : []),
-          el('div', { class: 'room-add-rule' }),
+          el('div', { class: 'pick-rule' }),
           this.addItem('Keys', '?', () => this.showKeys(), false)),
-        this.addBtn = el('button', { type: 'button', class: 'room-word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
+        this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
       this.trayEl,
       this.bar,
-      this.sheet = el('div', { class: 'room-sheet', hidden: true }),
+      this.sheet = el('div', { class: 'panel sheet room-sheet', hidden: true }),
       this.docEl = el('div', { class: 'room-doc-veil', hidden: true }),
       this.input);
 
-    this.keysBox = el('div', { class: 'room-search', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
-    this.savedMark = el('div', { class: 'room-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'room-hint' });
+    this.keysBox = el('div', { class: 'shade', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
+    this.savedMark = el('div', { class: 'saved-note room-saved', 'aria-live': 'polite' });
+    this.hintLine = el('div', { class: 'foot-hint room-hint' });
     // A small wordmark beside the menu (☰), as on the rooms page.
-    this.wordmark = el('div', { class: 'room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.wordmark = el('div', { class: 'wordmark room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
     this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 

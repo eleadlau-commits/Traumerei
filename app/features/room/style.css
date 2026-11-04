@@ -1,17 +1,7 @@
-/* Styles for an open room. Class names start with "room-". A room fills the screen over the
+/* Styles for an open room: layout only (the look, the rail, the pop-ups and the frame's pieces are
+   Folio's, folio/runtime/base.css). Class names start with "room-". A room fills the screen over the
    rooms page with its own gradient (--room-top / --room-bottom) and its words take --room-ink.
    The same in light and dark mode. */
-
-:root {
-  --room-strip: calc(64px + env(safe-area-inset-top));
-  --room-rail: 206px; /* the rail on the left: 72px and one grid column (a cell and its gap) more */
-  --room-ease: cubic-bezier(.22, .7, .18, 1);
-  --room-glow: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
-  /* Every pop-up and panel: the same pale, blurred white. */
-  --room-panel: rgb(var(--veil-rgb) / .84);
-  --room-panel-ink: var(--ink);
-  --room-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 12px 40px rgb(var(--ink-rgb) / .12);
-}
 
 .room {
   position: fixed;
@@ -22,6 +12,7 @@
   font-family: var(--font);
 }
 .room > * { pointer-events: auto; }
+.room .panel { --room-ink: var(--ink); } /* inside a pop-up, words take the pop-up's ink */
 /* While the side panel (the panel feature) shows on the right, the room moves over beside it: its
    width is --panel-width, and the transform makes the room's fixed parts sit in the room. */
 .panel-open .room { right: var(--panel-width, 0px); transform: translateZ(0); }
@@ -30,95 +21,19 @@
 .room-dark .topbar .top-btn { color: var(--room-ink); }
 
 /* A small wordmark beside the menu (☰), in the home page's typeface. */
-.room-wordmark {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  left: calc(var(--gutter) + 56px);
-  height: 44px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  letter-spacing: .32em;
-  text-transform: uppercase;
-  color: var(--ink);
-  opacity: 0;
-  pointer-events: none !important;
-  user-select: none;
-  transition: opacity .4s;
-}
 .room.up .room-wordmark { opacity: .72; }
 .room.in-room .room-wordmark { color: var(--room-ink); z-index: 6; }
 /* On a phone the search bar takes that place. */
-@media (max-width: 560px) { .room-wordmark { display: none; } }
 
 /* The back arrow, in the top-right corner (the menu keeps the top-left one, as on every page):
    back to the rooms. */
-.room-back {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  right: var(--gutter);
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--ink);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity .4s;
-  -webkit-tap-highlight-color: transparent;
-}
 .room.up .room-back { opacity: .8; }
-.room-back:is(:hover, :focus-visible) { opacity: 1; outline: none; }
 .room.in-room .room-back { color: var(--room-ink); z-index: 6; }
-.room-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
-.room-word, .room-crumb, .room-mode {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  padding: 6px 2px;
-  font: inherit;
-  font-size: 13px;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: inherit;
-  opacity: .66;
-  cursor: pointer;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-repeat: no-repeat;
-  background-position: 2px 100%;
-  background-size: 0 1px;
-  transition: opacity .2s, background-size .25s;
-  -webkit-tap-highlight-color: transparent;
-}
-:is(.room-word, .room-crumb, .room-mode):is(:hover, :focus-visible),
-.room-word[aria-current], .room-mode[aria-checked="true"] {
-  opacity: 1;
-  background-size: calc(100% - 4px - .22em) 1px;
-  outline: none;
-}
 
 /* A name being typed, in a pop-up. */
-.room-name-field {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  border-radius: 0;
-  padding: 2px 0;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: none;
-  color: inherit;
-  outline: none;
-  box-shadow: none;
-}
+.room-name-field { padding: 2px 0; border-bottom-color: currentColor; text-transform: none; }
 
 /* ---- A room ---- */
 
@@ -133,26 +48,19 @@
 }
 @keyframes room-in { from { opacity: 0; } }
 .room-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: default; }
-@media (hover: none) { .room-stage { cursor: grab; } }
 .room-stage.panning { cursor: grab; }
 .room-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
 /* A room's rail, where the rooms page has Rooms and Archive: its modes, then a hairline and Timeline. */
-.room-page .room-modes { top: calc(var(--room-strip) + 32px); z-index: 3; }
+.room-page .room-modes { top: calc(var(--strip) + 32px); z-index: 3; }
 .room-rail-fixed { cursor: default; }
 /* A mode and its ⚙, which shows only while the mode is hovered over (or tapped, on a phone). */
 .room-rail-row { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
-.room-gear {
-  appearance: none; border: 0; background: none; color: inherit; font: inherit;
-  padding: 0 3px; font-size: 16.5px; line-height: 1; cursor: pointer;
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
+.room-gear { padding: 0 3px; font-size: 16.5px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .room-rail-row:is(:hover, :focus-within, .show) .room-gear { opacity: .55; pointer-events: auto; }
 .room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; outline: none; }
-.room-rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
-.room-rail-view[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
 /* This room's settings for a mode: a card beside the rail. */
-.room-mode-settings { top: -8px; left: calc(var(--room-rail) - 8px); width: 240px; cursor: default; }
+.room-mode-settings { top: -8px; left: calc(var(--rail) - 8px); width: 240px; cursor: default; }
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .room-mode-settings .renderer-slider { font-size: 13px; }
@@ -164,7 +72,7 @@
 @keyframes room-slide-in-right { from { opacity: 0; transform: translateX(12px); } }
 .room-top {
   position: absolute;
-  top: calc(10px + env(safe-area-inset-top) + 46px); /* under the search bar */
+  top: 56px; /* under the search bar */
   left: 50%;
   transform: translateX(-50%);
   max-width: 40vw;
@@ -174,9 +82,9 @@
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
 /* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(18px + env(safe-area-inset-bottom)); }
+.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: 18px; }
 .room-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
-.room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--room-ease); }
+.room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--ease); }
 .room-add-btn.open .room-add-plus { transform: rotate(45deg); }
 .room-add-menu {
   position: absolute;
@@ -185,37 +93,11 @@
   display: grid;
   min-width: 400px;
   padding: 10px 0;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
-  animation: room-unfold .22s var(--room-ease) both;
+  animation: pop-unfold .22s var(--ease) both;
 }
 /* Loose · n, at the foot of the room: the rail's size too. */
 .room-tray-btn { font-size: 15px; }
-@keyframes room-unfold { from { opacity: 0; transform: translateY(6px); } }
-.room-add-item {
-  appearance: none;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 18px;
-  padding: 10px 18px;
-  text-align: left;
-  font-size: 15px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.room-add-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 7%, transparent); }
-.room-add-note { font-size: 12.5px; letter-spacing: .04em; text-transform: none; opacity: .5; }
-.room-add-rule { height: 1px; margin: 6px 16px; background: color-mix(in srgb, var(--room-ink) 14%, transparent); }
+.room-add-item { font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
 
 /* The hidden box the keys go into: in view (so a phone shows its keyboard), but unseen. */
 .room-input {
@@ -265,49 +147,28 @@
 .room-history {
   position: absolute;
   left: 0;
-  top: calc(92px + env(safe-area-inset-top));
-  bottom: calc(64px + env(safe-area-inset-bottom));
+  top: 92px;
+  bottom: 64px;
   width: min(320px, 78vw);
   display: flex;
   flex-direction: column;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
-  animation: room-slide-in .3s var(--room-ease) both;
+  animation: room-slide-in .3s var(--ease) both;
   z-index: 2;
 }
 @keyframes room-slide-in { from { opacity: 0; transform: translateX(-12px); } }
 .room-history-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   padding: 14px var(--gutter) 10px 18px;
   font-size: 15px;
   letter-spacing: .2em;
   text-transform: uppercase;
 }
 .room-history-head > span { opacity: .6; }
-.room-history-close { appearance: none; border: 0; background: none; color: inherit; font: inherit; font-size: 20px; line-height: 1; cursor: pointer; opacity: .55; }
-.room-history-close:hover { opacity: 1; }
+.room-history-close, .room-doc-close { --x-size: 24px; margin: -4px -6px -4px 0; }
 .room-history-list { list-style: none; margin: 0; padding: 0 0 12px; overflow: auto; flex: 1; scrollbar-width: thin; }
-.room-history-item {
-  appearance: none;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  width: 100%;
-  display: grid;
-  gap: 4px;
-  padding: 10px var(--gutter) 10px 18px;
-  text-align: left;
-  cursor: pointer;
-  box-shadow: inset 2px 0 0 transparent;
-}
-.room-history-item:is(:hover, :focus-visible) { outline: none; background: color-mix(in srgb, var(--room-ink) 6%, transparent); }
+.room-history-item { display: grid; gap: 4px; padding: 10px var(--gutter) 10px 18px; box-shadow: inset 2px 0 0 transparent; }
 .room-history-item.on { box-shadow: inset 2px 0 0 var(--tag); background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
 .room-history-meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .room-history-time { flex: none; font-size: 11px; letter-spacing: .06em; opacity: .5; }
@@ -328,29 +189,11 @@
 
 /* Editing what is chosen: the rooms page's pop-up, beside the thought or train. */
 .room-edit { width: 260px; }
-.room-edit-text, .room-edit-body, .room-edit-move {
-  font: inherit;
-  font-size: 15px;
-  letter-spacing: .01em;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
-  border-radius: 0;
-  padding: 4px 0;
-  min-height: 0;
-  outline: none;
-  box-shadow: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-.room-edit-body { resize: vertical; line-height: 1.5; font-size: 14px; }
+.room-edit-text, .room-edit-body, .room-edit-move { font-size: 15px; letter-spacing: .01em; }
+.room-edit-body { font-size: 14px; }
 .room-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
 .room-thought { white-space: pre-line; }
-.room-edit-text:focus, .room-edit-body:focus { border-bottom-color: currentColor; }
-.room-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 18px;
-  background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat, linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat; }
-.room-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
+.room-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
 
 /* The thought being written: its real caret and selection, drawn from the hidden box. */
 .room-draft { opacity: 1; white-space: pre-wrap; cursor: text; }
@@ -387,10 +230,6 @@
 /* In a dark room the words glow faintly, like a lit window. */
 .room-page.dark :is(.room-bead, .room-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb) / .3); }
 
-@media (max-width: 560px) {
-  .room-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
-}
-
 /* Bigger thoughts. In a Joyce train they stand as blocks between the lines of words. */
 .room-passage, .room-picture { display: block; margin: 12px 0; text-shadow: none; }
 .room-passage {
@@ -410,48 +249,11 @@
 .room-float .room-picture { margin: 0; display: grid; justify-items: center; }
 
 /* The sheet for writing a passage or captioning a picture. */
-.room-sheet {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  max-height: calc(100% - 160px);
-  overflow: auto;
-  box-sizing: border-box;
-  display: grid;
-  gap: 16px;
-  padding: 26px 28px 18px;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
-  animation: room-in .35s ease both;
-}
-.room-sheet-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
-.room-sheet-title, .room-sheet-body {
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--room-ink) 25%, transparent);
-  border-radius: 0;
-  padding: 8px 0;
-  font: inherit;
-  color: inherit;
-  outline: none;
-  box-shadow: none;
-  border-width: 0 0 1px;
-}
+.room-sheet-title, .room-sheet-body { padding: 8px 0; }
 .room-sheet-title { font-size: 18px; letter-spacing: .04em; }
-.room-sheet-body { font-size: 15px; line-height: 1.6; resize: vertical; min-height: 9em; }
-:is(.room-sheet-title, .room-sheet-body):focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 45%, transparent); outline: none; }
+.room-sheet-body { font-size: 15px; line-height: 1.6; min-height: 9em; }
 :is(.room-sheet-title, .room-sheet-body)::placeholder { color: inherit; opacity: .4; }
 .room-sheet-picture { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
-.room-sheet-words { display: flex; align-items: baseline; gap: 22px; }
-.room-bar-action { opacity: .5; }
 .room-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
 
 /* Settings → Rooms */
@@ -459,102 +261,17 @@
 .room-settings .btn { justify-self: start; }
 
 /* A pop-up of options. */
-.room-options {
-  position: absolute;
-  z-index: 3;
-  display: grid;
-  gap: 10px;
-  width: 236px;
-  padding: 14px 16px;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
-  animation: room-unfold .2s var(--room-ease) both;
-}
-.room-options-name {
-  font: inherit;
-  font-size: 13px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
-  border-radius: 0;
-  padding: 4px 0;
-  min-height: 0;
-  outline: none;
-  box-shadow: none;
-}
-.room-options-name:focus { border-bottom-color: currentColor; }
-.room-options .room-word { justify-self: start; }
-.room-options-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
-.room-options-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
-.room-options .room-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
-.room-keep .room-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; opacity: 1; }
 .room-sheet .room-keep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
-.room-options-delete { opacity: .6; }
-.room-options-delete:hover { color: #8a2f22; opacity: 1; }
 
 /* The list of keys (?): a quiet panel near the top. */
-.room-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb) / .08); }
-.room-search-panel {
-  position: absolute;
-  left: 50%;
-  top: 14vh;
-  transform: translateX(-50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(var(--veil-rgb) / .9);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 18px 60px rgb(var(--ink-rgb) / .16);
-  color: var(--ink);
-  animation: room-unfold .2s var(--room-ease) both;
-}
 
 /* A quiet "Saved", and a line of help the first time a room is seen. */
-.room-saved {
-  position: fixed;
-  right: calc(var(--gutter) + 12px);
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  font-size: 11px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  opacity: 0;
-  pointer-events: none;
-  color: var(--room-ink, var(--ink));
-}
-.room-saved.on { animation: room-saved 2.2s ease both; }
-@keyframes room-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
-.room-hint {
-  position: fixed;
-  left: 50%;
-  bottom: calc(22px + env(safe-area-inset-bottom));
-  transform: translate(-50%, 6px);
-  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: .05em;
-  line-height: 1.5;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s, transform .6s var(--room-ease);
-  color: var(--room-ink, var(--ink));
-}
-.room-hint.on { opacity: .6; transform: translate(-50%, 0); }
-@media (max-width: 560px) {
-  .room-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
-  .room-options { width: 200px; }
-}
+
+/* "Saved" and the line of help take the room's ink. */
+.room :is(.room-saved, .room-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
 .room-keys-panel { padding: 18px 22px 20px; }
-.room-keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
-.room-keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
-.room-keys-list dd { margin: 0; opacity: .8; }
 
 /* Locked: nothing can be added. */
 .room-page.locked .room-add { display: none; }
@@ -580,88 +297,17 @@
 .room.expanding .room-back { color: var(--ink); }
 
 /* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
-.room-search-btn {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top) + 7px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 12px;
-  background: rgb(var(--veil-rgb) / .55);
-  background-image: none;
-  opacity: 0;
-  transition: opacity .4s, background-color .25s;
-}
-.room-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
-.room.up .room-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb) / .8); }
 .room.up .room-search-btn { opacity: .66; }
-.room.up .room-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .room.in-room .room-search-btn { color: var(--room-ink); z-index: 6; }
-.room-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
 /* On a phone the bar sits between the menu and the arrow, clear of both. */
-@media (max-width: 560px) {
-  .room-search-btn { left: calc(var(--gutter) + 56px); transform: none; width: calc(100% - 2 * var(--gutter) - 112px); }
-}
 
 /* ---- The rail on the left, under the menu: the room's modes ---- */
 /* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */
-.room-rail {
-  position: absolute;
-  z-index: 2;
-  top: 32px;
-  left: var(--gutter);
-  width: calc(var(--room-rail) - 24px);
-  display: grid;
-  gap: 22px;
-  justify-items: start;
-}
-.room-rail-item {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  padding: 3px 0 3px 15px;
-  display: grid;
-  gap: 6px;
-  max-width: 100%;
-  text-align: left;
-  overflow-wrap: break-word;
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.3;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: inherit;
-  opacity: .5;
-  cursor: pointer;
-  box-shadow: inset 1px 0 0 transparent;
-  transition: opacity .2s, box-shadow .25s;
-  -webkit-tap-highlight-color: transparent;
-}
-.room-rail-item:is(:hover, :focus-visible) { opacity: .85; outline: none; }
-.room-rail-item:is([aria-current="true"], [aria-current="page"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
-
-.room-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
 /* Add, opened by a right-click on the canvas: there, at the pointer. */
 .room-add-menu.at { position: fixed; bottom: auto; z-index: 8; }
 
 /* On a phone the rail lies along the top of the rooms page, and the keys aren't shown. */
-@media (max-width: 560px) {
-  .room-rail { top: 10px; width: auto; display: flex; align-items: center; gap: 18px; }
-  .room-page .room-modes { top: calc(94px + env(safe-area-inset-top)); } /* under the room's name */
-  .room-page .room-history { top: calc(124px + env(safe-area-inset-top)); left: auto; right: 0; }
-  .room-rail-rule { width: 1px; height: 12px; margin: 0; }
-  .room-mode-settings { top: 28px; left: 0; }
-  .room-rail-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 0 4px; box-shadow: inset 0 -1px 0 transparent; }
-  .room-rail-item[aria-current="true"] { box-shadow: inset 0 -1px 0 currentColor; }
-}
-@media (hover: none) { .room-search-key { display: none; } }
 
 /* Mathematics in a thought's words (maths.js, drawn by KaTeX: vendor/katex.css). It takes the
    thought's own colour and size, like its words; a formula that doesn't parse shows its source
@@ -678,7 +324,7 @@
 .room-tray {
   position: absolute;
   left: 50%;
-  bottom: calc(18px + env(safe-area-inset-bottom));
+  bottom: 18px;
   transform: translateX(-50%);
   display: grid;
   justify-items: center;
@@ -692,14 +338,8 @@
   max-width: 100%;
   overflow-x: auto;
   padding: 8px;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
   scrollbar-width: thin;
-  animation: room-unfold .22s var(--room-ease) both;
+  animation: pop-unfold .22s var(--ease) both;
 }
 .room-tray-item {
   flex: none;
@@ -714,16 +354,7 @@
 }
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.room-tray-ghost {
-  position: fixed;
-  z-index: 50;
-  pointer-events: none;
-  cursor: grabbing;
-  background: var(--room-panel);
-  color: var(--room-panel-ink);
-  box-shadow: var(--room-panel-shadow);
-  opacity: .92;
-}
+.room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 .room-moves { flex-wrap: wrap; }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
@@ -770,10 +401,6 @@
 .room-russell-forgets { display: grid; gap: 4px; }
 .room-russell-label.left { transform: translateX(-100%); text-align: right; }
 
-@media (max-width: 560px) {
-  .room-rail { flex-wrap: wrap; right: var(--gutter); }
-}
-
 /* Russell: a closed chapter shows only its name; a click opens it as a document. */
 .room-russell-closed { cursor: pointer; }
 .room-russell-closed .room-thought { font-size: 15px; letter-spacing: .14em; text-transform: uppercase; }
@@ -786,7 +413,7 @@
   z-index: 40;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--room-panel-ink, #000) 8%, transparent);
+  background: rgb(var(--ink-rgb) / .08);
   animation: room-in .25s ease both;
 }
 .room-doc-veil[hidden] { display: none; }
@@ -794,72 +421,29 @@
   width: min(680px, calc(100% - 2 * var(--gutter, 16px)));
   max-height: calc(100% - 120px);
   overflow: auto;
-  box-sizing: border-box;
   display: grid;
   gap: 18px;
   padding: 26px 40px 20px;
-  background: var(--room-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--room-panel-shadow);
-  color: var(--room-panel-ink);
-  --room-ink: var(--room-panel-ink);
   outline: none;
 }
-.room-doc-head { display: flex; align-items: baseline; justify-content: space-between; }
-.room-doc-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
-.room-doc-close { background: none; border: 0; color: inherit; font: inherit; font-size: 20px; opacity: .5; cursor: pointer; padding: 0 4px; }
-.room-doc-close:hover { opacity: .9; }
-.room-doc-title {
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  padding: 4px 0 8px;
-  font: inherit;
-  font-size: 24px;
-  letter-spacing: .04em;
-  color: inherit;
-  outline: none;
-}
+.room-doc-head { display: flex; align-items: center; justify-content: space-between; }
+.room-doc-title { padding: 4px 0 8px; border-bottom-color: transparent; font-size: 24px; letter-spacing: .04em; }
 .room-doc-title:focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 30%, transparent); }
 .room-doc-title::placeholder { color: inherit; opacity: .35; }
 .room-doc-paras { display: grid; gap: .9em; font-size: 16px; line-height: 1.7; }
 .room-doc-para { white-space: pre-line; cursor: text; border-radius: 2px; }
 .room-doc-para:not(.writing):not(.room-doc-item):hover { background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
 .room-doc-item { cursor: default; }
-.room-doc textarea.room-doc-box, .room-editor textarea.room-doc-box {
-  display: block;
-  min-height: 0;
-  border-radius: 0;
-  box-shadow: none;
-  width: 100%;
-  box-sizing: border-box;
-  resize: none;
-  overflow: hidden;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid color-mix(in srgb, var(--room-ink) 35%, transparent);
-  margin-left: -13px;
-  padding: 0 0 0 12px;
-  font: inherit;
-  line-height: inherit;
-  color: inherit;
-  outline: none;
-}
-.room-editor textarea.room-doc-box:focus, .room-doc textarea.room-doc-box:focus { border-color: color-mix(in srgb, var(--room-ink) 35%, transparent); box-shadow: none; outline: none; }
+/* A paragraph being written: a hairline at its left instead of under it. */
+.room-doc-box { display: block; margin-left: -13px; padding: 0 0 0 12px; border: 0; border-left: 1px solid color-mix(in srgb, var(--room-ink) 35%, transparent); line-height: inherit; resize: none; overflow: hidden; }
 .room-doc-box::placeholder { color: inherit; opacity: .35; }
-.room-doc-more { justify-self: start; background: none; border: 0; color: inherit; font: inherit; font-size: 18px; opacity: .35; cursor: pointer; padding: 0; }
+.room-doc-more { justify-self: start; font-size: 18px; opacity: .35; }
 .room-doc-more:hover { opacity: .8; }
-.room-doc .room-keys { opacity: .45; font-size: 12px; }
-@media (max-width: 560px) { .room-doc { padding: 20px 20px 16px; } }
-
 
 /* The content editor (editor.js), in the side panel on the right: the pop-up's rows at the top, then
    the thoughts as paragraphs, then a small Source at the foot. The panel gives the veil. */
 .room-editor {
-  --room-ink: var(--panel-ink, var(--ink));
+  --room-ink: var(--ink);
   display: grid;
   align-content: start;
   gap: 22px;
@@ -867,25 +451,10 @@
   outline: none;
 }
 .room-editor-top { display: grid; gap: 12px; }
-.room-editor-top .room-word { justify-self: start; }
-.room-editor-top .room-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
-.room-editor-top .room-options-name { font-size: 15px; }
+.room-editor-top .pop-name { font-size: 15px; }
 .room-editor-top .room-edit-body { min-height: 10em; }
 .room-editor-content { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--room-ink) 12%, transparent); }
 .room-editor-content:empty { display: none; }
 .room-editor .room-doc-paras { font-size: 15.5px; line-height: 1.65; }
 .room-editor-foot { display: flex; justify-content: flex-end; }
-.room-editor-source {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 2px 0;
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: inherit;
-  opacity: .45;
-  cursor: pointer;
-}
-.room-editor-source:is(:hover, :focus-visible) { opacity: .9; outline: none; text-decoration: underline; text-underline-offset: 5px; }
+.room-editor-source { --word-spacing: .22em; font-size: 11px; opacity: .45; }

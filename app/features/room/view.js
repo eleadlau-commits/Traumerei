@@ -142,9 +142,9 @@ export class RoomView {
     for (const m of big ? this.ontologies : [this.ont]) {
       const on = m.id === this.mode;
       const word = big
-        ? el('button', { type: 'button', class: 'room-rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
+        ? el('button', { type: 'button', class: 'rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
           onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, m.name)
-        : el('span', { class: 'room-rail-item room-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
+        : el('span', { class: 'rail-item room-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
           onclick: () => this.toggleGear(m.id) }, m.name);
       const gear = this.settingsOf(m).length ? el('button', {
         type: 'button', class: 'room-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
@@ -152,9 +152,9 @@ export class RoomView {
       }, '⚙') : null;
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
-    items.push(el('div', { class: 'room-rail-rule', 'aria-hidden': 'true' }));
+    items.push(el('div', { class: 'rail-rule', 'aria-hidden': 'true' }));
     items.push(el('button', {
-      type: 'button', class: 'room-rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
+      type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
       onclick: () => this.togglePanel(),
     }, 'Timeline'));
     const card = this.settingsFor && this.roomSettingsCard();
@@ -222,18 +222,18 @@ export class RoomView {
     const o = this.ontologies.find((x) => x.id === this.settingsFor);
     if (!o) return null;
     const close = () => { this.settingsFor = null; this.drawRoom(); };
-    return el('div', { class: 'room-options room-mode-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
+    return el('div', { class: 'panel pop room-options room-mode-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
       onpointerdown: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } } },
       el('div', { class: 'room-mode-settings-head' },
         el('span', {}, o.name),
-        el('button', { type: 'button', class: 'room-history-close', 'aria-label': 'Close', onclick: close }, '×')),
+        el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close', onclick: close })),
       el('p', { class: 'room-mode-settings-note' }, 'For this room only'),
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
         this.w.write();
         this.drawWorld();
       })),
-      el('button', { type: 'button', class: 'room-word room-mode-settings-reset', onclick: () => {
+      el('button', { type: 'button', class: 'word room-mode-settings-reset', onclick: () => {
         resetRoomSettings(this.world, this.roomId, o.id);
         this.w.write();
         this.drawRoom();
@@ -383,7 +383,7 @@ export class RoomView {
     const list = items.length ? el('ol', { class: 'room-history-list' }, items.map((th) => {
       const tag = ont.tag?.(w, th.id) || null;
       return el('li', {}, el('button', {
-        type: 'button', class: 'room-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
+        type: 'button', class: 'pick room-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
         style: tag ? `--tag:hsl(${hash(tag.id) % 360} 32% 46%)` : '',
         onclick: () => this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }),
       },
@@ -396,7 +396,7 @@ export class RoomView {
     this.history.replaceChildren(
       el('div', { class: 'room-history-head' },
         el('span', {}, 'Timeline'),
-        el('button', { type: 'button', class: 'room-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() }, '×')),
+        el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() })),
       list || el('p', { class: 'room-history-none' }, 'Nothing written here yet'));
     list?.lastElementChild?.scrollIntoView?.({ block: 'end' });
   }

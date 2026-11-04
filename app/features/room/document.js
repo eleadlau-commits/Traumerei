@@ -158,12 +158,12 @@ export function openDocument(c, chapterId) {
     onchange: () => { name(w(), chapterId, title.value); c.save(); },
   });
   if (locked) title.setAttribute('readonly', '');
-  const sheet = c.el('div', { class: 'room-doc', role: 'dialog', 'aria-label': 'Chapter', tabindex: '-1' },
+  const sheet = c.el('div', { class: 'panel room-doc', role: 'dialog', 'aria-label': 'Chapter', tabindex: '-1' },
     c.el('div', { class: 'room-doc-head' },
-      c.el('span', { class: 'room-doc-kind' }, 'Chapter'),
-      c.el('button', { type: 'button', class: 'room-doc-close', 'aria-label': 'Close', onclick: close }, '×')),
+      c.el('span', { class: 'label' }, 'Chapter'),
+      c.el('button', { type: 'button', class: 'close-x room-doc-close', 'aria-label': 'Close', onclick: close })),
     title, paras.node, paras.more,
-    c.el('div', { class: 'room-keys' }, locked ? 'This room is locked · Esc closes'
+    c.el('div', { class: 'sheet-keys' }, locked ? 'This room is locked · Esc closes'
       : 'Click a paragraph to write · Enter keeps it · Ctrl+Enter a new line · Esc closes'));
   sheet.addEventListener('keydown', (e) => {
     e.stopPropagation();
