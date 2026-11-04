@@ -2003,6 +2003,15 @@ dialog.dialog-box {
 .create-doc .create-keys { opacity: .45; font-size: 12px; }
 @media (max-width: 560px) { .create-doc { padding: 20px 20px 16px; } }
 
+/* ---- Room Markdown: the quiet card before an import (files.js) ---- */
+.create-import { gap: 12px; }
+.create-import-title { font-size: 18px; letter-spacing: .04em; }
+.create-import-sum { font-size: 15px; opacity: .8; }
+.create-import-report { margin: 0; padding: 0 0 0 1.1em; font-size: 13px; line-height: 1.5; opacity: .6; max-height: 12em; overflow: auto; }
+.create-import-report li + li { margin-top: 4px; }
+.create-import .create-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
+.create-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
@@ -2594,7 +2603,7 @@ dialog.menu-drawer::before {
     toastTimer = setTimeout(() => box.classList.remove("show"), 4e3);
   }
   function dialog({ title = "", className = "", size = "full", onClose } = {}) {
-    const heading = el("h2", {}, title);
+    const heading2 = el("h2", {}, title);
     const content = el("div", { class: "dialog-content" });
     const element = el(
       "dialog",
@@ -2605,7 +2614,7 @@ dialog.menu-drawer::before {
         el(
           "div",
           { class: "dialog-head" },
-          heading,
+          heading2,
           el("button", { type: "button", class: "icon-btn ghost", "aria-label": "Close", onclick: () => element.close() }, icon("close"))
         ),
         content
@@ -2630,7 +2639,7 @@ dialog.menu-drawer::before {
         if (element.open) element.close();
       },
       setTitle(text) {
-        heading.textContent = text;
+        heading2.textContent = text;
       },
       setContent(...nodes) {
         content.replaceChildren(...nodes.flat().filter((n) => n != null && n !== false));
@@ -3055,10 +3064,10 @@ dialog.menu-drawer::before {
       this.listeners = /* @__PURE__ */ new Map();
     }
     on(name2, fn, owner = null) {
-      const list = this.listeners.get(name2) || [];
+      const list2 = this.listeners.get(name2) || [];
       const entry = { fn, owner };
-      list.push(entry);
-      this.listeners.set(name2, list);
+      list2.push(entry);
+      this.listeners.set(name2, list2);
       return () => {
         const current = this.listeners.get(name2) || [];
         this.listeners.set(name2, current.filter((e) => e !== entry));
@@ -3075,8 +3084,8 @@ dialog.menu-drawer::before {
       }
     }
     removeOwner(owner) {
-      for (const [name2, list] of this.listeners) {
-        this.listeners.set(name2, list.filter((e) => e.owner !== owner));
+      for (const [name2, list2] of this.listeners) {
+        this.listeners.set(name2, list2.filter((e) => e.owner !== owner));
       }
     }
   };
@@ -4270,12 +4279,12 @@ dialog.menu-drawer::before {
     }
     return t;
   }
-  function imageSeed(rgba, W2, H2) {
+  function imageSeed(rgba, W2, H3) {
     const N = 32;
     let digits = "";
     for (let j = 0; j < N; j++) {
-      const y0 = Math.floor(j * H2 / N);
-      const y12 = Math.max(y0 + 1, Math.floor((j + 1) * H2 / N));
+      const y0 = Math.floor(j * H3 / N);
+      const y12 = Math.max(y0 + 1, Math.floor((j + 1) * H3 / N));
       for (let i2 = 0; i2 < N; i2++) {
         const x0 = Math.floor(i2 * W2 / N);
         const x12 = Math.max(x0 + 1, Math.floor((i2 + 1) * W2 / N));
@@ -4397,8 +4406,8 @@ dialog.menu-drawer::before {
       return 70 * (corner(perm[ii + perm[jj]], x0, y0) + corner(perm[ii + i12 + perm[jj + j12]], x12, y12) + corner(perm[ii + 1 + perm[jj + 1]], x2, y2));
     };
   }
-  function fbm(n, { octaves, lambda, H: H2 }) {
-    const g2 = Math.pow(2, -H2);
+  function fbm(n, { octaves, lambda, H: H3 }) {
+    const g2 = Math.pow(2, -H3);
     let norm = 0;
     for (let o2 = 0, a = 1; o2 < octaves; o2++, a *= g2) norm += a;
     return function f2(x, y) {
@@ -4612,11 +4621,11 @@ dialog.menu-drawer::before {
     }
     return out;
   }
-  function upscale(G, v2, W2, H2, f2) {
+  function upscale(G, v2, W2, H3, f2) {
     const { gw, gh } = G;
-    const out = new Float32Array(W2 * H2);
-    for (let py = 0, p = 0; py < H2; py++) {
-      let gy = (py + 0.5) * gh / H2 - 0.5;
+    const out = new Float32Array(W2 * H3);
+    for (let py = 0, p = 0; py < H3; py++) {
+      let gy = (py + 0.5) * gh / H3 - 0.5;
       gy = gy < 0 ? 0 : gy > gh - 1 ? gh - 1 : gy;
       const j02 = Math.min(gh - 2, Math.floor(gy));
       const fy = gy - j02;
@@ -4658,11 +4667,11 @@ dialog.menu-drawer::before {
     }
     return out;
   }
-  function upscaleMask(G, Fp, T, delta, W2, H2, feather = 0) {
+  function upscaleMask(G, Fp, T, delta, W2, H3, feather = 0) {
     const step = (x) => smoothstep(T - delta, T + delta, x);
-    if (!(feather > 0)) return upscale(G, Fp, W2, H2, step);
+    if (!(feather > 0)) return upscale(G, Fp, W2, H3, step);
     const blurred = gaussianBlur(G, Fp.map(step), feather / G.hx);
-    return upscale(G, blurred, W2, H2, (x) => x);
+    return upscale(G, blurred, W2, H3, (x) => x);
   }
   function maskTone(m2) {
     return m2.map((v2) => 1 - v2);
@@ -4866,7 +4875,7 @@ dialog.menu-drawer::before {
     }
   }
   function flakes(rng, P, canvas, D2) {
-    const { X: X2, Y: Y2, W: W2, H: H2, px } = canvas;
+    const { X: X2, Y: Y2, W: W2, H: H3, px } = canvas;
     const n = simplex(rng.U);
     const count = poisson(rng, P.lambdaK * (X2 + 2 * MARGIN) * (Y2 + 2 * MARGIN));
     for (let f2 = 0; f2 < count; f2++) {
@@ -4888,7 +4897,7 @@ dialog.menu-drawer::before {
       const cos = Math.cos(phi), sin = Math.sin(phi);
       const reach3 = bound * (1 + P.epsK) * len / 2;
       const i02 = Math.max(0, Math.floor((cx - reach3) / px)), i12 = Math.min(W2 - 1, Math.floor((cx + reach3) / px));
-      const j02 = Math.max(0, Math.floor((cy - reach3) / px)), j12 = Math.min(H2 - 1, Math.floor((cy + reach3) / px));
+      const j02 = Math.max(0, Math.floor((cy - reach3) / px)), j12 = Math.min(H3 - 1, Math.floor((cy + reach3) / px));
       for (let j = j02; j <= j12; j++) {
         const y = (j + 0.5) * px;
         for (let i2 = i02; i2 <= i12; i2++) {
@@ -4911,15 +4920,15 @@ dialog.menu-drawer::before {
     }
     return count;
   }
-  function sampled(f2, W2, H2, px, step) {
+  function sampled(f2, W2, H3, px, step) {
     const gw = Math.ceil((W2 - 1) / step) + 1;
-    const gh = Math.ceil((H2 - 1) / step) + 1;
+    const gh = Math.ceil((H3 - 1) / step) + 1;
     const g2 = new Float32Array(gw * gh);
     for (let j = 0; j < gh; j++) {
       for (let i2 = 0; i2 < gw; i2++) g2[j * gw + i2] = f2((i2 * step + 0.5) * px, (j * step + 0.5) * px);
     }
-    const out = new Float32Array(W2 * H2);
-    for (let y = 0, p = 0; y < H2; y++) {
+    const out = new Float32Array(W2 * H3);
+    for (let y = 0, p = 0; y < H3; y++) {
       const j02 = Math.min(gh - 2, Math.floor(y / step));
       const fy = y / step - j02;
       for (let x = 0; x < W2; x++, p++) {
@@ -4936,7 +4945,7 @@ dialog.menu-drawer::before {
   }
   var stepFor = (finest, px) => Math.max(1, Math.min(8, Math.floor(finest / px / 4)));
   function grain(rng, P, canvas) {
-    const { X: X2, Y: Y2, W: W2, H: H2, px } = canvas;
+    const { X: X2, Y: Y2, W: W2, H: H3, px } = canvas;
     const nw = simplex(rng.U);
     const o12 = rng.U() * 1e3;
     const o2 = rng.U() * 1e3;
@@ -4976,11 +4985,11 @@ dialog.menu-drawer::before {
       return Math.sqrt(f2) - Math.sqrt(f12);
     };
     const sw = stepFor(P.lambdaGw / 4, px);
-    const wx = sampled((x, y) => nw(x / P.lambdaGw, y / P.lambdaGw + o12), W2, H2, px, sw);
-    const wy = sampled((x, y) => nw(x / P.lambdaGw + o2, y / P.lambdaGw), W2, H2, px, sw);
-    const mo = sampled(mottle, W2, H2, px, stepFor(P.lambdaN / 8, px));
-    const h = new Float32Array(W2 * H2);
-    for (let j = 0, p = 0; j < H2; j++) {
+    const wx = sampled((x, y) => nw(x / P.lambdaGw, y / P.lambdaGw + o12), W2, H3, px, sw);
+    const wy = sampled((x, y) => nw(x / P.lambdaGw + o2, y / P.lambdaGw), W2, H3, px, sw);
+    const mo = sampled(mottle, W2, H3, px, stepFor(P.lambdaN / 8, px));
+    const h = new Float32Array(W2 * H3);
+    for (let j = 0, p = 0; j < H3; j++) {
       const y = (j + 0.5) * px;
       for (let i2 = 0; i2 < W2; i2++, p++) {
         const x = (i2 + 0.5) * px;
@@ -4991,10 +5000,10 @@ dialog.menu-drawer::before {
     }
     const psi = P.psi * Math.PI / 180;
     const lx = Math.cos(psi), ly = Math.sin(psi);
-    const S2 = new Float32Array(W2 * H2);
+    const S2 = new Float32Array(W2 * H3);
     const k2 = -P.aG * P.lambdaG / px;
-    for (let j = 0, p = 0; j < H2; j++) {
-      const ju = j > 0 ? j - 1 : j, jd = j < H2 - 1 ? j + 1 : j;
+    for (let j = 0, p = 0; j < H3; j++) {
+      const ju = j > 0 ? j - 1 : j, jd = j < H3 - 1 ? j + 1 : j;
       for (let i2 = 0; i2 < W2; i2++, p++) {
         const il = i2 > 0 ? i2 - 1 : i2, ir2 = i2 < W2 - 1 ? i2 + 1 : i2;
         const gx = (h[j * W2 + ir2] - h[j * W2 + il]) / (ir2 - il || 1);
@@ -5005,9 +5014,9 @@ dialog.menu-drawer::before {
     }
     return S2;
   }
-  function cloud(rng, P, { W: W2, H: H2, px }) {
+  function cloud(rng, P, { W: W2, H: H3, px }) {
     const f2 = fbm(simplex(rng.U), { octaves: 4, lambda: P.lambdaCl, H: 0.5 });
-    return sampled((x, y) => P.aCl * f2(x, y), W2, H2, px, stepFor(P.lambdaCl / 8, px));
+    return sampled((x, y) => P.aCl * f2(x, y), W2, H3, px, stepFor(P.lambdaCl / 8, px));
   }
   var PARTS = {
     fibres: ["lambdaF", "muL", "sL", "lp", "muW", "muB", "muA", "sA", "sigmaW", "sigmaB", "sigmaA", "ellG"],
@@ -5060,18 +5069,18 @@ dialog.menu-drawer::before {
       ab: [0.6, 1.2]
     };
   }
-  function part(name2, seed, X2, Y2, W2, H2, P) {
-    const canvas = { X: X2, Y: Y2, W: W2, H: H2, px: X2 / W2 };
+  function part(name2, seed, X2, Y2, W2, H3, P) {
+    const canvas = { X: X2, Y: Y2, W: W2, H: H3, px: X2 / W2 };
     const rng = stream(seed, `:pattern:${name2}`);
     if (name2 === "grain") return { S: grain(rng, P, canvas) };
     if (name2 === "cloud") return { C: cloud(rng, P, canvas) };
-    const D2 = new Float32Array(W2 * H2);
+    const D2 = new Float32Array(W2 * H3);
     if (name2 === "flakes") return { D: D2, count: flakes(rng, P, canvas, D2) };
     canvas.scratch = {
-      d2: new Float32Array(W2 * H2).fill(Infinity),
-      w: new Float32Array(W2 * H2),
-      b: new Float32Array(W2 * H2),
-      a: new Float32Array(W2 * H2),
+      d2: new Float32Array(W2 * H3).fill(Infinity),
+      w: new Float32Array(W2 * H3),
+      b: new Float32Array(W2 * H3),
+      a: new Float32Array(W2 * H3),
       touched: []
     };
     return { D: D2, count: strokes(rng, strokeKind(name2, P), canvas, D2) };
@@ -5266,12 +5275,12 @@ dialog.menu-drawer::before {
     const { g: g2, o: o2 } = life(mk, t - mk.t0);
     const amp = mk.a * o2;
     if (amp < 1e-3 || g2 <= 0) return;
-    const { W: W2, H: H2, scale, px } = cv;
+    const { W: W2, H: H3, scale, px } = cv;
     const [bx0, by0, bx1, by1] = mk.box;
     const i02 = Math.max(0, Math.floor(bx0 * scale));
     const i12 = Math.min(W2 - 1, Math.ceil(bx1 * scale));
     const j02 = Math.max(0, Math.floor(by0 * scale));
-    const j12 = Math.min(H2 - 1, Math.ceil(by1 * scale));
+    const j12 = Math.min(H3 - 1, Math.ceil(by1 * scale));
     const b = Math.sqrt(mk.b * mk.b + (px / 2) ** 2);
     const k2 = 1 / (Math.SQRT2 * b);
     if (mk.kind === "dot") {
@@ -5326,12 +5335,12 @@ dialog.menu-drawer::before {
     }
   }
   var Living = class {
-    constructor(process, base2, W2, H2, ak, alpha) {
-      const scale = Math.min(W2, H2);
-      Object.assign(this, { process, base: base2, W: W2, H: H2, ak, alpha });
-      this.cv = { W: W2, H: H2, scale, px: 1 / scale };
+    constructor(process, base2, W2, H3, ak, alpha) {
+      const scale = Math.min(W2, H3);
+      Object.assign(this, { process, base: base2, W: W2, H: H3, ak, alpha });
+      this.cv = { W: W2, H: H3, scale, px: 1 / scale };
       this.rgba = new Uint8ClampedArray(base2);
-      this.D = new Float32Array(W2 * H2);
+      this.D = new Float32Array(W2 * H3);
       this.drawn = [];
     }
     frame(t) {
@@ -5347,11 +5356,11 @@ dialog.menu-drawer::before {
       return rects;
     }
     rect([x0, y0, x12, y12]) {
-      const { W: W2, H: H2, cv } = this;
+      const { W: W2, H: H3, cv } = this;
       const i02 = Math.max(0, Math.floor(x0 * cv.scale));
       const j02 = Math.max(0, Math.floor(y0 * cv.scale));
       const i12 = Math.min(W2 - 1, Math.ceil(x12 * cv.scale));
-      const j12 = Math.min(H2 - 1, Math.ceil(y12 * cv.scale));
+      const j12 = Math.min(H3 - 1, Math.ceil(y12 * cv.scale));
       return [i02, j02, i12 - i02 + 1, j12 - j02 + 1];
     }
     composite([x, y, w2, h]) {
@@ -5642,12 +5651,12 @@ dialog.menu-drawer::before {
       length: net.length
     };
   }
-  function drawNetwork(net, rgba, W2, H2, w2, ink) {
+  function drawNetwork(net, rgba, W2, H3, w2, ink) {
     const out = new Uint8ClampedArray(rgba);
-    const s = Math.min(W2, H2);
+    const s = Math.min(W2, H3);
     const half = Math.max(0.5, w2 * s / 2);
     const paint2 = (px, py, a) => {
-      if (px < 0 || py < 0 || px >= W2 || py >= H2 || a <= 0) return;
+      if (px < 0 || py < 0 || px >= W2 || py >= H3 || a <= 0) return;
       const q = 4 * (py * W2 + px);
       for (let c = 0; c < 3; c++) out[q + c] = out[q + c] + (ink[c] - out[q + c]) * Math.min(1, a);
     };
@@ -5933,9 +5942,9 @@ dialog.menu-drawer::before {
     return { n, ...sk, ...f2, comps, verdict };
   }
   function mask(e, P, anchorFrac) {
-    const { X: X2, Y: Y2, W: W2, H: H2 } = e.image;
+    const { X: X2, Y: Y2, W: W2, H: H3 } = e.image;
     const anchor = { x: anchorFrac.x * X2, y: anchorFrac.y * Y2 };
-    const G = grid(X2, Y2, Math.min(FIELD_SHORT, Math.min(W2, H2)));
+    const G = grid(X2, Y2, Math.min(FIELD_SHORT, Math.min(W2, H3)));
     const attempts = [];
     let best = null;
     for (let n = 0; n <= REROLLS; n++) {
@@ -5947,28 +5956,28 @@ dialog.menu-drawer::before {
     return { G, anchor, attempts, best };
   }
   function pattern(e, P) {
-    const { seed, X: X2, Y: Y2, W: W2, H: H2 } = e.image;
+    const { seed, X: X2, Y: Y2, W: W2, H: H3 } = e.image;
     const c = e.patternCache ||= { parts: {} };
     const t02 = performance.now();
     let changed = !c.Dw;
     for (const [name2, keys] of Object.entries(PARTS)) {
       const key = keys.map((k2) => P[k2]).join();
       if (c.parts[name2]?.key === key) continue;
-      c.parts[name2] = { key, ...part(name2, seed, X2, Y2, W2, H2, P) };
+      c.parts[name2] = { key, ...part(name2, seed, X2, Y2, W2, H3, P) };
       changed = true;
     }
     if (changed) Object.assign(c, combine(c.parts), { ms: performance.now() - t02 });
     return c;
   }
   function view(e, name2, P, r) {
-    const { W: W2, H: H2 } = e.image;
+    const { W: W2, H: H3 } = e.image;
     colours(e, P);
     const t = tone2(e, P);
     const delta = shift(e, P);
     if (name2 === "monochrome") {
-      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, e.ink, e.paper)) : paint(t, e.lut), width: W2, height: H2 };
+      return { rgba: delta ? paintLinear(shiftedLinear(t, null, delta, e.ink, e.paper)) : paint(t, e.lut), width: W2, height: H3 };
     }
-    if (name2 === "pattern") return { rgba: washi(e, null, P), width: W2, height: H2 };
+    if (name2 === "pattern") return { rgba: washi(e, null, P), width: W2, height: H3 };
     const { G, best } = r;
     if (name2 === "field") {
       return {
@@ -5979,11 +5988,11 @@ dialog.menu-drawer::before {
       };
     }
     const m2 = fullMask(e, P, r);
-    if (name2 === "mask") return { rgba: paint(maskTone(m2), e.lut), width: W2, height: H2 };
+    if (name2 === "mask") return { rgba: paint(maskTone(m2), e.lut), width: W2, height: H3 };
     const tb = baseTone(t, m2);
     const lin2 = delta ? shiftedLinear(tb, m2, delta, e.ink, e.paper) : null;
-    if (name2 === "washi" || name2 === "living") return { rgba: washi(e, tb, P, lin2), width: W2, height: H2 };
-    return { rgba: lin2 ? paintLinear(lin2) : paint(tb, e.lut), width: W2, height: H2 };
+    if (name2 === "washi" || name2 === "living") return { rgba: washi(e, tb, P, lin2), width: W2, height: H3 };
+    return { rgba: lin2 ? paintLinear(lin2) : paint(tb, e.lut), width: W2, height: H3 };
   }
   function shift(e, P) {
     const dL = P.baseL || 0;
@@ -5999,14 +6008,14 @@ dialog.menu-drawer::before {
   }
   function living(e, P, rgba) {
     colours(e, P);
-    const { seed, X: X2, Y: Y2, W: W2, H: H2 } = e.image;
-    return new Living(new Spontaneity(seed, X2, Y2, P), rgba, W2, H2, e.inkAbsorber, P.alphaS);
+    const { seed, X: X2, Y: Y2, W: W2, H: H3 } = e.image;
+    return new Living(new Spontaneity(seed, X2, Y2, P), rgba, W2, H3, e.inkAbsorber, P.alphaS);
   }
   function fullMask(e, P, r) {
     const c = e.maskCache;
     if (c?.r !== r || c.delta !== P.delta || c.feather !== P.feather) {
-      const { W: W2, H: H2 } = e.image;
-      const m2 = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W2, H2, P.feather);
+      const { W: W2, H: H3 } = e.image;
+      const m2 = upscaleMask(r.G, r.best.Fp, r.best.T, P.delta, W2, H3, P.feather);
       e.maskCache = { r, delta: P.delta, feather: P.feather, m: m2 };
     }
     return e.maskCache.m;
@@ -6056,10 +6065,10 @@ dialog.menu-drawer::before {
   var KAPPA = 20;
   var WINDOW = 15;
   var SAMPLE_LONG = 256;
-  function dominantHue(rgba, W2, H2, fallback) {
-    const k2 = Math.max(1, Math.max(W2, H2) / SAMPLE_LONG);
+  function dominantHue(rgba, W2, H3, fallback) {
+    const k2 = Math.max(1, Math.max(W2, H3) / SAMPLE_LONG);
     const sw = Math.max(1, Math.floor(W2 / k2));
-    const sh = Math.max(1, Math.floor(H2 / k2));
+    const sh = Math.max(1, Math.floor(H3 / k2));
     const hist = new Float64Array(BINS);
     const Ls = [];
     const Cs = [];
@@ -6067,7 +6076,7 @@ dialog.menu-drawer::before {
     let sumC = 0;
     for (let j = 0; j < sh; j++) {
       for (let i2 = 0; i2 < sw; i2++) {
-        const q = 4 * (Math.min(H2 - 1, Math.floor((j + 0.5) * k2)) * W2 + Math.min(W2 - 1, Math.floor((i2 + 0.5) * k2)));
+        const q = 4 * (Math.min(H3 - 1, Math.floor((j + 0.5) * k2)) * W2 + Math.min(W2 - 1, Math.floor((i2 + 0.5) * k2)));
         const [L, a, b] = linearToOklab([LINEAR_BYTE[rgba[q]], LINEAR_BYTE[rgba[q + 1]], LINEAR_BYTE[rgba[q + 2]]]);
         const C = Math.hypot(a, b);
         sumC += C;
@@ -6296,7 +6305,7 @@ dialog.menu-drawer::before {
   function headroom(L) {
     return Math.min(1, Math.max(0, (1 - L) / 0.35));
   }
-  function plainRGB(view4, field3, base2, P, W2, H2) {
+  function plainRGB(view4, field3, base2, P, W2, H3) {
     const N = 1024;
     const eta = headroom(base2.L);
     const lut = new Float32Array(3 * N);
@@ -6310,10 +6319,10 @@ dialog.menu-drawer::before {
       for (let c = 0; c < 3; c++) lut[3 * i2 + c] = 255 * delinearise(rgb2[c]);
     }
     const { phi, pw, ph } = field3;
-    const out = new Uint8ClampedArray(4 * W2 * H2);
+    const out = new Uint8ClampedArray(4 * W2 * H3);
     const R = mulberry32(2654435769);
-    for (let y = 0; y < H2; y++) {
-      const fy = Math.min(ph - 1.001, Math.max(0, (y + 0.5) * ph / H2 - 0.5));
+    for (let y = 0; y < H3; y++) {
+      const fy = Math.min(ph - 1.001, Math.max(0, (y + 0.5) * ph / H3 - 0.5));
       const j = fy | 0;
       const ty = fy - j;
       for (let x = 0; x < W2; x++) {
@@ -6386,8 +6395,8 @@ dialog.menu-drawer::before {
   var base = (e, P) => baseColour(hue(e, P), P);
   var field2 = (e, P) => e.stage(plainMode, "field", P);
   function view2(e, name2, P) {
-    const { W: W2, H: H2 } = e.image;
-    return { rgba: plainRGB(name2, field2(e, P), base(e, P), P, W2, H2), width: W2, height: H2 };
+    const { W: W2, H: H3 } = e.image;
+    return { rgba: plainRGB(name2, field2(e, P), base(e, P), P, W2, H3), width: W2, height: H3 };
   }
   function glow(e, P) {
     const { seed, X: X2, Y: Y2 } = e.image;
@@ -6441,14 +6450,14 @@ dialog.menu-drawer::before {
   var LAMBDA_D = 0.25;
   var OCTAVES_D = 2;
   var GREY_C = 0.012;
-  function sample(rgba, W2, H2, tint) {
-    const s = Math.min(W2, H2);
+  function sample(rgba, W2, H3, tint) {
+    const s = Math.min(W2, H3);
     const sw = Math.max(2, Math.round(W2 / s * SAMPLE_SHORT));
-    const sh = Math.max(2, Math.round(H2 / s * SAMPLE_SHORT));
+    const sh = Math.max(2, Math.round(H3 / s * SAMPLE_SHORT));
     const lin2 = new Float64Array(3 * sw * sh);
     const count = new Float64Array(sw * sh);
-    for (let y = 0; y < H2; y++) {
-      const j = Math.min(sh - 1, Math.floor(y * sh / H2));
+    for (let y = 0; y < H3; y++) {
+      const j = Math.min(sh - 1, Math.floor(y * sh / H3));
       for (let x = 0; x < W2; x++) {
         const i2 = Math.min(sw - 1, Math.floor(x * sw / W2));
         const c = j * sw + i2;
@@ -6570,10 +6579,10 @@ dialog.menu-drawer::before {
       out[ch] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
     }
   }
-  function fog(rgba, W2, H2, seed, P) {
-    const X2 = W2 / Math.min(W2, H2);
-    const Y2 = H2 / Math.min(W2, H2);
-    const { lab, sw, sh, grey } = sample(rgba, W2, H2, P.tint);
+  function fog(rgba, W2, H3, seed, P) {
+    const X2 = W2 / Math.min(W2, H3);
+    const Y2 = H3 / Math.min(W2, H3);
+    const { lab, sw, sh, grey } = sample(rgba, W2, H3, P.tint);
     const pal2 = kmeans(lab, sw * sh, seed);
     const f2 = fogField(lab, sw, sh, pal2, P.fogSigma);
     const { U: U2 } = stream(seed, ":planar:fog");
@@ -6599,11 +6608,11 @@ dialog.menu-drawer::before {
     }
     return { rgb: rgb2, fw, fh, palette: pal2, grey, sw, sh };
   }
-  function fogRGB({ rgb: rgb2, fw, fh }, W2, H2) {
-    const out = new Uint8ClampedArray(4 * W2 * H2);
+  function fogRGB({ rgb: rgb2, fw, fh }, W2, H3) {
+    const out = new Uint8ClampedArray(4 * W2 * H3);
     const R = mulberry32(2246822507);
-    for (let y = 0; y < H2; y++) {
-      const fy = Math.min(fh - 1.001, Math.max(0, (y + 0.5) * fh / H2 - 0.5));
+    for (let y = 0; y < H3; y++) {
+      const fy = Math.min(fh - 1.001, Math.max(0, (y + 0.5) * fh / H3 - 0.5));
       const j = fy | 0;
       const ty = fy - j;
       for (let x = 0; x < W2; x++) {
@@ -6655,9 +6664,9 @@ dialog.menu-drawer::before {
       fog: {
         keys: FOG_KEYS,
         make(e, P) {
-          const { W: W2, H: H2 } = e.image;
+          const { W: W2, H: H3 } = e.image;
           const t02 = performance.now();
-          const f2 = fog(e.rgba, W2, H2, e.image.seed, P);
+          const f2 = fog(e.rgba, W2, H3, e.image.seed, P);
           return { ...f2, ms: performance.now() - t02 };
         }
       },
@@ -6674,10 +6683,10 @@ dialog.menu-drawer::before {
     // 'base', 'planar' and 'living': the fog (the network is latent). 'pattern': the fog with the
     // network drawn over it. 'living' then plays the flashes over it.
     view(e, name2, P) {
-      const { W: W2, H: H2 } = e.image;
-      const fog2 = fogRGB(fogOf(e, P), W2, H2);
-      const rgba = name2 === "pattern" ? drawNetwork(networkOf(e, P), fog2, W2, H2, LINE_WIDTH, LINE_INK) : fog2;
-      return { rgba, width: W2, height: H2 };
+      const { W: W2, H: H3 } = e.image;
+      const fog2 = fogRGB(fogOf(e, P), W2, H3);
+      const rgba = name2 === "pattern" ? drawNetwork(networkOf(e, P), fog2, W2, H3, LINE_WIDTH, LINE_INK) : fog2;
+      return { rgba, width: W2, height: H3 };
     },
     // E1–E5 as a 'layer' animation: crisp lines at the screen's resolution, on a clear canvas.
     living(e, P) {
@@ -6719,15 +6728,15 @@ dialog.menu-drawer::before {
     }
     // Steps 1–2 and the percentiles, once per image; the seed from the 32×32 thumbnail.
     // seed: pass one to keep it when the same picture is loaded again at another size.
-    load(rgba, W2, H2, seed = imageSeed(rgba, W2, H2)) {
+    load(rgba, W2, H3, seed = imageSeed(rgba, W2, H3)) {
       const L = lightness(rgba);
       this.rgba = rgba;
-      const s = Math.min(W2, H2);
+      const s = Math.min(W2, H3);
       this.image = {
         W: W2,
-        H: H2,
+        H: H3,
         X: W2 / s,
-        Y: H2 / s,
+        Y: H3 / s,
         L,
         bw: quantiles(L, [0.01, 0.99]),
         seed
@@ -6905,8 +6914,8 @@ dialog.menu-drawer::before {
     };
   }
   var PICTURE_CHROMA = { share: 0.35, least: 0.015, most: 0.06 };
-  function tintFromPicture(rgba, W2, H2, tint = DEFAULT_TINT) {
-    const found = dominantHue(rgba, W2, H2, tint);
+  function tintFromPicture(rgba, W2, H3, tint = DEFAULT_TINT) {
+    const found = dominantHue(rgba, W2, H3, tint);
     if (found.grey) return null;
     const [L] = oklabToOklch(hexToOklab(tint));
     const C = Math.min(PICTURE_CHROMA.most, Math.max(PICTURE_CHROMA.least, PICTURE_CHROMA.share * found.C));
@@ -7152,17 +7161,17 @@ dialog.menu-drawer::before {
     render() {
       const { w: w2, h } = this.screen();
       const src = this.source;
-      const { W: W2, H: H2 } = src ? this.size(src.W, src.H) : this.size(w2, h);
+      const { W: W2, H: H3 } = src ? this.size(src.W, src.H) : this.size(w2, h);
       let rgba;
       if (src) {
-        const work = new OffscreenCanvas(W2, H2).getContext("2d", { willReadFrequently: true });
+        const work = new OffscreenCanvas(W2, H3).getContext("2d", { willReadFrequently: true });
         work.imageSmoothingQuality = "high";
-        work.drawImage(src.bitmap, 0, 0, W2, H2);
-        rgba = work.getImageData(0, 0, W2, H2).data;
+        work.drawImage(src.bitmap, 0, 0, W2, H3);
+        rgba = work.getImageData(0, 0, W2, H3).data;
       } else {
-        rgba = new Uint8ClampedArray(W2 * H2 * 4).fill(255);
+        rgba = new Uint8ClampedArray(W2 * H3 * 4).fill(255);
       }
-      this.seed = this.engine.load(rgba, W2, H2, src?.seed);
+      this.seed = this.engine.load(rgba, W2, H3, src?.seed);
       this.error?.show(null);
       this.draw();
     }
@@ -7170,10 +7179,10 @@ dialog.menu-drawer::before {
     // or if white no longer has the screen's shape.
     fit() {
       if (!this.engine.image) return;
-      const { W: W2, H: H2 } = this.engine.image;
+      const { W: W2, H: H3 } = this.engine.image;
       const { w: w2, h } = this.screen();
       const want = this.source ? this.size(this.source.W, this.source.H) : this.size(w2, h);
-      if (Math.abs(want.W / W2 - 1) > 0.1 || Math.abs(want.H / H2 - 1) > 0.1) this.render();
+      if (Math.abs(want.W / W2 - 1) > 0.1 || Math.abs(want.H / H3 - 1) > 0.1) this.render();
     }
     showMarks(on) {
       this.marks = on;
@@ -7187,10 +7196,10 @@ dialog.menu-drawer::before {
         const bitmap = await createImageBitmap(file);
         const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
         const W2 = Math.max(1, Math.round(bitmap.width * scale));
-        const H2 = Math.max(1, Math.round(bitmap.height * scale));
-        const work = new OffscreenCanvas(W2, H2).getContext("2d", { willReadFrequently: true });
-        work.drawImage(bitmap, 0, 0, W2, H2);
-        const seed = imageSeed(work.getImageData(0, 0, W2, H2).data, W2, H2);
+        const H3 = Math.max(1, Math.round(bitmap.height * scale));
+        const work = new OffscreenCanvas(W2, H3).getContext("2d", { willReadFrequently: true });
+        work.drawImage(bitmap, 0, 0, W2, H3);
+        const seed = imageSeed(work.getImageData(0, 0, W2, H3).data, W2, H3);
         this.source = { bitmap, W: bitmap.width, H: bitmap.height, seed };
         this.render();
       } catch {
@@ -7258,8 +7267,8 @@ dialog.menu-drawer::before {
       this.paintOverlay();
       if (this.current === "living" && mode.living) this.play();
       if (!this.panel) return;
-      const { W: W2, H: H2 } = this.engine.image;
-      this.seedLine.replaceChildren("Seed ", el4("code", {}, this.seed.seedText), ` · ${W2} × ${H2} px` + (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ""));
+      const { W: W2, H: H3 } = this.engine.image;
+      this.seedLine.replaceChildren("Seed ", el4("code", {}, this.seed.seedText), ` · ${W2} × ${H3} px` + (mode.usesAnchor ? ` · anchor (${this.anchor.x.toFixed(3)}, ${this.anchor.y.toFixed(3)})` : ""));
       const r = this.engine.report(mode, this.P, this.current, this.ctx());
       this.report.replaceChildren(
         el4("h3", {}, "Report"),
@@ -7341,9 +7350,9 @@ dialog.menu-drawer::before {
     // Where the picture lies in a box w × h when it covers it (object-fit: cover): its size and the
     // offset of its top left corner, which is negative on the sides that are cropped.
     cover(w2, h) {
-      const { W: W2, H: H2 } = this.engine.image;
-      const k2 = Math.max(w2 / W2, h / H2);
-      return { x: (w2 - W2 * k2) / 2, y: (h - H2 * k2) / 2, w: W2 * k2, h: H2 * k2 };
+      const { W: W2, H: H3 } = this.engine.image;
+      const k2 = Math.max(w2 / W2, h / H3);
+      return { x: (w2 - W2 * k2) / 2, y: (h - H3 * k2) / 2, w: W2 * k2, h: H3 * k2 };
     }
     // The anchor (every view) and the threshold contour (Field view), drawn crisp at screen size.
     paintOverlay() {
@@ -11327,6 +11336,32 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return text ? { text } : null;
     },
     text: (th) => th.text || "",
+    // In room Markdown (../roomfile.js): "- words", and each further line indented under it.
+    md: {
+      order: 20,
+      read(lines2, i2) {
+        const m2 = /^-(?:\s+(.*))?$/.exec(lines2[i2]);
+        if (!m2) return null;
+        const out = [m2[1] || ""];
+        let j = i2 + 1;
+        while (j < lines2.length) {
+          if (/^\s+\S/.test(lines2[j])) {
+            out.push(lines2[j].trim());
+            j++;
+            continue;
+          }
+          let k2 = j;
+          while (k2 < lines2.length && !lines2[k2].trim()) k2++;
+          if (k2 > j && k2 < lines2.length && /^\s+\S/.test(lines2[k2])) {
+            for (; j < k2; j++) out.push("");
+            continue;
+          }
+          break;
+        }
+        return { fields: { kind: "line", text: out.join("\n") }, end: j };
+      },
+      write: (th) => th.text.split("\n").map((l2, k2) => k2 ? l2 ? "  " + l2 : "" : "- " + l2).join("\n")
+    },
     node: (th, el7) => el7("span", { class: "create-thought", "data-id": th.id }, maths(th.text))
   };
 
@@ -11339,6 +11374,28 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return title || body ? { title, body } : null;
     },
     text: (th) => [th.title, th.body].filter(Boolean).join(" — "),
+    // In room Markdown (../roomfile.js): "### Title" and the paragraphs under it, blank lines
+    // between them, until the next thing; a bare ### for no title. A paragraph with no ### above it
+    // is a passage of its own. Lines that would read as something else get a backslash (h.escape).
+    md: {
+      order: 90,
+      // last: whatever nothing else takes is a paragraph
+      read(lines2, i2, h) {
+        const m2 = /^###(?:\s+(.*?))?\s*$/.exec(lines2[i2]);
+        const titled = !!m2;
+        let j = titled ? i2 + 1 : i2;
+        const body = [];
+        while (j < lines2.length) {
+          const l2 = lines2[j];
+          const stop = h.structural(l2) || !titled && !l2.trim();
+          if (stop && !(h.mathOpen(body) && h.closesAhead(lines2, j))) break;
+          body.push(h.unescape(l2));
+          j++;
+        }
+        return { fields: { kind: "passage", title: titled ? m2[1] || "" : "", body: body.join("\n") }, end: j };
+      },
+      write: (th, h) => [th.title ? `### ${th.title}` : "###", ...th.body ? th.body.split("\n").map(h.escape) : []].join("\n")
+    },
     node: (th, el7) => el7(
       "div",
       { class: "create-passage", "data-id": th.id },
@@ -11356,6 +11413,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return src ? { src, text: h.oneLine(f2.text) } : null;
     },
     text: (th) => th.text ? `[${th.text}]` : "[picture]",
+    // In room Markdown (../roomfile.js): ![caption](data:image/… or https://…). An https picture
+    // keeps its address (url) until Create fetches it; one it can't becomes a line saying so.
+    md: {
+      order: 10,
+      read(lines2, i2) {
+        const m2 = /^!\[(.*)\]\((\S+)\)\s*$/.exec(lines2[i2]);
+        if (!m2) return null;
+        const at2 = m2[2];
+        return { fields: at2.startsWith("data:") ? { kind: "picture", src: at2, text: m2[1] } : { kind: "picture", url: at2, text: m2[1] }, end: i2 + 1 };
+      },
+      write: (th) => `![${th.text || ""}](${th.src})`
+    },
     node: (th, el7) => el7(
       "figure",
       { class: "create-picture", "data-id": th.id },
@@ -11514,9 +11583,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var TAG = 30;
   var tidyTag = (s) => oneLine(s).replace(/^#+\s*/, "").slice(0, TAG).trim();
   var same = (a, b) => a.toLowerCase() === b.toLowerCase();
-  function tidyTags(list) {
+  function tidyTags(list2) {
     const out = [];
-    for (const t of Array.isArray(list) ? list : []) {
+    for (const t of Array.isArray(list2) ? list2 : []) {
       const tag = tidyTag(t);
       if (tag && !out.some((o2) => same(o2, tag))) out.push(tag);
     }
@@ -11833,7 +11902,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!r.tags.length) delete r.tags;
     return true;
   }
-  function allTags2(w2, ontologies = [], shelf = false) {
+  function allTags(w2, ontologies = [], shelf = false) {
     const counts2 = /* @__PURE__ */ new Map();
     const all = shelf ? [...rooms(w2), ...archived(w2)] : rooms(w2);
     for (const r of all) {
@@ -11874,7 +11943,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function tagsByGroup(w2, ontologies = [], shelf = false) {
     const out = /* @__PURE__ */ new Map();
     for (const g2 of w2.groupsMade || []) if (!same(g2, ONTOLOGY) && !out.has(g2.toLowerCase())) out.set(g2.toLowerCase(), { group: g2, tags: [] });
-    for (const t of allTags2(w2, ontologies, shelf)) {
+    for (const t of allTags(w2, ontologies, shelf)) {
       const g2 = tagGroup(w2, t.tag, ontologies);
       const key = g2 ? g2.toLowerCase() : "";
       if (!out.has(key)) out.set(key, { group: g2, tags: [] });
@@ -11888,7 +11957,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const tag = tidyTag(text);
     if (!tag || isMode(tag, ontologies)) return false;
     const made = w2.tagsMade ||= [];
-    const had = allTags2(w2, ontologies, true).some((t) => same(t.tag, tag));
+    const had = allTags(w2, ontologies, true).some((t) => same(t.tag, tag));
     if (!had) made.push(tag);
     return setTagGroup(w2, tag, group, ontologies) || !had;
   }
@@ -12084,8 +12153,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }, c.thoughtNode(t)));
           continue;
         }
-        const spots = trainSpots(w2, t.id);
-        const knots = trainThoughts(w2, t.id).map((th) => ({ th, ...spots[th.id] }));
+        const spots2 = trainSpots(w2, t.id);
+        const knots = trainThoughts(w2, t.id).map((th) => ({ th, ...spots2[th.id] }));
         if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w2, t.id), draft: true });
         const g2 = document.createElementNS(SVG, "g");
         g2.setAttribute("data-group", t.id);
@@ -12652,9 +12721,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             style: `left:${at2.x}px;top:${at2.y}px`
           }, el7("span", { class: "create-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
-          const spots = chapterSpots(w2, g2.id, at2);
+          const spots2 = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
-            const sp = spots[th.id];
+            const sp = spots2[th.id];
             nodes.push(el7("div", {
               class: cls + (chosen || c.isSel(th.id) ? " selected" : "") + (c.found === th.id ? " found" : ""),
               "data-group": g2.id,
@@ -12664,7 +12733,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           if (c.draft?.train === g2.id && !c.draft.edit) {
             const last = members(w2, g2.id).at(-1);
-            const y = last ? spots[last.id].y + stepAfter(last) : at2.y;
+            const y = last ? spots2[last.id].y + stepAfter(last) : at2.y;
             nodes.push(el7("div", { class: "create-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
@@ -12745,9 +12814,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return update(w2, id, { text: words }, now);
     }
     if (!words.trim()) return null;
-    const list = members(w2, chapterId);
-    const i2 = prev ? list.findIndex((th2) => th2.id === prev) : -1;
-    const at2 = between(list[i2] || null, list[i2 + 1] || null, now);
+    const list2 = members(w2, chapterId);
+    const i2 = prev ? list2.findIndex((th2) => th2.id === prev) : -1;
+    const at2 = between(list2[i2] || null, list2[i2 + 1] || null, now);
     const th = create(w2, chapterId, { kind: "line", text: words }, now);
     if (th) th.at = at2;
     return th;
@@ -12803,14 +12872,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (e.key === "Escape") {
           e.preventDefault();
           keep();
-          draw();
+          draw2();
           sheet.focus({ preventScroll: true });
           return;
         }
         if (e.key === "Backspace" && !box.value && !e.isComposing) {
-          const list = thoughts();
-          const here = id ? list.findIndex((t) => t.id === id) : list.findIndex((t) => t.id === prev) + 1;
-          const back = list[here - 1];
+          const list2 = thoughts();
+          const here = id ? list2.findIndex((t) => t.id === id) : list2.findIndex((t) => t.id === prev) + 1;
+          const back = list2[here - 1];
           if (back && kindOf(back) === "line") {
             e.preventDefault();
             keep();
@@ -12827,29 +12896,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         if (!box.value.trim() && !id) {
           keep();
-          draw();
+          draw2();
           return;
         }
         const kept = keep();
         write(null, kept?.id || prev);
       });
-      draw();
+      draw2();
       box.focus({ preventScroll: true });
       const at2 = caret === "end" ? box.value.length : 0;
       box.setSelectionRange(at2, at2);
       grow(box);
       box.scrollIntoView?.({ block: "nearest" });
     };
-    const draw = () => {
+    const draw2 = () => {
       if (!w2().things[chapterId]) {
         close();
         return;
       }
-      const list = thoughts();
+      const list2 = thoughts();
       const out = [];
       const fresh = writing && !writing.id ? writing : null;
       if (fresh && !fresh.prev) out.push(c.el("div", { class: "create-doc-para writing" }, fresh.box));
-      for (const th of list) {
+      for (const th of list2) {
         if (writing?.id === th.id) out.push(c.el("div", { class: "create-doc-para writing" }, writing.box));
         else if (kindOf(th) === "line") {
           out.push(c.el("div", {
@@ -12879,8 +12948,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (e.key === "Enter" && !e.isComposing) {
           e.preventDefault();
           title.blur();
-          const list = thoughts();
-          if (!list.length) write(null);
+          const list2 = thoughts();
+          if (!list2.length) write(null);
         }
       },
       onchange: () => {
@@ -12895,8 +12964,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       class: "create-doc-more",
       "aria-label": "Write the next thought",
       onclick: () => {
-        const list = thoughts();
-        write(null, list.at(-1)?.id || null);
+        const list2 = thoughts();
+        write(null, list2.at(-1)?.id || null);
       }
     }, "+");
     const sheet = c.el(
@@ -12924,7 +12993,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     c.editing = { kind: "document", id: chapterId, close };
     c.docEl.replaceChildren(sheet);
     c.docEl.hidden = false;
-    draw();
+    draw2();
     sheet.focus({ preventScroll: true });
     setTimeout(() => {
       if (!c.docEl.hidden) document.addEventListener("pointerdown", outside, true);
@@ -13236,7 +13305,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { type: "button", class: "create-kind", onclick: () => this.newRoom(c, k2.id) },
           el5("span", { class: "create-kind-name" }, k2.name),
           el5("span", { class: "create-add-note" }, k2.note || "")
-        ))
+        )),
+        // Or a room from a room Markdown file (files.js), in this cell.
+        el5(
+          "button",
+          { type: "button", class: "create-kind create-kind-import", onclick: () => {
+            this.making = null;
+            this.drawRooms();
+            this.importRoomFile(null, c);
+          } },
+          el5("span", { class: "create-kind-name" }, "Import a room…"),
+          el5("span", { class: "create-add-note" }, "from a .md file")
+        )
       );
     }
     drawPages() {
@@ -13603,7 +13683,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (keep && setTagGroup(this.world, tag, value, this.ontologies)) this.save();
         this.drawTags();
       };
-      const list = el5("datalist", { id: "create-group-list" }, ...groupNames(this.world).slice(1).map((g2) => el5("option", { value: g2 })));
+      const list2 = el5("datalist", { id: "create-group-list" }, ...groupNames(this.world).slice(1).map((g2) => el5("option", { value: g2 })));
       const field3 = el5("input", {
         class: "create-tag-field create-group-field",
         value: tagGroup(this.world, tag, this.ontologies) || "",
@@ -13632,7 +13712,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         field3.focus({ preventScroll: true });
         field3.select();
       });
-      return el5("div", { class: "create-group-edit", role: "listitem" }, field3, list);
+      return el5("div", { class: "create-group-edit", role: "listitem" }, field3, list2);
     }
     // ---- Search lights ----
     openLights() {
@@ -13784,6 +13864,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.drawRooms();
             this.toast(`${r.name} is in the Archive.`);
           }) : null,
+          // Taken out as room Markdown (files.js); a locked room too.
+          word("Export as Markdown", () => this.exportRoomFile(r.id)),
           r.id !== MESSY && !r.locked ? word("Delete", () => {
             remove(this.world, r.id);
             this.roomSel = this.roomPick = null;
@@ -13808,7 +13890,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       };
-      const list = el5(
+      const list2 = el5(
         "datalist",
         { id: "create-tag-list" },
         ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el5("option", { value: t.tag }))
@@ -13850,7 +13932,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           o2.auto ? null : el5("button", { type: "button", class: "create-chip-x", "aria-label": `Take off ${o2.tag}`, onclick: () => after(() => removeTag(this.world, r.id, o2.tag)) }, "×")
         )),
         field3,
-        list
+        list2
       );
     }
     // Redraws the squares on the next frame (sliders move many times a frame).
@@ -14059,13 +14141,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function clearSpot(box, rects, size, random = Math.random, { gap = GAP, tries = 80 } = {}) {
     const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
-    const spots = [];
+    const spots2 = [];
     const cols = 5, rows = 5;
     for (let i2 = 0; i2 < tries; i2++) {
       const p = i2 < cols * rows ? { x: box.x + (i2 % cols + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i2 / cols) + random()) / rows * Math.max(0, box.h - size.h) } : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
-      spots.push(p);
+      spots2.push(p);
     }
-    const order = spots.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots[i2]);
+    const order = spots2.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots2[i2]);
     const free = order.find((p) => !hits(p));
     if (free) return free;
     const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
@@ -14517,7 +14599,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
       const items = roomThoughts(w2, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const list = items.length ? el5("ol", { class: "create-history-list" }, items.map((th) => {
+      const list2 = items.length ? el5("ol", { class: "create-history-list" }, items.map((th) => {
         const tag = ont.tag?.(w2, th.id) || null;
         return el5("li", {}, el5(
           "button",
@@ -14544,9 +14626,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           el5("span", {}, "Timeline"),
           el5("button", { type: "button", class: "create-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() }, "×")
         ),
-        list || el5("p", { class: "create-history-none" }, "Nothing written here yet")
+        list2 || el5("p", { class: "create-history-none" }, "Nothing written here yet")
       );
-      list?.lastElementChild?.scrollIntoView?.({ block: "end" });
+      list2?.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
   };
 
@@ -14841,9 +14923,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     stepBack() {
       const d = this.draft, w2 = this.world;
       if (!d?.train || !w2.things[d.train]) return false;
-      const list = trainThoughts(w2, d.train);
-      const at2 = d.edit ? list.findIndex((th) => th.id === d.edit) : list.length;
-      const prev = list[at2 - 1];
+      const list2 = trainThoughts(w2, d.train);
+      const at2 = d.edit ? list2.findIndex((th) => th.id === d.edit) : list2.length;
+      const prev = list2[at2 - 1];
       if (d.edit) {
         const t = w2.things[d.train];
         const spot2 = { x: t.x ?? 0, y: t.y ?? 0 };
@@ -15474,12 +15556,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     openSearch() {
       if (this.draft) this.commit();
       const field3 = el5("input", { class: "create-search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
-      const list = el5("div", { class: "create-search-list", role: "listbox" });
+      const list2 = el5("div", { class: "create-search-list", role: "listbox" });
       let found = [], at2 = 0;
       const show = () => {
         found = search(this.world, field3.value);
         at2 = Math.min(at2, Math.max(0, found.length - 1));
-        list.replaceChildren(
+        list2.replaceChildren(
           ...found.map((f2, i2) => el5("button", {
             type: "button",
             class: "create-search-item" + (i2 === at2 ? " on" : ""),
@@ -15515,7 +15597,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.goTo(found[at2]);
         }
       });
-      this.searchBox.replaceChildren(el5("div", { class: "create-search-panel" }, field3, list));
+      this.searchBox.replaceChildren(el5("div", { class: "create-search-panel" }, field3, list2));
       this.searchBox.hidden = false;
       this.searchBox.onpointerdown = (e) => {
         if (e.target === this.searchBox) this.closeSearch();
@@ -15588,7 +15670,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var SIDE = 720;
   var QUALITY = 0.78;
   async function shrinkPicture(file, side = SIDE) {
-    const bitmap = await createImageBitmap(file);
+    return draw(await createImageBitmap(file), side);
+  }
+  async function keepOrShrink(blob, src = null, side = SIDE) {
+    const bitmap = await createImageBitmap(blob);
+    if (src?.startsWith("data:image/jpeg") && Math.max(bitmap.width, bitmap.height) <= side) {
+      bitmap.close?.();
+      return src;
+    }
+    return draw(bitmap, side);
+  }
+  function draw(bitmap, side) {
     const k2 = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * k2));
@@ -16115,6 +16207,558 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
+  // dist/web/features/create/roomfile.js
+  var RUSSELL = "russell";
+  var byTime2 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+  var HEADING = /^##(\s|$)/;
+  var IMAGE = /^!\[.*\]\(\S+\)\s*$/;
+  var LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*folded)/i;
+  var structural = (l2) => HEADING.test(l2) || /^###(\s|$)/.test(l2) || /^-(\s|$)/.test(l2) || IMAGE.test(l2);
+  function escape(l2) {
+    const m2 = /^(\\*)(.*)$/s.exec(l2);
+    return LOOKS.test(m2[2]) ? "\\" + l2 : l2;
+  }
+  function unescape(l2) {
+    const m2 = /^\\(\\*)(.*)$/s.exec(l2);
+    return m2 && LOOKS.test(m2[2]) ? m2[1] + m2[2] : l2;
+  }
+  var count$$ = (s) => (s.match(/\$\$/g) || []).length;
+  var H2 = {
+    structural,
+    escape,
+    unescape,
+    mathOpen: (body) => count$$(body.join("\n")) % 2 === 1,
+    closesAhead(lines2, j) {
+      for (let k2 = j; k2 < lines2.length; k2++) {
+        if (k2 > j && HEADING.test(lines2[k2])) return false;
+        if (lines2[k2].includes("$$")) return true;
+      }
+      return false;
+    }
+  };
+  var readers = () => Object.values(ITEMS).filter((k2) => k2.md?.read).sort((a, b) => a.md.order - b.md.order);
+  function scalar(v2) {
+    const s = String(v2).trim();
+    if (/^".*"$/s.test(s)) {
+      try {
+        return JSON.parse(s);
+      } catch {
+        return s.slice(1, -1);
+      }
+    }
+    if (s === "true" || s === "false") return s === "true";
+    if (/^-?\d+(\.\d+)?$/.test(s)) return +s;
+    return s;
+  }
+  var plain = (s) => s !== "" && !/^\s|\s$|^["[]|\n|^(true|false)$|^-?\d+(\.\d+)?$/.test(s);
+  var writeScalar = (v2) => typeof v2 === "string" ? plain(v2) ? v2 : JSON.stringify(v2) : JSON.stringify(v2);
+  function list(s) {
+    s = String(s).trim().replace(/^\[(.*)\]$/s, "$1");
+    const out = [];
+    const re2 = /\s*("(?:\\.|[^"\\])*"|[^,]*)\s*(,|$)/g;
+    let m2;
+    while ((m2 = re2.exec(s)) && m2[0]) {
+      const t = m2[1].trim();
+      if (t) out.push(t.startsWith('"') ? scalar(t) : t);
+      if (!m2[2]) break;
+    }
+    return out.map(String);
+  }
+  var writeList = (xs) => `[${xs.map((t) => /[,[\]"]|^\s|\s$/.test(t) ? JSON.stringify(t) : t).join(", ")}]`;
+  function writeAttr(v2) {
+    const s = String(v2);
+    let out = "";
+    for (let i2 = 0; i2 < s.length; i2++) {
+      const c = s[i2];
+      if (c === '"') out += '\\"';
+      else if (c === "\\" && (i2 === s.length - 1 || s[i2 + 1] === "\\" || s[i2 + 1] === '"')) out += "\\\\";
+      else out += c;
+    }
+    return `"${out}"`;
+  }
+  function heading(rest) {
+    const s = rest.trim();
+    for (let p = s.indexOf("{"); p >= 0; p = s.indexOf("{", p + 1)) {
+      if (!/^\s*[A-Za-z_][\w.-]*\s*=/.test(s.slice(p + 1))) continue;
+      const attrs = [];
+      let i2 = p + 1;
+      const ws = () => {
+        while (/\s/.test(s[i2] || "")) i2++;
+      };
+      for (; ; ) {
+        ws();
+        if (s[i2] === "}") {
+          const ok = !s.slice(i2 + 1).trim();
+          return { title: s.slice(0, p).trim(), attrs, broken: !ok };
+        }
+        const k2 = /^[A-Za-z_][\w.-]*/.exec(s.slice(i2));
+        if (!k2) break;
+        i2 += k2[0].length;
+        ws();
+        if (s[i2] !== "=") break;
+        i2++;
+        ws();
+        let v2 = "";
+        if (s[i2] === '"') {
+          i2++;
+          let closed = false;
+          while (i2 < s.length) {
+            const c = s[i2];
+            if (c === "\\" && (s[i2 + 1] === '"' || s[i2 + 1] === "\\")) {
+              v2 += s[i2 + 1];
+              i2 += 2;
+              continue;
+            }
+            if (c === '"') {
+              closed = true;
+              i2++;
+              break;
+            }
+            v2 += c;
+            i2++;
+          }
+          if (!closed) break;
+        } else {
+          const u = /^[^\s"}]+/.exec(s.slice(i2));
+          if (!u) break;
+          v2 = u[0];
+          i2 += v2.length;
+        }
+        attrs.push([k2[0], v2]);
+      }
+      return { title: s.slice(0, p).trim(), attrs, broken: true };
+    }
+    return { title: s, attrs: [], broken: false };
+  }
+  var META = { room: "room", kind: "kind", description: "description", desc: "description", tags: "tags", tint: "tint", light: "light", opacity: "opacity" };
+  function parse(text) {
+    const report = [];
+    const lines2 = String(text ?? "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").split("\n");
+    const meta = { settings: {} };
+    let i2 = 0;
+    if (lines2[0]?.trim() === "---") {
+      let end = lines2.findIndex((l2, k2) => k2 > 0 && /^(---|\.\.\.)\s*$/.test(l2));
+      let from = end + 1;
+      if (end < 0) {
+        end = lines2.findIndex((l2, k2) => k2 > 0 && !/^\s*[\w.-]+\s*:/.test(l2));
+        if (end < 0) end = lines2.length;
+        from = end;
+        report.push("Line 1: the front matter has no closing ---, so only the settings lines at the top were read.");
+      }
+      for (let k2 = 1; k2 < end; k2++) {
+        const l2 = lines2[k2];
+        if (!l2.trim() || /^\s*#/.test(l2)) continue;
+        const m2 = /^\s*([\w.-]+)\s*:\s?(.*)$/.exec(l2);
+        if (!m2) {
+          report.push(`Line ${k2 + 1}: "${l2.trim()}" isn't a setting (key: value), so it was left out.`);
+          continue;
+        }
+        const key = m2[1], raw = m2[2];
+        if (META[key] === "tags") meta.tags = list(raw);
+        else if (META[key]) meta[META[key]] = META[key] === "light" || META[key] === "opacity" ? scalar(raw) : String(scalar(raw));
+        else if (key.includes(".")) {
+          const dot = key.indexOf(".");
+          (meta.settings[key.slice(0, dot)] ||= {})[key.slice(dot + 1)] = scalar(raw);
+        } else report.push(`Line ${k2 + 1}: Träumerei doesn't know "${key}", so it was left out.`);
+      }
+      i2 = from;
+    }
+    const loose = [], groups = [];
+    let cur = null;
+    const kinds = readers();
+    while (i2 < lines2.length) {
+      const l2 = lines2[i2];
+      if (!l2.trim()) {
+        i2++;
+        continue;
+      }
+      if (HEADING.test(l2)) {
+        const h = heading(l2.slice(2));
+        if (h.broken) report.push(`Line ${i2 + 1}: the {…} on "${l2.trim()}" isn't closed properly; the heading was kept${h.attrs.length ? ` with the attributes before the break` : ""}.`);
+        cur = { title: h.title, attrs: h.attrs, folded: false, items: [], line: i2 + 1 };
+        groups.push(cur);
+        i2++;
+        let k2 = i2;
+        while (k2 < lines2.length && !lines2[k2].trim()) k2++;
+        const f2 = /^>\s*folded\s*(?::\s*(.*?))?\s*$/i.exec(lines2[k2] || "");
+        if (f2) {
+          cur.folded = true;
+          if (f2[1] && !cur.title) cur.title = f2[1];
+          i2 = k2 + 1;
+        }
+        continue;
+      }
+      for (const kind of kinds) {
+        const r = kind.md.read(lines2, i2, H2);
+        if (!r) continue;
+        (cur ? cur.items : loose).push({ ...r.fields, line: i2 + 1 });
+        i2 = Math.max(i2 + 1, r.end);
+        break;
+      }
+    }
+    return { meta, loose, groups, report };
+  }
+  function unfetched(item, report) {
+    const where = item.url || "its data";
+    report?.push(`Line ${item.line}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
+    return { kind: "line", text: `A picture couldn't be fetched${item.text ? `: ${item.text}` : ""} (${item.url || "unreadable data"})`, line: item.line };
+  }
+  var plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  var say = (n) => [
+    plural(n.groups, "group", "groups"),
+    plural(n.thoughts, "thought", "thoughts"),
+    ...n.pictures ? [plural(n.pictures, "picture", "pictures")] : []
+  ].join(", ");
+  var groupsFor = (o2) => o2?.groups ? o2.id : DEFAULT_MODE;
+  var modeOf = (w2, roomId, ontologies) => {
+    const id = view3(w2, roomId).mode;
+    return ontologies.find((o2) => o2.id === id) || ontologies.find((o2) => o2.id === "pessoa") || { id, groups: null };
+  };
+  function spots(w2, ids, at2 = { x: 0, y: 0 }) {
+    const out = {};
+    let y = at2.y, tallest = 0;
+    ids.forEach((id, k2) => {
+      if (k2 && k2 % 4 === 0) {
+        y += tallest + 140;
+        tallest = 0;
+      }
+      out[id] = { x: at2.x + k2 % 4 * 440, y };
+      const g2 = w2.things[id];
+      tallest = Math.max(tallest, g2.folded ? 60 : members(w2, id).reduce((s, th) => s + stepAfter(th), 0));
+    });
+    return out;
+  }
+  function importInto(w2, roomId, parsed, { ontologies = [], now = Date.now(), at: at2 = null } = {}) {
+    const report = [...parsed.report];
+    const made = { groups: 0, thoughts: 0, pictures: 0 };
+    if (!room(w2, roomId) || shut(w2, roomId)) {
+      report.push("This room is locked, so nothing was brought in.");
+      return { report, made };
+    }
+    const of = groupsFor(modeOf(w2, roomId, ontologies));
+    let t = now;
+    const add = (parent, f2) => {
+      const fields = f2.kind === "picture" && !f2.src ? unfetched(f2, report) : f2;
+      const th = create(w2, parent, fields, t++);
+      if (th) {
+        made.thoughts++;
+        if (kindOf(th) === "picture") made.pictures++;
+      }
+      return th;
+    };
+    for (const f2 of parsed.loose) add(roomId, f2);
+    const madeGroups = [];
+    const left = /* @__PURE__ */ new Set();
+    for (const src of parsed.groups) {
+      const name2 = src.title ? `"${src.title}"` : "An untitled heading";
+      const g2 = create(w2, roomId, { kind: "group", of, title: src.title, folded: src.folded }, t++);
+      if (!g2) continue;
+      for (const f2 of src.items) add(g2.id, f2);
+      if (!members(w2, g2.id).length) {
+        delete w2.things[g2.id];
+        left.add(src.title);
+        report.push(`Line ${src.line}: ${name2} has nothing under it, so it was left out.`);
+        continue;
+      }
+      made.groups++;
+      madeGroups.push({ id: g2.id, src });
+    }
+    if (of !== RUSSELL) {
+      const where = spots(w2, madeGroups.map((m2) => m2.id), at2 || void 0);
+      for (const { id } of madeGroups) Object.assign(w2.things[id], where[id]);
+    }
+    const arrows2 = [];
+    for (const { id, src } of madeGroups) {
+      const rest = [];
+      for (const [k2, v2] of src.attrs) {
+        if (of === RUSSELL && k2 === "parent") arrows2.push({ child: id, parent: v2, label: "", line: src.line, title: src.title });
+        else if (of === RUSSELL && k2 === "forgets") {
+          const last = arrows2.at(-1);
+          if (last && last.child === id && !last.labelled) Object.assign(last, { label: v2, labelled: true });
+          else report.push(`Line ${src.line}: forgets="${v2}" has no parent before it, so it was left out.`);
+        } else rest.push([k2, v2]);
+      }
+      if (rest.length) (own(w2, roomId, of).headings ||= {})[id] = rest;
+    }
+    if (arrows2.length) {
+      const mine = new Set(madeGroups.map((m2) => m2.id));
+      const named = (title, fromFile) => groupsIn(w2, roomId, RUSSELL).filter((g2) => mine.has(g2.id) === fromFile && g2.title === title && members(w2, g2.id).length);
+      for (const a of arrows2) {
+        const child = a.title ? `"${a.title}"` : "an untitled chapter";
+        let found = named(a.parent, true);
+        if (!found.length) found = named(a.parent, false);
+        let why = "";
+        if (found.length > 1) why = `two chapters are called "${a.parent}"`;
+        else if (!found.length) why = left.has(a.parent) ? `"${a.parent}" was left out` : `no chapter is called "${a.parent}"`;
+        else why = link(w2, roomId, found[0].id, a.child, a.label).replace(/\.$/, "");
+        if (why) report.push(`Line ${a.line}: the arrow from "${a.parent}" to ${child} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1)}.`);
+      }
+    }
+    return { report, made };
+  }
+  function frame(w2, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
+    const o2 = modeOf(w2, roomId, ontologies);
+    if (typeof o2.units !== "function" || typeof o2.point !== "function") return;
+    const ps = o2.units(w2, roomId).map((u) => o2.point(w2, roomId, u.id)).filter(Boolean);
+    if (!ps.length) return;
+    const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+    const x0 = Math.min(...xs), x12 = Math.max(...xs) + 340, y0 = Math.min(...ys) - 40, y12 = Math.max(...ys) + 80;
+    const zoom = Math.max(0.5, Math.min(1, box.w / (x12 - x0), box.h / (y12 - y0)));
+    Object.assign(view3(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
+  }
+  function importRoom(w2, parsed, { ontologies = [], now = Date.now(), cell = null, cols = 6, page = 0, globals = {}, name: name2 = "Untitled" } = {}) {
+    const meta = parsed.meta || {};
+    const pre = [];
+    let kind = meta.kind || DEFAULT_MODE;
+    if (!ontologies.some((o2) => o2.id === kind)) {
+      pre.push(`There is no mode called "${kind}", so the room is a ${ontologies.find((o2) => o2.id === DEFAULT_MODE)?.name || DEFAULT_MODE} room.`);
+      kind = DEFAULT_MODE;
+    }
+    const r = addRoom(w2, meta.room || name2, now, cell, cols, { page }, kind);
+    if (!r) return { room: null, report: [...pre, "A room couldn't be made."], made: { groups: 0, thoughts: 0, pictures: 0 } };
+    const fields = {};
+    if (meta.description) fields.desc = meta.description;
+    if (meta.tags?.length) fields.tags = meta.tags;
+    for (const k2 of ["tint", "light", "opacity"]) if (meta[k2] != null) fields[k2] = meta[k2];
+    update(w2, r.id, fields, now);
+    seedRoomSettings(w2, r.id, globals);
+    for (const [of, set] of Object.entries(meta.settings || {})) for (const [k2, v2] of Object.entries(set)) setRoomSetting(w2, r.id, of, k2, v2);
+    const out = importInto(w2, r.id, { ...parsed, report: [...pre, ...parsed.report] }, { ontologies, now: now + 1 });
+    frame(w2, r.id, ontologies);
+    return { room: r, ...out };
+  }
+  var fileName = (name2) => `${String(name2 || "Untitled").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled"}.md`;
+  function writeItem(th) {
+    const kind = ITEMS[kindOf(th)];
+    return kind?.md?.write ? kind.md.write(th, H2) : `- ${String(kind?.text(th) || "").replace(/\n/g, " ")}`;
+  }
+  function writeItems(ths) {
+    let out = "";
+    ths.forEach((th, k2) => {
+      const lineAfterLine = k2 && kindOf(th) === "line" && kindOf(ths[k2 - 1]) === "line" && !ths[k2 - 1].text.includes("\n\n");
+      out += (k2 ? lineAfterLine ? "\n" : "\n\n" : "") + writeItem(th);
+    });
+    return out;
+  }
+  function exportRoom(w2, roomId, { ontologies = [] } = {}) {
+    const r = room(w2, roomId);
+    if (!r) return "";
+    const o2 = modeOf(w2, roomId, ontologies);
+    const of = groupsFor(o2);
+    const front = ["---", `room: ${writeScalar(r.name || "Untitled")}`, `kind: ${o2.id}`];
+    if (r.desc) front.push(`description: ${writeScalar(r.desc)}`);
+    if (r.tags?.length) front.push(`tags: ${writeList(r.tags)}`);
+    for (const k2 of ["tint", "light", "opacity"]) if (r[k2] != null) front.push(`${k2}: ${writeScalar(r[k2])}`);
+    for (const [ont, set] of Object.entries(w2.settings?.[roomId] || {})) {
+      for (const [k2, v2] of Object.entries(set || {})) if (v2 !== void 0) front.push(`${ont}.${k2}: ${writeScalar(v2)}`);
+    }
+    front.push("---");
+    const groups = groupsIn(w2, roomId, of).filter((g2) => members(w2, g2.id).length).sort((a, b) => byTime2(members(w2, a.id)[0], members(w2, b.id)[0]) || byTime2(a, b));
+    const inGroup = new Set(groups.flatMap((g2) => g2.members));
+    const loose = roomItems(w2, roomId).filter((th) => isLeaf(th) && !inGroup.has(th.id));
+    const blocks = [front.join("\n")];
+    if (loose.length) blocks.push(writeItems(loose));
+    const kept = own(w2, roomId, of, false).headings || {};
+    const title = (id) => w2.things[id]?.title || "";
+    for (const g2 of groups) {
+      const attrs = [];
+      if (of === RUSSELL) {
+        const { parents, labels } = arrowsInto(w2, roomId, g2.id);
+        for (const p of parents) {
+          attrs.push(["parent", title(p)]);
+          if (labels[p]) attrs.push(["forgets", labels[p]]);
+        }
+      }
+      attrs.push(...kept[g2.id] || []);
+      const head2 = ["##", g2.title, attrs.length ? `{${attrs.map(([k2, v2]) => `${k2}=${writeAttr(v2)}`).join(" ")}}` : ""].filter(Boolean).join(" ");
+      blocks.push([head2, ...g2.folded ? ["> folded"] : [], writeItems(members(w2, g2.id))].join("\n"));
+    }
+    return blocks.join("\n\n") + "\n";
+  }
+  var copyWorld = (w2) => JSON.parse(JSON.stringify(w2));
+
+  // dist/web/features/create/files.js
+  var MD = /\.(md|markdown|txt)$/i;
+  var isRoomFile = (f2) => !!f2 && (MD.test(f2.name || "") || /markdown/.test(f2.type || ""));
+  var REPORT = 8;
+  var Files = class {
+    // Files dropped anywhere in Create: on the rooms page a new room, in a room into it.
+    listenForFiles() {
+      const files = (e) => [...e.dataTransfer?.types || []].includes("Files");
+      this.root.addEventListener("dragover", (e) => {
+        if (files(e)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      });
+      this.root.addEventListener("drop", (e) => {
+        if (!files(e)) return;
+        e.preventDefault();
+        const file = [...e.dataTransfer.files].find(isRoomFile);
+        if (!file) {
+          this.toast("Only a room Markdown file (.md) can be dropped here.");
+          return;
+        }
+        if (this.roomId) this.importIntoRoom(file);
+        else this.importRoomFile(file);
+      });
+    }
+    pickRoomFile() {
+      this.mdPicker ||= ui_exports.filePicker(".md,.markdown,.txt,text/markdown,text/plain");
+      return this.mdPicker.pick();
+    }
+    // The file read, its pictures fetched and shrunk as pasted ones are. One that can't be fetched
+    // becomes a line saying so. Returns the parsed file (roomfile.js), or null.
+    async readRoomFile(file) {
+      let text;
+      try {
+        text = await file.text();
+      } catch {
+        this.toast("That file couldn't be read.");
+        return null;
+      }
+      const parsed = parse(text);
+      const lists = [parsed.loose, ...parsed.groups.map((g2) => g2.items)];
+      if (lists.some((l2) => l2.some((x) => x.kind === "picture" && x.url))) this.toast("Fetching pictures…");
+      for (const list2 of lists) {
+        for (let k2 = 0; k2 < list2.length; k2++) {
+          const it = list2[k2];
+          if (it.kind !== "picture") continue;
+          try {
+            let blob;
+            if (it.src) blob = await (await fetch(it.src)).blob();
+            else if (/^https?:\/\//i.test(it.url)) {
+              const res = await fetch(it.url);
+              if (!res.ok) throw new Error(res.status);
+              blob = await res.blob();
+            } else throw new Error("no address");
+            if (!blob.type.startsWith("image/")) throw new Error("not a picture");
+            const { url, ...rest } = it;
+            list2[k2] = { ...rest, src: await keepOrShrink(blob, it.src) };
+          } catch {
+            list2[k2] = unfetched(it, parsed.report);
+          }
+        }
+      }
+      return parsed;
+    }
+    // On the rooms page: a new room from a file, in `cell` (or the first free one).
+    async importRoomFile(file = null, cell = null) {
+      file ||= await this.pickRoomFile();
+      if (!file) return;
+      const parsed = await this.readRoomFile(file);
+      if (!parsed || this.root.hidden) return;
+      const page = this.shelf ? 0 : this.page;
+      const opts = () => ({
+        ontologies: this.ontologies,
+        now: Date.now(),
+        cell,
+        cols: this.cols || this.gridSize().cols,
+        page,
+        globals: this.ontPrefs,
+        name: file.name.replace(MD, "") || "Untitled"
+      });
+      const dry = importRoom(copyWorld(this.world), parsed, opts());
+      this.askImport("Import a room", dry.room?.name || "A new room", dry, () => {
+        const out = importRoom(this.world, parsed, opts());
+        if (!out.room) {
+          this.toast("A room couldn't be made.");
+          return;
+        }
+        this.making = this.roomSel = null;
+        this.roomPick = out.room.id;
+        this.save();
+        if (this.roomId) this.showRooms();
+        if (this.shelf) this.toggleShelf();
+        if (this.page !== page) this.showPage(page);
+        else this.drawRooms();
+        this.toast(`${out.room.name} is here. Ctrl+Z takes it back.`);
+      });
+    }
+    // In a room: the file's groups and thoughts join it, as its own mode sees them.
+    async importIntoRoom(file = null) {
+      if (!this.roomId) return;
+      if (this.locked) {
+        this.toast("This room is locked.");
+        return;
+      }
+      file ||= await this.pickRoomFile();
+      if (!file) return;
+      const roomId = this.roomId;
+      const parsed = await this.readRoomFile(file);
+      if (!parsed || this.roomId !== roomId) return;
+      const opts = () => ({ ontologies: this.ontologies, now: Date.now(), at: this.freeSpot() });
+      const dry = importInto(copyWorld(this.world), roomId, parsed, opts());
+      this.askImport("Import into this room", room(this.world, roomId)?.name || "", dry, () => {
+        if (this.roomId !== roomId || this.locked) return;
+        if (this.draft) this.commit();
+        importInto(this.world, roomId, parsed, opts());
+        this.sel = null;
+        this.save();
+        this.drawRoom();
+        this.toast("Imported. Ctrl+Z takes it back.");
+      });
+    }
+    // The quiet card: what will arrive ("12 groups, 85 thoughts, 2 pictures") and what couldn't be
+    // read, with Import (Enter) and Cancel (Escape).
+    askImport(kind, title, { made, report }, go) {
+      const box = this.importBox;
+      const close = () => {
+        box.hidden = true;
+        box.replaceChildren();
+      };
+      const yes = () => {
+        close();
+        go();
+      };
+      const shown2 = report.slice(0, REPORT);
+      box.replaceChildren(...[
+        el5("div", { class: "create-sheet-kind" }, kind),
+        el5("div", { class: "create-import-title" }, title),
+        el5("div", { class: "create-import-sum" }, made.groups || made.thoughts ? say(made) : "Nothing to bring in"),
+        report.length ? el5(
+          "ul",
+          { class: "create-import-report", "aria-label": "What couldn't be read" },
+          ...shown2.map((r) => el5("li", {}, r)),
+          report.length > REPORT ? el5("li", {}, `and ${report.length - REPORT} more`) : null
+        ) : null,
+        el5(
+          "div",
+          { class: "create-sheet-words" },
+          made.groups || made.thoughts ? el5("button", { type: "button", class: "create-word create-import-go", onclick: yes }, "Import") : null,
+          el5("button", { type: "button", class: "create-word", onclick: close }, "Cancel"),
+          el5("span", { class: "create-keys" }, "Enter imports · Escape cancels")
+        )
+      ].filter(Boolean));
+      box.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          close();
+        }
+        if (e.key === "Enter" && !e.target.matches("button")) {
+          e.preventDefault();
+          yes();
+        }
+      };
+      box.hidden = false;
+      (box.querySelector(".create-import-go") || box.querySelector("button"))?.focus({ preventScroll: true });
+    }
+    // Downloads a room as <its name>.md (a locked room too).
+    exportRoomFile(id = this.roomId) {
+      const r = room(this.world, id);
+      if (!r) return;
+      const text = exportRoom(this.world, id, { ontologies: this.ontologies });
+      const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+      const a = el5("a", { href: url, download: fileName(r.name), hidden: true });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1e4);
+      this.toast(`Exported ${fileName(r.name)}`);
+    }
+  };
+
   // dist/web/features/create/Create.js
   var Create2 = class extends Feature {
     start() {
@@ -16154,6 +16798,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.defineSlot("create.ontologies", "A way of seeing a room's thoughts: { id, name, note, groups, units, point, drop, … } (see create/ontologies/index.js).");
       this.build();
       this.add("settings", { id: "create-rooms", title: "Rooms", order: 30, render: () => this.settingsPane() });
+      this.add("header.buttons", {
+        id: "create-import",
+        label: "Import a room…",
+        icon: "book",
+        order: 40,
+        visible: () => !!this.root && !this.root.hidden && !this.roomId,
+        onClick: () => {
+          this.app.shell?.closeMenu?.();
+          this.importRoomFile();
+        }
+      });
       this.provide("create", this);
       document.addEventListener("keydown", (e) => this.onKey(e));
       window.addEventListener("resize", () => {
@@ -16287,7 +16942,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const wrap = this.grid.parentElement;
       if (!wrap?.animate || this.grid.animate == null || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       this.pageGhost?.remove();
-      const H2 = wrap.clientHeight, d = down ? 1 : -1;
+      const H3 = wrap.clientHeight, d = down ? 1 : -1;
       old.classList.add("create-page-ghost");
       old.setAttribute("aria-hidden", "true");
       old.inert = true;
@@ -16295,8 +16950,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       wrap.append(old);
       this.pageGhost = old;
       const timing = { duration: 560, easing: "cubic-bezier(.65, 0, .25, 1)" };
-      old.animate([{ transform: "none" }, { transform: `translateY(${-d * H2}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
-      this.grid.animate([{ transform: `translateY(${d * H2}px)` }, { transform: "none" }], timing);
+      old.animate([{ transform: "none" }, { transform: `translateY(${-d * H3}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
+      this.grid.animate([{ transform: `translateY(${d * H3}px)` }, { transform: "none" }], timing);
     }
     showRooms() {
       const from = this.roomId && !this.roomPage.hidden ? this.roomId : null;
@@ -16358,8 +17013,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const look = this.lookOf(room(this.world, this.roomId));
       const a = tile.getBoundingClientRect();
-      const W2 = window.innerWidth, H2 = window.innerHeight;
-      const veil = el5("div", { class: "create-expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H2})` });
+      const W2 = window.innerWidth, H3 = window.innerHeight;
+      const veil = el5("div", { class: "create-expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})` });
       this.expandVeil = veil;
       this.root.classList.add("expanding");
       this.root.append(veil);
@@ -16386,12 +17041,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!tile || !r || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       const look = this.lookOf(r);
       const a = tile.getBoundingClientRect();
-      const W2 = window.innerWidth, H2 = window.innerHeight;
+      const W2 = window.innerWidth, H3 = window.innerHeight;
       const veil = el5("div", { class: "create-expand go", style: `background:linear-gradient(${look.top}, ${look.bottom})` });
       this.expandVeil = veil;
       this.root.append(veil);
       veil.getBoundingClientRect();
-      veil.style.transform = `translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H2})`;
+      veil.style.transform = `translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})`;
       veil.style.opacity = "0";
       veil.style.transition = "transform .5s cubic-bezier(.65, 0, .25, 1), opacity .5s cubic-bezier(.7, 0, .9, .4)";
       this.zoomRooms(a, false);
@@ -16609,6 +17264,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             el5("div", { class: "create-add-rule" }),
+            this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false),
+            this.addItem("Export as Markdown", ".md", () => this.exportRoomFile(), false),
+            el5("div", { class: "create-add-rule" }),
             this.addItem("Keys", "?", () => this.showKeys(), false)
           ),
           this.addBtn = el5(
@@ -16641,7 +17299,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.savedMark,
         this.hintLine,
         this.noteLine = el5("div", { class: "create-note", hidden: true }),
-        this.leaveBox = el5("div", { class: "create-sheet create-leave", hidden: true, role: "dialog", "aria-label": "Comment for next time", onpointerdown: (e) => e.stopPropagation() })
+        this.leaveBox = el5("div", { class: "create-sheet create-leave", hidden: true, role: "dialog", "aria-label": "Comment for next time", onpointerdown: (e) => e.stopPropagation() }),
+        this.importBox = el5("div", { class: "create-sheet create-leave create-import", hidden: true, role: "dialog", "aria-label": "Import", onpointerdown: (e) => e.stopPropagation() })
       );
       (document.getElementById("folio-root") || document.body).append(this.root);
       this.input.addEventListener("input", () => this.onInput());
@@ -16683,6 +17342,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!this.addMenu.hidden && !e.target.closest(".create-add-menu, .create-add-btn")) this.closeAdd();
       });
       this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+      this.listenForFiles();
     }
     // ---- A room ----
     // The ontologies there are (ontologies/index.js), and the one a room is seen through: a room
@@ -16723,7 +17383,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
   }
-  mixIn(Create2, RoomsPage, RoomView, Writing, Gestures, Bars);
+  mixIn(Create2, RoomsPage, RoomView, Writing, Gestures, Bars, Files);
 
   // dist/web/features/home/fonts/tenor-sans.js
   var tenor_sans_default = "data:font/woff2;base64,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";
