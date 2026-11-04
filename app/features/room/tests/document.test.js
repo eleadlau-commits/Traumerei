@@ -7,7 +7,7 @@ import { emptyWorld, create, members, MESSY } from '../../world/model.js';
 import { addChapter } from '../../world/ontologies/russell.js';
 import { keepWords, between } from '../document.js';
 
-bind(lib); // the world's rules, as Create gets them from the world service
+bind(lib); // the world's rules, as the room gets them from the world service
 
 function chapter(...texts) {
   const w = emptyWorld(1);

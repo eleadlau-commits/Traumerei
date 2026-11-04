@@ -1,4 +1,4 @@
-# Create (a room)
+# Room
 
 An open room of thoughts: a canvas to write in, seen through an ontological mode. The rooms page,
 where rooms are made and gone into, is the **rooms** feature's (`app/features/rooms`); it says
@@ -74,16 +74,16 @@ It offers no service of its own.
   same train either way, never a copy, and its pop-up can change the choice later.
 
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
-saving and undo are the **world** feature's (`app/features/world`, see its README); Create
+saving and undo are the **world** feature's (`app/features/world`, see its README); the room
 reaches them through the `world` service (`this.w`), and `world.js` here binds the rules it
 uses, so every file imports them from there. It goes back to the rooms page, or into another
-room, through the `rooms` service. The `Create` class is written across several files:
-`Create.js` (starting, entering and leaving a room, building the page), `room.js` (a room, its
+room, through the `rooms` service. The `Room` class is written across several files:
+`Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space, Timeline), `writing.js` (thoughts, the draft, the caret),
 `gestures.js` (pointer, keys, selection, copy and paste, Search) and `bars.js` (pop-ups, tray,
-sheets, pictures). Each part is a class whose methods `mixIn` (end of `Create.js`) copies onto
-`Create`, so `this` is always the feature. `shared.js` holds the constants they share.
-A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); Create
+sheets, pictures). Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
+`Room`, so `this` is always the feature. `shared.js` holds the constants they share.
+A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); the room
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
 
 ## Editing, the line, the timeline

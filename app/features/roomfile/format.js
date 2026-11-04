@@ -420,5 +420,5 @@ export function exportRoom(w, roomId, { ontologies = [] } = {}) {
   return blocks.join('\n\n') + '\n';
 }
 
-// A copy of the world, for a dry run (Create shows what will arrive before anything changes).
+// A copy of the world, for a dry run (the card shows what will arrive before anything changes).
 export const copyWorld = (w) => JSON.parse(JSON.stringify(w));

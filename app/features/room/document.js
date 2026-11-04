@@ -79,7 +79,7 @@ export function openDocument(c, chapterId) {
     // A new thought after one that was just emptied (and so went) follows the one before that.
     if (!id && prev && !w().things[prev]) prev = before?.id || null;
     const th = id ? w().things[id] : null;
-    const box = c.el('textarea', { class: 'create-doc-box', rows: 1, 'aria-label': 'A thought', placeholder: id ? '' : 'The next thought' });
+    const box = c.el('textarea', { class: 'room-doc-box', rows: 1, 'aria-label': 'A thought', placeholder: id ? '' : 'The next thought' });
     box.value = th?.text || '';
     writing = { id, prev, box };
     box.addEventListener('input', () => grow(box));
@@ -115,23 +115,23 @@ export function openDocument(c, chapterId) {
     const list = thoughts();
     const out = [];
     const fresh = writing && !writing.id ? writing : null;
-    if (fresh && !fresh.prev) out.push(c.el('div', { class: 'create-doc-para writing' }, fresh.box));
+    if (fresh && !fresh.prev) out.push(c.el('div', { class: 'room-doc-para writing' }, fresh.box));
     for (const th of list) {
-      if (writing?.id === th.id) out.push(c.el('div', { class: 'create-doc-para writing' }, writing.box));
+      if (writing?.id === th.id) out.push(c.el('div', { class: 'room-doc-para writing' }, writing.box));
       else if (kindOf(th) === 'line') {
         out.push(c.el('div', {
-          class: 'create-doc-para', 'data-id': th.id, title: locked ? '' : 'Click to write in it',
+          class: 'room-doc-para', 'data-id': th.id, title: locked ? '' : 'Click to write in it',
           onclick: () => write(th.id),
         }, maths(th.text || '')));
-      } else out.push(c.el('div', { class: 'create-doc-para create-doc-item' }, c.thoughtNode(th)));
-      if (fresh && fresh.prev === th.id) out.push(c.el('div', { class: 'create-doc-para writing' }, fresh.box));
+      } else out.push(c.el('div', { class: 'room-doc-para room-doc-item' }, c.thoughtNode(th)));
+      if (fresh && fresh.prev === th.id) out.push(c.el('div', { class: 'room-doc-para writing' }, fresh.box));
     }
     paras.replaceChildren(...out);
     if (writing) requestAnimationFrame(() => writing && grow(writing.box));
   };
 
   const title = c.el('input', {
-    class: 'create-doc-title', value: g.title || '', placeholder: 'Name this chapter', 'aria-label': 'The chapter\'s name',
+    class: 'room-doc-title', value: g.title || '', placeholder: 'Name this chapter', 'aria-label': 'The chapter\'s name',
     onkeydown: (e) => {
       e.stopPropagation();
       if (e.key === 'Escape') { e.preventDefault(); title.blur(); sheet.focus({ preventScroll: true }); }
@@ -140,17 +140,17 @@ export function openDocument(c, chapterId) {
     onchange: () => { name(w(), chapterId, title.value); c.save(); },
   });
   if (locked) title.setAttribute('readonly', '');
-  paras = c.el('div', { class: 'create-doc-paras' });
+  paras = c.el('div', { class: 'room-doc-paras' });
   const more = locked ? null : c.el('button', {
-    type: 'button', class: 'create-doc-more', 'aria-label': 'Write the next thought',
+    type: 'button', class: 'room-doc-more', 'aria-label': 'Write the next thought',
     onclick: () => { const list = thoughts(); write(null, list.at(-1)?.id || null); },
   }, '+');
-  const sheet = c.el('div', { class: 'create-doc', role: 'dialog', 'aria-label': 'Chapter', tabindex: '-1' },
-    c.el('div', { class: 'create-doc-head' },
-      c.el('span', { class: 'create-doc-kind' }, 'Chapter'),
-      c.el('button', { type: 'button', class: 'create-doc-close', 'aria-label': 'Close', onclick: close }, '×')),
+  const sheet = c.el('div', { class: 'room-doc', role: 'dialog', 'aria-label': 'Chapter', tabindex: '-1' },
+    c.el('div', { class: 'room-doc-head' },
+      c.el('span', { class: 'room-doc-kind' }, 'Chapter'),
+      c.el('button', { type: 'button', class: 'room-doc-close', 'aria-label': 'Close', onclick: close }, '×')),
     title, paras, more,
-    c.el('div', { class: 'create-keys' }, locked ? 'This room is locked · Esc closes'
+    c.el('div', { class: 'room-keys' }, locked ? 'This room is locked · Esc closes'
       : 'Click a paragraph to write · Enter keeps it · Ctrl+Enter a new line · Esc closes'));
   sheet.addEventListener('keydown', (e) => {
     e.stopPropagation();

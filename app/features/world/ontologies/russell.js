@@ -297,11 +297,11 @@ function chapterUnder(c, ev) {
 
 // Draws an arrow by dragging from a chapter's foot onto another chapter.
 function dragArrow(c, e, from) {
-  const layer = c.world$?.querySelector('.create-russell-arrows');
+  const layer = c.world$?.querySelector('.room-russell-arrows');
   const b = boxes(c.world, c.roomId)[from];
   if (!layer || !b) return;
   const p = foot(b.at, b.size);
-  const line = svg('path', { class: 'create-russell-arrow create-russell-drawing', 'marker-end': 'url(#russell-head)' });
+  const line = svg('path', { class: 'room-russell-arrow room-russell-drawing', 'marker-end': 'url(#russell-head)' });
   layer.append(line);
   const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); line.setAttribute('d', arrowPath(p, q)); };
   const up = (ev) => {
@@ -452,10 +452,10 @@ export default {
   props(c, th) {
     if (!isGroup(th) || th.of !== ID) return [];
     const { parents, labels } = arrowsInto(c.world, c.roomId, th.id);
-    return parents.map((p) => c.el('label', { class: 'create-russell-forgets' },
-      c.el('span', { class: 'create-options-note' }, `From ${chapterName(c.world, p)}, it forgets`),
+    return parents.map((p) => c.el('label', { class: 'room-russell-forgets' },
+      c.el('span', { class: 'room-options-note' }, `From ${chapterName(c.world, p)}, it forgets`),
       c.el('input', {
-        class: 'create-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it forgets about ${chapterName(c.world, p)}`,
+        class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it forgets about ${chapterName(c.world, p)}`,
         onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
         onchange: (e) => { setLabel(c.world, c.roomId, p, th.id, e.target.value); c.save(); c.drawWorld(); },
       })));
@@ -466,10 +466,10 @@ export default {
   draw(c) {
     const w = c.world, el = c.el, roomId = c.roomId;
     const all = boxes(w, roomId);
-    const layer = svg('svg', { class: 'create-strands create-russell-arrows' });
+    const layer = svg('svg', { class: 'room-strands room-russell-arrows' });
     const defs = svg('defs');
     const mark = svg('marker', { id: 'russell-head', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
-    mark.append(svg('path', { d: 'M0 1L9 5L0 9', class: 'create-russell-head' }));
+    mark.append(svg('path', { d: 'M0 1L9 5L0 9', class: 'room-russell-head' }));
     defs.append(mark);
     layer.append(defs);
     const nodes = [];
@@ -478,7 +478,7 @@ export default {
       const a = all[from], b = all[to];
       if (!a || !b) continue;
       const p = foot(a.at, a.size), q = head(b.at, b.size);
-      layer.append(svg('path', { class: 'create-russell-arrow', d: arrowPath(p, q), 'marker-end': 'url(#russell-head)' }));
+      layer.append(svg('path', { class: 'room-russell-arrow', d: arrowPath(p, q), 'marker-end': 'url(#russell-head)' }));
       if (label) {
         // Beside the arrow just above the child; a junction's two arrows meet there, so each of
         // its labels sits by its parent's foot instead, on the side the arrow leaves to.
@@ -486,7 +486,7 @@ export default {
         const left = two && q.x < p.x;
         const x = two ? p.x : q.x, y = two ? p.y + 10 : q.y - 52;
         nodes.push(el('div', {
-          class: 'create-russell-label' + (left ? ' left' : ''), 'data-group': to, title: 'What the child forgets',
+          class: 'room-russell-label' + (left ? ' left' : ''), 'data-group': to, title: 'What the child forgets',
           style: `left:${Math.round(x + (left ? -12 : 12))}px;top:${Math.round(y)}px`,
         }, maths(label)));
       }
@@ -496,13 +496,13 @@ export default {
       if (!box) continue;
       const { at, size } = box;
       const chosen = (c.sel?.kind === 'train' && c.sel.id === g.id) || c.isSel(g.id);
-      const cls = 'create-bead' + (picking ? ' create-russell-pick' : '');
+      const cls = 'room-bead' + (picking ? ' room-russell-pick' : '');
       if (g.folded) {
         // A closed chapter: only its name. A click opens it as a document (open, below).
         nodes.push(el('div', {
-          class: cls + ' create-folded create-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id,
+          class: cls + ' room-folded room-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id,
           title: 'Click to open', style: `left:${at.x}px;top:${at.y}px`,
-        }, el('span', { class: 'create-thought', 'data-id': g.id }, maths(chapterName(w, g.id)))));
+        }, el('span', { class: 'room-thought', 'data-id': g.id }, maths(chapterName(w, g.id)))));
       } else {
         const spots = chapterSpots(w, g.id, at);
         for (const th of members(w, g.id)) {
@@ -515,19 +515,19 @@ export default {
         if (c.draft?.train === g.id && !c.draft.edit) {
           const last = members(w, g.id).at(-1);
           const y = last ? spots[last.id].y + stepAfter(last) : at.y;
-          nodes.push(el('div', { class: 'create-bead', 'data-group': g.id, style: `left:${at.x}px;top:${y}px` }, c.draftNode()));
+          nodes.push(el('div', { class: 'room-bead', 'data-group': g.id, style: `left:${at.x}px;top:${y}px` }, c.draftNode()));
         }
       }
       // The chapter's hairline, down its left, and its name over it.
-      if (!g.folded) layer.append(svg('path', { class: 'create-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
-      if (g.title && !g.folded) nodes.push(el('div', { class: 'create-russell-title', 'data-group': g.id, style: `left:${at.x}px;top:${at.y - 30}px` }, g.title));
+      if (!g.folded) layer.append(svg('path', { class: 'room-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
+      if (g.title && !g.folded) nodes.push(el('div', { class: 'room-russell-title', 'data-group': g.id, style: `left:${at.x}px;top:${at.y - 30}px` }, g.title));
       if (!c.locked) {
         const f = foot(at, size);
-        nodes.push(el('div', { class: 'create-russell-foot', 'data-foot': g.id, title: 'Drag onto another chapter to make it a child', style: `left:${f.x}px;top:${f.y}px` }));
+        nodes.push(el('div', { class: 'room-russell-foot', 'data-foot': g.id, title: 'Drag onto another chapter to make it a child', style: `left:${f.x}px;top:${f.y}px` }));
       }
     }
     if (c.draft && !c.draft.train && !c.draft.edit) {
-      nodes.push(el('div', { class: 'create-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+      nodes.push(el('div', { class: 'room-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
     }
     return [layer, ...nodes];
   },

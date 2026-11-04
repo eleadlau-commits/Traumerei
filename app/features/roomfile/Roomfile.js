@@ -1,8 +1,9 @@
 // Room files: a room in and out as one Markdown file ("room Markdown", format.js). A file comes
 // in as a new room or into a room; before anything changes, a quiet card says what will arrive and
 // what couldn't be read, and Import brings it all in as one step. A room goes out as a download.
-// Create asks for all of it through the `roomfile` service below (README.md lists it), and says
-// where: which cell and floor, which room, where in it. The world is the world feature's.
+// The rooms page and the room ask for all of it through the `roomfile` service below (README.md
+// lists it), and say where: which cell and floor, which room, where in it.
+// The world is the world feature's.
 
 import { Feature, ui } from 'folio';
 import { bind, room, shut, keepOrShrink } from './world.js';

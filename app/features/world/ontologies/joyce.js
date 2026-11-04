@@ -216,13 +216,13 @@ export default {
     const w = c.world, el = c.el;
     const nodes = [];
     const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('class', 'create-strands');
+    svg.setAttribute('class', 'room-strands');
     const tension = c.setting('tension');
     for (const t of roomTrains(w, c.roomId)) {
       const chosen = (c.sel?.kind === 'train' && c.sel.id === t.id) || c.isSel(t.id);
       if (t.folded) {
         nodes.push(el('div', {
-          class: 'create-bead create-folded' + (chosen ? ' selected' : ''), 'data-group': t.id,
+          class: 'room-bead room-folded' + (chosen ? ' selected' : ''), 'data-group': t.id,
           style: `left:${t.x}px;top:${t.y}px`,
         }, c.thoughtNode(t)));
         continue;
@@ -232,12 +232,12 @@ export default {
       if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
       const g = document.createElementNS(SVG, 'g');
       g.setAttribute('data-group', t.id);
-      g.setAttribute('class', 'create-strand' + (chosen ? ' selected' : ''));
+      g.setAttribute('class', 'room-strand' + (chosen ? ' selected' : ''));
       for (let k = 1; k < knots.length; k++) {
         const a = knots[k - 1], b = knots[k];
         const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
         const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
-        for (const cls of ['create-strand-hit', 'create-strand-line']) {
+        for (const cls of ['room-strand-hit', 'room-strand-line']) {
           const path = document.createElementNS(SVG, 'path');
           path.setAttribute('d', d);
           path.setAttribute('class', cls);
@@ -249,20 +249,20 @@ export default {
         dot.setAttribute('cx', k.x - 14);
         dot.setAttribute('cy', k.y + 15);
         dot.setAttribute('r', 2.6);
-        dot.setAttribute('class', 'create-knot');
+        dot.setAttribute('class', 'room-knot');
         g.append(dot);
       }
       svg.append(g);
       for (const k of knots) {
         nodes.push(el('div', {
-          class: 'create-bead' + (chosen || c.isSel(k.th.id) ? ' selected' : '') + (c.found === k.th.id ? ' found' : ''),
+          class: 'room-bead' + (chosen || c.isSel(k.th.id) ? ' selected' : '') + (c.found === k.th.id ? ' found' : ''),
           'data-group': t.id, ...(k.draft ? {} : { 'data-thought': k.th.id }),
           style: `left:${k.x}px;top:${k.y}px`,
         }, k.draft ? c.draftNode() : c.thoughtNode(k.th)));
       }
     }
     if (c.draft && !c.draft.train) {
-      nodes.push(el('div', { class: 'create-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+      nodes.push(el('div', { class: 'room-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
     }
     return [svg, ...nodes];
   },

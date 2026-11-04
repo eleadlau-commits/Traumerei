@@ -1,8 +1,8 @@
 {
-  "name": "Create",
+  "name": "Room",
   "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).",
   "version": "0.1.0",
-  "main": "Create.js",
+  "main": "Room.js",
   "styles": [
     "style.css"
   ],

@@ -77,7 +77,7 @@ function formula(tex, display) {
     DRAWN.set(key, html);
   }
   const node = document.createElement('span');
-  node.className = 'create-maths' + (display ? ' display' : '');
+  node.className = 'room-maths' + (display ? ' display' : '');
   if (html === null) {
     node.classList.add('unparsed');
     node.textContent = display ? `$$${tex}$$` : `$${tex}$`;

@@ -2,7 +2,7 @@
 
 The saved world of rooms and thoughts, and everything true of it without a screen: its rules,
 saving and undo, the ontologies, the rooms' look and the attention log. The rooms page (the rooms
-feature) and an open room (Create) draw it; this feature never touches the screen, except that
+feature) and an open room (the room feature) draw it; this feature never touches the screen, except that
 an ontology draws its own canvas when the room asks it to.
 
 ## The world service
@@ -34,7 +34,7 @@ list is everything it offers:
 `ontologies/index.js`).
 
 A feature can't import this folder's files (Folio's rule), so a feature that uses many of the
-rules binds them once from `lib` into a file of its own that lists what it needs (Create's
+rules binds them once from `lib` into a file of its own that lists what it needs (the room's
 `world.js`).
 
 ## The world
@@ -52,7 +52,7 @@ units, where each sits, what a drag does, and optional tray, settings, moves (sh
 of what is chosen), its own presses and pop-up rows, and `begin` (which group a new thought joins,
 or none, so it waits in the tray). Each keeps its own data per room (`own()` in model.js: Pessoa's
 dragged places, Russell's arrows and their labels). An ontology can draw its own
-canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); Create keeps
+canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); the room keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
