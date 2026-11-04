@@ -25,6 +25,10 @@ What the home page's **Create** opens: rooms of thoughts.
   Russell) for a big room. *+ tag* adds one of its own, suggesting the tags other rooms have
   (Enter adds it; Backspace in the empty field takes off the last). Tags are the same whatever
   their case, and show only in properties and the tags list, never on the squares.
+  Under a hairline below *Archive*, **Tags** opens a quiet list of every tag with how many rooms
+  have it. Picking one dims the rooms without it, as the search lights do (nothing hides or
+  moves); picking it again, or Escape, lets go. In the rooms page's Search, **#tag** does the same
+  (it lights the rooms with a tag that starts so).
 - **A room** fills the screen as one gradient of its own colour, with the back arrow to the rooms.
   Its colour, lightness and opacity are set only in its pop-up on the rooms page (by default the
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;

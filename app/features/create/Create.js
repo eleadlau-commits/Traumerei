@@ -45,7 +45,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
+  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -98,6 +98,8 @@ export default class Create extends Feature {
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
     this.shelf = false;   // the Archive page is showing, instead of the grid
     this.lights = null;   // the rooms page's search lights: what is being looked for, or null
+    this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
+    this.tagsOpen = false; // the rail's Tags list is open
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.prefs = lookPrefs(this.storage.get('look'));
@@ -169,6 +171,7 @@ export default class Create extends Feature {
   // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.
   back() {
     if (this.roomId) this.showRooms();
+    else if (this.tagLight) { this.tagLight = null; this.drawRooms(); }
     else if (this.shelf) this.toggleShelf();
     else if (this.edited?.size && !this.leaving) this.askNote();
     else this.close();
@@ -384,7 +387,7 @@ export default class Create extends Feature {
   build() {
     this.grid = el('div', { class: 'create-grid' });
     // Search lights (Ctrl+K on the rooms page): the rooms without the words dim.
-    this.lightsField = el('input', { class: 'create-lights-field', placeholder: 'Light the rooms that hold…', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
+    this.lightsField = el('input', { class: 'create-lights-field', placeholder: 'Light the rooms that hold… (or #tag)', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
     this.lightsBar = el('div', { class: 'create-lights', hidden: true }, this.lightsField,
       this.lightsNote = el('span', { class: 'create-lights-note' }));
     this.lightsField.addEventListener('input', () => { this.lights = this.lightsField.value; this.drawRooms(); });
@@ -398,7 +401,14 @@ export default class Create extends Feature {
     this.railRooms = el('button', { type: 'button', class: 'create-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
     this.shelfBtn = el('button', { type: 'button', class: 'create-rail-item create-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
       'Archive');
-    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn);
+    // Under a hairline, Tags: a list of every tag with how many rooms have it. Picking one dims the
+    // rooms without it, as the search lights do (nothing hides or moves); picking it again, or
+    // Escape, lets go.
+    this.tagsBtn = el('button', { type: 'button', class: 'create-rail-item create-tags-btn', 'aria-expanded': 'false',
+      onclick: () => { this.tagsOpen = !this.tagsOpen; if (!this.tagsOpen) this.tagLight = null; this.drawRooms(); } }, 'Tags');
+    this.tagsList = el('div', { class: 'create-tag-list', hidden: true, role: 'list' });
+    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn,
+      el('div', { class: 'create-rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
     this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
     // The rooms page's pages: 1 2 3 +. A room dropped on a number goes to that page.
     this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
@@ -483,10 +493,17 @@ export default class Create extends Feature {
     return { cols, cell };
   }
 
-  // For each room shown (ids), how many thoughts in it (and its name) hold the words.
+  // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
+  // starts with # looks for a tag instead: the rooms with a tag that starts so are lit (true).
   hitsOn(ids, query = this.lights) {
     const out = {};
     if (!query?.trim()) return out;
+    if (query.trim().startsWith('#')) {
+      const want = tidyTag(query).toLowerCase();
+      if (!want) return out;
+      for (const id of ids) if (roomTags(this.world, id, this.ontologies).some((o) => o.tag.toLowerCase().startsWith(want))) out[id] = true;
+      return out;
+    }
     for (const f of search(this.world, query, Infinity)) {
       for (let th = this.world.things[f.id]; th; th = this.world.things[th.parent]) {
         if (ids.has(th.id)) { out[th.id] = (out[th.id] || 0) + 1; break; }
@@ -511,12 +528,20 @@ export default class Create extends Feature {
     const shown = new Set((this.shelf ? shelved : all).map((r) => r.id));
     if (!shown.has(this.roomPick)) this.roomPick = null; // chosen things not on this grid are let go
     if (!shown.has(this.roomSel)) this.roomSel = null;
-    const hits = this.lights?.trim() ? this.hitsOn(shown) : null;
-    this.grid.classList.toggle('lights', !!hits);
+    const byTag = this.lights?.trim().startsWith('#');
+    let hits = this.lights?.trim() && (!byTag || tidyTag(this.lights)) ? this.hitsOn(shown) : null;
     if (hits) {
       const n = Object.keys(hits).length;
-      this.lightsNote.textContent = n ? `${n} room${n === 1 ? '' : 's'} · Enter goes in` : 'Nothing here yet with those words';
+      this.lightsNote.textContent = n ? `${n} room${n === 1 ? '' : 's'} · Enter goes in` : byTag ? 'No room has that tag' : 'Nothing here yet with those words';
     } else this.lightsNote.textContent = '';
+    // A tag picked in the rail dims the rooms without it too (and with the lights, only those with both are lit).
+    if (this.tagLight) {
+      const tagged = {};
+      for (const id of shown) if (hasTag(this.world, id, this.tagLight, this.ontologies) && (!hits || hits[id])) tagged[id] = hits?.[id] || true;
+      hits = tagged;
+    }
+    this.grid.classList.toggle('lights', !!hits);
+    this.drawTags();
     if (this.shelf) { this.drawShelf(shelved, fit, cell, hits); return; }
     // The grid grows: always a spare column and row past the furthest room, and at least the
     // size set in Settings → Rooms. The page scrolls when it is bigger than the screen.
@@ -639,7 +664,7 @@ export default class Create extends Feature {
         r.desc ? el('div', { class: 'create-peek-desc' }, r.desc) : null,
         ...lines.map((t) => el('div', { class: 'create-peek-line' }, t))) : null,
       this.drafts[r.id] ? el('span', { class: 'create-tile-dot', title: 'A thought left half written' }) : null,
-      found ? el('span', { class: 'create-tile-found' }, String(found)) : null,
+      typeof found === 'number' && found ? el('span', { class: 'create-tile-found' }, String(found)) : null,
       el('div', { class: 'create-tile-label' },
         name,
         el('span', { class: 'create-tile-count' }, count ? String(count) : '')));
@@ -701,6 +726,24 @@ export default class Create extends Feature {
         this.drawRooms();
         this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
       }, 'create-options-delete'));
+  }
+
+  // ---- Tags, in the rail: every tag and how many rooms have it ----
+
+  drawTags() {
+    const tags = allTags(this.world, this.ontologies, this.shelf);
+    if (this.tagLight && !tags.some((t) => t.tag.toLowerCase() === this.tagLight.toLowerCase())) this.tagLight = null;
+    this.tagsBtn.setAttribute('aria-expanded', String(this.tagsOpen));
+    this.tagsBtn.classList.toggle('on', !!this.tagLight);
+    this.tagsList.hidden = !this.tagsOpen;
+    if (!this.tagsOpen) return;
+    this.tagsList.replaceChildren(...tags.map((t) => {
+      const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
+      return el('button', {
+        type: 'button', class: 'create-tag-pick', role: 'listitem', 'aria-pressed': String(on), title: `${t.n} room${t.n === 1 ? '' : 's'}`,
+        onclick: () => { this.tagLight = on ? null : t.tag; this.drawRooms(); },
+      }, el('span', { class: 'create-tag-name' }, t.tag), el('span', { class: 'create-tag-n' }, String(t.n)));
+    }));
   }
 
   // ---- Search lights ----

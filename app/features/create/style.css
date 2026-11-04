@@ -1090,3 +1090,23 @@
   opacity: .6;
 }
 .create-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
+
+/* The rail's Tags: under a hairline, a quiet list of every tag and how many rooms have it. */
+.create-tags-btn.on { opacity: 1; }
+.create-tag-list { display: grid; gap: 6px; margin-top: -8px; width: 62px; }
+.create-tag-list[hidden] { display: none; }
+.create-tag-pick {
+  appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
+  padding: 1px 0 1px 10px; display: flex; gap: 6px; align-items: baseline; justify-content: flex-start;
+  text-align: left; font: inherit; font-size: 11px; letter-spacing: .03em; line-height: 1.25; color: inherit;
+  opacity: .5; cursor: pointer; box-shadow: inset 1px 0 0 transparent; transition: opacity .2s, box-shadow .25s;
+}
+.create-tag-pick:is(:hover, :focus-visible) { opacity: .85; outline: none; }
+.create-tag-pick[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.create-tag-name { overflow-wrap: anywhere; }
+.create-tag-n { font-size: 10px; opacity: .6; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .create-rail { flex-wrap: wrap; right: var(--gutter); }
+  .create-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
+  .create-tag-pick { padding: 2px 0; }
+}
