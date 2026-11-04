@@ -9,7 +9,7 @@ export default {
     return text ? { text } : null;
   },
   text: (th) => th.text || '',
-  // In room Markdown (../roomfile.js): "- words", and each further line indented under it.
+  // In room Markdown (the roomfile feature's format.js): "- words", and each further line indented under it.
   md: {
     order: 20,
     read(lines, i) {

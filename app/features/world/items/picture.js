@@ -9,7 +9,7 @@ export default {
     return src ? { src, text: h.oneLine(f.text) } : null;
   },
   text: (th) => (th.text ? `[${th.text}]` : '[picture]'),
-  // In room Markdown (../roomfile.js): ![caption](data:image/… or https://…). An https picture
+  // In room Markdown (the roomfile feature's format.js): ![caption](data:image/… or https://…). An https picture
   // keeps its address (url) until Create fetches it; one it can't becomes a line saying so.
   md: {
     order: 10,

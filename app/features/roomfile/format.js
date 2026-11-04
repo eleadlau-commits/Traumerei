@@ -1,6 +1,6 @@
 // Room Markdown: a room as a plain text file, to write by hand (or have Claude write) and bring in
 // at once, and to take a room out again. No screen here, so it can be tested on its own
-// (tests/roomfile.test.js); Create's files.js reads and downloads the files.
+// (tests/roomfile.test.js); Roomfile.js reads and downloads the files.
 //
 //   ---                                   front matter (optional): the room's name, its mode, a
 //   room: Linear algebra                  line about it, its tags and colour, and its settings for

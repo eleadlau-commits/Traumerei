@@ -1,4 +1,4 @@
-// Room files: a room in and out as one Markdown file ("room Markdown", roomfile.js). A file comes
+// Room files: a room in and out as one Markdown file ("room Markdown", format.js). A file comes
 // in as a new room or into a room; before anything changes, a quiet card says what will arrive and
 // what couldn't be read, and Import brings it all in as one step. A room goes out as a download.
 // Create asks for all of it through the `roomfile` service below (README.md lists it), and says
@@ -6,7 +6,7 @@
 
 import { Feature, ui } from 'folio';
 import { bind, room, shut, keepOrShrink } from './world.js';
-import { parse, say, importRoom, importInto, exportRoom, fileName, copyWorld, unfetched } from './roomfile.js';
+import { parse, say, importRoom, importInto, exportRoom, fileName, copyWorld, unfetched } from './format.js';
 
 const { el } = ui;
 const MD = /\.(md|markdown|txt)$/i;
@@ -32,7 +32,7 @@ export default class Roomfile extends Feature {
   }
 
   // The file read, its pictures fetched and shrunk as pasted ones are. One that can't be fetched
-  // becomes a line saying so. Returns the parsed file (roomfile.js), or null.
+  // becomes a line saying so. Returns the parsed file (format.js), or null.
   async read(file) {
     let text;
     try { text = await file.text(); } catch { this.toast('That file couldn\'t be read.'); return null; }

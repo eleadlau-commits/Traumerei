@@ -97,7 +97,7 @@ A passage with no title.
   Importing into a room, a parent can also be a chapter already there. Any other attribute (and
   in Joyce and Pessoa, every one) is kept with the group and written back out.
 
-`roomfile.js` reads and writes the format with no screen (`parse`, `importRoom`, `importInto`,
+`format.js` reads and writes the format with no screen (`parse`, `importRoom`, `importInto`,
 `exportRoom`, tested in `tests/roomfile.test.js`); each kind of item says how it reads and writes
 itself next to its `tidy()` and `text()` (`md` in the world feature's `items/`). `Roomfile.js` is
 the screen side: the card, fetching pictures, downloading files. `world.js` lists the world's

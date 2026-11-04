@@ -6,7 +6,7 @@ import { bind } from '../world.js';
 import { emptyWorld, MESSY, members, groupsIn, roomItems, room, view, own, lock, create, addRoom } from '../../world/model.js';
 import { BUILT_IN } from '../../world/ontologies/index.js';
 import { arrows, chapterName, parentsOf, layout } from '../../world/ontologies/russell.js';
-import { parse, summary, importInto, importRoom, exportRoom, escape, unescape, fileName, groupsFor } from '../roomfile.js';
+import { parse, summary, importInto, importRoom, exportRoom, escape, unescape, fileName, groupsFor } from '../format.js';
 
 bind(lib); // the world's rules, as roomfile gets them from the world service
 
