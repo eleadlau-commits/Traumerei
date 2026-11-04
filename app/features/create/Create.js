@@ -45,7 +45,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
+  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, groupNames, ONTOLOGY, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -99,6 +99,7 @@ export default class Create extends Feature {
     this.shelf = false;   // the Archive page is showing, instead of the grid
     this.lights = null;   // the rooms page's search lights: what is being looked for, or null
     this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
+    this.regrouping = null; // the tag whose group is being typed in the Tags list
     this.tagsOpen = false; // the rail's Tags list is open
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
@@ -730,20 +731,59 @@ export default class Create extends Feature {
 
   // ---- Tags, in the rail: every tag and how many rooms have it ----
 
+  // The tags under their groups: a small heading for each (Ontology first, Other last, shown only
+  // when there are groups of your own). A right-click on a tag (a long press on a phone) asks
+  // for its group: typed there, or as "Group: tag" in a room's + tag.
   drawTags() {
-    const tags = allTags(this.world, this.ontologies, this.shelf);
+    const onts = this.ontologies;
+    const grouped = tagsByGroup(this.world, onts, this.shelf);
+    const tags = grouped.flatMap((g) => g.tags);
     if (this.tagLight && !tags.some((t) => t.tag.toLowerCase() === this.tagLight.toLowerCase())) this.tagLight = null;
     this.tagsBtn.setAttribute('aria-expanded', String(this.tagsOpen));
     this.tagsBtn.classList.toggle('on', !!this.tagLight);
     this.tagsList.hidden = !this.tagsOpen;
     if (!this.tagsOpen) return;
-    this.tagsList.replaceChildren(...tags.map((t) => {
+    const mine = grouped.some((g) => g.group && g.group !== ONTOLOGY);
+    const pick = (t) => {
       const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
+      if (this.regrouping?.toLowerCase() === t.tag.toLowerCase()) return this.groupField(t.tag);
+      const mode = tagGroup(this.world, t.tag, onts) === ONTOLOGY;
+      let timer = 0;
       return el('button', {
-        type: 'button', class: 'create-tag-pick', role: 'listitem', 'aria-pressed': String(on), title: `${t.n} room${t.n === 1 ? '' : 's'}`,
-        onclick: () => { this.tagLight = on ? null : t.tag; this.drawRooms(); },
+        type: 'button', class: 'create-tag-pick', role: 'listitem', 'aria-pressed': String(on),
+        title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · right-click to put it in a group'}`,
+        onclick: () => { if (this.heldTag) { this.heldTag = false; return; } this.tagLight = on ? null : t.tag; this.drawRooms(); },
+        oncontextmenu: (e) => { e.preventDefault(); if (!mode) { this.regrouping = t.tag; this.drawTags(); } },
+        onpointerdown: (e) => { if (e.pointerType !== 'mouse' && !mode) timer = setTimeout(() => { this.heldTag = true; this.regrouping = t.tag; this.drawTags(); }, HOLD); },
+        onpointerup: () => clearTimeout(timer), onpointerleave: () => clearTimeout(timer),
       }, el('span', { class: 'create-tag-name' }, t.tag), el('span', { class: 'create-tag-n' }, String(t.n)));
-    }));
+    };
+    this.tagsList.replaceChildren(...grouped.flatMap((g) => [
+      g.group || mine ? el('div', { class: 'create-tag-group', 'aria-hidden': 'true' }, g.group || 'Other') : null,
+      ...g.tags.map(pick),
+    ]));
+  }
+
+  // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.
+  groupField(tag) {
+    const done = (keep, value) => {
+      this.regrouping = null;
+      if (keep && setTagGroup(this.world, tag, value, this.ontologies)) this.save();
+      this.drawTags();
+    };
+    const list = el('datalist', { id: 'create-group-list' }, ...groupNames(this.world).slice(1).map((g) => el('option', { value: g })));
+    const field = el('input', {
+      class: 'create-tag-field create-group-field', value: tagGroup(this.world, tag, this.ontologies) || '', placeholder: `${tag} in…`,
+      'aria-label': `The group ${tag} is in`, list: 'create-group-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); done(true, e.target.value); }
+        if (e.key === 'Escape') { e.preventDefault(); done(false); }
+      },
+      onblur: (e) => { if (this.regrouping) done(true, e.target.value); },
+    });
+    requestAnimationFrame(() => { field.focus({ preventScroll: true }); field.select(); });
+    return el('div', { class: 'create-group-edit', role: 'listitem' }, field, list);
   }
 
   // ---- Search lights ----
@@ -867,7 +907,7 @@ export default class Create extends Feature {
     const list = el('datalist', { id: 'create-tag-list' },
       ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el('option', { value: t.tag })));
     const field = el('input', {
-      class: 'create-tag-field', placeholder: '+ tag', 'aria-label': 'Add a tag', list: 'create-tag-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      class: 'create-tag-field', placeholder: '+ tag', title: 'A tag, or Group: tag', 'aria-label': 'Add a tag', list: 'create-tag-list', maxlength: 61, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value; after(() => addTag(this.world, r.id, v, onts)); }

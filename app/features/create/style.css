@@ -1110,3 +1110,9 @@
   .create-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
   .create-tag-pick { padding: 2px 0; }
 }
+/* A group's heading in the Tags list (Ontology, your own, Other), and the field that names a tag's group. */
+.create-tag-group { margin-top: 6px; padding-left: 10px; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; opacity: .35; }
+.create-tag-group:first-child { margin-top: 0; }
+.create-group-edit { padding-left: 10px; }
+.create-group-field, .create-group-field:focus { width: 100px; opacity: 1; border-bottom-color: currentColor; }
+@media (max-width: 560px) { .create-tag-group { margin-top: 0; padding-left: 0; } }
