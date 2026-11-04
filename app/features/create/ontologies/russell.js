@@ -14,10 +14,13 @@
 
 import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own } from '../model.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
+import { maths } from '../maths.js';
+
+const SVG = 'http://www.w3.org/2000/svg';
 
 export const ID = 'russell';
 export const MOST_PARENTS = 2;
-export const LAYOUT = { width: 380, gapX: 70, gapY: 110, head: 0 }; // world units
+export const LAYOUT = { width: 380, least: 240, gapX: 80, gapY: 150, head: 0 }; // world units; least: room for an arrow's label
 
 // ---- Reading the tree ----
 
@@ -144,7 +147,7 @@ export function chapterSize(w, id) {
   if (g?.folded) return { w: widest(w, id) || LAYOUT.width, h: STEP.group };
   const ths = members(w, id);
   const h = LAYOUT.head + ths.reduce((s, th, i) => s + (i < ths.length - 1 ? stepAfter(th) : Math.max(STEP.line, stepAfter(th) - 29)), 0);
-  return { w: Math.min(LAYOUT.width, widest(w, id) || LAYOUT.width), h: Math.max(STEP.line, h) };
+  return { w: Math.max(LAYOUT.least, Math.min(LAYOUT.width, widest(w, id) || LAYOUT.width)), h: Math.max(STEP.line, h) };
 }
 
 // How deep each chapter sits: a root at 0, and every chapter one below its deepest parent, so a
@@ -254,6 +257,72 @@ export function chosenChapter(c) {
   return groupOf(c.world, id, ID)?.id || null;
 }
 
+// ---- On the canvas ----
+
+// A move waiting for a click on a chapter: { room, child, kind: 'add' | 'cut' } (Add second
+// parent: click the parent; Remove arrow, from a junction: click the parent to cut it from).
+let pending = null;
+
+const svg = (name, attrs = {}) => {
+  const n = document.createElementNS(SVG, name);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+};
+const r1 = (v) => Math.round(v * 10) / 10;
+// An arrow from a chapter's foot (p) down to a child's head (q): a soft S.
+export function arrowPath(p, q) {
+  const dy = Math.max(40, (q.y - p.y) / 2);
+  return `M${r1(p.x)} ${r1(p.y)}C${r1(p.x)} ${r1(p.y + dy)} ${r1(q.x)} ${r1(q.y - dy)} ${r1(q.x)} ${r1(q.y)}`;
+}
+const FOOT = 16; // how far under a chapter its foot sits
+const foot = (at, size) => ({ x: at.x + size.w / 2, y: at.y + size.h + FOOT });
+const head = (at, size) => ({ x: at.x + size.w / 2, y: at.y - 40 }); // above the chapter's name
+
+// Each chapter's corner and size, as drawn now.
+function boxes(w, roomId) {
+  const places = layout(w, roomId);
+  const out = {};
+  for (const g of chapters(w, roomId)) if (places[g.id]) out[g.id] = { at: places[g.id], size: chapterSize(w, g.id) };
+  return out;
+}
+
+// The chapter under a pointer: the drawn chapter it is over, or the nearest box.
+function chapterUnder(c, ev) {
+  const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-group]');
+  const g = n && c.world.things[n.dataset.group];
+  if (g && g.of === ID) return g.id;
+  const p = c.toWorld(ev.clientX, ev.clientY);
+  return chapterAt(c.world, c.roomId, p.x, p.y);
+}
+
+// Draws an arrow by dragging from a chapter's foot onto another chapter.
+function dragArrow(c, e, from) {
+  const layer = c.world$?.querySelector('.create-russell-arrows');
+  const b = boxes(c.world, c.roomId)[from];
+  if (!layer || !b) return;
+  const p = foot(b.at, b.size);
+  const line = svg('path', { class: 'create-russell-arrow create-russell-drawing', 'marker-end': 'url(#russell-head)' });
+  layer.append(line);
+  const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); line.setAttribute('d', arrowPath(p, q)); };
+  const up = (ev) => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    line.remove();
+    if (ev.type !== 'pointerup') return;
+    const to = chapterUnder(c, ev);
+    if (!to || to === from) { c.drawWorld(); return; }
+    const why = link(c.world, c.roomId, from, to);
+    if (why) c.toast(why);
+    c.save();
+    c.drawWorld();
+  };
+  move(e);
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+}
+
 // ---- The ontology ----
 
 export default {
@@ -322,6 +391,142 @@ export default {
 
   // Each thought's size as drawn: the layout follows it.
   measured: (sizes) => { const a = setHeights(sizes), b = setWidths(sizes); return a || b; },
+
+  // A press on the canvas: a chapter's foot starts an arrow; a move waiting for a chapter takes
+  // the one clicked (anywhere else lets it go).
+  press(c, e) {
+    if (e.button !== 0 || c.locked) return false;
+    if (pending && pending.room === c.roomId) {
+      const job = pending;
+      pending = null;
+      const to = chapterUnder(c, e);
+      if (to) {
+        if (job.kind === 'add') { const why = link(c.world, c.roomId, to, job.child); if (why) c.toast(why); }
+        else if (!unlink(c.world, c.roomId, to, job.child)) c.toast('That chapter isn\'t a parent of this one.');
+        c.save();
+      }
+      c.drawWorld();
+      return true;
+    }
+    const f = e.target.closest?.('[data-foot]');
+    if (!f) return false;
+    e.preventDefault();
+    dragArrow(c, e, f.dataset.foot);
+    return true;
+  },
+
+  moves: [
+    {
+      id: 'child', label: 'New child chapter', when: (c) => !!chosenChapter(c),
+      run(c) {
+        const parent = chosenChapter(c);
+        const b = boxes(c.world, c.roomId)[parent];
+        const at = b ? { x: b.at.x, y: b.at.y + b.size.h + LAYOUT.gapY } : c.freeSpot();
+        c.write({ x: at.x, y: at.y, for: { parent } });
+      },
+    },
+    {
+      id: 'parent', label: 'Add second parent',
+      when: (c) => { const g = chosenChapter(c); return !!g && parentsOf(c.world, c.roomId, g).length < MOST_PARENTS; },
+      run(c) {
+        pending = { room: c.roomId, child: chosenChapter(c), kind: 'add' };
+        c.sel = null;
+        c.toast('Click the chapter to be its other parent.');
+      },
+    },
+    {
+      id: 'cut', label: 'Remove arrow',
+      when: (c) => { const g = chosenChapter(c); return !!g && parentsOf(c.world, c.roomId, g).length > 0; },
+      run(c) {
+        const child = chosenChapter(c);
+        const ps = parentsOf(c.world, c.roomId, child);
+        if (ps.length === 1) { unlink(c.world, c.roomId, ps[0], child); return; }
+        pending = { room: c.roomId, child, kind: 'cut' };
+        c.sel = null;
+        c.toast('Click the parent to take its arrow away.');
+      },
+    },
+  ],
+
+  // In a chapter's pop-up: each arrow into it, with what it forgets about that parent.
+  props(c, th) {
+    if (!isGroup(th) || th.of !== ID) return [];
+    const { parents, labels } = arrowsInto(c.world, c.roomId, th.id);
+    return parents.map((p) => c.el('label', { class: 'create-russell-forgets' },
+      c.el('span', { class: 'create-options-note' }, `From ${chapterName(c.world, p)}, it forgets`),
+      c.el('input', {
+        class: 'create-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it forgets about ${chapterName(c.world, p)}`,
+        onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
+        onchange: (e) => { setLabel(c.world, c.roomId, p, th.id, e.target.value); c.save(); c.drawWorld(); },
+      })));
+  },
+
+  // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
+  // arrows down to its children with their labels, and the thought being written.
+  draw(c) {
+    const w = c.world, el = c.el, roomId = c.roomId;
+    const all = boxes(w, roomId);
+    const layer = svg('svg', { class: 'create-strands create-russell-arrows' });
+    const defs = svg('defs');
+    const mark = svg('marker', { id: 'russell-head', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
+    mark.append(svg('path', { d: 'M0 1L9 5L0 9', class: 'create-russell-head' }));
+    defs.append(mark);
+    layer.append(defs);
+    const nodes = [];
+    const picking = pending && pending.room === roomId;
+    for (const { from, to, label } of arrows(w, roomId)) {
+      const a = all[from], b = all[to];
+      if (!a || !b) continue;
+      const p = foot(a.at, a.size), q = head(b.at, b.size);
+      layer.append(svg('path', { class: 'create-russell-arrow', d: arrowPath(p, q), 'marker-end': 'url(#russell-head)' }));
+      if (label) {
+        // Beside the arrow just above the child; a junction's two arrows meet there, so each of
+        // its labels sits by its parent's foot instead, on the side the arrow leaves to.
+        const two = parentsOf(w, roomId, to).length > 1;
+        const left = two && q.x < p.x;
+        const x = two ? p.x : q.x, y = two ? p.y + 10 : q.y - 52;
+        nodes.push(el('div', {
+          class: 'create-russell-label' + (left ? ' left' : ''), 'data-group': to, title: 'What the child forgets',
+          style: `left:${Math.round(x + (left ? -12 : 12))}px;top:${Math.round(y)}px`,
+        }, maths(label)));
+      }
+    }
+    for (const g of chapters(w, roomId)) {
+      const box = all[g.id];
+      if (!box) continue;
+      const { at, size } = box;
+      const chosen = (c.sel?.kind === 'train' && c.sel.id === g.id) || c.isSel(g.id);
+      const cls = 'create-bead' + (picking ? ' create-russell-pick' : '');
+      if (g.folded) {
+        nodes.push(el('div', { class: cls + ' create-folded' + (chosen ? ' selected' : ''), 'data-group': g.id, style: `left:${at.x}px;top:${at.y}px` }, c.thoughtNode(g)));
+      } else {
+        const spots = chapterSpots(w, g.id, at);
+        for (const th of members(w, g.id)) {
+          const sp = spots[th.id];
+          nodes.push(el('div', {
+            class: cls + (chosen || c.isSel(th.id) ? ' selected' : '') + (c.found === th.id ? ' found' : ''),
+            'data-group': g.id, 'data-thought': th.id, style: `left:${sp.x}px;top:${sp.y}px`,
+          }, c.thoughtNode(th)));
+        }
+        if (c.draft?.train === g.id && !c.draft.edit) {
+          const last = members(w, g.id).at(-1);
+          const y = last ? spots[last.id].y + stepAfter(last) : at.y;
+          nodes.push(el('div', { class: 'create-bead', 'data-group': g.id, style: `left:${at.x}px;top:${y}px` }, c.draftNode()));
+        }
+      }
+      // The chapter's hairline, down its left, and its name over it.
+      layer.append(svg('path', { class: 'create-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
+      if (g.title && !g.folded) nodes.push(el('div', { class: 'create-russell-title', 'data-group': g.id, style: `left:${at.x}px;top:${at.y - 30}px` }, g.title));
+      if (!c.locked) {
+        const f = foot(at, size);
+        nodes.push(el('div', { class: 'create-russell-foot', 'data-foot': g.id, title: 'Drag onto another chapter to make it a child', style: `left:${f.x}px;top:${f.y}px` }));
+      }
+    }
+    if (c.draft && !c.draft.train && !c.draft.edit) {
+      nodes.push(el('div', { class: 'create-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+    }
+    return [layer, ...nodes];
+  },
 
   // A thought's tag in the Timeline: its chapter.
   tag(w, id) {

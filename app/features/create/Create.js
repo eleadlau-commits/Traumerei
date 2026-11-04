@@ -1788,6 +1788,13 @@ export default class Create extends Feature {
       return;
     }
 
+    // The ontology's own presses (ontologies/index.js: press), such as Russell's arrows.
+    if (!middle && !this.spaceDown && !(e.ctrlKey || e.metaKey) && this.ont.press?.(this, e)) {
+      pointers.delete(e.pointerId);
+      if (this.stage.hasPointerCapture?.(e.pointerId)) this.stage.releasePointerCapture(e.pointerId);
+      return;
+    }
+
     const v = view(this.world, this.roomId);
     const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
     let thing = null;
@@ -2335,7 +2342,9 @@ export default class Create extends Feature {
       const elsewhere = th.folded ? this.elsewhere(th) : [];
       if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
     }
-    // The ontology's own moves (ontologies/index.js), those that fit what is chosen.
+    // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
+    // those that fit.
+    try { rows.push(...(this.ont.props?.(this, th) || [])); } catch (err) { console.warn('Create: props', err); }
     const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
     if (moves.length) rows.push(el('div', { class: 'create-options-row create-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
     const others = this.moveRooms();

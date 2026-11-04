@@ -1012,3 +1012,47 @@
   opacity: .92;
 }
 .create-moves { flex-wrap: wrap; }
+
+/* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
+   foot of a parent down to its children, with what the child forgets beside them. */
+.create-russell-arrow { fill: none; stroke: currentColor; stroke-width: 1; opacity: .4; }
+.create-russell-drawing { opacity: .7; stroke-dasharray: 4 4; }
+.create-russell-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
+.create-russell-rule { stroke: currentColor; stroke-width: 1; opacity: .22; }
+.create-russell-rule.selected { opacity: .6; }
+.create-russell-title {
+  position: absolute;
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: .6;
+  white-space: nowrap;
+  cursor: grab;
+}
+.create-russell-label {
+  position: absolute;
+  max-width: 200px;
+  width: max-content;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+  opacity: .62;
+  cursor: pointer;
+}
+.create-russell-foot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: .28;
+  cursor: crosshair;
+  touch-action: none;
+  transition: opacity .2s, transform .2s;
+}
+.create-russell-foot:hover { opacity: .8; transform: scale(1.3); }
+.create-russell-pick { cursor: copy; }
+.create-russell-pick:hover { outline: 1px dashed color-mix(in srgb, var(--room-ink) 50%, transparent); outline-offset: 7px; }
+.create-russell-forgets { display: grid; gap: 4px; }
+.create-russell-label.left { transform: translateX(-100%); text-align: right; }
