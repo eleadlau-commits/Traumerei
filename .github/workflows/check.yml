@@ -1,0 +1,48 @@
+# On every pull request: runs all the tests, then builds the one-file page and attaches it to the
+# run as a download ("traumerei-preview"), so a PR can be tried before it is merged.
+name: Check pull request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: The built file is left alone
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qx 'standalone/mask-renderer.html'; then
+            echo "::error file=standalone/mask-renderer.html::This PR changes the built file. It is rebuilt automatically after merging, so leave it out (git checkout origin/main -- standalone/mask-renderer.html)."
+            exit 1
+          fi
+      - name: Run all tests
+        run: python build.py test
+      - name: Build the one-file page
+        run: python standalone.py
+      - name: Attach it as a download
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: traumerei-preview
+          path: standalone/mask-renderer.html
+          retention-days: 14
+      - name: Link it in the summary
+        run: |
+          echo "### Try this PR" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Download traumerei-preview](${{ steps.upload.outputs.artifact-url }}), unzip it and double-click mask-renderer.html." >> "$GITHUB_STEP_SUMMARY"

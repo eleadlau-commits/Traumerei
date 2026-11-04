@@ -3,6 +3,11 @@
 A small page, built with **Folio**, that turns a picture into a faint monochrome, cuts it with a
 seeded opacity mask, and combines them. The same picture always gives the same result.
 
+Every pull request runs **Check pull request** (`.github/workflows/check.yml`): all the tests
+(`python build.py test`), then a build of the one-file page. To try a PR before merging, open its
+check run on GitHub and download **traumerei-preview** from the summary; unzip it and double-click
+`mask-renderer.html`.
+
 Everything for it is in this folder: a copy of Folio (`folio/`, version in `folio/VERSION`,
 from the Mobile Durham repository), `build.py`, and the app in `app/`. The page itself is the
 feature in `app/features/renderer/`, and its rendering engine is in
