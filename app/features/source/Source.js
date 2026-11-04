@@ -28,7 +28,7 @@ export default class Source extends Feature {
     return new Promise((resolve) => {
       let applied = false, base = text, timer = 0, asking = null;
       const chosen = Object.fromEntries(options.map((o) => [o.key, !!o.value]));
-      const box = el('textarea', { class: 'source-text', spellcheck: 'false', autocomplete: 'off', wrap: 'off', 'aria-label': title || 'Source', readonly: readOnly ? '' : null });
+      const box = el('textarea', { class: 'code-box source-text', spellcheck: 'false', autocomplete: 'off', wrap: 'off', 'aria-label': title || 'Source', readonly: readOnly ? '' : null });
       box.value = text;
       const sum = el('div', { class: 'source-sum', 'aria-live': 'polite' });
       const lists = el('div', { class: 'source-lists' });
@@ -36,7 +36,7 @@ export default class Source extends Feature {
       const changed = () => box.value !== base;
       const say = (msg) => { sum.dataset.note = msg; sum.classList.add('noted'); clearTimeout(this.noteTimer); this.noteTimer = setTimeout(() => sum.classList.remove('noted'), 1800); };
       const list = (label, items, cls) => (items?.length ? el('section', { class: 'source-list ' + cls },
-        el('div', { class: 'source-list-label' }, label),
+        el('div', { class: 'label' }, label),
         el('ul', {}, ...items.slice(0, SHOWN).map((t) => el('li', {}, t)), items.length > SHOWN ? el('li', { class: 'source-more' }, `and ${items.length - SHOWN} more`) : null)) : null);
       const run = () => {
         let r = {};
@@ -58,7 +58,7 @@ export default class Source extends Feature {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !readOnly && apply) { e.preventDefault(); doApply(); }
       });
 
-      const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'source-word ' + extra, onclick: fn }, label);
+      const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
       const copy = async () => {
         try { await navigator.clipboard.writeText(box.value); say('Copied'); } catch { box.select(); say('Press Ctrl+C to copy'); }
       };
@@ -115,8 +115,8 @@ export default class Source extends Feature {
         el('div', { class: 'source-words' },
           word('Copy', copy),
           word('Download', download),
-          ...(readOnly ? [el('span', { class: 'source-keys' }, 'Read only')] : [word('Paste', paste), word('Reset', doReset), go,
-            el('span', { class: 'source-keys' }, 'Ctrl+Enter applies · Escape closes')])),
+          ...(readOnly ? [el('span', { class: 'sheet-keys' }, 'Read only')] : [word('Paste', paste), word('Reset', doReset), go,
+            el('span', { class: 'sheet-keys' }, 'Ctrl+Enter applies · Escape closes')])),
         ask);
       let handle = null;
       this.panel.open({ key: 'source', kind, title, body, beforeClose, onClose: () => { clearTimeout(timer); if (this.handle === handle) this.handle = null; resolve(applied); } })

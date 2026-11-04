@@ -143,7 +143,7 @@ export default class Room extends Feature {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const look = this.lookOf(room(this.world, this.roomId));
     const W = window.innerWidth, H = window.innerHeight;
-    const veil = el('div', { class: 'room-expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
+    const veil = el('div', { class: 'expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
     this.expandVeil = veil;
     this.root.classList.add('expanding');
     this.root.append(veil);

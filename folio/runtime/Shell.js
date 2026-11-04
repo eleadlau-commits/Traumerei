@@ -226,7 +226,7 @@ export class Shell {
       .map((b) => ({ ...b, order: b.order ?? 50, onClick: () => slot.run(b, (x) => x.onClick()), busy: slot.run(b, (x) => !!x.busy?.(), false) }));
     const rows = [...own, ...theirs].sort((a, b) => a.order - b.order).map((r) => el('button', {
       type: 'button',
-      class: `menu-row${r.busy ? ' spin' : ''}`,
+      class: `word menu-row${r.busy ? ' spin' : ''}`,
       onclick: () => {
         this.closeMenu();
         r.onClick();

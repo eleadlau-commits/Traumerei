@@ -262,7 +262,7 @@ export default class Rooms extends Feature {
     const look = this.lookOf(r);
     const a = tile.getBoundingClientRect();
     const W = window.innerWidth, H = window.innerHeight;
-    const veil = el('div', { class: 'rooms-expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
+    const veil = el('div', { class: 'expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
     this.shrinkVeil = veil;
     this.root.append(veil);
     veil.getBoundingClientRect();

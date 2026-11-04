@@ -181,7 +181,7 @@ export class Bars {
     const r = card.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
     const ghost = card.cloneNode(true);
-    ghost.classList.add('panel room-tray-ghost');
+    ghost.classList.add('panel', 'room-tray-ghost');
     Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
     this.root.append(ghost);
     const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };

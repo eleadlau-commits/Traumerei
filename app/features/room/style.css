@@ -280,19 +280,7 @@
 .room-crumb-desc { margin-top: 2px; font-size: 12px; letter-spacing: .03em; font-style: italic; text-align: center; opacity: .55; max-width: 40vw; white-space: normal; }
 .room-edit-read { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
 
-/* Going in: the square grows to fill the screen, then fades into the room. */
-.room-expand {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 5;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-.room-expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
-.room-expand.done { transition: opacity .25s ease; opacity: 0; }
+/* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 .room.expanding .room-page { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
 .room.expanding .room-back { color: var(--ink); }
 

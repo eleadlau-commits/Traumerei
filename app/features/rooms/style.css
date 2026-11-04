@@ -241,19 +241,7 @@
 .rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(var(--ink-rgb) / .1)) 100%, rgb(var(--ink-rgb) / .12)); }
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
-/* Going in: the square grows to fill the screen, then fades into the room. */
-.rooms-expand {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 5;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-.rooms-expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
-.rooms-expand.done { transition: opacity .25s ease; opacity: 0; }
+/* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
 .rooms.expanding .rooms-back { color: var(--ink); }
 
