@@ -2,6 +2,7 @@
 
 import { test, assert } from 'folio/testing';
 import { BUILT_IN, gather, missing, FALLBACK } from '../ontologies/index.js';
+import russell from '../ontologies/russell.js';
 import { membership, emptyWorld, create, groupOf, MESSY } from '../model.js';
 
 test('every built-in ontology has the parts it needs', () => {
@@ -47,4 +48,11 @@ test('Joyce: a thought in no train waits in the tray, and dragged out it starts 
   const train = groupOf(w, loose.id, 'joyce');
   assert.ok(train && train.id !== t.id);
   assert.deepEqual({ x: train.x, y: train.y }, { x: 400, y: 120 });
+});
+
+test('Russell has the parts it needs, and holds each thought in one chapter', () => {
+  assert.deepEqual(missing(russell), []);
+  assert.equal(russell.id, 'russell');
+  assert.equal(russell.groups.membership, 'one');
+  for (const k of ['begin', 'tray', 'placed', 'tag', 'blocks', 'shift', 'measured']) assert.equal(typeof russell[k], 'function', k);
 });
