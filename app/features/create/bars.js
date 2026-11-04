@@ -4,10 +4,8 @@
 
 import {
   MESSY, room, name, view, create, update, remove, move, fold, unfold, kindOf, groupOf,
-  thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms,
-} from './model.js';
-import { shrinkPicture } from './picture.js';
-import { ITEMS } from './items/index.js';
+  thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms, shrinkPicture, ITEMS,
+} from './world.js';
 import { el, enterKeeps } from './shared.js';
 
 export class Bars {

@@ -4,12 +4,11 @@
 
 import {
   MESSY, DEFAULT_MODE, room, addRoom, name, create, update, remove, move, fold, roomThoughts,
-  gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore, peek,
-  DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
-  tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings, allTags,
-} from './model.js';
-import { light } from './attention.js';
-import { squareLook, toOklch, rgb } from './look.js';
+  gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore,
+  peek, DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
+  hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
+  seedRoomSettings, allTags, light, squareLook, toOklch, rgb,
+} from './world.js';
 import { el, GRID, MAC, HOLD } from './shared.js';
 
 export class RoomsPage {

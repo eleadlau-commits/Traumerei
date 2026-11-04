@@ -93,55 +93,16 @@ What the home page's **Create** opens: rooms of thoughts.
   thought takes the place of its thoughts) or **Keep both** (it is added beside them). It is the
   same train either way, never a copy, and its pop-up can change the choice later.
 
-**The code.** The `Create` class is written across several files: `Create.js` (starting,
-opening and closing, saving, undo, building the page, the ontologies), `rooms.js` (the rooms
+**The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
+saving and undo are the **world** feature's (`app/features/world`, see its README); Create
+reaches them through the `world` service (`this.w`), and `world.js` here binds the rules it
+uses, so every file imports them from there. The `Create` class is written across several files:
+`Create.js` (starting, opening and closing, building the page), `rooms.js` (the rooms
 page), `room.js` (a room, its rail and settings, clear space, Timeline), `writing.js` (thoughts,
 the draft, the caret), `gestures.js` (pointer, keys, selection, copy and paste, Search) and
 `bars.js` (pop-ups, tray, sheets, pictures). Each part is a class whose methods `mixIn` (end of
 `Create.js`) copies onto `Create`, so `this` is always the feature. `shared.js` holds the
-constants they share.
-
-**Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
-kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*
-and *rooms*. Items and groups sit in a room. A group belongs to the ontology that made it (Joyce
-makes trains) and lists its items, so one item can be in groups of several ontologies. Each
-ontology says whether an item can be in **one** of its groups (a train) or in **many**. Every
-group can be folded, named, moved and deleted, and is always the same group, never a copy.
-
-**Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa, Russell), or come from another feature
-through the slot `create.ontologies`. `ontologies/index.js` describes their shape: name, groups,
-units, where each sits, what a drag does, and optional tray, settings, moves (shown in the pop-up
-of what is chosen), its own presses and pop-up rows, and `begin` (which group a new thought joins,
-or none, so it waits in the tray). Each keeps its own data per room (`own()` in model.js: Pessoa's
-dragged places, Russell's arrows and their labels). An ontology can draw its own
-canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); Create keeps
-no mode of its own. A room whose ontology is missing is seen through Pessoa.
-
-The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
-the key `world3` (a world saved in an older shape is not kept) and follows the account like the settings. Other features reach it through the
-`create` service (`open()`).
-
-## Mathematics
-
-Any thought's words can hold LaTeX: `$…$` is inline maths and `$$…$$` is display maths, on a line
-of its own; `\$` is a dollar sign. This is for every kind of words: a line, a passage's title
-and body, a picture's caption, a folded group's title. The words are kept exactly as typed, so
-search, peeks, the Timeline and `text(th)` read the source, and the draft, edit in place and the
-sheet show the source too. Once a thought is kept, it shows drawn, in the thought's own colour and
-size. A formula that doesn't parse shows its source in a quiet rust and never breaks the canvas.
-
-A `$` opens only when something other than a space follows it, and closes only when something
-other than a space comes before it and no digit after it (Pandoc's rule), so "$5 and $6" stays
-words. Inline maths stays on one line; display maths may span lines. A `$` that never closes,
-and an empty `$$ $$`, stay as words.
-
-`maths.js` has `split(text)` (words into text, inline and display pieces, tested in
-`tests/maths.test.js`) and `maths(text)`, which every item's `node()` and the folded group call,
-so a new kind of item gets mathematics for free. The drawing is KaTeX 0.19.1 (`vendor/`, MIT,
-see `LICENSE-KaTeX.txt`): `katex.js` is its ESM build, minified with esbuild, and `katex.css`
-holds its 20 fonts as base64 woff2, so it works offline and in the one-file page (about 640 KB
-of the standalone file). KaTeX draws at once, so Joyce and clear.js measure each thought with
-its maths in it; when the fonts finish loading, the room is measured again.
+constants they share. Other features reach Create through the `create` service (`open()`).
 
 ## Importing and exporting
 

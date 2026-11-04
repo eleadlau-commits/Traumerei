@@ -39,12 +39,9 @@
 // account like the settings do. The older shape under 'world' is not read, and is cleared.
 
 import { Feature, ui } from 'folio';
-import { loadWorld, room, name, view, create, search, shut, archive, rooms } from './model.js';
-import { gather, FALLBACK } from './ontologies/index.js';
+import { bind, room, view, shut } from './world.js';
 import { openDocument } from './document.js';
-import { visit, loadLog } from './attention.js';
-import { lookPrefs, PALETTE } from './look.js';
-import { el, MAC, KEY, WORLD, UNDO, HINTS, enterKeeps } from './shared.js';
+import { el, MAC, KEY, HINTS, enterKeeps } from './shared.js';
 import { RoomsPage } from './rooms.js';
 import { RoomView } from './room.js';
 import { Writing } from './writing.js';
@@ -54,8 +51,10 @@ import { Files } from './files.js';
 
 export default class Create extends Feature {
   start() {
-    if (this.storage.has('world')) this.storage.set('world', null); // the older shape: not kept
-    this.world = loadWorld(this.savedWorld());
+    // The saved world, its rules, saving and undo, the ontologies, the look and the palette are the
+    // world feature's (its service; world.js binds its rules for the files here).
+    this.w = this.use('world');
+    bind(this.w.lib);
     this.roomId = null;   // the open room, or null on the rooms page
     this.draft = null;    // the thought being written: { train | null, x, y }, or { train, edit } for a thought opened again
     this.current = {};    // per room: the train Enter goes on with
@@ -80,15 +79,8 @@ export default class Create extends Feature {
     this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
-    this.prefs = lookPrefs(this.storage.get('look'));
-    // The global ontology settings ({ [ontology]: { key: value } }): what a new room starts with.
-    this.ontPrefs = this.storage.get('ontologies') || {};
-    // The app's colours (Renderer, Settings → Colour), and any change to them.
-    this.palette = this.backdrop?.palette?.() || PALETTE;
-    document.addEventListener('palette', (e) => { this.palette = e.detail; this.repaint(); });
-    this.attention = loadLog(this.storage.get('attention'));
-    // More ontologies can come from other features: see ontologies/index.js for their shape.
-    this.defineSlot('create.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see create/ontologies/index.js).');
+    this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
+    this.on('world:saved', () => this.showSaved());
     this.build();
     this.add('settings', { id: 'create-rooms', title: 'Rooms', order: 30, render: () => this.settingsPane() });
     // In the menu, on the rooms page: a new room from a room Markdown file (files.js).
@@ -103,22 +95,25 @@ export default class Create extends Feature {
     document.addEventListener('copy', (e) => this.onCopy(e));
   }
 
-  savedWorld() { return this.storage.get(WORLD); }
+  // What the world feature holds, read through its service.
+  get world() { return this.w.world; }
+  get prefs() { return this.w.prefs; }       // Settings → Rooms' look (look.js)
+  get ontPrefs() { return this.w.globals; }  // the global ontology settings: what a new room starts with
+  get palette() { return this.w.palette; }   // the app's colours
+  get attention() { return this.w.attention; }
 
   // ---- Opening and closing ----
 
   open() {
-    this.world = loadWorld(this.savedWorld()); // it may have arrived from the account meanwhile
-    this.undoStack = [];
-    this.redoStack = [];
-    this.lastSnap = this.snap();
+    this.w.load(); // it may have arrived from the account meanwhile
+    this.w.begin();
     this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
     this.leaving = false;
     this.showNote();
     this.app.shell?.closeMenu?.();
     clearTimeout(this.closing);
     this.colours = this.backdrop?.colours?.(); // read once: the page is still from here on
-    this.palette = this.backdrop?.palette?.() || this.palette;
+    this.w.refreshPalette();
     this.paintPage();
     this.shelf = false;
     this.page = 0;
@@ -255,9 +250,7 @@ export default class Create extends Feature {
     if (!r) return;
     if (!this.shelf) this.page = r.page || 0;
     this.closeLights();
-    this.attention = loadLog(this.storage.get('attention'));
-    visit(this.attention, id);
-    this.storage.set('attention', this.attention);
+    this.w.visit(id);
     this.lastRoom = id;
     this.storage.set('lastRoom', id);
     // Going in from the rooms page, the room's square grows to fill the screen first.
@@ -372,36 +365,18 @@ export default class Create extends Feature {
 
   get locked() { return !!this.roomId && shut(this.world, this.roomId); }
 
-  // Saves the world. A change to the thoughts or rooms (not just where the view is) is a step
-  // Ctrl+Z can take back.
+  // Saves the world (the world feature: a change to the thoughts or rooms is a step Ctrl+Z can take
+  // back). A room changed on this visit glows when you leave.
   save() {
-    const now = this.snap();
-    if (now !== this.lastSnap) {
-      this.undoStack.push(this.lastSnap);
-      if (this.undoStack.length > UNDO) this.undoStack.shift();
-      this.redoStack = [];
-      this.lastSnap = now;
-      if (this.roomId) this.edited?.add(this.roomId);
-    }
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => { this.storage.set(WORLD, this.world); this.showSaved(); }, 250);
+    if (this.w.save() && this.roomId) this.edited?.add(this.roomId);
     if (this.roomId) this.clearSoon();
   }
 
-  snap() { const w = this.world; return JSON.stringify({ things: w.things, own: w.own, pages: w.pages }); }
-
   undo(back = true) {
-    const from = back ? this.undoStack : this.redoStack, to = back ? this.redoStack : this.undoStack;
-    if (!from.length) { this.toast(back ? 'Nothing to undo' : 'Nothing to redo'); return; }
-    to.push(this.lastSnap);
-    this.lastSnap = from.pop();
-    const { things, own = {}, pages = 1 } = JSON.parse(this.lastSnap);
-    Object.assign(this.world, { things, own, pages });
+    if (!this.w.undo(back)) { this.toast(back ? 'Nothing to undo' : 'Nothing to redo'); return; }
     this.sel = null;
     this.roomSel = this.making = null;
     this.draft = null;
-    clearTimeout(this.saveTimer);
-    this.storage.set(WORLD, this.world);
     this.showSaved(back ? 'Undone' : 'Redone');
     if (this.roomId && !room(this.world, this.roomId)) this.showRooms();
     else if (this.roomId) this.drawRoom();
@@ -538,15 +513,10 @@ export default class Create extends Feature {
 
   // ---- A room ----
 
-  // The ontologies there are (ontologies/index.js), and the one a room is seen through: a room
-  // whose ontology is missing (its feature switched off, say) is seen through Pessoa.
-  get ontologies() {
-    return gather(this.slot('create.ontologies').items, (o, lacks) => console.warn('Create: an ontology was skipped; it lacks', lacks.join(', '), o));
-  }
-  ontology(id) {
-    const all = this.ontologies;
-    return all.find((o) => o.id === id) || all.find((o) => o.id === FALLBACK);
-  }
+  // The ontologies there are (the world's), and the one a room is seen through: a room whose
+  // ontology is missing (its feature switched off, say) is seen through Pessoa.
+  get ontologies() { return this.w.ontologies; }
+  ontology(id) { return this.w.ontology(id); }
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)

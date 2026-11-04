@@ -29,12 +29,9 @@
 // own(w, room, of).headings[group] as [[key, value], …], so nothing is lost on the way back out.
 
 import {
-  view, room, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf,
-  addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE,
-} from './model.js';
-import { ITEMS } from './items/index.js';
-import { link, arrowsInto } from './ontologies/russell.js';
-import { stepAfter } from './ontologies/joyce.js';
+  view, room, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, addRoom,
+  seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, link, arrowsInto, stepAfter,
+} from './world.js';
 
 const RUSSELL = 'russell';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);

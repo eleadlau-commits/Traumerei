@@ -3,14 +3,13 @@
 // Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
 
 import {
-  MESSY, room, addRoom, view, create, fold, kindOf, thoughtText, roomThoughts, peek, isBig, rooms,
-  roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
-} from './model.js';
+  MESSY, room, addRoom, view, create, fold, kindOf, thoughtText, roomThoughts, peek, isBig,
+  rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
+  hash, light, pageLook, roomLook, rgb,
+} from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
-import { light } from './attention.js';
-import { pageLook, roomLook, lookPrefs, savedLook, rgb, LOOK } from './look.js';
 import { ui } from 'folio';
-import { el, WORLD } from './shared.js';
+import { el } from './shared.js';
 
 export class RoomView {
   lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
@@ -31,8 +30,7 @@ export class RoomView {
   // ---- Settings → Rooms ----
 
   setPref(key, value) {
-    this.prefs = lookPrefs({ ...this.prefs, [key]: value });
-    this.storage.set('look', savedLook(this.prefs));
+    this.w.setLook(key, value);
     this.repaint();
   }
 
@@ -44,14 +42,13 @@ export class RoomView {
   globalSetting(of, st) { const v = this.ontPrefs[of]?.[st.key]; return v !== undefined ? v : st.default; }
 
   setOntPref(of, key, value) {
-    (this.ontPrefs[of] ||= {})[key] = value;
-    this.storage.set('ontologies', this.ontPrefs);
+    this.w.setGlobal(of, key, value);
   }
 
   // Every room takes the global settings.
   applyToAllRooms() {
     applySettingsToAll(this.world, this.ontPrefs);
-    this.storage.set(WORLD, this.world);
+    this.w.write();
     this.toast('Every room now has the global settings.');
     this.repaint();
   }
@@ -126,10 +123,8 @@ export class RoomView {
         el('button', { type: 'button', class: 'btn small', onclick: () => this.applyToAllRooms() }, 'Apply to all rooms')),
       ui.hint('A room\'s own colour is in its pop-up on the rooms page: click its square.', { small: true }),
       el('button', { type: 'button', class: 'btn small', onclick: () => {
-        this.prefs = lookPrefs(LOOK);
-        this.storage.set('look', savedLook(this.prefs));
-        this.ontPrefs = {};
-        this.storage.set('ontologies', this.ontPrefs);
+        this.w.resetLook();
+        this.w.resetGlobals();
         this.repaint();
         this.app.shell?.refreshSettings?.();
       } }, 'Back to defaults'));
@@ -233,12 +228,12 @@ export class RoomView {
       el('p', { class: 'create-room-settings-note' }, 'For this room only'),
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
-        this.storage.set(WORLD, this.world);
+        this.w.write();
         this.drawWorld();
       })),
       el('button', { type: 'button', class: 'create-word create-room-settings-reset', onclick: () => {
         resetRoomSettings(this.world, this.roomId, o.id);
-        this.storage.set(WORLD, this.world);
+        this.w.write();
         this.drawRoom();
       } }, 'Reset to global'));
   }
@@ -355,7 +350,7 @@ export class RoomView {
     const moves = clearSpace(measured);
     const ids = Object.keys(moves);
     if (!ids.length) return;
-    const saved = this.snap() === this.lastSnap; // nothing waiting to be saved as its own step
+    const saved = this.w.settled(); // nothing waiting to be saved as its own step
     for (const id of ids) {
       const { dx, dy } = moves[id];
       if (ont.shift) ont.shift(w, roomId, id, dx, dy);
@@ -365,9 +360,8 @@ export class RoomView {
       }
     }
     // The push belongs to the change that caused it: Ctrl+Z takes both back together.
-    if (saved) this.lastSnap = this.snap();
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => { this.storage.set(WORLD, this.world); }, 250);
+    if (saved) this.w.fold();
+    this.w.writeSoon(false);
     // Redrawn at once (a second pass may find what the first push made overlap).
     this.drawWorld();
     cancelAnimationFrame(this.clearFrame);

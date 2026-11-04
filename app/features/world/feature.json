@@ -1,0 +1,12 @@
+{
+  "name": "World",
+  "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.",
+  "version": "0.1.0",
+  "main": "World.js",
+  "styles": [
+    "vendor/katex.css"
+  ],
+  "uses": [
+    "renderer"
+  ]
+}
