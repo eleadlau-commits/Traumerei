@@ -4,7 +4,7 @@
 // Mac) in the middle. The page is a light opacity mask over the home picture itself, held still underneath (its
 // spontaneity layer is off), so nothing is drawn while it shows. It is a grid of square cells:
 // each room is an opacity square on it (one cell; Messy thoughts takes four at the top left), and a
-// room written in lately glows. The rooms page has pages (1 2 3 + along the bottom); a thin rail on
+// room written in lately glows. The rooms page has pages (1 2 3 + in the rail, under Archive); a rail on
 // the left holds Rooms and the Archive (a grid of its own, where no room can be made). Typing
 // anything on the rooms page opens Messy thoughts and starts writing there.
 //
@@ -58,7 +58,7 @@ import { pageLook, roomLook, squareLook, lookPrefs, savedLook, toOklch, rgb, LOO
 
 const { el } = ui;
 const ZOOM = { min: 0.25, max: 4 };
-const GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 72 }; // the rooms page's cells (px); the rail on the left
+const GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 206 }; // the rooms page's cells (px); the rail on the left (72px and one column more)
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const KEY = MAC ? '⌘K' : 'Ctrl+K';
 const HOLD = 520;          // ms: a long press opens properties, as a right-click does
@@ -409,16 +409,15 @@ export default class Create extends Feature {
     this.tagsBtn = el('button', { type: 'button', class: 'create-rail-item create-tags-btn', 'aria-expanded': 'false',
       onclick: () => { this.tagsOpen = !this.tagsOpen; if (!this.tagsOpen) this.tagLight = null; this.drawRooms(); } }, 'Tags');
     this.tagsList = el('div', { class: 'create-tag-list', hidden: true, role: 'list' });
-    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn,
+    // The rooms page's pages, in the rail under Archive: 1 2 3 +. A room dropped on a number goes to that page.
+    this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
+    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn, this.pagesBar,
       el('div', { class: 'create-rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
     this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
-    // The rooms page's pages: 1 2 3 +. A room dropped on a number goes to that page.
-    this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
       this.rail,
-      el('div', { class: 'create-grid-wrap' }, this.shelfHead, this.grid),
-      this.pagesBar);
+      el('div', { class: 'create-grid-wrap' }, this.shelfHead, this.grid));
 
     this.backBtn = el('button', { type: 'button', class: 'create-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
@@ -546,9 +545,9 @@ export default class Create extends Feature {
     this.grid.classList.toggle('lights', !!hits);
     this.drawTags();
     if (this.shelf) { this.drawShelf(shelved, fit, cell, hits); return; }
-    // The grid grows: always a spare column and row past the furthest room, and at least the
-    // size set in Settings → Rooms. The page scrolls when it is bigger than the screen.
-    const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size + 1));
+    // The grid is as wide as the screen allows (or the size set in Settings → Rooms, or as far as
+    // the furthest room) and grows a spare row below the lowest room. The page scrolls down.
+    const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size));
     const height = this.grid.parentElement?.clientHeight || window.innerHeight;
     const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)),
       this.prefs.rows || 0, ...all.map((r) => r.row + r.size + 1));
