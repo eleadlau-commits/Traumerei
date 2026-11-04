@@ -1,0 +1,410 @@
+// Part of Create. The pop-ups in a room: a thing's properties, the loose-thought tray, the bar for several
+// chosen things, folding trains, pictures, the Passage / Picture sheet, and moving thoughts to another room.
+// Its methods join the Create class (see mixIn in Create.js), so `this` is Create.
+
+import {
+  MESSY, room, name, view, create, update, remove, move, fold, unfold, kindOf, groupOf,
+  thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms,
+} from './model.js';
+import { shrinkPicture } from './picture.js';
+import { ITEMS } from './items/index.js';
+import { el, enterKeeps } from './shared.js';
+
+export class Bars {
+  // Chooses something and opens its properties (a right-click, a long press, Enter).
+  openProps(sel) {
+    this.sel = sel;
+    this.barFor = this.selKey(sel);
+    if (this.draft) this.stopWriting();
+    this.drawWorld();
+    this.bar.querySelector('textarea, input')?.focus({ preventScroll: true });
+  }
+
+  drawBar() {
+    if (!this.sel || this.barFor !== this.selKey()) { this.barFor = null; this.bar.hidden = true; this.drawHistorySoon(); return; }
+    if (this.sel?.kind === 'many') { this.drawManyBar(); return; }
+    const th = this.sel && this.world.things[this.sel.id];
+    if (!th) { this.bar.hidden = true; this.drawHistorySoon(); return; }
+    const kind = kindOf(th);
+    if (this.locked) { // read only: the words, and nothing to change
+      this.bar.hidden = false;
+      this.bar.replaceChildren(
+        el('div', { class: 'create-options-label' }, 'Locked'),
+        el('p', { class: 'create-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+      this.positionEdit();
+      this.drawHistorySoon();
+      return;
+    }
+    const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
+    const field = (value, label, onchange, cls = 'create-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
+    const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+    const done = () => { this.save(); this.drawWorld(); };
+    const rows = [];
+    const gname = kind === 'group' ? this.groupName(th) : 'Train';
+    const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
+    rows.push(el('div', { class: 'create-options-label' }, title));
+    if (kind === 'line') {
+      // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
+      const text = el('textarea', { class: 'create-edit-text create-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
+        oninput: (e) => grow(e.target),
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === 'Escape') { e.target.blur(); return; }
+          if (e.key !== 'Enter' || e.isComposing) return;
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) {
+            const a = e.target.selectionStart, b = e.target.selectionEnd;
+            e.target.setRangeText('\n', a, b, 'end');
+            grow(e.target);
+          } else e.target.blur();
+        },
+        onchange: (e) => { update(this.world, th.id, { text: e.target.value }); done(); } });
+      text.value = th.text || '';
+      rows.push(text);
+      requestAnimationFrame(() => grow(text));
+    }
+    if (kind === 'passage') {
+      rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
+      const body = el('textarea', { class: 'create-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
+        onchange: (e) => { update(this.world, th.id, { body: e.target.value }); done(); } });
+      body.value = th.body || '';
+      rows.push(body, word('Open it large', () => this.openSheet(null, th.id)));
+    }
+    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
+    if (kind === 'group') {
+      const n = trainThoughts(this.world, th.id).length;
+      rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
+        el('div', { class: 'create-options-row' },
+          el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
+          th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
+            : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null));
+      // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
+      const elsewhere = th.folded ? this.elsewhere(th) : [];
+      if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
+    }
+    // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
+    // those that fit.
+    try { rows.push(...(this.ont.props?.(this, th) || [])); } catch (err) { console.warn('Create: props', err); }
+    const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
+    if (moves.length) rows.push(el('div', { class: 'create-options-row create-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
+    const others = this.moveRooms();
+    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
+        if (to) this.moveTo(to);
+      } },
+      el('option', { value: '' }, 'Move to…'),
+      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      el('option', { value: '+' }, 'A new room'));
+    rows.push(el('div', { class: 'create-options-row' }, pick),
+      el('div', { class: 'create-options-row' },
+        kind !== 'group' && this.ont.groups && groupOf(this.world, th.id, this.mode)
+          ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => this.openProps({ kind: 'train', id: groupOf(this.world, th.id, this.mode).id })) : null,
+        word('Delete', () => {
+          remove(this.world, th.id);
+          this.sel = null;
+          done();
+          this.toast(`Deleted. Ctrl+Z brings it back.`);
+        }, 'create-options-delete')));
+    this.bar.hidden = false;
+    this.bar.replaceChildren(...rows);
+    this.positionEdit();
+    this.drawHistorySoon();
+  }
+
+  // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn
+  // again and the change saved as one step.
+  runMove(m) {
+    if (this.locked) return;
+    m.run(this);
+    this.save();
+    if (!this.draft) this.drawWorld();
+  }
+
+  // ---- The tray: thoughts the ontology hasn't placed yet, along the foot of the room ----
+  // A quiet word ("Loose · 3") opens a row of them; one dragged onto the canvas goes where it is
+  // let go (the ontology's drop()). Only an ontology with a tray has one, and only when it holds
+  // something.
+
+  trayItems() {
+    try { return this.ont.tray?.(this.world, this.roomId) || []; } catch { return []; }
+  }
+
+  drawTray() {
+    const items = this.roomId ? this.trayItems() : [];
+    if (!items.length) { this.trayEl.hidden = true; this.trayEl.replaceChildren(); return; }
+    const open = !!this.trayOpen;
+    const word = el('button', { type: 'button', class: 'create-word create-tray-btn', 'aria-expanded': String(open),
+      title: 'Thoughts not placed in this mode yet. Drag one onto the room.',
+      onclick: () => { this.trayOpen = !open; this.drawTray(); } }, `Loose · ${items.length}`);
+    const row = open ? el('div', { class: 'create-tray-row', role: 'list' }, items.map((th) => el('div', {
+      class: 'create-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
+      onpointerdown: (e) => this.trayDrag(e, th.id),
+    }, el('span', { class: 'create-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
+    this.trayEl.hidden = false;
+    this.trayEl.replaceChildren(...(row ? [row] : []), word);
+  }
+
+  // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
+  // canvas, the ontology places it there.
+  trayDrag(e, id) {
+    if (e.button !== 0 || this.locked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = e.currentTarget;
+    const r = card.getBoundingClientRect();
+    const off = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('create-tray-ghost');
+    Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
+    this.root.append(ghost);
+    const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
+    const up = (ev) => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      ghost.remove();
+      const over = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (ev.type !== 'pointerup' || !over || !this.stage.contains(over) || !this.world.things[id]) return;
+      const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
+      this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
+      this.save();
+      this.drawWorld();
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  }
+
+  // Many things chosen with the box: move them to a room together, or delete them.
+  drawManyBar() {
+    if (this.locked) { this.bar.hidden = true; return; }
+    const ids = this.sel.ids.filter((id) => this.world.things[id]);
+    const others = this.moveRooms();
+    const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
+        if (!to) return;
+        const v = view(this.world, to);
+        ids.forEach((id, i) => move(this.world, id, to, Math.round(v.x - 200 + (i % 4) * 220), Math.round(v.y - 120 + Math.floor(i / 4) * 140)));
+        this.sel = null;
+        this.save();
+        this.drawWorld();
+        this.toast(`Moved ${ids.length} to ${room(this.world, to).name}`);
+      } },
+      el('option', { value: '' }, 'Move to…'),
+      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      el('option', { value: '+' }, 'A new room'));
+    this.bar.hidden = false;
+    this.bar.replaceChildren(
+      el('div', { class: 'create-options-label' }, `${ids.length} chosen`),
+      el('p', { class: 'create-options-note' }, 'Drag any of them to move them together.'),
+      el('div', { class: 'create-options-row' }, pick),
+      el('div', { class: 'create-options-row' },
+        el('button', { type: 'button', class: 'create-word create-options-delete', onclick: () => {
+          ids.forEach((id) => remove(this.world, id));
+          this.sel = null;
+          this.save();
+          this.drawWorld();
+          this.toast(`Deleted ${ids.length}. Ctrl+Z brings them back.`);
+        } }, 'Delete')));
+    this.positionEdit();
+    this.drawHistorySoon();
+  }
+
+  // The rooms a thought can be moved to: every room (not this one, nor a locked one).
+  moveRooms() {
+    return rooms(this.world).filter((r) => r.id !== this.roomId && !shut(this.world, r.id))
+      .sort((a, b) => (a.id === MESSY ? -1 : b.id === MESSY ? 1 : a.name.localeCompare(b.name)));
+  }
+
+  // The pop-up sits beside what is chosen, and follows it as the view moves.
+  positionEdit() {
+    if (this.bar.hidden) return;
+    const chosen = [...this.world$.querySelectorAll('.selected')].map((n) => n.getBoundingClientRect()).filter((r) => r.width);
+    if (!chosen.length) { this.bar.style.visibility = 'hidden'; return; }
+    const box = chosen.reduce((a, r) => ({ left: Math.min(a.left, r.left), top: Math.min(a.top, r.top), right: Math.max(a.right, r.right), bottom: Math.max(a.bottom, r.bottom) }));
+    const page = this.roomPage.getBoundingClientRect();
+    const w = this.bar.offsetWidth || 236, h = this.bar.offsetHeight || 200;
+    let x = box.right + 22;
+    if (x + w > page.right - 16) x = box.left - w - 22;
+    x = Math.max(page.left + 16, Math.min(x, page.right - w - 16));
+    const y = Math.max(page.top + 64, Math.min(box.top - 8, page.bottom - h - 70));
+    this.bar.style.visibility = '';
+    this.bar.style.left = `${x - page.left}px`;
+    this.bar.style.top = `${y - page.top}px`;
+  }
+
+  drawHistorySoon() {
+    if (!this.historyOpen) return;
+    clearTimeout(this.historyTimer);
+    this.historyTimer = setTimeout(() => this.drawHistory(), 60);
+  }
+
+  // Folds a group, then asks for its name. In a big room where another ontology has laid its
+  // thoughts out, the same sheet asks how that ontology shows it: Replace or Keep both.
+  foldTrain(trainId) {
+    const ask = this.elsewhere(this.world.things[trainId], true);
+    if (!fold(this.world, trainId)) return;
+    this.sel = null;
+    this.save();
+    this.drawWorld();
+    this.openSheet(null, trainId, null, ask);
+  }
+
+  // The other ontologies of a big room that show a group (laid out: only those that have placed
+  // some of its thoughts already).
+  elsewhere(g, laidOut = false) {
+    const r = room(this.world, g?.parent);
+    if (!g || !r || !isBig(r)) return [];
+    return this.ontologies.filter((o) => o.id !== g.of && (!laidOut
+      || !o.placed || g.members.some((id) => o.placed(this.world, r.id, id))));
+  }
+
+  // Replace · Keep both, for how `others` show a folded group.
+  keepChoice(others, keep, choose) {
+    const names = others.map((o) => o.name).join(' and ');
+    const pick = (label, value, note) => el('button', {
+      type: 'button', class: 'create-word', 'aria-pressed': String(keep === value), title: note,
+      onclick: (e) => { keep = value; choose(value); e.currentTarget.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
+    }, label);
+    return el('div', { class: 'create-options-row create-keep' },
+      el('span', { class: 'create-options-note' }, `In ${names}:`),
+      pick('Replace', false, 'The one folded thought takes the place of its thoughts'),
+      pick('Keep both', true, 'The folded thought is added beside its thoughts'));
+  }
+
+  unfoldTrain(id) {
+    unfold(this.world, id);
+    this.sel = null;
+    this.save();
+    this.drawWorld();
+  }
+
+  // ---- Passage and Picture: the two templates for bigger thoughts ----
+
+  // Where a new thought goes: on with the current train, or a new train at a free spot.
+  target() {
+    if (this.addAt) { // Add, from a right-click on the canvas
+      const at = this.addAt;
+      this.addAt = null;
+      return { train: null, x: Math.round(at.x), y: Math.round(at.y) };
+    }
+    const cur = this.current[this.roomId];
+    const t = this.world.things[cur];
+    if (!this.fresh && t?.parent === this.roomId && !t.folded && t.of === this.writer.id) return { train: cur };
+    const spot = this.freeSpot();
+    this.fresh = false;
+    return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
+  }
+
+  async choosePicture() {
+    const file = await this.picker.pick();
+    if (file) this.takePicture(file); else this.addAt = null;
+  }
+
+  onPaste(e) {
+    if (this.root.hidden || !this.roomId || this.editing) return;
+    const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'));
+    if (file) { e.preventDefault(); this.takePicture(file); return; }
+    // Words pasted on the canvas start a thought with them; several lines stay one thought.
+    if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    const text = (e.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+    // Thoughts copied here (Ctrl+C), as long as nothing else was copied since.
+    if (this.clip && (!text || text === this.clip.text)) { e.preventDefault(); this.pasteThoughts(); return; }
+    if (!text.trim() || this.locked) return;
+    e.preventDefault();
+    this.beginWriting(text);
+  }
+
+  async takePicture(file) {
+    try {
+      const src = await shrinkPicture(file);
+      this.openSheet('picture', null, src);
+    } catch {
+      this.toast('That file couldn\'t be read as a picture.');
+    }
+  }
+
+  // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
+  // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
+  openSheet(kind, id = null, src = null, ask = []) {
+    if (!this.roomId) return;
+    if (this.locked) { this.toast('This room is locked.'); return; }
+    if (this.draft) this.commit();
+    const th = id ? this.world.things[id] : null;
+    kind = th ? kindOf(th) : kind;
+    this.editing = { kind, id, src: src || th?.src || null, ask: ask.length > 0, keep: !!th?.keep };
+    const keep = () => this.keepSheet();
+    const keys = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep(); // as everywhere: Enter keeps, Ctrl+Enter a new line
+      if (e.key === 'Escape') { e.preventDefault(); this.closeSheet(); }
+    };
+    const fields = [];
+    if (kind === 'group') {
+      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
+      fields.push(this.sheetTitle, el('div', { class: 'create-sheet-preview' }, thoughtText(this.world, th)));
+      if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep) => { this.editing.keep = keep; this.sheetTitle.focus(); }));
+    } else if (kind === 'passage') {
+      this.sheetTitle = el('input', { class: 'create-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
+      this.sheetBody = el('textarea', { class: 'create-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
+      this.sheetBody.value = th?.body || '';
+      fields.push(this.sheetTitle, this.sheetBody);
+    } else {
+      this.sheetCaption = el('input', { class: 'create-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
+      fields.push(el('img', { class: 'create-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
+    }
+    this.sheet.replaceChildren(
+      el('div', { class: 'create-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
+      ...fields,
+      el('div', { class: 'create-sheet-words' },
+        el('button', { type: 'button', class: 'create-word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'create-word', onclick: () => this.closeSheet() }, 'Cancel'),
+        el('span', { class: 'create-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
+    this.sheet.hidden = false;
+    (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
+  }
+
+  keepSheet() {
+    const ed = this.editing;
+    if (!ed) return;
+    if (ed.kind === 'group') {
+      name(this.world, ed.id, this.sheetTitle.value);
+      if (ed.ask) update(this.world, ed.id, { keep: ed.keep });
+    }
+    else {
+      const fields = ed.kind === 'passage'
+        ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
+        : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
+      if (ed.id) update(this.world, ed.id, fields);
+      else {
+        this.keepNew(this.target(), fields);
+      }
+    }
+    this.save();
+    this.closeSheet();
+    this.drawWorld();
+  }
+
+  closeSheet() {
+    this.addAt = null;
+    this.editing = null;
+    this.sheet.hidden = true;
+    this.sheet.replaceChildren();
+  }
+
+  moveTo(toRoom) {
+    const v = view(this.world, toRoom);
+    const box = { x: v.x - 300, y: v.y - 160, w: 400, h: 320 };
+    const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
+    const spot = randomSpot(box, taken);
+    const x = Math.round(spot.x), y = Math.round(spot.y);
+    move(this.world, this.sel.id, toRoom, x, y);
+    this.sel = null;
+    this.save();
+    this.drawWorld();
+    this.toast(`Moved to ${room(this.world, toRoom).name}`);
+  }
+}

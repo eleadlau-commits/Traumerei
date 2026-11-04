@@ -93,6 +93,14 @@ What the home page's **Create** opens: rooms of thoughts.
   thought takes the place of its thoughts) or **Keep both** (it is added beside them). It is the
   same train either way, never a copy, and its pop-up can change the choice later.
 
+**The code.** The `Create` class is written across several files: `Create.js` (starting,
+opening and closing, saving, undo, building the page, the ontologies), `rooms.js` (the rooms
+page), `room.js` (a room, its rail and settings, clear space, Timeline), `writing.js` (thoughts,
+the draft, the caret), `gestures.js` (pointer, keys, selection, copy and paste, Search) and
+`bars.js` (pop-ups, tray, sheets, pictures). Each part is a class whose methods `mixIn` (end of
+`Create.js`) copies onto `Create`, so `this` is always the feature. `shared.js` holds the
+constants they share.
+
 **Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
 kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*
 and *rooms*. Items and groups sit in a room. A group belongs to the ontology that made it (Joyce
