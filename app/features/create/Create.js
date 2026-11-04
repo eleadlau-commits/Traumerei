@@ -453,9 +453,10 @@ export default class Create extends Feature {
     this.tagsBtn = el('button', { type: 'button', class: 'create-rail-item create-tags-btn', 'aria-expanded': 'false',
       onclick: () => { this.tagsOpen = !this.tagsOpen; this.makingTag = null; this.drawRooms(); } }, 'Arrange by');
     this.tagsList = el('div', { class: 'create-tag-list', hidden: true, role: 'list' });
-    // The rooms page's pages, in the rail under Archive: 1 2 3 +. A room dropped on a number goes to that page.
-    this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Pages' });
-    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.shelfBtn, this.pagesBar,
+    // The rooms page's floors, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor.
+    // A room dropped on a floor goes to that floor.
+    this.pagesBar = el('nav', { class: 'create-pages', 'aria-label': 'Floors' });
+    this.rail = el('nav', { class: 'create-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
       el('div', { class: 'create-rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
     this.shelfHead = el('div', { class: 'create-shelf-head', hidden: true }, 'Archive');
     this.roomsPage = el('section', { class: 'create-rooms', 'aria-label': 'Rooms' },

@@ -149,15 +149,15 @@ export class RoomsPage {
     this.pagesBar.hidden = this.shelf;
     this.pagesBar.replaceChildren(
       ...Array.from({ length: n }, (_, i) => el('button', {
-        type: 'button', class: 'create-word create-page', 'data-page': i, 'aria-label': `Page ${i + 1}`,
+        type: 'button', class: 'create-rail-item create-page', 'data-page': i,
         ...(i === this.page ? { 'aria-current': 'page' } : {}),
         onclick: () => this.showPage(i),
-      }, String(i + 1))),
-      el('button', { type: 'button', class: 'create-word create-page', 'aria-label': 'A new page', title: 'A new page', onclick: () => {
+      }, `Floor ${i + 1}`)),
+      el('button', { type: 'button', class: 'create-rail-item create-page create-page-new', onclick: () => {
         const i = addPage(this.world);
         this.save();
         this.showPage(i);
-      } }, '+'));
+      } }, '+ New floor'));
   }
 
   // One room's square: its colour, its light, its name and count; its last thoughts (the peek);

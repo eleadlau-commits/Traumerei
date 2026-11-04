@@ -241,15 +241,15 @@
 .create-room .create-modes { top: calc(var(--create-strip) + 32px); z-index: 3; }
 .create-rail-fixed { cursor: default; }
 /* A mode and its ⚙, which shows only while the mode is hovered over (or tapped, on a phone). */
-.create-rail-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.create-rail-row { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
 .create-gear {
   appearance: none; border: 0; background: none; color: inherit; font: inherit;
-  padding: 0 2px; font-size: 11px; line-height: 1; cursor: pointer;
+  padding: 0 3px; font-size: 16.5px; line-height: 1; cursor: pointer;
   opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 .create-rail-row:is(:hover, :focus-within, .show) .create-gear { opacity: .55; pointer-events: auto; }
 .create-gear:is(:hover, :focus-visible), .create-gear[aria-expanded="true"] { opacity: 1 !important; outline: none; }
-.create-rail-rule { width: 22px; height: 1px; margin-left: 10px; background: currentColor; opacity: .2; }
+.create-rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
 .create-rail-view[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
 /* This room's settings for a mode: a card beside the rail. */
 .create-room-settings { top: -8px; left: calc(var(--create-rail) - 8px); width: 240px; cursor: default; }
@@ -861,7 +861,8 @@
   .create-search-btn { left: calc(var(--gutter) + 56px); transform: none; width: calc(100% - 2 * var(--gutter) - 112px); }
 }
 
-/* ---- The rail on the left, under the menu: Rooms and the Archive (in a room, its modes) ---- */
+/* ---- The rail on the left, under the menu: Rooms, the floors and the Archive (in a room, its modes) ---- */
+/* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */
 .create-rail {
   position: absolute;
   z-index: 2;
@@ -869,7 +870,7 @@
   left: var(--gutter);
   width: calc(var(--create-rail) - 24px);
   display: grid;
-  gap: 18px;
+  gap: 22px;
   justify-items: start;
 }
 .create-rail-item {
@@ -878,12 +879,15 @@
   border: 0;
   border-radius: 0;
   margin: 0;
-  padding: 2px 0 2px 10px;
+  padding: 3px 0 3px 15px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  max-width: 100%;
   text-align: left;
+  overflow-wrap: break-word;
   font: inherit;
-  font-size: 10px;
+  font-size: 15px;
+  line-height: 1.3;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: inherit;
@@ -894,14 +898,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 .create-rail-item:is(:hover, :focus-visible) { opacity: .85; outline: none; }
-.create-rail-item[aria-current="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.create-rail-item:is([aria-current="true"], [aria-current="page"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
 
 .create-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
-/* ---- The pages of the rooms page, in the rail under Archive: 1 2 3 + ---- */
-.create-pages { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: -6px; padding-left: 7px; }
-.create-page { font-size: 11px; letter-spacing: .1em; padding: 3px 3px; }
-.create-page.drop-on { opacity: 1; background-size: calc(100% - 4px - .1em) 1px; }
+/* ---- The floors of the rooms page, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor ---- */
+.create-pages { display: grid; gap: 10px; justify-items: start; width: 100%; }
+.create-pages[hidden] { display: none; }
+.create-page-new { opacity: .35; }
+.create-page-new:is(:hover, :focus-visible) { opacity: .85; }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .create-tile.picked { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 70%, transparent); outline-offset: 3px; }
@@ -1110,7 +1115,7 @@
 
 /* The rail's Arrange by: under a hairline, None and the tag groups; a group opens to its tags. */
 .create-tags-btn.on { opacity: 1; }
-.create-tag-list { display: grid; gap: 4px; margin-top: -8px; width: 100%; }
+.create-tag-list { display: grid; gap: 6px; margin-top: -10px; width: 100%; }
 .create-tag-list[hidden] { display: none; }
 .create-tag-head, .create-tag-pick, .create-tag-plus {
   appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
@@ -1120,29 +1125,29 @@
 }
 /* None and a group's name: small capitals, like the rail's words. */
 .create-tag-head {
-  width: 100%; padding: 3px 0 3px 10px; font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; opacity: .5;
+  width: 100%; padding: 4px 0 4px 15px; font-size: 14.25px; letter-spacing: .2em; text-transform: uppercase; opacity: .5;
 }
 .create-tag-head:is(:hover, :focus-visible) { opacity: .85; outline: none; }
 .create-tag-head[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
 .create-tag-head[aria-expanded="true"] { opacity: .85; }
-.create-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 12px; transition: transform .25s var(--create-ease); }
+.create-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 18px; transition: transform .25s var(--create-ease); }
 .create-tag-head[aria-expanded="true"] .create-tag-caret { transform: rotate(90deg); }
-.create-tag-tags { display: grid; gap: 4px; padding: 3px 0 6px 10px; }
+.create-tag-tags { display: grid; gap: 6px; padding: 4px 0 9px 15px; }
 /* A tag: its name and how many rooms have it. One of your own can be dragged onto a square. */
 .create-tag-pick {
-  padding: 1px 0 1px 10px; font-size: 11px; letter-spacing: .03em; line-height: 1.25; opacity: .5;
+  padding: 2px 0 2px 15px; font-size: 16.5px; letter-spacing: .03em; line-height: 1.25; opacity: .5;
 }
 .create-tag-pick.draggable { cursor: grab; touch-action: none; }
 .create-tag-pick:is(:hover, :focus-visible) { opacity: .85; outline: none; }
 .create-tag-pick[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
 .create-tag-name { overflow-wrap: anywhere; }
-.create-tag-n { font-size: 10px; opacity: .6; font-variant-numeric: tabular-nums; }
-.create-tag-plus { padding: 1px 0 1px 10px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.25; opacity: .4; }
-.create-tag-plus > span { font-size: 13px; font-weight: 300; letter-spacing: 0; }
+.create-tag-n { font-size: 15px; opacity: .6; font-variant-numeric: tabular-nums; }
+.create-tag-plus { padding: 2px 0 2px 15px; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.25; opacity: .4; }
+.create-tag-plus > span { font-size: 19.5px; font-weight: 300; letter-spacing: 0; }
 .create-tag-list > .create-tag-plus { margin-top: 4px; }
 .create-tag-plus:is(:hover, :focus-visible) { opacity: .9; outline: none; }
-.create-group-edit { padding-left: 10px; }
-.create-group-field, .create-group-field:focus, .create-make-field, .create-make-field:focus { width: 130px; opacity: 1; border-bottom-color: currentColor; }
+.create-group-edit { padding-left: 15px; }
+.create-group-field, .create-group-field:focus, .create-make-field, .create-make-field:focus { width: 100%; max-width: 160px; font-size: 16.5px; opacity: 1; border-bottom-color: currentColor; }
 /* A tag being dragged onto a square: a small chip at the pointer; the square under it outlined. */
 .create-tag-ghost {
   position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none !important;
