@@ -1884,6 +1884,87 @@ dialog.dialog-box {
 .create-tag-arrange .create-tag-pick { font-style: italic; }
 @media (max-width: 560px) { .create-tag-arrange { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; box-shadow: none; } }
 
+/* Russell: a closed chapter shows only its name; a click opens it as a document. */
+.create-russell-closed { cursor: pointer; }
+.create-russell-closed .create-thought { font-size: 15px; letter-spacing: .14em; text-transform: uppercase; }
+.create-russell-closed:hover .create-thought { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+
+/* A chapter open as a document (document.js): its name and its thoughts as flowing paragraphs. */
+.create-doc-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--create-panel-ink, #000) 8%, transparent);
+  animation: create-in .25s ease both;
+}
+.create-doc-veil[hidden] { display: none; }
+.create-doc {
+  width: min(680px, calc(100% - 2 * var(--gutter, 16px)));
+  max-height: calc(100% - 120px);
+  overflow: auto;
+  box-sizing: border-box;
+  display: grid;
+  gap: 18px;
+  padding: 26px 40px 20px;
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
+  outline: none;
+}
+.create-doc-head { display: flex; align-items: baseline; justify-content: space-between; }
+.create-doc-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
+.create-doc-close { background: none; border: 0; color: inherit; font: inherit; font-size: 20px; opacity: .5; cursor: pointer; padding: 0 4px; }
+.create-doc-close:hover { opacity: .9; }
+.create-doc-title {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 4px 0 8px;
+  font: inherit;
+  font-size: 24px;
+  letter-spacing: .04em;
+  color: inherit;
+  outline: none;
+}
+.create-doc-title:focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 30%, transparent); }
+.create-doc-title::placeholder { color: inherit; opacity: .35; }
+.create-doc-paras { display: grid; gap: .9em; font-size: 16px; line-height: 1.7; }
+.create-doc-para { white-space: pre-line; cursor: text; border-radius: 2px; }
+.create-doc-para:not(.writing):not(.create-doc-item):hover { background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
+.create-doc-item { cursor: default; }
+.create-doc textarea.create-doc-box {
+  display: block;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--room-ink) 35%, transparent);
+  margin-left: -13px;
+  padding: 0 0 0 12px;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  outline: none;
+}
+.create-doc textarea.create-doc-box:focus { border-color: color-mix(in srgb, var(--room-ink) 35%, transparent); box-shadow: none; outline: none; }
+.create-doc-box::placeholder { color: inherit; opacity: .35; }
+.create-doc-more { justify-self: start; background: none; border: 0; color: inherit; font: inherit; font-size: 18px; opacity: .35; cursor: pointer; padding: 0; }
+.create-doc-more:hover { opacity: .8; }
+.create-doc .create-keys { opacity: .45; font-size: 12px; }
+@media (max-width: 560px) { .create-doc { padding: 20px 20px 16px; } }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
@@ -12196,7 +12277,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var widest = (w2, id) => Math.max(0, WIDTHS.get(id) || 0, ...members(w2, id).map((th) => WIDTHS.get(th.id) || 0));
   function chapterSize(w2, id) {
     const g2 = w2.things[id];
-    if (g2?.folded) return { w: widest(w2, id) || LAYOUT.width, h: STEP2.group };
+    if (g2?.folded) return { w: Math.max(LAYOUT.least, widest(w2, id) || LAYOUT.width), h: STEP2.line };
     const ths = members(w2, id);
     const h = LAYOUT.head + ths.reduce((s, th, i2) => s + (i2 < ths.length - 1 ? stepAfter(th) : Math.max(STEP2.line, stepAfter(th) - 29)), 0);
     return { w: Math.max(LAYOUT.least, Math.min(LAYOUT.width, widest(w2, id) || LAYOUT.width)), h: Math.max(STEP2.line, h) };
@@ -12564,7 +12645,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const chosen = c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id);
         const cls = "create-bead" + (picking ? " create-russell-pick" : "");
         if (g2.folded) {
-          nodes.push(el7("div", { class: cls + " create-folded" + (chosen ? " selected" : ""), "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y}px` }, c.thoughtNode(g2)));
+          nodes.push(el7("div", {
+            class: cls + " create-folded create-russell-closed" + (chosen ? " selected" : ""),
+            "data-group": g2.id,
+            title: "Click to open",
+            style: `left:${at2.x}px;top:${at2.y}px`
+          }, el7("span", { class: "create-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
           const spots = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
@@ -12582,7 +12668,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             nodes.push(el7("div", { class: "create-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
-        layer.append(svg("path", { class: "create-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - 14} ${at2.y + 6}L${at2.x - 14} ${at2.y + size.h - 4}` }));
+        if (!g2.folded) layer.append(svg("path", { class: "create-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - 14} ${at2.y + 6}L${at2.x - 14} ${at2.y + size.h - 4}` }));
         if (g2.title && !g2.folded) nodes.push(el7("div", { class: "create-russell-title", "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y - 30}px` }, g2.title));
         if (!c.locked) {
           const f2 = foot(at2, size);
@@ -12593,6 +12679,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         nodes.push(el7("div", { class: "create-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [layer, ...nodes];
+    },
+    // A tap on a closed (folded) chapter opens it as a document (document.js).
+    open(c, id) {
+      const g2 = c.world.things[id];
+      if (!isGroup(g2) || g2.of !== ID || !g2.folded) return false;
+      c.openDocument(id);
+      return true;
     },
     // A thought's tag in the Timeline: its chapter.
     tag(w2, id) {
@@ -12631,6 +12724,211 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       declareGroups(o2.id, o2.groups);
     }
     return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
+  }
+
+  // dist/web/features/create/document.js
+  function between(prev, next, now = Date.now()) {
+    if (!prev) return next ? next.at - 1 : now;
+    if (!next) return Math.max(now, prev.at + 1);
+    return prev.at + (next.at - prev.at) / 2;
+  }
+  function keepWords(w2, chapterId, id, text, prev = null, now = Date.now()) {
+    const words = String(text ?? "").replace(/\r\n?/g, "\n");
+    if (id) {
+      const th2 = w2.things[id];
+      if (!th2) return null;
+      if (!words.trim()) {
+        remove(w2, id);
+        return null;
+      }
+      if (words === th2.text) return th2;
+      return update(w2, id, { text: words }, now);
+    }
+    if (!words.trim()) return null;
+    const list = members(w2, chapterId);
+    const i2 = prev ? list.findIndex((th2) => th2.id === prev) : -1;
+    const at2 = between(list[i2] || null, list[i2 + 1] || null, now);
+    const th = create(w2, chapterId, { kind: "line", text: words }, now);
+    if (th) th.at = at2;
+    return th;
+  }
+  function openDocument(c, chapterId) {
+    const w2 = () => c.world;
+    const g2 = w2().things[chapterId];
+    if (!isGroup(g2)) return;
+    if (c.draft) c.commit();
+    const locked = !!shut(w2(), chapterId);
+    let writing = null;
+    let paras = null;
+    const grow = (t) => {
+      t.style.height = "auto";
+      t.style.height = `${t.scrollHeight}px`;
+    };
+    const thoughts = () => members(w2(), chapterId);
+    const keep = () => {
+      if (!writing) return null;
+      const { id, prev, box } = writing;
+      writing = null;
+      const th = keepWords(w2(), chapterId, id, box.value, prev);
+      c.save();
+      return th;
+    };
+    const close = () => {
+      keep();
+      if (!w2().things[chapterId] || !members(w2(), chapterId).length) c.sel = null;
+      c.editing = null;
+      c.docEl.hidden = true;
+      c.docEl.replaceChildren();
+      document.removeEventListener("pointerdown", outside, true);
+      c.drawWorld();
+    };
+    const outside = (e) => {
+      if (!sheet.contains(e.target)) close();
+    };
+    const write = (id, prev = null, caret = "end") => {
+      if (locked) return;
+      const before = keep();
+      if (!w2().things[chapterId]) {
+        close();
+        return;
+      }
+      if (!id && prev && !w2().things[prev]) prev = before?.id || null;
+      const th = id ? w2().things[id] : null;
+      const box = c.el("textarea", { class: "create-doc-box", rows: 1, "aria-label": "A thought", placeholder: id ? "" : "The next thought" });
+      box.value = th?.text || "";
+      writing = { id, prev, box };
+      box.addEventListener("input", () => grow(box));
+      box.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          keep();
+          draw();
+          sheet.focus({ preventScroll: true });
+          return;
+        }
+        if (e.key === "Backspace" && !box.value && !e.isComposing) {
+          const list = thoughts();
+          const here = id ? list.findIndex((t) => t.id === id) : list.findIndex((t) => t.id === prev) + 1;
+          const back = list[here - 1];
+          if (back && kindOf(back) === "line") {
+            e.preventDefault();
+            keep();
+            write(back.id);
+          }
+          return;
+        }
+        if (e.key !== "Enter" || e.isComposing) return;
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) {
+          box.setRangeText("\n", box.selectionStart, box.selectionEnd, "end");
+          grow(box);
+          return;
+        }
+        if (!box.value.trim() && !id) {
+          keep();
+          draw();
+          return;
+        }
+        const kept = keep();
+        write(null, kept?.id || prev);
+      });
+      draw();
+      box.focus({ preventScroll: true });
+      const at2 = caret === "end" ? box.value.length : 0;
+      box.setSelectionRange(at2, at2);
+      grow(box);
+      box.scrollIntoView?.({ block: "nearest" });
+    };
+    const draw = () => {
+      if (!w2().things[chapterId]) {
+        close();
+        return;
+      }
+      const list = thoughts();
+      const out = [];
+      const fresh = writing && !writing.id ? writing : null;
+      if (fresh && !fresh.prev) out.push(c.el("div", { class: "create-doc-para writing" }, fresh.box));
+      for (const th of list) {
+        if (writing?.id === th.id) out.push(c.el("div", { class: "create-doc-para writing" }, writing.box));
+        else if (kindOf(th) === "line") {
+          out.push(c.el("div", {
+            class: "create-doc-para",
+            "data-id": th.id,
+            title: locked ? "" : "Click to write in it",
+            onclick: () => write(th.id)
+          }, maths(th.text || "")));
+        } else out.push(c.el("div", { class: "create-doc-para create-doc-item" }, c.thoughtNode(th)));
+        if (fresh && fresh.prev === th.id) out.push(c.el("div", { class: "create-doc-para writing" }, fresh.box));
+      }
+      paras.replaceChildren(...out);
+      if (writing) requestAnimationFrame(() => writing && grow(writing.box));
+    };
+    const title = c.el("input", {
+      class: "create-doc-title",
+      value: g2.title || "",
+      placeholder: "Name this chapter",
+      "aria-label": "The chapter's name",
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          title.blur();
+          sheet.focus({ preventScroll: true });
+        }
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          title.blur();
+          const list = thoughts();
+          if (!list.length) write(null);
+        }
+      },
+      onchange: () => {
+        name(w2(), chapterId, title.value);
+        c.save();
+      }
+    });
+    if (locked) title.setAttribute("readonly", "");
+    paras = c.el("div", { class: "create-doc-paras" });
+    const more = locked ? null : c.el("button", {
+      type: "button",
+      class: "create-doc-more",
+      "aria-label": "Write the next thought",
+      onclick: () => {
+        const list = thoughts();
+        write(null, list.at(-1)?.id || null);
+      }
+    }, "+");
+    const sheet = c.el(
+      "div",
+      { class: "create-doc", role: "dialog", "aria-label": "Chapter", tabindex: "-1" },
+      c.el(
+        "div",
+        { class: "create-doc-head" },
+        c.el("span", { class: "create-doc-kind" }, "Chapter"),
+        c.el("button", { type: "button", class: "create-doc-close", "aria-label": "Close", onclick: close }, "×")
+      ),
+      title,
+      paras,
+      more,
+      c.el("div", { class: "create-keys" }, locked ? "This room is locked · Esc closes" : "Click a paragraph to write · Enter keeps it · Ctrl+Enter a new line · Esc closes")
+    );
+    sheet.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+    });
+    c.sel = null;
+    c.editing = { kind: "document", id: chapterId, close };
+    c.docEl.replaceChildren(sheet);
+    c.docEl.hidden = false;
+    draw();
+    sheet.focus({ preventScroll: true });
+    setTimeout(() => {
+      if (!c.docEl.hidden) document.addEventListener("pointerdown", outside, true);
+    }, 0);
   }
 
   // dist/web/features/create/clear.js
@@ -13284,6 +13582,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.trayEl,
         this.bar,
         this.sheet = el5("div", { class: "create-sheet", hidden: true }),
+        this.docEl = el5("div", { class: "create-doc-veil", hidden: true }),
         this.input
       );
       this.searchBox = el5("div", { class: "create-search", hidden: true, role: "dialog", "aria-label": "Search" });
@@ -14159,6 +14458,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return el5;
     }
     // for an ontology drawing its canvas (ontologies/index.js)
+    groupName(g2) {
+      return this.ontologies.find((o2) => o2.id === g2?.of)?.groups?.name || "Train";
+    }
+    // Train, Chapter
+    openDocument(id) {
+      openDocument(this, id);
+    }
+    // a group as a document (document.js)
     lookOf(r) {
       return roomLook(r, this.palette, r.id === MESSY, this.prefs);
     }
@@ -14744,7 +15051,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       if (e.key === "Escape") {
-        if (!this.addMenu.hidden) this.closeAdd();
+        if (this.editing?.close) this.editing.close();
+        else if (!this.addMenu.hidden) this.closeAdd();
         else if (this.roomId && this.sel && this.barFor) {
           this.barFor = null;
           this.drawBar();
@@ -15232,6 +15540,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       if (!g2.moved) {
+        if (g2.thing && this.ont.open?.(this, g2.thing.id)) return;
         const keep = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
         this.sel = keep ? this.sel : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
         const train = g2.el?.dataset.group;
@@ -15707,7 +16016,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawWorld();
       };
       const rows = [];
-      const gname = kind === "group" && this.ontologies.find((o2) => o2.id === th.of)?.groups?.name || "Train";
+      const gname = kind === "group" ? this.groupName(th) : "Train";
       const title = kind === "group" ? th.folded ? `A folded ${gname.toLowerCase()}` : gname : ITEMS[kind]?.name || "Thought";
       rows.push(el5("div", { class: "create-options-label" }, title));
       if (kind === "line") {
@@ -15773,7 +16082,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             "div",
             { class: "create-options-row" },
             el5("span", { class: "create-options-note" }, `${n} thought${n === 1 ? "" : "s"}`),
-            th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 ? word("Fold into one", () => this.foldTrain(th.id)) : null
+            th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 || this.ont.open ? word("Fold into one", () => this.foldTrain(th.id)) : null
           )
         );
         const elsewhere = th.folded ? this.elsewhere(th) : [];
@@ -16102,7 +16411,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const fields = [];
       if (kind === "group") {
-        this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: "Name this train of thought", "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        this.sheetTitle = el5("input", { class: "create-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
         fields.push(this.sheetTitle, el5("div", { class: "create-sheet-preview" }, thoughtText(this.world, th)));
         if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep2) => {
           this.editing.keep = keep2;
@@ -16118,7 +16427,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         fields.push(el5("img", { class: "create-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
       this.sheet.replaceChildren(
-        el5("div", { class: "create-sheet-kind" }, { passage: "Passage", picture: "Picture", group: "A folded train" }[kind]),
+        el5("div", { class: "create-sheet-kind" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
         ...fields,
         el5(
           "div",
