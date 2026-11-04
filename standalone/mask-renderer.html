@@ -1873,6 +1873,12 @@ dialog.dialog-box {
   .create-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
   .create-tag-pick { padding: 2px 0; }
 }
+/* A group's heading in the Tags list (Ontology, your own, Other), and the field that names a tag's group. */
+.create-tag-group { margin-top: 6px; padding-left: 10px; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; opacity: .35; }
+.create-tag-group:first-child { margin-top: 0; }
+.create-group-edit { padding-left: 10px; }
+.create-group-field, .create-group-field:focus { width: 100px; opacity: 1; border-bottom-color: currentColor; }
+@media (max-width: 560px) { .create-tag-group { margin-top: 0; padding-left: 0; } }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -11258,11 +11264,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts", col: 0, row: 0, size: 2 });
   function emptyWorld(now = Date.now()) {
-    return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, pages: 1 };
+    return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, pages: 1 };
   }
   function loadWorld(saved, now = Date.now()) {
     const w2 = Object.assign(emptyWorld(now), saved && typeof saved === "object" && saved.v === 3 ? saved : {});
-    for (const key of ["things", "views", "own", "settings"]) if (!w2[key] || typeof w2[key] !== "object") w2[key] = {};
+    for (const key of ["things", "views", "own", "settings", "tagGroups"]) if (!w2[key] || typeof w2[key] !== "object") w2[key] = {};
     w2.pages = Math.max(1, Math.floor(+w2.pages) || 1);
     if (!w2.things[MESSY]) w2.things[MESSY] = messyRoom(now);
     for (const th of Object.values(w2.things)) {
@@ -11686,6 +11692,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function addTag(w2, id, text, ontologies = []) {
+    const m2 = String(text ?? "").match(/^([^:]+):(.+)$/);
+    if (m2 && tidyTag(m2[1]) && tidyTag(m2[2])) {
+      const added = addTag(w2, id, m2[2], ontologies);
+      return setTagGroup(w2, m2[2], m2[1], ontologies) || added;
+    }
     const r = room(w2, id), tag = tidyTag(text);
     if (!r || !tag || roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tag))) return false;
     r.tags = [...r.tags || [], tag];
@@ -11714,6 +11725,37 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return i2 < 0 ? order.length : i2;
     };
     return [...counts2.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
+  }
+  var ONTOLOGY = "Ontology";
+  var isMode = (tag, ontologies) => ontologies.some((o2) => same(o2.name, tag));
+  function tagGroup(w2, tag, ontologies = []) {
+    const t = tidyTag(tag);
+    if (!t) return null;
+    if (isMode(t, ontologies)) return ONTOLOGY;
+    return w2.tagGroups?.[t.toLowerCase()] || null;
+  }
+  function setTagGroup(w2, tag, group, ontologies = []) {
+    const t = tidyTag(tag), g2 = tidyTag(group);
+    if (!t || isMode(t, ontologies) || g2 && same(g2, ONTOLOGY)) return false;
+    const groups = w2.tagGroups ||= {};
+    const name2 = Object.values(groups).find((x) => g2 && same(x, g2)) || g2;
+    const key = t.toLowerCase();
+    if ((groups[key] || "") === name2) return false;
+    if (name2) groups[key] = name2;
+    else delete groups[key];
+    return true;
+  }
+  var groupNames = (w2) => [ONTOLOGY, ...[...new Set(Object.values(w2.tagGroups || {}))].filter((g2, i2, all) => all.findIndex((x) => same(x, g2)) === i2).sort((a, b) => a.localeCompare(b))];
+  function tagsByGroup(w2, ontologies = [], shelf = false) {
+    const out = /* @__PURE__ */ new Map();
+    for (const t of allTags(w2, ontologies, shelf)) {
+      const g2 = tagGroup(w2, t.tag, ontologies);
+      const key = g2 ? g2.toLowerCase() : "";
+      if (!out.has(key)) out.set(key, { group: g2, tags: [] });
+      out.get(key).tags.push(t);
+    }
+    const rank = (x) => x.group == null ? 2 : same(x.group, ONTOLOGY) ? 0 : 1;
+    return [...out.values()].sort((a, b) => rank(a) - rank(b) || (a.group || "").localeCompare(b.group || ""));
   }
   var hasTag = (w2, id, tag, ontologies = []) => roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tidyTag(tag)));
   function peek(w2, roomId, most = 3) {
@@ -12781,6 +12823,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.shelf = false;
       this.lights = null;
       this.tagLight = null;
+      this.regrouping = null;
       this.tagsOpen = false;
       this.backdrop = this.use("backdrop");
       this.prefs = lookPrefs(this.storage.get("look"));
@@ -13560,27 +13603,98 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       );
     }
     // ---- Tags, in the rail: every tag and how many rooms have it ----
+    // The tags under their groups: a small heading for each (Ontology first, Other last, shown only
+    // when there are groups of your own). A right-click on a tag (a long press on a phone) asks
+    // for its group: typed there, or as "Group: tag" in a room's + tag.
     drawTags() {
-      const tags = allTags(this.world, this.ontologies, this.shelf);
+      const onts = this.ontologies;
+      const grouped = tagsByGroup(this.world, onts, this.shelf);
+      const tags = grouped.flatMap((g2) => g2.tags);
       if (this.tagLight && !tags.some((t) => t.tag.toLowerCase() === this.tagLight.toLowerCase())) this.tagLight = null;
       this.tagsBtn.setAttribute("aria-expanded", String(this.tagsOpen));
       this.tagsBtn.classList.toggle("on", !!this.tagLight);
       this.tagsList.hidden = !this.tagsOpen;
       if (!this.tagsOpen) return;
-      this.tagsList.replaceChildren(...tags.map((t) => {
+      const mine = grouped.some((g2) => g2.group && g2.group !== ONTOLOGY);
+      const pick = (t) => {
         const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
+        if (this.regrouping?.toLowerCase() === t.tag.toLowerCase()) return this.groupField(t.tag);
+        const mode = tagGroup(this.world, t.tag, onts) === ONTOLOGY;
+        let timer = 0;
         return el5("button", {
           type: "button",
           class: "create-tag-pick",
           role: "listitem",
           "aria-pressed": String(on),
-          title: `${t.n} room${t.n === 1 ? "" : "s"}`,
+          title: `${t.n} room${t.n === 1 ? "" : "s"}${mode ? "" : " · right-click to put it in a group"}`,
           onclick: () => {
+            if (this.heldTag) {
+              this.heldTag = false;
+              return;
+            }
             this.tagLight = on ? null : t.tag;
             this.drawRooms();
-          }
+          },
+          oncontextmenu: (e) => {
+            e.preventDefault();
+            if (!mode) {
+              this.regrouping = t.tag;
+              this.drawTags();
+            }
+          },
+          onpointerdown: (e) => {
+            if (e.pointerType !== "mouse" && !mode) timer = setTimeout(() => {
+              this.heldTag = true;
+              this.regrouping = t.tag;
+              this.drawTags();
+            }, HOLD);
+          },
+          onpointerup: () => clearTimeout(timer),
+          onpointerleave: () => clearTimeout(timer)
         }, el5("span", { class: "create-tag-name" }, t.tag), el5("span", { class: "create-tag-n" }, String(t.n)));
-      }));
+      };
+      this.tagsList.replaceChildren(...grouped.flatMap((g2) => [
+        g2.group || mine ? el5("div", { class: "create-tag-group", "aria-hidden": "true" }, g2.group || "Other") : null,
+        ...g2.tags.map(pick)
+      ]));
+    }
+    // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.
+    groupField(tag) {
+      const done = (keep, value) => {
+        this.regrouping = null;
+        if (keep && setTagGroup(this.world, tag, value, this.ontologies)) this.save();
+        this.drawTags();
+      };
+      const list = el5("datalist", { id: "create-group-list" }, ...groupNames(this.world).slice(1).map((g2) => el5("option", { value: g2 })));
+      const field3 = el5("input", {
+        class: "create-tag-field create-group-field",
+        value: tagGroup(this.world, tag, this.ontologies) || "",
+        placeholder: `${tag} in…`,
+        "aria-label": `The group ${tag} is in`,
+        list: "create-group-list",
+        maxlength: 30,
+        autocomplete: "off",
+        spellcheck: "false",
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            done(true, e.target.value);
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            done(false);
+          }
+        },
+        onblur: (e) => {
+          if (this.regrouping) done(true, e.target.value);
+        }
+      });
+      requestAnimationFrame(() => {
+        field3.focus({ preventScroll: true });
+        field3.select();
+      });
+      return el5("div", { class: "create-group-edit", role: "listitem" }, field3, list);
     }
     // ---- Search lights ----
     openLights() {
@@ -13764,9 +13878,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const field3 = el5("input", {
         class: "create-tag-field",
         placeholder: "+ tag",
+        title: "A tag, or Group: tag",
         "aria-label": "Add a tag",
         list: "create-tag-list",
-        maxlength: 30,
+        maxlength: 61,
         autocomplete: "off",
         spellcheck: "false",
         onkeydown: (e) => {

@@ -32,6 +32,7 @@
 //   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
 //   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
 //   pages:  n                                     how many pages the rooms page has (at least 1)
+//   tagGroups: { [tag]: group }                   the group each tag is in (tag in lower case)
 // }
 //
 // No screen here, so it can be tested on its own (tests/model.test.js).
@@ -65,7 +66,7 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, pages: 1 };
+  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, pages: 1 };
 }
 
 // A saved world, repaired: the messy room always exists; every room sits on the rooms page; an
@@ -73,7 +74,7 @@ export function emptyWorld(now = Date.now()) {
 // gone. A world saved in an older shape is not kept: it starts afresh.
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'views', 'own', 'settings']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
   for (const th of Object.values(w.things)) {
@@ -625,8 +626,14 @@ export function roomTags(w, id, ontologies = []) {
   return out;
 }
 
-// Adds a tag to a room. False if it is empty, or the room has it already.
+// Adds a tag to a room. False if it is empty, or the room has it already. "Group: tag" also puts
+// the tag in that group (tagGroup).
 export function addTag(w, id, text, ontologies = []) {
+  const m = String(text ?? '').match(/^([^:]+):(.+)$/);
+  if (m && tidyTag(m[1]) && tidyTag(m[2])) {
+    const added = addTag(w, id, m[2], ontologies);
+    return setTagGroup(w, m[2], m[1], ontologies) || added;
+  }
   const r = room(w, id), tag = tidyTag(text);
   if (!r || !tag || roomTags(w, id, ontologies).some((o) => same(o.tag, tag))) return false;
   r.tags = [...(r.tags || []), tag];
@@ -657,6 +664,53 @@ export function allTags(w, ontologies = [], shelf = false) {
   const order = ontologies.map((o) => o.name.toLowerCase());
   const rank = (t) => { const i = order.indexOf(t.tag.toLowerCase()); return i < 0 ? order.length : i; };
   return [...counts.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
+}
+
+// ---- Tag groups ----
+// A tag can be in one group, so tags of a kind sit together: "Ontology" holds the modes' tags
+// and can't be changed; the rest are made by putting a tag in one ("Subject: Algebra"). A tag in
+// no group is in Other. Group names, like tags, are the same whatever their case.
+
+export const ONTOLOGY = 'Ontology';
+const isMode = (tag, ontologies) => ontologies.some((o) => same(o.name, tag));
+
+// The group a tag is in, or null.
+export function tagGroup(w, tag, ontologies = []) {
+  const t = tidyTag(tag);
+  if (!t) return null;
+  if (isMode(t, ontologies)) return ONTOLOGY;
+  return w.tagGroups?.[t.toLowerCase()] || null;
+}
+
+// Puts a tag in a group (an empty group takes it out). Not a mode's tag, nor into Ontology.
+// Returns whether anything changed.
+export function setTagGroup(w, tag, group, ontologies = []) {
+  const t = tidyTag(tag), g = tidyTag(group);
+  if (!t || isMode(t, ontologies) || (g && same(g, ONTOLOGY))) return false;
+  const groups = (w.tagGroups ||= {});
+  const name = Object.values(groups).find((x) => g && same(x, g)) || g; // an existing group keeps its spelling
+  const key = t.toLowerCase();
+  if ((groups[key] || '') === name) return false;
+  if (name) groups[key] = name; else delete groups[key];
+  return true;
+}
+
+// The names of the groups there are: Ontology first, then the rest by name.
+export const groupNames = (w) => [ONTOLOGY, ...[...new Set(Object.values(w.tagGroups || {}))]
+  .filter((g, i, all) => all.findIndex((x) => same(x, g)) === i).sort((a, b) => a.localeCompare(b))];
+
+// Every tag (as allTags) under its group: [{ group, tags: [{ tag, n }] }], Ontology first, then
+// the groups by name, then the tags in none (group null). Groups with no tags are left out.
+export function tagsByGroup(w, ontologies = [], shelf = false) {
+  const out = new Map();
+  for (const t of allTags(w, ontologies, shelf)) {
+    const g = tagGroup(w, t.tag, ontologies);
+    const key = g ? g.toLowerCase() : '';
+    if (!out.has(key)) out.set(key, { group: g, tags: [] });
+    out.get(key).tags.push(t);
+  }
+  const rank = (x) => (x.group == null ? 2 : same(x.group, ONTOLOGY) ? 0 : 1);
+  return [...out.values()].sort((a, b) => rank(a) - rank(b) || (a.group || '').localeCompare(b.group || ''));
 }
 
 // True if a room has a tag (whatever its case).

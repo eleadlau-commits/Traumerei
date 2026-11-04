@@ -9,7 +9,7 @@ import {
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  roomTags, addTag, removeTag, allTags, hasTag,
+  roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -518,4 +518,26 @@ test('tags survive a save and a rename, and are counted across the rooms', () =>
   archive(back, b.id);
   assert.deepEqual(allTags(back, ONTS).find((t) => t.tag === 'Book').n, 1);
   assert.deepEqual(allTags(back, ONTS, true).find((t) => t.tag === 'Book').n, 2);
+});
+
+test('tag groups: Ontology holds the modes; "Group: tag" makes a group; a tag is in one group', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
+  const b = addRoom(w, 'B', 2, null, 6, {}, 'pessoa');
+  assert.equal(addTag(w, a.id, 'Subject: Algebra', ONTS), true);
+  assert.deepEqual(a.tags, ['Algebra']);
+  assert.equal(tagGroup(w, 'algebra', ONTS), 'Subject');
+  assert.equal(tagGroup(w, 'Joyce', ONTS), ONTOLOGY);
+  assert.equal(addTag(w, b.id, 'subject: Topology', ONTS), true);
+  assert.equal(tagGroup(w, 'Topology', ONTS), 'Subject'); // the group keeps its first spelling
+  addTag(w, b.id, 'Draft', ONTS);
+  assert.equal(setTagGroup(w, 'Joyce', 'Subject', ONTS), false);
+  assert.equal(setTagGroup(w, 'Draft', 'ontology', ONTS), false);
+  assert.deepEqual(groupNames(w), ['Ontology', 'Subject']);
+  assert.deepEqual(tagsByGroup(w, ONTS).map((g) => [g.group, g.tags.map((t) => t.tag)]),
+    [['Ontology', ['Joyce', 'Pessoa', 'Russell']], ['Subject', ['Algebra', 'Topology']], [null, ['Draft']]]);
+  assert.equal(setTagGroup(w, 'Algebra', '', ONTS), true);
+  assert.equal(tagGroup(w, 'Algebra', ONTS), null);
+  const back = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.equal(tagGroup(back, 'Topology', ONTS), 'Subject');
 });
