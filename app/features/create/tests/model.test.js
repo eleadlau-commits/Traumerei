@@ -9,6 +9,7 @@ import {
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
+  roomTags, addTag, removeTag, allTags, hasTag,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -475,4 +476,46 @@ test('each room keeps its own ontology settings; global ones fill in, reset and 
   g.joyce.tension = 1; // a copy, not the same object
   for (const id of [a.id, b.id, MESSY]) assert.equal(roomSetting(w, id, 'joyce', s), 0.3);
   assert.deepEqual(loadWorld(JSON.parse(JSON.stringify(w))).settings[b.id], { joyce: { tension: 0.3 } });
+});
+
+// ---- Tags ----
+
+const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, { id: 'russell', name: 'Russell' }];
+
+test('a small room is tagged with its one mode; a big room with every mode', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Algebra', 1, null, 6, {}, 'pessoa');
+  assert.deepEqual(roomTags(w, r.id, ONTS), [{ tag: 'Pessoa', auto: true }]);
+  assert.deepEqual(roomTags(w, MESSY, ONTS).map((t) => t.tag), ['Joyce', 'Pessoa', 'Russell']);
+  sizeRoom(w, r.id, 2);
+  assert.equal(roomTags(w, r.id, ONTS).length, 3);
+});
+
+test('tags are added once whatever their case, and a mode tag cannot be taken off', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Algebra', 1, null, 6, {}, 'joyce');
+  assert.equal(addTag(w, r.id, '  #Linear algebra ', ONTS), true);
+  assert.equal(addTag(w, r.id, 'linear ALGEBRA', ONTS), false);
+  assert.equal(addTag(w, r.id, 'joyce', ONTS), false);
+  assert.equal(addTag(w, r.id, '   ', ONTS), false);
+  assert.deepEqual(roomTags(w, r.id, ONTS).map((t) => [t.tag, t.auto]), [['Joyce', true], ['Linear algebra', false]]);
+  assert.equal(removeTag(w, r.id, 'Joyce'), false);
+  assert.equal(removeTag(w, r.id, 'LINEAR algebra'), true);
+  assert.equal(r.tags, undefined);
+});
+
+test('tags survive a save and a rename, and are counted across the rooms', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
+  const b = addRoom(w, 'B', 2, null, 6, {}, 'russell');
+  addTag(w, a.id, 'Book', ONTS);
+  addTag(w, b.id, 'book', ONTS);
+  name(w, a.id, 'A2');
+  const back = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.deepEqual(back.things[a.id].tags, ['Book']);
+  assert.ok(hasTag(back, b.id, '#BOOK', ONTS));
+  assert.deepEqual(allTags(back, ONTS), [{ tag: 'Joyce', n: 2 }, { tag: 'Pessoa', n: 1 }, { tag: 'Russell', n: 2 }, { tag: 'Book', n: 2 }]);
+  archive(back, b.id);
+  assert.deepEqual(allTags(back, ONTS).find((t) => t.tag === 'Book').n, 1);
+  assert.deepEqual(allTags(back, ONTS, true).find((t) => t.tag === 'Book').n, 2);
 });

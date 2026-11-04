@@ -10,9 +10,11 @@
 //            deleted, and it is always the same group, never a copy.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size, page,             through an ontology; on the rooms page it is a
-//              desc, locked, archived }          square of size × size cells at (col, row).
-//                                                desc: a line or two about it. locked: nothing in
-//                                                it can change. archived: on the Archive page.
+//              desc, tags, locked, archived }    square of size × size cells at (col, row).
+//                                                desc: a line or two about it. tags: words it is
+//                                                sorted by (its ontology is one too: roomTags).
+//                                                locked: nothing in it can change. archived: on
+//                                                the Archive page.
 //
 // Every thought has { id, kind, parent, at }. An item's and a group's `parent` is its room; a
 // room's is null (the rooms page). An item is in a group because the group lists it, so one item
@@ -262,6 +264,19 @@ export function thoughtText(w, th) {
 const oneLine = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const lines = (s) => String(s ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 export const DESC = 280; // a room's description, at most this many letters
+export const TAG = 30; // a tag, at most this many letters
+
+// A tag as it is kept: one line, no leading #, at most TAG letters. Empty when there is nothing.
+export const tidyTag = (s) => oneLine(s).replace(/^#+\s*/, '').slice(0, TAG).trim();
+const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+function tidyTags(list) {
+  const out = [];
+  for (const t of Array.isArray(list) ? list : []) {
+    const tag = tidyTag(t);
+    if (tag && !out.some((o) => same(o, tag))) out.push(tag);
+  }
+  return out;
+}
 const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
 // An item keeps where it was dragged to in its train (dx, dy from the train's corner), and when it
@@ -295,6 +310,8 @@ function tidy(f) {
   out.size = f.size === 2 ? 2 : 1;
   const desc = lines(f.desc).slice(0, DESC);
   if (desc) out.desc = desc;
+  const tags = tidyTags(f.tags);
+  if (tags.length) out.tags = tags;
   if (f.locked) out.locked = true;
   if (f.archived) { out.archived = Number.isFinite(f.archived) ? f.archived : true; delete out.col; delete out.row; }
   if (Number.isInteger(f.page) && f.page > 0) out.page = f.page;
@@ -339,7 +356,7 @@ export function update(w, id, fields, now = Date.now()) {
     if (!next.folded) delete th.folded;
     if (!next.keep) delete th.keep;
   }
-  if (kindOf(th) === 'room') for (const k of ['desc', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
+  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   return th;
 }
@@ -589,6 +606,61 @@ export function restore(w, id, cell = null, cols = 6) {
   if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.page || 0);
   return true;
 }
+
+// ---- Tags ----
+// A room's tags are the words the rooms page sorts it by. Its ontology is a tag of its own that
+// can't be taken off: a small room's one mode, or every mode for a big room (Messy thoughts, or
+// any 2 × 2 room). The rest are the room's own (`tags`), added and taken off in its properties.
+// Tags are the same whatever their case: "Algebra" and "algebra" are one tag.
+
+// A room's tags, its ontology's first: [{ tag, auto }]. ontologies: [{ id, name }], all there are.
+export function roomTags(w, id, ontologies = []) {
+  const r = room(w, id);
+  if (!r) return [];
+  const mode = view(w, id).mode;
+  const names = isBig(r) ? ontologies.map((o) => o.name)
+    : [ontologies.find((o) => o.id === mode)?.name || ''].filter(Boolean);
+  const out = names.map((tag) => ({ tag, auto: true }));
+  for (const tag of r.tags || []) if (!out.some((o) => same(o.tag, tag))) out.push({ tag, auto: false });
+  return out;
+}
+
+// Adds a tag to a room. False if it is empty, or the room has it already.
+export function addTag(w, id, text, ontologies = []) {
+  const r = room(w, id), tag = tidyTag(text);
+  if (!r || !tag || roomTags(w, id, ontologies).some((o) => same(o.tag, tag))) return false;
+  r.tags = [...(r.tags || []), tag];
+  return true;
+}
+
+// Takes one of a room's own tags off (an ontology's can't be).
+export function removeTag(w, id, text) {
+  const r = room(w, id);
+  if (!r?.tags?.some((t) => same(t, text))) return false;
+  r.tags = r.tags.filter((t) => !same(t, text));
+  if (!r.tags.length) delete r.tags;
+  return true;
+}
+
+// Every tag on the rooms page (and in the Archive too, with shelf), with how many rooms have it:
+// [{ tag, n }], the ontologies' first (in their order), then the rest by name.
+export function allTags(w, ontologies = [], shelf = false) {
+  const counts = new Map();
+  const all = shelf ? [...rooms(w), ...archived(w)] : rooms(w);
+  for (const r of all) {
+    for (const { tag } of roomTags(w, r.id, ontologies)) {
+      const key = tag.toLowerCase();
+      const had = counts.get(key);
+      counts.set(key, { tag: had?.tag || tag, n: (had?.n || 0) + 1 });
+    }
+  }
+  const order = ontologies.map((o) => o.name.toLowerCase());
+  const rank = (t) => { const i = order.indexOf(t.tag.toLowerCase()); return i < 0 ? order.length : i; };
+  return [...counts.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
+}
+
+// True if a room has a tag (whatever its case).
+export const hasTag = (w, id, tag, ontologies = []) => roomTags(w, id, ontologies).some((o) => same(o.tag, tidyTag(tag)));
 
 // The last few things written in a room (newest last), as plain text, for its square's peek.
 export function peek(w, roomId, most = 3) {

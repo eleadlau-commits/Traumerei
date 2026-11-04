@@ -45,7 +45,7 @@ import {
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
   cells, roomAt, shut, lock, archive, archived, restore, peek, DESC, roomsOn, toPage, pageCount,
-  addPage, isBig, rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
+  addPage, isBig, rooms, roomTags, addTag, removeTag, allTags, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll, hash,
 } from './model.js';
 import { shrinkPicture } from './picture.js';
 import { ITEMS } from './items/index.js';
@@ -747,7 +747,7 @@ export default class Create extends Feature {
   }
 
   // A room's properties, beside its square: its name and description, Go in, its mode (one, or
-  // all of them for a big room), its colour, lightness and opacity (the only place its colour is
+  // all of them for a big room), its tags, its colour, lightness and opacity (the only place its colour is
   // set), its size, Back to the tint, Lock, Archive and Delete (not for Messy).
   roomOptions(r, cell, cols) {
     const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
@@ -759,7 +759,6 @@ export default class Create extends Feature {
       onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
     });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'create-word ' + extra, onclick: fn }, label);
-    const mode = view(this.world, r.id).mode;
     const panel = el('div', this.beside(r, cell, cols),
       nameField,
       // A line or two about the room: shown under its name inside, and in its square's peek.
@@ -770,8 +769,9 @@ export default class Create extends Feature {
       }, r.desc || ''),
       word('Go in', () => this.openRoom(r.id), 'create-options-go'),
       // Its kind: a small room keeps its one mode; a big one switches inside.
-      el('p', { class: 'create-options-note' }, isBig(r) ? `${this.ontologies.map((m) => m.name).join(' · ')} · switched inside`
-        : `${this.ontology(mode).name} · one mode`),
+      // (its tags below name the modes).
+      el('p', { class: 'create-options-note' }, isBig(r) ? 'Every mode · switched inside' : 'One mode'),
+      this.tagsRow(r),
       // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
       el('label', { class: 'create-slider' }, el('span', {}, 'Colour'),
         el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
@@ -812,6 +812,32 @@ export default class Create extends Feature {
           this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
         }, 'create-options-delete') : null));
     return panel;
+  }
+
+  // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
+  // a ×), and a "+ tag" field that suggests the tags other rooms have. Enter adds what is typed.
+  tagsRow(r) {
+    const onts = this.ontologies;
+    const mine = roomTags(this.world, r.id, onts);
+    const had = new Set(mine.map((o) => o.tag.toLowerCase()));
+    const after = (fn) => { if (fn()) { this.save(); this.tagFocus = r.id; this.drawRooms(); } };
+    const list = el('datalist', { id: 'create-tag-list' },
+      ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el('option', { value: t.tag })));
+    const field = el('input', {
+      class: 'create-tag-field', placeholder: '+ tag', 'aria-label': 'Add a tag', list: 'create-tag-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value; after(() => addTag(this.world, r.id, v, onts)); }
+        if (e.key === 'Escape') e.target.blur();
+        if (e.key === 'Backspace' && !e.target.value) { const last = mine.filter((o) => !o.auto).pop(); if (last) after(() => removeTag(this.world, r.id, last.tag)); }
+      },
+    });
+    if (this.tagFocus === r.id) { this.tagFocus = null; requestAnimationFrame(() => field.focus({ preventScroll: true })); }
+    return el('div', { class: 'create-tags', role: 'group', 'aria-label': 'Tags' },
+      ...mine.map((o) => el('span', { class: 'create-chip' + (o.auto ? ' auto' : ''), title: o.auto ? 'Its mode: always a tag' : '' },
+        o.tag,
+        o.auto ? null : el('button', { type: 'button', class: 'create-chip-x', 'aria-label': `Take off ${o.tag}`, onclick: () => after(() => removeTag(this.world, r.id, o.tag)) }, '×'))),
+      field, list);
   }
 
   // Redraws the squares on the next frame (sliders move many times a frame).
