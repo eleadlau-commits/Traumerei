@@ -496,7 +496,7 @@
 .room-options-delete { opacity: .6; }
 .room-options-delete:hover { color: #8a2f22; opacity: 1; }
 
-/* Search (Ctrl+K): a quiet panel near the top. */
+/* The list of keys (?): a quiet panel near the top. */
 .room-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
 .room-search-panel {
   position: absolute;
@@ -511,31 +511,6 @@
   color: var(--home-ink, var(--ink, #2b2a28));
   animation: room-unfold .2s var(--room-ease) both;
 }
-.room-search-field {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 18px 20px;
-  font: inherit;
-  font-size: 17px;
-  letter-spacing: .02em;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .12);
-  border-radius: 0;
-  outline: none;
-  box-shadow: none;
-  min-height: 0;
-}
-.room-search-list { max-height: 50vh; overflow: auto; }
-.room-search-item {
-  appearance: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
-  display: flex; justify-content: space-between; align-items: baseline; gap: 20px; width: 100%; padding: 11px 20px; text-align: left;
-}
-.room-search-item.on, .room-search-item:hover { background: rgb(var(--ink-rgb, 43 42 40) / .06); }
-.room-search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-.room-search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
-.room-search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
 
 /* A quiet "Saved", and a line of help the first time a room is seen. */
 .room-saved {

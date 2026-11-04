@@ -10,12 +10,13 @@ It fills the rooms feature's `rooms.room` slot with one item:
 
 | Member | What it does |
 |---|---|
-| `leave()` | Leaves the open room (its sheet, search and draft put away) and hides it. Returns the room's id if it showed, else `null`. |
+| `leave()` | Leaves the open room (its sheet, the search panel and the draft put away) and hides it. Returns the room's id if it showed, else `null`. |
 | `hasDraft(id)` | Whether a thought was left half written in room `id`. |
 
 It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, the square's
 rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
 each saved step. It uses the `rooms` service to go back to the rooms page or into another room.
+It opens Search through the `search` service and listens to `search:found`.
 It offers no service of its own.
 
 ## What it does
@@ -80,7 +81,7 @@ uses, so every file imports them from there. It goes back to the rooms page, or 
 room, through the `rooms` service. The `Room` class is written across several files:
 `Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space, Timeline), `writing.js` (thoughts, the draft, the caret),
-`gestures.js` (pointer, keys, selection, copy and paste, Search) and `bars.js` (pop-ups, tray,
+`gestures.js` (pointer, keys, selection, copy and paste, opening Search) and `bars.js` (pop-ups, tray,
 sheets, pictures). Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
 A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); the room
@@ -113,8 +114,11 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys. A right-click on the empty
   canvas opens Add at the pointer, and what is made goes just there.
-- **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) searches every room; **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A
-  quiet *Saved* shows in the corner, and a line of help the first time a room is seen.
+- **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
+  panel (`app/features/search`), which searches every room; a find opened there (`search:found`)
+  brings the view to it, in its room. With no search feature the bar isn't there.
+- **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A quiet *Saved* shows in the corner,
+  and a line of help the first time a room is seen.
 - **Writing** works as in any text editor. The thought being written shows its real caret and
   selection (drawn from a hidden box, each letter measured on the screen): click to place the
   caret, drag or double-click to choose letters (three clicks, the whole thought), Shift to

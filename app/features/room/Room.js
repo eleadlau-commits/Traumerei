@@ -47,6 +47,7 @@ export default class Room extends Feature {
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
+    this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
@@ -59,6 +60,7 @@ export default class Room extends Feature {
       else this.drawRoom();
     });
     this.on('room:open', (o) => this.enter(o));
+    this.on('search:found', (f) => { if (this.roomId) this.goTo(f); }); // a find opened in Search
     this.build();
     this.add('settings', { id: 'room-look', title: 'Rooms', order: 30, render: () => this.settingsPane() });
     this.add('rooms.room', {
@@ -219,6 +221,7 @@ export default class Room extends Feature {
     this.searchBtn = el('button', { type: 'button', class: 'room-word room-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.openSearch() },
     el('span', {}, 'Search'), el('span', { class: 'room-search-key' }, KEY));
+    this.searchBtn.hidden = !this.finder; // no Search without the search feature
     this.crumbName = el('button', { type: 'button', class: 'room-crumb room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
     // between them; a small one names its one), and Timeline under Joyce.
@@ -252,12 +255,12 @@ export default class Room extends Feature {
       this.docEl = el('div', { class: 'room-doc-veil', hidden: true }),
       this.input);
 
-    this.searchBox = el('div', { class: 'room-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
+    this.keysBox = el('div', { class: 'room-search', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
     this.savedMark = el('div', { class: 'room-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'room-hint' });
     // A small wordmark beside the menu (☰), as on the rooms page.
     this.wordmark = el('div', { class: 'room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine);
+    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
