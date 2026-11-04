@@ -959,3 +959,56 @@
 .create-maths .katex-display { margin: 0; }
 .create-maths.unparsed { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em;
   color: color-mix(in srgb, #b0563f 62%, currentColor); opacity: .85; }
+
+/* The tray: thoughts the mode hasn't placed yet, along the foot of the room. A quiet word opens a
+   row of them; each is dragged onto the canvas. */
+.create-tray {
+  position: absolute;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: min(760px, calc(100vw - 2 * var(--gutter) - 220px));
+  z-index: 2;
+}
+.create-tray-row {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 8px;
+  background: var(--create-panel);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--create-panel-shadow);
+  color: var(--create-panel-ink);
+  --room-ink: var(--create-panel-ink);
+  scrollbar-width: thin;
+  animation: create-unfold .22s var(--create-ease) both;
+}
+.create-tray-item {
+  flex: none;
+  width: 168px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  background: color-mix(in srgb, var(--room-ink) 5%, transparent);
+}
+.create-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
+.create-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.create-tray-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  cursor: grabbing;
+  background: var(--create-panel);
+  color: var(--create-panel-ink);
+  box-shadow: var(--create-panel-shadow);
+  opacity: .92;
+}
+.create-moves { flex-wrap: wrap; }

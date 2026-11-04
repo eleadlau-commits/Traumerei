@@ -40,7 +40,7 @@
 
 import { Feature, ui } from 'folio';
 import {
-  MESSY, DEFAULT_MODE, loadWorld, room, addRoom, name, view, startTrain, addThought,
+  MESSY, DEFAULT_MODE, loadWorld, room, addRoom, name, view, startTrain,
   create, update, remove, move, fold, unfold, kindOf, isLeaf, isGroup, groupOf, thoughtText, trainThoughts, roomThoughts,
   roomTrains, randomSpot, gridRooms, placeRoom,
   search, sizeRoom,
@@ -300,7 +300,7 @@ export default class Create extends Feature {
     if (!this.roomId) return;
     if (this.draft?.edit) this.commit(); // a thought opened again is simply kept
     const text = this.input.value;
-    if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0 };
+    if (this.draft && text.trim()) this.drafts[this.roomId] = { text, train: this.draft.train || null, x: this.draft.x ?? 0, y: this.draft.y ?? 0, ...(this.draft.for ? { for: this.draft.for } : {}) };
     else delete this.drafts[this.roomId];
     this.storage.set('drafts', this.drafts);
     this.draft = null;
@@ -315,7 +315,7 @@ export default class Create extends Feature {
     this.storage.set('drafts', this.drafts);
     if (this.locked) return;
     const t = d.train && this.world.things[d.train];
-    this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y };
+    this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...(d.for ? { for: d.for } : {}) };
     this.input.value = d.text;
     this.input.focus({ preventScroll: true });
     this.drawWorld();
@@ -423,6 +423,7 @@ export default class Create extends Feature {
     this.input = el('textarea', { class: 'create-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
     this.bar = el('div', { class: 'create-options create-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.history = el('aside', { class: 'create-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
+    this.trayEl = el('div', { class: 'create-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'create-room', hidden: true, 'aria-label': 'Room' },
       this.stage,
       this.modes,
@@ -437,6 +438,7 @@ export default class Create extends Feature {
         this.addBtn = el('button', { type: 'button', class: 'create-word create-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'create-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
+      this.trayEl,
       this.bar,
       this.sheet = el('div', { class: 'create-sheet', hidden: true }),
       this.input);
@@ -1265,6 +1267,7 @@ export default class Create extends Feature {
     }
     this.world$.replaceChildren(...nodes);
     this.drawBar();
+    this.drawTray();
     this.clearSoon();
   }
 
@@ -1595,11 +1598,41 @@ export default class Create extends Feature {
       return;
     }
     if (!d || !text.trim()) { this.drawWorld(); return; }
-    const train = d.train ? this.world.things[d.train] : startTrain(this.world, this.roomId, d.x, d.y);
-    addThought(this.world, train.id, text);
-    this.current[this.roomId] = train.id;
+    this.keepNew(d, { kind: 'line', text });
     this.save();
     this.drawWorld();
+  }
+
+  // The ontology new thoughts are written into: the room's, or Joyce's trains when it makes no
+  // groups of its own (Pessoa).
+  get writer() { return this.ont.groups ? this.ont : this.ontology(DEFAULT_MODE); }
+
+  // Keeps a new thought (fields) from draft d: into the group it goes on with, or one the writing
+  // ontology begins (ontologies/index.js: begin), or loose in the room when it begins none. Returns
+  // the thought, or null.
+  keepNew(d, fields, now = Date.now()) {
+    const w = this.world, wr = this.writer;
+    let g = d.train && w.things[d.train];
+    const made = !g;
+    if (!g) g = wr.begin ? wr.begin(w, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null }, now) : startTrain(w, this.roomId, d.x ?? 0, d.y ?? 0, now);
+    const th = create(w, g ? g.id : this.roomId, fields, now);
+    if (!th && made && g && w.things[g.id]) remove(w, g.id);
+    if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
+    else if (th) delete this.current[this.roomId];
+    return th;
+  }
+
+  // Starts writing a new thought at x, y (world units), with no group to go on with; for is kept
+  // with it and handed to the writing ontology's begin (a move's own note: say, the chapter it is
+  // a child of).
+  write({ x, y, for: note = null } = {}) {
+    if (!this.roomId || this.locked) return;
+    if (this.draft) this.commit();
+    this.sel = null;
+    this.draft = { train: null, x: Math.round(x ?? 0), y: Math.round(y ?? 0), ...(note != null ? { for: note } : {}) };
+    this.input.focus({ preventScroll: true });
+    this.drawWorld();
+    this.showDraft();
   }
 
   // Backspace in an empty thought: opens the thought before it in its train, the caret at its end.
@@ -1635,7 +1668,7 @@ export default class Create extends Feature {
     if (this.draft) this.commit();
     this.sel = null;
     this.lastTap = null;
-    this.draft = { train: groupOf(this.world, id)?.id || null, edit: id };
+    this.draft = { train: groupOf(this.world, id, this.writer.id)?.id || null, edit: id };
     this.input.value = th.text || '';
     this.input.focus({ preventScroll: true });
     this.input.setSelectionRange(this.input.value.length, this.input.value.length);
@@ -2260,7 +2293,8 @@ export default class Create extends Feature {
     const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
-    const title = kind === 'group' ? (th.folded ? 'A folded train' : 'Train') : (ITEMS[kind]?.name || 'Thought');
+    const gname = (kind === 'group' && this.ontologies.find((o) => o.id === th.of)?.groups?.name) || 'Train';
+    const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
     rows.push(el('div', { class: 'create-options-label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
@@ -2292,7 +2326,7 @@ export default class Create extends Feature {
     if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'create-edit-text'));
     if (kind === 'group') {
       const n = trainThoughts(this.world, th.id).length;
-      rows.push(field(th.title, 'Name this train', (e) => { name(this.world, th.id, e.target.value); done(); }),
+      rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
         el('div', { class: 'create-options-row' },
           el('span', { class: 'create-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
@@ -2301,6 +2335,9 @@ export default class Create extends Feature {
       const elsewhere = th.folded ? this.elsewhere(th) : [];
       if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
     }
+    // The ontology's own moves (ontologies/index.js), those that fit what is chosen.
+    const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
+    if (moves.length) rows.push(el('div', { class: 'create-options-row create-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
     const others = this.moveRooms();
     const pick = el('select', { class: 'create-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
@@ -2324,6 +2361,70 @@ export default class Create extends Feature {
     this.bar.replaceChildren(...rows);
     this.positionEdit();
     this.drawHistorySoon();
+  }
+
+  // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn
+  // again and the change saved as one step.
+  runMove(m) {
+    if (this.locked) return;
+    m.run(this);
+    this.save();
+    if (!this.draft) this.drawWorld();
+  }
+
+  // ---- The tray: thoughts the ontology hasn't placed yet, along the foot of the room ----
+  // A quiet word ("Loose · 3") opens a row of them; one dragged onto the canvas goes where it is
+  // let go (the ontology's drop()). Only an ontology with a tray has one, and only when it holds
+  // something.
+
+  trayItems() {
+    try { return this.ont.tray?.(this.world, this.roomId) || []; } catch { return []; }
+  }
+
+  drawTray() {
+    const items = this.roomId ? this.trayItems() : [];
+    if (!items.length) { this.trayEl.hidden = true; this.trayEl.replaceChildren(); return; }
+    const open = !!this.trayOpen;
+    const word = el('button', { type: 'button', class: 'create-word create-tray-btn', 'aria-expanded': String(open),
+      title: 'Thoughts not placed in this mode yet. Drag one onto the room.',
+      onclick: () => { this.trayOpen = !open; this.drawTray(); } }, `Loose · ${items.length}`);
+    const row = open ? el('div', { class: 'create-tray-row', role: 'list' }, items.map((th) => el('div', {
+      class: 'create-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
+      onpointerdown: (e) => this.trayDrag(e, th.id),
+    }, el('span', { class: 'create-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
+    this.trayEl.hidden = false;
+    this.trayEl.replaceChildren(...(row ? [row] : []), word);
+  }
+
+  // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
+  // canvas, the ontology places it there.
+  trayDrag(e, id) {
+    if (e.button !== 0 || this.locked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = e.currentTarget;
+    const r = card.getBoundingClientRect();
+    const off = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('create-tray-ghost');
+    Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
+    this.root.append(ghost);
+    const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
+    const up = (ev) => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      ghost.remove();
+      const over = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (ev.type !== 'pointerup' || !over || !this.stage.contains(over) || !this.world.things[id]) return;
+      const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
+      this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
+      this.save();
+      this.drawWorld();
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
   }
 
   // Many things chosen with the box: move them to a room together, or delete them.
@@ -2442,7 +2543,7 @@ export default class Create extends Feature {
     }
     const cur = this.current[this.roomId];
     const t = this.world.things[cur];
-    if (!this.fresh && t?.parent === this.roomId && !t.folded) return { train: cur };
+    if (!this.fresh && t?.parent === this.roomId && !t.folded && t.of === this.writer.id) return { train: cur };
     const spot = this.freeSpot();
     this.fresh = false;
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
@@ -2529,10 +2630,7 @@ export default class Create extends Feature {
         : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
       if (ed.id) update(this.world, ed.id, fields);
       else {
-        const t = this.target();
-        const train = t.train ? this.world.things[t.train] : startTrain(this.world, this.roomId, t.x, t.y);
-        if (create(this.world, train.id, fields)) this.current[this.roomId] = train.id;
-        else if (!t.train) remove(this.world, train.id);
+        this.keepNew(this.target(), fields);
       }
     }
     this.save();

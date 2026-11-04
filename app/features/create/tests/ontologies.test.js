@@ -2,7 +2,7 @@
 
 import { test, assert } from 'folio/testing';
 import { BUILT_IN, gather, missing, FALLBACK } from '../ontologies/index.js';
-import { membership } from '../model.js';
+import { membership, emptyWorld, create, groupOf, MESSY } from '../model.js';
 
 test('every built-in ontology has the parts it needs', () => {
   for (const o of BUILT_IN) assert.deepEqual(missing(o), [], o.id);
@@ -24,4 +24,27 @@ test('ontologies from other features join the built-in ones; broken or repeated 
   assert.deepEqual(skipped, [['half', ['note', 'units', 'point', 'drop']]]);
   assert.equal(membership('sets'), 'many');
   assert.equal(membership('joyce'), 'one');
+});
+
+test('moves must have a label and a run; begin must be a function', () => {
+  const base = { id: 'x', name: 'X', note: 'n', units: () => [], point: () => null, drop: () => {} };
+  assert.deepEqual(missing({ ...base, moves: [{ label: 'Go', run: () => {} }], begin: () => null }), []);
+  assert.deepEqual(missing({ ...base, moves: [{ label: 'Go' }] }), ['moves']);
+  assert.deepEqual(missing({ ...base, begin: 'soon' }), ['begin']);
+});
+
+test('Joyce: a thought in no train waits in the tray, and dragged out it starts a train there', () => {
+  const joyce = BUILT_IN.find((o) => o.id === 'joyce');
+  const w = emptyWorld(1);
+  const t = create(w, MESSY, { kind: 'group', of: 'joyce', x: 0, y: 0 }, 2);
+  const kept = create(w, t.id, { kind: 'line', text: 'in a train' }, 3);
+  const loose = create(w, MESSY, { kind: 'line', text: 'loose' }, 4);
+  assert.deepEqual(joyce.tray(w, MESSY).map((th) => th.id), [loose.id]);
+  assert.ok(joyce.placed(w, MESSY, kept.id));
+  assert.ok(!joyce.placed(w, MESSY, loose.id));
+  joyce.drop(w, MESSY, loose.id, 400, 120);
+  assert.deepEqual(joyce.tray(w, MESSY), []);
+  const train = groupOf(w, loose.id, 'joyce');
+  assert.ok(train && train.id !== t.id);
+  assert.deepEqual({ x: train.x, y: train.y }, { x: 400, y: 120 });
 });

@@ -12,7 +12,9 @@
 //   draftPoint(w, room)   (optional) where a thought being written shows
 //   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. A
 //                         folded group another ontology made is one thought here
-//                         (foldedFrom() in model.js), and waits in the tray until placed
+//                         (foldedFrom() in model.js), and waits in the tray until placed. The
+//                         tray shows along the foot of the room; a thought dragged out of it onto
+//                         the canvas goes to drop()
 //   placed(w, room, id)   (optional) whether it has laid a thought out yet; without it, every
 //                         thought counts as laid out. Folding a group in a big room asks Replace
 //                         or Keep both when another ontology there has laid out its thoughts
@@ -30,7 +32,15 @@
 //                         or switches { key, label, type: 'switch', default }. Each room keeps its
 //                         own (the ⚙ beside the mode's name in the rail); the global ones are under
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
-//   moves                 (optional) [{ id, label, run(create) }], its own actions
+//   moves                 (optional) [{ id, label, run(c), when?(c) }], its own actions. They
+//                         show as words in the pop-up of what is chosen, those whose when(c) is
+//                         true (all of them, without when). c.sel is what is chosen
+//   begin(w, room, draft, now)   (optional) a thought is kept with no group to go on with: makes
+//                         the group it joins and returns it, or null to leave the thought loose
+//                         (it waits in the tray). draft is { x, y, for? }: where it was written,
+//                         and whatever a move put in for (c.write({ x, y, for }) starts one).
+//                         Without it, a Joyce train at x, y. An ontology without groups writes
+//                         into Joyce's trains
 //   blocks(w, room)       (optional) clear space (clear.js): what moves together, as
 //                         [{ id, thoughts, group?, tail?, hand, at }]; hand: placed by hand.
 //                         Without it, each unit is a block, none by hand
@@ -51,7 +61,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -60,6 +70,7 @@ export function missing(o) {
   for (const [k, t] of Object.entries(MAY)) if (o[k] != null && typeof o[k] !== t) out.push(k);
   if (o.groups != null && !['one', 'many'].includes(o.groups.membership)) out.push('groups');
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
+  if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
 }
 
