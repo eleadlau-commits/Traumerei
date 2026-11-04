@@ -1879,6 +1879,10 @@ dialog.dialog-box {
 .create-group-edit { padding-left: 10px; }
 .create-group-field, .create-group-field:focus { width: 100px; opacity: 1; border-bottom-color: currentColor; }
 @media (max-width: 560px) { .create-tag-group { margin-top: 0; padding-left: 0; } }
+/* Arrange by, at the foot of the Tags list: a word for each group. */
+.create-tag-arrange { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; box-shadow: inset 0 1px 0 rgb(var(--ink-rgb, 43 42 40) / .12); }
+.create-tag-arrange .create-tag-pick { font-style: italic; }
+@media (max-width: 560px) { .create-tag-arrange { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; box-shadow: none; } }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
@@ -11758,6 +11762,44 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return [...out.values()].sort((a, b) => rank(a) - rank(b) || (a.group || "").localeCompare(b.group || ""));
   }
   var hasTag = (w2, id, tag, ontologies = []) => roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tidyTag(tag)));
+  function arrangeBy(w2, group = ONTOLOGY, page = 0, cols = 6, ontologies = []) {
+    const stay = (r) => r.id === MESSY || r.locked;
+    const all = roomsOn(w2, page);
+    const taken = /* @__PURE__ */ new Set();
+    for (const r of all.filter(stay)) if (r.col != null) for (const [c, rr2] of cells(r)) taken.add(`${c},${rr2}`);
+    const byOntology = same(group, ONTOLOGY);
+    const order = byOntology ? ontologies.map((o2) => o2.name) : null;
+    const EVERY = "Every mode";
+    const districts = /* @__PURE__ */ new Map();
+    for (const r of all.filter((r2) => !stay(r2))) {
+      const tags = roomTags(w2, r.id, ontologies).filter((o2) => same(tagGroup(w2, o2.tag, ontologies) || "", group));
+      const tag = byOntology && isBig(r) ? EVERY : tags[0]?.tag ?? null;
+      const key = tag == null ? "\0none" : tag.toLowerCase();
+      if (!districts.has(key)) districts.set(key, { tag, rooms: [] });
+      districts.get(key).rooms.push(r);
+    }
+    const rank = (d) => d.tag == null ? Infinity : d.tag === EVERY ? -1 : order ? order.findIndex((n) => same(n, d.tag)) : 0;
+    const sorted = [...districts.values()].sort((a, b) => rank(a) - rank(b) || (a.tag || "").localeCompare(b.tag || ""));
+    const free = (r, col, row) => col + (r.size || 1) <= cols && cells({ ...r, col, row }).every(([c, rr2]) => !taken.has(`${c},${rr2}`));
+    let start = 0;
+    for (const d of sorted) {
+      let last = start - 1;
+      for (const r of d.rooms) {
+        for (let i2 = start * cols; ; i2++) {
+          const col = i2 % cols, row = Math.floor(i2 / cols);
+          if (free(r, col, row)) {
+            r.col = col;
+            r.row = row;
+            break;
+          }
+        }
+        for (const [c, rr2] of cells(r)) taken.add(`${c},${rr2}`);
+        last = Math.max(last, r.row + (r.size || 1) - 1);
+      }
+      start = last + 2;
+    }
+    return sorted.map((d) => ({ tag: d.tag, rooms: d.rooms.map((r) => r.id) }));
+  }
   function peek(w2, roomId, most = 3) {
     return roomThoughts(w2, roomId).slice(-most).map((th) => oneLine(thoughtText(w2, th))).filter(Boolean);
   }
@@ -13653,10 +13695,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onpointerleave: () => clearTimeout(timer)
         }, el5("span", { class: "create-tag-name" }, t.tag), el5("span", { class: "create-tag-n" }, String(t.n)));
       };
+      const groups = grouped.filter((g2) => g2.group).map((g2) => g2.group);
       this.tagsList.replaceChildren(...grouped.flatMap((g2) => [
         g2.group || mine ? el5("div", { class: "create-tag-group", "aria-hidden": "true" }, g2.group || "Other") : null,
         ...g2.tags.map(pick)
-      ]));
+      ]), this.shelf || !groups.length ? null : el5(
+        "div",
+        { class: "create-tag-arrange" },
+        el5("div", { class: "create-tag-group" }, "Arrange by"),
+        ...groups.map((g2) => el5("button", { type: "button", class: "create-tag-pick", title: `Lay this page out in districts, one for each ${g2} tag`, onclick: () => this.arrange(g2) }, g2))
+      ));
+    }
+    // Arrange by group (model.js): this page's rooms laid out again, once. Ctrl+Z puts them back.
+    arrange(group) {
+      const out = arrangeBy(this.world, group, this.page, this.gridSize().cols, this.ontologies);
+      this.roomSel = this.roomPick = this.making = null;
+      this.save();
+      this.drawRooms();
+      this.toast(out.length ? `Arranged by ${group}: ${out.length} district${out.length === 1 ? "" : "s"}. Ctrl+Z puts them back.` : "Nothing here to arrange.");
     }
     // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.
     groupField(tag) {

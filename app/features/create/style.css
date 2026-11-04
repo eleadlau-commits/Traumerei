@@ -1116,3 +1116,7 @@
 .create-group-edit { padding-left: 10px; }
 .create-group-field, .create-group-field:focus { width: 100px; opacity: 1; border-bottom-color: currentColor; }
 @media (max-width: 560px) { .create-tag-group { margin-top: 0; padding-left: 0; } }
+/* Arrange by, at the foot of the Tags list: a word for each group. */
+.create-tag-arrange { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; box-shadow: inset 0 1px 0 rgb(var(--ink-rgb, 43 42 40) / .12); }
+.create-tag-arrange .create-tag-pick { font-style: italic; }
+@media (max-width: 560px) { .create-tag-arrange { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; box-shadow: none; } }

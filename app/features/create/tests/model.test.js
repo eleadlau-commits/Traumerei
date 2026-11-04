@@ -9,7 +9,7 @@ import {
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY,
+  roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, arrangeBy, cells,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -540,4 +540,29 @@ test('tag groups: Ontology holds the modes; "Group: tag" makes a group; a tag is
   assert.equal(tagGroup(w, 'Algebra', ONTS), null);
   const back = loadWorld(JSON.parse(JSON.stringify(w)));
   assert.equal(tagGroup(back, 'Topology', ONTS), 'Subject');
+});
+
+test('arrange by a group lays a page out in districts, a row apart; Messy and locked rooms stay', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
+  const b = addRoom(w, 'B', 2, null, 6, {}, 'russell');
+  const c = addRoom(w, 'C', 3, null, 6, {}, 'joyce');
+  const d = addRoom(w, 'D', 4, null, 6, {}, 'pessoa');
+  const e = addRoom(w, 'E', 5, null, 6, {}, 'joyce');
+  addTag(w, b.id, 'Subject: Topology', ONTS);
+  addTag(w, d.id, 'Subject: Algebra', ONTS);
+  addTag(w, a.id, 'Algebra', ONTS);
+  lock(w, c.id);
+  const at = { col: c.col, row: c.row };
+  const out = arrangeBy(w, 'subject', 0, 6, ONTS);
+  assert.deepEqual(out.map((x) => [x.tag, x.rooms]), [['Algebra', [a.id, d.id]], ['Topology', [b.id]], [null, [e.id]]]);
+  assert.deepEqual([w.things[MESSY].col, w.things[MESSY].row], [0, 0]);
+  assert.deepEqual({ col: c.col, row: c.row }, at);
+  assert.deepEqual([a.row, d.row], [0, 0]);
+  assert.equal(b.row, 2);
+  assert.equal(e.row, 4);
+  assert.equal(new Set(rooms(w).flatMap((r) => cells(r).map(String))).size, rooms(w).reduce((n, r) => n + (r.size || 1) ** 2, 0));
+  sizeRoom(w, e.id, 2);
+  const byMode = arrangeBy(w, 'Ontology', 0, 6, ONTS);
+  assert.deepEqual(byMode.map((x) => x.tag), ['Every mode', 'Joyce', 'Pessoa', 'Russell']);
 });
