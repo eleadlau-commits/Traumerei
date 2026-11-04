@@ -458,7 +458,9 @@ export default class Create extends Feature {
     this.searchBox = el('div', { class: 'create-search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
     this.savedMark = el('div', { class: 'create-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'create-hint' });
-    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine,
+    // A small wordmark beside the menu (☰), everywhere in Create: on the rooms page and in a room.
+    this.wordmark = el('div', { class: 'create-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.root = el('div', { class: 'create', hidden: true }, this.roomsPage, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.searchBox, this.savedMark, this.hintLine,
       this.noteLine = el('div', { class: 'create-note', hidden: true }),
       this.leaveBox = el('div', { class: 'create-sheet create-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);

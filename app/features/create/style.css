@@ -28,6 +28,28 @@
 .create-open .home { visibility: hidden; }
 .create-dark .topbar .top-btn { color: var(--room-ink); }
 
+/* A small wordmark beside the menu (☰), everywhere in Create, in the home page's typeface. */
+.create-wordmark {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  left: calc(var(--gutter) + 56px);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  color: var(--home-ink);
+  opacity: 0;
+  pointer-events: none !important;
+  user-select: none;
+  transition: opacity .4s;
+}
+.create.up .create-wordmark { opacity: .72; }
+.create.in-room .create-wordmark { color: var(--room-ink); z-index: 6; }
+/* On a phone the search bar takes that place. */
+@media (max-width: 560px) { .create-wordmark { display: none; } }
+
 /* The back arrow, in the top-right corner (the menu keeps the top-left one, as on every page):
    home from the rooms page, the rooms from a room. */
 .create-back {
