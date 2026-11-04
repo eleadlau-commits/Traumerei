@@ -2,8 +2,8 @@
    Create's pop-ups: the palette's pale, blurred veil, in the app's typeface. */
 
 .roomfile-card {
-  --roomfile-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
-  --roomfile-ink: var(--ink, #2b2a28);
+  --roomfile-panel: rgb(var(--veil-rgb) / .84);
+  --roomfile-ink: var(--ink);
   position: fixed;
   z-index: 3;
   left: 50%;
@@ -19,9 +19,9 @@
   background: var(--roomfile-panel);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 12px 40px rgb(var(--ink-rgb) / .12);
   color: var(--roomfile-ink);
-  font-family: var(--home-font);
+  font-family: var(--font);
   animation: roomfile-in .35s ease both;
 }
 @keyframes roomfile-in { from { opacity: 0; } }

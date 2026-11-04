@@ -6,11 +6,11 @@
   --room-strip: calc(64px + env(safe-area-inset-top));
   --room-rail: 206px; /* the rail on the left: 72px and one grid column (a cell and its gap) more */
   --room-ease: cubic-bezier(.22, .7, .18, 1);
-  --room-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
+  --room-glow: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
   /* Every pop-up and panel: the same pale, blurred white. */
-  --room-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
-  --room-panel-ink: var(--ink, #2b2a28);
-  --room-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
+  --room-panel: rgb(var(--veil-rgb) / .84);
+  --room-panel-ink: var(--ink);
+  --room-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 12px 40px rgb(var(--ink-rgb) / .12);
 }
 
 .room {
@@ -18,8 +18,8 @@
   inset: 0;
   z-index: 3;
   pointer-events: none; /* the strip at the top stays the home page's */
-  color: var(--home-ink);
-  font-family: var(--home-font);
+  color: var(--ink);
+  font-family: var(--font);
 }
 .room > * { pointer-events: auto; }
 /* While the side panel (the panel feature) shows on the right, the room moves over beside it: its
@@ -40,7 +40,7 @@
   font-size: 13px;
   letter-spacing: .32em;
   text-transform: uppercase;
-  color: var(--home-ink);
+  color: var(--ink);
   opacity: 0;
   pointer-events: none !important;
   user-select: none;
@@ -63,7 +63,7 @@
   border: 0;
   border-radius: 0;
   background: none;
-  color: var(--home-ink);
+  color: var(--ink);
   opacity: 0;
   cursor: pointer;
   transition: opacity .4s;
@@ -335,7 +335,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -385,7 +385,7 @@
 }
 
 /* In a dark room the words glow faintly, like a lit window. */
-.room-page.dark :is(.room-bead, .room-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb, 239 204 131) / .3); }
+.room-page.dark :is(.room-bead, .room-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb) / .3); }
 
 @media (max-width: 560px) {
   .room-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
@@ -482,7 +482,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -500,18 +500,18 @@
 .room-options-delete:hover { color: #8a2f22; opacity: 1; }
 
 /* The list of keys (?): a quiet panel near the top. */
-.room-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
+.room-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb) / .08); }
 .room-search-panel {
   position: absolute;
   left: 50%;
   top: 14vh;
   transform: translateX(-50%);
   width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(var(--veil-rgb, 250 247 240) / .9);
+  background: rgb(var(--veil-rgb) / .9);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
-  color: var(--home-ink, var(--ink, #2b2a28));
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 18px 60px rgb(var(--ink-rgb) / .16);
+  color: var(--ink);
   animation: room-unfold .2s var(--room-ease) both;
 }
 
@@ -525,7 +525,7 @@
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
+  color: var(--room-ink, var(--ink));
 }
 .room-saved.on { animation: room-saved 2.2s ease both; }
 @keyframes room-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
@@ -542,7 +542,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity .6s, transform .6s var(--room-ease);
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
+  color: var(--room-ink, var(--ink));
 }
 .room-hint.on { opacity: .6; transform: translate(-50%, 0); }
 @media (max-width: 560px) {
@@ -577,7 +577,7 @@
 .room-expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
 .room-expand.done { transition: opacity .25s ease; opacity: 0; }
 .room.expanding .room-page { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
-.room.expanding .room-back { color: var(--home-ink); }
+.room.expanding .room-back { color: var(--ink); }
 
 /* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
 .room-search-btn {
@@ -591,13 +591,13 @@
   justify-content: space-between;
   gap: 10px;
   padding: 6px 12px;
-  background: rgb(var(--veil-rgb, 250 247 240) / .55);
+  background: rgb(var(--veil-rgb) / .55);
   background-image: none;
   opacity: 0;
   transition: opacity .4s, background-color .25s;
 }
 .room-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
-.room.up .room-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb, 250 247 240) / .8); }
+.room.up .room-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb) / .8); }
 .room.up .room-search-btn { opacity: .66; }
 .room.up .room-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .room.in-room .room-search-btn { color: var(--room-ink); z-index: 6; }
@@ -859,7 +859,7 @@
 /* The content editor (editor.js), in the side panel on the right: the pop-up's rows at the top, then
    the thoughts as paragraphs, then a small Source at the foot. The panel gives the veil. */
 .room-editor {
-  --room-ink: var(--panel-ink, var(--ink, #2b2a28));
+  --room-ink: var(--panel-ink, var(--ink));
   display: grid;
   align-content: start;
   gap: 22px;

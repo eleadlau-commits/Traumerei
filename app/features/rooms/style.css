@@ -6,19 +6,19 @@
   --rooms-strip: calc(64px + env(safe-area-inset-top));
   --rooms-rail: 206px; /* the rail on the left: 72px and one grid column (a cell and its gap) more */
   --rooms-ease: cubic-bezier(.22, .7, .18, 1);
-  --rooms-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
+  --rooms-glow: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
   /* Every pop-up and panel: the same pale, blurred white. */
-  --rooms-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
-  --rooms-panel-ink: var(--ink, #2b2a28);
-  --rooms-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
+  --rooms-panel: rgb(var(--veil-rgb) / .84);
+  --rooms-panel-ink: var(--ink);
+  --rooms-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 12px 40px rgb(var(--ink-rgb) / .12);
 }
 .rooms {
   position: fixed;
   inset: 0;
   z-index: 3;
   pointer-events: none; /* the strip at the top stays the home page's */
-  color: var(--home-ink);
-  font-family: var(--home-font);
+  color: var(--ink);
+  font-family: var(--font);
 }
 .rooms > * { pointer-events: auto; }
 .rooms[hidden], .rooms [hidden] { display: none !important; }
@@ -37,7 +37,7 @@
   font-size: 13px;
   letter-spacing: .32em;
   text-transform: uppercase;
-  color: var(--home-ink);
+  color: var(--ink);
   opacity: 0;
   pointer-events: none !important;
   user-select: none;
@@ -63,7 +63,7 @@
   border: 0;
   border-radius: 0;
   background: none;
-  color: var(--home-ink);
+  color: var(--ink);
   opacity: 0;
   cursor: pointer;
   transition: opacity .4s;
@@ -111,8 +111,8 @@
   display: flex;
   flex-direction: column;
   /* An opacity mask over the home picture itself, which is held still underneath. */
-  background: var(--rooms-mask, rgb(var(--ink-rgb, 43 42 40) / .1));
-  box-shadow: 0 -1px 0 rgb(var(--ink-rgb, 43 42 40) / .08), 0 -18px 40px rgb(var(--ink-rgb, 43 42 40) / .08);
+  background: var(--rooms-mask, rgb(var(--ink-rgb) / .1));
+  box-shadow: 0 -1px 0 rgb(var(--ink-rgb) / .08), 0 -18px 40px rgb(var(--ink-rgb) / .08);
   transform: translateY(100%);
   transition: transform .5s var(--rooms-ease);
 }
@@ -140,19 +140,19 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035);
+  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .035);
   transition: box-shadow .3s, background-color .3s;
   display: grid;
   place-items: center;
-  font: 300 22px/1 var(--home-font, inherit);
+  font: 300 22px/1 var(--font);
 }
 .rooms-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
-.rooms-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb, 43 42 40) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .14); }
+.rooms-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .14); }
 .rooms-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .rooms-grid.dragging .rooms-cell::after { content: ''; }
-.rooms-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb, 43 42 40) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .4); }
-.rooms-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .15); }
-.rooms-cell.target { background: rgb(var(--ink-rgb, 43 42 40) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .3); }
+.rooms-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .4); }
+.rooms-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .15); }
+.rooms-cell.target { background: rgb(var(--ink-rgb) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .3); }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
 .rooms-tile {
@@ -166,16 +166,16 @@
   -webkit-user-select: none;
   transition: box-shadow .5s, transform .3s var(--rooms-ease), opacity .3s;
 }
-.rooms-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
+.rooms-tile:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
 .rooms-tile:hover { transform: translateY(-2px); }
 
 /* Lit as much as you have been in it lately (--lit, 0 to 1). */
 .rooms-tile.lit {
   box-shadow:
     0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--rooms-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
-    inset 0 0 32px color-mix(in srgb, var(--rooms-glow-in, color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
+    inset 0 0 32px color-mix(in srgb, var(--rooms-glow-in, color-mix(in srgb, rgb(var(--glow-rgb) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
-.rooms-tile.deep { color: var(--pale, #f1e8d2); }
+.rooms-tile.deep { color: var(--pale); }
 
 /* a deep square: pale words */
 .rooms-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
@@ -319,8 +319,8 @@
 
 /* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
 .rooms-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
-.rooms-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 55%, transparent); }
-.rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, var(--ink, #2b2a28)); }
+.rooms-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 55%, transparent); }
+.rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--ink); }
 .rooms-options {
   position: absolute;
   z-index: 3;
@@ -344,7 +344,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
+  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
   border-radius: 0;
   padding: 4px 0;
   min-height: 0;
@@ -361,18 +361,18 @@
 .rooms-options .rooms-slider input[type="range"] { width: 110px; }
 
 /* Search (Ctrl+K): a quiet panel near the top. */
-.rooms-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
+.rooms-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb) / .08); }
 .rooms-search-panel {
   position: absolute;
   left: 50%;
   top: 14vh;
   transform: translateX(-50%);
   width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(var(--veil-rgb, 250 247 240) / .9);
+  background: rgb(var(--veil-rgb) / .9);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
-  color: var(--home-ink, var(--ink, #2b2a28));
+  box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .1), 0 18px 60px rgb(var(--ink-rgb) / .16);
+  color: var(--ink);
   animation: rooms-unfold .2s var(--rooms-ease) both;
 }
 
@@ -386,9 +386,9 @@
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
+  color: var(--room-ink, var(--ink));
 }
-.rooms:not(.in-room) .rooms-saved { color: var(--home-ink, var(--ink, #2b2a28)); }
+.rooms:not(.in-room) .rooms-saved { color: var(--ink); }
 .rooms-saved.on { animation: rooms-saved 2.2s ease both; }
 @keyframes rooms-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
 .rooms-hint {
@@ -404,9 +404,9 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity .6s, transform .6s var(--rooms-ease);
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
+  color: var(--room-ink, var(--ink));
 }
-.rooms:not(.in-room) .rooms-hint { color: var(--home-ink, var(--ink, #2b2a28)); }
+.rooms:not(.in-room) .rooms-hint { color: var(--ink); }
 .rooms-hint.on { opacity: .6; transform: translate(-50%, 0); }
 @media (max-width: 560px) {
   .rooms-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -520,9 +520,9 @@
 /* Its empty cells make nothing. */
 .rooms-cell.inert { cursor: default; }
 .rooms-cell.inert::after { content: none; }
-.rooms-cell.inert:hover { background: transparent; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035); }
+.rooms-cell.inert:hover { background: transparent; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .035); }
 .rooms-shelf-head { text-align: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin: 0 0 24px; }
-.rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(43 42 40 / .1)) 100%, rgb(var(--ink-rgb, 43 42 40) / .12)); }
+.rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(43 42 40 / .1)) 100%, rgb(var(--ink-rgb) / .12)); }
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
 /* A room's description: under its name inside the room, and in its pop-up. */
@@ -533,7 +533,7 @@
   color: inherit;
   background: none;
   border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .15);
+  border-bottom: 1px solid rgb(var(--ink-rgb) / .15);
   border-radius: 0;
   padding: 4px 0;
   resize: none;
@@ -558,7 +558,7 @@
 .rooms-expand.done { transition: opacity .25s ease; opacity: 0; }
 
 /* not hidden: it must take the keys typed meanwhile */
-.rooms.expanding .rooms-back { color: var(--home-ink); }
+.rooms.expanding .rooms-back { color: var(--ink); }
 
 /* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
 .rooms-search-btn {
@@ -572,13 +572,13 @@
   justify-content: space-between;
   gap: 10px;
   padding: 6px 12px;
-  background: rgb(var(--veil-rgb, 250 247 240) / .55);
+  background: rgb(var(--veil-rgb) / .55);
   background-image: none;
   opacity: 0;
   transition: opacity .4s, background-color .25s;
 }
 .rooms-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
-.rooms.up .rooms-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb, 250 247 240) / .8); }
+.rooms.up .rooms-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb) / .8); }
 .rooms.up .rooms-search-btn { opacity: .66; }
 .rooms.up .rooms-search-btn:is(:hover, :focus-visible) { opacity: 1; }
 .rooms-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
@@ -636,7 +636,7 @@
 .rooms-page-new:is(:hover, :focus-visible) { opacity: .85; }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
-.rooms-tile.picked { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 70%, transparent); outline-offset: 3px; }
+.rooms-tile.picked { outline: 1px solid color-mix(in srgb, var(--ink) 70%, transparent); outline-offset: 3px; }
 .rooms-tile.dragging { pointer-events: none; }
 
 /* A new room: its kinds, beside the empty cell. */
@@ -721,7 +721,7 @@
   line-height: 1;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgb(var(--ink-rgb, 43 42 40) / .22);
+  border: 1px solid rgb(var(--ink-rgb) / .22);
 }
 .rooms-chip.auto { border-style: dashed; opacity: .7; }
 .rooms-chip-x { font: inherit; font-size: 12px; line-height: 1; color: inherit; background: none; border: 0; padding: 0 0 0 2px; min-height: 0; cursor: pointer; opacity: .5; }
@@ -790,7 +790,7 @@
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .rooms-grid.tag-dragging, .rooms-grid.tag-dragging .rooms-tile { cursor: copy; }
-.rooms-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
+.rooms-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--ink) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
 @media (max-width: 560px) {
   .rooms-rail { flex-wrap: wrap; right: var(--gutter); }
   .rooms-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }

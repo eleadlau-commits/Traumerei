@@ -122,7 +122,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   -webkit-tap-highlight-color: transparent;
 }
 :is(.word, .btn, .seg button):is(:hover, :focus-visible),
-:is(.word, .btn, .seg button):is([aria-current]:not([aria-current="false"]), [aria-selected="true"], [aria-checked="true"], .on) {
+:is(.word, .btn, .seg button):is([aria-current]:not([aria-current="false"]), [aria-selected="true"], [aria-checked="true"], [aria-pressed="true"], .on) {
   opacity: 1;
   outline: none;
   background-size: calc(100% - 4px - var(--word-spacing)) 1px;
@@ -406,9 +406,10 @@ dialog.menu-drawer::before {
 
 /* ---- Buttons and choices ---- */
 
+.btn { justify-self: start; align-self: flex-start; }
 .btn.primary { opacity: .9; }
 .btn.danger { color: var(--danger); }
-.btn.block { display: block; margin-top: 12px; }
+.btn.block { display: block; justify-self: stretch; margin-top: 12px; }
 .btn.small { font-size: var(--word-size); }
 
 /* A small icon on its own: no tile. */
@@ -634,6 +635,7 @@ dialog.dialog-full::before {
 }
 .dialog-full :is(.dialog-content, .dialog-head h2) { animation: veil-rise .7s .1s var(--ease) both; }
 .dialog-full .dialog-content { gap: 40px; }
+.dialog-full .dialog-content :is(p, small) { font-size: 13px; line-height: 1.6; letter-spacing: .02em; color: var(--muted); }
 .dialog-full .dialog-head { position: static; margin: 0; padding: 0; }
 .dialog-full .dialog-head h2 {
   margin: 0;

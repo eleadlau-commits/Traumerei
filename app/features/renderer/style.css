@@ -2,9 +2,6 @@
 
 .renderer-page { display: grid; gap: 12px; }
 
-/* Seven views don't fit in one row in the Settings window: two rows of four. */
-.renderer-tabs { grid-template-columns: repeat(4, 1fr); }
-
 /* Advanced, in Settings: the tools folded into groups */
 .renderer-advanced { display: grid; gap: 4px; }
 .renderer-advanced > .hint.small { margin: 0 0 4px; }
@@ -39,18 +36,17 @@
 .renderer-attempt { border-top: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
 .renderer-attempt summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--font-mono); }
 .renderer-attempt ul { margin: 6px 0 2px; padding-left: 18px; color: var(--text-2); }
-.renderer-tag { padding: 1px 7px; border-radius: var(--shape-sm); font-family: var(--font); font-size: 12px; background: var(--surface-2); color: var(--muted); }
+.renderer-tag { padding: 1px 7px; font-size: 12px; background: var(--surface-2); color: var(--muted); }
 .renderer-tag.pass { background: var(--renderer-pass-soft); color: var(--renderer-pass); }
 .renderer-tag.fail { background: var(--renderer-fail-soft); color: var(--renderer-fail); }
 .renderer-tag.kept { background: var(--accent); color: var(--accent-ink); }
 
 .renderer-sliders { display: grid; gap: 12px; }
-.renderer-group { margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: var(--shape); background: var(--surface); display: grid; gap: 8px; }
-.renderer-group legend { padding: 0 4px; font-weight: 600; font-size: 13px; }
-.renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
-.renderer-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.renderer-group { margin: 0; padding: 0; border: 0; display: grid; gap: 14px; }
+.renderer-slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; letter-spacing: .02em; color: var(--text-2); }
+.renderer-slider input { grid-column: 1 / -1; width: 100%; }
 .renderer-value { font-family: var(--font-mono); color: var(--text); }
-.renderer-colour input { grid-column: auto; width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: var(--shape-sm); background: none; }
+.renderer-colour input { grid-column: auto; width: 44px; height: 28px; }
 
 /* A mode's animation layer (Plain's glow): its own canvas, often smaller than the screen, scaled up by
    the browser and blended over the picture with the mode's blend (set inline). */

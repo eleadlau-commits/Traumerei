@@ -6,8 +6,8 @@
 :root { --panel-width: 0px; }
 
 .side-panel {
-  --panel-ink: var(--ink, #2b2a28);
-  --panel-line: rgb(var(--ink-rgb, 43 42 40) / .12);
+  --panel-ink: var(--ink);
+  --panel-line: rgb(var(--ink-rgb) / .12);
   position: fixed;
   z-index: 40;
   right: 0;
@@ -19,12 +19,12 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: rgb(var(--veil-rgb, 250 247 240) / .94);
+  background: rgb(var(--veil-rgb) / .94);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: -1px 0 0 var(--panel-line), -8px 0 32px rgb(var(--ink-rgb, 43 42 40) / .08);
+  box-shadow: -1px 0 0 var(--panel-line), -8px 0 32px rgb(var(--ink-rgb) / .08);
   color: var(--panel-ink);
-  font-family: var(--home-font);
+  font-family: var(--font);
   animation: panel-in .3s ease both;
 }
 .side-panel[hidden] { display: none; }
