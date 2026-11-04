@@ -1854,6 +1854,26 @@ dialog.dialog-box {
 }
 .create-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
 
+/* The rail's Tags: under a hairline, a quiet list of every tag and how many rooms have it. */
+.create-tags-btn.on { opacity: 1; }
+.create-tag-list { display: grid; gap: 6px; margin-top: -8px; width: 62px; }
+.create-tag-list[hidden] { display: none; }
+.create-tag-pick {
+  appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
+  padding: 1px 0 1px 10px; display: flex; gap: 6px; align-items: baseline; justify-content: flex-start;
+  text-align: left; font: inherit; font-size: 11px; letter-spacing: .03em; line-height: 1.25; color: inherit;
+  opacity: .5; cursor: pointer; box-shadow: inset 1px 0 0 transparent; transition: opacity .2s, box-shadow .25s;
+}
+.create-tag-pick:is(:hover, :focus-visible) { opacity: .85; outline: none; }
+.create-tag-pick[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.create-tag-name { overflow-wrap: anywhere; }
+.create-tag-n { font-size: 10px; opacity: .6; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .create-rail { flex-wrap: wrap; right: var(--gutter); }
+  .create-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
+  .create-tag-pick { padding: 2px 0; }
+}
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home. Class names start with "home-". The words sit on the paper, so they use
    their own ink, the same in light and dark mode (the picture doesn't change with the mode). */
@@ -11695,6 +11715,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     return [...counts2.values()].sort((a, b) => rank(a) - rank(b) || a.tag.localeCompare(b.tag));
   }
+  var hasTag = (w2, id, tag, ontologies = []) => roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tidyTag(tag)));
   function peek(w2, roomId, most = 3) {
     return roomThoughts(w2, roomId).slice(-most).map((th) => oneLine(thoughtText(w2, th))).filter(Boolean);
   }
@@ -12759,6 +12780,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drafts = this.storage.get("drafts", {}) || {};
       this.shelf = false;
       this.lights = null;
+      this.tagLight = null;
+      this.tagsOpen = false;
       this.backdrop = this.use("backdrop");
       this.prefs = lookPrefs(this.storage.get("look"));
       this.ontPrefs = this.storage.get("ontologies") || {};
@@ -12830,7 +12853,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.
     back() {
       if (this.roomId) this.showRooms();
-      else if (this.shelf) this.toggleShelf();
+      else if (this.tagLight) {
+        this.tagLight = null;
+        this.drawRooms();
+      } else if (this.shelf) this.toggleShelf();
       else if (this.edited?.size && !this.leaving) this.askNote();
       else this.close();
     }
@@ -13053,7 +13079,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // ---- Building the pages ----
     build() {
       this.grid = el5("div", { class: "create-grid" });
-      this.lightsField = el5("input", { class: "create-lights-field", placeholder: "Light the rooms that hold…", "aria-label": "Search the rooms", autocomplete: "off", spellcheck: "false" });
+      this.lightsField = el5("input", { class: "create-lights-field", placeholder: "Light the rooms that hold… (or #tag)", "aria-label": "Search the rooms", autocomplete: "off", spellcheck: "false" });
       this.lightsBar = el5(
         "div",
         { class: "create-lights", hidden: true },
@@ -13086,7 +13112,26 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         } },
         "Archive"
       );
-      this.rail = el5("nav", { class: "create-rail", "aria-label": "Rooms and the Archive" }, this.railRooms, this.shelfBtn);
+      this.tagsBtn = el5("button", {
+        type: "button",
+        class: "create-rail-item create-tags-btn",
+        "aria-expanded": "false",
+        onclick: () => {
+          this.tagsOpen = !this.tagsOpen;
+          if (!this.tagsOpen) this.tagLight = null;
+          this.drawRooms();
+        }
+      }, "Tags");
+      this.tagsList = el5("div", { class: "create-tag-list", hidden: true, role: "list" });
+      this.rail = el5(
+        "nav",
+        { class: "create-rail", "aria-label": "Rooms and the Archive" },
+        this.railRooms,
+        this.shelfBtn,
+        el5("div", { class: "create-rail-rule", "aria-hidden": "true" }),
+        this.tagsBtn,
+        this.tagsList
+      );
       this.shelfHead = el5("div", { class: "create-shelf-head", hidden: true }, "Archive");
       this.pagesBar = el5("nav", { class: "create-pages", "aria-label": "Pages" });
       this.roomsPage = el5(
@@ -13222,10 +13267,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
       return { cols, cell };
     }
-    // For each room shown (ids), how many thoughts in it (and its name) hold the words.
+    // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
+    // starts with # looks for a tag instead: the rooms with a tag that starts so are lit (true).
     hitsOn(ids, query = this.lights) {
       const out = {};
       if (!query?.trim()) return out;
+      if (query.trim().startsWith("#")) {
+        const want = tidyTag(query).toLowerCase();
+        if (!want) return out;
+        for (const id of ids) if (roomTags(this.world, id, this.ontologies).some((o2) => o2.tag.toLowerCase().startsWith(want))) out[id] = true;
+        return out;
+      }
       for (const f2 of search(this.world, query, Infinity)) {
         for (let th = this.world.things[f2.id]; th; th = this.world.things[th.parent]) {
           if (ids.has(th.id)) {
@@ -13252,12 +13304,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const shown2 = new Set((this.shelf ? shelved : all).map((r) => r.id));
       if (!shown2.has(this.roomPick)) this.roomPick = null;
       if (!shown2.has(this.roomSel)) this.roomSel = null;
-      const hits = this.lights?.trim() ? this.hitsOn(shown2) : null;
-      this.grid.classList.toggle("lights", !!hits);
+      const byTag = this.lights?.trim().startsWith("#");
+      let hits = this.lights?.trim() && (!byTag || tidyTag(this.lights)) ? this.hitsOn(shown2) : null;
       if (hits) {
         const n = Object.keys(hits).length;
-        this.lightsNote.textContent = n ? `${n} room${n === 1 ? "" : "s"} · Enter goes in` : "Nothing here yet with those words";
+        this.lightsNote.textContent = n ? `${n} room${n === 1 ? "" : "s"} · Enter goes in` : byTag ? "No room has that tag" : "Nothing here yet with those words";
       } else this.lightsNote.textContent = "";
+      if (this.tagLight) {
+        const tagged = {};
+        for (const id of shown2) if (hasTag(this.world, id, this.tagLight, this.ontologies) && (!hits || hits[id])) tagged[id] = hits?.[id] || true;
+        hits = tagged;
+      }
+      this.grid.classList.toggle("lights", !!hits);
+      this.drawTags();
       if (this.shelf) {
         this.drawShelf(shelved, fit, cell, hits);
         return;
@@ -13429,7 +13488,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ...lines2.map((t) => el5("div", { class: "create-peek-line" }, t))
         ) : null,
         this.drafts[r.id] ? el5("span", { class: "create-tile-dot", title: "A thought left half written" }) : null,
-        found ? el5("span", { class: "create-tile-found" }, String(found)) : null,
+        typeof found === "number" && found ? el5("span", { class: "create-tile-found" }, String(found)) : null,
         el5(
           "div",
           { class: "create-tile-label" },
@@ -13499,6 +13558,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
         }, "create-options-delete")
       );
+    }
+    // ---- Tags, in the rail: every tag and how many rooms have it ----
+    drawTags() {
+      const tags = allTags(this.world, this.ontologies, this.shelf);
+      if (this.tagLight && !tags.some((t) => t.tag.toLowerCase() === this.tagLight.toLowerCase())) this.tagLight = null;
+      this.tagsBtn.setAttribute("aria-expanded", String(this.tagsOpen));
+      this.tagsBtn.classList.toggle("on", !!this.tagLight);
+      this.tagsList.hidden = !this.tagsOpen;
+      if (!this.tagsOpen) return;
+      this.tagsList.replaceChildren(...tags.map((t) => {
+        const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
+        return el5("button", {
+          type: "button",
+          class: "create-tag-pick",
+          role: "listitem",
+          "aria-pressed": String(on),
+          title: `${t.n} room${t.n === 1 ? "" : "s"}`,
+          onclick: () => {
+            this.tagLight = on ? null : t.tag;
+            this.drawRooms();
+          }
+        }, el5("span", { class: "create-tag-name" }, t.tag), el5("span", { class: "create-tag-n" }, String(t.n)));
+      }));
     }
     // ---- Search lights ----
     openLights() {
