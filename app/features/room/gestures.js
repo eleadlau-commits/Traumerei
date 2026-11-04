@@ -4,7 +4,7 @@
 
 import {
   room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
-  trainThoughts, search, rooms,
+  trainThoughts, rooms,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 
@@ -239,11 +239,11 @@ export class Gestures {
       ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
-    this.searchBox.replaceChildren(el('div', { class: 'room-search-panel room-keys-panel' },
+    this.keysBox.replaceChildren(el('div', { class: 'room-search-panel room-keys-panel' },
       el('div', { class: 'room-options-label' }, 'Keys'),
       el('dl', { class: 'room-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
-    this.searchBox.hidden = false;
-    this.searchBox.onpointerdown = () => this.closeSearch();
+    this.keysBox.hidden = false;
+    this.keysBox.onpointerdown = () => this.closeSearch();
     const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeSearch(); document.removeEventListener('keydown', close, true); };
     document.addEventListener('keydown', close, true);
   }
@@ -416,45 +416,24 @@ export class Gestures {
     this.addBtn.classList.remove('open');
   }
 
-  // ---- Search (Ctrl+K): every thought, train and room ----
+  // ---- Search (Ctrl+K): the search feature's panel; a find it opens comes back as 'search:found' ----
 
   openSearch() {
+    if (!this.finder) return;
     if (this.draft) this.commit();
-    const field = el('input', { class: 'room-search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
-    const list = el('div', { class: 'room-search-list', role: 'listbox' });
-    let found = [], at = 0;
-    const show = () => {
-      found = search(this.world, field.value);
-      at = Math.min(at, Math.max(0, found.length - 1));
-      list.replaceChildren(...found.map((f, i) => el('button', {
-        type: 'button', class: 'room-search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
-        onclick: () => this.goTo(f),
-      }, el('span', { class: 'room-search-text' }, f.text), el('span', { class: 'room-search-room' }, f.kind === 'room' ? 'Room' : f.roomName))),
-      field.value.trim() && !found.length ? el('p', { class: 'room-search-none' }, 'Nothing yet with those words') : '');
-    };
-    field.addEventListener('input', () => { at = 0; show(); });
-    field.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); this.closeSearch(); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); at = Math.min(found.length - 1, at + 1); show(); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, at - 1); show(); }
-      if (e.key === 'Enter' && found[at]) { e.preventDefault(); this.goTo(found[at]); }
-    });
-    this.searchBox.replaceChildren(el('div', { class: 'room-search-panel' }, field, list));
-    this.searchBox.hidden = false;
-    this.searchBox.onpointerdown = (e) => { if (e.target === this.searchBox) this.closeSearch(); };
-    field.focus();
+    this.finder.open();
   }
 
+  // Closes the list of keys, and the search panel if it shows.
   closeSearch() {
-    if (!this.searchBox || this.searchBox.hidden) return;
-    this.searchBox.hidden = true;
-    this.searchBox.replaceChildren();
+    this.finder?.close();
+    if (!this.keysBox || this.keysBox.hidden) return;
+    this.keysBox.hidden = true;
+    this.keysBox.replaceChildren();
   }
 
   // Opens what was found: a room, or the room a thought is in, with the view on the thought.
   goTo(f) {
-    this.closeSearch();
     if (f.kind === 'room') { this.openRoom(f.id); return; }
     if (!f.room) return;
     if (this.roomId !== f.room) this.openRoom(f.room);

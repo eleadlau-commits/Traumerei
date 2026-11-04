@@ -1,0 +1,12 @@
+{
+  "name": "Search",
+  "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.",
+  "version": "0.1.0",
+  "main": "Search.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "world"
+  ]
+}
