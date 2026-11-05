@@ -2080,6 +2080,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
 .room-loose { display: grid; gap: 14px; }
+.room-loose-search { width: 100%; box-sizing: border-box; }
 .room-loose-hint { margin: 0; font-size: 13px; line-height: 1.5; opacity: .7; }
 .room-loose-list { display: grid; gap: 8px; }
 .room-loose .room-tray-item { width: auto; background: color-mix(in srgb, currentColor 5%, transparent); }
@@ -3652,9 +3653,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       return null;
     }
   }
-  function decide(cloud2, local) {
+  var RELOAD_GUARD = 60 * 1e3;
+  function decide(cloud2, local, justReloaded = false) {
     if (cloud2 == null) return "upload";
-    return pack(cloud2) === pack(local) ? "same" : "apply";
+    if (pack(cloud2) === pack(local)) return "same";
+    return justReloaded ? "upload" : "apply";
+  }
+  function reloadedRecently(at2, now) {
+    return at2 != null && now - at2 >= 0 && now - at2 < RELOAD_GUARD;
   }
 
   // dist/web/features/account/Account.js
@@ -3668,6 +3674,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.page = null;
       this.timer = null;
       this.synced = false;
+      this.guarded = false;
       this.add("account", { name: () => this.name(), open: () => this.open() });
       this.app.storage.watch(() => this.changed());
       window.addEventListener("pagehide", () => this.flush());
@@ -3739,11 +3746,15 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         const snap2 = await this.sdk.getDoc(this.doc());
         const cloud2 = snap2.exists() ? unpack(snap2.data().settings) : null;
         const local = this.app.storage.snapshot(LOCAL_AREAS);
-        const step = decide(cloud2, local);
+        const justReloaded = reloadedRecently(this.storage.get("reloadedAt", null), Date.now());
+        const step = decide(cloud2, local, justReloaded);
         this.synced = true;
-        if (step === "upload") await this.push();
-        else if (step === "apply") {
+        if (step === "upload") {
+          this.guarded = cloud2 != null && justReloaded;
+          await this.push();
+        } else if (step === "apply") {
           this.app.storage.restore(cloud2, LOCAL_AREAS);
+          this.storage.set("reloadedAt", Date.now());
           location.reload();
         } else this.setState("saved");
       } catch (e) {
@@ -3819,6 +3830,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
           el2("div", {}, el2("b", {}, this.name()), this.user.email && el2("small", {}, this.user.email))
         ),
         status && el2("p", { class: this.state === "error" ? "account-error" : "hint" }, status),
+        this.guarded && el2(
+          "p",
+          { class: "hint" },
+          "The page had just reloaded with your account's settings, so instead of reloading again it sent this device's copy up."
+        ),
         this.state === "error" && el2("button", { type: "button", class: "btn", onclick: () => this.synced ? this.push() : this.pull() }, "Try again"),
         el2("button", { type: "button", class: "btn", disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, "Sign out")
       );
@@ -5750,7 +5766,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     { group: "Glow", key: "glowT", label: "Breath period T (s)", min: 2, max: 40, step: 0.5, value: 18 },
     { group: "Glow", key: "glowDh", label: "Hue offset Δh (°)", min: -90, max: 90, step: 1, value: 14 },
     { group: "Glow", key: "glowL", label: "Glow lightness L_g", min: 0.5, max: 1, step: 0.01, value: 0.88 },
-    // The Planar mode (engine/planar.js)
+    // The Mondrian mode (engine/mondrian.js)
     { group: "Fog", key: "fogSigma", label: "Coarseness σ", min: 0.05, max: 0.6, step: 5e-3, value: 0.25 },
     { group: "Fog", key: "fogA", label: "Unevenness A", min: 0, max: 0.3, step: 5e-3, value: 0.08 },
     { group: "Fog", key: "fogLo", label: "Darkest L_lo", min: 0, max: 1, step: 0.01, value: 0.45 },
@@ -6684,7 +6700,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   };
   var plain_default = plainMode;
 
-  // dist/web/features/renderer/engine/planar.js
+  // dist/web/features/renderer/engine/mondrian.js
   var SAMPLE_SHORT = 48;
   var FOG_SHORT = 96;
   var K = 6;
@@ -6875,7 +6891,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     return out;
   }
 
-  // dist/web/features/renderer/engine/modes/planar.js
+  // dist/web/features/renderer/engine/modes/mondrian.js
   var LINE_WIDTH = 3e-3;
   var LINE_INK = [30, 30, 38];
   var FLASH_WIDTH = 3e-3;
@@ -6889,17 +6905,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     return lchToLinear(L, C / 2, h).map((v2) => Math.round(255 * delinearise(v2)));
   }
   function fogOf(e, P) {
-    return e.stage(planarMode, "fog", P);
+    return e.stage(mondrianMode, "fog", P);
   }
   function networkOf(e, P) {
-    return e.stage(planarMode, "network", P);
+    return e.stage(mondrianMode, "network", P);
   }
-  var planarMode = {
-    id: "planar",
-    label: "Planar",
-    viewKey: "planarView",
+  var mondrianMode = {
+    id: "mondrian",
+    label: "Mondrian",
+    viewKey: "mondrianView",
     startView: "living",
-    views: [["base", "Base"], ["pattern", "Pattern"], ["planar", "Planar"], ["living", "Living"]],
+    views: [["base", "Base"], ["pattern", "Pattern"], ["mondrian", "Mondrian"], ["living", "Living"]],
     folds: [["Base layer", ["Fog"]], ["Pattern layer", ["Network"]], ["Spontaneity layer", ["Flashes"]]],
     usesAnchor: false,
     // The flashes' sliders only change the animation, not the still picture.
@@ -6924,7 +6940,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         }
       }
     },
-    // 'base', 'planar' and 'living': the fog (the network is latent). 'pattern': the fog with the
+    // 'base', 'mondrian' and 'living': the fog (the network is latent). 'pattern': the fog with the
     // network drawn over it. 'living' then plays the flashes over it.
     view(e, name5, P) {
       const { W: W2, H: H3 } = e.image;
@@ -6957,10 +6973,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       ...name5 === "living" ? [describeFlashes(P)] : []
     ] })
   };
-  var planar_default = planarMode;
+  var mondrian_default = mondrianMode;
 
   // dist/web/features/renderer/engine/modes/index.js
-  var MODES = [washi_default, plain_default, planar_default];
+  var MODES = [washi_default, plain_default, mondrian_default];
   var modeById = (id) => MODES.find((m2) => m2.id === id) || MODES[0];
 
   // dist/web/features/renderer/engine/index.js
@@ -11753,6 +11769,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => th.text.split("\n").map((l2, k2) => k2 ? l2 ? "  " + l2 : "" : "- " + l2).join("\n")
     },
+    // In a .traum file (the roomfile feature): its words are the object's body (## ^id line, then the
+    // words). A title on the header (## ^id line: words) is read as its first line.
+    traum: {
+      read: ({ title, body }) => ({ kind: "line", text: [title, body].filter(Boolean).join("\n") }),
+      write: (th) => ({ body: th.text })
+    },
     node: (th, el16) => el16("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
   };
 
@@ -11787,6 +11809,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th, h) => [th.title ? `### ${th.title}` : "###", ...th.body ? th.body.split("\n").map(h.escape) : []].join("\n")
     },
+    // In a .traum file (the roomfile feature): ## ^id passage: its title, then its body as written.
+    traum: {
+      read: ({ title, body }) => ({ kind: "passage", title: title || "", body }),
+      write: (th) => ({ title: th.title || "", body: th.body || "" })
+    },
     node: (th, el16) => el16(
       "div",
       { class: "room-passage", "data-id": th.id },
@@ -11815,6 +11842,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return { fields: at2.startsWith("data:") ? { kind: "picture", src: at2, text: m2[1] } : { kind: "picture", url: at2, text: m2[1] }, end: i2 + 1 };
       },
       write: (th) => `![${th.text || ""}](${th.src})`
+    },
+    // In a .traum file (the roomfile feature): ## ^id picture: its caption, then its address on one
+    // line: a data:image/… URL, or https://… (kept as url until the room fetches it).
+    traum: {
+      read: ({ title, body }) => {
+        const at2 = String(body || "").trim();
+        return at2.startsWith("data:") ? { kind: "picture", src: at2, text: title || "" } : { kind: "picture", url: at2, text: title || "" };
+      },
+      write: (th) => ({ title: th.text || "", body: th.src })
     },
     node: (th, el16) => el16(
       "figure",
@@ -12525,7 +12561,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     across: () => across,
     addTwin: () => addTwin,
     isTwin: () => isTwin,
+    moveTargets: () => moveTargets,
     otherSide: () => otherSide,
+    placeName: () => placeName,
     sides: () => sides,
     twinOf: () => twinOf
   });
@@ -12551,6 +12589,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function otherSide(w2, id) {
     const t = twinOf(w2, id);
     return t ? sides(w2, t.id).find((s) => s.id !== id) || null : null;
+  }
+  function placeName(w2, id) {
+    const r = room(w2, id);
+    const t = twinOf(w2, id);
+    return t ? `${t.name} · ${r.side ? "Right" : "Left"}` : r?.name ?? "";
+  }
+  function moveTargets(w2, from) {
+    const out = [];
+    for (const r of rooms(w2)) for (const x of isTwin(r) ? sides(w2, r.id) : [r]) {
+      if (x.id !== from && !shut(w2, x.id)) out.push({ id: x.id, name: placeName(w2, x.id) });
+    }
+    const other = otherSide(w2, from)?.id;
+    const rank = (x) => x.id === other ? 0 : x.id === MESSY ? 1 : 2;
+    return out.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
   }
   function across(w2, id, x = 0, y = 0) {
     const th = w2.things[id];
@@ -15151,6 +15203,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var setRelation2;
   var relationName2;
   var setOrder2;
+  var join2;
   function bind2(lib) {
     ({
       room: room3,
@@ -15172,7 +15225,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       leave: leave2,
       groupsOf: groupsOf2,
       isGroup: isGroup2,
-      setOrder: setOrder2
+      setOrder: setOrder2,
+      join: join2
     } = lib.model);
     ({ ITEMS: ITEMS2 } = lib.items);
     ({ keepOrShrink: keepOrShrink2 } = lib.picture);
@@ -19592,6 +19646,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var twinOf2;
   var otherSide2;
   var across2;
+  var placeName2;
+  var moveTargets2;
   function bind4(lib) {
     ({
       room: room5,
@@ -19638,7 +19694,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2 } = lib.ontologies);
     ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
-    ({ sides: sides3, twinOf: twinOf2, otherSide: otherSide2, across: across2 } = lib.twin);
+    ({ sides: sides3, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
   }
 
   // dist/web/features/room/document.js
@@ -21912,7 +21968,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (to && to !== this.roomId) this.moveTo(to);
           }
         },
-        el15("option", { value: this.roomId }, here?.name || "This room"),
+        el15("option", { value: this.roomId }, here && placeName2(this.world, here.id) || "This room"),
         ...others.map((r) => el15("option", { value: r.id }, r.name)),
         el15("option", { value: "+" }, "A new room")
       );
@@ -21996,14 +22052,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch {
         own3 = [];
       }
-      return this.twinTrayItems(own3);
+      const when = (th) => th.looseAt ?? th.at ?? 0;
+      return this.twinTrayItems(own3).slice().sort((a, b) => when(b) - when(a));
+    }
+    // The words a loose card shows, which the tray's search box looks in.
+    looseWords(th) {
+      if (isGroup3(th)) return th.title || thoughtText2(this.world, th);
+      return kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th);
+    }
+    // The loose cards the search box lets through: every word typed must be in the card (any case).
+    looseFilter(items) {
+      const words = (this.looseQuery || "").toLowerCase().split(/\s+/).filter(Boolean);
+      if (!words.length) return items;
+      return items.filter((th) => {
+        const text = `${this.looseWords(th)} ${isGroup3(th) ? this.groupName(th) : ""}`.toLowerCase();
+        return words.every((w2) => text.includes(w2));
+      });
     }
     // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
     // or first words. Click opens it (a group's thoughts in the editor); Ctrl+click or Shift+click
     // adds it to what is chosen (so Ctrl+G makes a group of them here, in the tray); drag places it.
     looseCard(th) {
       const group2 = isGroup3(th);
-      const words = group2 ? th.title || thoughtText2(this.world, th) : kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th);
+      const words = this.looseWords(th);
       return el15(
         "div",
         {
@@ -22079,24 +22150,49 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const open = this.loose && dock.isOpen("loose");
       if (!this.roomId && !open) {
         this.loose = null;
+        this.looseQuery = "";
         return;
       }
       const title = items.length ? `${items.length} not placed` : "Nothing loose";
-      const list2 = items.length ? items.map((th) => this.looseCard(th)) : [el15("p", { class: "room-loose-hint" }, `Every thought is placed in ${this.ont.name}.`)];
+      const shown2 = this.looseFilter(items);
+      const list2 = shown2.length ? shown2.map((th) => this.looseCard(th)) : [el15("p", { class: "room-loose-hint" }, items.length ? "Nothing loose has those words." : `Every thought is placed in ${this.ont.name}.`)];
       if (open) {
         this.loose.list.replaceChildren(...list2);
         this.loose.handle?.setTitle(title);
         this.loose.handle?.setLabel(`Loose · ${items.length}`);
         return;
       }
+      this.looseQuery = "";
       const listEl = el15("div", { class: "room-loose-list", role: "list" }, list2);
+      const search4 = el15("input", {
+        type: "search",
+        class: "room-loose-search",
+        placeholder: "Search loose thoughts",
+        "aria-label": "Search loose thoughts",
+        spellcheck: "false",
+        oninput: (e) => {
+          this.looseQuery = e.target.value;
+          this.drawTray();
+        },
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key !== "Escape") return;
+          e.preventDefault();
+          if (e.target.value) {
+            e.target.value = "";
+            this.looseQuery = "";
+            this.drawTray();
+          } else e.target.blur();
+        }
+      });
       const body = el15(
         "div",
         { class: "room-loose" },
-        el15("p", { class: "room-loose-hint" }, "Thoughts not placed in this mode yet. Drag one onto the room."),
+        search4,
+        el15("p", { class: "room-loose-hint" }, "Thoughts not placed in this mode yet, newest first. Drag one onto the room."),
         listEl
       );
-      const loose = this.loose = { list: listEl, handle: null };
+      const loose = this.loose = { list: listEl, search: search4, handle: null };
       dock.open({
         key: "loose",
         kind: "Loose",
@@ -22108,7 +22204,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return false;
         },
         onClose: () => {
-          if (this.loose === loose) this.loose = null;
+          if (this.loose === loose) {
+            this.loose = null;
+            this.looseQuery = "";
+          }
         }
       }).then((handle) => {
         if (this.loose === loose) {
@@ -22194,7 +22293,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.sel = null;
             this.save();
             this.drawWorld();
-            this.toast(`Moved ${ids.length} to ${room5(this.world, to).name}`);
+            this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}`);
           }
         },
         el15("option", { value: "" }, "Move to…"),
@@ -22227,9 +22326,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.positionEdit();
       this.drawHistorySoon();
     }
-    // The rooms a thought can be moved to: every room (not this one, nor a locked one).
+    // The rooms a thought can be moved to, as [{ id, name }]: every room but this one, none locked,
+    // a Twin as "Name · Left" / "Name · Right" (inside a side, the other side first): world/twin.js.
     moveRooms() {
-      return rooms3(this.world).filter((r) => r.id !== this.roomId && !shut4(this.world, r.id)).sort((a, b) => a.id === MESSY4 ? -1 : b.id === MESSY4 ? 1 : a.name.localeCompare(b.name));
+      return moveTargets2(this.world, this.roomId);
     }
     // The pop-up sits beside what is chosen, and follows it as the view moves.
     positionEdit() {
@@ -22427,7 +22527,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.toast(`Moved to ${room5(this.world, toRoom).name}`);
+      this.toast(`Moved to ${placeName2(this.world, toRoom)}`);
     }
   };
 
