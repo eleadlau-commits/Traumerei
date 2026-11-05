@@ -18,6 +18,46 @@ export function spiralPoint(i, id = '') {
   return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
 }
 
+// In a .traum file (the roomfile feature): its # In pessoa section.
+//   at: ^a 120 40 [auto]   placed at a point (auto: pushed there to keep clear, not dragged); a
+//                          group another mode made is on the canvas only when it has one
+//   on canvas: ^b ^c        on the spiral, where Pessoa lays it (the same as no line)
+//   tray: ^g                another mode's group not placed yet (the same as no line)
+const traum = {
+  write(w, roomId, c) {
+    const places = own(w, roomId, 'pessoa', false);
+    const out = [];
+    const spiral = [];
+    for (const th of roomUnits(w, roomId)) {
+      const p = places[th.id];
+      if (!c.ref(th.id)) continue;
+      if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
+      else spiral.push(c.ref(th.id));
+    }
+    for (const g of placedForeign(w, roomId, 'pessoa')) { const p = spot(w, roomId, 'pessoa', g.id); if (c.ref(g.id)) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`); }
+    if (spiral.length) out.push(`on canvas: ${spiral.join(' ')}`);
+    const tray = trayForeign(w, roomId, 'pessoa').map((g) => c.ref(g.id)).filter(Boolean);
+    if (tray.length) out.push(`tray: ${tray.join(' ')}`);
+    return out;
+  },
+  read(w, roomId, lines, c) {
+    const placed = new Set();
+    for (const l of lines) {
+      if (l.key === 'at') {
+        const id = c.thing(l.values[0], l.line);
+        const [x, y] = [l.values[1], l.values[2]].map((v) => (v?.t === 'num' ? v.v : null));
+        if (!id) continue;
+        if (x == null || y == null) { c.report(l.line, 'at: needs a ^reference and two numbers.'); continue; }
+        if (placed.has(id)) { c.report(l.line, 'Pessoa places a thing once; this second at: was left out.'); continue; }
+        placed.add(id);
+        own(w, roomId, 'pessoa')[id] = { x: Math.round(x), y: Math.round(y), ...(l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : {}) };
+      } else if (l.key === 'on canvas' || l.key === 'tray') {
+        for (const v of l.values) c.thing(v, l.line);
+      } else c.keep(l);
+    }
+  },
+};
+
 export default {
   id: 'pessoa',
   name: 'Pessoa',
@@ -62,4 +102,6 @@ export default {
   },
 
   draftPoint: (w, roomId) => spiralPoint(roomUnits(w, roomId).length, 'draft'),
+
+  traum,
 };
