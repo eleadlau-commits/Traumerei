@@ -184,6 +184,7 @@ export default class Roomfile extends Feature {
       fileName: fileName(title), full: (t) => pictures.full(t), reset: write,
       options: scope === 'room' ? [{ key: 'remove', label: 'Remove groups not in the text', value: false }] : [],
       check, apply: readOnly ? null : applyText,
+      draft: scope === 'group' ? `group:${groupId}` : `room:${roomId}`, // changes closed unapplied come back next time
     });
   }
 

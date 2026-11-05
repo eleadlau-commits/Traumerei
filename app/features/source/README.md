@@ -12,8 +12,10 @@ monospace box with two quiet lists above it, and plain words below.
   (replaces the box with the clipboard; a Markdown code fence around it, as Claude replies, is
   taken off), *Reset* (back to what the thing holds now) and *Apply* (Ctrl+Enter). Apply closes
   the editor once it has worked. A tab is two spaces.
-- **Closing** (Escape or ×): if the text was changed and not applied, a line at the foot asks
-  first (*Close* or *Keep editing*).
+- **Closing** (Escape or ×) never asks. Text changed and not applied is kept as a draft (under
+  the name the opener gives, `draft`) and comes back the next time the same thing opens, with a
+  line saying so (and that it changed since, if it did; *Reset* shows it as it is now). Apply, or
+  closing with the text as it was, lets the draft go. Drafts are saved ('drafts').
 - **Read only** (a locked room): only Copy and Download.
 
 It knows nothing about rooms or Markdown: whoever opens it says what the text means.
@@ -24,8 +26,8 @@ It knows nothing about rooms or Markdown: whoever opens it says what the text me
 
 | Member | What it does |
 |---|---|
-| `open({ kind, title, text, readOnly, fileName, options, check, apply, full, reset })` | Opens the editor in the panel. `check(text, options)` returns `{ summary, changes, report, options, blocked }` (lists of lines; `blocked` greys Apply). `apply(text, options)` does it, resolving true when it worked (the editor then closes). `options`: tick boxes `[{ key, label, value }]` passed to both (check may return them again, with `show: false` to hide one). `full(text)` is what Download writes; `reset()` gives the text afresh. Resolves when the editor closes: true if Apply worked. |
-| `close()` | Closes it, asking first if there are changes. |
+| `open({ kind, title, text, readOnly, fileName, options, check, apply, full, reset, draft })` | Opens the editor in the panel. `check(text, options)` returns `{ summary, changes, report, options, blocked }` (lists of lines; `blocked` greys Apply). `apply(text, options)` does it, resolving true when it worked (the editor then closes). `options`: tick boxes `[{ key, label, value }]` passed to both (check may return them again, with `show: false` to hide one). `full(text)` is what Download writes; `reset()` gives the text afresh. `draft` names what is edited, for keeping unapplied changes. Resolves when the editor closes: true if Apply worked. |
+| `close()` | Closes it (changes not applied are kept as its draft). |
 | `isOpen()` | Whether it shows. |
 | `unfence(text)` | The text without a Markdown code fence around it (`unfence.js`). |
 
