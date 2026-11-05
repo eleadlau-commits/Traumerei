@@ -384,9 +384,18 @@ export class RoomView {
       }
     }
     this.world$.replaceChildren(...nodes);
+    this.showStatus();
     this.drawBar();
     this.drawTray();
     this.clearSoon();
+  }
+
+  // The frame's status bar: what is chosen, and the mode.
+  showStatus() {
+    const s = this.sel;
+    const n = !s ? 0 : s.kind === 'many' ? s.ids.length : 1;
+    const what = !s ? '' : s.kind === 'many' ? `${n} chosen` : s.kind === 'train' ? `1 ${this.groupName(this.world.things[s.id]).toLowerCase()} chosen` : '1 chosen';
+    this.frame?.update(this, { selection: what, mode: this.locked ? `${this.ont.name} · locked` : this.ont.name });
   }
 
   // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----

@@ -9,7 +9,7 @@ import {
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb,
 } from './world.js';
-import { el, GRID, MAC, HOLD } from './shared.js';
+import { el, GRID, MAC, HOLD, HINT } from './shared.js';
 
 export class RoomsGrid {
   // ---- The rooms page ----
@@ -60,7 +60,11 @@ export class RoomsGrid {
     this.shelfHead.hidden = !this.shelf;
     this.roomsPage.classList.toggle('shelf', this.shelf);
     this.drawPages();
-    if (!this.inRoom) this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs() });
+    if (!this.inRoom) {
+      const chosen = room(this.world, this.roomSel || this.roomPick);
+      this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs(),
+        selection: chosen ? `${chosen.name} chosen` : '', mode: this.shelf ? 'Archive' : `Floor ${this.page + 1} of ${pageCount(this.world)}`, idle: HINT });
+    }
     this.grid.classList.toggle('peek-always', this.prefs.peek >= 0.5);
     const shown = new Set((this.shelf ? shelved : all).map((r) => r.id));
     if (!shown.has(this.roomPick)) this.roomPick = null; // chosen things not on this grid are let go

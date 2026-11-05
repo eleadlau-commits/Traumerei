@@ -12,7 +12,7 @@
 }
 .frame > * { pointer-events: auto; }
 .frame[hidden], .frame [hidden] { display: none !important; }
-.frame-saved, .frame-hint, .frame-wordmark, .frame-bar { pointer-events: none !important; }
+.frame-wordmark, .frame-bar { pointer-events: none !important; }
 
 .frame-bar { opacity: 0; transition: opacity .4s; }
 .frame.on .frame-bar { opacity: 1; }
@@ -23,7 +23,8 @@
 .frame.on .frame-search { opacity: .8; }
 .frame:not(.on) :is(.frame-back, .frame-search, .frame-crumbs) { pointer-events: none; }
 
-/* "Saved" and the line of help sit on the canvas (they take the room's ink there), clear of the docks. */
-.frame-saved, .frame-hint { color: var(--frame-ink, var(--ink)); }
-.frame-hint { left: calc((100vw + var(--dock-left, 0px) - var(--dock-right, 0px)) / 2); }
-.frame-saved { right: calc(var(--gutter) + 12px + var(--dock-right, 0px)); }
+/* The status bar: the foot of the window, full width; the docks end above it (--status). */
+:root { --status-h: 26px; --status: 0px; }
+.frame-status { position: fixed; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity .4s; }
+.frame.on .frame-status { opacity: 1; }
+.frame:not(.on) .frame-status { pointer-events: none; }

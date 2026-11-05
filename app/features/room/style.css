@@ -82,7 +82,7 @@
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
 /* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: 18px; }
+.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(var(--status, 0px) + 14px); }
 .room-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
 .room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--ease); }
 .room-add-btn.open .room-add-plus { transform: rotate(45deg); }
