@@ -16490,7 +16490,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.parentElement?.scrollTo?.(0, 0);
     }
     // The archived rooms, on a grid like the rooms page's, in the order they were archived. Its empty
-    // cells make nothing. A click chooses a room; a right-click shows Go in, Restore and Delete; a
+    // cells make nothing. A click chooses a room; a right-click shows Restore and Delete; a
     // double click goes in.
     drawShelf(shelved, cols, cell, hits) {
       this.cols = cols;
@@ -16523,12 +16523,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     shelfOptions(r, col, row, cell, cols) {
       return el11("div", this.beside({ col, row }, cell, cols), el11("div", { class: "label" }, r.name), ...this.shelfRows(r));
     }
-    // What an archived room offers: Go in, Restore and Delete.
+    // What an archived room offers: Restore and Delete (Enter goes in).
     shelfRows(r) {
       const word = (label2, fn, extra = "") => el11("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
       return [
         r.desc ? el11("p", { class: "pop-note" }, r.desc) : null,
-        word("Go in", () => this.openRoom(r.id), "rooms-options-go"),
         word("Restore", () => {
           restore2(this.world, r.id);
           const out = this.floors.place(r.id);
@@ -16549,7 +16548,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A room's properties in the right dock's Editor tab (the docks feature's panel service), in place
     // of the pop-up beside its square: opened when a room's properties are asked for (roomSel),
     // switched when another room is chosen while they show, closed when none is. The dock's × or
-    // Escape lets the room go. shelf: an archived room (Go in, Restore, Delete).
+    // Escape lets the room go. shelf: an archived room (Restore, Delete).
     dockRoom(r, shelf = false) {
       const open = this.propsDock;
       if (!r) {
@@ -16880,7 +16879,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     roomOptions(r, cell, cols) {
       return el11("div", this.beside(r, cell, cols), ...this.roomRows(r));
     }
-    // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
+    // A room's properties: its name and description, its mode (one, or all of them for a big
     // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
     // size, Back to the tint, Lock, Archive and Delete (not for Messy).
     // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
@@ -16928,7 +16927,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       }, r.desc || "");
-      p.go = () => this.openRoom(r.id);
       p.kind = isBig2(r) ? "Every mode · switched inside" : "One mode";
       p.tags = this.tagsRow(r);
       p.colour = el11("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
@@ -16968,8 +16966,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawRooms();
         this.toast(`${r.name} is in the Archive.`);
       } : null;
-      p.duplicate = r.archived ? null : () => this.duplicateRoom(r.id);
-      p.moveTo = r.id !== MESSY3 && !r.locked && !r.archived ? () => this.floorPicker(r) : null;
       p.export = this.files ? () => this.exportRoomFile(r.id) : null;
       p.remove = r.id !== MESSY3 && !r.locked ? () => {
         remove3(this.world, r.id);
@@ -16986,7 +16982,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return [
         p.name,
         p.desc,
-        word("Go in", p.go, "rooms-options-go"),
         el11("p", { class: "pop-note" }, p.kind),
         p.tags,
         el11("label", { class: "rooms-slider" }, el11("span", {}, "Colour"), p.colour),
@@ -16998,8 +16993,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { class: "pop-row" },
           word("Back to the tint", p.untint),
           word(r.locked ? "Unlock" : "Lock", p.lock),
-          word("Duplicate", p.duplicate),
-          word("Move to floor…", p.moveTo),
           word("Archive", p.archive),
           word("Export as Markdown", p.export),
           word("Delete", p.remove, "pop-delete")
@@ -17034,9 +17027,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         sec("Actions", el11(
           "div",
           { class: "box-btns" },
-          btn("Go in", p.go, "Enter", "rooms-options-go"),
-          btn("Duplicate", p.duplicate, this.keyMap?.label?.("rooms.duplicate") || ""),
-          btn("Move…", p.moveTo, this.keyMap?.label?.("rooms.move") || ""),
           btn(r.locked ? "Unlock" : "Lock", p.lock),
           btn("Archive", p.archive),
           btn("Export", p.export),
@@ -20896,7 +20886,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return ITEMS3[kindOf3(th)]?.name || "Thought";
     }
     // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
-    // group's name), folding, the ontology's own rows and moves, Move to and Delete. inPanel: for the
+    // group's name), the ontology's own rows and moves, Move to and Delete. inPanel: for the
     // content editor, which shows a group's thoughts itself and has Source at its foot.
     propRows(th, inPanel = false) {
       const kind = kindOf3(th);
@@ -20993,7 +20983,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             "div",
             { class: "pop-row" },
             el14("span", { class: "pop-note" }, `${n} thought${n === 1 ? "" : "s"}`),
-            th.closed ? word("Open", () => this.openTrain(th.id)) : n > 1 || this.ont.open ? word("Close", () => this.closeTrain(th.id)) : null,
             this.files?.canEdit && !inPanel ? word("Edit as Markdown", () => this.editAsMarkdown(th.id)) : null
           )
         );
@@ -21119,15 +21108,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           moves.length ? el14("div", { class: "box-btns room-moves" }, ...moves.map((m2) => btn(m2.label, () => this.runMove(m2)))) : null
         ));
       }
-      const foldable = kind === "group" ? th.closed || n > 1 || this.ont.open : !!g2;
-      const closed = kind === "group" ? th.closed : g2?.closed;
       out.push(sec("Actions", el14(
         "div",
         { class: "box-btns" },
-        btn("Duplicate", () => duplicate(this), "room.duplicate"),
-        btn("Move", () => moveTo(this), "room.move"),
-        foldable ? btn(closed ? "Open" : "Close", () => close(this), "room.close") : null,
-        kind === "group" && n > 1 ? btn("Fold into one", () => fold3(this), "room.fold") : null,
         btn("Delete", () => {
           remove4(this.world, th.id);
           this.sel = null;
@@ -21320,7 +21303,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.addEventListener("pointerup", up);
       document.addEventListener("pointercancel", up);
     }
-    // Many things chosen with the box: move them to a room together, or delete them.
+    // Many things chosen with the box: move them to a room together, group them, or delete them.
     drawManyBar() {
       if (this.locked) {
         this.bar.hidden = true;
@@ -21363,12 +21346,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             title: this.keyMap ? `Group · ${this.keyMap.label("room.group")}` : "Group",
             onclick: () => group(this)
           }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
-          el14("button", {
-            type: "button",
-            class: "word",
-            title: this.keyMap ? `Fold into one thought · ${this.keyMap.label("room.fold")}` : "Fold into one thought",
-            onclick: () => fold3(this)
-          }, "Fold into one"),
           el14("button", { type: "button", class: "word pop-delete", onclick: () => {
             ids.forEach((id) => remove4(this.world, id));
             this.sel = null;
