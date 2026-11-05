@@ -112,6 +112,12 @@ written there. With nothing in it, the rooms page works on its own.
   its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
 - **Description:** a line or two about a room, written in its pop-up; it shows under the room's
   name inside, and in its peek.
+- **Duplicate** (Ctrl+D, *Duplicate* in its properties, or Alt+drag the square to where the copy
+  should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
+  named "… copy", in the nearest free cell (the floors feature's `place` with `near`); a full floor
+  spills onto a new one. **Move** to another floor: drag the square onto a floor in the rail, or
+  Ctrl+M (*Move…* in its properties) for a short list of floors (a number key picks, N a new
+  floor). Each is one undo step (`verbs.js`).
 - **Archive** (in a room's pop-up, or drop a square on *Archive* in the rail): the room leaves the
   grid for the Archive, a page of its own reached from *Archive* in the rail on the left (Escape,
   back or *Rooms* goes back). It has the same grid lines as the rooms page, with the rooms in the

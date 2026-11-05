@@ -20,7 +20,7 @@ The rooms page's floors: how big every floor is, and where a room goes when it i
 | Member | What it does |
 |---|---|
 | `size` | `{ cols, rows }`: every floor's size. |
-| `place(id, cell)` | Places room `id` by the rule above (`cell`: `{ col, row }`, optional). Returns `{ page, from, spilled }`, or `null` (no such room, or archived). The caller saves. |
+| `place(id, cell, { near })` | Places room `id` by the rule above (`cell`: `{ col, row }`, optional); with `near`, a taken cell sends it to the free spot nearest that cell instead of the first (a duplicated room, beside its original). Returns `{ page, from, spilled }`, or `null` (no such room, or archived). The caller saves. |
 | `settle(page)` | Places every room on floor `page` with no cell, outside the board or on another's cells (Messy thoughts first). Returns the rooms that went to a new floor. |
 | `move(id, col, row)` | Moves a room to a cell of its floor, if it is on the board and free (not a locked room). True when it moved. |
 | `resize(id, size)` | A room 1 × 1 or 2 × 2, if its cells stay on the board and free. True when it changed. |

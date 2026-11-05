@@ -553,6 +553,50 @@ export function restore(w, id) {
   return true;
 }
 
+// ---- Copying a room ----
+// The one rule for a copy of a room: a new room with everything in it copied (its items, its
+// groups with their members, each ontology's own data, its view and its settings), every copied
+// thought a new id, and every mention of an old id inside them (a group's members, Russell's
+// arrows) changed to the new one, so the copy never shares a thing with the room it came from.
+// Its name says it is a copy; it is unlocked, not archived, on the same floor, with no cell yet
+// (the floors feature places it: floors.place, nearest the room's cell). Messy thoughts copies
+// into an ordinary 2 × 2 room. Returns the new room, or null (no such room, or archived).
+
+// A copy of `v` with every string (or key) that is an old id in `ids` changed to its new id.
+function renamed(v, ids) {
+  if (typeof v === 'string') return ids[v] ?? v;
+  if (Array.isArray(v)) return v.map((x) => renamed(x, ids));
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const [k, x] of Object.entries(v)) out[ids[k] ?? k] = renamed(x, ids);
+    return out;
+  }
+  return v;
+}
+
+export function copyRoom(w, id, now = Date.now()) {
+  const r = room(w, id);
+  if (!r || r.archived) return null;
+  const inner = Object.values(w.things).filter((th) => th.parent === id);
+  const ids = { [id]: uid('r') };
+  for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
+  const fresh = renamed(copy(r), ids);
+  Object.assign(fresh, { id: ids[id], parent: null, at: now, name: `${r.name || 'Untitled'} copy` });
+  for (const k of ['locked', 'archived', 'col', 'row', 'edited']) delete fresh[k];
+  if (id === MESSY) { fresh.size = 2; delete fresh.page; }
+  w.things[fresh.id] = fresh;
+  for (const th of inner) {
+    const c = renamed(copy(th), ids);
+    c.id = ids[th.id];
+    c.parent = fresh.id;
+    w.things[c.id] = c;
+  }
+  if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
+  if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);
+  if (w.settings?.[id]) w.settings[fresh.id] = copy(w.settings[id]);
+  return fresh;
+}
+
 // ---- Tags ----
 // A room's tags are the words the rooms page sorts it by. Its ontology is a tag of its own that
 // can't be taken off: a small room's one mode, or every mode for a big room (Messy thoughts, or

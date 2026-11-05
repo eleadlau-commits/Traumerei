@@ -55,6 +55,11 @@ dragged places, Russell's arrows and their labels). An ontology can draw its own
 canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); the room keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
+**Copying a room** is one rule, `copyRoom(w, id)`: a new room with everything in it copied (items,
+groups and their members, each ontology's own data, its view and settings), every copied thought
+a new id and every mention of an old id changed, so the copy shares nothing with the original.
+It is named "… copy", unlocked, on the same floor with no cell (the floors feature places it).
+
 The rules (no screen) are in `model.js`, tested in `tests/model.test.js`. Everything is saved under
 the key `world3` (a world saved in an older shape is not kept) and follows the account like the settings.
 

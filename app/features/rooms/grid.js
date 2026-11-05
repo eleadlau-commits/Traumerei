@@ -611,6 +611,8 @@ export class RoomsGrid {
       this.drawRooms();
       this.toast(`${r.name} is in the Archive.`);
     } : null;
+    p.duplicate = r.archived ? null : () => this.duplicateRoom(r.id);
+    p.moveTo = r.id !== MESSY && !r.locked && !r.archived ? () => this.floorPicker(r) : null;
     // Taken out as room Markdown (the roomfile feature); a locked room too.
     p.export = this.files ? () => this.exportRoomFile(r.id) : null;
     p.remove = r.id !== MESSY && !r.locked ? () => {
@@ -639,6 +641,8 @@ export class RoomsGrid {
       el('div', { class: 'pop-row' },
         word('Back to the tint', p.untint),
         word(r.locked ? 'Unlock' : 'Lock', p.lock),
+        word('Duplicate', p.duplicate),
+        word('Move to floor…', p.moveTo),
         word('Archive', p.archive),
         word('Export as Markdown', p.export),
         word('Delete', p.remove, 'pop-delete')),
@@ -668,6 +672,8 @@ export class RoomsGrid {
         p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
       sec('Actions', el('div', { class: 'box-btns' },
         btn('Go in', p.go, 'Enter', 'rooms-options-go'),
+        btn('Duplicate', p.duplicate, this.keyMap?.label?.('rooms.duplicate') || ''),
+        btn('Move…', p.moveTo, this.keyMap?.label?.('rooms.move') || ''),
         btn(r.locked ? 'Unlock' : 'Lock', p.lock),
         btn('Archive', p.archive),
         btn('Export', p.export),
@@ -733,7 +739,8 @@ export class RoomsGrid {
 
   // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
   // moves it to the cell it is let go over, if that is free (a room dropped on another snaps
-  // back), or onto a page number or Archive. Held at the top or bottom edge of the canvas, the
+  // back), or onto a page number or Archive. With Alt held when it is let go, a copy goes there
+  // instead (verbs.js: beside that cell if it is taken) and the room stays. Held at the top or bottom edge of the canvas, the
   // strip slides to the floor above or below, so it can be dropped there.
   onTileDown(e, r, tile) {
     if (e.button || e.target.closest('input, textarea, select')) return;
@@ -804,7 +811,7 @@ export class RoomsGrid {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
       if (!dragging && Math.hypot(dx, dy) < 5) return;
       clearTimeout(hold);
-      if (r.locked || r.archived) return; // a locked room keeps its place; an archived one has none
+      if (r.archived || (r.locked && !ev.altKey)) return; // a locked room keeps its place (Alt drags a copy of it); an archived one has none
       if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); this.roomSel = null; }
       last = ev;
       follow();
@@ -842,6 +849,11 @@ export class RoomsGrid {
       }
       tile.style.transform = '';
       const home = r.page || 0;
+      if (ev.altKey && !r.archived && !over?.archive) {
+        this.page = floor;
+        this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
+        return;
+      }
       if (over?.page != null) {
         const moved = this.floors.toFloor(r.id, over.page);
         if (moved === 'full') this.toast(`Floor ${over.page + 1} is full.`);

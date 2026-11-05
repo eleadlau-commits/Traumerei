@@ -20,7 +20,7 @@ export default class Floors extends Feature {
     const board = () => ({ cols: f.size.cols, rows: f.size.rows });
     this.provide('floors', {
       get size() { return board(); },                           // { cols, rows }: every floor's size
-      place: (id, cell = null) => this.place(id, cell),         // its floor, else a new one (with a note)
+      place: (id, cell = null, o = {}) => this.place(id, cell, o), // its floor, else a new one (with a note)
       settle: (page) => this.settle(page),                      // places a floor's rooms that have no cell
       move: (id, col, row) => move(this.world, id, col, row, board()),
       resize: (id, size) => resize(this.world, id, size, board()),
@@ -32,8 +32,8 @@ export default class Floors extends Feature {
 
   get world() { return this.w.world; }
 
-  place(id, cell) {
-    const out = place(this.world, id, this.size, cell);
+  place(id, cell, o = {}) {
+    const out = place(this.world, id, this.size, cell, o);
     if (out?.spilled) this.say(room(this.world, id), out);
     return out;
   }

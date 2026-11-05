@@ -338,3 +338,8 @@
 .rooms-props .kv input[type="range"] { width: 100%; }
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
 :is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
+
+/* Move to floor (Ctrl+M): a short list of floors near the top (verbs.js). */
+.rooms-floor-pick { z-index: 21; width: min(300px, calc(100% - 2 * var(--gutter))); padding: var(--s-3) 0; display: grid; }
+.rooms-floor-pick > .label { margin: 0 18px var(--s-2); }
+.rooms-floor-pick .pick[disabled] { opacity: var(--off); cursor: default; }
