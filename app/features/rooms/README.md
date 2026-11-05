@@ -112,6 +112,11 @@ written there. With nothing in it, the rooms page works on its own.
   its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
 - **Description:** a line or two about a room, written in its pop-up; it shows under the room's
   name inside, and in its peek.
+- **Choosing many** (`many.js`): Shift+click or Ctrl+click adds a square to the choice or takes it
+  out, Ctrl+A chooses every room shown, Escape lets go; the status bar says how many. Delete,
+  Ctrl+D and Ctrl+M work on them all, each as one undo step. **Ctrl+G** groups them the rooms
+  page's way, by a tag they share (written in a small field; "Group: tag" puts the tag in a group
+  too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
 - **Duplicate** (Ctrl+D, *Duplicate* in its properties, or Alt+drag the square to where the copy
   should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
   named "… copy", in the nearest free cell (the floors feature's `place` with `near`); a full floor

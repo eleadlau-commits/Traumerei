@@ -79,15 +79,18 @@ export class RoomsGrid {
     this.shelfHead.hidden = !this.shelf;
     this.roomsPage.classList.toggle('shelf', this.shelf);
     this.drawPages();
-    if (!this.inRoom) {
-      const chosen = room(this.world, this.roomSel || this.roomPick);
-      this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs(),
-        selection: chosen ? `${chosen.name} chosen` : '', mode: this.shelf ? 'Archive' : `Floor ${this.page + 1} of ${pageCount(this.world)}`, idle: HINT });
-    }
     this.grid.classList.toggle('peek-always', this.prefs.peek >= 0.5);
     const shown = new Set((this.shelf ? shelved : all).map((r) => r.id));
     if (!shown.has(this.roomPick)) this.roomPick = null; // chosen things not on this grid are let go
     if (!shown.has(this.roomSel)) this.roomSel = null;
+    this.picks = (this.picks || []).filter((id) => shown.has(id));
+    if (this.picks.length < 2) this.picks = [];
+    if (!this.inRoom) {
+      const chosen = room(this.world, this.roomSel || this.roomPick);
+      const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : '';
+      this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs(),
+        selection: many || (chosen ? `${chosen.name} chosen` : ''), mode: this.shelf ? 'Archive' : `Floor ${this.page + 1} of ${pageCount(this.world)}`, idle: HINT });
+    }
     const byTag = this.lights?.trim().startsWith('#');
     let hits = this.lights?.trim() && (!byTag || tidyTag(this.lights)) ? this.hitsOn(shown) : null;
     if (hits) {
@@ -237,7 +240,7 @@ export class RoomsGrid {
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
       class: 'rooms-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
-        + (this.roomPick === r.id ? ' picked' : '')
+        + (this.roomPick === r.id || this.picks?.includes(r.id) ? ' picked' : '')
         + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
       style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
@@ -251,7 +254,7 @@ export class RoomsGrid {
         if (e.key === ' ') { e.preventDefault(); this.pickRoom(r.id); }
         if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); this.chooseRoom(r.id, true); }
       },
-      onfocus: () => { if (this.roomPick !== r.id && !this.roomSel) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.rooms-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
+      onfocus: () => { if (this.roomPick !== r.id && !this.roomSel && !(this.picks?.length > 1)) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.rooms-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
       onpointerdown: (e) => this.onTileDown(e, r, tile),
       oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.chooseRoom(r.id, true); this.held = null; },
     },
@@ -539,7 +542,9 @@ export class RoomsGrid {
   }
 
   // A click on a square chooses it (an outline); the properties wait for a right-click.
-  pickRoom(id) {
+  pickRoom(id, e = null) {
+    if (e && (e.shiftKey || e.metaKey || (e.ctrlKey && !MAC))) { this.addPick(id); return; } // many.js
+    this.picks = [];
     // While a room's properties show in the dock, a click on another room switches them there.
     if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) { this.chooseRoom(id, true); return; }
     if (this.roomSel && this.roomSel !== id) this.roomSel = null;
@@ -551,6 +556,7 @@ export class RoomsGrid {
 
   // Opens (or, with open false, toggles) a room's properties beside its square.
   chooseRoom(id, open = false) {
+    this.picks = []; // its properties are for one room
     this.roomSel = open || this.roomSel !== id ? id : null;
     this.roomPick = id;
     this.making = null;
@@ -744,6 +750,7 @@ export class RoomsGrid {
   // strip slides to the floor above or below, so it can be dropped there.
   onTileDown(e, r, tile) {
     if (e.button || e.target.closest('input, textarea, select')) return;
+    this.pickBefore = this.roomPick; // (focus, which comes next, picks the square pressed; Shift+click adds to this one)
     if (e.ctrlKey && MAC) return; // a Mac's Ctrl+click is a right-click (oncontextmenu)
     const start = { x: e.clientX, y: e.clientY };
     const grab = this.cellAt(e.clientX, e.clientY);
@@ -843,8 +850,8 @@ export class RoomsGrid {
         const now = Date.now();
         const twice = this.lastTap?.id === r.id && now - this.lastTap.at < 380;
         this.lastTap = { id: r.id, at: now };
-        if (twice) this.openRoom(r.id);
-        else this.pickRoom(r.id);
+        if (twice && !(ev.shiftKey || ev.ctrlKey || ev.metaKey)) this.openRoom(r.id);
+        else this.pickRoom(r.id, ev);
         return;
       }
       tile.style.transform = '';
