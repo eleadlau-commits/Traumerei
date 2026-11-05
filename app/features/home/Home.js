@@ -8,7 +8,7 @@
 // Saved data: 'font' → an id from fonts.js
 
 import { Feature, ui } from 'folio';
-import { FONTS, DEFAULT_FONT, findFont, loadFont } from './fonts.js';
+import { FONTS, DEFAULT_FONT, READING, findFont, loadFont } from './fonts.js';
 
 const { el } = ui;
 const TITLE = 'Traumerei';
@@ -17,6 +17,7 @@ export default class Home extends Feature {
   start() {
     this.font = findFont(this.storage.get('font', DEFAULT_FONT));
     this.applyFont();
+    loadFont(READING); // the reading face for thoughts (--font-read in base.css), whatever the typeface
 
     this.page = el('div', { class: 'home' },
       el('h1', { class: 'home-title' }, TITLE),

@@ -9,6 +9,7 @@
 // put it first.
 
 import tenorSans from './fonts/tenor-sans.js';
+import * as serif from './fonts/source-serif-4.js';
 
 export const FONTS = [
   {
@@ -25,6 +26,14 @@ export const FONTS = [
 ];
 
 export const DEFAULT_FONT = FONTS[0].id;
+
+// The reading face, for thoughts (folio/runtime/base.css names it --font-read). Always loaded.
+export const READING = {
+  id: 'source-serif-4',
+  name: 'Source Serif 4',
+  family: '"Source Serif 4", Georgia, serif',
+  files: [{ src: serif.regular, weight: '400' }, { src: serif.italic, weight: '400', style: 'italic' }, { src: serif.semibold, weight: '600' }],
+};
 
 export function findFont(id) {
   return FONTS.find((f) => f.id === id) || FONTS[0];

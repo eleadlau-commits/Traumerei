@@ -135,9 +135,9 @@
   position: absolute;
   width: max-content;
   max-width: 380px;
-  font-size: 18px;
-  line-height: 1.6;
-  letter-spacing: .02em;
+  font-family: var(--font-read);
+  font-size: var(--t-read);
+  line-height: 1.55;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
@@ -225,9 +225,9 @@
   max-width: 260px;
   width: max-content;
   text-align: center;
-  font-size: 16px;
+  font-family: var(--font-read);
+  font-size: var(--t-title);
   line-height: 1.45;
-  letter-spacing: .02em;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
@@ -427,7 +427,7 @@
 .room-doc-title { padding: 4px 0 8px; border-bottom-color: transparent; font-size: 24px; letter-spacing: .04em; }
 .room-doc-title:focus { border-bottom-color: color-mix(in srgb, var(--room-ink) 30%, transparent); }
 .room-doc-title::placeholder { color: inherit; opacity: .35; }
-.room-doc-paras { display: grid; gap: .9em; font-size: 16px; line-height: 1.7; }
+.room-doc-paras { display: grid; gap: .9em; font-family: var(--font-read); font-size: 17px; line-height: 1.65; }
 .room-doc-para { white-space: pre-line; cursor: text; border-radius: 2px; }
 .room-doc-para:not(.writing):not(.room-doc-item):hover { background: color-mix(in srgb, var(--room-ink) 5%, transparent); }
 .room-doc-item { cursor: default; }
@@ -452,7 +452,7 @@
 .room-editor-top .room-edit-body { min-height: 10em; }
 .room-editor-content { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--room-ink) 12%, transparent); }
 .room-editor-content:empty { display: none; }
-.room-editor .room-doc-paras { font-size: 15.5px; line-height: 1.65; }
+.room-editor .room-doc-paras { font-size: 16px; line-height: 1.6; }
 .room-editor-foot { display: flex; justify-content: flex-end; }
 .room-editor-source { --word-spacing: .22em; font-size: 11px; opacity: .45; }
 
