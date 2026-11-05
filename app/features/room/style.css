@@ -20,17 +20,6 @@
 /* In a dark room the menu's lines turn pale. */
 .room-dark .topbar .top-btn { color: var(--room-ink); }
 
-/* A small wordmark beside the menu (☰), in the home page's typeface. */
-/* It stays beside the menu while the room moves over for the left dock. */
-.dock-left-open .room .room-wordmark { margin-left: calc(-1 * var(--dock-left, 0px)); }
-.room.up .room-wordmark { opacity: .72; }
-.room.in-room .room-wordmark { color: var(--room-ink); z-index: 6; }
-/* On a phone the search bar takes that place. */
-
-/* The back arrow, in the top-right corner (the menu keeps the top-left one, as on every page):
-   back to the rooms. */
-.room.up .room-back { opacity: .8; }
-.room.in-room .room-back { color: var(--room-ink); z-index: 6; }
 
 /* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
 
@@ -282,10 +271,6 @@
 
 /* The list of keys (?): a quiet panel near the top. */
 
-/* A quiet "Saved", and a line of help the first time a room is seen. */
-
-/* "Saved" and the line of help take the room's ink. */
-.room :is(.room-saved, .room-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
 
@@ -298,12 +283,7 @@
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 .room.expanding .room-page { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
-.room.expanding .room-back { color: var(--ink); }
 
-/* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
-.room.up .room-search-btn { opacity: .66; }
-.room.in-room .room-search-btn { color: var(--room-ink); z-index: 6; }
-/* On a phone the bar sits between the menu and the arrow, clear of both. */
 
 /* ---- The rail on the left, under the menu: the room's modes ---- */
 /* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */

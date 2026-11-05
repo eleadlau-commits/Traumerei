@@ -22,7 +22,7 @@
 import { Feature, ui } from 'folio';
 import { bind, room, view, shut, MESSY, roomLook } from './world.js';
 import { openDocument } from './document.js';
-import { el, MAC, KEY, HINT } from './shared.js';
+import { el, HINT } from './shared.js';
 import { RoomView } from './view.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
@@ -56,6 +56,7 @@ export default class Room extends Feature {
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
+    this.frame = this.use('frame');       // the top bar and the foot around the room (the frame feature), or null
     const run = {
       'room.timeline': () => this.toggleTimeline(),
       'room.mode': (e) => this.nextMode(e.shiftKey ? -1 : 1),
@@ -119,6 +120,7 @@ export default class Room extends Feature {
     this.gearFor = this.settingsFor = null;
     this.root.hidden = false;
     document.documentElement.classList.add('room-open');
+    this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms' });
     this.closeAdd();
     this.drawRoom();
     if (from) this.expand(from);
@@ -146,6 +148,7 @@ export default class Room extends Feature {
     clearTimeout(this.expandTimer);
     this.root.classList.remove('expanding');
     this.root.hidden = true;
+    this.frame?.hide(this);
     document.documentElement.classList.remove('room-open', 'room-dark');
     return from;
   }
@@ -222,33 +225,18 @@ export default class Room extends Feature {
   }
 
   // A quiet word in the corner when the world has been written down.
-  showSaved(word = 'Saved') {
-    this.savedMark.textContent = word;
-    this.savedMark.classList.remove('on');
-    void this.savedMark.offsetWidth;
-    this.savedMark.classList.add('on');
-  }
+  showSaved(word = 'Saved') { this.frame?.saved(word); }
 
   // A line of help, once, the first time a room is seen. It fades on the first key or click.
   hint() {
     if (this.storage.get('hinted')) return;
     this.storage.set('hinted', true);
-    this.hintLine.textContent = HINT;
-    this.hintLine.classList.add('on');
-    clearTimeout(this.hintTimer);
-    this.hintTimer = setTimeout(() => this.hintLine.classList.remove('on'), 9000);
+    this.frame?.hint(HINT);
   }
 
   // ---- Building the pages ----
 
   build() {
-    this.backBtn = el('button', { type: 'button', class: 'back-btn room-back', 'aria-label': 'Back to the rooms', onclick: () => this.back() },
-      ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
-    // Search, a bar in the middle of the top row: a search of every room.
-    this.searchBtn = el('button', { type: 'button', class: 'word find-btn room-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
-      onclick: () => this.openSearch() },
-    el('span', {}, 'Search'), el('span', { class: 'find-key' }, KEY));
-    this.searchBtn.hidden = !this.finder; // no Search without the search feature
     this.crumbName = el('button', { type: 'button', class: 'word room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
     // between them; a small one names its one), and Timeline under Joyce.
@@ -282,11 +270,9 @@ export default class Room extends Feature {
       this.docEl = el('div', { class: 'room-doc-veil', hidden: true }),
       this.input);
 
-    this.savedMark = el('div', { class: 'saved-note room-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'foot-hint room-hint' });
-    // A small wordmark beside the menu (☰), as on the rooms page.
-    this.wordmark = el('div', { class: 'wordmark room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.savedMark, this.hintLine);
+    // The wordmark, Search, the back arrow, "Saved" and the line of help are the frame feature's
+    // (enter() shows it).
+    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
@@ -304,7 +290,6 @@ export default class Room extends Feature {
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });
     document.addEventListener('pointerdown', (e) => {
-      this.hintLine.classList.remove('on');
       if (!this.addMenu.hidden && !e.target.closest('.room-add-menu, .room-add-btn')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
