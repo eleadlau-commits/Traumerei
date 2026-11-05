@@ -47,7 +47,8 @@ export class RoomsGrid {
     return out;
   }
 
-  drawRooms() {
+  // slide: the strip of floors slides from the floor that showed to this one.
+  drawRooms({ slide = false } = {}) {
     const now = Date.now();
     this.page = Math.min(this.page, pageCount(this.world) - 1);
     const { cols, rows, cell } = this.gridSize();
@@ -78,9 +79,12 @@ export class RoomsGrid {
     }
     this.grid.classList.toggle('lights', !!hits);
     this.drawTags();
-    if (this.shelf) { this.drawShelf(shelved, cols, cell, hits); return; }
-    // The floor is the floors feature's fixed board: it never grows a row or column.
+    if (this.shelf) { this.strip.show([[this.shelfHead, this.grid]], 0); this.drawShelf(shelved, cols, cell, hits); return; }
+    // The floor is the floors feature's fixed board: it never grows a row or column. Every floor
+    // is in the strip, one under another: this one drawn here, the others as still copies.
     this.cols = cols;
+    this.strip.show(Array.from({ length: pageCount(this.world) },
+      (_, i) => (i === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i, cols, rows, cell, now))), this.page, { slide });
     this.grid.style.setProperty('--cols', cols);
     this.grid.style.setProperty('--cell', cell + 'px');
     this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
@@ -112,6 +116,24 @@ export class RoomsGrid {
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.grid.querySelector('.rooms-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
+  }
+
+  // Another floor, as it is, for the strip: its squares on its empty cells, not to be pressed
+  // (it becomes the drawn floor when the strip comes to rest on it).
+  floorCopy(page, cols, rows, cell, now) {
+    const all = roomsOn(this.world, page).filter((r) => r.col != null);
+    const taken = new Set();
+    for (const r of all) for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+    const empty = [];
+    for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+      if (!taken.has(`${col},${row}`)) empty.push(el('div', { class: 'rooms-cell', style: `grid-column:${col + 1};grid-row:${row + 1}` }));
+    }
+    const g = el('div', { class: 'rooms-grid rooms-grid-copy', 'aria-hidden': 'true', inert: '', 'data-floor': page },
+      ...empty, ...all.map((r) => this.tile(r, now, null)));
+    g.style.setProperty('--cols', cols);
+    g.style.setProperty('--cell', cell + 'px');
+    g.style.setProperty('--cell-gap', GRID.gap + 'px');
+    return g;
   }
 
   // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
@@ -578,12 +600,12 @@ export class RoomsGrid {
     });
   }
 
-  // The grid cell under a point, or null.
-  cellAt(x, y) {
-    const box = this.grid.getBoundingClientRect();
-    const step = parseFloat(this.grid.style.getPropertyValue('--cell')) + GRID.gap;
+  // The grid cell under a point (on `grid`: this floor's, or a copy in the strip), or null.
+  cellAt(x, y, grid = this.grid) {
+    const box = grid.getBoundingClientRect();
+    const step = parseFloat(grid.style.getPropertyValue('--cell')) + GRID.gap;
     const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
-    return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
+    return col >= 0 && row >= 0 && col < this.cols && row < this.floors.size.rows ? { col, row } : null;
   }
 
   // What is under a point while a square is dragged: a page number, or the Archive.
@@ -598,19 +620,25 @@ export class RoomsGrid {
 
   // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
   // moves it to the cell it is let go over, if that is free (a room dropped on another snaps
-  // back), or onto a page number or Archive.
+  // back), or onto a page number or Archive. Held at the top or bottom edge of the canvas, the
+  // strip slides to the floor above or below, so it can be dropped there.
   onTileDown(e, r, tile) {
     if (e.button || e.target.closest('input, textarea, select')) return;
     if (e.ctrlKey && MAC) return; // a Mac's Ctrl+click is a right-click (oncontextmenu)
     const start = { x: e.clientX, y: e.clientY };
     const grab = this.cellAt(e.clientX, e.clientY);
     const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
-    let dragging = false, target = null, over = null;
+    const top0 = this.grid.getBoundingClientRect().top; // the strip moves this floor's grid as it slides
+    let dragging = false, target = null, over = null, last = null;
+    let floor = this.page;                 // the floor the strip shows: where the room would land
+    let edge = 0, edgeTimer = 0, frame = 0;
     this.held = null;
     // A long press (touch, or a pen) opens the properties, as a right-click does.
     const hold = e.pointerType !== 'mouse' && setTimeout(() => { this.held = r.id; finish(); this.chooseRoom(r.id, true); }, HOLD);
+    const gridOf = (page) => (page === this.page ? this.grid : this.strip.floor(page)?.querySelector('.rooms-grid'));
     const spot = (ev) => {
-      const at = this.cellAt(ev.clientX, ev.clientY);
+      const g = gridOf(floor);
+      const at = g && this.cellAt(ev.clientX, ev.clientY, g);
       return at && { col: at.col - offset.col, row: at.row - offset.row };
     };
     // Where it would land: a shadow the room's own size (2 × 2 for a big room), faint if taken.
@@ -620,7 +648,9 @@ export class RoomsGrid {
       if (!c) { drop.hidden = true; return; }
       const size = r.size || 1;
       const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && c.row + size <= this.floors.size.rows &&
-        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, this.page));
+        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, floor));
+      const g = gridOf(floor);
+      if (g && drop.parentElement !== g) g.append(drop);
       drop.hidden = false;
       drop.classList.toggle('taken', !free);
       drop.style.gridColumn = `${c.col + 1} / span ${size}`;
@@ -630,13 +660,42 @@ export class RoomsGrid {
       for (const x of this.root.querySelectorAll('.drop-on')) if (x !== n) x.classList.remove('drop-on');
       n?.classList.add('drop-on');
     };
+    // The square stays under the pointer, however far the strip has slid.
+    const follow = () => {
+      if (!last) return;
+      const shift = this.grid.getBoundingClientRect().top - top0;
+      tile.style.transform = `translate(${last.clientX - start.x}px, ${last.clientY - start.y - shift}px)`;
+    };
+    const following = () => { follow(); frame = this.strip.sliding ? requestAnimationFrame(following) : 0; };
+    // Held at an edge: the floor above or below, and again while it stays held there.
+    const slide = () => {
+      const next = floor + edge;
+      if (!edge || next < 0 || next >= pageCount(this.world)) return;
+      floor = next;
+      this.strip.slideTo(floor);
+      for (const b of this.pagesBar.querySelectorAll('[data-page]')) { if (+b.dataset.page === floor) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
+      cancelAnimationFrame(frame);
+      following();
+      edgeTimer = setTimeout(() => { slide(); if (last) moveFn(last); }, 900);
+    };
+    const atEdge = (ev) => {
+      if (r.id === MESSY) return; // Messy thoughts stays on Floor 1
+      const box = this.strip.el.getBoundingClientRect();
+      const now = ev.clientY < box.top + 36 ? -1 : ev.clientY > box.bottom - 36 ? 1 : 0;
+      if (now === edge) return;
+      edge = now;
+      clearTimeout(edgeTimer);
+      if (edge) edgeTimer = setTimeout(slide, 450);
+    };
     const moveFn = (ev) => {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
       if (!dragging && Math.hypot(dx, dy) < 5) return;
       clearTimeout(hold);
       if (r.locked || r.archived) return; // a locked room keeps its place; an archived one has none
       if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); this.roomSel = null; }
-      tile.style.transform = `translate(${dx}px, ${dy}px)`;
+      last = ev;
+      follow();
+      atEdge(ev);
       over = this.dropAt(ev.clientX, ev.clientY);
       if (over?.page === (r.page || 0)) over = null; // already on that page
       if ((over?.archive || over?.page != null) && r.id === MESSY) over = null; // Messy stays where it is
@@ -646,6 +705,8 @@ export class RoomsGrid {
     };
     const finish = () => {
       clearTimeout(hold);
+      clearTimeout(edgeTimer);
+      cancelAnimationFrame(frame);
       window.removeEventListener('pointermove', moveFn);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
@@ -667,13 +728,18 @@ export class RoomsGrid {
         return;
       }
       tile.style.transform = '';
+      const home = r.page || 0;
       if (over?.page != null) {
         const moved = this.floors.toFloor(r.id, over.page);
         if (moved === 'full') this.toast(`Floor ${over.page + 1} is full.`);
         else if (moved) { this.save(); this.toast(`${r.name} is on Floor ${over.page + 1}.`); }
       } else if (over?.archive) {
         if (archive(this.world, r.id)) { this.save(); this.toast(`${r.name} is in the Archive.`); }
+      } else if (target && floor !== home) {
+        // Slid to another floor at the edge: dropped on one of its cells.
+        if (this.floors.toFloor(r.id, floor, target) === true) this.save();
       } else if (target && this.floors.move(r.id, target.col, target.row)) this.save();
+      this.page = floor; // the floor the strip rests on
       this.drawRooms();
     };
     window.addEventListener('pointermove', moveFn);

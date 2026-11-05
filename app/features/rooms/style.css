@@ -41,7 +41,14 @@
   transition: transform .5s var(--ease);
 }
 .rooms.up .rooms-rooms { transform: none; transition-duration: .6s; }
-.rooms-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rail)); position: relative; z-index: 1; }
+/* The floors, one tall strip (strip.js): the canvas shows one floor at a time, and the strip
+   slides to whole floors. Each floor is the canvas's height; a floor scrolls only when its cells
+   are at their smallest, and the Archive when it is long. */
+.rooms-grid-wrap { flex: 1; overflow: hidden; position: relative; z-index: 1; }
+.rooms-strip { height: 100%; }
+.rooms-floor { height: 100%; box-sizing: border-box; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rail)); }
+/* A square being dragged shows above the other floors, wherever the strip has slid. */
+.rooms-floor:has(.rooms-tile.dragging) { position: relative; z-index: 2; overflow: visible; }
 
 /* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
    takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */

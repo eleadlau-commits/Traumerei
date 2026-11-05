@@ -92,13 +92,13 @@ export function resize(w, id, size, board) {
   return false;
 }
 
-// Moves room `id` to floor `page`, at the first free spot there (not Messy thoughts, nor a locked
-// or archived room). Returns true, false when it can't go, or 'full' when that floor has no spot
-// of its size.
-export function toFloor(w, id, page, board) {
+// Moves room `id` to floor `page`, in `cell` if it is free there, else at the first free spot
+// (not Messy thoughts, nor a locked or archived room). Returns true, false when it can't go, or
+// 'full' when that floor has no spot of its size.
+export function toFloor(w, id, page, board, cell = null) {
   const r = room(w, id);
   if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
-  const at = spot(w, r, page, board);
+  const at = cell && free(w, r, cell.col, cell.row, board, page) ? cell : spot(w, r, page, board);
   if (!at) return 'full';
   setPage(r, page);
   r.col = at.col;
