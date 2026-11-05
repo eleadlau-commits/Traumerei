@@ -34,3 +34,8 @@ To add Traumerei Sans: turn its .woff2 into a module like `fonts/tenor-sans.js`
 it the default.
 
 Tenor Sans is © 2011 Denis Masharov, SIL Open Font License 1.1 (`fonts/OFL-TenorSans.txt`).
+
+**The reading face.** Thoughts are set in Source Serif 4 (`READING` in `fonts.js`,
+`fonts/source-serif-4.js`: regular, italic and semibold), loaded at start whatever the typeface;
+base.css names it `--font-read`. Source Serif 4 is © 2014–2021 Adobe, SIL Open Font License 1.1
+(`fonts/OFL-SourceSerif4.txt`).

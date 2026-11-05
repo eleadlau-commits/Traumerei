@@ -54,6 +54,33 @@
   --ease: cubic-bezier(.22, .7, .18, 1);
 
   --gutter: 32px;  /* space at the screen's sides */
+
+  /* ---- The working look's tokens (the pro workspace) ----
+     Three voices: spaced capitals are signage only (the wordmark, dock tabs, section heads); what
+     you work with (rail items, labels, values, buttons) is the same face in sentence case; and
+     thoughts are in a reading face (--font-read; the home feature loads it). One type scale,
+     nothing in between: */
+  --font-read: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --t-hint: 11px;    /* key hints, the status bar */
+  --t-label: 12px;   /* labels, dock tabs (in capitals) */
+  --t-work: 13.5px;  /* rail items, values, buttons */
+  --t-title: 18px;   /* the selection's title in a dock */
+  --t-read: 19px;    /* thoughts on the canvas */
+  /* Spacing: steps of a 4px grid, and the chrome's sizes on it. */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-6: 24px; --s-8: 32px;
+  --row: 30px;       /* a rail row, a dock's label/value row */
+  --field: 26px;     /* a field or a button's box */
+  /* One accent, one meaning: amber (from the palette's glow) is selected, focused, the tab in front
+     and where a drop will land. Ink stays for words and lines; red only on Delete. */
+  --amber: color-mix(in oklab, var(--glow) 50%, #9a6414);
+  --amber-soft: rgb(var(--glow-rgb) / .35);
+  /* Two surfaces: the canvas is paper (and the washi, if the picture has it); all chrome (top bar,
+     rail, docks, status bar) is the flat veil with a hairline edge. */
+  --chrome: var(--veil);
+  --chrome-edge: rgb(var(--ink-rgb) / .14);
+  /* Motion: chrome changes (a dock opening, a tab) are quick; spatial moves keep the slow ease. */
+  --quick: 120ms;
+  --slow: .4s;
   color-scheme: light;
 }
 
