@@ -98,7 +98,14 @@ It offers no service of its own.
   (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
   edit it. Both are written in the right dock's Editor tab (without docks, a sheet over the room):
   Enter keeps, Esc or × cancels. Naming a closed group is written there too.
-- **Closing.** Select a train or chapter and *Close* (Ctrl+F), then name it. It shows as one
+- **Folding** (Ctrl+F, or *Fold into one*). What is chosen (thoughts, or whole groups: all that is
+  inside them) becomes ONE new thought, and the old ones are deleted, in every mode: the new one
+  takes their place in every train and chapter that held them (once in each, where the first
+  was), and their place in Pessoa. All lines fold into one line (a line each); anything else
+  folds into a passage with all the words in order. A chosen group stays, holding just the new
+  thought. Pictures can't be folded yet. Ctrl+Z brings them back. (Grouping, Ctrl+G, is the
+  other way: a new group, and the thoughts stay.)
+- **Closing.** Select a train or chapter and *Close* (Ctrl+Shift+F), then name it. It shows as one
   thought in its own mode; *Open* shows its thoughts again. Closing is only how it shows: its
   thoughts, and the other modes, are not changed.
 

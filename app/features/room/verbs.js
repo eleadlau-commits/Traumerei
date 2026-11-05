@@ -1,10 +1,10 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
-// page): rename (Ctrl+R), duplicate (Ctrl+D), close or open (Ctrl+F), move to another room
+// page): rename (Ctrl+R), duplicate (Ctrl+D), fold into one (Ctrl+F), close or open (Ctrl+Shift+F), move to another room
 // (Ctrl+M), group (Ctrl+G) and ungroup (Ctrl+Shift+G); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen } from './world.js';
+import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -36,6 +36,22 @@ export function duplicate(c, e) {
   const units = c.copyOf(c.sel.ids || [c.sel.id]);
   if (!units.length) { c.toast('That can\'t be duplicated here yet.'); return; }
   c.pasteUnits(units);
+}
+
+// Fold: what is chosen (thoughts, and whole groups) becomes one thought, and the old ones go,
+// in every mode: the new one takes their place wherever they were (the world's groups.js: fold).
+// A chosen group stays and holds just the new one. The new one is then chosen.
+export function fold(c, e) {
+  if (typing(e) || c.editing || !c.sel) return;
+  if (c.locked) { c.toast('This room is locked.'); return; }
+  const ids = c.sel.ids || [c.sel.id];
+  const n = ids.length;
+  const th = foldInto(c.world, c.roomId, ids);
+  if (!th || th.why) { c.toast(th?.why || 'Nothing here to fold.'); return; }
+  c.sel = { kind: 'thought', id: th.id };
+  c.save();
+  c.drawWorld();
+  c.toast(`Folded into one ${kindOf(th) === 'passage' ? 'passage' : 'thought'}. Ctrl+Z brings ${n > 1 ? 'them' : 'it'} back.`);
 }
 
 // Close or open: a group, or the group the chosen thought is in (in this mode).

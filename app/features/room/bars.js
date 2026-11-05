@@ -194,6 +194,7 @@ export class Bars {
       btn('Duplicate', () => verbs.duplicate(this), 'room.duplicate'),
       btn('Move', () => verbs.moveTo(this), 'room.move'),
       foldable ? btn(closed ? 'Open' : 'Close', () => verbs.close(this), 'room.close') : null,
+      kind === 'group' && n > 1 ? btn('Fold into one', () => verbs.fold(this), 'room.fold') : null,
       btn('Delete', () => {
         remove(this.world, th.id);
         this.sel = null;
@@ -355,6 +356,8 @@ export class Bars {
       el('div', { class: 'pop-row' },
         this.ont.groups ? el('button', { type: 'button', class: 'word', title: this.keyMap ? `Group · ${this.keyMap.label('room.group')}` : 'Group',
           onclick: () => verbs.group(this) }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
+        el('button', { type: 'button', class: 'word', title: this.keyMap ? `Fold into one thought · ${this.keyMap.label('room.fold')}` : 'Fold into one thought',
+          onclick: () => verbs.fold(this) }, 'Fold into one'),
         el('button', { type: 'button', class: 'word pop-delete', onclick: () => {
           ids.forEach((id) => remove(this.world, id));
           this.sel = null;
