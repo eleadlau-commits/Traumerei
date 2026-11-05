@@ -1574,6 +1574,17 @@ dialog.dialog-box {
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
 .room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
+.room-russell-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.room-russell-hint { opacity: 0; transition: opacity .2s; }
+.room-russell-hint.show, .room-russell-hint:hover { opacity: .35; }
+.room-russell-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
+.room-russell-edit.side-right { transform: translateY(-50%); }
+.room-russell-edit.side-left { transform: translate(-100%, -50%); }
+.room-russell-edit.side-above { transform: translate(-50%, -100%); }
+.room-russell-edit.side-right-up { transform: translateY(-100%); }
+.room-russell-edit.side-left-up { transform: translate(-100%, -100%); }
+.room-russell-edit.side-left-down { transform: translateX(-100%); }
+.room-russell-edit input { width: 200px; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
@@ -12469,6 +12480,71 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (isGroup(th)) return th.of === ID ? th.id : null;
     return groupOf(c.world, id, ID)?.id || null;
   }
+  var editing = null;
+  var lastArrow = null;
+  var arrowKey = (from, to) => `${from}>${to}`;
+  function startEdit(c, from, to) {
+    const a = arrowsInto(c.world, c.roomId, to);
+    if (!a.parents.includes(from)) return;
+    editing = { room: c.roomId, from, to, text: a.labels[from] || "", rel: a.rel[from] || "", fresh: true };
+    c.drawWorld();
+  }
+  function finishEdit(c, keep) {
+    const e = editing;
+    editing = null;
+    if (keep && e && e.room === c.roomId && !c.locked) {
+      setLabel(c.world, c.roomId, e.from, e.to, e.text);
+      setRelation(c.world, c.roomId, e.from, e.to, e.rel);
+      c.save();
+    }
+    c.drawWorld();
+  }
+  function editBox(c, spot3, names) {
+    const e = editing;
+    const now = e.rel || names[0];
+    const keys = (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        finishEdit(c, true);
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        finishEdit(c, false);
+      }
+    };
+    const input = c.el("input", {
+      class: "room-edit-text",
+      value: e.text,
+      placeholder: "the coordinates",
+      spellcheck: "false",
+      "aria-label": "The arrow's label",
+      oninput: (ev) => {
+        e.text = ev.target.value;
+      },
+      onkeydown: keys
+    });
+    const pick = names.length > 1 || !names.includes(now) ? c.el("select", {
+      class: "room-russell-pick-rel",
+      "aria-label": "The arrow's relation",
+      onkeydown: keys,
+      onchange: (ev) => {
+        e.rel = ev.target.value === names[0] ? "" : ev.target.value;
+        input.focus();
+      }
+    }, ...[.../* @__PURE__ */ new Set([...names, now])].map((n) => c.el("option", { value: n, selected: n === now }, n))) : c.el("span", { class: "room-russell-rel" }, now);
+    const box = c.el("div", {
+      class: `panel room-russell-edit side-${spot3.side}`,
+      style: `left:${Math.round(spot3.x)}px;top:${Math.round(spot3.y)}px`
+    }, pick, input);
+    requestAnimationFrame(() => {
+      if (!box.isConnected || box.contains(document.activeElement)) return;
+      input.focus();
+      if (e.fresh) input.select();
+      else input.setSelectionRange(input.value.length, input.value.length);
+      e.fresh = false;
+    });
+    return box;
+  }
   var pending = null;
   var svg = (name5, attrs = {}) => {
     const n = document.createElementNS(SVG2, name5);
@@ -12614,6 +12690,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // the one clicked (anywhere else lets it go).
     press(c, e) {
       if (e.button !== 0 || c.locked) return false;
+      if (editing && editing.room === c.roomId) {
+        if (e.target.closest?.(".room-russell-edit")) return true;
+        finishEdit(c, true);
+      }
+      const hit = e.target.closest?.("[data-arrow]");
+      if (hit) {
+        const key2 = hit.dataset.arrow, now = Date.now();
+        if (lastArrow?.key === key2 && now - lastArrow.at < 400) {
+          lastArrow = null;
+          e.preventDefault();
+          const [from, to] = key2.split(">");
+          startEdit(c, from, to);
+          return true;
+        }
+        lastArrow = { key: key2, at: now };
+      } else lastArrow = null;
       if (pending && pending.room === c.roomId) {
         const job = pending;
         pending = null;
@@ -12736,7 +12828,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const a = all[from], b = all[to];
         if (!a || !b) continue;
         const arrow = between(arrowBox(a), arrowBox(b), pads(w2, from, to));
-        layer.append(svg("path", { class: "room-russell-arrow", d: path(arrow, line), "marker-end": "url(#russell-head)" }));
+        const d = path(arrow, line), key2 = arrowKey(from, to);
+        layer.append(svg("path", { class: "room-russell-arrow", d, "marker-end": "url(#russell-head)" }));
+        const hit = svg("path", { class: "room-russell-hit", d, "data-arrow": key2 });
+        layer.append(hit);
+        const mid = labelSpot(arrow, line);
+        if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
+          nodes.push(editBox(c, mid, names));
+          continue;
+        }
+        if (!label && !c.locked) {
+          const hint2 = el13("div", { class: `room-russell-label room-russell-hint side-${mid.side}`, "data-arrow": key2, title: "Double-click to write this arrow's label", style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel || names[0]}…`);
+          hit.addEventListener("pointerenter", () => hint2.classList.add("show"));
+          hit.addEventListener("pointerleave", () => hint2.classList.remove("show"));
+          nodes.push(hint2);
+        }
         if (label) {
           const prefer = parentsOf(w2, roomId, to).length > 1 ? arrow.p.x < arrow.q.x ? "left" : "right" : null;
           const fan = arrow.from === "bottom" && childrenOf(w2, roomId, from).length > 1;
@@ -12744,7 +12850,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           nodes.push(el13("div", {
             class: `room-russell-label side-${spot3.side}`,
             "data-group": to,
-            title: `${rel || names[0]} ${label}`,
+            "data-arrow": key2,
+            title: `${rel || names[0]} ${label} (double-click to edit)`,
             style: `left:${Math.round(spot3.x)}px;top:${Math.round(spot3.y)}px`
           }, names.length > 1 ? el13("span", { class: "room-russell-rel" }, `${rel || names[0]} `) : null, maths(label)));
         }
@@ -17427,7 +17534,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const blocks = ont.blocks ? ont.blocks(w2, roomId) : ont.units(w2, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
       const nodes = /* @__PURE__ */ new Map();
       for (const n of this.world$.querySelectorAll("[data-thought]")) nodes.set(n.dataset.thought, n);
-      const editing = this.draft?.edit || null;
+      const editing2 = this.draft?.edit || null;
       const measured = [];
       const origin = this.world$.getBoundingClientRect(), zoom = view5(w2, roomId).zoom || 1;
       for (const b of blocks) {
@@ -17443,7 +17550,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           x12 = Math.max(x12, (r.right - origin.left) / zoom);
           y12 = Math.max(y12, (r.bottom - origin.top) / zoom);
         }
-        const writing = b.tail && this.draft?.train && this.draft.train === b.group && !this.draft.edit || editing && (b.thoughts.includes(editing) || b.id === editing);
+        const writing = b.tail && this.draft?.train && this.draft.train === b.group && !this.draft.edit || editing2 && (b.thoughts.includes(editing2) || b.id === editing2);
         measured.push({ id: b.id, box: { x: x0, y: y0, w: x12 - x0, h: y12 - y0 }, fixed: !!b.hand || !!writing, at: b.at });
       }
       const moves = clearSpace(measured);
