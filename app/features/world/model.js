@@ -55,8 +55,14 @@ export const isGroup = (th) => kindOf(th) === 'group';
 const MEMBERSHIP = { joyce: 'one' };
 export function declareGroups(of, groups) {
   if (groups?.membership === 'many' || groups?.membership === 'one') MEMBERSHIP[of] = groups.membership;
+  declareOrder(of, groups);
 }
 export const membership = (of) => MEMBERSHIP[of] || 'one';
+// How each ontology's groups order their items: by time (the order they were written, as a train
+// reads) unless it declares order: 'kept', when they stay in the order they were put in (a
+// Russell chapter, whose thoughts are dragged up and down it).
+const KEPT = new Set();
+export function declareOrder(of, groups) { if (groups?.order === 'kept') KEPT.add(of); else KEPT.delete(of); }
 
 let counter = 0;
 export function uid(prefix = 'x') {
@@ -140,10 +146,13 @@ export function roomOf(w, id) {
 
 // ---- Groups ----
 
-// A group's items, in the order they were written.
+// A group's items, in the order they were written (or as they were put in, for an ontology that
+// keeps its order: declareOrder).
 export function members(w, groupId) {
   const g = w.things[groupId];
-  return isGroup(g) ? g.members.map((id) => w.things[id]).filter(isLeaf).sort(byTime) : [];
+  if (!isGroup(g)) return [];
+  const items = g.members.map((id) => w.things[id]).filter(isLeaf);
+  return KEPT.has(g.of) ? items : items.sort(byTime);
 }
 // The groups in a room (of one ontology, or of all).
 export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
@@ -160,7 +169,20 @@ export function join(w, groupId, id) {
   const g = w.things[groupId], th = w.things[id];
   if (!isGroup(g) || !isLeaf(th) || th.parent !== g.parent || g.members.includes(id)) return false;
   if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
-  g.members.push(id);
+  // A group that keeps its order takes a newcomer before the first item written after it (so a
+  // thought written between two goes between them); one written last goes at the end.
+  const i = KEPT.has(g.of) ? g.members.findIndex((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : -1;
+  if (i < 0) g.members.push(id); else g.members.splice(i, 0, id);
+  return true;
+}
+
+// Puts a group's items in the order `ids` gives (for a group that keeps its order; see
+// declareOrder). Items it holds that `ids` leaves out keep their places after them.
+export function setOrder(w, groupId, ids) {
+  const g = w.things[groupId];
+  if (!isGroup(g)) return false;
+  const listed = ids.filter((id) => g.members.includes(id));
+  g.members = [...new Set([...listed, ...g.members.filter((m) => !listed.includes(m))])];
   return true;
 }
 

@@ -14,7 +14,7 @@
 // where labels is { [parent]: text } and rel { [parent]: relation } (the default when missing).
 // Thoughts stay shared with every other mode.
 
-import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own, roomSetting } from '../model.js';
+import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own, roomSetting, setOrder } from '../model.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
@@ -363,6 +363,23 @@ export function chapterSpots(w, id, at) {
   return out;
 }
 
+// Puts a thought into a chapter (its own, or another) at the place a drag let it go: before the
+// first thought whose place (it and the gap after it) has its middle below the dragged thought's
+// own middle (y: where the dragged thought's top is; a line stands about 24 units tall).
+export function placeIn(w, roomId, chapterId, id, y) {
+  const g = w.things[chapterId];
+  const at = layout(w, roomId)[chapterId];
+  if (!isGroup(g) || !at) return false;
+  if (!g.members.includes(id) && !join(w, chapterId, id)) return false;
+  const spots = chapterSpots(w, chapterId, at);
+  const rest = members(w, chapterId).map((th) => th.id).filter((m) => m !== id);
+  const mid = y + 12;
+  let i = rest.findIndex((m) => spots[m] && spots[m].y + stepAfter(w.things[m]) / 2 > mid);
+  if (i < 0) i = rest.length;
+  rest.splice(i, 0, id);
+  return setOrder(w, chapterId, rest);
+}
+
 // The chapter under a point (world units), from the layout, or null.
 export function chapterAt(w, roomId, x, y, except = null) {
   const places = layout(w, roomId);
@@ -527,7 +544,7 @@ export default {
   note: 'chapters in a tree',
   icon: '<rect x="9" y="3" width="6" height="4"/><rect x="3" y="16" width="6" height="4"/><rect x="15" y="16" width="6" height="4"/><path d="M12 7v4.5M6 16v-4.5h12V16"/>', // a tree
   order: 30,
-  groups: { form: 'chapter', name: 'Chapter', membership: 'one' },
+  groups: { form: 'chapter', name: 'Chapter', membership: 'one', order: 'kept' },
   settings: [
     { key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' },
     RELATIONS,
@@ -550,21 +567,25 @@ export default {
     return g === th || g.folded ? at : chapterSpots(w, g.id, at)[id] || null;
   },
 
-  // A chapter dragged stays where it is let go (placed by hand). A thought let go over another
-  // chapter joins it; one from the tray let go on the empty canvas starts a chapter of its own
-  // there (a new root).
+  // A chapter dragged stays where it is let go (placed by hand). A thought let go over a chapter
+  // goes in among its thoughts where it was let go: further up or down its own chapter, or into
+  // another. Let go on the empty canvas, it starts a chapter of its own there (a new root); the only
+  // thought of a chapter moves its chapter instead, so the chapter keeps its arrows.
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
     if (isGroup(th)) { if (th.of === ID) Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); return; }
     if (!isLeaf(th)) return;
     const was = groupOf(w, id, ID);
-    const onto = chapterAt(w, roomId, x + 10, y + 10, was?.id);
-    if (onto) { join(w, onto, id); return; }
-    if (!was) {
-      const g = addChapter(w, roomId, { x: Math.round(x), y: Math.round(y) }, th.at);
-      if (g) { join(w, g.id, id); g.hand = true; }
+    const onto = chapterAt(w, roomId, x + 10, y + 10);
+    if (onto && !w.things[onto].folded) { placeIn(w, roomId, onto, id, y); return; }
+    if (onto) { if (onto !== was?.id) join(w, onto, id); return; }
+    if (was && members(w, was.id).length === 1) {
+      Object.assign(was, { x: Math.round(x), y: Math.round(y - headOf(was)), hand: true });
+      return;
     }
+    const g = addChapter(w, roomId, { x: Math.round(x), y: Math.round(y) }, th.at);
+    if (g) { join(w, g.id, id); g.hand = true; }
   },
 
   // A thought kept with no chapter to go on with: a child chapter when a move asked for one

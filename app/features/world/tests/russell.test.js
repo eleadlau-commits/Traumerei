@@ -1,10 +1,10 @@
 // Tests for Russell: chapters in a tree, joined by arrows with no loops and at most two parents.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting } from '../model.js';
+import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting, members, declareGroups } from '../model.js';
 import russell, {
   addChapter, link, unlink, setLabel, labelOf, parentsOf, childrenOf, arrows, whyNot, levels, layout,
-  chapterSize, chapters, chapterName, LAYOUT, labelSize,
+  chapterSize, chapters, chapterName, LAYOUT, labelSize, chapterSpots, ID,
   relations, relationOf, setRelation, cleanRelations, renameRelations, readHeading, headingAttrs, RELATIONS,
 } from '../ontologies/russell.js';
 
@@ -159,7 +159,7 @@ test('writing: a move asks for a child chapter; with none asked, a thought waits
   const own = groupOf(w, loose.id, 'russell');
   assert.ok(own && own.id !== p && own.id !== g.id);
   const at = russell.point(w, MESSY, p);
-  russell.drop(w, MESSY, loose.id, at.x, at.y);
+  russell.drop(w, MESSY, loose.id, at.x, at.y + 40); // (below its first thought, which names it)
   assert.equal(groupOf(w, loose.id, 'russell').id, p);
   assert.equal(russell.tag(w, loose.id).name, 'parent');
 });
@@ -208,4 +208,39 @@ test('relations in a heading: each parent, then its relation as a key; the rest 
   assert.deepEqual(headingAttrs(w, MESSY, b, t), [['parent', 'A'], ['forgets', 'it']]);
   assert.deepEqual(headingAttrs(w, MESSY, c, t), [['parent', 'A'], ['generalises', '']]);
   assert.deepEqual(headingAttrs(w, MESSY, d, t), [['parent', 'A']]);
+});
+
+test('moving: a thought goes where it is let go, up or down its chapter or into another', () => {
+  declareGroups(ID, russell.groups); // (index.js does this when the ontologies load)
+  const w = emptyWorld(1);
+  const a = chapter(w, 'a1');
+  const a2 = create(w, a, { kind: 'line', text: 'a2' }, clock++);
+  const a3 = create(w, a, { kind: 'line', text: 'a3' }, clock++);
+  const b = chapter(w, 'b1');
+  link(w, MESSY, a, b);
+  const texts = (g) => members(w, g).map((th) => th.text);
+  const spot = (g, id) => chapterSpots(w, g, layout(w, MESSY)[g])[id];
+  // a3 dragged to just above a1: first in its chapter, whatever its time.
+  const top = layout(w, MESSY)[a];
+  russell.drop(w, MESSY, a3.id, top.x, top.y - 10);
+  assert.deepEqual(texts(a), ['a3', 'a1', 'a2']);
+  // a2 dragged onto b1: into chapter b, before b1; the arrow stays.
+  const b1 = members(w, b)[0];
+  const at = spot(b, b1.id);
+  russell.drop(w, MESSY, a2.id, at.x, at.y - 4);
+  assert.deepEqual(texts(b), ['a2', 'b1']);
+  assert.deepEqual(texts(a), ['a3', 'a1']);
+  assert.deepEqual(parentsOf(w, MESSY, b), [a]);
+  // a1 let go on the empty canvas: a chapter of its own, placed by hand there.
+  const a1 = members(w, a).find((th) => th.text === 'a1');
+  russell.drop(w, MESSY, a1.id, 5000, 5000);
+  const own = groupOf(w, a1.id, ID);
+  assert.ok(own && own.id !== a && own.hand === true);
+  assert.deepEqual(texts(a), ['a3']);
+  // The last thought of a chapter let go on the empty canvas moves its chapter, arrows and all.
+  const a3n = members(w, a)[0];
+  russell.drop(w, MESSY, a3n.id, -3000, 100);
+  assert.equal(groupOf(w, a3n.id, ID).id, a);
+  assert.equal(w.things[a].hand, true);
+  assert.deepEqual(parentsOf(w, MESSY, b), [a]);
 });

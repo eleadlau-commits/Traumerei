@@ -129,8 +129,9 @@ export class Gestures {
       if (!this.liveFrame) this.liveFrame = requestAnimationFrame(() => { this.liveFrame = 0; this.drawWorld(); });
     } else {
       const x = g.thing.x + dx / v.zoom, y = g.thing.y + dy / v.zoom;
-      g.el.style.left = `${x}px`;
-      g.el.style.top = `${y}px`;
+      // A whole group (a Russell chapter) moves as one: each of its pieces follows the pointer.
+      g.els ??= this.dragEls(g);
+      for (const { el, left, top } of g.els) { el.style.left = `${left + dx / v.zoom}px`; el.style.top = `${top + dy / v.zoom}px`; }
       g.to = { x: Math.round(x), y: Math.round(y) };
     }
   }
@@ -175,7 +176,16 @@ export class Gestures {
       if (g.thing.placed) this.ont.drop(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
       else Object.assign(this.world.things[g.thing.id], g.to);
     }
+    this.drawWorld(); // where the ontology put it (or back where it was, when it took nothing)
     this.save();
+  }
+
+  // What a drag moves on the screen, with where each piece started: the one thought, or every piece
+  // drawn for a group (its thoughts, its name, its foot) when the group is dragged.
+  dragEls(g) {
+    const id = g.thing.kind === 'train' && g.el?.dataset.group;
+    const els = id ? [...this.stage.querySelectorAll(`[data-group="${CSS.escape(id)}"], [data-foot="${CSS.escape(id)}"]`)].filter((n) => !n.dataset.arrow) : [g.el];
+    return els.filter(Boolean).map((el) => ({ el, left: parseFloat(el.style.left) || 0, top: parseFloat(el.style.top) || 0 }));
   }
 
   // ---- Keys: delete, choose all, nudge (the key map lists them: keys.js) ----

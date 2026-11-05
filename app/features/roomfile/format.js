@@ -33,7 +33,7 @@
 import {
   view, room, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, addRoom,
   seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, link, arrowsInto, stepAfter,
-  remove, leave, groupsOf, isGroup, unlink, setLabel, broken, setRelation, relations, readHeading, headingAttrs,
+  remove, leave, groupsOf, isGroup, unlink, setLabel, broken, setRelation, relations, readHeading, headingAttrs, setOrder,
 } from './world.js';
 
 const RUSSELL = 'russell';
@@ -640,17 +640,20 @@ function run(w, roomId, p, { now, removeMissing }) {
       k = e;
     }
     const keep = new Set();
+    const order = [];
     for (const s of seq) {
       if (s.th) {
         keep.add(s.th.id);
+        order.push(s.th.id);
         counts.kept++;
         if (s.at != null) s.th.at = s.at;
         continue;
       }
       const th = create(w, parent, s.f, s.at);
-      if (th) { keep.add(th.id); counts.made++; if (kindOf(th) === 'picture') counts.pictures++; }
+      if (th) { keep.add(th.id); order.push(th.id); counts.made++; if (kindOf(th) === 'picture') counts.pictures++; }
     }
     for (const th of old) if (!keep.has(th.id) && w.things[th.id]) drop(th, parent === roomId ? null : parent);
+    if (parent !== roomId) setOrder(w, parent, order); // a group that keeps its order reads as the text does
   };
 
   // The room's relations as they will be once the front matter is in.
