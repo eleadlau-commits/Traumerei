@@ -51,8 +51,11 @@ export class Gestures {
       e.preventDefault();
       this.gesture = { kind: 'pan', ...pan, ...((e.ctrlKey || e.metaKey) && !middle ? { toggle: true, pick: this.picked(groupEl, thoughtEl) } : {}) };
     }
+    // Shift+drag, from anywhere, draws a selection box that adds to the choice (a Shift+click,
+    // without moving, still adds the one clicked).
+    else if (e.shiftKey && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan, add: true, pick: this.picked(groupEl, thoughtEl) };
     else if (this.sel?.kind === 'many' && hitId && this.isSel(hitId)) this.gesture = { kind: 'group', ...pan, from: this.groupSpots() };
-    else if (!hitId && e.pointerType === 'mouse') this.gesture = { kind: 'box', ...pan }; // a drag on the empty canvas draws a selection box
+    // Otherwise a drag on a thing moves it, and a drag on the empty canvas moves the canvas (below).
     if (this.gesture) { this.listen(e); return; }
     const pick = this.picked(groupEl, thoughtEl);
     if (pick) {
@@ -251,7 +254,7 @@ export class Gestures {
   // The list of keys (the key map's ?), when the keys feature is there.
   showKeys() { this.keyMap?.show(); }
 
-  // ---- Choosing many: a box drawn on the empty canvas ----
+  // ---- Choosing many: a box drawn with Shift+drag ----
 
   isSel(id) { return this.sel?.id === id || !!this.sel?.ids?.includes(id); }
 
@@ -266,6 +269,7 @@ export class Gestures {
   endBox(g) {
     this.box?.remove();
     this.box = null;
+    if (g.add && (!g.moved || !g.rect)) { if (g.pick) this.chooseMore(g.pick); return; } // a Shift+click
     if (!g.moved || !g.rect) { // a plain click on the canvas: nothing chosen
       this.sel = null;
       if (this.draft) this.stopWriting();
@@ -279,6 +283,7 @@ export class Gestures {
       if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
       ids.add(n.dataset.thought || n.dataset.group);
     }
+    if (g.add && this.sel) for (const id of this.sel.ids || [this.sel.id]) ids.add(id); // Shift: added to what was chosen
     this.sel = this.selOf([...ids]);
     this.drawWorld();
   }

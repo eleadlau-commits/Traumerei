@@ -192,9 +192,11 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   (Cmd+click on a Mac) puts one in or takes it out. Ctrl+drag still moves the canvas. Ctrl+C
   copies what is chosen (and its words, for other apps); Ctrl+V puts copies in the open room,
   any room, as they sat, and chooses them. A copy is always a new thought, never the same one.
-- **Choosing many:** drag on the empty canvas to draw a selection box; the chosen thoughts move
-  together when one is dragged, and can be moved to a room or deleted together. **Ctrl+drag**
-  (or two fingers on a phone) moves the canvas. Names keep with Enter.
+- **Dragging:** a plain drag on a thing moves it; on empty space it moves the canvas. **Ctrl+drag**
+  always moves the canvas, wherever it starts (so do Space+drag, the middle button and two
+  fingers). **Shift+drag** draws a selection box, from anywhere, adding to what is chosen; the
+  chosen thoughts move together when one is dragged, and can be moved to a room or deleted
+  together. Names keep with Enter.
 - Every pop-up and panel (Add, the sheet, the timeline, a thing's edit pop-up)
   shares one pale, blurred style: the palette's veil.
 - **The same verbs** on a thought or a group (and on a room, on the rooms page), in `verbs.js`:
