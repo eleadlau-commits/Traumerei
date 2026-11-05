@@ -395,6 +395,62 @@ export function chosenChapter(c) {
 
 // ---- On the canvas ----
 
+// An arrow being edited where it is (a double-click on it or its label): { room, from, to, text,
+// rel }. Enter keeps it, Esc lets it go, a press elsewhere keeps it. Drawn by draw(), so a redraw
+// keeps it open with what was typed.
+let editing = null;
+let lastArrow = null; // the arrow pressed last, { key, at }, to hear a double-click
+const arrowKey = (from, to) => `${from}>${to}`;
+
+function startEdit(c, from, to) {
+  const a = arrowsInto(c.world, c.roomId, to);
+  if (!a.parents.includes(from)) return;
+  editing = { room: c.roomId, from, to, text: a.labels[from] || '', rel: a.rel[from] || '', fresh: true };
+  c.drawWorld();
+}
+
+function finishEdit(c, keep) {
+  const e = editing;
+  editing = null;
+  if (keep && e && e.room === c.roomId && !c.locked) {
+    setLabel(c.world, c.roomId, e.from, e.to, e.text);
+    setRelation(c.world, c.roomId, e.from, e.to, e.rel);
+    c.save();
+  }
+  c.drawWorld();
+}
+
+// The box an arrow is edited in: its relation (when the room has several) and its label.
+function editBox(c, spot, names) {
+  const e = editing;
+  const now = e.rel || names[0];
+  const keys = (ev) => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { ev.preventDefault(); finishEdit(c, true); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(c, false); }
+  };
+  const input = c.el('input', {
+    class: 'room-edit-text', value: e.text, placeholder: 'the coordinates', spellcheck: 'false',
+    'aria-label': 'The arrow\'s label', oninput: (ev) => { e.text = ev.target.value; }, onkeydown: keys,
+  });
+  const pick = names.length > 1 || !names.includes(now)
+    ? c.el('select', {
+      class: 'room-russell-pick-rel', 'aria-label': 'The arrow\'s relation', onkeydown: keys,
+      onchange: (ev) => { e.rel = ev.target.value === names[0] ? '' : ev.target.value; input.focus(); },
+    }, ...[...new Set([...names, now])].map((n) => c.el('option', { value: n, selected: n === now }, n)))
+    : c.el('span', { class: 'room-russell-rel' }, now);
+  const box = c.el('div', {
+    class: `panel room-russell-edit side-${spot.side}`, style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
+  }, pick, input);
+  requestAnimationFrame(() => {
+    if (!box.isConnected || box.contains(document.activeElement)) return;
+    input.focus();
+    if (e.fresh) input.select(); else input.setSelectionRange(input.value.length, input.value.length);
+    e.fresh = false;
+  });
+  return box;
+}
+
 // A move waiting for a click on a chapter: { room, child, kind: 'add' | 'cut' } (Add second
 // parent: click the parent; Remove arrow, from a junction: click the parent to cut it from).
 let pending = null;
@@ -545,6 +601,25 @@ export default {
   // the one clicked (anywhere else lets it go).
   press(c, e) {
     if (e.button !== 0 || c.locked) return false;
+    // An arrow being edited: a press in its box is its own; anywhere else keeps the edit.
+    if (editing && editing.room === c.roomId) {
+      if (e.target.closest?.('.room-russell-edit')) return true;
+      finishEdit(c, true);
+    }
+    // A double-click on an arrow or its label edits it (the canvas is redrawn between the two
+    // presses, so the arrow is heard by its key, not its node).
+    const hit = e.target.closest?.('[data-arrow]');
+    if (hit) {
+      const key = hit.dataset.arrow, now = Date.now();
+      if (lastArrow?.key === key && now - lastArrow.at < 400) {
+        lastArrow = null;
+        e.preventDefault();
+        const [from, to] = key.split('>');
+        startEdit(c, from, to);
+        return true;
+      }
+      lastArrow = { key, at: now };
+    } else lastArrow = null;
     if (pending && pending.room === c.roomId) {
       const job = pending;
       pending = null;
@@ -641,7 +716,22 @@ export default {
       // From the side of the parent that faces the child to the child's facing side; the label
       // at the arrow's middle.
       const arrow = between(arrowBox(a), arrowBox(b), pads(w, from, to));
-      layer.append(svg('path', { class: 'room-russell-arrow', d: arrowLine(arrow, line), 'marker-end': 'url(#russell-head)' }));
+      const d = arrowLine(arrow, line), key = arrowKey(from, to);
+      layer.append(svg('path', { class: 'room-russell-arrow', d, 'marker-end': 'url(#russell-head)' }));
+      const hit = svg('path', { class: 'room-russell-hit', d, 'data-arrow': key });
+      layer.append(hit);
+      const mid = labelSpot(arrow, line);
+      if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
+        nodes.push(editBox(c, mid, names));
+        continue;
+      }
+      if (!label && !c.locked) {
+        // An arrow with no label: a faint hint of its relation when the pointer is on it.
+        const hint = el('div', { class: `room-russell-label room-russell-hint side-${mid.side}`, 'data-arrow': key, title: 'Double-click to write this arrow\'s label', style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel || names[0]}…`);
+        hit.addEventListener('pointerenter', () => hint.classList.add('show'));
+        hit.addEventListener('pointerleave', () => hint.classList.remove('show'));
+        nodes.push(hint);
+      }
       if (label) {
         // A junction's two arrows lean towards each other, so each label goes on the side its
         // parent is on, away from the other arrow. Arrows fanning out of one foot are close
@@ -650,7 +740,7 @@ export default {
         const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
         const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
         nodes.push(el('div', {
-          class: `room-russell-label side-${spot.side}`, 'data-group': to, title: `${rel || names[0]} ${label}`,
+          class: `room-russell-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${rel || names[0]} ${label} (double-click to edit)`,
           style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
         }, names.length > 1 ? el('span', { class: 'room-russell-rel' }, `${rel || names[0]} `) : null, maths(label)));
       }

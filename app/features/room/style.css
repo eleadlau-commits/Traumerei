@@ -68,6 +68,17 @@
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
 .room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
+.room-russell-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.room-russell-hint { opacity: 0; transition: opacity .2s; }
+.room-russell-hint.show, .room-russell-hint:hover { opacity: .35; }
+.room-russell-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
+.room-russell-edit.side-right { transform: translateY(-50%); }
+.room-russell-edit.side-left { transform: translate(-100%, -50%); }
+.room-russell-edit.side-above { transform: translate(-50%, -100%); }
+.room-russell-edit.side-right-up { transform: translateY(-100%); }
+.room-russell-edit.side-left-up { transform: translate(-100%, -100%); }
+.room-russell-edit.side-left-down { transform: translateX(-100%); }
+.room-russell-edit input { width: 200px; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
