@@ -1362,6 +1362,7 @@ html.rail-narrow { --rail: 48px; }
 .time-scrub-now { font-size: 12px; }
 button.time-date { display: block; width: 100%; text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 button.time-date.on { opacity: 1; color: var(--amber); }
+.time-item.lit .time-when { color: var(--amber); opacity: 1; }
 
 /* ---- feature: rooms (style.css) ---- */
 /* Styles for the rooms page: layout only (the look, the rail, the pop-ups and the frame's pieces
@@ -2215,6 +2216,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-twin-other:hover { opacity: .8; }
 .room-twin-other .room-world { pointer-events: none; }
 .room-twin-label { position: absolute; bottom: var(--s-5, 24px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+
+/* A past day from the Time dock (view.js markPast): thoughts made after it fade; those written
+   that day glow. Everything stays where it is now. */
+.room-world.room-past .room-later { opacity: .16; transition: opacity var(--quick); }
+.room-world.room-past .room-lit-day { box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 22%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }
 
 </style>
 </head>
@@ -16185,9 +16191,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return [...by].sort((a, b) => b[0] - a[0]).map(([day, rooms4]) => ({ day, rooms: [...rooms4].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n) }));
   }
+  var DAY2 = 864e5;
+  function roomBoard(m2, w2, roomId, day) {
+    const end = day + DAY2 - 1, later = [], lit = [];
+    for (const th of m2.roomThoughts(w2, roomId)) {
+      if ((th.at ?? 0) > end) later.push(th.id);
+      else if (dayOf(th.at) === day || dayOf(changed(th)) === day) lit.push(th.id);
+    }
+    return { day, later, lit };
+  }
+  function roomFirst(m2, w2, roomId, when = Date.now()) {
+    let first = w2.things[roomId]?.at || when;
+    for (const th of m2.roomThoughts(w2, roomId)) if (th.at > 0 && th.at < first) first = th.at;
+    return dayOf(first);
+  }
 
   // dist/web/features/time/record.js
-  var DAY2 = 864e5;
+  var DAY3 = 864e5;
   var KEEP2 = [{ days: 30, words: "1 month" }, { days: 365, words: "1 year" }, { days: 0, words: "Forever" }];
   var KEEP_DEFAULT = 365;
   var emptyRecord = () => ({ base: null, days: {} });
@@ -16244,7 +16264,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function prune(rec, keep, when = Date.now()) {
     if (!keep) return rec;
-    const from = dayOf(when - (keep - 1) * DAY2);
+    const from = dayOf(when - (keep - 1) * DAY3);
     const old = sortedDays(rec).filter((d) => d < from);
     if (!old.length) return rec;
     const rooms4 = { ...rec.base?.rooms || {} };
@@ -16261,7 +16281,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return dayOf(first);
   }
   function pastBoard(m2, w2, rec, day) {
-    const end = day + DAY2 - 1;
+    const end = day + DAY3 - 1;
     const first = firstDay(rec);
     let rooms4;
     if (first != null && day >= first) rooms4 = stateAt(rec, day);
@@ -16439,7 +16459,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const title = r ? twin ? `${twin.name} · ${r.name}` : r.name : "Every room";
       const kind = r ? "Timeline" : "Days";
       const list2 = r ? this.roomList(p, roomId) : this.dayList(p);
-      const scrub = r ? null : this.scrubFor(p);
+      const scrub = this.scrubFor(p);
       if (this.shown && this.panel.isOpen(KEY2)) {
         if (this.shown.scrub !== scrub) this.shown.top.replaceChildren(...scrub ? [scrub.el] : []);
         this.shown.scrub = scrub;
@@ -16492,8 +16512,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.draw();
         return;
       }
-      const first = earliest(this.world, this.record);
-      day = dayStart(Math.max(first, Math.min(day, Date.now())));
+      day = dayStart(Math.max(this.firstFor(p), Math.min(day, Date.now())));
       if (day >= this.today()) {
         this.toNow();
         this.draw();
@@ -16502,7 +16521,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.writeRecord();
       this.day = day;
       this.pastFor = p;
-      p.showDay(pastBoard(this.m, this.world, this.record, day));
+      const roomId = p.room?.();
+      p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day) : pastBoard(this.m, this.world, this.record, day));
       this.draw();
     }
     // Back to now: the place shows the present again.
@@ -16512,9 +16532,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.pastFor = null;
       p?.showDay?.(null);
     }
+    // The first day the slider reaches: the room's first, or (on the rooms page) the first known.
+    firstFor(p) {
+      const roomId = p.room?.();
+      return roomId ? roomFirst(this.m, this.world, roomId) : earliest(this.world, this.record);
+    }
     // A day earlier (-1) or later (+1), or a week with Shift.
     step(by) {
-      this.setDay((this.day ?? this.today()) + by * DAY2 + DAY2 / 2);
+      this.setDay((this.day ?? this.today()) + by * DAY3 + DAY3 / 2);
     }
     // In the dock: ↑ a day later, ↓ a day earlier, with Shift a week; Escape (the dock's) closes
     // Time and so comes back to now.
@@ -16524,12 +16549,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e.preventDefault();
       this.step((e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? 7 : 1));
     }
-    // The slider of days, for the rooms page: oldest at the left, today at the right. Made once
-    // while the dock shows and kept up to date.
+    // The slider of days, for a place that can show a past day (the rooms page, a room): oldest at
+    // the left, today at the right. Made once while the dock shows and kept up to date.
     scrubFor(p) {
       if (!p.showDay) return null;
-      const first = earliest(this.world, this.record);
-      const n = Math.max(0, Math.round((this.today() - first) / DAY2));
+      const first = this.firstFor(p);
+      const n = Math.max(0, Math.round((this.today() - first) / DAY3));
       let s = this.shown?.scrub;
       if (!s) {
         s = { el: null };
@@ -16540,7 +16565,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           min: 0,
           step: 1,
           "aria-label": "Go back to a day",
-          oninput: () => this.setDay(earliest(this.world, this.record) + +s.slider.value * DAY2 + DAY2 / 2)
+          oninput: () => {
+            const at3 = this.place();
+            if (at3) this.setDay(this.firstFor(at3) + +s.slider.value * DAY3 + DAY3 / 2);
+          }
         });
         s.from = el11("span", { class: "time-when" });
         s.now = el11("button", { type: "button", class: "word time-scrub-now", onclick: () => this.setDay(null) }, "Now");
@@ -16553,7 +16581,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         );
       }
       s.slider.max = String(n);
-      const at2 = this.day == null ? n : Math.round((this.day - first) / DAY2);
+      const at2 = this.day == null ? n : Math.round((this.day - first) / DAY3);
       if (document.activeElement !== s.slider || this.day == null) s.slider.value = String(at2);
       s.label.textContent = this.day == null ? "Now" : longDate(this.day);
       s.from.textContent = shortDate(first);
@@ -16561,11 +16589,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       s.el.classList.toggle("past", this.day != null);
       return s;
     }
-    // In a room: its thoughts in time, latest at the bottom.
+    // In a room: its thoughts in time, latest at the bottom. Gone back to a day, only those made by
+    // its end, those written that day lit.
     roomList(p, roomId) {
       const w2 = this.world, m2 = this.m;
-      const items = timeline2(m2, w2, roomId);
-      if (!items.length) return el11("p", { class: "time-none" }, "Nothing written here yet");
+      const day = this.pastFor === p ? this.day : null;
+      const end = day == null ? Infinity : day + DAY3 - 1;
+      const items = timeline2(m2, w2, roomId).filter((th) => (th.at ?? 0) <= end);
+      if (!items.length) return el11("p", { class: "time-none" }, day == null ? "Nothing written here yet" : "Nothing written here by then");
       const ont = this.w.ontology(m2.view(w2, roomId).mode);
       const sel = p.chosen?.() || null;
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -16575,7 +16606,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "button",
           {
             type: "button",
-            class: "pick time-item" + (sel && (sel === th.id || sel === tag?.id) ? " on" : ""),
+            class: "pick time-item" + (sel && (sel === th.id || sel === tag?.id) ? " on" : "") + (day != null && (dayOf(th.at) === day || dayOf(changed(th)) === day) ? " lit" : ""),
             style: tag ? `--tag:hsl(${m2.hash(tag.id) % 360} 32% 46%)` : "",
             onclick: () => p.go({ id: th.id, kind: m2.kindOf(th), room: roomId })
           },
@@ -16603,7 +16634,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           class: "word time-date" + (this.day === d.day ? " on" : ""),
           "aria-pressed": String(this.day === d.day),
           title: "See the rooms page as it was that day",
-          onclick: () => this.setDay(this.day === d.day ? null : d.day + DAY2 / 2)
+          onclick: () => this.setDay(this.day === d.day ? null : d.day + DAY3 / 2)
         }, longDate(d.day)) : el11("div", { class: "sub-head time-date" }, longDate(d.day)),
         ...d.rooms.map(({ id, n }) => el11(
           "button",
@@ -20311,6 +20342,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drawWorld() {
       if (!this.roomId) return;
       this.world$.replaceChildren(...this.canvasNodes());
+      this.markPast();
       this.showStatus();
       this.drawBar();
       this.drawTray();
@@ -20345,7 +20377,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const s = this.sel;
       const n = !s ? 0 : s.kind === "many" ? s.ids.length : 1;
       const what = !s ? "" : s.kind === "many" ? `${n} chosen` : s.kind === "train" ? `1 ${this.groupName(this.world.things[s.id]).toLowerCase()} chosen` : "1 chosen";
-      this.frame?.update(this, { selection: what, mode: this.locked ? `${this.ont.name} · locked` : this.ont.name });
+      const mode = this.locked ? `${this.ont.name} · locked` : this.ont.name;
+      this.frame?.update(this, { selection: what, mode: this.past ? `${pastWords2(this.past.day)} · ${mode}` : mode });
+    }
+    // Gone back to a day in the Time dock (the time feature, through showDay): every thought stays
+    // where it is now, but those made after that day fade, and those written that day glow.
+    markPast() {
+      const p = this.past;
+      const later = new Set(p?.later || []), lit = new Set(p?.lit || []);
+      this.world$.classList.toggle("room-past", !!p);
+      for (const n of this.world$.querySelectorAll("[data-thought]")) {
+        n.classList.toggle("room-later", later.has(n.dataset.thought));
+        n.classList.toggle("room-lit-day", lit.has(n.dataset.thought));
+      }
     }
     // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----
     clearSoon() {
@@ -20414,6 +20458,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (depth < 2) this.clearRoom(depth + 1);
     }
   };
+  var pastWords2 = (day) => `As on ${new Date(day).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
 
   // dist/web/features/room/writing.js
   var Writing = class {
@@ -22533,6 +22578,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.barFor = null;
       this.editor = null;
       this.editing = null;
+      this.past = null;
       this.picker = ui_exports.filePicker("image/*");
       this.drafts = this.storage.get("drafts", {}) || {};
       this.files = this.use("roomfile");
@@ -22602,6 +22648,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         },
         redraw: () => {
           if (this.roomId) this.drawRoom();
+        },
+        // A past day: { day, later, lit } (thought ids), or null for now (view.js markPast).
+        showDay: (past) => {
+          this.past = past;
+          if (this.roomId) this.drawWorld();
         }
       });
       document.addEventListener("keydown", (e) => this.onKey(e));
