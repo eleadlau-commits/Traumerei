@@ -63,3 +63,37 @@ test('a group made in the tray stays in the tray until it is dragged out', () =>
   assert.deepEqual(ids(chapters(w, MESSY)), [g.id]);
   assert.deepEqual(russell.tray(w, MESSY), []);
 });
+
+test('Ctrl+G on whole trains makes a train of trains, drawn inside it; Ctrl+Shift+G frees them', async () => {
+  const { ungroupChosen } = await import('../ontologies/index.js');
+  const { roomTrains } = await import('../model.js');
+  const w = emptyWorld();
+  const a = train(w, 'a', 'b');
+  const b = train(w, 'c');
+  const outer = groupChosen(joyce, w, MESSY, [a.id, b.id], 50);
+  assert.ok(outer);
+  assert.deepEqual(ids(members(w, outer.id)), [a.id, b.id]);
+  assert.deepEqual(ids(roomTrains(w, MESSY)), [outer.id]); // the two are inside it now
+  assert.ok(joyce.units(w, MESSY).some((u) => u.id === a.id));
+  assert.ok(joyce.point(w, MESSY, b.id)); // where it sits in the outer train
+  // To the other modes it is one Train.
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [outer.id]);
+  // One group of its own alone: grouped already.
+  assert.equal(groupChosen(joyce, w, MESSY, [outer.id], 60), null);
+  assert.equal(ungroupChosen(joyce, w, MESSY, [outer.id]), 2);
+  assert.equal(w.things[outer.id], undefined);
+  assert.deepEqual(ids(roomTrains(w, MESSY)).sort(), [a.id, b.id].sort());
+  assert.equal(members(w, a.id).length, 2); // nothing inside was lost
+});
+
+test('a chapter of chapters keeps the inner ones out of the tree', () => {
+  const w = emptyWorld();
+  const x = create(w, MESSY, { kind: 'line', text: 'x' }, 1);
+  const y = create(w, MESSY, { kind: 'line', text: 'y' }, 2);
+  russell.drop(w, MESSY, x.id, 0, 0);
+  russell.drop(w, MESSY, y.id, 900, 0);
+  const [cx, cy] = chapters(w, MESSY);
+  const big = groupChosen(russell, w, MESSY, [cx.id, cy.id], 3);
+  assert.deepEqual(ids(chapters(w, MESSY)), [big.id]);
+  assert.ok(russell.point(w, MESSY, cx.id));
+});

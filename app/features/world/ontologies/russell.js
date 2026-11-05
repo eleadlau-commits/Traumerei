@@ -34,11 +34,12 @@ export const LINES = ['straight', 'curved'];
 // ---- Reading the tree ----
 
 // The room's chapters (those with thoughts), oldest first.
-export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !g.loose && members(w, g.id).length);
+// (A chapter held by another chapter is one thought inside it: not in the tree.)
+export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !g.loose && members(w, g.id).length && !groupOf(w, g.id, ID));
 
 const isChapter = (w, roomId, id) => {
   const g = w.things[id];
-  return isGroup(g) && g.of === ID && g.parent === roomId;
+  return isGroup(g) && g.of === ID && g.parent === roomId && !groupOf(w, id, ID);
 };
 
 // ---- Relations ----
@@ -561,7 +562,7 @@ export default {
 
   point(w, roomId, id) {
     const th = w.things[id];
-    const g = isGroup(th) && th.of === ID ? th : groupOf(w, id, ID);
+    const g = isGroup(th) && th.of === ID && !groupOf(w, id, ID) ? th : groupOf(w, id, ID);
     if (!g || g.parent !== roomId) return null;
     const at = layout(w, roomId)[g.id];
     if (!at) return null;
@@ -575,7 +576,7 @@ export default {
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th) && th.of === ID) { Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); place(w, id); return; }
+    if (isGroup(th) && th.of === ID && !groupOf(w, id, ID)) { Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); place(w, id); return; }
     if (!isLeaf(th) && !isGroup(th)) return; // another mode's group goes where a thought would
     const was = groupOf(w, id, ID);
     const onto = chapterAt(w, roomId, x + 10, y + 10);

@@ -79,7 +79,7 @@ export function nextSpot(w, trainId) {
 export function nudge(w, id, x, y, now = Date.now()) {
   const th = w.things[id];
   const t = th && groupOf(w, id, 'joyce');
-  if (!t || !isLeaf(th) || shut(w, id)) return false;
+  if (!t || !(isLeaf(th) || isGroup(th)) || shut(w, id)) return false;
   th.dx = Math.round(x - t.x);
   th.dy = Math.round(y - t.y);
   th.edited = now;
@@ -166,8 +166,8 @@ export default {
 
   point(w, roomId, id) {
     const th = w.things[id];
-    if (isGroup(th) && th.of !== 'joyce') return spot(w, roomId, 'joyce', id);
-    if (isGroup(th)) return { x: th.x, y: th.y };
+    if (isGroup(th) && th.of !== 'joyce' && !groupOf(w, id, 'joyce')) return spot(w, roomId, 'joyce', id);
+    if (isGroup(th) && !groupOf(w, id, 'joyce')) return { x: th.x, y: th.y };
     const t = groupOf(w, id, 'joyce');
     if (!t) return null;
     return t.closed ? { x: t.x, y: t.y } : trainSpots(w, t.id)[id] || null;
@@ -178,7 +178,8 @@ export default {
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th) && th.of !== 'joyce') putAt(w, roomId, 'joyce', id, x, y);
+    if (isGroup(th) && groupOf(w, id, 'joyce')) nudge(w, id, x, y); // a group in a train moves in it, as a thought does
+    else if (isGroup(th) && th.of !== 'joyce') putAt(w, roomId, 'joyce', id, x, y);
     else if (isGroup(th)) { Object.assign(th, { x, y, hand: true }); place(w, id); }
     else if (isLeaf(th) && !groupOf(w, id, 'joyce')) {
       const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
@@ -225,7 +226,8 @@ export default {
   shift(w, roomId, id, dx, dy) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th) && th.of !== 'joyce') {
+    if (isGroup(th) && groupOf(w, id, 'joyce')) { if (Number.isFinite(th.dx)) { th.dx += dx; th.dy += dy; } } // in a train: as a thought
+    else if (isGroup(th) && th.of !== 'joyce') {
       const p = spot(w, roomId, 'joyce', id);
       if (p) putAt(w, roomId, 'joyce', id, p.x + dx, p.y + dy);
     } else if (isGroup(th)) {
