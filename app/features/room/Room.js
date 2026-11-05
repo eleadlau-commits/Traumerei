@@ -71,6 +71,7 @@ export default class Room extends Feature {
       // The same verbs as on the rooms page (verbs.js).
       'room.rename': (e) => verbs.rename(this, e),
       'room.duplicate': (e) => verbs.duplicate(this, e),
+      'room.fold': (e) => verbs.fold(this, e),
       'room.close': (e) => verbs.close(this, e),
       'room.group': (e) => verbs.group(this, e),
       'room.ungroup': (e) => verbs.ungroup(this, e),

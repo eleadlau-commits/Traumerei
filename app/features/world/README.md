@@ -63,6 +63,10 @@ Joyce and Pessoa keep where they placed one in their own data, `spot` / `putAt`)
 outermost groups show this way: a train of trains is one Train. A group made from thoughts in an
 ontology's tray is `loose` and stays in the tray until dragged out (`place`).
 
+**Folding** (`groups.js`: `fold`, `foldPlan`) is not grouping: the chosen thoughts (and everything
+inside chosen groups) become one new thought, which takes their place in every group of every
+ontology that held them and in each ontology's own data; the old ones are deleted.
+
 **Grouping what is chosen** (Ctrl+G, Ctrl+Shift+G in a room) is each ontology's own rule:
 `ontologies/index.js`'s `groupChosen` and `ungroupChosen` use an ontology's `group` / `ungroup`
 when it has them, or else make one group of its own where the first thing is (and take things

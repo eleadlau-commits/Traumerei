@@ -97,3 +97,37 @@ test('a chapter of chapters keeps the inner ones out of the tree', () => {
   assert.deepEqual(ids(chapters(w, MESSY)), [big.id]);
   assert.ok(russell.point(w, MESSY, cx.id));
 });
+
+test('fold: many thoughts become one, in their place in every mode, and the old ones go', async () => {
+  const { fold, foldPlan } = await import('../groups.js');
+  const w = emptyWorld();
+  const t = train(w, 'a', 'b', 'c');
+  const [a, b, c] = members(w, t.id);
+  // In Russell, b and c sit in a chapter with x; in Pessoa, b was dragged somewhere.
+  const x = create(w, MESSY, { kind: 'line', text: 'x' }, 9);
+  russell.drop(w, MESSY, x.id, 0, 0);
+  const [ch] = chapters(w, MESSY);
+  russell.drop(w, MESSY, b.id, 0, 0);
+  russell.drop(w, MESSY, c.id, 0, 0);
+  pessoa.drop(w, MESSY, b.id, 11, 22);
+  const one = fold(w, MESSY, [b.id, c.id], 100);
+  assert.equal(one.kind, 'line');
+  assert.equal(one.text, 'b\nc');
+  assert.equal(w.things[b.id], undefined);
+  assert.equal(w.things[c.id], undefined);
+  assert.deepEqual(members(w, t.id).map((m) => m.text), ['a', 'b\nc']); // in the train, where they were
+  assert.ok(members(w, ch.id).some((m) => m.id === one.id)); // and in the chapter, once
+  assert.equal(members(w, ch.id).filter((m) => m.id === one.id).length, 1);
+  assert.deepEqual(pessoa.point(w, MESSY, one.id), { x: 11, y: 22 }); // b's place in Pessoa
+  // A whole train folds: it stays, holding one passage when the words aren't all lines.
+  const p = create(w, t.id, { kind: 'passage', title: 'P', body: 'body' }, 200);
+  const two = fold(w, MESSY, [t.id], 300);
+  assert.equal(two.kind, 'passage');
+  assert.deepEqual(members(w, t.id).map((m) => m.id), [two.id]);
+  assert.match(two.body, /a[\s\S]*b\nc[\s\S]*body/);
+  assert.equal(w.things[p.id], undefined);
+  // What can't be folded says why.
+  assert.ok(foldPlan(w, MESSY, [two.id]).why);
+  const pic = create(w, MESSY, { kind: 'picture', src: 'data:image/png;base64,AAAA' }, 400);
+  assert.match(fold(w, MESSY, [pic.id, x.id]).why, /Pictures/);
+});
