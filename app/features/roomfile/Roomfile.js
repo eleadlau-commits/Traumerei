@@ -7,14 +7,21 @@
 
 import { Feature, ui } from 'folio';
 import { bind, room, shut, keepOrShrink, chapterName, isGroup } from './world.js';
+// The source editor still uses room Markdown (format.js) until it moves to .traum.
 import {
-  parse, say, importRoom, importInto, exportRoom, exportGroup, plan, apply, shortPictures, badMaths,
-  fileName, copyWorld, unfetched,
+  parse, exportGroup, exportRoom, plan, apply, shortPictures, badMaths, fileName, copyWorld, unfetched,
 } from './format.js';
+import * as traum from './traum.js';
+import { parse as parseTraum } from './grammar.js';
+import { plain } from './plain.js';
 
 const { el } = ui;
-const MD = /\.(md|markdown|txt)$/i;
-const isRoomFile = (f) => !!f && (MD.test(f.name || '') || /markdown/.test(f.type || ''));
+const FILE = /\.(traum|md|markdown|txt)$/i;
+const isRoomFile = (f) => !!f && (FILE.test(f.name || '') || /markdown|text\/plain/.test(f.type || ''));
+// A .traum file, or text written in its shape (front matter with format:, or a # Objects line);
+// anything else is plain Markdown, brought in as loose thoughts.
+const isTraum = (name, text) => /\.traum$/i.test(name || '') || /^---\s*\n(?:.*\n)*?format:\s/.test(text) || /^#\s+Objects\s*$/m.test(text);
+const say = traum.say;
 const REPORT = 8; // lines of the report the card shows
 const count = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
@@ -37,16 +44,38 @@ export default class Roomfile extends Feature {
   }
 
   pick() {
-    this.picker ||= ui.filePicker('.md,.markdown,.txt,text/markdown,text/plain');
+    this.picker ||= ui.filePicker('.traum,.md,.markdown,.txt,text/markdown,text/plain');
     return this.picker.pick();
   }
 
-  // The file read, its pictures fetched and shrunk as pasted ones are. One that can't be fetched
-  // becomes a line saying so. Returns the parsed file (format.js), or null.
+  // The file read into parts (grammar.js; a plain Markdown file as loose thoughts, plain.js), its
+  // pictures fetched and shrunk as pasted ones are. Returns the parts, or null.
   async read(file) {
     let text;
     try { text = await file.text(); } catch { this.toast('That file couldn\'t be read.'); return null; }
-    return this.fetchPictures(parse(text));
+    return this.fetchObjectPictures(isTraum(file.name, text) ? parseTraum(text) : plain(text));
+  }
+
+  // The parts' pictures at an address (or as data) fetched and shrunk; one that can't be fetched
+  // keeps its address, and comes in as a line saying so.
+  async fetchObjectPictures(parts) {
+    const pics = parts.objects.filter((o) => o.kind === 'picture' && o.lines.join('').trim() && !/^picture:\d+$/.test(o.lines.join('').trim()));
+    if (pics.some((o) => /^https?:/i.test(o.lines.join('').trim()))) this.toast('Fetching pictures…');
+    for (const o of pics) {
+      const at = o.lines.join('').trim();
+      try {
+        let blob;
+        if (at.startsWith('data:')) blob = await (await fetch(at)).blob();
+        else if (/^https?:\/\//i.test(at)) {
+          const res = await fetch(at);
+          if (!res.ok) throw new Error(res.status);
+          blob = await res.blob();
+        } else throw new Error('no address');
+        if (!blob.type.startsWith('image/')) throw new Error('not a picture');
+        o.lines = [await keepOrShrink(blob, at.startsWith('data:') ? at : undefined)];
+      } catch { /* left as it is: traum.js makes it a line that says so */ }
+    }
+    return parts;
   }
 
   // The text read's pictures at an address (or as data) fetched and shrunk; a short reference
@@ -85,47 +114,36 @@ export default class Roomfile extends Feature {
   async importRoom({ file = null, cell = null, page = 0, ok = () => true } = {}) {
     file ||= await this.pick();
     if (!file) return null;
-    const parsed = await this.read(file);
-    if (!parsed || !ok()) return null;
+    const parts = await this.read(file);
+    if (!parts || !ok()) return null;
     const opts = () => ({
       ontologies: this.w.ontologies, now: Date.now(), page,
-      globals: this.w.globals, name: file.name.replace(MD, '') || 'Untitled',
+      globals: this.w.globals, name: file.name.replace(FILE, '') || 'Untitled',
     });
-    const dry = importRoom(copyWorld(this.w.world), parsed, opts());
+    const dry = traum.importRoom(copyWorld(this.w.world), parts, opts());
     if (!await this.ask('Import a room', dry.room?.name || 'A new room', dry) || !ok()) return null;
-    const out = importRoom(this.w.world, parsed, opts());
+    const out = traum.importRoom(this.w.world, parts, opts());
     if (!out.room) { this.toast('A room couldn\'t be made.'); return null; }
     this.floors?.place(out.room.id, cell);
     return out.room;
   }
 
-  // A file's groups and thoughts into a room, as its own mode sees them. at(): where new trains
-  // start; ok(): whether it is still wanted; before(): called just before the world changes. When
-  // a heading matches a group already there, the card offers to replace the matching groups.
-  // Resolves true once they are in the world (the caller saves).
+  // A file's objects and placement into a room, as new thoughts and groups (its front matter is
+  // for new rooms only). at(): where new trains start; ok(): whether it is still wanted; before():
+  // called just before the world changes. Resolves true once they are in the world (the caller
+  // saves).
   async importInto(roomId, { file = null, at = () => null, ok = () => true, before = () => {} } = {}) {
     if (shut(this.w.world, roomId)) { this.toast('This room is locked.'); return false; }
     file ||= await this.pick();
     if (!file) return false;
-    const parsed = await this.read(file);
-    if (!parsed || !ok()) return false;
+    const parts = await this.read(file);
+    if (!parts || !ok()) return false;
     const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at() });
-    const dry = importInto(copyWorld(this.w.world), roomId, parsed, opts());
-    const p = plan(this.w.world, roomId, parsed, { scope: 'import', ontologies: this.w.ontologies });
+    const dry = traum.importInto(copyWorld(this.w.world), roomId, parts, opts());
     const name = room(this.w.world, roomId)?.name || '';
-    let choice;
-    if (p.replace.length) {
-      const n = p.replace.length, word = p.word;
-      choice = await this.ask('Import into this room', name, {
-        sum: `${say(dry.made)}. ${n} ${n === 1 ? `${word} has` : `${word}s have`} the name of one already here.`,
-        report: [...p.arrowChanges, ...p.report],
-        buttons: [['replace', 'Replace matching groups'], ['add', 'Add all as new']],
-      });
-    } else choice = (await this.ask('Import into this room', name, dry)) ? 'add' : null;
-    if (!choice || !ok() || shut(this.w.world, roomId)) return false;
+    if (!await this.ask('Import into this room', name, dry) || !ok() || shut(this.w.world, roomId)) return false;
     before();
-    if (choice === 'replace') apply(this.w.world, roomId, plan(this.w.world, roomId, parsed, { scope: 'import', ontologies: this.w.ontologies }));
-    else importInto(this.w.world, roomId, parsed, opts());
+    traum.importInto(this.w.world, roomId, parts, opts());
     return true;
   }
 
@@ -223,17 +241,18 @@ export default class Roomfile extends Feature {
     });
   }
 
-  // Downloads a room as <its name>.md (a locked room too).
+  // Downloads a room as <its name>.traum (a locked room too).
   exportRoom(id) {
     const r = room(this.w.world, id);
     if (!r) return;
-    const text = exportRoom(this.w.world, id, { ontologies: this.w.ontologies });
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
-    const a = el('a', { href: url, download: fileName(r.name), hidden: true });
+    const text = traum.exportRoom(this.w.world, id, { ontologies: this.w.ontologies });
+    const name = traum.fileName(r.name);
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const a = el('a', { href: url, download: name, hidden: true });
     document.body.append(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    this.toast(`Exported ${fileName(r.name)}`);
+    this.toast(`Exported ${name}`);
   }
 }
