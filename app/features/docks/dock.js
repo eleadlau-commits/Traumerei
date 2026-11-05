@@ -2,7 +2,9 @@
 // in. It holds one thing per tab: opening into a tab replaces what that tab held (asked first),
 // opening into another tab keeps it and brings the new one to the front. While it holds two or
 // more, a row of tabs shows at its top. Its inner edge is dragged to set its width, which is
-// remembered; a double-click on the edge sets it back. The two docks are the same class, mirrored.
+// remembered; a double-click on the edge sets it back. Hidden while it holds something, it leaves a
+// 28px strip at its edge with the name of each thing it holds written sideways ("Loose · 3"); a
+// click on a name brings the dock back with that in front. The two docks are the same class, mirrored.
 // It knows nothing of Folio: Docks.js makes one per side and tells it how to save its width and
 // how to say that its width changed.
 
@@ -12,6 +14,7 @@ const { el } = ui;
 export const WIDTH = { left: 280, right: 340 }; // px: its width until it is dragged
 const LEAST = { left: 220, right: 280 };        // px: never narrower
 const MOST = 560;                               // px: never wider (nor wider than 70% of the window)
+export const STRIP = 28;                        // px: the strip a hidden dock leaves
 
 export class Dock {
   // side: 'left' or 'right'. saved: its remembered width, or undefined. keep(px): remember a width.
@@ -27,9 +30,10 @@ export class Dock {
     this.resized = resized;
     this.width = this.fit(saved ?? this.usual);
     this.firstTab = tab;
-    this.held = [];     // what it holds, one per tab, in the order the tabs show: { key, tab, kind, title, page, beforeClose, onClose }
+    this.held = [];     // what it holds, one per tab, in the order the tabs show: { key, tab, kind, title, label, page, beforeClose, onClose }
     this.front = null;  // the one in front
     this.tucked = false; // hidden by its key, or Canvas only, with what it holds kept
+    this.bare = false;   // Canvas only: not even its strip shows
     this.build(label);
   }
 
@@ -37,6 +41,8 @@ export class Dock {
 
   get showing() { return this.held.length && !this.tucked ? this.width : 0; }
   get visible() { return this.held.length > 0 && !this.tucked; }
+  get stripped() { return this.held.length > 0 && this.tucked && !this.bare; }
+  get taken() { return this.visible ? this.width : this.stripped ? STRIP : 0; } // px of the screen's side it takes
 
   build(label) {
     // Every dock wears the same frame: a strip of tabs (one for each thing it holds) with its key and ×
@@ -62,7 +68,10 @@ export class Dock {
       this.body,
       this.edge);
     for (const type of ['keyup', 'paste', 'copy', 'cut', 'wheel']) this.root.addEventListener(type, (e) => e.stopPropagation());
-    (document.getElementById('folio-root') || document.body).append(this.root);
+    // The strip it leaves while hidden: a name for each thing it holds, written sideways.
+    this.stripEl = el('nav', { class: `dock-tuck dock-tuck-${this.side}`, hidden: true, 'aria-label': `${label} (hidden)`,
+      onpointerdown: (e) => e.stopPropagation() });
+    (document.getElementById('folio-root') || document.body).append(this.root, this.stripEl);
   }
 
   // Shows `body` (a node) in tab `tab` (the dock's first tab when none is named), in front, in
@@ -70,12 +79,12 @@ export class Dock {
   // kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of true) when
   // it may close. onClose(): it closed. Resolves with { close, setTitle, setKind, open } or null
   // when what the tab held would not close.
-  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', body, beforeClose = null, onClose = null } = {}) {
+  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null } = {}) {
     const there = this.held.find((x) => x.tab === tab);
     if (there && !await this.closeOne(there)) return null;
     if (this.held.some((x) => x.tab === tab)) return null; // something else opened there meanwhile
     const page = el('div', { class: 'dock-page' }, body || '');
-    const shown = { key, tab, kind, title, page, beforeClose, onClose };
+    const shown = { key, tab, kind, title, label, page, beforeClose, onClose };
     this.held.push(shown);
     this.body.append(page);
     this.front = shown;
@@ -89,6 +98,7 @@ export class Dock {
       close: (force = false) => (this.held.includes(shown) ? this.closeOne(shown, force) : Promise.resolve(true)),
       setTitle: (t) => { shown.title = t; if (this.front === shown) this.draw(); },
       setKind: (t) => { shown.kind = t; if (this.front === shown) this.draw(); },
+      setLabel: (t) => { shown.label = t; this.draw(); },
       get open() { return dock.held.includes(shown); },
     };
   }
@@ -107,6 +117,24 @@ export class Dock {
       onclick: () => this.bring(x),
     }, x.tab || x.kind || 'Untitled')));
     this.keyEl.textContent = this.keyLabel() || '';
+    this.drawStrip();
+  }
+
+  // Its name for one thing it holds: the strip's label, else its tab, else its kind.
+  nameOf(x) { return x.label || x.tab || x.kind || 'Untitled'; }
+
+  // The strip it leaves while hidden, and the room it takes: <html> has dock-left-strip (or
+  // -right) while it shows, and --dock-left is its width.
+  drawStrip() {
+    const on = this.stripped;
+    this.stripEl.hidden = !on;
+    document.documentElement.classList.toggle(`dock-${this.side}-strip`, on);
+    if (!on) { this.stripEl.replaceChildren(); return; }
+    const key = this.keyLabel();
+    this.stripEl.replaceChildren(...this.held.map((x) => el('button', {
+      type: 'button', class: 'tab dock-tuck-tab', title: `Show ${this.nameOf(x)}${key ? ` · ${key}` : ''}`,
+      onclick: () => this.bring(x),
+    }, this.nameOf(x))));
   }
 
   bring(x) {
@@ -150,6 +178,7 @@ export class Dock {
       this.tucked = false;
       this.root.hidden = true;
       document.documentElement.classList.remove(`dock-${this.side}-open`);
+      this.drawStrip();
       this.resized(0);
     }
     this.draw();
@@ -164,8 +193,17 @@ export class Dock {
     this.root.hidden = this.tucked;
     document.documentElement.classList.toggle(`dock-${this.side}-open`, !this.tucked);
     if (this.tucked && this.root.contains(document.activeElement)) document.activeElement.blur();
-    this.resized(this.showing);
+    this.drawStrip();
+    this.resized(this.taken);
     return true;
+  }
+
+  // Canvas only (on): hidden, it leaves no strip either.
+  setBare(on) {
+    if (this.bare === !!on) return;
+    this.bare = !!on;
+    this.drawStrip();
+    this.resized(this.taken);
   }
 
   // Whether it holds `key` (anything, when none is given), in front or not.
