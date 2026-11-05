@@ -84,7 +84,7 @@ export class RoomsGrid {
     if (!shown.has(this.roomPick)) this.roomPick = null; // chosen things not on this grid are let go
     if (!shown.has(this.roomSel)) this.roomSel = null;
     this.picks = (this.picks || []).filter((id) => shown.has(id));
-    if (this.picks.length < 2) this.picks = [];
+    if (this.picks.length < 2) { this.picks = []; this.manyShown = false; }
     if (!this.inRoom) {
       const chosen = room(this.world, this.roomSel || this.roomPick);
       const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : '';
@@ -139,7 +139,11 @@ export class RoomsGrid {
     const panels = [];
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
     if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
-    if (this.panel) { if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel); else this.dockRoom(chosen || null); }
+    if (this.panel) {
+      if (this.manyShown) this.dockMany(this.picks);
+      else if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel);
+      else this.dockRoom(chosen || null);
+    }
     if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.keepInView(scrolled);
@@ -249,11 +253,11 @@ export class RoomsGrid {
         if (e.target !== tile) return;
         if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); this.openRoom(r.id); }
         if (e.key === ' ') { e.preventDefault(); this.pickRoom(r.id); }
-        if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); this.chooseRoom(r.id, true); }
+        if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); this.askRoom(r.id); }
       },
       onfocus: () => { if (this.roomPick !== r.id && !this.roomSel && !(this.picks?.length > 1)) { this.roomPick = r.id; tile.classList.add('picked'); this.grid.querySelectorAll('.rooms-tile.picked').forEach((t) => { if (t !== tile) t.classList.remove('picked'); }); } },
       onpointerdown: (e) => this.onTileDown(e, r, tile),
-      oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.chooseRoom(r.id, true); this.held = null; },
+      oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); if (this.held !== r.id) this.askRoom(r.id); this.held = null; },
     },
       lines.length || r.desc ? el('div', { class: 'rooms-peek', 'aria-hidden': 'true' },
         r.desc ? el('div', { class: 'rooms-peek-desc' }, r.desc) : null,
@@ -298,7 +302,7 @@ export class RoomsGrid {
     });
     const at = shelved.findIndex((r) => r.id === this.roomSel);
     const panel = at < 0 || this.panel ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
-    if (this.panel) this.dockRoom(at < 0 ? null : shelved[at], true);
+    if (this.panel) { if (this.manyShown) this.dockMany(this.picks, true); else this.dockRoom(at < 0 ? null : shelved[at], true); }
     this.grid.replaceChildren(...empty, ...tiles, ...(panel ? [panel] : []));
   }
 
@@ -333,23 +337,32 @@ export class RoomsGrid {
       return;
     }
     const rows = (shelf ? [el('div', { class: 'title-field' }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
-    const kind = shelf ? 'Archived room' : 'Room';
+    this.fillDock(r.id, shelf ? 'Archived room' : 'Room', rows, () => {
+      if (!this.roomSel) return;
+      this.roomSel = null;
+      if (!this.inRoom && !this.root.hidden) this.drawRooms();
+    });
+  }
+
+  // The dock's Editor tab, showing `rows` for `id` (a room, or 'many'): filled in place while it is
+  // open, else opened. letGo: the dock's × or Escape closed it.
+  fillDock(id, kind, rows, letGo) {
+    const open = this.propsDock;
     if (open && this.panel.isOpen('room')) {
-      open.id = r.id;
+      open.id = id;
+      open.letGo = letGo;
       open.body.replaceChildren(...rows);
       open.handle?.setKind(kind);
       return;
     }
     const body = el('div', { class: 'rooms-props' }, ...rows);
-    const now = (this.propsDock = { id: r.id, body, handle: null });
+    const now = (this.propsDock = { id, body, handle: null, letGo });
     // (open() fills the dock at once; its handle comes after). The name is the title field.
     this.panel.open({ key: 'room', kind, title: '', body,
       onClose: () => {
         if (this.propsDock !== now) return; // let go here, or the room was gone into
         this.propsDock = null;
-        if (!this.roomSel) return;
-        this.roomSel = null;
-        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+        now.letGo?.();
       } })
       .then((h) => { if (this.propsDock === now) { if (h) now.handle = h; else this.propsDock = null; } });
   }
@@ -536,7 +549,7 @@ export class RoomsGrid {
     this.picks = [];
     this.floorSel = null;
     // While a room's properties show in the dock, a click on another room switches them there.
-    if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) { this.chooseRoom(id, true); return; }
+    if (this.panel && this.propsDock && (this.manyShown || (this.roomSel && this.roomSel !== id))) { this.chooseRoom(id, true); return; }
     if (this.roomSel && this.roomSel !== id) this.roomSel = null;
     this.making = null;
     this.roomPick = id;
