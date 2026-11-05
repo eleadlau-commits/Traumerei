@@ -1,8 +1,7 @@
 // Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they were
-// written, and stays where it is dragged. A folded group floats as the one thought it is. Pessoa
-// places everything itself, so it has no tray. Its own data: where each thought was dragged to.
+// written, and stays where it is dragged. Pessoa places every thought itself, so it has no tray. Its own data: where each thought was dragged to.
 
-import { roomUnits, own, shut, hash, isLeaf, groupsOf } from '../model.js';
+import { roomUnits, own, shut, hash } from '../model.js';
 
 // The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
 // length, nudged a little by its id so it doesn't look ruled.
@@ -27,14 +26,8 @@ export default {
 
   units: (w, roomId) => roomUnits(w, roomId),
 
-  // Where it was dragged to, or its place on the spiral. A thought hidden in a folded group
-  // (Replace) is where the group is.
+  // Where it was dragged to, or its place on the spiral.
   point(w, roomId, id) {
-    const th = w.things[id];
-    if (isLeaf(th)) {
-      const folded = groupsOf(w, id).find((g) => g.folded && !g.keep && g.parent === roomId);
-      if (folded) id = folded.id;
-    }
     const placed = own(w, roomId, 'pessoa', false)[id];
     if (placed) return placed;
     const units = roomUnits(w, roomId);

@@ -246,13 +246,13 @@ export const clearWidths = () => WIDTHS.clear();
 const widest = (w, id) => Math.max(0, ...members(w, id).map((th) => WIDTHS.get(th.id) || 0));
 
 // Room over an open chapter's thoughts for its title (none without one).
-const headOf = (g) => (g?.title && !g.folded ? LAYOUT.title : 0);
+const headOf = (g) => (g?.title && !g.closed ? LAYOUT.title : 0);
 
 // A chapter's box as drawn: a closed one is only its name; an open one its title and thoughts.
 // Until they are measured, names and thoughts are guessed from their length.
 export function chapterSize(w, id) {
   const g = w.things[id];
-  if (g?.folded) return { w: Math.round(WIDTHS.get(id) || chapterName(w, id).length * 12.6 + 4), h: LAYOUT.closed };
+  if (g?.closed) return { w: Math.round(WIDTHS.get(id) || chapterName(w, id).length * 12.6 + 4), h: LAYOUT.closed };
   const ths = members(w, id);
   const body = ths.reduce((s, th, i) => s + (i < ths.length - 1 ? stepAfter(th) : Math.max(STEP.line, stepAfter(th) - 29)), 0);
   const title = g?.title ? (WIDTHS.get(id) || g.title.length * 9) : 0;
@@ -486,7 +486,7 @@ const foot = (box) => sidePoint(box, 'bottom', FOOT);
 // How far off each side an arrow starts (below a chapter's foot circle; past an open chapter's
 // hairline on its left) and ends (a little further, so the arrowhead shows).
 const pads = (w, from, to) => {
-  const off = (id, side, more) => (side === 'left' && !w.things[id]?.folded ? RULE : 0) + PAD + more;
+  const off = (id, side, more) => (side === 'left' && !w.things[id]?.closed ? RULE : 0) + PAD + more;
   return { from: (side) => (side === 'bottom' ? FOOT + 7 : off(from, side, 0)), to: (side) => off(to, side, 2) };
 };
 
@@ -555,8 +555,8 @@ export default {
     if (key === RELATIONS.key) renameRelations(w, roomId, before, after);
   },
 
-  // Each chapter's thoughts, or a folded chapter as one thought.
-  units: (w, roomId) => chapters(w, roomId).flatMap((g) => (g.folded ? [g] : members(w, g.id))),
+  // Each chapter's thoughts, or a closed chapter as one thought.
+  units: (w, roomId) => chapters(w, roomId).flatMap((g) => (g.closed ? [g] : members(w, g.id))),
 
   point(w, roomId, id) {
     const th = w.things[id];
@@ -564,7 +564,7 @@ export default {
     if (!g || g.parent !== roomId) return null;
     const at = layout(w, roomId)[g.id];
     if (!at) return null;
-    return g === th || g.folded ? at : chapterSpots(w, g.id, at)[id] || null;
+    return g === th || g.closed ? at : chapterSpots(w, g.id, at)[id] || null;
   },
 
   // A chapter dragged stays where it is let go (placed by hand). A thought let go over a chapter
@@ -578,7 +578,7 @@ export default {
     if (!isLeaf(th)) return;
     const was = groupOf(w, id, ID);
     const onto = chapterAt(w, roomId, x + 10, y + 10);
-    if (onto && !w.things[onto].folded) { placeIn(w, roomId, onto, id, y); return; }
+    if (onto && !w.things[onto].closed) { placeIn(w, roomId, onto, id, y); return; }
     if (onto) { if (onto !== was?.id) join(w, onto, id); return; }
     if (was && members(w, was.id).length === 1) {
       Object.assign(was, { x: Math.round(x), y: Math.round(y - headOf(was)), hand: true });
@@ -603,7 +603,7 @@ export default {
   // Clear space (clear.js): a chapter is one block; one dragged was placed by hand. One pushed
   // aside keeps its new place until the tree changes.
   blocks: (w, roomId) => chapters(w, roomId).map((g) => ({
-    id: g.id, thoughts: g.folded ? [] : members(w, g.id).map((th) => th.id), group: g.id,
+    id: g.id, thoughts: g.closed ? [] : members(w, g.id).map((th) => th.id), group: g.id,
     hand: g.hand === true, at: Math.max(g.at ?? 0, ...members(w, g.id).map((th) => th.at ?? 0)),
   })),
 
@@ -773,10 +773,10 @@ export default {
       const { at, size } = box;
       const chosen = (c.sel?.kind === 'train' && c.sel.id === g.id) || c.isSel(g.id);
       const cls = 'room-bead' + (picking ? ' room-russell-pick' : '');
-      if (g.folded) {
+      if (g.closed) {
         // A closed chapter: only its name. A click opens it as a document (open, below).
         nodes.push(el('div', {
-          class: cls + ' room-folded room-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id, 'data-measure': g.id,
+          class: cls + ' room-closed room-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id, 'data-measure': g.id,
           title: 'Click to open', style: `left:${at.x}px;top:${at.y}px`,
         }, el('span', { class: 'room-thought', 'data-id': g.id }, maths(chapterName(w, g.id)))));
       } else {
@@ -796,7 +796,7 @@ export default {
       }
       // The chapter's hairline, down its left, and its name over it.
       const top = at.y + headOf(g);
-      if (!g.folded) layer.append(svg('path', { class: 'room-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - RULE} ${top + 6}L${at.x - RULE} ${at.y + size.h - 4}` }));
+      if (!g.closed) layer.append(svg('path', { class: 'room-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - RULE} ${top + 6}L${at.x - RULE} ${at.y + size.h - 4}` }));
       if (headOf(g)) nodes.push(el('div', { class: 'room-russell-title', 'data-group': g.id, 'data-measure': g.id, style: `left:${at.x}px;top:${at.y}px` }, g.title));
       if (!c.locked) {
         const f = foot(arrowBox(box));
@@ -809,10 +809,10 @@ export default {
     return [layer, ...nodes];
   },
 
-  // A tap on a closed (folded) chapter opens it as a document (document.js).
+  // A tap on a closed (closed) chapter opens it as a document (document.js).
   open(c, id) {
     const g = c.world.things[id];
-    if (!isGroup(g) || g.of !== ID || !g.folded) return false;
+    if (!isGroup(g) || g.of !== ID || !g.closed) return false;
     c.openDocument(id);
     return true;
   },

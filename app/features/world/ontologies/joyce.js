@@ -127,13 +127,13 @@ export function tagName(w, trainId) {
 
 // A train's blocks: { id, thoughts, group, tail, hand, at }. id is the train (its start) or the
 // thought dragged on its own that starts the run; tail marks the run the train's next thought
-// joins; a folded train is one block.
+// joins; a closed train is one block.
 export function joyceBlocks(w, roomId) {
   const out = [];
   for (const t of roomTrains(w, roomId)) {
     const all = trainThoughts(w, t.id);
     const at = (ths) => Math.max(t.at ?? 0, ...ths.map((th) => th.at ?? 0));
-    if (t.folded) { out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at(all) }); continue; }
+    if (t.closed) { out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at(all) }); continue; }
     let run = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
     const runs = [run];
     for (const th of all) {
@@ -158,15 +158,15 @@ export default {
   groups: { form: 'train', name: 'Train', membership: 'one' },
   live: true, // a drag moves the thought (or train) at once, so the line follows it
 
-  // Each train's thoughts, or a folded train as one thought.
-  units: (w, roomId) => roomTrains(w, roomId).flatMap((t) => (t.folded ? [t] : trainThoughts(w, t.id))),
+  // Each train's thoughts, or a closed train as one thought.
+  units: (w, roomId) => roomTrains(w, roomId).flatMap((t) => (t.closed ? [t] : trainThoughts(w, t.id))),
 
   point(w, roomId, id) {
     const th = w.things[id];
     if (isGroup(th)) return { x: th.x, y: th.y };
     const t = groupOf(w, id, 'joyce');
     if (!t) return null;
-    return t.folded ? { x: t.x, y: t.y } : trainSpots(w, t.id)[id] || null;
+    return t.closed ? { x: t.x, y: t.y } : trainSpots(w, t.id)[id] || null;
   },
 
   // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
@@ -226,7 +226,7 @@ export default {
   settings: [{ key: 'tension', label: 'Line tension', min: 0, max: 1, default: 0.5 }],
 
   // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
-  // thoughts, a folded train as one block, and the thought being written.
+  // thoughts, a closed train as one block, and the thought being written.
   draw(c) {
     const w = c.world, el = c.el;
     const nodes = [];
@@ -235,9 +235,9 @@ export default {
     const tension = c.setting('tension');
     for (const t of roomTrains(w, c.roomId)) {
       const chosen = (c.sel?.kind === 'train' && c.sel.id === t.id) || c.isSel(t.id);
-      if (t.folded) {
+      if (t.closed) {
         nodes.push(el('div', {
-          class: 'room-bead room-folded' + (chosen ? ' selected' : ''), 'data-group': t.id,
+          class: 'room-bead room-closed' + (chosen ? ' selected' : ''), 'data-group': t.id,
           style: `left:${t.x}px;top:${t.y}px`,
         }, c.thoughtNode(t)));
         continue;

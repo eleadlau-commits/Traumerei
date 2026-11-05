@@ -1,5 +1,5 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
-// page): rename (Ctrl+R), duplicate (Ctrl+D), fold or unfold (Ctrl+F), move to another room
+// page): rename (Ctrl+R), duplicate (Ctrl+D), close or open (Ctrl+F), move to another room
 // (Ctrl+M), group (Ctrl+G) and ungroup (Ctrl+Shift+G); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
@@ -38,17 +38,17 @@ export function duplicate(c, e) {
   c.pasteUnits(units);
 }
 
-// Fold or unfold: a group, or the group the chosen thought is in (in this mode).
-export function fold(c, e) {
+// Close or open: a group, or the group the chosen thought is in (in this mode).
+export function close(c, e) {
   if (typing(e) || c.editing) return;
   const th = one(c);
   if (!th) return;
   if (c.locked) { c.toast('This room is locked.'); return; }
   const g = isGroup(th) ? th : groupOf(c.world, th.id, c.mode);
-  if (!g) { c.toast('It is in no group to fold.'); return; }
-  if (g.folded) { c.unfoldTrain(g.id); return; }
-  if (trainThoughts(c.world, g.id).length < 2 && !c.ont.open) { c.toast('One thought: nothing to fold.'); return; }
-  c.foldTrain(g.id);
+  if (!g) { c.toast('It is in no group to close.'); return; }
+  if (g.closed) { c.openTrain(g.id); return; }
+  if (trainThoughts(c.world, g.id).length < 2 && !c.ont.open) { c.toast('One thought: nothing to close.'); return; }
+  c.closeTrain(g.id);
 }
 
 // Move to another room: the properties (or the bar for many) open, with Move to… open.

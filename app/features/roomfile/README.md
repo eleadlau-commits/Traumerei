@@ -54,7 +54,7 @@ russell.overlap: false
 - a thought in no group (Pessoa places it; another mode keeps it in its tray)
 
 ## Arrays
-> folded
+> closed
 - a line thought
   an indented line under it stays in the same thought
 ### Why arrays
@@ -79,7 +79,7 @@ A passage with no title.
   stay out. Values with odd characters go in "quotes".
 - **`## Heading`** starts a group: a Joyce train, a Russell chapter (in a Pessoa room, a Joyce
   train). Everything until the next `##` is in it, in order. A bare `##` is a group with no title.
-  `> folded` right under it folds it; `> folded: A title` also names a bare heading. A heading
+  `> closed` right under it closes it (`> folded` is read the same); `> closed: A title` also names a bare heading. A heading
   with nothing under it is left out and reported.
 - **`- words`** is a line thought; indented lines under it stay in it. **`### Title`** and the
   paragraphs under it (blank lines between them) are a passage; a bare `###` has no title, and a
@@ -88,7 +88,7 @@ A passage with no title.
   allows it (many don't), and otherwise arrives as a line saying it couldn't be fetched. Pictures
   are shrunk as pasted ones are.
 - **Everything else** is kept exactly as written, LaTeX included: `$…$`, and `$$…$$` blocks over
-  several lines. A line inside a passage that would read as structure (`## …`, `- …`, `> folded`,
+  several lines. A line inside a passage that would read as structure (`## …`, `- …`, `> closed`,
   `![…`) is written with a backslash in front and read back without it.
 - **Order.** The thoughts are stamped in the file's order, a millisecond apart, so trains and the
   Timeline read in the file's order. Where things sit is left to the mode: new trains start side
@@ -115,7 +115,7 @@ read back as the same pictures; Download writes them out in full.
 and every arrow from it. Thoughts whose words are unchanged are kept as they are (their time and
 glow, and any other mode's groups they are in); new and changed ones are made, in the text's order,
 and the ones gone are deleted (one another mode's group holds only leaves this one). The heading
-wins: a new title renames it, `> folded` folds or unfolds it, its other attributes are kept as
+wins: a new title renames it, `> closed` closes or opens it, its other attributes are kept as
 written, and Russell's `parent` and `forgets` move its arrows through Russell's own rules. Each
 change is listed before Apply ("A1 Vector spaces: parent Ch 2 Matrices → Ch 1 Arrays"); an arrow
 Russell refuses (a loop, a third parent) is listed and left as it was, and the rest applies. More

@@ -20,7 +20,7 @@ export const ROOM_KEYS = [
   { id: 'room.delete', keys: ['Delete'], words: 'delete what is chosen' },
   { id: 'room.rename', keys: ['Ctrl+R'], words: 'rename what is chosen (a thought: write in it)', typing: true },
   { id: 'room.duplicate', keys: ['Ctrl+D'], words: 'duplicate what is chosen', typing: true },
-  { id: 'room.fold', keys: ['Ctrl+F'], words: 'fold or unfold its group', typing: true },
+  { id: 'room.close', keys: ['Ctrl+F'], words: 'close or open its group', typing: true },
   { id: 'room.group', keys: ['Ctrl+G'], words: 'make what is chosen one group of this mode (a train, a chapter)', typing: true },
   { id: 'room.ungroup', keys: ['Ctrl+Shift+G'], words: 'take what is chosen out of its group', typing: true },
   { id: 'room.move', keys: ['Ctrl+M'], words: 'move what is chosen to another room', typing: true },

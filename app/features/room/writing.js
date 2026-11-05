@@ -14,9 +14,9 @@ export class Writing {
   thoughtNode(th) {
     if (this.draft?.edit === th.id) return this.draftNode(); // a thought opened again to write in
     const kind = kindOf(th);
-    if (kind === 'group') { // a folded group reads as one passage
+    if (kind === 'group') { // a closed group reads as one passage
       const body = thoughtText(this.world, th);
-      return el('div', { class: 'room-passage folded', 'data-id': th.id },
+      return el('div', { class: 'room-passage closed', 'data-id': th.id },
         th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
         body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
     }
@@ -169,7 +169,7 @@ export class Writing {
   }
 
   // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
-  // group drawn as one (a folded train, or a thought being written in a train). A node marked
+  // group drawn as one (a closed train, or a thought being written in a train). A node marked
   // data-measure is keyed by that id, so an ontology hears its size (Russell: a chapter's name).
   drawnRects() {
     const out = new Map();
@@ -374,11 +374,11 @@ export class Writing {
     return { groupEl, thoughtEl, hit: thoughtEl?.dataset.thought || groupEl?.dataset.group };
   }
 
-  // What a tap there chooses: the whole group (from its line, a folded group, or a group already
+  // What a tap there chooses: the whole group (from its line, a closed group, or a group already
   // chosen), or the one thought.
   picked(groupEl, thoughtEl) {
     const g = groupEl && this.world.things[groupEl.dataset.group];
-    if (g && (!thoughtEl || g.folded || (this.sel?.kind === 'train' && this.sel.id === g.id))) return { kind: 'train', id: g.id };
+    if (g && (!thoughtEl || g.closed || (this.sel?.kind === 'train' && this.sel.id === g.id))) return { kind: 'train', id: g.id };
     const id = thoughtEl?.dataset.thought;
     return id ? { kind: isLeaf(this.world.things[id]) ? 'thought' : 'train', id } : null;
   }

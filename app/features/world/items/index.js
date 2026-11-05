@@ -3,7 +3,7 @@
 //   kind               'line'
 //   name               what it is called in menus: 'Thought'
 //   tidy(fields, h)    its own fields, tidied, or null when it would be empty. h: { oneLine, lines }
-//   text(th)           its words as plain text (what search, peeks and folded groups read)
+//   text(th)           its words as plain text (what search, peeks and closed groups read)
 //   md                 (optional) how it reads and writes room Markdown (the roomfile feature's format.js):
 //                      { order, read(lines, i, h) → { fields, end } | null, write(th, h) → text }.
 //                      read looks at lines[i] and, if it is this kind, returns the fields for
