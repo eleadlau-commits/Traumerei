@@ -20,7 +20,8 @@ list is everything it offers:
 | `settled()`, `fold()` | Nothing waits to become its own step; the change since the last step becomes part of it (so a push from clear space goes with what caused it). |
 | `writeSoon(say)`, `write()` | Written down in a moment (one timer; `say`: then `world:saved`), or now. |
 | `undo(back)` | A step back (`true`) or forward (`false`). False when there is none; otherwise sends `world:changed`. |
-| `ontologies`, `ontology(id)` | Every ontology there is, in order, and one by id (a missing one is Pessoa). |
+| `ontologies`, `ontology(id)` | Every ontology a room can be seen through, in order, and one by id (a missing one is Pessoa). The rooms page's own is never among them. |
+| `roomsPage` | The rooms page's own ontology (Borges, from the floors feature), or `null`: rooms on the floors' cells. |
 | `prefs`, `setLook(key, value)`, `resetLook()` | Settings → Rooms' look (`look.js`: `LOOK`), saved as 'look'. |
 | `globals`, `setGlobal(of, key, value)`, `resetGlobals()` | The global ontology settings, `{ [ontology]: { key: value } }`: what a new room starts with. Saved as 'ontologies'. |
 | `palette`, `refreshPalette()` | The app's colours (Renderer's `backdrop`, Settings → Colour), or `look.js`'s `PALETTE`. |
@@ -49,7 +50,10 @@ ontology says whether an item can be in **one** of its groups (a train) or in **
 group can be closed, named, moved and deleted, and is always the same group, never a copy.
 
 **Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa, Russell), or come from another feature
-through the slot `world.ontologies`. `ontologies/index.js` describes their shape: name, groups,
+through the slot `world.ontologies`. One is special: the rooms page's own, **Borges** (the floors feature's),
+marked `roomsPage`. Its "room" is a floor, its units the rooms on it, its points their cells. It is
+never a room's mode and shows in no list inside a room (`forRooms`); the rooms page finds it
+through `roomsPage`. `ontologies/index.js` describes their shape: name, groups,
 units, where each sits, what a drag does, and optional tray, settings, moves (shown in the pop-up
 of what is chosen), its own presses and pop-up rows, and `begin` (which group a new thought joins,
 or none, so it waits in the tray). Each keeps its own data per room (`own()` in model.js: Pessoa's

@@ -63,6 +63,13 @@
 //   shift(w, room, id, dx, dy)   (optional) moves a block by dx, dy; without it, drop() to point + d
 //   measured(sizes)       (optional) each thought's size as drawn (Map id → { w, h }, world units),
 //                         after each drawing; return true to be drawn again (Joyce: steps fit text)
+//   roomsPage             (optional) true: the rooms page's own ontology (Borges, the floors
+//                         feature's), not a room's. Its "room" is a floor (a page number from 0),
+//                         its units are the rooms on that floor, a point is a room's cell
+//                         ({ x: col, y: row }) and drop() moves a room to a cell. It is never a
+//                         room's mode: forRooms() leaves it out of every list a room shows (the
+//                         modes, their settings, the kinds of a new room, a room's tags), and
+//                         forPage() is how the rooms page finds it. One only: the first wins
 //   Every ontology also has the setting 'overlap' (clear.js): whether what was placed by hand
 //   can be overlapped, or stays clear while the rest moves around it.
 //
@@ -87,6 +94,7 @@ export function missing(o) {
   for (const [k, t] of Object.entries(MAY)) if (o[k] != null && typeof o[k] !== t) out.push(k);
   if (o.groups != null && !['one', 'many'].includes(o.groups.membership)) out.push('groups');
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
+  if (o.roomsPage != null && typeof o.roomsPage !== 'boolean') out.push('roomsPage');
   if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
 }
@@ -106,6 +114,11 @@ export function gather(extra = [], warn = () => {}) {
   }
   return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
 }
+
+// The ontologies a room can be seen through: every one but the rooms page's own.
+export const forRooms = (all) => all.filter((o) => !o.roomsPage);
+// The rooms page's own ontology (Borges), or null when there is none.
+export const forPage = (all) => all.find((o) => o.roomsPage) || null;
 
 // ---- Ctrl+G and Ctrl+Shift+G: grouping what is chosen, each ontology by its own rule ----
 
