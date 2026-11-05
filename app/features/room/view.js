@@ -168,7 +168,7 @@ export class RoomView {
     // The rail (Folio's column of veil, its width the frame's): under Modes, a big room (Messy, or
     // 2 × 2) lists the ontologies and switches between them; a small one shows its one. Each has
     // its icon (the ontology's own). Hovering over a mode shows a small ⚙ beside it, which opens
-    // this room's settings for it. Under Views, Time (the time feature's dock).
+    // this room's settings for it. At the foot, ⋯ More (Time).
     const big = isBig(r);
     const items = [el('div', { class: 'rail-head', 'aria-hidden': 'true' }, big ? 'Modes' : 'Mode')];
     const mark = (m) => (m.icon ? railIcon(m.icon) : el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, m.name.slice(0, 1)));
@@ -188,14 +188,8 @@ export class RoomView {
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
     items.push(...this.twinRail()); // a Twin: its two sides (twin.js)
-    if (this.time) {
-      items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Views'));
-      items.push(el('button', {
-        type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.time.on),
-        title: this.keyMap ? `Time · ${this.keyMap.label('time.toggle')}` : 'Time',
-        onclick: () => this.time.toggle(),
-      }, railIcon('clock'), railWord('Time')));
-    }
+    const more = this.frame?.more(); // ⋯ More, holding Time (the frame feature's)
+    if (more) items.push(more);
     const card = !this.panel && this.settingsFor && this.roomSettingsCard();
     if (card) items.push(card);
     this.drawModeSettings();

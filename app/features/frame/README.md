@@ -25,14 +25,22 @@ last is the one that shows, and hiding it brings back the one before.
 | `clearHint()` | Takes it away now. |
 | `toggleRail()` | Narrows the rail to its icons (48 px), or widens it again (206 px). |
 | `railNarrow` | Whether the rail is narrow now. |
+| `more()` | ⋯ More for the foot of a rail (see below). |
 
 **The rail.** The rooms page and a room each draw their own rail (Folio's `.rail`, a column of
 veil down the left); the frame holds only how wide it is. **Ctrl+Alt+B** (in the key map, working
 everywhere) or the rail button at the left of the status bar narrows it to its icons and back.
 While it is narrow `<html>` has the class `rail-narrow` (so `--rail` is 48 px), and each change is
-sent as **`frame:rail`** `{ narrow }`. It saves only that (`railNarrow`).
+sent as **`frame:rail`** `{ narrow }`. It saves that (`railNarrow`) and whether ⋯ More is open (`moreOpen`).
 
-It has no slots. While it shows, `<html>` has `--status` (the status
+**⋯ More.** `more()` gives a node for the foot of a rail (the rooms page and a room each put it
+under their own items): a rule, then ⋯ More, which a click unfolds to what other features put in
+the slot **`rail.more`** (Time) and folds again; it remembers which (`moreOpen`). It is empty when
+nothing there is visible. An item is `{ id, label, icon, order, run(), on?(), visible?(), title?() }`:
+`icon` a `ui.ICONS` name, `on()` shows it pressed, `visible()` false leaves it out, `title()` its
+hover words. Each rail draws `more()` again when it redraws, so an item's state follows.
+
+It has one slot, `rail.more`. While it shows, `<html>` has `--status` (the status
 bar's height, else `0px`): the docks start under its top bar and end above its status bar. An
 element says what it is in the status bar with `data-hint` (or its `title`).
 

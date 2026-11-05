@@ -81,10 +81,11 @@ export default class Rooms extends Feature {
     this.provide('create', { open: () => this.open() });
     // Where the Time dock is (the time feature): the rooms page, whose days list chooses a room.
     this.add('time.place', {
-      live: () => !this.root.hidden && this.root.classList.contains('up') && !this.inRoom,
+      live: () => !this.root.hidden && !this.away && !this.inRoom,
       room: () => null,
       chosen: () => this.roomPick,
       go: (f) => this.showRoom(f.id),
+      redraw: () => { if (!this.inRoom) this.drawRooms(); },
     });
     this.provide('rooms', {
       openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
@@ -124,6 +125,7 @@ export default class Rooms extends Feature {
   // ---- Opening and closing ----
 
   open() {
+    this.away = false; // (close() sets it: the page is sliding away)
     this.w.load(); // it may have arrived from the account meanwhile
     this.w.begin();
     this.edited = new Set();
@@ -148,6 +150,7 @@ export default class Rooms extends Feature {
   }
 
   close() {
+    this.away = true;
     this.leaving = false;
     this.leaveBox.hidden = true;
     this.keyMap?.hide();
@@ -475,7 +478,7 @@ export default class Rooms extends Feature {
     });
     // The rail on the left (Folio's column of veil, its width the frame's): under Floors, each
     // floor, + New floor and the Archive (a room dropped on a floor goes to that floor, on Archive
-    // goes there); under Arrange by, Tags.
+    // goes there); under Arrange by, Tags; at the foot, ⋯ More (the frame feature's).
     this.shelfBtn = el('button', { type: 'button', class: 'rail-item rooms-shelf-btn', 'data-drop': 'archive', title: 'Archive',
       onclick: () => { if (!this.shelf) this.toggleShelf(); } }, railIcon('archive'), railWord('Archive'));
     // Tags opens the tag groups, each opening to its tags with how many rooms have each. Picking a
@@ -491,7 +494,8 @@ export default class Rooms extends Feature {
     this.pagesBar = el('div', { class: 'rooms-pages', role: 'group', 'aria-label': 'Floors' });
     this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Floors and the Archive' },
       el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Floors'), this.pagesBar, this.shelfBtn,
-      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Arrange by'), this.tagsBtn, this.tagsList);
+      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Arrange by'), this.tagsBtn, this.tagsList,
+      this.moreBox = el('div', { class: 'rooms-more' })); // ⋯ More, holding Time (grid.js draws it)
     this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
       this.rail,
