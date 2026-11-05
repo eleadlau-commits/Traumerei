@@ -82,6 +82,8 @@ test('a room dragged onto a full floor stays; onto one with space it goes to the
   assert.equal(toFloor(w, r.id, q, M), true);
   assert.deepEqual([r.page, r.col, r.row], [q, 0, 0]);
   assert.equal(toFloor(w, MESSY, q, M), false);
+  assert.equal(toFloor(w, r.id, 0, M, { col: 5, row: 3 }), true); // in the cell asked for
+  assert.deepEqual([r.page, r.col, r.row], [undefined, 5, 3]);
 });
 
 test('a room restored from the Archive goes back to its own floor, or a new one', () => {

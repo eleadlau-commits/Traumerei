@@ -24,7 +24,7 @@ The rooms page's floors: how big every floor is, and where a room goes when it i
 | `settle(page)` | Places every room on floor `page` with no cell, outside the board or on another's cells (Messy thoughts first). Returns the rooms that went to a new floor. |
 | `move(id, col, row)` | Moves a room to a cell of its floor, if it is on the board and free (not a locked room). True when it moved. |
 | `resize(id, size)` | A room 1 × 1 or 2 × 2, if its cells stay on the board and free. True when it changed. |
-| `toFloor(id, page)` | Moves a room to the first free spot on floor `page`: true, false (Messy thoughts, a locked room, its own floor), or `'full'`. |
+| `toFloor(id, page, cell)` | Moves a room to floor `page`, in `cell` if it is free there, else the first free spot: true, false (Messy thoughts, a locked room, its own floor), or `'full'`. |
 | `fits(size)` | Whether every room fits floors of `size` (`{ cols, rows }`). |
 
 **Event:** `floors:size` `{ cols, rows }`, when the size is changed.

@@ -19,9 +19,10 @@
 // Saved data: 'lastRoom' (its square glows), 'note' (the comment for next time), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb } from './world.js';
+import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
 import { el, MAC, KEY, HINT, enterKeeps } from './shared.js';
 import { RoomsGrid } from './grid.js';
+import { Strip } from './strip.js';
 
 export default class Rooms extends Feature {
   start() {
@@ -171,38 +172,16 @@ export default class Rooms extends Feature {
       el('button', { type: 'button', class: 'word rooms-note-x', title: 'Dismiss', onclick: () => { this.storage.set('note', null); this.noteLine.hidden = true; } }, 'dismiss'));
   }
 
-  // Shows a floor of the rooms page.
+  // Shows a floor of the rooms page: the strip of floors slides to it (from the floor that showed).
   showPage(page = this.page) {
     if (this.inRoom) this.showRooms();
     this.closeLights();
-    const from = this.shelf ? null : this.page;
-    const old = from != null && from !== page && !this.roomsPage.hidden ? this.grid.cloneNode(true) : null;
-    const oldTop = this.grid.parentElement?.scrollTop || 0;
+    const slide = !this.shelf && page !== this.page && !this.roomsPage.hidden;
     this.page = page;
     this.shelf = false;
     this.roomPick = this.roomSel = this.making = null;
     this.renaming = null;
-    this.grid.parentElement?.scrollTo?.(0, 0);
-    this.drawRooms();
-    if (old) this.scrollPage(old, oldTop, page > from);
-  }
-
-  // Going to another floor scrolls: to a later one the old one goes up and away and the new one
-  // comes up from below; to an earlier one, the other way.
-  scrollPage(old, oldTop, down) {
-    const wrap = this.grid.parentElement;
-    if (!wrap?.animate || this.grid.animate == null || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    this.pageGhost?.remove();
-    const H = wrap.clientHeight, d = down ? 1 : -1;
-    old.classList.add('rooms-page-ghost');
-    old.setAttribute('aria-hidden', 'true');
-    old.inert = true;
-    Object.assign(old.style, { position: 'absolute', top: `${this.grid.offsetTop - oldTop}px`, left: `${this.grid.offsetLeft}px`, margin: '0' });
-    wrap.append(old);
-    this.pageGhost = old;
-    const timing = { duration: 560, easing: 'cubic-bezier(.65, 0, .25, 1)' };
-    old.animate([{ transform: 'none' }, { transform: `translateY(${-d * H}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
-    this.grid.animate([{ transform: `translateY(${d * H}px)` }, { transform: 'none' }], timing);
+    this.drawRooms({ slide });
   }
 
   // Back to the rooms page (from a room, the room feature leaves it, and its square takes it back).
@@ -351,6 +330,13 @@ export default class Rooms extends Feature {
       else this.back();
       return;
     }
+    // Page Up and Page Down: the floor above or below.
+    if ((e.key === 'PageUp' || e.key === 'PageDown') && !mod && !this.shelf) {
+      e.preventDefault();
+      const next = this.page + (e.key === 'PageDown' ? 1 : -1);
+      if (next >= 0 && next < pageCount(this.world)) this.showPage(next);
+      return;
+    }
     if (this.shortcut(e, mod)) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     if (e.target.closest?.('button') && e.key === ' ') return; // Space on a word presses it
@@ -433,6 +419,9 @@ export default class Rooms extends Feature {
 
   build() {
     this.grid = el('div', { class: 'rooms-grid' });
+    // The floors, one strip that slides to whole floors: a wheel or trackpad gesture asks for the next.
+    this.strip = new Strip({ onFloor: (i) => { if (!this.shelf && !this.inRoom) this.showPage(i); } });
+    this.strip.show([[this.shelfHead = el('div', { class: 'rooms-shelf-head', hidden: true }, 'Archive'), this.grid]], 0);
     // Search lights (Ctrl+K): the rooms without the words dim.
     this.lightsField = el('input', { class: 'rooms-lights-field', placeholder: 'Light the rooms that hold… (or #tag)', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
     this.lightsBar = el('div', { class: 'panel rooms-lights', hidden: true }, this.lightsField,
@@ -460,11 +449,10 @@ export default class Rooms extends Feature {
     this.pagesBar = el('nav', { class: 'rooms-pages', 'aria-label': 'Floors' });
     this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
       el('div', { class: 'rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
-    this.shelfHead = el('div', { class: 'rooms-shelf-head', hidden: true }, 'Archive');
     this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
       this.rail,
-      el('div', { class: 'rooms-grid-wrap' }, this.shelfHead, this.grid));
+      this.strip.el);
 
     this.backBtn = el('button', { type: 'button', class: 'back-btn rooms-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));

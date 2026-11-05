@@ -24,7 +24,7 @@ export default class Floors extends Feature {
       settle: (page) => this.settle(page),                      // places a floor's rooms that have no cell
       move: (id, col, row) => move(this.world, id, col, row, board()),
       resize: (id, size) => resize(this.world, id, size, board()),
-      toFloor: (id, page) => toFloor(this.world, id, page, board()),
+      toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
       fits: (size) => !outside(this.world, size).length,        // whether every room fits floors of `size`
     });
     this.add('settings', { id: 'floors-size', title: 'Floors', order: 31, render: () => this.settingsPane() });

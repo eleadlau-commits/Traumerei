@@ -62,8 +62,14 @@ written there. With nothing in it, the rooms page works on its own.
   *Subject: Algebra* in a room's + tag also works. *Ontology* holds the modes and can't change.
 - **Motion.** Going into a room zooms in: its square grows to fill the screen while the rooms
   page swells and fades behind it. Leaving zooms out the other way, the room shrinking back into
-  its square. Going to a later page scrolls down to it, an earlier one up. (None of it with
-  reduced motion.)
+  its square. (None of it with reduced motion.)
+- **Floors slide.** All floors sit one under another in one tall strip, Floor 1 at the top
+  (`strip.js`). The canvas shows one floor at a time and slides only to whole floors, about 0.4 s
+  (a jump with reduced motion): the scroll wheel or trackpad (one gesture, one floor), Page Up and
+  Page Down, or a floor in the rail. *+ New floor* adds one at the end and slides down to it.
+  Holding a dragged square at the top or bottom edge of the canvas slides to the floor above or
+  below, to drop it on a cell there. The floor that shows is drawn in full; the others are still
+  copies until the strip rests on them.
 ## Choosing and editing rooms
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a
