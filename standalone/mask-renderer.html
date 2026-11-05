@@ -3056,10 +3056,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         );
       });
       const off = features2.filter((f2) => f2.status !== "active").length;
-      const fold2 = el(
+      const fold4 = el(
         "details",
         { class: "advanced features-fold", open: this.featuresOpen, ontoggle: () => {
-          this.featuresOpen = fold2.open;
+          this.featuresOpen = fold4.open;
         } },
         el("summary", {}, "Features", el("small", {}, off ? `${features2.length - off} on, ${off} off` : `All ${features2.length} on`)),
         hint("Switch off anything you don't use. Features that need a switched-off feature are switched off too.", { small: true }),
@@ -3068,7 +3068,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       return el(
         "section",
         { class: "settings-section" },
-        fold2,
+        fold4,
         this.restartNeeded && el("button", { type: "button", class: "btn primary", onclick: () => location.reload() }, "Restart the app to apply")
       );
     }
@@ -7293,13 +7293,13 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.seedLine = el6("p", { class: "renderer-seed" });
       this.report = el6("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key2, value) => this.change(key2, value));
-      const fold2 = (title, ...kids) => el6(
+      const fold4 = (title, ...kids) => el6(
         "details",
         { class: "advanced renderer-fold" },
         el6("summary", {}, title),
         el6("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold2(
+      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold4(
         title,
         el6("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g2) => this.controls.groups.get(g2)))
       ))]));
@@ -7307,7 +7307,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
-        fold2(
+        fold4(
           "Picture",
           el6(
             "div",
@@ -7318,7 +7318,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
         ),
-        fold2(
+        fold4(
           "View",
           ...this.tabs.values(),
           el6(
@@ -7329,7 +7329,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
           )
         ),
         ...[...this.folds.values()].flat(),
-        fold2("Report", this.report),
+        fold4("Report", this.report),
         el6("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.marksRow = this.panel.querySelector(".renderer-marks");
@@ -12384,6 +12384,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/groups.js
   var groups_exports = {};
   __export(groups_exports, {
+    fold: () => fold,
+    foldPlan: () => foldPlan,
     foreign: () => foreign,
     isLoose: () => isLoose,
     kindTag: () => kindTag,
@@ -12415,6 +12417,65 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return true;
   }
   var kindTag = (th, names = {}) => isGroup(th) ? names[th.of] || "Group" : "";
+  var wordsOf = (th) => kindOf(th) === "passage" ? [th.title, th.body].filter(Boolean).join("\n") : th.text || "";
+  function foldPlan(w2, roomId, ids) {
+    const chosen = [...new Set(ids)].map((id) => w2.things[id]).filter((th) => th && th.parent === roomId && (isLeaf(th) || isGroup(th))).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+    const groups = chosen.filter(isGroup);
+    const leaves = [], gone = /* @__PURE__ */ new Map();
+    for (const th of chosen) {
+      if (isGroup(th)) {
+        for (const x of within(w2, th.id)) gone.set(x.id, x);
+        for (const x of itemsIn(w2, th.id)) if (!leaves.includes(x)) leaves.push(x);
+      } else if (!leaves.includes(th)) {
+        leaves.push(th);
+        gone.set(th.id, th);
+      }
+    }
+    for (const g2 of groups) gone.delete(g2.id);
+    if (leaves.length < 2) return { why: leaves.length ? "One thought: nothing to fold." : "Nothing here to fold." };
+    if (leaves.some((th) => kindOf(th) === "picture")) return { why: "Pictures can't be folded yet." };
+    if (shut(w2, roomId)) return { why: "This room is locked." };
+    return { leaves, gone: [...gone.values()], groups };
+  }
+  function fold(w2, roomId, ids, now = Date.now()) {
+    const plan2 = foldPlan(w2, roomId, ids);
+    if (plan2.why) return plan2;
+    const { leaves, gone, groups } = plan2;
+    const lines2 = leaves.every((th2) => kindOf(th2) === "line");
+    const title = groups.find((g2) => g2.title)?.title || leaves.find((th2) => kindOf(th2) === "passage" && th2.title)?.title || "";
+    const fields = lines2 ? { kind: "line", text: leaves.map(wordsOf).join("\n") } : { kind: "passage", title, body: leaves.filter((th2) => !(title && th2.title === title && !th2.body)).map((th2) => th2.title === title ? th2.body || "" : wordsOf(th2)).filter(Boolean).join("\n\n") };
+    const th = create(w2, roomId, fields, Math.min(...leaves.map((x) => x.at ?? now)));
+    if (!th) return { why: "Nothing here to fold." };
+    const first = leaves[0];
+    if (Number.isFinite(first.dx)) {
+      th.dx = first.dx;
+      th.dy = first.dy;
+    }
+    const old = new Set(gone.map((x) => x.id));
+    const holders = [...groups, ...groupsIn(w2, roomId).filter((g2) => !groups.includes(g2) && !old.has(g2.id))];
+    const placedIn = /* @__PURE__ */ new Set();
+    for (const g2 of holders) {
+      if (!w2.things[g2.id]) continue;
+      const i2 = g2.members.findIndex((m2) => old.has(m2));
+      if (i2 < 0 && !groups.includes(g2)) continue;
+      const one2 = membership(g2.of) === "one";
+      if (one2 && placedIn.has(g2.of)) {
+        g2.members = g2.members.filter((m2) => !old.has(m2));
+        continue;
+      }
+      const rest = g2.members.filter((m2) => !old.has(m2));
+      g2.members = i2 < 0 ? [...rest, th.id] : [...g2.members.slice(0, i2).filter((m2) => !old.has(m2)), th.id, ...g2.members.slice(i2 + 1).filter((m2) => !old.has(m2))];
+      if (one2) placedIn.add(g2.of);
+    }
+    for (const data of Object.values(w2.own[roomId] || {})) {
+      if (!data || typeof data !== "object" || data[th.id]) continue;
+      const from = leaves.find((x) => data[x.id] != null) || gone.find((x) => data[x.id] != null);
+      if (from) data[th.id] = JSON.parse(JSON.stringify(data[from.id]));
+    }
+    for (const x of gone) if (w2.things[x.id]) remove(w2, x.id);
+    for (const g2 of groupsIn(w2, roomId)) if (!g2.members.length) leave(w2, g2.id, null);
+    return th;
+  }
 
   // dist/web/features/world/look.js
   var look_exports = {};
@@ -15806,7 +15867,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var name3;
   var update3;
   var move3;
-  var fold;
+  var fold2;
   var roomThoughts2;
   var search2;
   var cells3;
@@ -15854,7 +15915,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       name: name3,
       update: update3,
       move: move3,
-      fold,
+      fold: fold2,
       roomThoughts: roomThoughts2,
       search: search2,
       cells: cells3,
@@ -18271,6 +18332,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var groupChosen2;
   var ungroupChosen2;
   var setOrder3;
+  var foldInto;
+  var foldPlan2;
   function bind4(lib) {
     ({
       room: room5,
@@ -18315,6 +18378,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2 } = lib.ontologies);
+    ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
   }
 
   // dist/web/features/room/document.js
@@ -18758,7 +18822,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold2 = (title, ...rows) => el14(
+      const fold4 = (title, ...rows) => el14(
         "details",
         { class: "advanced renderer-fold" },
         el14("summary", {}, title),
@@ -18767,7 +18831,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return el14(
         "div",
         { class: "room-settings" },
-        fold2(
+        fold4(
           "The rooms page",
           slider2("Mask opacity", "mask", 0, 0.6),
           slider2("Square strength", "square", 0, 1.5),
@@ -18787,7 +18851,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             )
           )
         ),
-        fold2(
+        fold4(
           "Inside a room",
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
@@ -20337,6 +20401,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     c.pasteUnits(units);
   }
+  function fold3(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const ids = c.sel.ids || [c.sel.id];
+    const n = ids.length;
+    const th = foldInto(c.world, c.roomId, ids);
+    if (!th || th.why) {
+      c.toast(th?.why || "Nothing here to fold.");
+      return;
+    }
+    c.sel = { kind: "thought", id: th.id };
+    c.save();
+    c.drawWorld();
+    c.toast(`Folded into one ${kindOf3(th) === "passage" ? "passage" : "thought"}. Ctrl+Z brings ${n > 1 ? "them" : "it"} back.`);
+  }
   function close(c, e) {
     if (typing(e) || c.editing) return;
     const th = one(c);
@@ -20710,6 +20792,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         btn("Duplicate", () => duplicate(this), "room.duplicate"),
         btn("Move", () => moveTo(this), "room.move"),
         foldable ? btn(closed ? "Open" : "Close", () => close(this), "room.close") : null,
+        kind === "group" && n > 1 ? btn("Fold into one", () => fold3(this), "room.fold") : null,
         btn("Delete", () => {
           remove4(this.world, th.id);
           this.sel = null;
@@ -20930,6 +21013,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             title: this.keyMap ? `Group · ${this.keyMap.label("room.group")}` : "Group",
             onclick: () => group(this)
           }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
+          el14("button", {
+            type: "button",
+            class: "word",
+            title: this.keyMap ? `Fold into one thought · ${this.keyMap.label("room.fold")}` : "Fold into one thought",
+            onclick: () => fold3(this)
+          }, "Fold into one"),
           el14("button", { type: "button", class: "word pop-delete", onclick: () => {
             ids.forEach((id) => remove4(this.world, id));
             this.sel = null;
@@ -21165,7 +21254,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.delete", keys: ["Delete"], words: "delete what is chosen" },
     { id: "room.rename", keys: ["Ctrl+R"], words: "rename what is chosen (a thought: write in it)", typing: true },
     { id: "room.duplicate", keys: ["Ctrl+D"], words: "duplicate what is chosen", typing: true },
-    { id: "room.close", keys: ["Ctrl+F"], words: "close or open its group", typing: true },
+    { id: "room.fold", keys: ["Ctrl+F"], words: "fold what is chosen into one thought (the old ones go, in every mode)", typing: true },
+    { id: "room.close", keys: ["Ctrl+Shift+F"], words: "close or open its group (only how it shows)", typing: true },
     { id: "room.group", keys: ["Ctrl+G"], words: "make what is chosen one group of this mode (a train, a chapter)", typing: true },
     { id: "room.ungroup", keys: ["Ctrl+Shift+G"], words: "take what is chosen out of its group", typing: true },
     { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room", typing: true },
@@ -21214,6 +21304,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // The same verbs as on the rooms page (verbs.js).
         "room.rename": (e) => rename(this, e),
         "room.duplicate": (e) => duplicate(this, e),
+        "room.fold": (e) => fold3(this, e),
         "room.close": (e) => close(this, e),
         "room.group": (e) => group(this, e),
         "room.ungroup": (e) => ungroup(this, e),
