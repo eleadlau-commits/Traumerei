@@ -173,11 +173,13 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   still get the small pop-up beside them, and with no docks feature the pop-up is used for all. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
-- **Add** (bottom left) unfolds to Thought, Passage, Picture and (with the roomfile feature)
-  *Import into this room…*. *Export* and *Edit as text* (the whole room in the source editor on the
-  right) are under ⋯ More at the foot of the rail. A group's pop-up has *Edit as
-  Markdown* for just that group. A right-click on the empty
-  canvas opens Add at the pointer, and what is made goes just there.
+- **Adding.** The **+** beside the loose dock's add bar unfolds to *Passage*, *Picture* and (with
+  the roomfile feature) *Import…*; a passage or picture made there is kept loose, in the tray. A
+  right-click on the empty canvas opens **Add** at the pointer (Thought, Passage, Picture, Import
+  into this room…), and what is made goes just there. Alt+P and Alt+I still make a passage or a
+  picture on the canvas. *Export* and *Edit as text* (the whole room in the source editor on the
+  right) are under ⋯ More at the foot of the rail. A group's pop-up has *Edit as Markdown* for just
+  that group.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
   panel (`app/features/search`), which searches every room; a find opened there (`search:found`)
   brings the view to it, in its room. With no search feature the bar isn't there.
