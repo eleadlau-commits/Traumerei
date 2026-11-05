@@ -19974,14 +19974,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       if (!g2.moved) {
-        if (g2.thing && this.ont.open?.(this, g2.thing.id)) return;
         const tapped = g2.thing && this.world.things[g2.thing.id];
-        if (isGroup3(tapped) && tapped.of !== this.mode && !g2.toggle && !g2.add) {
-          this.openDocument(tapped.id);
-          return;
+        if (!this.panel) {
+          if (g2.thing && this.ont.open?.(this, g2.thing.id)) return;
+          if (isGroup3(tapped) && tapped.of !== this.mode && !g2.toggle && !g2.add) {
+            this.openDocument(tapped.id);
+            return;
+          }
         }
         const keep = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
-        this.sel = keep ? this.sel : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
+        this.sel = keep ? this.sel : isGroup3(tapped) ? { kind: "train", id: tapped.id } : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
         const train = g2.el?.dataset.group;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
@@ -20836,20 +20838,36 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           class: "room-tray-item" + (this.isSel(th.id) ? " st-sel" : ""),
           role: "listitem",
           "data-tray": th.id,
-          title: group2 ? "Click to open · drag onto the room" : "Drag onto the room",
-          onpointerdown: (e) => this.trayDrag(e, th.id)
+          title: "Click to choose · right-click to open · drag onto the room",
+          onpointerdown: (e) => this.trayDrag(e, th.id),
+          oncontextmenu: (e) => {
+            e.preventDefault();
+            this.trayOpenCard(th.id);
+          }
         },
         group2 ? el14("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
         el14("span", { class: "room-tray-text" }, words)
       );
     }
     // A loose card clicked: Ctrl/Shift adds it to (or takes it from) what is chosen; otherwise it is
-    // chosen and opened.
+    // chosen (and the editor, when open, follows it). Without the right dock it opens at once.
     trayClick(e, id) {
       if (e.ctrlKey || e.metaKey || e.shiftKey) {
         this.chooseMore({ id }, true);
         return;
       }
+      const th = this.world.things[id];
+      if (!th) return;
+      if (!this.panel) {
+        this.trayOpenCard(id);
+        return;
+      }
+      if (this.draft) this.stopWriting();
+      this.sel = { kind: isGroup3(th) ? "train" : "thought", id };
+      this.drawWorld();
+    }
+    // A loose card right-clicked: opened in the editor.
+    trayOpenCard(id) {
       const th = this.world.things[id];
       if (!th) return;
       if (isGroup3(th)) this.openDocument(id);
