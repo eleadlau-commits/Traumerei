@@ -21,6 +21,8 @@
 .room-dark .topbar .top-btn { color: var(--room-ink); }
 
 /* A small wordmark beside the menu (☰), in the home page's typeface. */
+/* It stays beside the menu while the room moves over for the left dock. */
+.dock-left-open .room .room-wordmark { margin-left: calc(-1 * var(--dock-left, 0px)); }
 .room.up .room-wordmark { opacity: .72; }
 .room.in-room .room-wordmark { color: var(--room-ink); z-index: 6; }
 /* On a phone the search bar takes that place. */
@@ -321,8 +323,9 @@
 .room-maths.unparsed { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em;
   color: color-mix(in srgb, #b0563f 62%, currentColor); opacity: .85; }
 
-/* The tray: thoughts the mode hasn't placed yet, along the foot of the room. A quiet word opens a
-   row of them; each is dragged onto the canvas. */
+/* The tray: thoughts the mode hasn't placed yet, along the foot of the room (only without the
+   docks feature; with it they are in the left dock). A quiet word opens a row of them; each is
+   dragged onto the canvas. */
 .room-tray {
   position: absolute;
   left: 50%;
@@ -357,6 +360,12 @@
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
+/* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
+.room-loose { display: grid; gap: 14px; }
+.room-loose-hint { margin: 0; font-size: 13px; line-height: 1.5; opacity: .7; }
+.room-loose-list { display: grid; gap: 8px; }
+.room-loose .room-tray-item { width: auto; background: color-mix(in srgb, currentColor 5%, transparent); }
+.room-loose .room-tray-item:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 .room-moves { flex-wrap: wrap; }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
