@@ -52,6 +52,7 @@ export default class Room extends Feature {
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
+    this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
@@ -118,6 +119,7 @@ export default class Room extends Feature {
     this.closeSheet();
     this.closeSearch();
     this.panel?.close(null, true);
+    this.docks?.left.close('loose', true);
     this.shelveDraft();
     this.stopWriting();
     this.roomId = null;

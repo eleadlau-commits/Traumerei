@@ -75,8 +75,10 @@ It offers no service of its own.
     thought, so search, the Timeline and the other modes see them one by one. *Unfold* opens the
     chapter on the canvas again.
 - **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
-  say); Russell, those in no chapter. *Loose · n* at the foot of the room opens them in a row;
-  drag one onto the room to place it (Joyce: a train of its own; Russell: into the chapter it is
+  say); Russell, those in no chapter. They fill the **left dock** (the docks feature) whenever the
+  room has any, as a list; × or Ctrl+Alt+L hides the dock and Ctrl+Alt+L brings it back. (Without
+  the docks feature, *Loose · n* at the foot of the room opens them in a row.) Drag one onto the
+  room to place it (Joyce: a train of its own; Russell: into the chapter it is
   let go on, or a new chapter of its own on the empty canvas).
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
   *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.

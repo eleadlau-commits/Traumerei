@@ -147,28 +147,58 @@ export class Bars {
     if (!this.draft) this.drawWorld();
   }
 
-  // ---- The tray: thoughts the ontology hasn't placed yet, along the foot of the room ----
-  // A quiet word ("Loose · 3") opens a row of them; one dragged onto the canvas goes where it is
-  // let go (the ontology's drop()). Only an ontology with a tray has one, and only when it holds
-  // something.
+  // ---- Loose thoughts: those the ontology hasn't placed yet, in the left dock ----
+  // They fill the left dock (the docks feature) as a list, which shows whenever the room has any;
+  // one dragged onto the canvas goes where it is let go (the ontology's drop()). × or Ctrl+Alt+L
+  // only hides the dock, and Ctrl+Alt+L brings it back. Without the docks feature they are a tray
+  // at the foot of the room instead: a quiet word ("Loose · 3") opens a row of them. Only an
+  // ontology with a tray has loose thoughts.
 
   trayItems() {
     try { return this.ont.tray?.(this.world, this.roomId) || []; } catch { return []; }
   }
 
+  looseCard(th) {
+    return el('div', {
+      class: 'room-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
+      onpointerdown: (e) => this.trayDrag(e, th.id),
+    }, el('span', { class: 'room-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+  }
+
   drawTray() {
     const items = this.roomId ? this.trayItems() : [];
+    if (this.docks) { this.drawLoose(items); return; }
     if (!items.length) { this.trayEl.hidden = true; this.trayEl.replaceChildren(); return; }
     const open = !!this.trayOpen;
     const word = el('button', { type: 'button', class: 'word room-tray-btn', 'aria-expanded': String(open),
       title: 'Thoughts not placed in this mode yet. Drag one onto the room.',
       onclick: () => { this.trayOpen = !open; this.drawTray(); } }, `Loose · ${items.length}`);
-    const row = open ? el('div', { class: 'panel room-tray-row', role: 'list' }, items.map((th) => el('div', {
-      class: 'room-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
-      onpointerdown: (e) => this.trayDrag(e, th.id),
-    }, el('span', { class: 'room-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
+    const row = open ? el('div', { class: 'panel room-tray-row', role: 'list' }, items.map((th) => this.looseCard(th))) : null;
     this.trayEl.hidden = false;
     this.trayEl.replaceChildren(...(row ? [row] : []), word);
+  }
+
+  // The loose thoughts in the left dock: opened when there are some, kept up to date while it
+  // shows (or is hidden), shut when there are none.
+  drawLoose(items) {
+    const dock = this.docks.left;
+    if (!items.length) { this.loose = null; dock.close('loose', true); return; }
+    const title = `${items.length} not placed`;
+    const list = items.map((th) => this.looseCard(th));
+    if (this.loose && dock.isOpen('loose')) { // (open() fills the dock at once; its handle comes after)
+      this.loose.list.replaceChildren(...list);
+      this.loose.handle?.setTitle(title);
+      return;
+    }
+    const listEl = el('div', { class: 'room-loose-list', role: 'list' }, list);
+    const body = el('div', { class: 'room-loose' },
+      el('p', { class: 'room-loose-hint' }, 'Thoughts not placed in this mode yet. Drag one onto the room.'),
+      listEl);
+    const loose = (this.loose = { list: listEl, handle: null });
+    // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
+    dock.open({ key: 'loose', kind: 'Loose', title, body, beforeClose: () => { dock.toggle(); return false; },
+      onClose: () => { if (this.loose === loose) this.loose = null; } })
+      .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
   }
 
   // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
@@ -183,7 +213,7 @@ export class Bars {
     const ghost = card.cloneNode(true);
     ghost.classList.add('panel', 'room-tray-ghost');
     Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
-    this.root.append(ghost);
+    (document.getElementById('folio-root') || document.body).append(ghost); // fixed to the window, wherever the room sits
     const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
     const up = (ev) => {
       document.removeEventListener('pointermove', move);
