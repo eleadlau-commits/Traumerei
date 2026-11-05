@@ -36,7 +36,5 @@
 .source-option { display: flex; align-items: center; gap: 6px; font-size: 13px; opacity: .8; cursor: pointer; }
 
 .source-words { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
-.source-ask { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: 13px; padding-top: 4px; border-top: 1px solid var(--line); }
-.source-ask[hidden] { display: none; }
 
 .source-go { opacity: .9; }

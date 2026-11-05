@@ -22,14 +22,26 @@ export default class Source extends Feature {
     });
   }
 
+  // The drafts kept: { [name]: { text, base } } (base: the text it held when the draft was made).
+  drafts() { return this.storage.get('drafts', {}) || {}; }
+
+  keepDraft(name, d) {
+    const all = this.drafts();
+    if (d) all[name] = d; else if (name in all) delete all[name]; else return;
+    this.storage.set('drafts', all);
+  }
+
   // Opens the editor in the panel. Resolves once it closes: true when Apply was used, else false.
+  // draft: a name for what is edited ("room:<id>"): closed with changes not applied, the text is
+  // kept under it, with no question, and comes back the next time it opens.
   open({ kind = 'Source', title = '', text = '', readOnly = false, fileName = 'source.md', options = [],
-    check = () => ({}), apply = null, full = (t) => t, reset = null } = {}) {
+    check = () => ({}), apply = null, full = (t) => t, reset = null, draft = null } = {}) {
     return new Promise((resolve) => {
-      let applied = false, base = text, timer = 0, asking = null;
+      let applied = false, base = text, timer = 0;
+      const kept = draft && !readOnly ? this.drafts()[draft] : null; // { text, base } from last time
       const chosen = Object.fromEntries(options.map((o) => [o.key, !!o.value]));
       const box = el('textarea', { class: 'code-box source-text', spellcheck: 'false', autocomplete: 'off', wrap: 'off', 'aria-label': title || 'Source', readonly: readOnly ? '' : null });
-      box.value = text;
+      box.value = kept ? kept.text : text;
       const sum = el('div', { class: 'source-sum', 'aria-live': 'polite' });
       const lists = el('div', { class: 'source-lists' });
       const opts = el('div', { class: 'source-options' });
@@ -96,34 +108,26 @@ export default class Source extends Feature {
         handle?.close(true);
       };
       const go = readOnly || !apply ? null : word('Apply', doApply, 'source-go');
-      // Closing with changes asks first, in a line at the foot.
-      const ask = el('div', { class: 'source-ask', hidden: true });
+      // Closing with changes keeps them as a draft for next time (no question); Apply, or closing
+      // with the text as it was, lets the draft go.
       const beforeClose = () => {
-        if (applied || readOnly || !changed()) return true;
-        if (asking) return false;
-        return new Promise((res) => {
-          asking = res;
-          const done = (yes) => { ask.hidden = true; asking = null; res(yes); if (!yes) box.focus(); };
-          ask.replaceChildren(el('span', {}, 'Close without applying your changes?'),
-            word('Close', () => done(true), 'source-go'), word('Keep editing', () => done(false)));
-          ask.hidden = false;
-          ask.querySelector('button').focus();
-        });
+        if (draft && !readOnly) this.keepDraft(draft, !applied && changed() ? { text: box.value, base } : null);
+        return true;
       };
-      const body = el('div', { class: 'source', onkeydown: (e) => { if (e.key === 'Escape' && asking) { e.preventDefault(); e.stopPropagation(); ask.hidden = true; const r = asking; asking = null; r(false); box.focus(); } } },
+      const body = el('div', { class: 'source' },
         sum, lists, box, opts,
         el('div', { class: 'source-words' },
           word('Copy', copy),
           word('Download', download),
           ...(readOnly ? [el('span', { class: 'sheet-keys' }, 'Read only')] : [word('Paste', paste), word('Reset', doReset), go,
-            el('span', { class: 'sheet-keys' }, 'Ctrl+Enter applies · Escape closes')])),
-        ask);
+            el('span', { class: 'sheet-keys' }, 'Ctrl+Enter applies · Escape keeps your changes for next time')])));
       let handle = null;
       this.panel.open({ key: 'source', kind, title, body, beforeClose, onClose: () => { clearTimeout(timer); if (this.handle === handle) this.handle = null; resolve(applied); } })
         .then((h) => {
           if (!h) { resolve(false); return; }
           handle = this.handle = h;
           run();
+          if (kept) say(kept.base === base ? 'Your changes from last time are back' : 'Your changes from last time are back · it has changed since (Reset shows it now)');
           box.focus({ preventScroll: true });
           box.setSelectionRange(0, 0);
           box.scrollTop = 0;
