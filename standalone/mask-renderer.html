@@ -12711,6 +12711,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   __export(ontologies_exports, {
     BUILT_IN: () => BUILT_IN,
     FALLBACK: () => FALLBACK,
+    forPage: () => forPage,
+    forRooms: () => forRooms,
     gather: () => gather,
     groupChosen: () => groupChosen,
     missing: () => missing2,
@@ -14048,6 +14050,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const [k2, t] of Object.entries(MAY)) if (o2[k2] != null && typeof o2[k2] !== t) out.push(k2);
     if (o2.groups != null && !["one", "many"].includes(o2.groups.membership)) out.push("groups");
     for (const k2 of ["settings", "moves"]) if (o2[k2] != null && !Array.isArray(o2[k2])) out.push(k2);
+    if (o2.roomsPage != null && typeof o2.roomsPage !== "boolean") out.push("roomsPage");
     if (Array.isArray(o2.moves) && o2.moves.some((m2) => !m2 || typeof m2.label !== "string" || typeof m2.run !== "function")) out.push("moves");
     return out;
   }
@@ -14068,6 +14071,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
   }
+  var forRooms = (all) => all.filter((o2) => !o2.roomsPage);
+  var forPage = (all) => all.find((o2) => o2.roomsPage) || null;
   function itemsOf(w2, roomId, ids) {
     const out = /* @__PURE__ */ new Map();
     for (const id of ids) {
@@ -14176,6 +14181,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return w2.ontologies;
         },
         ontology: (id) => w2.ontology(id),
+        get roomsPage() {
+          return forPage(w2.all);
+        },
+        // the rooms page's own ontology (Borges), or null
         get prefs() {
           return w2.prefs;
         },
@@ -14259,8 +14268,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The ontologies there are (ontologies/index.js), and the one a room is seen through: a room
     // whose ontology is missing (its feature switched off, say) is seen through Pessoa.
-    get ontologies() {
+    // The rooms page's own (Borges, roomsPage) is never a room's: it is only in `all`.
+    get all() {
       return gather(this.slot("world.ontologies").items, (o2, lacks) => console.warn("World: an ontology was skipped; it lacks", lacks.join(", "), o2));
+    }
+    get ontologies() {
+      return forRooms(this.all);
     }
     ontology(id) {
       const all = this.ontologies;
@@ -14409,6 +14422,33 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return { archived: on };
   }
 
+  // dist/web/features/floors/borges.js
+  function borges(board) {
+    return {
+      id: "borges",
+      name: "Borges",
+      note: "rooms on the cells of the floors",
+      roomsPage: true,
+      order: 0,
+      // The rooms on floor `page`, oldest first.
+      units: (w2, page) => roomsOn2(w2, page),
+      // Where a room sits: its cell, or null while it has none (the floor rule places it).
+      point: (w2, page, id) => {
+        const r = room2(w2, id);
+        return r && r.col != null ? { x: r.col, y: r.row } : null;
+      },
+      // A room let go at (x, y) of floor `page` (cells): it moves there if the cells are on the board
+      // and free; from another floor it comes to this one. True when it moved.
+      drop: (w2, page, id, x, y) => {
+        const r = room2(w2, id);
+        if (!r) return false;
+        const col = Math.round(x), row = Math.round(y);
+        if ((r.page || 0) === page) return move2(w2, id, col, row, board());
+        return toFloor(w2, id, page, board(), { col, row }) === true;
+      }
+    };
+  }
+
   // dist/web/features/floors/Floors.js
   var { el: el7 } = ui_exports;
   var Floors = class extends Feature {
@@ -14435,6 +14475,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         removeFloor: (page) => removeFloor(this.world, page)
         // a floor goes: its rooms to the Archive, the rest up one
       });
+      this.add("world.ontologies", borges(board));
       this.add("settings", { id: "floors-size", title: "Floors", order: 31, render: () => this.settingsPane() });
     }
     get world() {
@@ -17222,7 +17263,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         tile.style.transform = "";
-        const home = r.page || 0;
         if (ev.altKey && !r.archived && !over?.archive) {
           this.page = floor;
           this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
@@ -17240,15 +17280,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.save();
             this.toast(`${r.name} is in the Archive.`);
           }
-        } else if (target && floor !== home) {
-          if (this.floors.toFloor(r.id, floor, target) === true) this.save();
-        } else if (target && this.floors.move(r.id, target.col, target.row)) this.save();
+        } else if (target && this.dropRoom(r.id, floor, target)) this.save();
         this.page = floor;
         this.drawRooms();
       };
       window.addEventListener("pointermove", moveFn);
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
+    }
+    // A room let go on a cell of floor `page`: the rooms page's own ontology (Borges, the world's
+    // roomsPage) says where it goes; without it, the floors feature's rule. True when it moved.
+    dropRoom(id, page, cell) {
+      const ont = this.w.roomsPage;
+      if (ont) return ont.drop(this.world, page, id, cell.col, cell.row);
+      const r = room4(this.world, id);
+      if ((r?.page || 0) !== page) return this.floors.toFloor(id, page, cell) === true;
+      return this.floors.move(id, cell.col, cell.row);
     }
     // A new room of a kind (its mode), in the cell asked for (or the first free one), with
     // its name ready to write.
