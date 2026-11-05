@@ -12743,8 +12743,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var pal = (palette2) => ({ ...PALETTE, ...palette2 || {} });
   function pageLook(colours2, prefs = LOOK, palette2 = PALETTE) {
     const paper = rgb(pal(palette2).paper);
-    const top = colours2?.top || paper, bottom = colours2?.bottom || paper;
-    return { top: css(top), bottom: css(bottom), mask: css(rgb(pal(palette2).ink), prefs.mask) };
+    const top = colours2?.top || paper, bottom2 = colours2?.bottom || paper;
+    return { top: css(top), bottom: css(bottom2), mask: css(rgb(pal(palette2).ink), prefs.mask) };
   }
   function roomColour(room6, messy = false, prefs = LOOK, palette2 = PALETTE) {
     const [, C, h] = toOklch(rgb(room6?.tint) || rgb(pal(palette2).paper));
@@ -12981,7 +12981,90 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
-  var joyce_default = {
+  function spots(w2, ids, at2 = { x: 0, y: 0 }) {
+    const out = {};
+    let y = at2.y, tallest = 0;
+    ids.forEach((id, k2) => {
+      if (k2 && k2 % 4 === 0) {
+        y += tallest + 140;
+        tallest = 0;
+      }
+      out[id] = { x: at2.x + k2 % 4 * 440, y };
+      const g2 = w2.things[id];
+      tallest = Math.max(tallest, g2.closed ? 60 : members(w2, id).reduce((s, th) => s + stepAfter(th), 0));
+    });
+    return out;
+  }
+  var bottom = (w2, g2) => g2.y + (g2.closed ? 60 : members(w2, g2.id).reduce((s, th) => s + stepAfter(th), 0)) + 140;
+  var traum = {
+    write(w2, roomId, c) {
+      const out = [];
+      const trains = groupsIn(w2, roomId, "joyce").filter((g2) => members(w2, g2.id).length && c.ref(g2.id));
+      for (const g2 of trains) if (!g2.loose && !groupOf(w2, g2.id, "joyce")) out.push(`at: ${c.ref(g2.id)} ${g2.x} ${g2.y}${g2.hand === true ? " hand" : ""}`);
+      for (const g2 of placedForeign(w2, roomId, "joyce")) {
+        const p = spot2(w2, roomId, "joyce", g2.id);
+        if (c.ref(g2.id)) out.push(`at: ${c.ref(g2.id)} ${p.x} ${p.y}`);
+      }
+      for (const g2 of trains) for (const th of members(w2, g2.id)) if (Number.isFinite(th.dx) && c.ref(th.id)) out.push(`offset: ${c.ref(th.id)} ${th.dx} ${th.dy}`);
+      const tray = joyce.tray(w2, roomId).map((th) => c.ref(th.id)).filter(Boolean);
+      if (tray.length) out.push(`tray: ${tray.join(" ")}`);
+      return out;
+    },
+    read(w2, roomId, lines2, c) {
+      const placed = /* @__PURE__ */ new Set();
+      const there = groupsIn(w2, roomId, "joyce").filter((g2) => !c.fresh.has(g2.id) && !g2.loose && members(w2, g2.id).length);
+      const num = (v2) => v2?.t === "num" ? v2.v : null;
+      for (const l2 of lines2) {
+        if (l2.key === "at" || l2.key === "offset") {
+          const id = c.thing(l2.values[0], l2.line), x = num(l2.values[1]), y = num(l2.values[2]);
+          if (!id) continue;
+          if (x == null || y == null) {
+            c.report(l2.line, `${l2.key}: needs a ^reference and two numbers.`);
+            continue;
+          }
+          const th = w2.things[id];
+          if (l2.key === "offset") {
+            th.dx = Math.round(x);
+            th.dy = Math.round(y);
+            continue;
+          }
+          if (placed.has(id)) {
+            c.report(l2.line, "Joyce places a thing once; this second at: was left out.");
+            continue;
+          }
+          placed.add(id);
+          const hand = l2.values.slice(3).some((v2) => v2.t === "word" && v2.v === "hand");
+          if (isGroup(th) && th.of === "joyce") {
+            Object.assign(th, { x: Math.round(x), y: Math.round(y) });
+            if (hand) th.hand = true;
+            delete th.loose;
+          } else if (isGroup(th)) putAt(w2, roomId, "joyce", id, x, y);
+          else if (!groupOf(w2, id, "joyce")) {
+            const t = create(w2, roomId, { kind: "group", of: "joyce", x: Math.round(x), y: Math.round(y) }, th.at);
+            if (t) {
+              join(w2, t.id, id);
+              if (hand) t.hand = true;
+            }
+          } else c.report(l2.line, "that thought is in a train already, so its train's at: places it.");
+        } else if (l2.key === "tray") {
+          for (const v2 of l2.values) {
+            const id = c.thing(v2, l2.line);
+            const g2 = id && w2.things[id];
+            if (isGroup(g2) && g2.of === "joyce") {
+              g2.loose = true;
+              placed.add(id);
+            }
+          }
+        } else c.keep(l2);
+      }
+      const fresh = groupsIn(w2, roomId, "joyce").filter((g2) => c.fresh.has(g2.id) && !placed.has(g2.id) && !g2.loose && !groupOf(w2, g2.id, "joyce"));
+      if (!fresh.length) return;
+      const below = Math.max(0, ...there.map((g2) => bottom(w2, g2)));
+      const where = spots(w2, fresh.map((g2) => g2.id), c.at || { x: 0, y: below });
+      for (const g2 of fresh) Object.assign(g2, where[g2.id]);
+    }
+  };
+  var joyce = {
     id: "joyce",
     name: "Joyce",
     note: "thoughts joined by time",
@@ -13107,8 +13190,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }, c.thoughtNode(t)));
           continue;
         }
-        const spots2 = trainSpots(w2, t.id);
-        const knots = trainThoughts(w2, t.id).map((th) => ({ th, ...spots2[th.id] }));
+        const spots3 = trainSpots(w2, t.id);
+        const knots = trainThoughts(w2, t.id).map((th) => ({ th, ...spots3[th.id] }));
         if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w2, t.id), draft: true });
         const g2 = document.createElementNS(SVG, "g");
         g2.setAttribute("data-group", t.id);
@@ -13154,8 +13237,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         nodes.push(el16("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [svg2, ...nodes];
-    }
+    },
+    traum
   };
+  var joyce_default = joyce;
 
   // dist/web/features/world/ontologies/pessoa.js
   var pessoa_exports = {};
@@ -13174,6 +13259,49 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const jy = ((h >> 8 & 255) / 255 - 0.5) * 28;
     return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
   }
+  var traum2 = {
+    write(w2, roomId, c) {
+      const places = own(w2, roomId, "pessoa", false);
+      const out = [];
+      const spiral = [];
+      for (const th of roomUnits(w2, roomId)) {
+        const p = places[th.id];
+        if (!c.ref(th.id)) continue;
+        if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
+        else spiral.push(c.ref(th.id));
+      }
+      for (const g2 of placedForeign(w2, roomId, "pessoa")) {
+        const p = spot2(w2, roomId, "pessoa", g2.id);
+        if (c.ref(g2.id)) out.push(`at: ${c.ref(g2.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
+      }
+      if (spiral.length) out.push(`on canvas: ${spiral.join(" ")}`);
+      const tray = trayForeign(w2, roomId, "pessoa").map((g2) => c.ref(g2.id)).filter(Boolean);
+      if (tray.length) out.push(`tray: ${tray.join(" ")}`);
+      return out;
+    },
+    read(w2, roomId, lines2, c) {
+      const placed = /* @__PURE__ */ new Set();
+      for (const l2 of lines2) {
+        if (l2.key === "at") {
+          const id = c.thing(l2.values[0], l2.line);
+          const [x, y] = [l2.values[1], l2.values[2]].map((v2) => v2?.t === "num" ? v2.v : null);
+          if (!id) continue;
+          if (x == null || y == null) {
+            c.report(l2.line, "at: needs a ^reference and two numbers.");
+            continue;
+          }
+          if (placed.has(id)) {
+            c.report(l2.line, "Pessoa places a thing once; this second at: was left out.");
+            continue;
+          }
+          placed.add(id);
+          own(w2, roomId, "pessoa")[id] = { x: Math.round(x), y: Math.round(y), ...l2.values.slice(3).some((v2) => v2.v === "auto") ? { auto: true } : {} };
+        } else if (l2.key === "on canvas" || l2.key === "tray") {
+          for (const v2 of l2.values) c.thing(v2, l2.line);
+        } else c.keep(l2);
+      }
+    }
+  };
   var pessoa_default = {
     id: "pessoa",
     name: "Pessoa",
@@ -13212,7 +13340,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const places = own(w2, roomId, "pessoa");
       places[id] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy), ...places[id] && !places[id].auto ? {} : { auto: true } };
     },
-    draftPoint: (w2, roomId) => spiralPoint(roomUnits(w2, roomId).length, "draft")
+    draftPoint: (w2, roomId) => spiralPoint(roomUnits(w2, roomId).length, "draft"),
+    traum: traum2
   };
 
   // dist/web/features/world/ontologies/russell.js
@@ -13464,6 +13593,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     function adopt(w2, roomId, child, parent) {
       put(w2, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations2(w2, roomId)[0] } });
     }
+    const traumLines = (w2, roomId, c) => arrows2(w2, roomId).filter((a) => c.ref(a.from) && c.ref(a.to)).map((a) => `arrow: ${c.writeArrow({ from: c.ref(a.from), to: c.ref(a.to), rel: a.rel, label: a.label })}`);
+    function traumArrows(w2, roomId, list2, c) {
+      for (const a of list2) {
+        const why = link3(w2, roomId, a.from, a.to, a.label || "", a.rel ?? "");
+        if (why) c.report(a.line, `the arrow wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, "")}.`);
+      }
+    }
     return {
       relations: relations2,
       renameRelations: renameRelations2,
@@ -13479,7 +13615,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       unlink: unlink3,
       setLabel: setLabel3,
       setRelation: setRelation3,
-      adopt
+      adopt,
+      traumLines,
+      traumArrows
     };
   }
 
@@ -13645,10 +13783,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const at2 = layout(w2, roomId)[chapterId];
     if (!isGroup(g2) || !at2) return false;
     if (!g2.members.includes(id) && !join(w2, chapterId, id)) return false;
-    const spots2 = chapterSpots(w2, chapterId, at2);
+    const spots3 = chapterSpots(w2, chapterId, at2);
     const rest = members(w2, chapterId).map((th) => th.id).filter((m2) => m2 !== id);
     const mid = y + 12;
-    let i2 = rest.findIndex((m2) => spots2[m2] && spots2[m2].y + stepAfter(w2.things[m2]) / 2 > mid);
+    let i2 = rest.findIndex((m2) => spots3[m2] && spots3[m2].y + stepAfter(w2.things[m2]) / 2 > mid);
     if (i2 < 0) i2 = rest.length;
     rest.splice(i2, 0, id);
     return setOrder(w2, chapterId, rest);
@@ -13857,7 +13995,57 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     document.addEventListener("pointerup", up);
     document.addEventListener("pointercancel", up);
   }
-  var russell_default = {
+  var traum3 = {
+    write(w2, roomId, c) {
+      const out = [];
+      const tree = chapters(w2, roomId).filter((g2) => c.ref(g2.id));
+      const auto = tree.filter((g2) => g2.hand !== true).map((g2) => c.ref(g2.id));
+      if (auto.length) out.push(`on canvas: ${auto.join(" ")}`);
+      for (const g2 of tree) if (g2.hand === true) out.push(`at: ${c.ref(g2.id)} ${g2.x} ${g2.y}`);
+      const tray = russell.tray(w2, roomId).map((th) => c.ref(th.id)).filter(Boolean);
+      if (tray.length) out.push(`tray: ${tray.join(" ")}`);
+      out.push(...net.traumLines(w2, roomId, c));
+      return out;
+    },
+    read(w2, roomId, lines2, c) {
+      const arrowsRead = [...c.relations || []];
+      const own3 = (id) => {
+        const g2 = w2.things[id];
+        return isGroup(g2) && g2.of === ID ? g2 : null;
+      };
+      const placed = /* @__PURE__ */ new Set();
+      for (const l2 of lines2) {
+        if (l2.key === "on canvas" || l2.key === "tray") {
+          for (const v2 of l2.values) {
+            const g2 = own3(c.thing(v2, l2.line));
+            if (!g2) continue;
+            if (l2.key === "tray") g2.loose = true;
+            else delete g2.loose;
+          }
+        } else if (l2.key === "at") {
+          const g2 = own3(c.thing(l2.values[0], l2.line));
+          const [x, y] = [l2.values[1], l2.values[2]].map((v2) => v2?.t === "num" ? v2.v : null);
+          if (!g2) continue;
+          if (x == null || y == null) {
+            c.report(l2.line, "at: needs a ^reference and two numbers.");
+            continue;
+          }
+          if (placed.has(g2.id)) {
+            c.report(l2.line, "Russell places a chapter once; this second at: was left out.");
+            continue;
+          }
+          placed.add(g2.id);
+          Object.assign(g2, { x: Math.round(x), y: Math.round(y), hand: true });
+          delete g2.loose;
+        } else if (l2.key === "arrow") {
+          const a = c.arrow(l2);
+          if (a) arrowsRead.push(a);
+        } else c.keep(l2);
+      }
+      net.traumArrows(w2, roomId, arrowsRead, c);
+    }
+  };
+  var russell = {
     id: ID,
     name: "Russell",
     note: "chapters in a tree",
@@ -14139,9 +14327,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             style: `left:${at2.x}px;top:${at2.y}px`
           }, el16("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
-          const spots2 = chapterSpots(w2, g2.id, at2);
+          const spots3 = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
-            const sp = spots2[th.id];
+            const sp = spots3[th.id];
             nodes.push(el16("div", {
               class: cls + (chosen || c.isSel(th.id) ? " selected" : "") + (c.found === th.id ? " found" : ""),
               "data-group": g2.id,
@@ -14151,7 +14339,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           if (c.draft?.train === g2.id && !c.draft.edit) {
             const last = members(w2, g2.id).at(-1);
-            const y = last ? spots2[last.id].y + stepAfter(last) : at2.y;
+            const y = last ? spots3[last.id].y + stepAfter(last) : at2.y;
             nodes.push(el16("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
@@ -14179,8 +14367,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     tag(w2, id) {
       const g2 = groupOf(w2, id, ID);
       return g2 ? { id: g2.id, name: chapterName(w2, g2.id) } : null;
-    }
+    },
+    traum: traum3
   };
+  var russell_default = russell;
 
   // dist/web/features/world/ontologies/index.js
   var BUILT_IN = [joyce_default, pessoa_default, russell_default];
@@ -14194,6 +14384,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (o2.groups != null && !["one", "many"].includes(o2.groups.membership)) out.push("groups");
     for (const k2 of ["settings", "moves"]) if (o2[k2] != null && !Array.isArray(o2[k2])) out.push(k2);
     if (o2.roomsPage != null && typeof o2.roomsPage !== "boolean") out.push("roomsPage");
+    if (o2.traum != null && (typeof o2.traum.write !== "function" || typeof o2.traum.read !== "function")) out.push("traum");
     if (Array.isArray(o2.moves) && o2.moves.some((m2) => !m2 || typeof m2.label !== "string" || typeof m2.run !== "function")) out.push("moves");
     return out;
   }
@@ -15451,7 +15642,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const id = view4(w2, roomId).mode;
     return ontologies.find((o2) => o2.id === id) || ontologies.find((o2) => o2.id === "pessoa") || { id, groups: null };
   };
-  function spots(w2, ids, at2 = { x: 0, y: 0 }) {
+  function spots2(w2, ids, at2 = { x: 0, y: 0 }) {
     const out = {};
     let y = at2.y, tallest = 0;
     ids.forEach((id, k2) => {
@@ -15501,7 +15692,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       madeGroups.push({ id: g2.id, src });
     }
     if (of !== RUSSELL) {
-      const where = spots(w2, madeGroups.map((m2) => m2.id), at2 || void 0);
+      const where = spots2(w2, madeGroups.map((m2) => m2.id), at2 || void 0);
       for (const { id } of madeGroups) Object.assign(w2.things[id], where[id]);
     }
     const arrows2 = [];
@@ -15883,7 +16074,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     if (of !== RUSSELL && made.length) {
       const below = Math.max(0, ...groupsIn2(w2, roomId, of).filter((g2) => !made.includes(g2.id)).map((g2) => g2.y + (g2.closed ? 60 : members2(w2, g2.id).reduce((s, th) => s + stepAfter2(th), 0)) + 140));
-      const where = spots(w2, made, { x: 0, y: below });
+      const where = spots2(w2, made, { x: 0, y: below });
       for (const id of made) Object.assign(w2.things[id], where[id]);
     }
     if (removeMissing) {
@@ -19976,13 +20167,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function clearSpot(box, rects, size, random = Math.random, { gap = GAP, tries = 80 } = {}) {
     const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
-    const spots2 = [];
+    const spots3 = [];
     const cols = 5, rows = 5;
     for (let i2 = 0; i2 < tries; i2++) {
       const p = i2 < cols * rows ? { x: box.x + (i2 % cols + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i2 / cols) + random()) / rows * Math.max(0, box.h - size.h) } : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
-      spots2.push(p);
+      spots3.push(p);
     }
-    const order = spots2.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots2[i2]);
+    const order = spots3.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots3[i2]);
     const free2 = order.find((p) => !hits(p));
     if (free2) return free2;
     const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
@@ -20728,8 +20919,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.input.focus({ preventScroll: true });
       this.drawWorld();
       this.showDraft();
-      const joyce = this.writer.id === DEFAULT_MODE4;
-      this.toast(joyce ? "New train: type to start it." : "New thought: type to start it (it waits in the tray).");
+      const joyce2 = this.writer.id === DEFAULT_MODE4;
+      this.toast(joyce2 ? "New train: type to start it." : "New thought: type to start it (it waits in the tray).");
     }
     // Starts a thought (if one isn't started), with `seed` as its first letters.
     beginWriting(seed = "") {
