@@ -1,11 +1,11 @@
 // Part of the room feature. A room: its look and settings (Settings → Rooms, a room's ⚙), its rail and modes, laying out
-// its canvas, clearing space between thoughts, and the Timeline.
+// its canvas, and clearing space between thoughts.
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  room, addRoom, view, create, kindOf, thoughtText, roomThoughts, peek, isBig,
+  room, addRoom, view, create, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  hash, light, twinOf,
+  light, twinOf,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
@@ -168,7 +168,7 @@ export class RoomView {
     // The rail (Folio's column of veil, its width the frame's): under Modes, a big room (Messy, or
     // 2 × 2) lists the ontologies and switches between them; a small one shows its one. Each has
     // its icon (the ontology's own). Hovering over a mode shows a small ⚙ beside it, which opens
-    // this room's settings for it. Under Views, Timeline.
+    // this room's settings for it. Under Views, Time (the time feature's dock).
     const big = isBig(r);
     const items = [el('div', { class: 'rail-head', 'aria-hidden': 'true' }, big ? 'Modes' : 'Mode')];
     const mark = (m) => (m.icon ? railIcon(m.icon) : el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, m.name.slice(0, 1)));
@@ -188,20 +188,21 @@ export class RoomView {
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
     items.push(...this.twinRail()); // a Twin: its two sides (twin.js)
-    items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Views'));
-    items.push(el('button', {
-      type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
-      title: this.keyMap ? `Timeline · ${this.keyMap.label('room.timeline')}` : 'Timeline',
-      onclick: () => this.toggleTimeline(),
-    }, railIcon('clock'), railWord('Timeline')));
+    if (this.time) {
+      items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Views'));
+      items.push(el('button', {
+        type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.time.on),
+        title: this.keyMap ? `Time · ${this.keyMap.label('time.toggle')}` : 'Time',
+        onclick: () => this.time.toggle(),
+      }, railIcon('clock'), railWord('Time')));
+    }
     const card = !this.panel && this.settingsFor && this.roomSettingsCard();
     if (card) items.push(card);
     this.drawModeSettings();
     this.modes.setAttribute('role', 'group');
     this.modes.replaceChildren(...items);
     this.root.dataset.mode = this.mode;
-    this.root.classList.toggle('history-open', this.historyOpen);
-    this.drawHistory();
+    this.time?.refresh();
     this.place();
     this.drawWorld();
   }
@@ -230,16 +231,6 @@ export class RoomView {
   renameOpenRoom() {
     if (this.renaming) return;
     this.renaming = this.roomId;
-    this.drawRoom();
-  }
-
-  // The room's Timeline, down the right: a view of its thoughts in time, in any mode.
-  get historyOpen() { return !!this.roomId && !!view(this.world, this.roomId).timeline; }
-
-  togglePanel() {
-    const v = view(this.world, this.roomId);
-    v.timeline = !v.timeline;
-    this.save();
     this.drawRoom();
   }
 
@@ -482,88 +473,5 @@ export class RoomView {
     cancelAnimationFrame(this.clearFrame);
     this.clearFrame = 0;
     if (depth < 2) this.clearRoom(depth + 1);
-  }
-
-  // The Timeline: everything written in the room, in the order it was last changed (latest at the
-  // bottom), each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its
-  // train). A click takes the view to it. It is a tab of the right dock (the docks feature), beside
-  // the Editor; without docks, a list down the right of the room.
-  drawHistory() {
-    if (this.docks) { this.dockTimeline(); return; }
-    if (!this.historyOpen) { this.history.hidden = true; return; }
-    const list = this.timelineList();
-    this.history.hidden = false;
-    this.history.replaceChildren(
-      el('div', { class: 'room-history-head' },
-        el('span', {}, 'Timeline'),
-        el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close Timeline', onclick: () => this.togglePanel() })),
-      list);
-    list.lastElementChild?.scrollIntoView?.({ block: 'end' });
-  }
-
-  // The Timeline's list (or a line saying there is nothing yet).
-  timelineList() {
-    const w = this.world, ont = this.ont;
-    const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
-    const items = roomThoughts(w, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
-    if (!items.length) return el('p', { class: 'room-history-none' }, 'Nothing written here yet');
-    const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    return el('ol', { class: 'room-history-list' }, items.map((th) => {
-      const tag = ont.tag?.(w, th.id) || null;
-      return el('li', {}, el('button', {
-        type: 'button', class: 'pick room-history-item' + (this.sel?.id === th.id || (tag && this.sel?.id === tag.id) ? ' on' : ''),
-        style: tag ? `--tag:hsl(${hash(tag.id) % 360} 32% 46%)` : '',
-        onclick: () => {
-          this.fromTimeline = true; // the Editor follows, but the Timeline stays in front
-          try { this.goTo({ id: th.id, kind: kindOf(th), room: this.roomId }); } finally { this.fromTimeline = false; }
-        },
-      },
-        el('span', { class: 'room-history-meta' },
-          el('span', { class: 'room-history-time' }, when(changed(th))),
-          tag ? el('span', { class: 'room-tag' }, tag.name) : null),
-        el('span', { class: 'room-history-text' }, thoughtText(w, th))));
-    }));
-  }
-
-  // The Timeline tab of the right dock: opened while the room's Timeline is on, kept up to date,
-  // and closed with the dock's × (which turns it off for this room).
-  dockTimeline() {
-    const dock = this.docks.right;
-    const tl = this.timeline;
-    if (!this.historyOpen) {
-      if (tl) { this.timeline = null; dock.close('timeline', true); }
-      return;
-    }
-    const r = room(this.world, this.roomId);
-    const list = this.timelineList();
-    if (tl && dock.isOpen('timeline')) {
-      tl.body.replaceChildren(list);
-      tl.handle?.setTitle(r.name);
-    } else {
-      const body = el('div', { class: 'room-timeline' }, list);
-      const now = (this.timeline = { body, handle: null });
-      // (open() fills the tab at once; its handle comes after)
-      dock.open({ key: 'timeline', tab: 'Timeline', kind: 'Timeline', title: r.name, body,
-        onClose: () => {
-          if (this.timeline !== now) return; // the room was left, or it was turned off
-          this.timeline = null;
-          if (!this.roomId) return;
-          view(this.world, this.roomId).timeline = false;
-          this.save();
-          this.drawRoom();
-        } })
-        .then((h) => { if (this.timeline === now) { if (h) now.handle = h; else this.timeline = null; } });
-    }
-    list.lastElementChild?.scrollIntoView?.({ block: 'end' });
-  }
-
-  // Ctrl+Alt+T, or Timeline in the rail: turns the Timeline on, brings its tab to the front when
-  // it is behind the Editor, or turns it off.
-  toggleTimeline() {
-    if (this.docks && this.historyOpen && this.timeline && !this.docks.right.isShowing('timeline')) {
-      this.docks.right.show('timeline');
-      return;
-    }
-    this.togglePanel();
   }
 }

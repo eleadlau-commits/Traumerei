@@ -30,7 +30,6 @@ export const ROOM_KEYS = [
   { id: 'room.nudge', keys: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight', 'Shift+ArrowUp', 'Shift+ArrowDown'], shows: 'Arrows · Shift+arrows', words: 'nudge what is chosen' },
   { id: 'room.search', keys: ['Ctrl+K'], words: 'search every room' },
   { id: 'room.mode', keys: ['Tab', 'Shift+Tab'], shows: 'Tab · Shift+Tab', words: 'the next mode · the one before (a big room)' },
-  { id: 'room.timeline', keys: ['Ctrl+Alt+T'], words: 'the Timeline: show it, bring it to the front, or hide it', typing: true },
   { id: 'room.undo', keys: ['Ctrl+Z', 'Ctrl+Shift+Z', 'Ctrl+Y'], shows: 'Ctrl+Z · Ctrl+Shift+Z', words: 'undo · redo' },
   { id: 'room.escape', keys: ['Escape'], words: 'let go, or go back' },
 ].map((k, i) => ({ order: 10 + i, ...k }));

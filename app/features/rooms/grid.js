@@ -69,6 +69,7 @@ export class RoomsGrid {
 
   // slide: the strip of floors slides from the floor that showed to this one.
   drawRooms({ slide = false } = {}) {
+    this.time?.refresh(); // the Time dock follows what is chosen (a moment later)
     const now = Date.now();
     this.page = Math.min(this.page, pageCount(this.world) - 1);
     const { cols, rows, cell } = this.gridSize();

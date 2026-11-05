@@ -1,0 +1,16 @@
+{
+  "name": "Time",
+  "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.",
+  "version": "0.1.0",
+  "main": "Time.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "world"
+  ],
+  "uses": [
+    "docks",
+    "keys"
+  ]
+}

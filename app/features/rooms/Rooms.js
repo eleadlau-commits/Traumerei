@@ -57,6 +57,7 @@ export default class Rooms extends Feature {
     this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
     this.panel = this.use('panel');       // the right dock, where a room's properties open, or null
     this.frame = this.use('frame');       // the top bar and the foot around the page (the frame feature), or null
+    this.time = this.use('time');         // the Time dock (the time feature), or null: grid.js tells it when the page is drawn
     this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
     // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
     this.on('frame:rail', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); }); // the rail narrowed or widened
@@ -78,6 +79,13 @@ export default class Rooms extends Feature {
       visible: () => !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.');
     this.provide('create', { open: () => this.open() });
+    // Where the Time dock is (the time feature): the rooms page, whose days list chooses a room.
+    this.add('time.place', {
+      live: () => !this.root.hidden && this.root.classList.contains('up') && !this.inRoom,
+      room: () => null,
+      chosen: () => this.roomPick,
+      go: (f) => this.showRoom(f.id),
+    });
     this.provide('rooms', {
       openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
       showRooms: () => this.showRooms(),   // back to this page, from a room
@@ -149,7 +157,7 @@ export default class Rooms extends Feature {
     this.frame?.hide(this);
     this.backdrop?.cover?.(false);
     this.root.classList.remove('up');
-    
+    this.time?.refresh(); // nothing for Time to show on the home page
     clearTimeout(this.closing);
     this.closing = setTimeout(() => {
       this.root.hidden = true;
@@ -254,6 +262,16 @@ export default class Rooms extends Feature {
     this.root.classList.add('in-room');
     this.emit('room:open', { id, from, seed });
     if (from) this.zoomOut(from); else this.roomsPage.hidden = true;
+  }
+
+  // Chooses a room where it is: on its floor, or in the Archive (from the Time dock).
+  showRoom(id) {
+    const r = room(this.world, id);
+    if (!r || this.inRoom) return;
+    if (!!r.archived !== this.shelf) this.toggleShelf();
+    if (!r.archived && (r.page || 0) !== this.page) this.showPage(r.page || 0);
+    this.roomPick = id;
+    this.drawRooms();
   }
 
   // Going in, the rooms page swells about the square and fades (the room grows out of the square

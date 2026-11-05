@@ -12,7 +12,8 @@
     "docks",
     "floors",
     "keys",
-    "frame"
+    "frame",
+    "time"
   ],
   "requires": [
     "world",
