@@ -4172,6 +4172,11 @@ html.rail-narrow { --rail: 48px; }
       this.held = this.held.filter((x) => x !== shown2);
       shown2.page.remove();
       if (this.front === shown2) this.front = this.held[this.held.length - 1] || null;
+      try {
+        shown2.onClose?.();
+      } catch (err) {
+        console.warn(`Dock (${this.side}): onClose`, err);
+      }
       if (!this.held.length) {
         this.tucked = false;
         this.root.hidden = true;
@@ -4180,11 +4185,6 @@ html.rail-narrow { --rail: 48px; }
         this.resized(0);
       }
       this.draw();
-      try {
-        shown2.onClose?.();
-      } catch (err) {
-        console.warn(`Dock (${this.side}): onClose`, err);
-      }
       return true;
     }
     // Hides the dock (on) or brings it back, keeping what it holds. False when it holds nothing.
@@ -7699,6 +7699,7 @@ html.rail-narrow { --rail: 48px; }
     copyRoom: () => copyRoom,
     create: () => create,
     declareGroups: () => declareGroups,
+    declareOrder: () => declareOrder,
     emptyWorld: () => emptyWorld,
     fold: () => fold,
     foldedFrom: () => foldedFrom,
@@ -7747,6 +7748,7 @@ html.rail-narrow { --rail: 48px; }
     roomsOn: () => roomsOn,
     search: () => search,
     seedRoomSettings: () => seedRoomSettings,
+    setOrder: () => setOrder,
     setRoomSetting: () => setRoomSetting,
     setTagGroup: () => setTagGroup,
     shut: () => shut,
@@ -11804,8 +11806,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MEMBERSHIP = { joyce: "one" };
   function declareGroups(of, groups) {
     if (groups?.membership === "many" || groups?.membership === "one") MEMBERSHIP[of] = groups.membership;
+    declareOrder(of, groups);
   }
   var membership = (of) => MEMBERSHIP[of] || "one";
+  var KEPT = /* @__PURE__ */ new Set();
+  function declareOrder(of, groups) {
+    if (groups?.order === "kept") KEPT.add(of);
+    else KEPT.delete(of);
+  }
   var counter = 0;
   function uid(prefix = "x") {
     counter = (counter + 1) % 1e6;
@@ -11866,7 +11874,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function members(w2, groupId) {
     const g2 = w2.things[groupId];
-    return isGroup(g2) ? g2.members.map((id) => w2.things[id]).filter(isLeaf).sort(byTime) : [];
+    if (!isGroup(g2)) return [];
+    const items = g2.members.map((id) => w2.things[id]).filter(isLeaf);
+    return KEPT.has(g2.of) ? items : items.sort(byTime);
   }
   var groupsIn = (w2, roomId, of = null) => children(w2, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
   var groupsOf = (w2, id, of = null) => Object.values(w2.things).filter((g2) => isGroup(g2) && g2.members.includes(id) && (of == null || g2.of === of)).sort(byTime);
@@ -11876,7 +11886,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const g2 = w2.things[groupId], th = w2.things[id];
     if (!isGroup(g2) || !isLeaf(th) || th.parent !== g2.parent || g2.members.includes(id)) return false;
     if (membership(g2.of) === "one") for (const o2 of groupsOf(w2, id, g2.of)) leave(w2, o2.id, id);
-    g2.members.push(id);
+    const i2 = KEPT.has(g2.of) ? g2.members.findIndex((m2) => (w2.things[m2]?.at ?? 0) > (th.at ?? 0)) : -1;
+    if (i2 < 0) g2.members.push(id);
+    else g2.members.splice(i2, 0, id);
+    return true;
+  }
+  function setOrder(w2, groupId, ids) {
+    const g2 = w2.things[groupId];
+    if (!isGroup(g2)) return false;
+    const listed = ids.filter((id) => g2.members.includes(id));
+    g2.members = [.../* @__PURE__ */ new Set([...listed, ...g2.members.filter((m2) => !listed.includes(m2))])];
     return true;
   }
   function leave(w2, groupId, id) {
@@ -12922,6 +12941,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     levels: () => levels,
     link: () => link,
     parentsOf: () => parentsOf,
+    placeIn: () => placeIn,
     readHeading: () => readHeading,
     relationOf: () => relationOf,
     relations: () => relations,
@@ -13269,6 +13289,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
+  function placeIn(w2, roomId, chapterId, id, y) {
+    const g2 = w2.things[chapterId];
+    const at2 = layout(w2, roomId)[chapterId];
+    if (!isGroup(g2) || !at2) return false;
+    if (!g2.members.includes(id) && !join(w2, chapterId, id)) return false;
+    const spots2 = chapterSpots(w2, chapterId, at2);
+    const rest = members(w2, chapterId).map((th) => th.id).filter((m2) => m2 !== id);
+    const mid = y + 12;
+    let i2 = rest.findIndex((m2) => spots2[m2] && spots2[m2].y + stepAfter(w2.things[m2]) / 2 > mid);
+    if (i2 < 0) i2 = rest.length;
+    rest.splice(i2, 0, id);
+    return setOrder(w2, chapterId, rest);
+  }
   function chapterAt(w2, roomId, x, y, except = null) {
     const places = layout(w2, roomId);
     for (const g2 of chapters(w2, roomId)) {
@@ -13425,7 +13458,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     icon: '<rect x="9" y="3" width="6" height="4"/><rect x="3" y="16" width="6" height="4"/><rect x="15" y="16" width="6" height="4"/><path d="M12 7v4.5M6 16v-4.5h12V16"/>',
     // a tree
     order: 30,
-    groups: { form: "chapter", name: "Chapter", membership: "one" },
+    groups: { form: "chapter", name: "Chapter", membership: "one", order: "kept" },
     settings: [
       { key: "line", label: "Arrows", type: "choice", options: [["straight", "Straight"], ["curved", "Curved"]], default: "straight" },
       RELATIONS
@@ -13444,9 +13477,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!at2) return null;
       return g2 === th || g2.folded ? at2 : chapterSpots(w2, g2.id, at2)[id] || null;
     },
-    // A chapter dragged stays where it is let go (placed by hand). A thought let go over another
-    // chapter joins it; one from the tray let go on the empty canvas starts a chapter of its own
-    // there (a new root).
+    // A chapter dragged stays where it is let go (placed by hand). A thought let go over a chapter
+    // goes in among its thoughts where it was let go: further up or down its own chapter, or into
+    // another. Let go on the empty canvas, it starts a chapter of its own there (a new root); the only
+    // thought of a chapter moves its chapter instead, so the chapter keeps its arrows.
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
@@ -13456,17 +13490,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if (!isLeaf(th)) return;
       const was = groupOf(w2, id, ID);
-      const onto = chapterAt(w2, roomId, x + 10, y + 10, was?.id);
-      if (onto) {
-        join(w2, onto, id);
+      const onto = chapterAt(w2, roomId, x + 10, y + 10);
+      if (onto && !w2.things[onto].folded) {
+        placeIn(w2, roomId, onto, id, y);
         return;
       }
-      if (!was) {
-        const g2 = addChapter(w2, roomId, { x: Math.round(x), y: Math.round(y) }, th.at);
-        if (g2) {
-          join(w2, g2.id, id);
-          g2.hand = true;
-        }
+      if (onto) {
+        if (onto !== was?.id) join(w2, onto, id);
+        return;
+      }
+      if (was && members(w2, was.id).length === 1) {
+        Object.assign(was, { x: Math.round(x), y: Math.round(y - headOf(was)), hand: true });
+        return;
+      }
+      const g2 = addChapter(w2, roomId, { x: Math.round(x), y: Math.round(y) }, th.at);
+      if (g2) {
+        join(w2, g2.id, id);
+        g2.hand = true;
       }
     },
     // A thought kept with no chapter to go on with: a child chapter when a move asked for one
@@ -14590,6 +14630,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var relations2;
   var readHeading2;
   var headingAttrs2;
+  var setOrder2;
   function bind2(lib) {
     ({
       room: room3,
@@ -14610,7 +14651,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       remove: remove2,
       leave: leave2,
       groupsOf: groupsOf2,
-      isGroup: isGroup2
+      isGroup: isGroup2,
+      setOrder: setOrder2
     } = lib.model);
     ({ ITEMS: ITEMS2 } = lib.items);
     ({ keepOrShrink: keepOrShrink2 } = lib.picture);
@@ -15181,9 +15223,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         k2 = e;
       }
       const keep = /* @__PURE__ */ new Set();
+      const order = [];
       for (const s of seq) {
         if (s.th) {
           keep.add(s.th.id);
+          order.push(s.th.id);
           counts2.kept++;
           if (s.at != null) s.th.at = s.at;
           continue;
@@ -15191,11 +15235,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const th = create2(w2, parent, s.f, s.at);
         if (th) {
           keep.add(th.id);
+          order.push(th.id);
           counts2.made++;
           if (kindOf2(th) === "picture") counts2.pictures++;
         }
       }
       for (const th of old) if (!keep.has(th.id) && w2.things[th.id]) drop(th, parent === roomId ? null : parent);
+      if (parent !== roomId) setOrder2(w2, parent, order);
     };
     const names = of === RUSSELL ? p.parsed.meta?.settings?.[RUSSELL]?.relations ?? relations2(w2, roomId) : [];
     const keepAttrs = (id, attrs) => {
@@ -18089,6 +18135,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var shrinkPicture2;
   var groupChosen2;
   var ungroupChosen2;
+  var setOrder3;
   function bind4(lib) {
     ({
       room: room5,
@@ -18124,7 +18171,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       seedRoomSettings: seedRoomSettings4,
       applySettingsToAll: applySettingsToAll2,
       hash: hash2,
-      DEFAULT_MODE: DEFAULT_MODE4
+      DEFAULT_MODE: DEFAULT_MODE4,
+      setOrder: setOrder3
     } = lib.model);
     ({ ITEMS: ITEMS3 } = lib.items);
     ({ maths: maths2 } = lib.maths);
@@ -18157,7 +18205,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const i2 = prev ? list2.findIndex((th2) => th2.id === prev) : -1;
     const at2 = between2(list2[i2] || null, list2[i2 + 1] || null, now);
     const th = create3(w2, chapterId, { kind: "line", text: words }, now);
-    if (th) th.at = at2;
+    if (!th) return null;
+    th.at = at2;
+    const ids = list2.map((x) => x.id);
+    ids.splice(i2 + 1, 0, th.id);
+    setOrder3(w2, chapterId, ids);
     return th;
   }
   function paragraphs(c, groupId, { locked = false, kept = () => {
@@ -19660,8 +19712,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
       } else {
         const x = g2.thing.x + dx / v2.zoom, y = g2.thing.y + dy / v2.zoom;
-        g2.el.style.left = `${x}px`;
-        g2.el.style.top = `${y}px`;
+        g2.els ??= this.dragEls(g2);
+        for (const { el: el15, left, top } of g2.els) {
+          el15.style.left = `${left + dx / v2.zoom}px`;
+          el15.style.top = `${top + dy / v2.zoom}px`;
+        }
         g2.to = { x: Math.round(x), y: Math.round(y) };
       }
     }
@@ -19726,7 +19781,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (g2.thing.placed) this.ont.drop(this.world, this.roomId, g2.thing.id, g2.to.x, g2.to.y);
         else Object.assign(this.world.things[g2.thing.id], g2.to);
       }
+      this.drawWorld();
       this.save();
+    }
+    // What a drag moves on the screen, with where each piece started: the one thought, or every piece
+    // drawn for a group (its thoughts, its name, its foot) when the group is dragged.
+    dragEls(g2) {
+      const id = g2.thing.kind === "train" && g2.el?.dataset.group;
+      const els = id ? [...this.stage.querySelectorAll(`[data-group="${CSS.escape(id)}"], [data-foot="${CSS.escape(id)}"]`)].filter((n) => !n.dataset.arrow) : [g2.el];
+      return els.filter(Boolean).map((el15) => ({ el: el15, left: parseFloat(el15.style.left) || 0, top: parseFloat(el15.style.top) || 0 }));
     }
     // ---- Keys: delete, choose all, nudge (the key map lists them: keys.js) ----
     // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
