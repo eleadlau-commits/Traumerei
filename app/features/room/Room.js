@@ -35,6 +35,7 @@ import { RoomView } from './view.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
+import { Twin } from './twin.js';
 import { ROOM_KEYS } from './keys.js';
 import * as verbs from './verbs.js';
 
@@ -270,12 +271,14 @@ export default class Room extends Feature {
     this.modes = el('nav', { class: 'rail room-rail room-modes', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'room-world' });
     this.stage = el('div', { class: 'room-stage', 'data-own-swipe': '' }, this.world$);
+    const otherSide = this.twinPanel(); // a Twin's other side, beside the canvas (twin.js)
     this.input = el('textarea', { class: 'room-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
     this.bar = el('div', { class: 'panel pop room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.history = el('aside', { class: 'panel room-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
     this.trayEl = el('div', { class: 'room-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
+      otherSide,
       this.modes,
       el('div', { class: 'room-add' },
         this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' },
@@ -398,7 +401,7 @@ export default class Room extends Feature {
 }
 
 // Room is one class, written in several files: view.js (a room and its settings), writing.js,
-// gestures.js (pointer and keys) and bars.js (pop-ups). Each holds a class
+// gestures.js (pointer and keys), bars.js (pop-ups) and twin.js (a Twin's two sides). Each holds a class
 // whose methods (and getters, and statics) are copied onto Room here.
 function mixIn(target, ...parts) {
   for (const part of parts) {
@@ -410,4 +413,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Room, RoomView, Writing, Gestures, Bars);
+mixIn(Room, RoomView, Writing, Gestures, Bars, Twin);

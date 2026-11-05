@@ -469,3 +469,15 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 /* Ctrl+Enter: the new, empty thought is marked for a moment where it waits. */
 .room-draft.fresh { border-radius: 2px; animation: room-fresh 1.4s var(--ease) 2; }
 @keyframes room-fresh { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 40% { box-shadow: 0 0 0 6px var(--sel-fill); outline: var(--sel-line); } }
+
+/* ---- A Twin (twin.js): two rooms side by side. The side you work in is the canvas; the other
+   shows in the other half, quieter, and a click there works in it. ---- */
+.room-page.twin .room-stage { right: calc((100% - var(--rail)) / 2); }
+.room-page.twin.twin-right .room-stage { left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; }
+.room-twin-other { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent); opacity: .55; cursor: pointer; transition: opacity var(--quick); }
+.room-page.twin.twin-right .room-twin-other { left: var(--rail); right: calc((100% - var(--rail)) / 2); border-left: 0;
+  border-right: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+.room-twin-other:hover { opacity: .8; }
+.room-twin-other .room-world { pointer-events: none; }
+.room-twin-label { position: absolute; bottom: var(--s-5, 24px); left: 50%; transform: translateX(-50%); white-space: nowrap; }

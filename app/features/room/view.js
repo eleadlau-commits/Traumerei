@@ -187,6 +187,7 @@ export class RoomView {
       }, '⚙') : null;
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
+    items.push(...this.twinRail()); // a Twin: its two sides (twin.js)
     items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Views'));
     items.push(el('button', {
       type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
@@ -352,6 +353,7 @@ export class RoomView {
     const { width, height } = this.stage.getBoundingClientRect();
     this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
     this.positionEdit?.();
+    this.placeOther?.(); // a Twin's other side fits its half again (twin.js)
   }
 
   toWorld(clientX, clientY) {
@@ -370,6 +372,16 @@ export class RoomView {
 
   drawWorld() {
     if (!this.roomId) return;
+    this.world$.replaceChildren(...this.canvasNodes());
+    this.showStatus();
+    this.drawBar();
+    this.drawTray();
+    this.drawTwin(); // a Twin's other side, beside (twin.js)
+    this.clearSoon();
+  }
+
+  // What the canvas shows: the ontology's own drawing, or each of its units where it says.
+  canvasNodes() {
     const w = this.world;
     const nodes = [];
     this.draftEl = null;
@@ -391,11 +403,7 @@ export class RoomView {
         nodes.push(el('div', { class: 'room-float', style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
       }
     }
-    this.world$.replaceChildren(...nodes);
-    this.showStatus();
-    this.drawBar();
-    this.drawTray();
-    this.clearSoon();
+    return nodes;
   }
 
   // The frame's status bar: what is chosen, and the mode.
