@@ -9,16 +9,19 @@
 import { ui } from 'folio';
 
 const { el } = ui;
-export const WIDTH = { left: 300, right: 480 }; // px: its width until it is dragged
-const LEAST = 220;  // px: never narrower
-const MOST = 0.7;   // of the window: never wider
+export const WIDTH = { left: 280, right: 340 }; // px: its width until it is dragged
+const LEAST = { left: 220, right: 280 };        // px: never narrower
+const MOST = 560;                               // px: never wider (nor wider than 70% of the window)
 
 export class Dock {
   // side: 'left' or 'right'. saved: its remembered width, or undefined. keep(px): remember a width.
   // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
   // names none ('' for a dock without tabs).
-  constructor({ side, saved, keep, resized, label, tab = '' }) {
+  // keyLabel(): the dock's key as the screen shows it ("Ctrl+Alt+E"), shown in its tab strip.
+  constructor({ side, saved, keep, resized, label, tab = '', keyLabel = () => '' }) {
     this.side = side;
+    this.keyLabel = keyLabel;
+    this.least = LEAST[side];
     this.usual = WIDTH[side];
     this.keep = keep;
     this.resized = resized;
@@ -30,13 +33,16 @@ export class Dock {
     this.build(label);
   }
 
-  fit(px) { return Math.round(Math.max(LEAST, Math.min(+px || this.usual, Math.max(LEAST, window.innerWidth * MOST)))); }
+  fit(px) { return Math.round(Math.max(this.least, Math.min(+px || this.usual, MOST, Math.max(this.least, window.innerWidth * 0.7)))); }
 
   get showing() { return this.held.length && !this.tucked ? this.width : 0; }
   get visible() { return this.held.length > 0 && !this.tucked; }
 
   build(label) {
-    this.tabsEl = el('div', { class: 'dock-tabs', role: 'tablist', hidden: true });
+    // Every dock wears the same frame: a strip of tabs (one for each thing it holds) with its key and ×
+    // on the right, then the front one's quiet kind and title, then its body.
+    this.tabsEl = el('div', { class: 'dock-tabs', role: 'tablist' });
+    this.keyEl = el('span', { class: 'key dock-key' });
     this.titleEl = el('div', { class: 'dock-title' });
     this.kindEl = el('div', { class: 'label dock-kind' });
     this.body = el('div', { class: 'dock-body' });
@@ -48,10 +54,11 @@ export class Dock {
         e.stopPropagation(); // the room's keys stay the room's
         if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); this.close(); }
       } },
-      this.tabsEl,
-      el('header', { class: 'dock-head' },
-        el('div', { class: 'dock-names' }, this.kindEl, this.titleEl),
-        el('button', { type: 'button', class: 'close-x dock-close', 'aria-label': 'Close', title: 'Close (Escape)', onclick: () => this.close() })),
+      el('div', { class: 'tab-strip dock-strip' }, this.tabsEl,
+        el('div', { class: 'tab-tail' }, this.keyEl,
+          el('button', { type: 'button', class: 'close-x dock-close', 'aria-label': 'Close', title: 'Close (Escape)', onclick: () => this.close() }))),
+      this.headEl = el('header', { class: 'dock-head' },
+        el('div', { class: 'dock-names' }, this.kindEl, this.titleEl)),
       this.body,
       this.edge);
     for (const type of ['keyup', 'paste', 'copy', 'cut', 'wheel']) this.root.addEventListener(type, (e) => e.stopPropagation());
@@ -80,8 +87,8 @@ export class Dock {
     const dock = this;
     return {
       close: (force = false) => (this.held.includes(shown) ? this.closeOne(shown, force) : Promise.resolve(true)),
-      setTitle: (t) => { shown.title = t; if (this.front === shown) this.titleEl.textContent = t; },
-      setKind: (t) => { shown.kind = t; if (this.front === shown) this.kindEl.textContent = t; },
+      setTitle: (t) => { shown.title = t; if (this.front === shown) this.draw(); },
+      setKind: (t) => { shown.kind = t; if (this.front === shown) this.draw(); },
       get open() { return dock.held.includes(shown); },
     };
   }
@@ -91,14 +98,15 @@ export class Dock {
     const f = this.front;
     this.kindEl.textContent = f?.kind || '';
     this.titleEl.textContent = f?.title || '';
+    this.headEl.hidden = !f?.kind && !f?.title;
     for (const x of this.held) x.page.hidden = x !== f;
     // The first tab (the right dock's Editor) always leads; the rest in the order they opened.
-    const tabs = this.held.length > 1 ? [...this.held].sort((a, b) => (b.tab === this.firstTab) - (a.tab === this.firstTab)) : [];
-    this.tabsEl.hidden = !tabs.length;
+    const tabs = [...this.held].sort((a, b) => (b.tab === this.firstTab) - (a.tab === this.firstTab));
     this.tabsEl.replaceChildren(...tabs.map((x) => el('button', {
-      type: 'button', class: 'word dock-tab', role: 'tab', 'aria-selected': String(x === f),
+      type: 'button', class: 'tab dock-tab', role: 'tab', 'aria-selected': String(x === f),
       onclick: () => this.bring(x),
     }, x.tab || x.kind || 'Untitled')));
+    this.keyEl.textContent = this.keyLabel() || '';
   }
 
   bring(x) {

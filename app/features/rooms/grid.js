@@ -315,19 +315,18 @@ export class RoomsGrid {
       if (open) { this.propsDock = null; this.panel.close('room', true); }
       return;
     }
-    const rows = (shelf ? this.shelfRows(r) : this.roomRows(r)).filter(Boolean);
+    const rows = (shelf ? [el('div', { class: 'title-field' }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
     const kind = shelf ? 'Archived room' : 'Room';
     if (open && this.panel.isOpen('room')) {
       open.id = r.id;
       open.body.replaceChildren(...rows);
-      open.handle?.setTitle(r.name);
       open.handle?.setKind(kind);
       return;
     }
     const body = el('div', { class: 'rooms-props' }, ...rows);
     const now = (this.propsDock = { id: r.id, body, handle: null });
-    // (open() fills the dock at once; its handle comes after)
-    this.panel.open({ key: 'room', kind, title: r.name, body,
+    // (open() fills the dock at once; its handle comes after). The name is the title field.
+    this.panel.open({ key: 'room', kind, title: '', body,
       onClose: () => {
         if (this.propsDock !== now) return; // let go here, or the room was gone into
         this.propsDock = null;
@@ -540,70 +539,114 @@ export class RoomsGrid {
   // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
   // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
   // size, Back to the tint, Lock, Archive and Delete (not for Messy).
-  roomRows(r) {
+  // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
+  // (roomRows) or in folding sections in the dock (roomDockRows).
+  roomParts(r) {
     const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
     const look = this.lookOf(r);
     const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
-    const nameField = el('input', {
+    const p = {};
+    p.name = el('input', {
       class: 'pop-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
       onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
     });
-    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
+    // A line or two about the room: shown under its name inside, and in its square's peek.
+    p.desc = el('textarea', {
+      class: 'pop-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
+      onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
+      onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
+    }, r.desc || '');
+    p.go = () => this.openRoom(r.id);
+    // Its kind: a small room keeps its one mode; a big one switches inside (its tags name the modes).
+    p.kind = isBig(r) ? 'Every mode · switched inside' : 'One mode';
+    p.tags = this.tagsRow(r);
+    // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
+    p.colour = el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
+      const L = toOklch(rgb(e.target.value))[0];
+      set({ tint: e.target.value, light: Math.round(L * 1000) / 1000 });
+      lightness.value = L;
+    } });
+    p.lightness = lightness;
+    p.opacity = el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) });
+    p.sizes = r.locked ? null : [1, 2].map((n) => el('button', {
+      type: 'button', class: 'word', 'aria-pressed': String((r.size || 1) === n),
+      onclick: () => {
+        if (this.floors.resize(r.id, n)) { this.save(); this.drawRooms(); }
+        else this.toast('There isn\'t room for it to grow here. Move it first.');
+      },
+    }, n === 1 ? '1 × 1' : '2 × 2'));
+    p.untint = r.tint || r.light != null || r.opacity != null ? () => { delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms(); } : null;
+    // Locked: nothing inside can change, and the square stays where it is.
+    p.lock = () => { lock(this.world, r.id, !r.locked); this.save(); this.drawRooms(); };
+    p.archive = r.id !== MESSY && !r.locked ? () => {
+      archive(this.world, r.id);
+      this.roomSel = null;
+      this.save();
+      this.drawRooms();
+      this.toast(`${r.name} is in the Archive.`);
+    } : null;
+    // Taken out as room Markdown (the roomfile feature); a locked room too.
+    p.export = this.files ? () => this.exportRoomFile(r.id) : null;
+    p.remove = r.id !== MESSY && !r.locked ? () => {
+      remove(this.world, r.id);
+      this.roomSel = this.roomPick = null;
+      this.save();
+      this.drawRooms();
+      this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+    } : null;
+    return p;
+  }
+
+  roomRows(r) {
+    const p = this.roomParts(r);
+    const word = (label, fn, extra = '') => (fn ? el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label) : null);
     return [
-      nameField,
-      // A line or two about the room: shown under its name inside, and in its square's peek.
-      el('textarea', {
-        class: 'pop-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
-        onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
-        onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
-      }, r.desc || ''),
-      word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
-      // Its kind: a small room keeps its one mode; a big one switches inside.
-      // (its tags below name the modes).
-      el('p', { class: 'pop-note' }, isBig(r) ? 'Every mode · switched inside' : 'One mode'),
-      this.tagsRow(r),
-      // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
-      el('label', { class: 'rooms-slider' }, el('span', {}, 'Colour'),
-        el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
-          const L = toOklch(rgb(e.target.value))[0];
-          set({ tint: e.target.value, light: Math.round(L * 1000) / 1000 });
-          lightness.value = L;
-        } })),
-      el('label', { class: 'rooms-slider' }, el('span', {}, 'Lightness'), lightness),
-      el('label', { class: 'rooms-slider' }, el('span', {}, 'Opacity'),
-        el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) })),
-      r.locked ? null : el('div', { class: 'pop-row' },
-        el('span', { class: 'label' }, 'Size'),
-        ...[1, 2].map((n) => el('button', {
-          type: 'button', class: 'word', 'aria-pressed': String((r.size || 1) === n),
-          onclick: () => {
-            if (this.floors.resize(r.id, n)) { this.save(); this.drawRooms(); }
-            else this.toast('There isn\'t room for it to grow here. Move it first.');
-          },
-        }, n === 1 ? '1 × 1' : '2 × 2'))),
+      p.name,
+      p.desc,
+      word('Go in', p.go, 'rooms-options-go'),
+      el('p', { class: 'pop-note' }, p.kind),
+      p.tags,
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Colour'), p.colour),
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Lightness'), p.lightness),
+      el('label', { class: 'rooms-slider' }, el('span', {}, 'Opacity'), p.opacity),
+      p.sizes ? el('div', { class: 'pop-row' }, el('span', { class: 'label' }, 'Size'), ...p.sizes) : null,
       el('div', { class: 'pop-row' },
-        r.tint || r.light != null || r.opacity != null ? word('Back to the tint', () => {
-          delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms();
-        }) : null,
-        // Locked: nothing inside can change, and the square stays where it is.
-        word(r.locked ? 'Unlock' : 'Lock', () => { lock(this.world, r.id, !r.locked); this.save(); this.drawRooms(); }),
-        r.id !== MESSY && !r.locked ? word('Archive', () => {
-          archive(this.world, r.id);
-          this.roomSel = null;
-          this.save();
-          this.drawRooms();
-          this.toast(`${r.name} is in the Archive.`);
-        }) : null,
-        // Taken out as room Markdown (the roomfile feature); a locked room too.
-        this.files ? word('Export as Markdown', () => this.exportRoomFile(r.id)) : null,
-        r.id !== MESSY && !r.locked ? word('Delete', () => {
-          remove(this.world, r.id);
-          this.roomSel = this.roomPick = null;
-          this.save();
-          this.drawRooms();
-          this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-        }, 'pop-delete') : null),
+        word('Back to the tint', p.untint),
+        word(r.locked ? 'Unlock' : 'Lock', p.lock),
+        word('Archive', p.archive),
+        word('Export as Markdown', p.export),
+        word('Delete', p.remove, 'pop-delete')),
+    ];
+  }
+
+  // In the dock: one editable title, then folding sections of label/value rows (Folio's .sec, .kv)
+  // and real buttons that name their keys (.box-btn).
+  roomDockRows(r) {
+    const p = this.roomParts(r);
+    p.name.classList.add('title-field');
+    const key = (k) => el('span', { class: 'key' }, k);
+    const btn = (label, fn, k = '', extra = '') => (fn ? el('button', { type: 'button', class: 'box-btn ' + extra, onclick: fn }, label, k ? key(k) : '') : null);
+    const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), value);
+    const sec = (title, ...body) => el('details', { class: 'sec', open: '' }, el('summary', {}, title), el('div', { class: 'sec-body' }, ...body.filter(Boolean)));
+    return [
+      p.name,
+      p.desc,
+      sec('Room',
+        kv('Modes', el('span', {}, p.kind)),
+        kv('Tags', p.tags)),
+      sec('Look',
+        kv('Colour', p.colour),
+        kv('Lightness', p.lightness),
+        kv('Opacity', p.opacity),
+        p.sizes ? kv('Size', el('div', { class: 'seg' }, ...p.sizes)) : null,
+        p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
+      sec('Actions', el('div', { class: 'box-btns' },
+        btn('Go in', p.go, 'Enter', 'rooms-options-go'),
+        btn(r.locked ? 'Unlock' : 'Lock', p.lock),
+        btn('Archive', p.archive),
+        btn('Export', p.export),
+        btn('Delete', p.remove, 'Delete', 'danger pop-delete'))),
     ];
   }
 

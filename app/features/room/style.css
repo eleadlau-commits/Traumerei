@@ -200,6 +200,7 @@
 .room-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
 .room-thought { white-space: pre-line; }
 .room-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.dock .room-edit-move { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
 
 /* The thought being written: its real caret and selection, drawn from the hidden box. */
 .room-draft { opacity: 1; white-space: pre-wrap; cursor: text; }
@@ -448,7 +449,6 @@
   outline: none;
 }
 .room-editor-top { display: grid; gap: 12px; }
-.room-editor-top .pop-name { font-size: 15px; }
 .room-editor-top .room-edit-body { min-height: 10em; }
 .room-editor-content { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--room-ink) 12%, transparent); }
 .room-editor-content:empty { display: none; }

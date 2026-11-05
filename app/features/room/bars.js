@@ -8,6 +8,7 @@ import {
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
+import * as verbs from './verbs.js';
 
 export class Bars {
   // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
@@ -80,7 +81,7 @@ export class Bars {
     if (!inPanel) rows.push(el('div', { class: 'label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
-      const text = el('textarea', { class: 'room-edit-text room-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
+      const text = el('textarea', { class: `room-edit-text room-edit-lines${inPanel ? ' title-field' : ''}`, rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
         oninput: (e) => grow(e.target),
         onkeydown: (e) => {
           e.stopPropagation();
@@ -99,13 +100,15 @@ export class Bars {
       requestAnimationFrame(() => grow(text));
     }
     if (kind === 'passage') {
-      rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }));
+      rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }, inPanel ? 'pop-name title-field' : 'pop-name'));
       const body = el('textarea', { class: 'room-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
         onchange: (e) => { update(this.world, th.id, { body: e.target.value }); done(); } });
       body.value = th.body || '';
       rows.push(body, word('Open it large', () => this.openSheet(null, th.id)));
     }
-    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, 'room-edit-text'));
+    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, inPanel ? 'room-edit-text title-field' : 'room-edit-text'));
+    if (kind === 'group' && inPanel) rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }, 'pop-name title-field'));
+    if (inPanel) return [...rows, ...this.dockSections(th, kind, gname, done)];
     if (kind === 'group') {
       const n = trainThoughts(this.world, th.id).length;
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
@@ -143,6 +146,66 @@ export class Bars {
           this.toast(`Deleted. Ctrl+Z brings it back.`);
         }, 'pop-delete')));
     return rows;
+  }
+
+  // What is chosen, in the dock (the content editor): under its one title, folding sections of
+  // label/value rows (Folio's .sec and .kv) and real buttons that name their keys (.box-btn).
+  dockSections(th, kind, gname, done) {
+    const key = (id) => el('span', { class: 'key' }, this.keyMap?.label?.(id) || '');
+    const btn = (label, fn, id = null, extra = '') => el('button', { type: 'button', class: 'box-btn ' + extra, onclick: fn }, label, id ? key(id) : '');
+    const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), value);
+    const sec = (title, ...body) => el('details', { class: 'sec', open: '' }, el('summary', {}, title), el('div', { class: 'sec-body' }, ...body.filter(Boolean)));
+    const out = [];
+    // Place: the room it is in (choosing another moves it there), and its group in this mode.
+    const others = this.moveRooms();
+    const here = room(this.world, this.roomId);
+    const pick = el('select', { class: 'room-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
+      onchange: (e) => {
+        const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
+        if (to && to !== this.roomId) this.moveTo(to);
+      } },
+      el('option', { value: this.roomId }, here?.name || 'This room'),
+      ...others.map((r) => el('option', { value: r.id }, r.name)),
+      el('option', { value: '+' }, 'A new room'));
+    const g = kind !== 'group' && this.ont.groups ? groupOf(this.world, th.id, this.mode) : null;
+    const gn = this.ont.groups?.name || 'Group';
+    let inGroup = null;
+    if (g) {
+      const all = trainThoughts(this.world, g.id);
+      const at = all.findIndex((x) => x.id === th.id);
+      inGroup = el('button', { type: 'button', class: 'value-btn room-edit-group', title: `Choose the whole ${gn.toLowerCase()}`,
+        onclick: () => { this.sel = { kind: 'train', id: g.id }; this.openProps(this.sel); } },
+      `${g.title || 'Untitled'}${at >= 0 ? ` · ${at + 1} of ${all.length}` : ''}`);
+    }
+    const n = kind === 'group' ? trainThoughts(this.world, th.id).length : 0;
+    const elsewhere = kind === 'group' && th.folded ? this.elsewhere(th) : [];
+    out.push(sec('Place',
+      kv('Room', pick),
+      inGroup ? kv(gn, inGroup) : null,
+      kind === 'group' ? kv('Thoughts', el('span', {}, String(n))) : null,
+      elsewhere.length ? this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }) : null));
+    // The mode's own rows for what is chosen (ontologies/index.js: props), and its moves.
+    let own = [];
+    try { own = this.ont.props?.(this, th) || []; } catch (err) { console.warn('Room: props', err); }
+    const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
+    if (own.length || moves.length) {
+      out.push(sec(this.ont.name || 'Mode', ...own,
+        moves.length ? el('div', { class: 'box-btns room-moves' }, ...moves.map((m) => btn(m.label, () => this.runMove(m)))) : null));
+    }
+    // Actions: the same verbs as the keys (verbs.js), each naming its key.
+    const foldable = kind === 'group' ? (th.folded || n > 1 || this.ont.open) : !!g;
+    const folded = kind === 'group' ? th.folded : g?.folded;
+    out.push(sec('Actions', el('div', { class: 'box-btns' },
+      btn('Duplicate', () => verbs.duplicate(this), 'room.duplicate'),
+      btn('Move', () => verbs.moveTo(this), 'room.move'),
+      foldable ? btn(folded ? 'Unfold' : 'Fold', () => verbs.fold(this), 'room.fold') : null,
+      btn('Delete', () => {
+        remove(this.world, th.id);
+        this.sel = null;
+        done();
+        this.toast('Deleted. Ctrl+Z brings it back.');
+      }, 'room.delete', 'danger pop-delete'))));
+    return out;
   }
 
   // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn
