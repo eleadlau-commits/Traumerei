@@ -1799,7 +1799,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-mode-settings { position: fixed; top: calc(var(--bar) + var(--s-2)); left: calc(var(--rail) + var(--s-2)); width: 240px; cursor: default; }
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
-.room-mode-settings .renderer-slider { font-size: 13px; }
+.room-mode-settings .renderer-slider, .room-mode-settings-docked .renderer-slider { font-size: 13px; }
 .room-choice-row .seg { grid-column: 1 / -1; gap: 4px 20px; }
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
@@ -2201,7 +2201,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 /* The sheet and a mode's settings, in the right dock's Editor tab. */
 .room-sheet-docked { display: grid; gap: 16px; align-content: start; }
 .room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
-.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
+.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; min-width: 0; padding-top: 8px; }
+.room-mode-settings-docked .renderer-slider > span:first-child { overflow-wrap: anywhere; }
 .room-mode-settings-docked .room-mode-settings-note { margin: 0; }
 
 /* Ctrl+Enter: the new, empty thought is marked for a moment where it waits. */
@@ -19569,9 +19570,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawRoom();
     }
     // This room's settings for one ontology, and Reset to global (redraw(): after a reset).
-    modeSettingsRows(o2, redraw2) {
+    // The docked tab's head already says "Settings for this room", so only the card adds the note.
+    modeSettingsRows(o2, redraw2, { note = true } = {}) {
       return [
-        el14("p", { class: "room-mode-settings-note" }, "For this room only"),
+        note ? el14("p", { class: "room-mode-settings-note" }, "For this room only") : null,
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           const before = this.setting(st.key, o2);
           setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
@@ -19604,12 +19606,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.settingsFor = null;
         return;
       }
-      const body = el14("div", { class: "room-mode-settings room-mode-settings-docked" });
+      const body = el14("div", { class: "room-mode-settings-docked" });
       const fill = () => {
         body.replaceChildren(...this.modeSettingsRows(o2, () => {
           fill();
           this.drawWorld();
-        }));
+        }, { note: false }).filter(Boolean));
       };
       fill();
       const now = this.modeSettings = { id: o2.id };
