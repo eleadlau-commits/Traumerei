@@ -24,7 +24,7 @@ export class Writing {
   }
 
   draftNode() {
-    this.draftEl = el('span', { class: 'room-thought room-draft' });
+    this.draftEl = el('span', { class: 'room-thought room-draft' + (this.draft?.fresh ? ' fresh' : '') });
     this.paintDraft();
     return this.draftEl;
   }
@@ -137,12 +137,27 @@ export class Writing {
       if (e.code === 'KeyP') this.openSheet('passage'); else this.choosePicture();
       return;
     }
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && this.roomId) { this.fresh = true; return; }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && this.roomId) { this.freshStart(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     if (e.target.closest?.('button') && e.key === ' ') return; // Space on a word presses it
     if (e.key === ' ' && !this.draft) return; // a lone Space is held to move around (Space+drag)
     e.preventDefault();
     this.beginWriting(e.key);
+  }
+
+  // Ctrl+Enter: the next thought starts afresh (Joyce: a new train). It shows at once: an empty
+  // thought waits at its new place with the caret in it, marked for a moment, and a note says what
+  // was made. Typing goes on there; Escape lets it go.
+  freshStart() {
+    if (!this.roomId || this.locked) return;
+    this.fresh = true;
+    this.draft = { ...this.target(), fresh: true };
+    this.sel = null;
+    this.input.focus({ preventScroll: true });
+    this.drawWorld();
+    this.showDraft();
+    const joyce = this.writer.id === DEFAULT_MODE;
+    this.toast(joyce ? 'New train: type to start it.' : 'New thought: type to start it (it waits in the tray).');
   }
 
   // Starts a thought (if one isn't started), with `seed` as its first letters.
@@ -214,7 +229,7 @@ export class Writing {
     if (e.key === 'Enter') {
       e.preventDefault();
       this.commit();
-      if (e.ctrlKey || e.metaKey) this.fresh = true;
+      if (e.ctrlKey || e.metaKey) this.freshStart();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       this.stopWriting();

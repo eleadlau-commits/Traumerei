@@ -463,3 +463,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
 .room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
 .room-mode-settings-docked .room-mode-settings-note { margin: 0; }
+
+/* Ctrl+Enter: the new, empty thought is marked for a moment where it waits. */
+.room-draft.fresh { border-radius: 2px; animation: room-fresh 1.4s var(--ease) 2; }
+@keyframes room-fresh { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 40% { box-shadow: 0 0 0 6px var(--sel-fill); outline: var(--sel-line); } }
