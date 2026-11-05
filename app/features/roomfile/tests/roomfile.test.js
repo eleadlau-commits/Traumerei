@@ -389,6 +389,22 @@ test('editing: a changed title renames, and new thoughts go between in order', (
   assert.deepEqual(parentsOf(w, id, g('Matrices').id), [a.id]);
 });
 
+test('editing: an arrow line\'s relation changed, emptied, or a parent added; each said', () => {
+  const { w, id, g } = book();
+  const st = g('Spectral theorem').id, ip = g('Inner products').id, ev = g('Eigenvalues').id, ar = g('Arrays').id;
+  let { p } = edit(w, id, st, '## Spectral theorem\n> ⊂ [[Inner products]]: the basis\n> [[Eigenvalues]]: non-orthogonal bases\n> is a case of [[Arrays]]\n- symmetric means diagonal');
+  assert.deepEqual(p.arrowChanges, [
+    'Spectral theorem: forgets → ⊂ (about Inner products)',
+    'Spectral theorem: forgets → no relation (about Eigenvalues)',
+    'Spectral theorem: parent Arrays added',
+  ]);
+  const rel = (from) => arrows(w, id).find((x) => x.from === from && x.to === st);
+  assert.equal(rel(ip).rel, '⊂');
+  assert.equal(rel(ev).rel, '');
+  assert.deepEqual([rel(ar).rel, rel(ar).label], ['is a case of', '']);
+  assert.match(exportGroup(w, id, st, { ontologies }), /## Spectral theorem\n> ⊂ \[\[Inner products\]\]: the basis\n> \[\[Eigenvalues\]\]: non-orthogonal bases\n> is a case of \[\[Arrays\]\]\n/);
+});
+
 test('editing: a changed parent relinks; one that would make a loop is refused and the rest applies', () => {
   const { w, id, g } = book();
   const ev = g('Eigenvalues');
