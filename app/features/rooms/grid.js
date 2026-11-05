@@ -7,7 +7,7 @@ import {
   search, cells, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span,
+  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 
@@ -196,12 +196,37 @@ export class RoomsGrid {
   // of each ontology (1 × 1), then All ontology, a 2 × 2 room that holds them all (Borges's rule:
   // a room's shape says how many ontologies it holds). A room from a file is the top bar's Import.
   kindOptions(c, cell, cols) {
+    if (c.twin) return this.twinOptions(c, cell, cols);
     return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
       el('div', { class: 'label' }, 'A new room'),
       ...this.ontologies.map((k) => el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.newRoom(c, k.id) },
         el('span', { class: 'rooms-kind-name' }, k.name), el('span', { class: 'pick-note' }, k.note || ''))),
       el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-more', role: 'menuitem', onclick: () => this.newRoom(c, DEFAULT_MODE, 2) },
-        el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')));
+        el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')),
+      el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.pickTwin(c) },
+        el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')));
+  }
+
+  // Twin…: the menu asks for the mode of each side (the same or not), then makes it.
+  pickTwin(c) {
+    const first = this.ontologies[0]?.id || DEFAULT_MODE;
+    this.making = { col: c.col, row: c.row, twin: [first, first] };
+    this.drawRooms();
+    this.grid.querySelector('.rooms-twin-make')?.focus({ preventScroll: true });
+  }
+
+  twinOptions(c, cell, cols) {
+    const side = (i, label) => el('div', { class: 'kv' }, el('span', {}, label),
+      el('div', { class: 'seg', role: 'radiogroup', 'aria-label': `${label} side` }, ...this.ontologies.map((o) => el('button', {
+        type: 'button', class: 'word', role: 'radio', 'aria-checked': String(c.twin[i] === o.id), 'aria-pressed': String(c.twin[i] === o.id),
+        onclick: () => { c.twin[i] = o.id; this.drawRooms(); },
+      }, o.name))));
+    return el('div', { ...this.beside({ ...c, size: 'twin' }, cell, cols, ' rooms-kinds rooms-twin'), role: 'dialog', 'aria-label': 'A new Twin' },
+      el('div', { class: 'label' }, 'A new Twin'),
+      side(0, 'Left'), side(1, 'Right'),
+      el('div', { class: 'box-btns' },
+        el('button', { type: 'button', class: 'box-btn rooms-twin-make', onclick: () => this.newTwin(c, c.twin) }, 'Make', el('span', { class: 'key' }, 'Enter')),
+        el('button', { type: 'button', class: 'box-btn', onclick: () => { this.making = null; this.drawRooms(); } }, 'Cancel', el('span', { class: 'key' }, 'Esc'))));
   }
 
   drawPages() {
@@ -889,6 +914,24 @@ export class RoomsGrid {
     this.save();
     this.renaming = r.id;
     this.roomPick = r.id;
+    this.drawRooms();
+    this.grid.querySelector('.rooms-name-field')?.select();
+  }
+
+  // A new Twin in the cell asked for (or the first free spot two cells wide), its sides seen
+  // through `modes` ([left, right]), with its name ready to write.
+  newTwin(cell, modes) {
+    const t = addTwin(this.world, 'Untitled', Date.now(), { page: this.page }, modes);
+    if (t) {
+      for (const r of [t, ...sides(this.world, t.id)]) seedRoomSettings(this.world, r.id, this.ontPrefs);
+      const out = this.floors.place(t.id, cell ? { col: cell.col, row: cell.row } : null);
+      if (out) this.page = out.page;
+    }
+    this.making = null;
+    if (!t) { this.toast('A room can\'t be made here.'); this.drawRooms(); return; }
+    this.save();
+    this.renaming = t.id;
+    this.roomPick = t.id;
     this.drawRooms();
     this.grid.querySelector('.rooms-name-field')?.select();
   }

@@ -1,0 +1,56 @@
+// Tests for a Twin: a room whose two sides are rooms of their own, side by side, sharing nothing;
+// a thought or group can be moved across.
+
+import { test, assert } from 'folio/testing';
+import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig } from '../model.js';
+import { addTwin, sides, twinOf, otherSide, across, isTwin } from '../twin.js';
+
+const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, { id: 'russell', name: 'Russell' }];
+
+test('a Twin has two sides, each a room with its own mode, and only they are inside it', () => {
+  const w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['joyce', 'russell']);
+  assert.ok(isTwin(t));
+  assert.equal(t.size, 'twin');
+  assert.ok(!isBig(t));
+  const [l, r] = sides(w, t.id);
+  assert.deepEqual([l.side, r.side, l.parent, r.parent], [0, 1, t.id, t.id]);
+  assert.deepEqual([view(w, l.id).mode, view(w, r.id).mode], ['joyce', 'russell']);
+  assert.ok(!rooms(w).some((x) => x.id === l.id));            // the sides are not on the rooms page
+  assert.equal(create(w, t.id, { kind: 'line', text: 'no' }), null); // nothing else goes in the Twin
+  assert.deepEqual(roomTags(w, t.id, ONTS).map((x) => x.tag), ['Joyce', 'Russell']);
+  assert.equal(twinOf(w, l.id).id, t.id);
+  assert.equal(otherSide(w, l.id).id, r.id);
+});
+
+test('nothing is shared: a thought moved across belongs to the other side alone', () => {
+  const w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['joyce', 'joyce']);
+  const [l, r] = sides(w, t.id);
+  const a = create(w, l.id, { kind: 'line', text: 'a' }, 2);
+  create(w, r.id, { kind: 'line', text: 'b' }, 3);
+  assert.deepEqual(children(w, l.id).filter((x) => x.kind === 'line').map((x) => x.text), ['a']);
+  assert.deepEqual(roomThoughts(w, t.id).map((x) => x.text), ['a', 'b']); // the Twin's square counts both
+  assert.equal(topRoom(w, a.id).id, t.id);
+  assert.ok(across(w, a.id, 10, 20));
+  assert.equal(a.parent, r.id);
+  assert.ok(groupsOf(w, a.id).every((g) => g.parent === r.id));
+  assert.equal(move(w, a.id, t.id), false);                // never into the Twin itself
+});
+
+test('a Twin survives a reload, copies with its sides, and goes with them', () => {
+  let w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['pessoa', 'russell']);
+  const [l] = sides(w, t.id);
+  create(w, l.id, { kind: 'line', text: 'kept' }, 2);
+  w = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.equal(sides(w, t.id).length, 2);
+  const c = copyRoom(w, t.id, 5);
+  const cs = sides(w, c.id);
+  assert.equal(cs.length, 2);
+  assert.ok(cs.every((s) => !sides(w, t.id).some((o) => o.id === s.id)));
+  assert.equal(view(w, cs[1].id).mode, 'russell');
+  assert.deepEqual(roomThoughts(w, c.id).map((x) => x.text), ['kept']);
+  remove(w, t.id);
+  assert.equal(Object.values(w.things).filter((x) => x.parent === l.id).length, 0);
+});

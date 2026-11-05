@@ -146,7 +146,8 @@ written there. With nothing in it, the rooms page works on its own.
 
 - **Kinds.** A click (or a right-click) on an empty cell asks which kind the new room is: one
   room of each mode (*Joyce · Pessoa · Russell*, 1 × 1), or *All ontology*, a 2 × 2 room that
-  holds every mode (a room's shape says how many ontologies it holds: Borges, the rooms page's
+  holds every mode, or *Twin…*, two cells wide and one high: it asks each side's mode (the same
+  or not) and makes two rooms bundled in one, side by side (the world's `twin.js`) (a room's shape says how many ontologies it holds: Borges, the rooms page's
   own ontology, in the floors feature). A room from a file comes from *Import a room…* in the top
   bar, or a file dropped on the page. Rooms sit only on the rooms page; nothing nests. A square dropped on another
   square goes back to its place.

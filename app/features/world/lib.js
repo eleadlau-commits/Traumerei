@@ -2,7 +2,8 @@
 // they get these through the world service (`lib`). None of them touches the screen.
 
 export * as model from './model.js';          // the world: rooms, items, groups, tags, pages
-export * as groups from './groups.js';        // groups as shared objects: outermost, foreign, trays
+export * as groups from './groups.js';
+export * as twin from './twin.js';            // a Twin: two sides, each a room, side by side        // groups as shared objects: outermost, foreign, trays
 export * as items from './items/index.js';    // ITEMS: the kinds of item (line, passage, picture)
 export * as maths from './maths.js';          // split, maths: LaTeX in a thought's words
 export * as look from './look.js';            // colours: a room's, a square's, the rooms page's

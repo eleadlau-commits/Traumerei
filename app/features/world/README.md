@@ -12,7 +12,7 @@ list is everything it offers:
 
 | Member | What it is |
 |---|---|
-| `lib` | The rules, by module (`lib.js`): `model`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `relations` (named arrows between groups, shared by any ontology that joins its groups). Plain functions of a world; none touches the screen. |
+| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `relations` (named arrows between groups, shared by any ontology that joins its groups). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |
@@ -75,6 +75,13 @@ ontology that held them and in each ontology's own data; the old ones are delete
 `ontologies/index.js`'s `groupChosen` and `ungroupChosen` use an ontology's `group` / `ungroup`
 when it has them, or else make one group of its own where the first thing is (and take things
 out of their groups). Joyce's `ungroup` gives each thought a train of its own; Pessoa has no groups.
+
+**A Twin** (`twin.js`, `lib.twin`) is a room two cells wide and one high on the rooms page whose two
+sides are rooms of their own (children of the Twin, `side` 0 and 1), each with its own mode, thoughts
+and data: two rooms bundled in one. Nothing is shared; `across(w, id, x, y)` moves a thought or a
+whole group to the other side, where it belongs alone. The sides are the only rooms inside a room
+(`canHold`), and a Twin holds nothing else. Its square counts both sides' thoughts (`roomThoughts`)
+and its tags are its sides' modes.
 
 **Copying a room** is one rule, `copyRoom(w, id)`: a new room with everything in it copied (items,
 groups and their members, each ontology's own data, its view and settings), every copied thought
