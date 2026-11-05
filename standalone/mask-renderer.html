@@ -1573,6 +1573,7 @@ html.rail-narrow { --rail: 48px; }
 /* ---- The floors of the rooms page, in the rail under Floors: Floor 1, Floor 2, + New floor ---- */
 .rooms-pages { display: flex; flex-direction: column; gap: 1px; }
 .rooms-page-new { color: var(--faint); }
+.rooms-page.chosen { outline: var(--sel-line); outline-offset: -1px; } /* its properties show (floor.js) */
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .rooms-tile:is(.picked, .chosen) { outline: var(--sel-line); outline-offset: 3px; }
@@ -14265,9 +14266,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var roomAt2;
   var addPage2;
   var pageCount2;
+  var archive2;
   var MESSY2;
+  var allRooms;
   function bind(lib) {
-    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, MESSY: MESSY2 } = lib.model);
+    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, archive: archive2, MESSY: MESSY2 } = lib.model);
+    allRooms = (w2) => [...lib.model.rooms(w2), ...lib.model.archived(w2)];
   }
 
   // dist/web/features/floors/rule.js
@@ -14375,6 +14379,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
+  function removeFloor(w2, page, now = Date.now()) {
+    if (page === 0) return { error: "first" };
+    if (page < 0 || page >= pageCount2(w2)) return { error: "none" };
+    const on = roomsOn2(w2, page);
+    if (on.some((r) => r.locked)) return { error: "locked" };
+    const count2 = pageCount2(w2);
+    for (const r of on) archive2(w2, r.id, now);
+    for (const r of allRooms(w2)) {
+      const p = r.page || 0;
+      if (p === page) setPage(r, page - 1);
+      else if (p > page) setPage(r, p - 1);
+    }
+    w2.pages = Math.max(1, count2 - 1);
+    return { archived: on };
+  }
 
   // dist/web/features/floors/Floors.js
   var { el: el7 } = ui_exports;
@@ -14397,8 +14416,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         move: (id, col, row) => move2(this.world, id, col, row, board()),
         resize: (id, size) => resize(this.world, id, size, board()),
         toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
-        fits: (size) => !outside(this.world, size).length
+        fits: (size) => !outside(this.world, size).length,
         // whether every room fits floors of `size`
+        removeFloor: (page) => removeFloor(this.world, page)
+        // a floor goes: its rooms to the Archive, the rest up one
       });
       this.add("settings", { id: "floors-size", title: "Floors", order: 31, render: () => this.settingsPane() });
     }
@@ -15957,7 +15978,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var cells3;
   var roomAt3;
   var lock2;
-  var archive2;
+  var archive3;
   var archived2;
   var restore2;
   var peek2;
@@ -16005,7 +16026,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       cells: cells3,
       roomAt: roomAt3,
       lock: lock2,
-      archive: archive2,
+      archive: archive3,
       archived: archived2,
       restore: restore2,
       peek: peek2,
@@ -16197,7 +16218,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const panels = [];
       const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
       if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
-      if (this.panel) this.dockRoom(chosen || null);
+      if (this.panel) {
+        if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel);
+        else this.dockRoom(chosen || null);
+      }
       if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
       this.grid.replaceChildren(...empty, ...tiles2, ...panels);
       this.keepInView(scrolled);
@@ -16228,8 +16252,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
     // of room to make there.
     onCell(col, row) {
-      if (this.roomSel || this.making) {
-        this.roomSel = this.making = null;
+      if (this.roomSel || this.making || this.floorSel != null) {
+        this.roomSel = this.making = this.floorSel = null;
         this.drawRooms();
         return;
       }
@@ -16308,7 +16332,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "data-page": i2,
           title: `Floor ${i2 + 1}`,
           ...i2 === this.page && !this.shelf ? { "aria-current": "page" } : {},
-          onclick: () => go(i2)
+          ...i2 === this.floorSel && !this.shelf ? { class: "rail-item rooms-page chosen" } : {},
+          // A click goes there (and, while a floor's properties show, switches them to this one);
+          // a right-click chooses it and shows its properties (floor.js).
+          onclick: () => this.floorSel != null && this.propsDock?.id === "floor" ? this.chooseFloor(i2) : go(i2),
+          oncontextmenu: (e) => {
+            e.preventDefault();
+            this.chooseFloor(i2);
+          }
         }, railNum(i2 + 1), railWord(`Floor ${i2 + 1}`))),
         el11("button", { type: "button", class: "rail-item rooms-page rooms-page-new", title: "New floor", onclick: () => {
           const i2 = addPage3(this.world);
@@ -16396,7 +16427,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // ---- The Archive: rooms taken off the grid, on a page of their own ----
     toggleShelf() {
       this.shelf = !this.shelf;
-      this.roomSel = this.roomPick = this.making = null;
+      this.roomSel = this.roomPick = this.making = this.floorSel = null;
       this.drawRooms();
       this.grid.parentElement?.scrollTo?.(0, 0);
     }
@@ -16766,6 +16797,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       this.picks = [];
+      this.floorSel = null;
       if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) {
         this.chooseRoom(id, true);
         return;
@@ -16779,6 +16811,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Opens (or, with open false, toggles) a room's properties beside its square.
     chooseRoom(id, open = false) {
       this.picks = [];
+      this.floorSel = null;
       this.roomSel = open || this.roomSel !== id ? id : null;
       this.roomPick = id;
       this.making = null;
@@ -16871,7 +16904,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawRooms();
       };
       p.archive = r.id !== MESSY3 && !r.locked ? () => {
-        archive2(this.world, r.id);
+        archive3(this.world, r.id);
         this.roomSel = null;
         this.save();
         this.drawRooms();
@@ -17180,7 +17213,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.toast(`${r.name} is on Floor ${over.page + 1}.`);
           }
         } else if (over?.archive) {
-          if (archive2(this.world, r.id)) {
+          if (archive3(this.world, r.id)) {
             this.save();
             this.toast(`${r.name} is in the Archive.`);
           }
@@ -17485,6 +17518,136 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
+  // dist/web/features/rooms/floor.js
+  var RoomsFloor = class {
+    // Chooses floor `i` (it slides into view) and shows its properties.
+    chooseFloor(i2) {
+      if (this.shelf) this.toggleShelf();
+      this.showPage(i2);
+      this.floorSel = i2;
+      this.floorAsk = null;
+      this.drawRooms();
+    }
+    // The warning before a floor goes, in its properties (they open if they weren't showing). Without
+    // the docks feature there is nowhere to warn, so it goes at once (Ctrl+Z still brings it back).
+    askFloor(i2) {
+      if (i2 === 0) {
+        this.toast("Floor 1 stays: Messy thoughts lives there.");
+        return;
+      }
+      if (!this.panel) {
+        this.deleteFloor(i2);
+        return;
+      }
+      if (this.floorSel !== i2) this.chooseFloor(i2);
+      this.floorAsk = i2;
+      this.drawRooms();
+      this.propsDock?.body.querySelector(".floor-yes")?.focus({ preventScroll: true });
+    }
+    // Cancel: the floor stays, and its properties go back to how they were.
+    cancelFloor() {
+      this.floorAsk = null;
+      this.drawRooms();
+      document.querySelector(`.rooms-page[data-page="${this.floorSel}"]`)?.focus({ preventScroll: true });
+    }
+    // What a floor's properties hold: its name, how many rooms, and Delete floor (not for Floor 1).
+    floorRows(i2) {
+      const n = roomsOn3(this.world, i2).length;
+      const key2 = (k2) => el11("span", { class: "key" }, k2);
+      const kv = (label2, value) => el11("div", { class: "kv" }, el11("span", {}, label2), el11("span", {}, value));
+      return [
+        el11("div", { class: "title-field" }, `Floor ${i2 + 1}`),
+        el11("details", { class: "sec", open: "" }, el11("summary", {}, "Floor"), el11(
+          "div",
+          { class: "sec-body" },
+          kv("Rooms", n ? String(n) : "None"),
+          i2 === 0 ? el11("p", { class: "pop-note" }, "Messy thoughts lives here, so Floor 1 stays.") : null,
+          i2 > 0 && n ? el11("p", { class: "pop-note" }, "Deleting it puts its rooms in the Archive.") : null
+        )),
+        i2 > 0 ? el11("details", { class: "sec", open: "" }, el11("summary", {}, "Actions"), el11(
+          "div",
+          { class: "sec-body" },
+          this.floorAsk === i2 ? el11(
+            "div",
+            {
+              class: "stack",
+              role: "alert",
+              // Escape here cancels the warning, before the dock takes it to close itself.
+              onkeydown: (e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  this.cancelFloor();
+                }
+              }
+            },
+            el11("p", { class: "error" }, n ? `Delete Floor ${i2 + 1}? ${n === 1 ? "Its room goes" : `Its ${n} rooms go`} to the Archive, and the floors below move up one.` : `Delete Floor ${i2 + 1}? The floors below move up one.`),
+            el11(
+              "div",
+              { class: "box-btns" },
+              el11("button", { type: "button", class: "box-btn danger pop-delete floor-yes", onclick: () => this.deleteFloor(i2) }, "Delete floor", key2("Enter")),
+              el11("button", { type: "button", class: "box-btn", onclick: () => this.cancelFloor() }, "Cancel", key2("Esc"))
+            )
+          ) : el11(
+            "div",
+            { class: "box-btns" },
+            el11("button", { type: "button", class: "box-btn danger pop-delete", onclick: () => this.askFloor(i2) }, "Delete floor", key2("Delete"))
+          )
+        )) : null
+      ].filter(Boolean);
+    }
+    // The chosen floor's properties in the right dock (the same place, and the same dock entry, as
+    // a room's), switched in place when they show already.
+    dockFloor(i2) {
+      const rows = this.floorRows(i2);
+      const open = this.propsDock;
+      if (open && this.panel.isOpen("room")) {
+        open.id = "floor";
+        open.body.replaceChildren(...rows);
+        open.handle?.setKind("Floor");
+        return;
+      }
+      const body = el11("div", { class: "rooms-props" }, ...rows);
+      const now = this.propsDock = { id: "floor", body, handle: null };
+      this.panel.open({
+        key: "room",
+        kind: "Floor",
+        title: "",
+        body,
+        onClose: () => {
+          if (this.propsDock !== now) return;
+          this.propsDock = null;
+          if (this.floorSel == null) return;
+          this.floorSel = this.floorAsk = null;
+          if (!this.inRoom && !this.root.hidden) this.drawRooms();
+        }
+      }).then((h) => {
+        if (this.propsDock === now) {
+          if (h) now.handle = h;
+          else this.propsDock = null;
+        }
+      });
+    }
+    // Deletes floor `i`: its rooms to the Archive, the floors below up one. One undo step.
+    deleteFloor(i2) {
+      const out = this.floors.removeFloor(i2);
+      if (out.error) {
+        if (out.error === "first") this.toast("Floor 1 stays: Messy thoughts lives there.");
+        if (out.error === "locked") this.toast(`Floor ${i2 + 1} has a locked room. Unlock it or move it first.`);
+        return false;
+      }
+      this.floorSel = this.floorAsk = null;
+      this.roomSel = this.roomPick = this.making = null;
+      this.picks = [];
+      this.save();
+      const n = out.archived.length;
+      this.page = Math.max(0, i2 - 1);
+      this.drawRooms();
+      this.toast(`Deleted Floor ${i2 + 1}${n ? `; ${n === 1 ? "its room is" : `its ${n} rooms are`} in the Archive` : ""}. Ctrl+Z brings it back.`);
+      return true;
+    }
+  };
+
   // dist/web/features/rooms/strip.js
   var SLIDE = 400;
   var EASE = "cubic-bezier(.65, 0, .25, 1)";
@@ -17585,7 +17748,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "rooms.all", keys: ["Ctrl+A"], words: "choose every room shown" },
     { id: "rooms.open", keys: ["Enter"], shows: "Double-click · Enter", words: "go into the chosen room" },
     { id: "rooms.properties", keys: ["ContextMenu", "Shift+F10"], shows: "Right-click", words: "the properties of a room" },
-    { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen rooms" },
+    { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen rooms (or the floor chosen in the rail)" },
     { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
     { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen rooms (or Alt+drag one)" },
     { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen rooms to another floor" },
@@ -17606,6 +17769,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.renaming = null;
       this.roomPick = null;
       this.roomSel = null;
+      this.floorSel = null;
+      this.floorAsk = null;
       this.making = null;
       this.page = 0;
       this.lastRoom = this.storage.get("lastRoom") || null;
@@ -17839,6 +18004,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.page = page;
       this.shelf = false;
       this.roomPick = this.roomSel = this.making = null;
+      this.floorSel = this.floorAsk = null;
       this.renaming = null;
       this.drawRooms({ slide });
     }
@@ -17982,9 +18148,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       if (e.key === "Escape") {
+        if (this.floorAsk != null) {
+          this.cancelFloor();
+          return;
+        }
         if (this.clearPicks()) return;
-        if (this.roomSel || this.making) {
-          this.roomSel = this.making = null;
+        if (this.roomSel || this.making || this.floorSel != null) {
+          this.roomSel = this.making = this.floorSel = null;
           this.drawRooms();
         } else if (this.roomPick) {
           this.roomPick = null;
@@ -18013,6 +18183,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const id = this.roomSel || this.roomPick;
       const r = id && room4(this.world, id);
       const deletes = k2 === "Delete" || MAC3 && e.metaKey && k2 === "Backspace";
+      if (this.floorAsk != null && k2 === "Enter") {
+        e.preventDefault();
+        this.deleteFloor(this.floorAsk);
+        return true;
+      }
+      if (deletes && this.floorSel != null && !r && !this.picks.length) {
+        e.preventDefault();
+        this.askFloor(this.floorSel);
+        return true;
+      }
       if (deletes && this.picks.length > 1) {
         e.preventDefault();
         this.deleteMany();
@@ -18170,7 +18350,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
   };
-  for (const part2 of [RoomsGrid, RoomsVerbs, RoomsMany]) {
+  for (const part2 of [RoomsGrid, RoomsVerbs, RoomsMany, RoomsFloor]) {
     for (const [key2, d] of Object.entries(Object.getOwnPropertyDescriptors(part2.prototype))) {
       if (key2 !== "constructor") Object.defineProperty(Rooms.prototype, key2, d);
     }
