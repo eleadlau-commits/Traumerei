@@ -48,6 +48,10 @@ export default class Rooms extends Feature {
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
+    this.panel = this.use('panel');       // the right dock, where a room's properties open, or null
+    this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
+    // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
+    this.on('docks:resized', ({ side }) => { if (side === 'right' && !this.inRoom && !this.root.hidden) this.drawRooms(); });
     this.build();
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
@@ -212,6 +216,8 @@ export default class Rooms extends Feature {
     this.storage.set('lastRoom', id);
     const tile = !this.inRoom && !this.roomsPage.hidden && this.grid.querySelector(`.rooms-tile[data-room="${id}"]`);
     const from = tile ? tile.getBoundingClientRect() : null;
+    // A room's properties in the dock give way to the room.
+    if (this.propsDock) { this.propsDock = null; this.roomSel = null; this.panel.close('room', true); }
     this.inRoom = id;
     this.root.classList.add('in-room');
     this.emit('room:open', { id, from, seed });

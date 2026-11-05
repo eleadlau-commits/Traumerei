@@ -349,3 +349,10 @@
 /* Import a room… among an empty cell's choices (the roomfile feature) */
 .rooms-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
 .rooms-cell-menu .rooms-kind-import { margin-top: 0; padding-top: 7px; border-top: 0; }
+
+/* A room's properties in the right dock's Editor tab (grid.js dockRoom): the pop-up's rows, down
+   the dock. The page moves over beside the dock. */
+.rooms-props { display: grid; gap: 14px; align-content: start; }
+.rooms-props .pop-name { font-size: 18px; }
+.dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
+.dock-right-open .rooms:not(.in-room) .rooms-back { right: calc(var(--gutter) + var(--dock-right, 0px)); }

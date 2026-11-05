@@ -75,8 +75,8 @@ export class Dock {
     this.tucked = false;
     this.root.hidden = false;
     this.draw();
+    document.documentElement.classList.add(`dock-${this.side}-open`); // (before the width is sent, so what moves over has moved)
     this.setWidth(this.width, false);
-    document.documentElement.classList.add(`dock-${this.side}-open`);
     const dock = this;
     return {
       close: (force = false) => (this.held.includes(shown) ? this.closeOne(shown, force) : Promise.resolve(true)),
