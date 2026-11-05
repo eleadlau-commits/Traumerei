@@ -2208,6 +2208,18 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-draft.fresh { border-radius: 2px; animation: room-fresh 1.4s var(--ease) 2; }
 @keyframes room-fresh { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 40% { box-shadow: 0 0 0 6px var(--sel-fill); outline: var(--sel-line); } }
 
+/* ---- A Twin (twin.js): two rooms side by side. The side you work in is the canvas; the other
+   shows in the other half, quieter, and a click there works in it. ---- */
+.room-page.twin .room-stage { right: calc((100% - var(--rail)) / 2); }
+.room-page.twin.twin-right .room-stage { left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; }
+.room-twin-other { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent); opacity: .55; cursor: pointer; transition: opacity var(--quick); }
+.room-page.twin.twin-right .room-twin-other { left: var(--rail); right: calc((100% - var(--rail)) / 2); border-left: 0;
+  border-right: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+.room-twin-other:hover { opacity: .8; }
+.room-twin-other .room-world { pointer-events: none; }
+.room-twin-label { position: absolute; bottom: var(--s-5, 24px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -19479,6 +19491,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }, "⚙") : null;
         items.push(el14("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
+      items.push(...this.twinRail());
       items.push(el14("div", { class: "rail-head", "aria-hidden": "true" }, "Views"));
       items.push(el14("button", {
         type: "button",
@@ -19680,6 +19693,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const { width, height } = this.stage.getBoundingClientRect();
       this.world$.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
       this.positionEdit?.();
+      this.placeOther?.();
     }
     toWorld(clientX, clientY) {
       const v2 = view5(this.world, this.roomId);
@@ -19695,6 +19709,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     drawWorld() {
       if (!this.roomId) return;
+      this.world$.replaceChildren(...this.canvasNodes());
+      this.showStatus();
+      this.drawBar();
+      this.drawTray();
+      this.drawTwin();
+      this.clearSoon();
+    }
+    // What the canvas shows: the ontology's own drawing, or each of its units where it says.
+    canvasNodes() {
       const w2 = this.world;
       const nodes = [];
       this.draftEl = null;
@@ -19714,11 +19737,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           nodes.push(el14("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
         }
       }
-      this.world$.replaceChildren(...nodes);
-      this.showStatus();
-      this.drawBar();
-      this.drawTray();
-      this.clearSoon();
+      return nodes;
     }
     // The frame's status bar: what is chosen, and the mode.
     showStatus() {
@@ -20446,6 +20465,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const dx = e.clientX - g2.x0, dy = e.clientY - g2.y0;
+      g2.last = { x: e.clientX, y: e.clientY };
       if (!g2.moved && Math.hypot(dx, dy) < 4) return;
       g2.moved = true;
       if (g2.kind === "box") {
@@ -20544,6 +20564,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawWorld();
         return;
       }
+      if (g2.thing && g2.last && this.dropAcross(g2.thing.id, g2.last.x, g2.last.y)) return;
       if (g2.thing?.live) {
         this.drawWorld();
         this.save();
@@ -21376,11 +21397,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // at the foot of the room instead: a quiet word ("Loose · 3") opens a row of them. Only an
     // ontology with a tray has loose thoughts.
     trayItems() {
+      let own3 = [];
       try {
-        return this.ont.tray?.(this.world, this.roomId) || [];
+        own3 = this.ont.tray?.(this.world, this.roomId) || [];
       } catch {
-        return [];
+        own3 = [];
       }
+      return this.twinTrayItems(own3);
     }
     // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
     // or first words. Click opens it (a group's thoughts in the editor); Ctrl+click or Shift+click
@@ -21534,7 +21557,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         ghost.remove();
         const over = document.elementFromPoint(ev.clientX, ev.clientY);
-        if (ev.type !== "pointerup" || !over || !this.stage.contains(over) || !this.world.things[id]) return;
+        if (ev.type !== "pointerup" || !over || !this.world.things[id]) return;
+        const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
+        if (there && this.world.things[id].parent === there.id) {
+          this.ontology(view5(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
+          this.save();
+          this.drawWorld();
+          return;
+        }
+        if (there) {
+          this.dropAcross(id, ev.clientX - off.x, ev.clientY - off.y);
+          return;
+        }
+        if (!this.stage.contains(over) || !this.fromOtherSide(id)) return;
         const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
         this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
         this.save();
@@ -21801,6 +21836,159 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.save();
       this.drawWorld();
       this.toast(`Moved to ${room5(this.world, toRoom).name}`);
+    }
+  };
+
+  // dist/web/features/room/twin.js
+  var Twin = class {
+    // The other side of the Twin this room is a side of, or null.
+    get otherSide() {
+      return this.roomId ? otherSide2(this.world, this.roomId) : null;
+    }
+    // The other side's panel, made once (build()); a click on it works there.
+    twinPanel() {
+      this.otherWorld = el14("div", { class: "room-world" });
+      this.otherEl = el14(
+        "div",
+        {
+          class: "room-twin-other",
+          hidden: true,
+          role: "button",
+          tabindex: "-1",
+          onclick: () => {
+            const o2 = this.otherSide;
+            if (o2) this.switchSide(o2.id);
+          }
+        },
+        this.otherWorld,
+        this.otherLabel = el14("div", { class: "label room-twin-label" })
+      );
+      return this.otherEl;
+    }
+    // Lays the room out as one side of a Twin (or as a room of its own), and draws the other side.
+    drawTwin() {
+      const other = this.otherSide;
+      const me2 = this.roomId && room5(this.world, this.roomId);
+      this.roomPage.classList.toggle("twin", !!other);
+      this.roomPage.classList.toggle("twin-right", !!other && me2?.side === 1);
+      this.otherEl.hidden = !other;
+      if (!other) {
+        this.otherWorld.replaceChildren();
+        return;
+      }
+      const o2 = this.ontology(view5(this.world, other.id).mode);
+      this.otherLabel.textContent = `${other.name} · ${o2.name} · click to work here`;
+      this.otherWorld.replaceChildren(...this.sideNodes(other.id));
+      this.placeOther();
+    }
+    // The other side's view, centred in its half (after a resize, or the docks moving the room).
+    placeOther() {
+      const other = this.otherSide;
+      if (!other || this.otherEl.hidden) return;
+      const v2 = view5(this.world, other.id);
+      const { width, height } = this.otherEl.getBoundingClientRect();
+      this.otherWorld.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
+    }
+    // What the canvas of side `id` shows, drawn as the live canvas would draw it (its ontology's own
+    // drawing, or its units where they sit), with nothing chosen and nothing being written. The
+    // nodes are only to look at.
+    sideNodes(id) {
+      const keep = { roomId: this.roomId, sel: this.sel, draft: this.draft, found: this.found, draftEl: this.draftEl };
+      Object.assign(this, { roomId: id, sel: null, draft: null, found: null });
+      try {
+        return this.canvasNodes();
+      } catch {
+        return [];
+      } finally {
+        Object.assign(this, keep);
+      }
+    }
+    // In the rail, under Sides: each side with its mode; the one you work in is current, a click on
+    // the other works there. Nothing for a room of its own.
+    twinRail() {
+      const t = this.roomId && twinOf2(this.world, this.roomId);
+      if (!t) return [];
+      const all = [this.roomId, this.otherSide?.id].map((id) => room5(this.world, id)).filter(Boolean).sort((a, b) => (a.side || 0) - (b.side || 0));
+      return [
+        el14("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
+        ...all.map((s) => {
+          const on = s.id === this.roomId;
+          const o2 = this.ontology(view5(this.world, s.id).mode);
+          return el14(
+            "button",
+            {
+              type: "button",
+              class: "rail-item",
+              "aria-current": String(on),
+              title: on ? "You are working here" : "Work on this side",
+              onclick: () => {
+                if (!on) this.switchSide(s.id);
+              }
+            },
+            el14("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, s.side ? "R" : "L"),
+            el14("span", { class: "rail-word" }, `${s.name} · ${o2.name}`)
+          );
+        })
+      ];
+    }
+    // Works on the other side: the live canvas becomes that side, the side left shows beside it.
+    switchSide(id) {
+      if (!twinOf2(this.world, id) || id === this.roomId) return;
+      this.shelveDraft();
+      this.stopWriting();
+      this.roomId = id;
+      this.sel = null;
+      this.gearFor = this.settingsFor = null;
+      this.drawRoom();
+      this.takeDraft();
+    }
+    // Where a point on the screen is in the other side's world, or null when it isn't over it.
+    overOther(x, y) {
+      const other = this.otherSide;
+      if (!other || this.otherEl.hidden) return null;
+      const b = this.otherEl.getBoundingClientRect();
+      if (x < b.left || x > b.right || y < b.top || y > b.bottom) return null;
+      const v2 = view5(this.world, other.id);
+      return { id: other.id, x: Math.round(v2.x + (x - b.left - b.width / 2) / v2.zoom), y: Math.round(v2.y + (y - b.top - b.height / 2) / v2.zoom) };
+    }
+    // A thought or group let go over the other side goes across, to that spot there. True when it went.
+    dropAcross(id, x, y) {
+      const at2 = this.overOther(x, y);
+      if (!at2 || !id || this.locked) return false;
+      const th = this.world.things[id];
+      if (!th) return false;
+      if (!across2(this.world, id, at2.x, at2.y)) return false;
+      const o2 = this.ontology(view5(this.world, at2.id).mode);
+      try {
+        o2.drop(this.world, at2.id, id, at2.x, at2.y);
+      } catch {
+      }
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+      this.drawTwin();
+      this.toast(`Moved to ${room5(this.world, at2.id).name}.`);
+      return true;
+    }
+    // The loose thoughts of both sides (one tray for the Twin): this side's, then the other's.
+    twinTrayItems(own3) {
+      const other = this.otherSide;
+      if (!other) return own3;
+      const o2 = this.ontology(view5(this.world, other.id).mode);
+      let theirs = [];
+      try {
+        theirs = o2.tray?.(this.world, other.id) || [];
+      } catch {
+        theirs = [];
+      }
+      return [...own3, ...theirs];
+    }
+    // A loose card from the other side dropped on this canvas: it comes across first.
+    fromOtherSide(id) {
+      const th = this.world.things[id];
+      const other = this.otherSide;
+      if (!th || !other || th.parent !== other.id) return true;
+      return across2(this.world, id);
     }
   };
 
@@ -22090,6 +22278,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.modes = el14("nav", { class: "rail room-rail room-modes", "aria-label": "Ontological mode" });
       this.world$ = el14("div", { class: "room-world" });
       this.stage = el14("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
+      const otherSide3 = this.twinPanel();
       this.input = el14("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
       this.bar = el14("div", { class: "panel pop room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
       this.history = el14("aside", { class: "panel room-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
@@ -22098,6 +22287,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "section",
         { class: "room-page", "aria-label": "Room" },
         this.stage,
+        otherSide3,
         this.modes,
         el14(
           "div",
@@ -22283,7 +22473,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
   }
-  mixIn(Room, RoomView, Writing, Gestures, Bars);
+  mixIn(Room, RoomView, Writing, Gestures, Bars, Twin);
 
   // dist/web/standalone-entry.js
   globalThis.__folioFeature0 = Account;
