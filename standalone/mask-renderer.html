@@ -12061,6 +12061,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       if (f2.closed) out2.closed = true;
       if (f2.loose) out2.loose = true;
+      if (f2.shared) out2.shared = true;
       return out2;
     }
     const out = { kind, name: oneLine(f2.name) || "Untitled" };
@@ -12417,7 +12418,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     fold: () => fold,
     foldPlan: () => foldPlan,
     foreign: () => foreign,
+    inForeign: () => inForeign,
     isLoose: () => isLoose,
+    isShared: () => isShared,
     kindTag: () => kindTag,
     outermost: () => outermost,
     place: () => place,
@@ -12426,8 +12429,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     spot: () => spot2,
     trayForeign: () => trayForeign
   });
-  var outermost = (w2, roomId) => groupsIn(w2, roomId).filter((g2) => !groupsOf(w2, g2.id).length && itemsIn(w2, g2.id).length);
+  var isShared = (g2) => isGroup(g2) && !!g2.shared;
+  function outermost(w2, roomId) {
+    const shared = groupsIn(w2, roomId).filter((g2) => g2.shared && itemsIn(w2, g2.id).length);
+    return shared.filter((g2) => !shared.some((o2) => o2 !== g2 && holds(w2, o2.id, g2.id)));
+  }
   var foreign = (w2, roomId, of) => outermost(w2, roomId).filter((g2) => g2.of !== of);
+  function inForeign(w2, roomId, of) {
+    const inside4 = /* @__PURE__ */ new Set();
+    for (const g2 of foreign(w2, roomId, of)) for (const th of within(w2, g2.id)) inside4.add(th.id);
+    return (id) => inside4.has(id);
+  }
   var spot2 = (w2, roomId, of, id) => {
     const p = own(w2, roomId, of, false)[id];
     return p && Number.isFinite(p.x) ? p : null;
@@ -12969,11 +12981,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     },
     // The thoughts in no train yet, trains made in the tray, and other modes' groups not placed
     // here yet, oldest first.
-    tray: (w2, roomId) => [
-      ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, "joyce")),
-      ...groupsIn(w2, roomId, "joyce").filter((g2) => g2.loose && members(w2, g2.id).length),
-      ...trayForeign(w2, roomId, "joyce")
-    ].sort(byTime2),
+    // A thought inside another mode's shared group is not loose here too: the group stands for it.
+    tray(w2, roomId) {
+      const inside4 = inForeign(w2, roomId, "joyce");
+      return [
+        ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, "joyce")),
+        ...groupsIn(w2, roomId, "joyce").filter((g2) => g2.loose && members(w2, g2.id).length),
+        ...trayForeign(w2, roomId, "joyce")
+      ].filter((th) => !inside4(th.id)).sort(byTime2);
+    },
     placed(w2, roomId, id) {
       const th = w2.things[id];
       if (isGroup(th)) return th.of === "joyce" ? !th.loose : !!spot2(w2, roomId, "joyce", id);
@@ -13853,11 +13869,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     },
     // The thoughts in no chapter yet, chapters made in the tray, and other modes' groups in no
     // chapter yet, oldest first. Another mode's group is placed like a thought: into a chapter.
-    tray: (w2, roomId) => [
-      ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, ID)),
-      ...groupsIn(w2, roomId, ID).filter((g2) => g2.loose && members(w2, g2.id).length),
-      ...trayForeign(w2, roomId, ID).filter((g2) => !groupOf(w2, g2.id, ID))
-    ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+    // A thought inside another mode's shared group is not loose here too: the group stands for it.
+    tray(w2, roomId) {
+      const inside4 = inForeign(w2, roomId, ID);
+      return [
+        ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, ID)),
+        ...groupsIn(w2, roomId, ID).filter((g2) => g2.loose && members(w2, g2.id).length),
+        ...trayForeign(w2, roomId, ID).filter((g2) => !groupOf(w2, g2.id, ID))
+      ].filter((th) => !inside4(th.id)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+    },
     placed(w2, roomId, id) {
       const th = w2.things[id];
       return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w2, id, ID);
@@ -14158,7 +14178,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const id of [...out.keys()]) if ([...out.keys()].some((o2) => o2 !== id && holds(w2, o2, id))) out.delete(id);
     return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   }
-  function groupChosen(o2, w2, roomId, ids, now = Date.now(), { loose = false } = {}) {
+  function groupChosen(o2, w2, roomId, ids, now = Date.now(), opts = {}) {
+    const one2 = unitsOf(w2, roomId, ids);
+    if (o2?.groups && one2.length === 1 && isGroup(one2[0]) && one2[0].of === o2.id && !one2[0].shared && !shut(w2, roomId)) {
+      one2[0].shared = true;
+      return one2[0];
+    }
+    const g2 = makeGroup2(o2, w2, roomId, ids, now, opts);
+    if (g2) g2.shared = true;
+    return g2;
+  }
+  function makeGroup2(o2, w2, roomId, ids, now, { loose = false } = {}) {
     if (!o2?.groups) return null;
     const items = unitsOf(w2, roomId, ids);
     if (!items.length || items.length === 1 && isGroup(items[0]) && items[0].of === o2.id) return null;
@@ -16693,7 +16723,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var setTagGroup2;
   var ONTOLOGY2;
   var makeTag2;
-  var makeGroup2;
+  var makeGroup3;
   var seedRoomSettings3;
   var allTags2;
   var groupNames2;
@@ -16744,7 +16774,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       setTagGroup: setTagGroup2,
       ONTOLOGY: ONTOLOGY2,
       makeTag: makeTag2,
-      makeGroup: makeGroup2,
+      makeGroup: makeGroup3,
       seedRoomSettings: seedRoomSettings3,
       allTags: allTags2,
       groupNames: groupNames2,
@@ -16947,11 +16977,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "data-col": col,
           "data-row": row,
           onclick: () => this.onCell(col, row),
-          // A right-click shows the kinds of room too (right-click on empty space adds, as in a room).
+          // A right-click offers a room from a file here instead (without the roomfile feature, the
+          // kinds of room, as a left click).
           oncontextmenu: (e) => {
             e.preventDefault();
             this.roomSel = this.roomPick = this.floorSel = null;
-            this.making = { col, row };
+            this.making = this.files ? { col, row, import: true } : { col, row };
             this.drawRooms();
             this.grid.querySelector(".rooms-kinds button")?.focus({ preventScroll: true });
           }
@@ -16997,7 +17028,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // of room to make there. With the menu open, another empty cell moves it there in one click;
     // the same cell again closes it.
     onCell(col, row) {
-      if (this.making && (this.making.col !== col || this.making.row !== row)) this.making = null;
+      if (this.making && (this.making.col !== col || this.making.row !== row || this.making.import)) this.making = null;
       else if (this.roomSel || this.making || this.floorSel != null) {
         this.roomSel = this.making = this.floorSel = null;
         this.drawRooms();
@@ -17035,9 +17066,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The kinds of room a new one can be, beside the empty cell clicked (or right-clicked): one room
     // of each ontology (1 × 1), then All ontology, a 2 × 2 room that holds them all (Borges's rule:
-    // a room's shape says how many ontologies it holds). A room from a file is the top bar's Import.
+    // a room's shape says how many ontologies it holds). A room from a file: right-click the cell.
     kindOptions(c, cell, cols) {
       if (c.twin) return this.twinOptions(c, cell, cols);
+      if (c.import) return this.importOptions(c, cell, cols);
       return el12(
         "div",
         { ...this.beside(c, cell, cols, " rooms-kinds"), role: "menu" },
@@ -17059,6 +17091,28 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { type: "button", class: "pick rooms-kind", role: "menuitem", onclick: () => this.pickTwin(c) },
           el12("span", { class: "rooms-kind-name" }, "Twin…"),
           el12("span", { class: "pick-note" }, "1 × 2, two modes side by side")
+        )
+      );
+    }
+    // A right-click on an empty cell: a room from a room Markdown file, put in that cell.
+    importOptions(c, cell, cols) {
+      return el12(
+        "div",
+        { ...this.beside(c, cell, cols, " rooms-kinds"), role: "menu" },
+        el12(
+          "button",
+          {
+            type: "button",
+            class: "pick rooms-kind",
+            role: "menuitem",
+            onclick: () => {
+              this.making = null;
+              this.drawRooms();
+              this.importRoomFile(null, { col: c.col, row: c.row });
+            }
+          },
+          el12("span", { class: "rooms-kind-name" }, "Import a room…"),
+          el12("span", { class: "pick-note" }, "from a .md file, here")
         )
       );
     }
@@ -17436,7 +17490,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const done = (keep, value) => {
         this.makingTag = null;
         if (keep && value.trim()) {
-          if (forGroup ? makeGroup2(this.world, value) : makeTag2(this.world, value, group2, this.ontologies)) {
+          if (forGroup ? makeGroup3(this.world, value) : makeTag2(this.world, value, group2, this.ontologies)) {
             this.save();
             if (forGroup) this.openGroup = tidyTag2(value).toLowerCase();
           }
@@ -20932,8 +20986,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (e.ctrlKey || e.metaKey || middle2 || this.spaceDown) {
         e.preventDefault();
         this.gesture = { kind: "pan", ...pan, ...(e.ctrlKey || e.metaKey) && !middle2 ? { toggle: true, pick: this.picked(groupEl, thoughtEl) } : {} };
-      } else if (this.sel?.kind === "many" && hitId && this.isSel(hitId)) this.gesture = { kind: "group", ...pan, from: this.groupSpots() };
-      else if (!hitId && e.pointerType === "mouse") this.gesture = { kind: "box", ...pan };
+      } else if (e.shiftKey && e.pointerType === "mouse") this.gesture = { kind: "box", ...pan, add: true, pick: this.picked(groupEl, thoughtEl) };
+      else if (this.sel?.kind === "many" && hitId && this.isSel(hitId)) this.gesture = { kind: "group", ...pan, from: this.groupSpots() };
       if (this.gesture) {
         this.listen(e);
         return;
@@ -21173,7 +21227,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     showKeys() {
       this.keyMap?.show();
     }
-    // ---- Choosing many: a box drawn on the empty canvas ----
+    // ---- Choosing many: a box drawn with Shift+drag ----
     isSel(id) {
       return this.sel?.id === id || !!this.sel?.ids?.includes(id);
     }
@@ -21190,6 +21244,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     endBox(g2) {
       this.box?.remove();
       this.box = null;
+      if (g2.add && (!g2.moved || !g2.rect)) {
+        if (g2.pick) this.chooseMore(g2.pick);
+        return;
+      }
       if (!g2.moved || !g2.rect) {
         this.sel = null;
         if (this.draft) this.stopWriting();
@@ -21203,6 +21261,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
         ids.add(n.dataset.thought || n.dataset.group);
       }
+      if (g2.add && this.sel) for (const id of this.sel.ids || [this.sel.id]) ids.add(id);
       this.sel = this.selOf([...ids]);
       this.drawWorld();
     }
@@ -22535,8 +22594,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.write-in", shows: "Triple-click", words: "write in a thought, where it is" },
     { id: "room.properties", keys: ["Enter", "ContextMenu", "Shift+F10"], shows: "Right-click · Enter", words: "the properties of what is chosen" },
     { id: "room.add", shows: "Right-click the canvas", words: "Add, just there" },
-    { id: "room.box", shows: "Drag the canvas", words: "a box to choose many" },
-    { id: "room.pan", shows: "Ctrl+drag", words: "move around" },
+    { id: "room.drag", shows: "Drag", words: "move a thing · on empty space, move around" },
+    { id: "room.box", shows: "Shift+drag", words: "a box to choose many" },
+    { id: "room.pan", shows: "Ctrl+drag", words: "move around, wherever it starts" },
     { id: "room.all", keys: ["Ctrl+A"], words: "choose everything" },
     { id: "room.more", shows: "Shift+click · Ctrl+click", words: "add to the choice · in or out of it" },
     { id: "room.copy", keys: ["Ctrl+C", "Ctrl+V"], words: "copy what is chosen · put a copy here" },
