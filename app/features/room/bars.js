@@ -11,6 +11,7 @@ import { openEditor } from './editor.js';
 
 export class Bars {
   // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
+  // (Resolves once they show.)
   // panel's content editor (editor.js) when there is a panel, else in the pop-up beside it. Many
   // things chosen together always get the pop-up.
   openProps(sel) {
@@ -18,12 +19,12 @@ export class Bars {
     if (this.draft) this.stopWriting();
     if (this.panel && sel?.kind !== 'many') {
       this.barFor = null;
-      openEditor(this, sel.id).then(() => this.drawWorld());
-      return;
+      return openEditor(this, sel.id).then(() => this.drawWorld());
     }
     this.barFor = this.selKey(sel);
     this.drawWorld();
     this.bar.querySelector('textarea, input')?.focus({ preventScroll: true });
+    return Promise.resolve();
   }
 
   // While the content editor shows, it follows what is chosen: a click on another thought, group

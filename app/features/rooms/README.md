@@ -79,7 +79,8 @@ written there. With nothing in it, the rooms page works on its own.
   in, Restore, Delete). While they show, a click on another square switches them to it; Escape
   or × closes them, and going in closes them. The page moves over beside the dock, its squares
   drawn smaller to fit (`docks:resized`). Without the docks feature they show in a pop-up beside
-  the square. A double click or Enter goes in. A colour picked there is the room's colour inside, its
+  the square. A double click or Enter goes in. **Ctrl+R** renames the chosen room (its properties open with
+  the name chosen), the same verb as in a room; **Delete** deletes it. A colour picked there is the room's colour inside, its
   lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Fixed floors:** every floor is the same fixed board (Settings → Floors: 6 × 4, 8 × 5 or

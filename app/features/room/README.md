@@ -176,6 +176,11 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   (or two fingers on a phone) moves the canvas. Names keep with Enter.
 - Every pop-up and panel (Add, the sheet, the timeline, a thing's edit pop-up)
   shares one pale, blurred style: the palette's veil.
+- **The same verbs** on a thought or a group (and on a room, on the rooms page), in `verbs.js`:
+  **Ctrl+R** renames (a thought is written in where it is; a group's properties open with its
+  name chosen), **Ctrl+D** duplicates what is chosen beside it, **Ctrl+F** folds or unfolds its
+  group (folding asks for a name, in the Editor tab), **Ctrl+M** opens Move to…, and **Delete**
+  deletes. In a field these keys do nothing (so the browser doesn't reload, bookmark or find).
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or Add → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.

@@ -28,6 +28,7 @@ import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
 import { ROOM_KEYS } from './keys.js';
+import * as verbs from './verbs.js';
 
 export default class Room extends Feature {
   start() {
@@ -55,7 +56,14 @@ export default class Room extends Feature {
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
-    const run = { 'room.timeline': () => this.toggleTimeline() };
+    const run = {
+      'room.timeline': () => this.toggleTimeline(),
+      // The same verbs as on the rooms page (verbs.js).
+      'room.rename': (e) => verbs.rename(this, e),
+      'room.duplicate': (e) => verbs.duplicate(this, e),
+      'room.fold': (e) => verbs.fold(this, e),
+      'room.move': (e) => verbs.moveTo(this, e),
+    };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId, ...(run[k.id] ? { run: run[k.id] } : {}) });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)

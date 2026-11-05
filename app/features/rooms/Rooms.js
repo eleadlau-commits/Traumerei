@@ -75,7 +75,8 @@ export default class Rooms extends Feature {
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     this.keyMap = this.use('keys'); // the key map: the ? list, or null
-    for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom });
+    const run = { 'rooms.rename': (e) => this.renameChosen(e) }; // the same verb as in a room (room/verbs.js)
+    for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom, ...(run[k.id] ? { run: run[k.id] } : {}) });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
   }
 
@@ -373,6 +374,18 @@ export default class Rooms extends Feature {
     if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
     if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
     return false;
+  }
+
+  // Ctrl+R: the chosen room's properties open with its name chosen to type over. In a field the
+  // key does nothing (it is still taken, so the page doesn't reload).
+  renameChosen(e) {
+    if (e?.target?.matches?.('input, textarea, select, [contenteditable]')) return;
+    const id = this.roomSel || this.roomPick;
+    if (!id || !room(this.world, id)) return;
+    this.chooseRoom(id, true);
+    const field = (this.propsDock?.body || this.grid).querySelector('.pop-name');
+    field?.focus({ preventScroll: true });
+    field?.select();
   }
 
   // ---- Room Markdown: the roomfile feature does the work; this page says where ----

@@ -9,6 +9,7 @@ export const ROOMS_KEYS = [
   { id: 'rooms.open', keys: ['Enter'], shows: 'Double-click · Enter', words: 'go into the chosen room' },
   { id: 'rooms.properties', keys: ['ContextMenu', 'Shift+F10'], shows: 'Right-click', words: 'the properties of a room' },
   { id: 'rooms.delete', keys: ['Delete'], words: 'delete the chosen room' },
+  { id: 'rooms.rename', keys: ['Ctrl+R'], words: 'rename the chosen room', typing: true },
   { id: 'rooms.floor', keys: ['PageUp', 'PageDown'], words: 'the floor above · below' },
   { id: 'rooms.search', keys: ['Ctrl+K'], words: 'search every room' },
   { id: 'rooms.undo', keys: ['Ctrl+Z', 'Ctrl+Shift+Z', 'Ctrl+Y'], shows: 'Ctrl+Z · Ctrl+Shift+Z', words: 'undo · redo' },
