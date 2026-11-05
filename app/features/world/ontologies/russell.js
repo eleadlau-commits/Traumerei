@@ -1,29 +1,30 @@
 // Russell: chapters joined into a tree, each an abstraction of the one above it. A chapter holds
 // its thoughts in order, read top to bottom like a Joyce train. Arrows go from a parent chapter to
-// a child: a chapter has any number of children and usually one parent, at most two (a junction).
-// There are no cycles: an arrow that would make one is refused. Each arrow has a relation, how the
-// child stands to its parent, and a short label: "forgets the coordinates". Each room keeps its own
-// list of relations (the setting 'relations', starting with "forgets"); the first is the default.
+// a child: a chapter has any number of children and any number of parents (more than one makes a
+// junction). There are no cycles: an arrow that would make one is refused. Each arrow has a
+// relation, how the child stands to its parent ("forgets", "is a case of", "⊂", or none), and a
+// short label: "forgets the coordinates". The arrows and relations are relations.js, shared with
+// any ontology that joins its groups; the room's list of relations is Russell's setting 'relations'.
 //
 // The tree lays itself out: the roots at the top, each generation a level lower, siblings side by
 // side, a junction under both its parents. A chapter dragged somewhere stays there (placed by
 // hand); its children still hang under it. A thought in no chapter waits in the tray.
 //
 // A chapter is a group that holds each thought in only one chapter. The arrows and their labels
-// are Russell's own data in the room: own(w, room, 'russell')[child] = { parents, labels, rel },
-// where labels is { [parent]: text } and rel { [parent]: relation } (the default when missing).
+// are Russell's own data in the room: own(w, room, 'russell')[child] = { parents, labels, rel }
+// (relations.js).
 // Thoughts stay shared with every other mode.
 
-import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own, roomSetting, setOrder } from '../model.js';
+import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder } from '../model.js';
 import { trayForeign, place } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
+import { arrowsOf, cleanRelations, relationShown, RELATIONS } from './relations.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
 export const ID = 'russell';
-export const MOST_PARENTS = 2;
 // World units. width: the widest a chapter's thoughts go; title: room for an open chapter's name
 // over its thoughts; closed: a closed chapter's height; rhythm: every gap is a whole number of
 // these, so rows and columns line up; gapX, rootGap, gapY: the least gaps (they grow for labels);
@@ -42,157 +43,36 @@ const isChapter = (w, roomId, id) => {
   return isGroup(g) && g.of === ID && g.parent === roomId && !groupOf(w, id, ID);
 };
 
-// ---- Relations ----
+// ---- Arrows and relations (relations.js, shared with any ontology that joins its groups) ----
 
-// A relation's name is one word (hyphens are fine), so it can be a heading's key in room Markdown.
-export const RELATION = /^[A-Za-z][\w-]*$/;
-export const RELATIONS = { key: 'relations', label: 'Relations', type: 'list', default: ['forgets'], word: RELATION, note: 'The first is the default.' };
+export { relationName, splitList, listText, cleanRelations, relationShown, withRelation, RELATIONS } from './relations.js';
 
-// A list of relations made tidy: from a list, or words with commas ("forgets, generalises", or in
-// [ ]); each a single word, once (whatever its case). Never empty: "forgets" when nothing is left.
-export function cleanRelations(v) {
-  const words = Array.isArray(v) ? v : String(v ?? '').replace(/^\s*\[(.*)\]\s*$/s, '$1').split(',');
-  const out = [];
-  for (const x of words) {
-    const t = String(x ?? '').trim().replace(/^"(.*)"$/, '$1');
-    if (RELATION.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
-  }
-  return out.length ? out : [...RELATIONS.default];
-}
-
-// A room's relations, the default first (globals: the global settings, for a room with none).
-export const relations = (w, roomId, globals = {}) => cleanRelations(roomSetting(w, roomId, ID, RELATIONS, globals));
-
-// After a room's relations change from one list to another of the same length, a relation renamed
-// in place is renamed on its arrows too. Returns how many arrows changed.
-export function renameRelations(w, roomId, before, after) {
-  const a = cleanRelations(before), b = cleanRelations(after);
-  if (a.length !== b.length) return 0;
-  const map = new Map(a.map((x, i) => [x, b[i]]).filter(([x, y]) => x !== y));
-  if (!map.size) return 0;
-  let n = 0;
-  for (const data of Object.values(own(w, roomId, ID, false))) {
-    for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) { data.rel[p] = map.get(r); n++; }
-  }
-  return n;
-}
-
-// The arrows into a chapter: { parents, labels, rel }, only to chapters still there.
-export function arrowsInto(w, roomId, id) {
-  const a = own(w, roomId, ID, false)[id];
-  const parents = (a?.parents || []).filter((p) => p !== id && isChapter(w, roomId, p));
-  const labels = {}, rel = {};
-  for (const p of parents) {
-    if (a.labels?.[p]) labels[p] = a.labels[p];
-    if (a.rel?.[p]) rel[p] = a.rel[p];
-  }
-  return { parents, labels, rel };
-}
-
-export const parentsOf = (w, roomId, id) => arrowsInto(w, roomId, id).parents;
-export const childrenOf = (w, roomId, id) => groupsIn(w, roomId, ID).filter((g) => parentsOf(w, roomId, g.id).includes(id)).map((g) => g.id);
-export const labelOf = (w, roomId, parent, child) => arrowsInto(w, roomId, child).labels[parent] || '';
-// An arrow's relation: the one it was given, or the room's default.
-export const relationOf = (w, roomId, parent, child, globals = {}) => arrowsInto(w, roomId, child).rel[parent] || relations(w, roomId, globals)[0];
-
-// Every arrow in the room: [{ from, to, label, rel }] (rel: '' for the default).
-export function arrows(w, roomId) {
-  const out = [];
-  for (const g of chapters(w, roomId)) {
-    const { parents, labels, rel } = arrowsInto(w, roomId, g.id);
-    for (const p of parents) out.push({ from: p, to: g.id, label: labels[p] || '', rel: rel[p] || '' });
-  }
-  return out;
-}
-
-// True if `a` is `b` or one of b's ancestors.
-export function above(w, roomId, a, b, seen = new Set()) {
-  if (a === b) return true;
-  if (seen.has(b)) return false;
-  seen.add(b);
-  return parentsOf(w, roomId, b).some((p) => above(w, roomId, a, p, seen));
-}
-
-// Why an arrow from parent to child can't be drawn, or '' when it can.
-export function whyNot(w, roomId, parent, child) {
-  if (!isChapter(w, roomId, parent) || !isChapter(w, roomId, child)) return 'Arrows join two chapters.';
-  if (parent === child) return 'A chapter can\'t be its own parent.';
-  const has = parentsOf(w, roomId, child);
-  if (has.includes(parent)) return 'That arrow is already there.';
-  if (has.length >= MOST_PARENTS) return 'A chapter has at most two parents.';
-  if (above(w, roomId, child, parent)) return 'That arrow would make a loop.';
-  return '';
-}
-
-// ---- Changing the tree ----
-
-const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
-const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, ID)[child] = { parents, labels, rel }; };
-
-// Draws an arrow from parent to child (with a label, and a relation: '' for the default). Returns
-// '' when drawn, or why not.
-export function link(w, roomId, parent, child, label = '', relation = '') {
-  const why = whyNot(w, roomId, parent, child);
-  if (why || shut(w, roomId)) return why || 'This room is locked.';
-  const a = arrowsInto(w, roomId, child);
-  a.parents.push(parent);
-  if (tidy(label)) a.labels[parent] = tidy(label);
-  if (RELATION.test(relation || '')) a.rel[parent] = relation;
-  put(w, roomId, child, a);
-  settle(w, roomId);
-  return '';
-}
-
-export function unlink(w, roomId, parent, child) {
-  if (shut(w, roomId)) return false;
-  const { parents, labels, rel } = arrowsInto(w, roomId, child);
-  if (!parents.includes(parent)) return false;
-  delete labels[parent];
-  delete rel[parent];
-  put(w, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
-  settle(w, roomId);
-  return true;
-}
-
-// An arrow's label ('' takes it away).
-export function setLabel(w, roomId, parent, child, text) {
-  if (shut(w, roomId)) return false;
-  const a = arrowsInto(w, roomId, child);
-  if (!a.parents.includes(parent)) return false;
-  const t = tidy(text);
-  if (t) a.labels[parent] = t; else delete a.labels[parent];
-  put(w, roomId, child, a);
-  return true;
-}
-
-// An arrow's relation ('' for the room's default).
-export function setRelation(w, roomId, parent, child, relation) {
-  if (shut(w, roomId)) return false;
-  const a = arrowsInto(w, roomId, child);
-  if (!a.parents.includes(parent)) return false;
-  if (RELATION.test(relation || '')) a.rel[parent] = relation; else delete a.rel[parent];
-  put(w, roomId, child, a);
-  return true;
-}
+const net = arrowsOf({ of: ID, isNode: isChapter, nodes: (w, roomId) => chapters(w, roomId), word: 'chapter', loops: false, changed: (w, roomId) => settle(w, roomId) });
+export const {
+  relations, renameRelations, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
+  link, unlink, setLabel, setRelation,
+} = net;
 
 // ---- In room Markdown ----
 
+const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+
 // A chapter heading's attributes read: its arrows [{ title, label, rel }] (each parent="…", then
-// the relation of its arrow as a key, forgets="…") and the rest, kept as written. names: the
-// room's relations. say(text) hears what couldn't be read.
+// the relation of its arrow as a key, forgets="…"; with no key, the room's first) and the rest,
+// kept as written. names: the room's relations. say(text) hears what couldn't be read.
 export function readHeading(attrs, names, say = () => {}) {
   const known = new Map(cleanRelations(names).map((n) => [n.toLowerCase(), n]));
   const arrows = [], rest = [];
   let after = false; // just after a parent
   for (const [k, v] of attrs) {
     const last = arrows.at(-1);
-    if (k === 'parent') { arrows.push({ title: v, label: '', rel: '' }); after = true; continue; }
+    if (k === 'parent') { arrows.push({ title: v, label: '', rel: cleanRelations(names)[0] }); after = true; continue; }
     const rel = known.get(String(k).toLowerCase());
     if (rel) {
       if (last && !last.read) Object.assign(last, { label: tidy(v), rel, read: true });
       else say(`${k}="${v}" has no parent before it, so it was left out.`);
     } else {
-      if (after && last && !last.read && RELATION.test(k)) say(`"${k}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
+      if (after && last && !last.read && WORD.test(k)) say(`"${k}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
       rest.push([k, v]);
     }
     after = false;
@@ -201,14 +81,16 @@ export function readHeading(attrs, names, say = () => {}) {
 }
 
 // The attributes for the arrows into a chapter: parent="…", then its relation as the key of its
-// label when it has one or its relation isn't the default. title(id): a parent's heading.
+// label when it has one or its relation isn't the room's first (and is one word, so it can be a
+// key). title(id): a parent's heading.
+const WORD = /^[A-Za-z][\w-]*$/;
 export function headingAttrs(w, roomId, child, title) {
   const { parents, labels, rel } = arrowsInto(w, roomId, child);
   const first = relations(w, roomId)[0];
   const out = [];
   for (const p of parents) {
     out.push(['parent', title(p)]);
-    const r = rel[p] || first;
+    const r = WORD.test(rel[p]) ? rel[p] : first;
     if (labels[p] || r !== first) out.push([r, labels[p] || '']);
   }
   return out;
@@ -219,7 +101,7 @@ export function headingAttrs(w, roomId, child, title) {
 export function addChapter(w, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {
   const g = create(w, roomId, { kind: 'group', of: ID, x, y }, now);
   if (!g) return null;
-  if (parent && isChapter(w, roomId, parent)) put(w, roomId, g.id, { parents: [parent], labels: {}, rel: {} });
+  if (parent && isChapter(w, roomId, parent)) net.adopt(w, roomId, g.id, parent);
   return g;
 }
 
@@ -302,7 +184,7 @@ export function layout(w, roomId, size = (id) => chapterSize(w, id)) {
   const names = relations(w, roomId);
   const lab = Object.fromEntries(all.map((g) => {
     const { parents, labels, rel } = arrowsInto(w, roomId, g.id);
-    const ls = parents.filter((p) => labels[p]).map((p) => labelSize((names.length > 1 ? `${rel[p] || names[0]} ` : '') + labels[p]));
+    const ls = parents.filter((p) => labels[p] || relationShown(names, rel[p])).map((p) => labelSize(`${relationShown(names, rel[p])} ${labels[p] || ''}`.trim()));
     return [g.id, { w: Math.max(0, ...ls.map((l) => l.w)), h: Math.max(0, ...ls.map((l) => l.h)) }];
   }));
   const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD));
@@ -470,7 +352,7 @@ function editBox(c, spot, names) {
   return box;
 }
 
-// A move waiting for a click on a chapter: { room, child, kind: 'add' | 'cut' } (Add second
+// A move waiting for a click on a chapter: { room, child, kind: 'add' | 'cut' } (Add
 // parent: click the parent; Remove arrow, from a junction: click the parent to cut it from).
 let pending = null;
 
@@ -682,12 +564,12 @@ export default {
       },
     },
     {
-      id: 'parent', label: 'Add second parent',
-      when: (c) => { const g = chosenChapter(c); return !!g && parentsOf(c.world, c.roomId, g).length < MOST_PARENTS; },
+      id: 'parent', label: 'Add parent',
+      when: (c) => !!chosenChapter(c),
       run(c) {
         pending = { room: c.roomId, child: chosenChapter(c), kind: 'add' };
         c.sel = null;
-        c.toast('Click the chapter to be its other parent.');
+        c.toast('Click the chapter to be another parent.');
       },
     },
     {

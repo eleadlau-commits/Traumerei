@@ -95,9 +95,9 @@ A passage with no title.
   by side in clear space, Pessoa places loose thoughts on its spiral, Russell lays out its tree.
 - **Attributes** go in braces at the end of a heading, `key="value"`, with `\"` for a quote.
   Russell reads `parent="…"` (a chapter, by its heading) each followed by an optional
-  `forgets="…"` (the arrow's label); a junction has two. Arrows are drawn after every chapter
-  exists, through Russell's own rules (at most two parents, no loops), so what it refuses (a
-  loop, a third parent, an unknown or twice-used heading) is reported and the rest still arrive.
+  `forgets="…"` (the arrow's label); a junction has more than one. Arrows are drawn after every chapter
+  exists, through Russell's own rules (no loops), so what it refuses (a
+  loop, an unknown or twice-used heading) is reported and the rest still arrive.
   Importing into a room, a parent can also be a chapter already there. Any other attribute (and
   in Joyce and Pessoa, every one) is kept with the group and written back out.
 

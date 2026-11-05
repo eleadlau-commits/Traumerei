@@ -31,7 +31,7 @@
 //   settings              (optional) its settings: sliders { key, label, min, max, step, default },
 //                         switches { key, label, type: 'switch', default }, or choices
 //                         { key, label, type: 'choice', options: [[value, word]], default }, or lists
-//                         of words { key, label, type: 'list', default: [...], word?: RegExp, note? }. Each room keeps its
+//                         of names { key, label, type: 'list', default: [...], word?: RegExp, clean?(v), text?(list), note? }. Each room keeps its
 //                         own (the ⚙ beside the mode's name in the rail); the global ones are under
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
 //   settingChanged(w, room, key, before, after)   (optional) one of a room's settings was just

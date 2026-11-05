@@ -182,7 +182,7 @@ test('Russell: each ## is a chapter, and parent attributes draw arrows, a juncti
   assert.ok(at[id('Arrays')].y < at[id('Matrices')].y && at[id('Matrices')].y < at[id('Eigenvalues')].y && at[id('Eigenvalues')].y < at[id('Spectral theorem')].y);
 });
 
-test('Russell: a loop, an unknown parent, a third parent and a twice-used heading are reported, the rest arrive', () => {
+test('Russell: a loop, an unknown parent and a twice-used heading are reported, the rest arrive (any number of parents)', () => {
   const { w, id, report } = into('russell', [
     '## A {parent="C"}', '- a', '## B {parent="A"}', '- b', '## C {parent="B"}', '- c',
     '## D {parent="Nowhere" parent="A" parent="B" parent="C"}', '- d',
@@ -194,11 +194,10 @@ test('Russell: a loop, an unknown parent, a third parent and a twice-used headin
   assert.deepEqual(parentsOf(w, id, g('A')), [g('C')]);
   assert.deepEqual(parentsOf(w, id, g('B')), [g('A')]);
   assert.deepEqual(parentsOf(w, id, g('C')), []); // B → C would close the loop C → A → B
-  assert.deepEqual(parentsOf(w, id, g('D')), [g('A'), g('B')]);
+  assert.deepEqual(parentsOf(w, id, g('D')), [g('A'), g('B'), g('C')]);
   const said = report.join('\n');
   assert.match(said, /arrow from "B" to "C" wasn't drawn: that arrow would make a loop/);
   assert.match(said, /no chapter is called "Nowhere"/);
-  assert.match(said, /"C" to "D" wasn't drawn: a chapter has at most two parents/);
   assert.match(said, /two chapters are called "Twice"/);
   assert.match(said, /"Empty" has nothing under it, so it was left out/);
   assert.match(said, /"Empty" was left out/);
@@ -506,7 +505,7 @@ test('Russell: relations as heading keys, the room\'s list in the front matter, 
   const { room: r, report } = importRoom(w, p, { ontologies, now: NOW });
   assert.deepEqual(report, []);
   const as = Object.fromEntries(arrows(w, r.id).map((a) => [chapterName(w, a.to), `${a.rel || 'default'}: ${a.label}`]));
-  assert.deepEqual(as, { Rings: 'generalises: to two operations', Fields: 'default: the zero divisors', Modules: 'generalises: ' });
+  assert.deepEqual(as, { Rings: 'generalises: to two operations', Fields: 'forgets: the zero divisors', Modules: 'generalises: ' });
   const out = exportRoom(w, r.id, { ontologies });
   assert.match(out, /russell\.relations: \[forgets, generalises\]/);
   assert.match(out, /## Rings \{parent="Groups" generalises="to two operations"\}/);
