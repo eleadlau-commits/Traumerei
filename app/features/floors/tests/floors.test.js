@@ -181,3 +181,24 @@ test('an empty last floor just goes', () => {
   assert.deepEqual(removeFloor(w, 1).archived, []);
   assert.equal(pageCount(w), 1);
 });
+
+test('Borges: the rooms page ontology, rooms on cells, never a room\'s', async () => {
+  const { borges } = await import('../borges.js');
+  const { gather, missing, forRooms, forPage } = await import('../../world/ontologies/index.js');
+  const o = borges(() => M);
+  assert.deepEqual(missing(o), []);
+  const all = gather([o]);
+  assert.equal(forPage(all).id, 'borges');
+  assert.ok(!forRooms(all).some((x) => x.id === 'borges'));
+  const w = emptyWorld();
+  addPage(w);
+  const a = made(w, 'A', 0, { col: 4, row: 3 });
+  assert.deepEqual(o.units(w, 0).map((r) => r.name).sort(), ['A', 'Messy thoughts']);
+  assert.deepEqual(o.point(w, 0, a.id), { x: 4, y: 3 });
+  assert.equal(o.drop(w, 0, a.id, 0, 0), false);      // Messy's cells
+  assert.equal(o.drop(w, 0, a.id, 6, 2), true);
+  assert.deepEqual([a.col, a.row], [6, 2]);
+  assert.equal(o.drop(w, 0, a.id, 8, 0), false);      // off the board
+  assert.equal(o.drop(w, 1, a.id, 2, 1), true);       // onto Floor 2
+  assert.deepEqual([a.page, a.col, a.row], [1, 2, 1]);
+});

@@ -8,7 +8,7 @@
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import { loadWorld } from './model.js';
-import { gather, FALLBACK } from './ontologies/index.js';
+import { gather, forRooms, forPage, FALLBACK } from './ontologies/index.js';
 import { visit, loadLog } from './attention.js';
 import { lookPrefs, savedLook, LOOK, PALETTE } from './look.js';
 
@@ -44,6 +44,7 @@ export default class World extends Feature {
       undo: (back = true) => w.undo(back),
       get ontologies() { return w.ontologies; },
       ontology: (id) => w.ontology(id),
+      get roomsPage() { return forPage(w.all); },   // the rooms page's own ontology (Borges), or null
       get prefs() { return w.prefs; },
       setLook: (key, value) => w.setLook({ ...w.prefs, [key]: value }),
       resetLook: () => w.setLook(LOOK),
@@ -106,9 +107,11 @@ export default class World extends Feature {
 
   // The ontologies there are (ontologies/index.js), and the one a room is seen through: a room
   // whose ontology is missing (its feature switched off, say) is seen through Pessoa.
-  get ontologies() {
+  // The rooms page's own (Borges, roomsPage) is never a room's: it is only in `all`.
+  get all() {
     return gather(this.slot('world.ontologies').items, (o, lacks) => console.warn('World: an ontology was skipped; it lacks', lacks.join(', '), o));
   }
+  get ontologies() { return forRooms(this.all); }
   ontology(id) {
     const all = this.ontologies;
     return all.find((o) => o.id === id) || all.find((o) => o.id === FALLBACK);

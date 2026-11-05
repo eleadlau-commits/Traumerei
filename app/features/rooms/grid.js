@@ -861,7 +861,6 @@ export class RoomsGrid {
         return;
       }
       tile.style.transform = '';
-      const home = r.page || 0;
       if (ev.altKey && !r.archived && !over?.archive) {
         this.page = floor;
         this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
@@ -873,16 +872,23 @@ export class RoomsGrid {
         else if (moved) { this.save(); this.toast(`${r.name} is on Floor ${over.page + 1}.`); }
       } else if (over?.archive) {
         if (archive(this.world, r.id)) { this.save(); this.toast(`${r.name} is in the Archive.`); }
-      } else if (target && floor !== home) {
-        // Slid to another floor at the edge: dropped on one of its cells.
-        if (this.floors.toFloor(r.id, floor, target) === true) this.save();
-      } else if (target && this.floors.move(r.id, target.col, target.row)) this.save();
+      } else if (target && this.dropRoom(r.id, floor, target)) this.save(); // a cell of this floor, or of one slid to at the edge
       this.page = floor; // the floor the strip rests on
       this.drawRooms();
     };
     window.addEventListener('pointermove', moveFn);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+  }
+
+  // A room let go on a cell of floor `page`: the rooms page's own ontology (Borges, the world's
+  // roomsPage) says where it goes; without it, the floors feature's rule. True when it moved.
+  dropRoom(id, page, cell) {
+    const ont = this.w.roomsPage;
+    if (ont) return ont.drop(this.world, page, id, cell.col, cell.row);
+    const r = room(this.world, id);
+    if ((r?.page || 0) !== page) return this.floors.toFloor(id, page, cell) === true;
+    return this.floors.move(id, cell.col, cell.row);
   }
 
   // A new room of a kind (its mode), in the cell asked for (or the first free one), with
