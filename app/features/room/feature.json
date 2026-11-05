@@ -10,7 +10,8 @@
     "roomfile",
     "search",
     "docks",
-    "floors"
+    "floors",
+    "keys"
   ],
   "requires": [
     "world",

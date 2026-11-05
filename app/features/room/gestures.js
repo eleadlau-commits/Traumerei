@@ -178,7 +178,7 @@ export class Gestures {
     this.save();
   }
 
-  // ---- Keys: delete, choose all, nudge, and the list of them all (?) ----
+  // ---- Keys: delete, choose all, nudge (the key map lists them: keys.js) ----
 
   // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
   // A plain Backspace never does: it is for letters.
@@ -187,7 +187,6 @@ export class Gestures {
   // Returns true when the key was one of these, and was used.
   shortcut(e, mod) {
     const k = e.key;
-    if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
     if ((k === 'Enter' && !mod && !e.shiftKey) || k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) {
       // In a room: Enter (or the ContextMenu key) opens the properties of what is chosen.
       if (!this.sel) return false;
@@ -228,25 +227,8 @@ export class Gestures {
     return false;
   }
 
-  showKeys() {
-    const rows = [
-      ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
-      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'], ['Triple-click', 'write in a thought, where it is'],
-      ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
-      ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
-      ['Shift+click · Ctrl+click', 'add to the choice · in or out of it'], ['Ctrl+C · Ctrl+V', 'copy what is chosen · put a copy here'],
-      ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],
-      ['Arrows · Shift+arrows', 'nudge what is chosen'],
-      [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
-    ];
-    this.keysBox.replaceChildren(el('div', { class: 'panel top-sheet room-keys-panel' },
-      el('div', { class: 'label' }, 'Keys'),
-      el('dl', { class: 'keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
-    this.keysBox.hidden = false;
-    this.keysBox.onpointerdown = () => this.closeSearch();
-    const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeSearch(); document.removeEventListener('keydown', close, true); };
-    document.addEventListener('keydown', close, true);
-  }
+  // The list of keys (the key map's ?), when the keys feature is there.
+  showKeys() { this.keyMap?.show(); }
 
   // ---- Choosing many: a box drawn on the empty canvas ----
 
@@ -427,9 +409,7 @@ export class Gestures {
   // Closes the list of keys, and the search panel if it shows.
   closeSearch() {
     this.finder?.close();
-    if (!this.keysBox || this.keysBox.hidden) return;
-    this.keysBox.hidden = true;
-    this.keysBox.replaceChildren();
+    this.keyMap?.hide();
   }
 
   // Opens what was found: a room, or the room a thought is in, with the view on the thought.

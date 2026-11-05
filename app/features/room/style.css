@@ -286,7 +286,6 @@
 .room :is(.room-saved, .room-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
-.room-keys-panel { padding: 18px 22px 20px; }
 
 /* Locked: nothing can be added. */
 .room-page.locked .room-add { display: none; }

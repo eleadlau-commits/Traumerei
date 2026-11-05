@@ -1,0 +1,2 @@
+/* The ? list of keys: layout only (its box is Folio's .panel .top-sheet, the list .keys-list). */
+.keys-sheet { padding: 18px 22px 20px; max-height: calc(100vh - 96px); overflow: auto; }

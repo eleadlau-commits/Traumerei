@@ -166,4 +166,5 @@ only says where (its `roomfile` service), and leaves those choices out when it i
 - Every pop-up and panel (Add, the sheet, the timeline, a thing's edit pop-up)
   shares one pale, blurred style: the palette's veil.
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
-  (Shift for bigger steps); ? (or Add → Keys) lists them all. Ctrl+drag, Space+drag or the middle button move the canvas.
+  (Shift for bigger steps); ? (or Add → Keys) lists them all, from the key map (the keys feature;
+  the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.

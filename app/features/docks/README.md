@@ -22,7 +22,17 @@ of width is sent as `docks:resized`.
 | `open({ key, kind, title, body, beforeClose, onClose })` | Shows `body` (a node) under a quiet `kind` word and a `title`, in place of whatever showed (which is asked first). `beforeClose()` returns true, or a promise of true, when it may close; `onClose()` runs once it has. Resolves with a handle `{ close(force), setTitle(text), setKind(text), open }`, or `null` when what showed would not close. |
 | `close(key, force)` | Closes what shows (only if it is `key`, when given), asking its `beforeClose` first unless `force`. Resolves true once the dock is shut. |
 | `isOpen(key)` | Whether it shows (showing `key`, when given). |
+| `toggle()` | Hides it, keeping what shows in it, or brings it back. False when nothing shows. |
+| `shown` | Whether it shows on the screen (something is open and it isn't hidden). |
 | `width` | Its width in px while it shows, else 0. |
+
+`docks.canvasOnly()` hides every dock that shows; the same again brings back just those.
+
+## Keys
+
+Added to the key map (the keys feature), working while typing too (`keys.js`):
+**Ctrl+Alt+L** shows or hides the left dock, **Ctrl+Alt+E** the right dock, and
+**Ctrl+Alt+F** is Canvas only. Opening something in a hidden dock brings it back.
 
 ## The panel service
 
@@ -34,5 +44,5 @@ used for the side panel.
 Keys pressed in a dock stay in it (the room doesn't see them). It has no slots and saves only the
 two widths ('left', 'right').
 
-**The code.** `Docks.js` makes the two docks and offers the services; `dock.js` is one dock;
+**The code.** `Docks.js` makes the two docks and offers the services; `dock.js` is one dock; `keys.js` its keys;
 `style.css` their layout (classes start with `dock-`).

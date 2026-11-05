@@ -1,0 +1,9 @@
+{
+  "name": "Keys",
+  "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.",
+  "version": "0.1.0",
+  "main": "Keys.js",
+  "styles": [
+    "style.css"
+  ]
+}

@@ -27,6 +27,7 @@ import { RoomView } from './view.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
+import { ROOM_KEYS } from './keys.js';
 
 export default class Room extends Feature {
   start() {
@@ -51,6 +52,8 @@ export default class Room extends Feature {
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
+    this.keyMap = this.use('keys');      // the key map: the ? list, or null
+    for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
@@ -250,8 +253,7 @@ export default class Room extends Feature {
             this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
             this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
             ...(this.files.canEdit ? [this.addItem('Edit room as Markdown', 'in the panel', () => this.editAsMarkdown(), false)] : [])] : []),
-          el('div', { class: 'pick-rule' }),
-          this.addItem('Keys', '?', () => this.showKeys(), false)),
+          ...(this.keyMap ? [el('div', { class: 'pick-rule' }), this.addItem('Keys', '?', () => this.showKeys(), false)] : [])),
         this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.history,
@@ -261,12 +263,11 @@ export default class Room extends Feature {
       this.docEl = el('div', { class: 'room-doc-veil', hidden: true }),
       this.input);
 
-    this.keysBox = el('div', { class: 'shade', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
     this.savedMark = el('div', { class: 'saved-note room-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'foot-hint room-hint' });
     // A small wordmark beside the menu (☰), as on the rooms page.
     this.wordmark = el('div', { class: 'wordmark room-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
+    this.root = el('div', { class: 'room up in-room', hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
 
     this.input.addEventListener('input', () => this.onInput());
