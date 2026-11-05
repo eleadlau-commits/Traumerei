@@ -13095,7 +13095,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     cleanRelations: () => cleanRelations,
     clearWidths: () => clearWidths,
     default: () => russell_default,
-    headingAttrs: () => headingAttrs,
     labelOf: () => labelOf,
     labelSize: () => labelSize,
     layout: () => layout,
@@ -13104,7 +13103,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     listText: () => listText,
     parentsOf: () => parentsOf,
     placeIn: () => placeIn,
-    readHeading: () => readHeading,
     relationName: () => relationName,
     relationOf: () => relationOf,
     relationShown: () => relationShown,
@@ -13232,7 +13230,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const put = (w2, roomId, child, { parents, labels, rel }) => {
       own(w2, roomId, of)[child] = { parents, labels, rel };
     };
-    const relations3 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of, RELATIONS, globals));
+    const relations2 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of, RELATIONS, globals));
     function renameRelations2(w2, roomId, before, after) {
       const a = cleanRelations(before), b = cleanRelations(after);
       if (a.length !== b.length) return 0;
@@ -13288,7 +13286,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const a = arrowsInto3(w2, roomId, child);
       a.parents.push(parent);
       if (tidy2(label2)) a.labels[parent] = tidy2(label2);
-      a.rel[parent] = relation == null ? relations3(w2, roomId)[0] : relationName(relation) ?? "";
+      a.rel[parent] = relation == null ? relations2(w2, roomId)[0] : relationName(relation) ?? "";
       put(w2, roomId, child, a);
       changed(w2, roomId);
       return "";
@@ -13323,10 +13321,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return true;
     }
     function adopt(w2, roomId, child, parent) {
-      put(w2, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations3(w2, roomId)[0] } });
+      put(w2, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations2(w2, roomId)[0] } });
     }
     return {
-      relations: relations3,
+      relations: relations2,
       renameRelations: renameRelations2,
       arrowsInto: arrowsInto3,
       parentsOf: parentsOf2,
@@ -13371,43 +13369,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     setLabel,
     setRelation
   } = net;
-  var tidy3 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
-  function readHeading(attrs, names, say2 = () => {
-  }) {
-    const known = new Map(cleanRelations(names).map((n) => [n.toLowerCase(), n]));
-    const arrows2 = [], rest = [];
-    let after = false;
-    for (const [k2, v2] of attrs) {
-      const last = arrows2.at(-1);
-      if (k2 === "parent") {
-        arrows2.push({ title: v2, label: "", rel: cleanRelations(names)[0] });
-        after = true;
-        continue;
-      }
-      const rel = known.get(String(k2).toLowerCase());
-      if (rel) {
-        if (last && !last.read) Object.assign(last, { label: tidy3(v2), rel, read: true });
-        else say2(`${k2}="${v2}" has no parent before it, so it was left out.`);
-      } else {
-        if (after && last && !last.read && WORD.test(k2)) say2(`"${k2}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
-        rest.push([k2, v2]);
-      }
-      after = false;
-    }
-    return { arrows: arrows2.map(({ title, label: label2, rel }) => ({ title, label: label2, rel })), rest };
-  }
-  var WORD = /^[A-Za-z][\w-]*$/;
-  function headingAttrs(w2, roomId, child, title) {
-    const { parents, labels, rel } = arrowsInto(w2, roomId, child);
-    const first = relations(w2, roomId)[0];
-    const out = [];
-    for (const p of parents) {
-      out.push(["parent", title(p)]);
-      const r = WORD.test(rel[p]) ? rel[p] : first;
-      if (labels[p] || r !== first) out.push([r, labels[p] || ""]);
-    }
-    return out;
-  }
   function addChapter(w2, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {
     const g2 = create(w2, roomId, { kind: "group", of: ID, x, y }, now);
     if (!g2) return null;
@@ -14981,9 +14942,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var chapterName2;
   var broken2;
   var setRelation2;
-  var relations2;
-  var readHeading2;
-  var headingAttrs2;
+  var relationName2;
   var setOrder2;
   function bind2(lib) {
     ({
@@ -15011,7 +14970,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ ITEMS: ITEMS2 } = lib.items);
     ({ keepOrShrink: keepOrShrink2 } = lib.picture);
     ({ stepAfter: stepAfter2 } = lib.joyce);
-    ({ link: link2, arrowsInto: arrowsInto2, unlink: unlink2, setLabel: setLabel2, chapterName: chapterName2, setRelation: setRelation2, relations: relations2, readHeading: readHeading2, headingAttrs: headingAttrs2 } = lib.russell);
+    ({ link: link2, arrowsInto: arrowsInto2, unlink: unlink2, setLabel: setLabel2, chapterName: chapterName2, setRelation: setRelation2, relationName: relationName2 } = lib.russell);
     ({ broken: broken2 } = lib.maths);
   }
 
@@ -15020,7 +14979,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var byTime3 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
   var HEADING = /^##(\s|$)/;
   var IMAGE = /^!\[.*\]\(\S+\)\s*$/;
-  var LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*(closed|folded))/i;
+  var LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*(closed|folded)|>.*\[\[.+?\]\])/i;
+  var ARROW = /^>\s*(.*?)\s*\[\[(.+?)\]\]\s*(?::\s*(.*?))?\s*$/;
   var structural = (l2) => HEADING.test(l2) || /^###(\s|$)/.test(l2) || /^-(\s|$)/.test(l2) || IMAGE.test(l2);
   function escape(l2) {
     const m2 = /^(\\*)(.*)$/s.exec(l2);
@@ -15183,15 +15143,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (HEADING.test(l2)) {
         const h = heading(l2.slice(2));
         if (h.broken) report.push(`Line ${i2 + 1}: the {…} on "${l2.trim()}" isn't closed properly; the heading was kept${h.attrs.length ? ` with the attributes before the break` : ""}.`);
-        cur = { title: h.title, attrs: h.attrs, closed: false, items: [], line: i2 + 1 };
+        cur = { title: h.title, attrs: h.attrs, closed: false, arrows: [], items: [], line: i2 + 1 };
         groups.push(cur);
         i2++;
-        let k2 = i2;
-        while (k2 < lines2.length && !lines2[k2].trim()) k2++;
-        const f2 = /^>\s*(?:closed|folded)\s*(?::\s*(.*?))?\s*$/i.exec(lines2[k2] || "");
-        if (f2) {
-          cur.closed = true;
-          if (f2[1] && !cur.title) cur.title = f2[1];
+        for (; ; ) {
+          let k2 = i2;
+          while (k2 < lines2.length && !lines2[k2].trim()) k2++;
+          const f2 = /^>\s*(?:closed|folded)\s*(?::\s*(.*?))?\s*$/i.exec(lines2[k2] || "");
+          const a = !f2 && ARROW.exec(lines2[k2] || "");
+          if (f2) {
+            cur.closed = true;
+            if (f2[1] && !cur.title) cur.title = f2[1];
+          } else if (a) cur.arrows.push({ rel: relationName2(a[1]) ?? "", title: a[2].trim(), label: (a[3] || "").trim(), line: k2 + 1 });
+          else break;
           i2 = k2 + 1;
         }
         continue;
@@ -15276,14 +15240,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const { id } of madeGroups) Object.assign(w2.things[id], where[id]);
     }
     const arrows2 = [];
-    const names = of === RUSSELL ? relations2(w2, roomId) : [];
     for (const { id, src } of madeGroups) {
-      let rest = src.attrs;
-      if (of === RUSSELL) {
-        const read = readHeading2(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`));
-        for (const a of read.arrows) arrows2.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: src.line, title: src.title });
-        rest = read.rest;
-      }
+      const rest = of === RUSSELL ? oldParents(src, report) : src.attrs;
+      if (of === RUSSELL) for (const a of src.arrows || []) arrows2.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: a.line, title: src.title });
       if (rest.length) (own2(w2, roomId, of).headings ||= {})[id] = rest;
     }
     if (arrows2.length) {
@@ -15301,6 +15260,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
     return { report, made };
+  }
+  function oldParents(src, report) {
+    const parents = src.attrs.filter(([k2]) => k2 === "parent");
+    if (parents.length) report.push(`Line ${src.line}: parent="…" is no longer read; write each arrow as a line under the heading instead: ${parents.map(([, v2]) => `> [[${v2}]]`).join(", ")}.`);
+    return src.attrs.filter(([k2]) => k2 !== "parent");
   }
   function frame(w2, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
     const o2 = modeOf(w2, roomId, ontologies);
@@ -15354,11 +15318,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function writeGroup(w2, roomId, g2, pictures) {
     const of = g2.of;
-    const attrs = [];
-    if (of === RUSSELL) attrs.push(...headingAttrs2(w2, roomId, g2.id, (p) => w2.things[p]?.title || ""));
-    attrs.push(...(own2(w2, roomId, of, false).headings || {})[g2.id] || []);
+    const attrs = (own2(w2, roomId, of, false).headings || {})[g2.id] || [];
     const head = ["##", g2.title, attrs.length ? `{${attrs.map(([k2, v2]) => `${k2}=${writeAttr(v2)}`).join(" ")}}` : ""].filter(Boolean).join(" ");
-    return [head, ...g2.closed ? ["> closed"] : [], writeItems(members2(w2, g2.id).filter(isLeaf2), pictures)].join("\n");
+    return [
+      head,
+      ...of === RUSSELL ? arrowLines(w2, roomId, g2.id) : [],
+      ...g2.closed ? ["> closed"] : [],
+      writeItems(members2(w2, g2.id).filter(isLeaf2), pictures)
+    ].join("\n");
+  }
+  function arrowLines(w2, roomId, id) {
+    const { parents, labels, rel } = arrowsInto2(w2, roomId, id);
+    return parents.map((p) => `> ${rel[p] ? `${rel[p]} ` : ""}[[${w2.things[p]?.title || ""}]]${labels[p] ? `: ${labels[p]}` : ""}`);
   }
   function exportRoom(w2, roomId, { ontologies = [], pictures = null } = {}) {
     const r = room3(w2, roomId);
@@ -15597,9 +15568,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const th of old) if (!keep.has(th.id) && w2.things[th.id]) drop(th, parent === roomId ? null : parent);
       if (parent !== roomId) setOrder2(w2, parent, order);
     };
-    const names = of === RUSSELL ? p.parsed.meta?.settings?.[RUSSELL]?.relations ?? relations2(w2, roomId) : [];
     const keepAttrs = (id, attrs) => {
-      const rest = of === RUSSELL ? readHeading2(attrs, names).rest : attrs;
+      const rest = of === RUSSELL ? attrs.filter(([k2]) => k2 !== "parent") : attrs;
       const had = own2(w2, roomId, of, false).headings?.[id];
       if (rest.length) {
         if (JSON.stringify(had) !== JSON.stringify(rest)) (own2(w2, roomId, of).headings ||= {})[id] = rest;
@@ -15694,8 +15664,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const title = (id) => w2.things[id]?.title || "an untitled chapter";
     for (const { id, src } of list2) {
       const child = src.title || "An untitled chapter";
-      const names = relations2(w2, roomId);
-      const want = readHeading2(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows;
+      const want = src.arrows || [];
+      oldParents(src, report);
       const { parents: had, labels: hadLabels, rel: hadRel } = arrowsInto2(w2, roomId, id);
       const resolved = [];
       for (const a of want) {
@@ -15706,7 +15676,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         let found = mine.length ? mine : chapters2.filter((g2) => fromText.has(g2.id));
         if (!found.length) found = chapters2;
         if (found.length !== 1) {
-          report.push(`Line ${src.line}: the arrow from "${a.title}" to "${child}" can't be drawn: ${found.length ? `two chapters are called "${a.title}"` : `no chapter is called "${a.title}"`}.`);
+          report.push(`Line ${a.line || src.line}: the arrow from "${a.title}" to "${child}" can't be drawn: ${found.length ? `two chapters are called "${a.title}"` : `no chapter is called "${a.title}"`}.`);
           continue;
         }
         resolved.push({ id: found[0].id, label: a.label, rel: a.rel });
