@@ -69,4 +69,6 @@ no slots.
 - `Roomfile.js`: the screen side: the card, fetching pictures, downloads, and what it hands the
   source editor. `world.js` lists the world's rules it uses.
 
-Tests: `tests/grammar.test.js`, `tests/traum.test.js`, `tests/edit.test.js`, `tests/plain.test.js`.
+Tests: `tests/grammar.test.js`, `tests/traum.test.js`, `tests/edit.test.js`, `tests/plain.test.js`, and
+`tests/guide.mjs` (run by node on every pull request): FORMAT.md has a section for every kind and
+ontology, and its example files read cleanly.
