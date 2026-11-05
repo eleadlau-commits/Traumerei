@@ -18,13 +18,6 @@
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .rooms-open .home { visibility: hidden; }
 
-/* The wordmark beside the menu (☰), the back arrow top right (home from the rooms page) and the
-   search bar show once the page is up. */
-.rooms.up .rooms-wordmark { opacity: .72; }
-.rooms.in-room :is(.rooms-wordmark, .rooms-back, .rooms-search-btn) { visibility: hidden; } /* the room shows its own */
-
-.rooms.up .rooms-back { opacity: .8; }
-
 /* ---- The rooms page ---- */
 .rooms-rooms {
   position: absolute;
@@ -146,7 +139,6 @@
 .rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--ink); }
 
 /* "Saved" and the line of help take the room's ink while a room is open. */
-.rooms.in-room :is(.rooms-saved, .rooms-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
 
@@ -248,10 +240,6 @@
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
-
-.rooms.expanding .rooms-back { color: var(--ink); }
-
-.rooms.up .rooms-search-btn { opacity: .66; }
 
 /* ---- The floors of the rooms page, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor ---- */
 .rooms-pages { display: grid; gap: 10px; justify-items: start; width: 100%; }
@@ -355,4 +343,3 @@
 .rooms-props { display: grid; gap: 14px; align-content: start; }
 .rooms-props .pop-name { font-size: 18px; }
 .dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
-.dock-right-open .rooms:not(.in-room) .rooms-back { right: calc(var(--gutter) + var(--dock-right, 0px)); }

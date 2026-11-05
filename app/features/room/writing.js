@@ -114,7 +114,6 @@ export class Writing {
   onKey(e) {
     if (e.defaultPrevented || this.root.hidden || document.querySelector('dialog[open]')) return; // (the rooms page took it)
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
-    this.hintLine.classList.remove('on');
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openSearch(); return; }
     if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && !this.editing) {

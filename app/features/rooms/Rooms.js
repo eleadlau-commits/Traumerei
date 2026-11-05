@@ -18,9 +18,9 @@
 //
 // Saved data: 'lastRoom' (its square glows), 'note' (the comment for next time), 'hinted'.
 
-import { Feature, ui } from 'folio';
+import { Feature } from 'folio';
 import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
-import { el, MAC, KEY, HINT, enterKeeps } from './shared.js';
+import { el, MAC, HINT, enterKeeps } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
@@ -49,6 +49,7 @@ export default class Rooms extends Feature {
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
     this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
     this.panel = this.use('panel');       // the right dock, where a room's properties open, or null
+    this.frame = this.use('frame');       // the top bar and the foot around the page (the frame feature), or null
     this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
     // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
     this.on('docks:resized', ({ side }) => { if (side === 'right' && !this.inRoom && !this.root.hidden) this.drawRooms(); });
@@ -114,6 +115,8 @@ export default class Rooms extends Feature {
     this.showRooms();
     this.root.getBoundingClientRect(); // so the slide starts from below
     this.root.classList.add('up');
+    this.frame?.show(this, { search: () => { if (this.lights != null) this.closeLights(); else this.openLights(); },
+      back: () => this.back(), backLabel: 'Back to the home page' });
     this.backdrop?.cover?.(true);
   }
 
@@ -124,6 +127,7 @@ export default class Rooms extends Feature {
     this.closeLights();
     this.files?.cancel();
     this.room?.leave();
+    this.frame?.hide(this);
     this.backdrop?.cover?.(false);
     this.root.classList.remove('up');
     
@@ -199,7 +203,6 @@ export default class Rooms extends Feature {
     this.roomSel = this.making = null;
     this.roomsPage.hidden = false;
     this.root.classList.remove('in-room');
-    this.backBtn.setAttribute('aria-label', 'Back to the home page');
     this.drawRooms();
     if (from && !this.root.hidden) this.shrink(from);
   }
@@ -283,21 +286,13 @@ export default class Rooms extends Feature {
   }
 
   // A quiet word in the corner when the world has been written down.
-  showSaved(word = 'Saved') {
-    this.savedMark.textContent = word;
-    this.savedMark.classList.remove('on');
-    void this.savedMark.offsetWidth;
-    this.savedMark.classList.add('on');
-  }
+  showSaved(word = 'Saved') { this.frame?.saved(word); }
 
   // A line of help, once, the first time the page is seen. It fades on the first key or click.
   hint() {
     if (this.storage.get('hinted')) return;
     this.storage.set('hinted', true);
-    this.hintLine.textContent = HINT;
-    this.hintLine.classList.add('on');
-    clearTimeout(this.hintTimer);
-    this.hintTimer = setTimeout(() => this.hintLine.classList.remove('on'), 9000);
+    this.frame?.hint(HINT);
   }
 
   // ---- The look: the picture's colours (read when Create opened) and Settings → Rooms ----
@@ -325,7 +320,6 @@ export default class Rooms extends Feature {
   onKey(e) {
     if (this.root.hidden || this.inRoom || document.querySelector('dialog[open]')) return;
     if (e.target.matches?.('input, textarea, select, [contenteditable]')) return;
-    this.hintLine.classList.remove('on');
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openLights(); return; }
     if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
@@ -448,21 +442,12 @@ export default class Rooms extends Feature {
       this.rail,
       this.strip.el);
 
-    this.backBtn = el('button', { type: 'button', class: 'back-btn rooms-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
-      ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
-    // Search, a bar in the middle of the top row: the search lights.
-    this.searchBtn = el('button', { type: 'button', class: 'word find-btn rooms-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
-      onclick: () => { if (this.lights != null) this.closeLights(); else this.openLights(); } },
-    el('span', {}, 'Search'), el('span', { class: 'find-key' }, KEY));
-    this.savedMark = el('div', { class: 'saved-note rooms-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'foot-hint rooms-hint' });
-    // A small wordmark beside the menu (☰).
-    this.wordmark = el('div', { class: 'wordmark rooms-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage, this.wordmark, this.searchBtn, this.backBtn, this.savedMark, this.hintLine,
+    // The wordmark, Search (the search lights), the back arrow, "Saved" and the line of help are
+    // the frame feature's (open() shows it).
+    this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage,
       this.noteLine = el('div', { class: 'rooms-note', hidden: true }),
       this.leaveBox = el('div', { class: 'panel sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
-    document.addEventListener('pointerdown', () => this.hintLine.classList.remove('on'));
 
     // A room Markdown file dropped on the page: a new room, in the first free cell.
     const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');

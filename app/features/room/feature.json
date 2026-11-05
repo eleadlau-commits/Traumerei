@@ -11,7 +11,8 @@
     "search",
     "docks",
     "floors",
-    "keys"
+    "keys",
+    "frame"
   ],
   "requires": [
     "world",

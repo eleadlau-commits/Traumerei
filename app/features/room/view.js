@@ -146,6 +146,7 @@ export class RoomView {
     }
     this.roomPage.classList.toggle('dark', look.dark);
     document.documentElement.classList.toggle('room-dark', look.dark);
+    this.frame?.update(this, { ink: look.ink }); // the frame's words take the room's ink
     return look;
   }
 

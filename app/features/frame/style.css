@@ -1,0 +1,26 @@
+/* The frame around Create's canvas: layout only (the look of the wordmark, Search, the back arrow,
+   "Saved" and the line of help is Folio's, folio/runtime/base.css). Class names start with
+   "frame-". It sits over the rooms page and a room, under the docks. */
+.frame {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  color: var(--frame-ink, var(--ink));
+  font-family: var(--font);
+}
+.frame > * { pointer-events: auto; }
+.frame[hidden], .frame [hidden] { display: none !important; }
+.frame-saved, .frame-hint, .frame-wordmark { pointer-events: none !important; }
+
+.frame.on .frame-wordmark { opacity: .72; }
+.frame.on .frame-back { opacity: .8; }
+.frame.on .frame-search { opacity: .66; }
+.frame:not(.on) :is(.frame-back, .frame-search) { pointer-events: none; }
+
+/* Beside an open dock (the docks feature's --dock-left / --dock-right), Search stays in the middle
+   of what is left and the back arrow stays clear of the right dock. */
+.frame-search { left: calc((100vw + var(--dock-left, 0px) - var(--dock-right, 0px)) / 2); }
+.frame-back { right: calc(var(--gutter) + var(--dock-right, 0px)); }
+.frame-hint { left: calc((100vw + var(--dock-left, 0px) - var(--dock-right, 0px)) / 2); }
+.frame-saved { right: calc(var(--gutter) + 12px + var(--dock-right, 0px)); }
