@@ -239,7 +239,7 @@ export class RoomsGrid {
     return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
       el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem',
         onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, { col: c.col, row: c.row }); } },
-      el('span', { class: 'rooms-kind-name' }, 'Import a room…'), el('span', { class: 'pick-note' }, 'from a .md file, here')));
+      el('span', { class: 'rooms-kind-name' }, 'Import a room…'), el('span', { class: 'pick-note' }, 'from a .traum or .md file, here')));
   }
 
   // Twin…: the menu asks for the mode of each side (the same or not), then makes it.
@@ -702,7 +702,7 @@ export class RoomsGrid {
         word('Back to the tint', p.untint),
         word(r.locked ? 'Unlock' : 'Lock', p.lock),
         word('Archive', p.archive),
-        word('Export as Markdown', p.export),
+        word('Export room file', p.export),
         word('Delete', p.remove, 'pop-delete')),
     ];
   }

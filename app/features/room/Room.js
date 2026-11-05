@@ -90,7 +90,7 @@ export default class Room extends Feature {
     if (this.frame) {
       if (this.files) {
         this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: live, run: () => this.exportRoomFile(),
-          icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a file' });
+          icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a .traum file' });
         this.add('rail.more', { id: 'room-text', label: 'Edit as text', order: 21, icon: 'note', run: () => this.editAsMarkdown(),
           visible: () => live() && !!this.files.canEdit, title: () => 'Edit this room as text, in the right dock' });
       }
@@ -311,7 +311,7 @@ export default class Room extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           ...(this.files ? [el('div', { class: 'pick-rule' }),
-            this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false)] : [])),
+            this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : [])),
         this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.trayEl,
@@ -382,7 +382,7 @@ export default class Room extends Feature {
       if (!files(e)) return;
       e.preventDefault();
       const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
-      if (!file) { this.toast('Only a room Markdown file (.md) can be dropped here.'); return; }
+      if (!file) { this.toast('Only a room file (.traum) or a Markdown file (.md) can be dropped here.'); return; }
       if (this.roomId) this.importIntoRoom(file);
     });
   }
@@ -400,7 +400,7 @@ export default class Room extends Feature {
     this.toast('Imported. Ctrl+Z takes it back.');
   }
 
-  // Downloads a room as <its name>.md (a locked room too).
+  // Downloads a room as <its name>.traum (a locked room too).
   exportRoomFile(id = this.roomId) { this.files?.exportRoom(id); }
 
   // A group (or, with none, the whole room) as room Markdown in the source editor, in the side

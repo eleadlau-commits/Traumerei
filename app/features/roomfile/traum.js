@@ -406,6 +406,7 @@ export function importRoom(w, parts, { ontologies = [], now = Date.now(), page =
   const got = bringObjects(w, r.id, parts, { modes, ontologies, now: now + 1, report, fetched });
   const unread = read(w, r.id, parts, { ids: got.ids, relations: got.relations, ontologies, modes, report });
   keep(w, r.id, got.kept, meta, unread);
+  frame(w, r.id, ontologies);
   return { room: r, report, made: got.made, ids: got.ids };
 }
 
@@ -481,12 +482,26 @@ function importTwin(w, parts, meta, report, { ontologies, now, page, globals, na
     const unread = read(w, s.id, mine, { ids: got.ids, relations: got.relations, ontologies, modes: [modes[k]], report });
     keep(w, s.id, got.kept, null, { ...unread, sections: [] });
     if (unread.sections.length) keep(w, t.id, { objects: [], keys: {} }, null, { sections: unread.sections });
+    frame(w, s.id, ontologies);
     for (const x of Object.keys(made)) made[x] += got.made[x];
     for (const [a, b] of got.ids) ids.set(a, b);
   }
   for (const s of other) report.push(`Line ${s.line}: "# ${s.name}" isn't a section a Twin knows (# Left: mode, # Right: mode); it was kept and will be written back out.`);
   keep(w, t.id, { objects: [], keys: {} }, meta, { sections: other.map((s) => ({ name: s.name, lines: s.lines.map((l) => l.text) })) });
   return { room: t, report, made, ids };
+}
+
+// A new room opens looking at what arrived: the middle of its thoughts as its mode places them,
+// zoomed out (not below half) so most of them fit. box: the screen's room for them (px).
+export function frame(w, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
+  const o = ontology(ontologies, view(w, roomId).mode);
+  if (typeof o?.units !== 'function' || typeof o?.point !== 'function') return;
+  const ps = o.units(w, roomId).map((u) => o.point(w, roomId, u.id)).filter(Boolean);
+  if (!ps.length) return;
+  const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) + 340, y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 80;
+  const zoom = Math.max(0.5, Math.min(1, box.w / (x1 - x0), box.h / (y1 - y0)));
+  Object.assign(view(w, roomId), { x: Math.round((x0 + x1) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y1) / 2), zoom: Math.round(zoom * 100) / 100 });
 }
 
 // A file name for a room: its name, without what file systems refuse.
