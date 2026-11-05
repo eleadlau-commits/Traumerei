@@ -121,7 +121,9 @@ written there. With nothing in it, the rooms page works on its own.
 - **Choosing many** (`many.js`): Shift+click or Ctrl+click adds a square to the choice or takes it
   out, Ctrl+A chooses every room shown, Escape lets go; the status bar says how many. Delete,
   Ctrl+D, Ctrl+M, Ctrl+L and Ctrl+Backspace work on them all, each as one undo step (Ctrl+L locks
-  them all, or unlocks them all when every one is locked). **Ctrl+G** groups them the rooms
+  them all, or unlocks them all when every one is locked). With several chosen, a right-click on one of them (or the
+  Editor already open) shows "N rooms" in the Editor tab, with Lock, Archive and Delete (in the
+  Archive: Restore and Delete). **Ctrl+G** groups them the rooms
   page's way, by a tag they share (written in a small field; "Group: tag" puts the tag in a group
   too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
 - **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy

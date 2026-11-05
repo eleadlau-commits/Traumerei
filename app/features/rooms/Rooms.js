@@ -47,6 +47,7 @@ export default class Rooms extends Feature {
     this.regrouping = null; // the tag whose group is being typed in the Arrange by list
     this.tagsOpen = false; // the rail's Arrange by list is open
     this.picks = [];       // the rooms chosen, while more than one is (many.js)
+    this.manyShown = false; // the Editor tab shows them all ("N rooms", many.js)
     this.openGroup = null; // the group open in it (its name in lower case; '' for Other), or null
     this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
     this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
@@ -399,7 +400,7 @@ export default class Rooms extends Feature {
       return true;
     }
     if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
-    if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
+    if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.askRoom(r.id); return true; }
     return false;
   }
 
