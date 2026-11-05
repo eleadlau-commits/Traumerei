@@ -12,11 +12,17 @@
 // Firebase is loaded from Google's servers only once someone signs in (or was signed in last
 // time), so visitors who never sign in don't download it. The project is set in config.js.
 //
+// Opening the app can save things before the account is compared (a day's record, a last visit),
+// so right after a reload the two copies may differ again. A reload guard stops that becoming a
+// loop: within a minute of an automatic reload the page never reloads again, and sends this
+// device's copy up instead; the account page says so.
+//
 // Saved data: 'signedIn' → true while someone is signed in on this device
+//             'reloadedAt' → when the page last reloaded itself to apply the account's settings
 
 import { Feature, ui } from 'folio';
 import { firebaseConfig } from './config.js';
-import { LOCAL_AREAS, pack, unpack, decide } from './sync.js';
+import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently } from './sync.js';
 
 const { el } = ui;
 const SDK = 'https://www.gstatic.com/firebasejs/11.0.2/';
@@ -29,6 +35,7 @@ export default class Account extends Feature {
     this.page = null;
     this.timer = null;
     this.synced = false; // true once this device and the account agree, so changes can go up
+    this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open() });
     this.app.storage.watch(() => this.changed());
     window.addEventListener('pagehide', () => this.flush());
@@ -105,11 +112,15 @@ export default class Account extends Feature {
       const snap = await this.sdk.getDoc(this.doc());
       const cloud = snap.exists() ? unpack(snap.data().settings) : null;
       const local = this.app.storage.snapshot(LOCAL_AREAS);
-      const step = decide(cloud, local);
+      const justReloaded = reloadedRecently(this.storage.get('reloadedAt', null), Date.now());
+      const step = decide(cloud, local, justReloaded);
       this.synced = true;
-      if (step === 'upload') await this.push();
-      else if (step === 'apply') {
+      if (step === 'upload') {
+        this.guarded = cloud != null && justReloaded;
+        await this.push();
+      } else if (step === 'apply') {
         this.app.storage.restore(cloud, LOCAL_AREAS);
+        this.storage.set('reloadedAt', Date.now());
         location.reload();
       } else this.setState('saved');
     } catch (e) {
@@ -186,6 +197,8 @@ export default class Account extends Feature {
         this.user.photoURL && el('img', { class: 'account-photo', src: this.user.photoURL, alt: '', referrerpolicy: 'no-referrer' }),
         el('div', {}, el('b', {}, this.name()), this.user.email && el('small', {}, this.user.email))),
       status && el('p', { class: this.state === 'error' ? 'account-error' : 'hint' }, status),
+      this.guarded && el('p', { class: 'hint' },
+        "The page had just reloaded with your account's settings, so instead of reloading again it sent this device's copy up."),
       this.state === 'error' && el('button', { type: 'button', class: 'btn', onclick: () => (this.synced ? this.push() : this.pull()) }, 'Try again'),
       el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, 'Sign out'));
   }
