@@ -411,7 +411,59 @@ function dragArrow(c, e, from) {
 
 // ---- The ontology ----
 
-export default {
+// ---- In a .traum file (the roomfile feature): its # In russell section ----
+//
+//   on canvas: ^a ^b        chapters in the tree, laid out by Russell
+//   at: ^c 120 40           a chapter placed by hand, at a point (its children still hang under it)
+//   tray: ^d                waiting in the tray: a chapter made there (thoughts in no chapter
+//                           wait there anyway)
+//   arrow: ^a -> ^b | forgets | the equations    an arrow (relations.js); a loop is refused
+//
+// A relation object (## ^r relation: forgets, with from: and to:) is an arrow too.
+// c: the roomfile feature's helpers (ref, thing, report, keep, arrow(line) → { from, to, rel,
+// label, line } or null, relations: the relation objects for this mode, read the same way).
+const traum = {
+  write(w, roomId, c) {
+    const out = [];
+    const tree = chapters(w, roomId).filter((g) => c.ref(g.id));
+    const auto = tree.filter((g) => g.hand !== true).map((g) => c.ref(g.id));
+    if (auto.length) out.push(`on canvas: ${auto.join(' ')}`);
+    for (const g of tree) if (g.hand === true) out.push(`at: ${c.ref(g.id)} ${g.x} ${g.y}`);
+    const tray = russell.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
+    if (tray.length) out.push(`tray: ${tray.join(' ')}`);
+    out.push(...net.traumLines(w, roomId, c));
+    return out;
+  },
+  read(w, roomId, lines, c) {
+    const arrowsRead = [...(c.relations || [])];
+    const own = (id) => { const g = w.things[id]; return isGroup(g) && g.of === ID ? g : null; };
+    const placed = new Set();
+    for (const l of lines) {
+      if (l.key === 'on canvas' || l.key === 'tray') {
+        for (const v of l.values) {
+          const g = own(c.thing(v, l.line));
+          if (!g) continue;
+          if (l.key === 'tray') g.loose = true; else delete g.loose;
+        }
+      } else if (l.key === 'at') {
+        const g = own(c.thing(l.values[0], l.line));
+        const [x, y] = [l.values[1], l.values[2]].map((v) => (v?.t === 'num' ? v.v : null));
+        if (!g) continue;
+        if (x == null || y == null) { c.report(l.line, 'at: needs a ^reference and two numbers.'); continue; }
+        if (placed.has(g.id)) { c.report(l.line, 'Russell places a chapter once; this second at: was left out.'); continue; }
+        placed.add(g.id);
+        Object.assign(g, { x: Math.round(x), y: Math.round(y), hand: true });
+        delete g.loose;
+      } else if (l.key === 'arrow') {
+        const a = c.arrow(l);
+        if (a) arrowsRead.push(a);
+      } else c.keep(l);
+    }
+    net.traumArrows(w, roomId, arrowsRead, c);
+  },
+};
+
+const russell = {
   id: ID,
   name: 'Russell',
   note: 'chapters in a tree',
@@ -704,4 +756,7 @@ export default {
     const g = groupOf(w, id, ID);
     return g ? { id: g.id, name: chapterName(w, g.id) } : null;
   },
+  traum,
 };
+
+export default russell;
