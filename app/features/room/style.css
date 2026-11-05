@@ -337,6 +337,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   background: color-mix(in srgb, var(--room-ink) 5%, transparent);
 }
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
+.room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */

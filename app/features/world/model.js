@@ -2,14 +2,14 @@
 //
 //   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
 //            kinds, such as a page of a PDF, are added there)
-//   group    { of, members, x, y, title, closed }   thoughts held together by an ontology.
+//   group    { of, members, x, y, title, closed, loose }   thoughts held together by an ontology.
 //            `of` is the ontology that made it (Joyce makes trains, Russell chapters); `members`
 //            lists what it holds: items, and other groups (a train of trains). A group is one
 //            object shared by every ontology of its room: in the others it is one thought, in
 //            their tray until placed (groups.js), and its members stay where they are there.
 //            Closed, it shows as one thought (its title) in its own ontology too; that is only
 //            how it shows. Every group can be closed, named, moved and deleted, and is always the
-//            same group, never a copy.
+//            same group, never a copy. loose: made in its ontology's tray, and still there.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size, page,             through an ontology; on the rooms page it is a
 //              desc, tags, locked, archived }    square of size × size cells at (col, row).
@@ -232,7 +232,7 @@ export function leave(w, groupId, id) {
 
 // Joyce's names for the same things.
 export const trainThoughts = members;
-export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g) => members(w, g.id).length);
+export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g) => !g.loose && members(w, g.id).length);
 
 // Every line, passage and picture in a room, in time order.
 export const roomThoughts = roomItems;
@@ -350,6 +350,7 @@ function tidy(f) {
       members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
       x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
     if (f.closed) out.closed = true;
+    if (f.loose) out.loose = true;
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
@@ -404,6 +405,7 @@ export function update(w, id, fields, now = Date.now()) {
     next.members = th.members;
     next.of = th.of;
     if (!next.closed) delete th.closed;
+    if (!next.loose) delete th.loose;
   }
   if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);

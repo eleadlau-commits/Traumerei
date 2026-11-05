@@ -69,7 +69,10 @@ export function group(c, e) {
   if (typing(e) || c.editing || !c.sel) return;
   if (c.locked) { c.toast('This room is locked.'); return; }
   if (!c.ont.groups) { c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`); return; }
-  const g = groupChosen(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
+  const ids = c.sel.ids || [c.sel.id];
+  // Chosen in the tray (none of them placed here yet): the new group stays in the tray.
+  const loose = !!c.ont.placed && ids.every((id) => !c.ont.placed(c.world, c.roomId, id));
+  const g = groupChosen(c.ont, c.world, c.roomId, ids, Date.now(), { loose });
   if (!g) { c.toast('Nothing here to group.'); return; }
   c.sel = { kind: 'train', id: g.id };
   c.save();

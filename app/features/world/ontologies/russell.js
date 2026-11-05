@@ -15,6 +15,7 @@
 // Thoughts stay shared with every other mode.
 
 import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own, roomSetting, setOrder } from '../model.js';
+import { trayForeign, place } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
@@ -33,7 +34,7 @@ export const LINES = ['straight', 'curved'];
 // ---- Reading the tree ----
 
 // The room's chapters (those with thoughts), oldest first.
-export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => members(w, g.id).length);
+export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !g.loose && members(w, g.id).length);
 
 const isChapter = (w, roomId, id) => {
   const g = w.things[id];
@@ -560,7 +561,7 @@ export default {
 
   point(w, roomId, id) {
     const th = w.things[id];
-    const g = isGroup(th) ? th : groupOf(w, id, ID);
+    const g = isGroup(th) && th.of === ID ? th : groupOf(w, id, ID);
     if (!g || g.parent !== roomId) return null;
     const at = layout(w, roomId)[g.id];
     if (!at) return null;
@@ -574,8 +575,8 @@ export default {
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th)) { if (th.of === ID) Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); return; }
-    if (!isLeaf(th)) return;
+    if (isGroup(th) && th.of === ID) { Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); place(w, id); return; }
+    if (!isLeaf(th) && !isGroup(th)) return; // another mode's group goes where a thought would
     const was = groupOf(w, id, ID);
     const onto = chapterAt(w, roomId, x + 10, y + 10);
     if (onto && !w.things[onto].closed) { placeIn(w, roomId, onto, id, y); return; }
@@ -596,9 +597,17 @@ export default {
     return addChapter(w, roomId, { parent, x: draft.x, y: draft.y }, now);
   },
 
-  // The thoughts in no chapter yet, oldest first.
-  tray: (w, roomId) => roomItems(w, roomId).filter((th) => !groupOf(w, th.id, ID)),
-  placed: (w, roomId, id) => !!groupOf(w, id, ID) || isGroup(w.things[id]),
+  // The thoughts in no chapter yet, chapters made in the tray, and other modes' groups in no
+  // chapter yet, oldest first. Another mode's group is placed like a thought: into a chapter.
+  tray: (w, roomId) => [
+    ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, ID)),
+    ...groupsIn(w, roomId, ID).filter((g) => g.loose && members(w, g.id).length),
+    ...trayForeign(w, roomId, ID).filter((g) => !groupOf(w, g.id, ID)),
+  ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+  placed(w, roomId, id) {
+    const th = w.things[id];
+    return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w, id, ID);
+  },
 
   // Clear space (clear.js): a chapter is one block; one dragged was placed by hand. One pushed
   // aside keeps its new place until the tree changes.

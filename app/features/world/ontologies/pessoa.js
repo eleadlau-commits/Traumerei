@@ -1,7 +1,9 @@
 // Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they were
-// written, and stays where it is dragged. Pessoa places every thought itself, so it has no tray. Its own data: where each thought was dragged to.
+// written, and stays where it is dragged. Pessoa makes no groups: a group another mode made (a
+// train, a chapter) is one thought here, in the tray until it is dragged onto the canvas. Its own data: where each thought was dragged to.
 
-import { roomUnits, own, shut, hash } from '../model.js';
+import { roomUnits, own, shut, hash, isGroup } from '../model.js';
+import { placedForeign, trayForeign, spot } from '../groups.js';
 
 // The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
 // length, nudged a little by its id so it doesn't look ruled.
@@ -24,12 +26,15 @@ export default {
   order: 20,
   groups: null,
 
-  units: (w, roomId) => roomUnits(w, roomId),
+  units: (w, roomId) => [...roomUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
+  tray: (w, roomId) => trayForeign(w, roomId, 'pessoa'),
+  placed: (w, roomId, id) => !isGroup(w.things[id]) || !!spot(w, roomId, 'pessoa', id),
 
   // Where it was dragged to, or its place on the spiral.
   point(w, roomId, id) {
     const placed = own(w, roomId, 'pessoa', false)[id];
     if (placed) return placed;
+    if (isGroup(w.things[id])) return null; // in the tray
     const units = roomUnits(w, roomId);
     const i = units.findIndex((u) => u.id === id);
     return spiralPoint(i < 0 ? units.length : i, id);
@@ -45,7 +50,7 @@ export default {
   // clear keeps its new place (marked auto, so it still counts as laid out by Pessoa).
   blocks(w, roomId) {
     const places = own(w, roomId, 'pessoa', false);
-    return roomUnits(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
+    return this.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
   },
 
   shift(w, roomId, id, dx, dy) {
