@@ -5867,20 +5867,20 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     const length = edges.reduce((s, e) => s + e.length, 0);
     return { rects, nodes, edges, lines: lines2, length };
   }
-  function counts(net) {
-    const by = (d) => net.nodes.filter((v2) => v2.deg === d).length;
+  function counts(net2) {
+    const by = (d) => net2.nodes.filter((v2) => v2.deg === d).length;
     return {
-      rectangles: net.rects.length,
+      rectangles: net2.rects.length,
       tees: by(3),
       crosses: by(4),
       frame: by(1),
       // where a line meets the frame
-      segments: net.edges.length,
-      lines: net.lines.length,
-      length: net.length
+      segments: net2.edges.length,
+      lines: net2.lines.length,
+      length: net2.length
     };
   }
-  function drawNetwork(net, rgba, W2, H3, w2, ink) {
+  function drawNetwork(net2, rgba, W2, H3, w2, ink) {
     const out = new Uint8ClampedArray(rgba);
     const s = Math.min(W2, H3);
     const half = Math.max(0.5, w2 * s / 2);
@@ -5889,9 +5889,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       const q = 4 * (py * W2 + px);
       for (let c = 0; c < 3; c++) out[q + c] = out[q + c] + (ink[c] - out[q + c]) * Math.min(1, a);
     };
-    for (const e of net.edges) {
-      const A = net.nodes[e.a];
-      const B2 = net.nodes[e.b];
+    for (const e of net2.edges) {
+      const A = net2.nodes[e.a];
+      const B2 = net2.nodes[e.b];
       if (e.horizontal) {
         const cy = A.y * s;
         const x0 = Math.floor(A.x * s - half);
@@ -5928,26 +5928,26 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   };
   var VISIBLE = 0.1;
   var fadeOut = (u) => u <= 0 ? 1 : u >= 1 ? 0 : (1 - u) * (1 - u);
-  function locate(net, d) {
-    for (let i2 = 0; i2 < net.edges.length; i2++) {
-      const e = net.edges[i2];
+  function locate(net2, d) {
+    for (let i2 = 0; i2 < net2.edges.length; i2++) {
+      const e = net2.edges[i2];
       if (d <= e.length) return { edge: i2, pos: d };
       d -= e.length;
     }
-    const last = net.edges.length - 1;
-    return { edge: last, pos: net.edges[last].length };
+    const last = net2.edges.length - 1;
+    return { edge: last, pos: net2.edges[last].length };
   }
-  function distances(net, edge, pos, limit) {
-    const n = net.nodes.length;
+  function distances(net2, edge, pos, limit) {
+    const n = net2.nodes.length;
     const dist = new Float64Array(n).fill(Infinity);
-    if (!net.adj) {
-      net.adj = Array.from({ length: n }, () => []);
-      net.edges.forEach((e, i2) => {
-        net.adj[e.a].push(i2);
-        net.adj[e.b].push(i2);
+    if (!net2.adj) {
+      net2.adj = Array.from({ length: n }, () => []);
+      net2.edges.forEach((e, i2) => {
+        net2.adj[e.a].push(i2);
+        net2.adj[e.b].push(i2);
       });
     }
-    const e02 = net.edges[edge];
+    const e02 = net2.edges[edge];
     dist[e02.a] = pos;
     dist[e02.b] = e02.length - pos;
     const done = new Uint8Array(n);
@@ -5956,18 +5956,18 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       for (let k2 = 0; k2 < n; k2++) if (!done[k2] && dist[k2] <= limit && (u < 0 || dist[k2] < dist[u])) u = k2;
       if (u < 0) break;
       done[u] = 1;
-      for (const i2 of net.adj[u]) {
-        const e = net.edges[i2];
+      for (const i2 of net2.adj[u]) {
+        const e = net2.edges[i2];
         const w2 = e.a === u ? e.b : e.a;
         if (dist[u] + e.length < dist[w2]) dist[w2] = dist[u] + e.length;
       }
     }
     return dist;
   }
-  function reach2(net, edge, pos, rho) {
-    const dist = distances(net, edge, pos, rho);
+  function reach2(net2, edge, pos, rho) {
+    const dist = distances(net2, edge, pos, rho);
     const out = [];
-    net.edges.forEach((e, i2) => {
+    net2.edges.forEach((e, i2) => {
       const L = e.length;
       const fs = [];
       if (dist[e.a] < rho) fs.push([1, dist[e.a]]);
@@ -6000,17 +6000,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     });
     return out;
   }
-  function onLine(net, L, s) {
+  function onLine(net2, L, s) {
     return L.horizontal ? [L.from + s, L.at] : [L.at, L.from + s];
   }
-  function onEdge(net, i2, s02, s12) {
-    const e = net.edges[i2];
-    const A = net.nodes[e.a];
+  function onEdge(net2, i2, s02, s12) {
+    const e = net2.edges[i2];
+    const A = net2.nodes[e.a];
     return e.horizontal ? [A.x + s02, A.y, A.x + s12, A.y] : [A.x, A.y + s02, A.x, A.y + s12];
   }
   var Flashes = class {
-    constructor(seed, net, P) {
-      Object.assign(this, { seed, net, P });
+    constructor(seed, net2, P) {
+      Object.assign(this, { seed, net: net2, P });
       this.reset();
     }
     reset() {
@@ -6023,13 +6023,13 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     advance(t) {
       if (t < this.t) this.reset();
       this.t = t;
-      const { P, net, rng } = this;
+      const { P, net: net2, rng } = this;
       this.hawkes.advance(t, { mu: P.flashMu, nH: P.flashN, tauH: TIMES.tauH }, (t02) => {
         const glint = rng.U() < P.flashPiG;
-        const at2 = locate(net, rng.U() * net.length);
+        const at2 = locate(net2, rng.U() * net2.length);
         let f2;
         if (glint) {
-          const L = net.lines[net.edges[at2.edge].line];
+          const L = net2.lines[net2.edges[at2.edge].line];
           const len = L.to - L.from;
           const travel = Math.min(TIMES.TG, len / P.flashVG);
           f2 = { kind: "glint", t0: t02, line: L, len, back: rng.U() < 0.5, travel, end: t02 + travel + TIMES.FG };
@@ -6130,9 +6130,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     lines2.push(`Sampled on ${fog2.sw} × ${fog2.sh} cells, fog on ${fog2.fw} × ${fog2.fh}, coarseness σ ${P.fogSigma}, unevenness A ${P.fogA} (stream :planar:fog), made in ${Math.round(fog2.ms)} ms.`);
     return lines2;
   }
-  function describeNetwork(net, P) {
-    const c = counts(net);
-    return `Network (streams :planar:net:grid :planar:net:merge): ${c.rectangles} rectangles, ${c.tees + c.crosses} junctions (${c.tees} T, ${c.crosses} crosses), ${c.frame} ends on the frame, ${c.segments} segments on ${c.lines} straight lines, total length ${c.length.toFixed(2)}, grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net.ms)} ms.`;
+  function describeNetwork(net2, P) {
+    const c = counts(net2);
+    return `Network (streams :planar:net:grid :planar:net:merge): ${c.rectangles} rectangles, ${c.tees + c.crosses} junctions (${c.tees} T, ${c.crosses} crosses), ${c.frame} ends on the frame, ${c.segments} segments on ${c.lines} straight lines, total length ${c.length.toFixed(2)}, grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net2.ms)} ms.`;
   }
   function describeFlashes(P) {
     const n = Math.min(P.flashN, 0.95);
@@ -6904,8 +6904,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         make(e, P) {
           const { seed, X: X2, Y: Y2 } = e.image;
           const t02 = performance.now();
-          const net = network(tiles(seed, X2, Y2, P), X2, Y2);
-          return { ...net, ms: performance.now() - t02 };
+          const net2 = network(tiles(seed, X2, Y2, P), X2, Y2);
+          return { ...net2, ms: performance.now() - t02 };
         }
       }
     },
@@ -7682,6 +7682,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     ontologies: () => ontologies_exports,
     pessoa: () => pessoa_exports,
     picture: () => picture_exports,
+    relations: () => relations_exports,
     russell: () => russell_exports
   });
 
@@ -13077,8 +13078,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ID: () => ID,
     LAYOUT: () => LAYOUT,
     LINES: () => LINES,
-    MOST_PARENTS: () => MOST_PARENTS,
-    RELATION: () => RELATION,
     RELATIONS: () => RELATIONS,
     above: () => above,
     addChapter: () => addChapter,
@@ -13100,18 +13099,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     layout: () => layout,
     levels: () => levels,
     link: () => link,
+    listText: () => listText,
     parentsOf: () => parentsOf,
     placeIn: () => placeIn,
     readHeading: () => readHeading,
+    relationName: () => relationName,
     relationOf: () => relationOf,
+    relationShown: () => relationShown,
     relations: () => relations,
     renameRelations: () => renameRelations,
     setLabel: () => setLabel,
     setRelation: () => setRelation,
     setWidths: () => setWidths,
     snap: () => snap,
+    splitList: () => splitList,
     unlink: () => unlink,
-    whyNot: () => whyNot
+    whyNot: () => whyNot,
+    withRelation: () => withRelation
   });
 
   // dist/web/features/world/ontologies/arrows.js
@@ -13166,10 +13170,181 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return { x: m2.x + (side === "left" ? -gap / 2 : gap / 2), y: m2.y + (up ? -gap / 3 : gap / 3), side: `${side}-${up ? "up" : "down"}` };
   }
 
+  // dist/web/features/world/ontologies/relations.js
+  var relations_exports = {};
+  __export(relations_exports, {
+    RELATIONS: () => RELATIONS,
+    arrowsOf: () => arrowsOf,
+    cleanRelations: () => cleanRelations,
+    listText: () => listText,
+    relationName: () => relationName,
+    relationShown: () => relationShown,
+    splitList: () => splitList,
+    withRelation: () => withRelation
+  });
+  function relationName(x) {
+    const t = String(x ?? "").replace(/\s+/g, " ").trim();
+    return /\[\[|\]\]/.test(t) ? null : t;
+  }
+  function splitList(text) {
+    const s = String(text ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1");
+    const out = [];
+    let now = "", quoted = false;
+    for (const ch of s) {
+      if (ch === '"') quoted = !quoted;
+      else if (ch === "," && !quoted) {
+        out.push(now);
+        now = "";
+      } else now += ch;
+    }
+    out.push(now);
+    return out.map((x) => x.trim());
+  }
+  var listText = (names) => names.map((n) => n.includes(",") ? `"${n}"` : n).join(", ");
+  function cleanRelations(v2) {
+    const out = [];
+    for (const x of Array.isArray(v2) ? v2 : splitList(v2)) {
+      const t = relationName(x);
+      if (t && !out.some((o2) => o2.toLowerCase() === t.toLowerCase())) out.push(t);
+    }
+    return out.length ? out : [...RELATIONS.default];
+  }
+  var RELATIONS = {
+    key: "relations",
+    label: "Relations",
+    type: "list",
+    default: ["forgets"],
+    clean: cleanRelations,
+    text: listText,
+    note: "Any words or signs. A new arrow gets the first."
+  };
+  var relationShown = (names, rel) => !rel || names.length === 1 && names[0] === rel ? "" : rel;
+  function withRelation(names, name5) {
+    const t = relationName(name5);
+    const list2 = cleanRelations(names);
+    return t && !list2.some((n) => n.toLowerCase() === t.toLowerCase()) ? [...list2, t] : list2;
+  }
+  var tidy2 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
+  function arrowsOf({ of, isNode, nodes, word = "node", loops = false, changed = () => {
+  } }) {
+    const put = (w2, roomId, child, { parents, labels, rel }) => {
+      own(w2, roomId, of)[child] = { parents, labels, rel };
+    };
+    const relations3 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of, RELATIONS, globals));
+    function renameRelations2(w2, roomId, before, after) {
+      const a = cleanRelations(before), b = cleanRelations(after);
+      if (a.length !== b.length) return 0;
+      const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y));
+      if (!map.size) return 0;
+      let n = 0;
+      for (const data of Object.values(own(w2, roomId, of, false))) {
+        for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) {
+          data.rel[p] = map.get(r);
+          n++;
+        }
+      }
+      return n;
+    }
+    function arrowsInto3(w2, roomId, id) {
+      const a = own(w2, roomId, of, false)[id];
+      const parents = (a?.parents || []).filter((p) => p !== id && isNode(w2, roomId, p));
+      const labels = {}, rel = {};
+      for (const p of parents) {
+        if (a.labels?.[p]) labels[p] = a.labels[p];
+        rel[p] = typeof a.rel?.[p] === "string" ? a.rel[p] : "";
+      }
+      return { parents, labels, rel };
+    }
+    const parentsOf2 = (w2, roomId, id) => arrowsInto3(w2, roomId, id).parents;
+    const childrenOf2 = (w2, roomId, id) => nodes(w2, roomId).filter((g2) => parentsOf2(w2, roomId, g2.id).includes(id)).map((g2) => g2.id);
+    const labelOf2 = (w2, roomId, parent, child) => arrowsInto3(w2, roomId, child).labels[parent] || "";
+    const relationOf2 = (w2, roomId, parent, child) => arrowsInto3(w2, roomId, child).rel[parent] ?? "";
+    function arrows2(w2, roomId) {
+      const out = [];
+      for (const g2 of nodes(w2, roomId)) {
+        const { parents, labels, rel } = arrowsInto3(w2, roomId, g2.id);
+        for (const p of parents) out.push({ from: p, to: g2.id, label: labels[p] || "", rel: rel[p] });
+      }
+      return out;
+    }
+    function above2(w2, roomId, a, b, seen = /* @__PURE__ */ new Set()) {
+      if (a === b) return true;
+      if (seen.has(b)) return false;
+      seen.add(b);
+      return parentsOf2(w2, roomId, b).some((p) => above2(w2, roomId, a, p, seen));
+    }
+    function whyNot2(w2, roomId, parent, child) {
+      if (!isNode(w2, roomId, parent) || !isNode(w2, roomId, child)) return `Arrows join two ${word}s.`;
+      if (parent === child) return `A ${word} can't be its own parent.`;
+      if (parentsOf2(w2, roomId, child).includes(parent)) return "That arrow is already there.";
+      if (!loops && above2(w2, roomId, child, parent)) return "That arrow would make a loop.";
+      return "";
+    }
+    function link3(w2, roomId, parent, child, label2 = "", relation) {
+      const why = whyNot2(w2, roomId, parent, child);
+      if (why || shut(w2, roomId)) return why || "This room is locked.";
+      const a = arrowsInto3(w2, roomId, child);
+      a.parents.push(parent);
+      if (tidy2(label2)) a.labels[parent] = tidy2(label2);
+      a.rel[parent] = relation == null ? relations3(w2, roomId)[0] : relationName(relation) ?? "";
+      put(w2, roomId, child, a);
+      changed(w2, roomId);
+      return "";
+    }
+    function unlink3(w2, roomId, parent, child) {
+      if (shut(w2, roomId)) return false;
+      const { parents, labels, rel } = arrowsInto3(w2, roomId, child);
+      if (!parents.includes(parent)) return false;
+      delete labels[parent];
+      delete rel[parent];
+      put(w2, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
+      changed(w2, roomId);
+      return true;
+    }
+    function setLabel3(w2, roomId, parent, child, text) {
+      if (shut(w2, roomId)) return false;
+      const a = arrowsInto3(w2, roomId, child);
+      if (!a.parents.includes(parent)) return false;
+      const t = tidy2(text);
+      if (t) a.labels[parent] = t;
+      else delete a.labels[parent];
+      put(w2, roomId, child, a);
+      return true;
+    }
+    function setRelation3(w2, roomId, parent, child, relation) {
+      if (shut(w2, roomId)) return false;
+      const a = arrowsInto3(w2, roomId, child);
+      const name5 = relationName(relation);
+      if (!a.parents.includes(parent) || name5 == null) return false;
+      a.rel[parent] = name5;
+      put(w2, roomId, child, a);
+      return true;
+    }
+    function adopt(w2, roomId, child, parent) {
+      put(w2, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations3(w2, roomId)[0] } });
+    }
+    return {
+      relations: relations3,
+      renameRelations: renameRelations2,
+      arrowsInto: arrowsInto3,
+      parentsOf: parentsOf2,
+      childrenOf: childrenOf2,
+      labelOf: labelOf2,
+      relationOf: relationOf2,
+      arrows: arrows2,
+      above: above2,
+      whyNot: whyNot2,
+      link: link3,
+      unlink: unlink3,
+      setLabel: setLabel3,
+      setRelation: setRelation3,
+      adopt
+    };
+  }
+
   // dist/web/features/world/ontologies/russell.js
   var SVG2 = "http://www.w3.org/2000/svg";
   var ID = "russell";
-  var MOST_PARENTS = 2;
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
   var LINES = ["straight", "curved"];
   var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => !g2.loose && members(w2, g2.id).length && !groupOf(w2, g2.id, ID));
@@ -13177,113 +13352,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const g2 = w2.things[id];
     return isGroup(g2) && g2.of === ID && g2.parent === roomId && !groupOf(w2, id, ID);
   };
-  var RELATION = /^[A-Za-z][\w-]*$/;
-  var RELATIONS = { key: "relations", label: "Relations", type: "list", default: ["forgets"], word: RELATION, note: "The first is the default." };
-  function cleanRelations(v2) {
-    const words = Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",");
-    const out = [];
-    for (const x of words) {
-      const t = String(x ?? "").trim().replace(/^"(.*)"$/, "$1");
-      if (RELATION.test(t) && !out.some((o2) => o2.toLowerCase() === t.toLowerCase())) out.push(t);
-    }
-    return out.length ? out : [...RELATIONS.default];
-  }
-  var relations = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, ID, RELATIONS, globals));
-  function renameRelations(w2, roomId, before, after) {
-    const a = cleanRelations(before), b = cleanRelations(after);
-    if (a.length !== b.length) return 0;
-    const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y));
-    if (!map.size) return 0;
-    let n = 0;
-    for (const data of Object.values(own(w2, roomId, ID, false))) {
-      for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) {
-        data.rel[p] = map.get(r);
-        n++;
-      }
-    }
-    return n;
-  }
-  function arrowsInto(w2, roomId, id) {
-    const a = own(w2, roomId, ID, false)[id];
-    const parents = (a?.parents || []).filter((p) => p !== id && isChapter(w2, roomId, p));
-    const labels = {}, rel = {};
-    for (const p of parents) {
-      if (a.labels?.[p]) labels[p] = a.labels[p];
-      if (a.rel?.[p]) rel[p] = a.rel[p];
-    }
-    return { parents, labels, rel };
-  }
-  var parentsOf = (w2, roomId, id) => arrowsInto(w2, roomId, id).parents;
-  var childrenOf = (w2, roomId, id) => groupsIn(w2, roomId, ID).filter((g2) => parentsOf(w2, roomId, g2.id).includes(id)).map((g2) => g2.id);
-  var labelOf = (w2, roomId, parent, child) => arrowsInto(w2, roomId, child).labels[parent] || "";
-  var relationOf = (w2, roomId, parent, child, globals = {}) => arrowsInto(w2, roomId, child).rel[parent] || relations(w2, roomId, globals)[0];
-  function arrows(w2, roomId) {
-    const out = [];
-    for (const g2 of chapters(w2, roomId)) {
-      const { parents, labels, rel } = arrowsInto(w2, roomId, g2.id);
-      for (const p of parents) out.push({ from: p, to: g2.id, label: labels[p] || "", rel: rel[p] || "" });
-    }
-    return out;
-  }
-  function above(w2, roomId, a, b, seen = /* @__PURE__ */ new Set()) {
-    if (a === b) return true;
-    if (seen.has(b)) return false;
-    seen.add(b);
-    return parentsOf(w2, roomId, b).some((p) => above(w2, roomId, a, p, seen));
-  }
-  function whyNot(w2, roomId, parent, child) {
-    if (!isChapter(w2, roomId, parent) || !isChapter(w2, roomId, child)) return "Arrows join two chapters.";
-    if (parent === child) return "A chapter can't be its own parent.";
-    const has = parentsOf(w2, roomId, child);
-    if (has.includes(parent)) return "That arrow is already there.";
-    if (has.length >= MOST_PARENTS) return "A chapter has at most two parents.";
-    if (above(w2, roomId, child, parent)) return "That arrow would make a loop.";
-    return "";
-  }
-  var tidy2 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
-  var put = (w2, roomId, child, { parents, labels, rel }) => {
-    own(w2, roomId, ID)[child] = { parents, labels, rel };
-  };
-  function link(w2, roomId, parent, child, label2 = "", relation = "") {
-    const why = whyNot(w2, roomId, parent, child);
-    if (why || shut(w2, roomId)) return why || "This room is locked.";
-    const a = arrowsInto(w2, roomId, child);
-    a.parents.push(parent);
-    if (tidy2(label2)) a.labels[parent] = tidy2(label2);
-    if (RELATION.test(relation || "")) a.rel[parent] = relation;
-    put(w2, roomId, child, a);
-    settle(w2, roomId);
-    return "";
-  }
-  function unlink(w2, roomId, parent, child) {
-    if (shut(w2, roomId)) return false;
-    const { parents, labels, rel } = arrowsInto(w2, roomId, child);
-    if (!parents.includes(parent)) return false;
-    delete labels[parent];
-    delete rel[parent];
-    put(w2, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
-    settle(w2, roomId);
-    return true;
-  }
-  function setLabel(w2, roomId, parent, child, text) {
-    if (shut(w2, roomId)) return false;
-    const a = arrowsInto(w2, roomId, child);
-    if (!a.parents.includes(parent)) return false;
-    const t = tidy2(text);
-    if (t) a.labels[parent] = t;
-    else delete a.labels[parent];
-    put(w2, roomId, child, a);
-    return true;
-  }
-  function setRelation(w2, roomId, parent, child, relation) {
-    if (shut(w2, roomId)) return false;
-    const a = arrowsInto(w2, roomId, child);
-    if (!a.parents.includes(parent)) return false;
-    if (RELATION.test(relation || "")) a.rel[parent] = relation;
-    else delete a.rel[parent];
-    put(w2, roomId, child, a);
-    return true;
-  }
+  var net = arrowsOf({ of: ID, isNode: isChapter, nodes: (w2, roomId) => chapters(w2, roomId), word: "chapter", loops: false, changed: (w2, roomId) => settle(w2, roomId) });
+  var {
+    relations,
+    renameRelations,
+    arrowsInto,
+    parentsOf,
+    childrenOf,
+    labelOf,
+    relationOf,
+    arrows,
+    above,
+    whyNot,
+    link,
+    unlink,
+    setLabel,
+    setRelation
+  } = net;
+  var tidy3 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
   function readHeading(attrs, names, say2 = () => {
   }) {
     const known = new Map(cleanRelations(names).map((n) => [n.toLowerCase(), n]));
@@ -13292,29 +13378,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const [k2, v2] of attrs) {
       const last = arrows2.at(-1);
       if (k2 === "parent") {
-        arrows2.push({ title: v2, label: "", rel: "" });
+        arrows2.push({ title: v2, label: "", rel: cleanRelations(names)[0] });
         after = true;
         continue;
       }
       const rel = known.get(String(k2).toLowerCase());
       if (rel) {
-        if (last && !last.read) Object.assign(last, { label: tidy2(v2), rel, read: true });
+        if (last && !last.read) Object.assign(last, { label: tidy3(v2), rel, read: true });
         else say2(`${k2}="${v2}" has no parent before it, so it was left out.`);
       } else {
-        if (after && last && !last.read && RELATION.test(k2)) say2(`"${k2}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
+        if (after && last && !last.read && WORD.test(k2)) say2(`"${k2}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
         rest.push([k2, v2]);
       }
       after = false;
     }
     return { arrows: arrows2.map(({ title, label: label2, rel }) => ({ title, label: label2, rel })), rest };
   }
+  var WORD = /^[A-Za-z][\w-]*$/;
   function headingAttrs(w2, roomId, child, title) {
     const { parents, labels, rel } = arrowsInto(w2, roomId, child);
     const first = relations(w2, roomId)[0];
     const out = [];
     for (const p of parents) {
       out.push(["parent", title(p)]);
-      const r = rel[p] || first;
+      const r = WORD.test(rel[p]) ? rel[p] : first;
       if (labels[p] || r !== first) out.push([r, labels[p] || ""]);
     }
     return out;
@@ -13322,7 +13409,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function addChapter(w2, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {
     const g2 = create(w2, roomId, { kind: "group", of: ID, x, y }, now);
     if (!g2) return null;
-    if (parent && isChapter(w2, roomId, parent)) put(w2, roomId, g2.id, { parents: [parent], labels: {}, rel: {} });
+    if (parent && isChapter(w2, roomId, parent)) net.adopt(w2, roomId, g2.id, parent);
     return g2;
   }
   function settle(w2, roomId) {
@@ -13381,7 +13468,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const names = relations(w2, roomId);
     const lab = Object.fromEntries(all.map((g2) => {
       const { parents, labels, rel } = arrowsInto(w2, roomId, g2.id);
-      const ls = parents.filter((p) => labels[p]).map((p) => labelSize((names.length > 1 ? `${rel[p] || names[0]} ` : "") + labels[p]));
+      const ls = parents.filter((p) => labels[p] || relationShown(names, rel[p])).map((p) => labelSize(`${relationShown(names, rel[p])} ${labels[p] || ""}`.trim()));
       return [g2.id, { w: Math.max(0, ...ls.map((l2) => l2.w)), h: Math.max(0, ...ls.map((l2) => l2.h)) }];
     }));
     const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD));
@@ -13764,15 +13851,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       {
         id: "parent",
-        label: "Add second parent",
-        when: (c) => {
-          const g2 = chosenChapter(c);
-          return !!g2 && parentsOf(c.world, c.roomId, g2).length < MOST_PARENTS;
-        },
+        label: "Add parent",
+        when: (c) => !!chosenChapter(c),
         run(c) {
           pending = { room: c.roomId, child: chosenChapter(c), kind: "add" };
           c.sel = null;
-          c.toast("Click the chapter to be its other parent.");
+          c.toast("Click the chapter to be another parent.");
         }
       },
       {
@@ -15138,7 +15222,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         let why = "";
         if (found.length > 1) why = `two chapters are called "${a.parent}"`;
         else if (!found.length) why = left.has(a.parent) ? `"${a.parent}" was left out` : `no chapter is called "${a.parent}"`;
-        else why = link2(w2, roomId, found[0].id, a.child, a.label, a.rel === names[0] ? "" : a.rel).replace(/\.$/, "");
+        else why = link2(w2, roomId, found[0].id, a.child, a.label, a.rel).replace(/\.$/, "");
         if (why) report.push(`Line ${a.line}: the arrow from "${a.parent}" to ${child} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1)}.`);
       }
     }
@@ -15537,7 +15621,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const { id, src } of list2) {
       const child = src.title || "An untitled chapter";
       const names = relations2(w2, roomId);
-      const want = readHeading2(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows.map((a) => ({ ...a, rel: a.rel === names[0] ? "" : a.rel }));
+      const want = readHeading2(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows;
       const { parents: had, labels: hadLabels, rel: hadRel } = arrowsInto2(w2, roomId, id);
       const resolved = [];
       for (const a of want) {
@@ -15574,13 +15658,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!had.includes(a.id)) continue;
         const q = (x) => x ? `"${x}"` : "nothing";
         const was = hadRel[a.id] || "";
-        if (was !== a.rel && (was || names[0]) !== (a.rel || names[0])) {
+        if (was !== a.rel) {
           setRelation2(w2, roomId, a.id, id, a.rel);
-          out.push(`${child}: ${was || names[0]} → ${a.rel || names[0]} (about ${title(a.id)})`);
+          out.push(`${child}: ${was || "no relation"} → ${a.rel || "no relation"} (about ${title(a.id)})`);
         }
         if ((hadLabels[a.id] || "") !== a.label) {
           setLabel2(w2, roomId, a.id, id, a.label);
-          out.push(`${child}: ${a.rel || names[0]} ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
+          out.push(`${child}: ${a.rel || "no relation"} ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
         }
       }
       const lost = gone.filter((pId) => !back.includes(pId));
