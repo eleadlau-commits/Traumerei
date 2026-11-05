@@ -245,6 +245,7 @@
 /* ---- The floors of the rooms page, in the rail under Floors: Floor 1, Floor 2, + New floor ---- */
 .rooms-pages { display: flex; flex-direction: column; gap: 1px; }
 .rooms-page-new { color: var(--faint); }
+.rooms-page.chosen { outline: var(--sel-line); outline-offset: -1px; } /* its properties show (floor.js) */
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .rooms-tile:is(.picked, .chosen) { outline: var(--sel-line); outline-offset: 3px; }

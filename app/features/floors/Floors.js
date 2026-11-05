@@ -7,7 +7,7 @@
 
 import { Feature, ui } from 'folio';
 import { bind, room } from './world.js';
-import { PRESETS, DEFAULT, preset, sizeName, place, settle, move, resize, toFloor, outside } from './rule.js';
+import { PRESETS, DEFAULT, preset, sizeName, place, settle, move, resize, toFloor, outside, removeFloor } from './rule.js';
 
 const { el } = ui;
 
@@ -26,6 +26,7 @@ export default class Floors extends Feature {
       resize: (id, size) => resize(this.world, id, size, board()),
       toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
       fits: (size) => !outside(this.world, size).length,        // whether every room fits floors of `size`
+      removeFloor: (page) => removeFloor(this.world, page),     // a floor goes: its rooms to the Archive, the rest up one
     });
     this.add('settings', { id: 'floors-size', title: 'Floors', order: 31, render: () => this.settingsPane() });
   }

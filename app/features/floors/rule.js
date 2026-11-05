@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, roomsOn, cells, roomAt, addPage, pageCount, MESSY } from './world.js';
+import { room, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -125,4 +125,24 @@ export function outside(w, board) {
     if (roomsOn(w, page).some((r) => r.col != null && !inside(r, r.col, r.row, board))) out.push(page);
   }
   return out;
+}
+
+// Deletes floor `page` (never Floor 1, where Messy thoughts lives): its rooms go to the Archive
+// (restored, they go to the floor above), and every floor below moves up one. Refused when a
+// locked room is on it (a locked room keeps its place). Returns { archived: [rooms] }, or
+// { error } ('first', 'none', 'locked').
+export function removeFloor(w, page, now = Date.now()) {
+  if (page === 0) return { error: 'first' };
+  if (page < 0 || page >= pageCount(w)) return { error: 'none' };
+  const on = roomsOn(w, page);
+  if (on.some((r) => r.locked)) return { error: 'locked' };
+  const count = pageCount(w);
+  for (const r of on) archive(w, r.id, now);
+  for (const r of allRooms(w)) {
+    const p = r.page || 0;
+    if (p === page) setPage(r, page - 1);
+    else if (p > page) setPage(r, p - 1);
+  }
+  w.pages = Math.max(1, count - 1);
+  return { archived: on };
 }
