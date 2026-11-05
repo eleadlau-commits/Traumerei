@@ -1131,7 +1131,14 @@ dialog.dialog-box {
   transition: transform .5s var(--ease);
 }
 .rooms.up .rooms-rooms { transform: none; transition-duration: .6s; }
-.rooms-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rail)); position: relative; z-index: 1; }
+/* The floors, one tall strip (strip.js): the canvas shows one floor at a time, and the strip
+   slides to whole floors. Each floor is the canvas's height; a floor scrolls only when its cells
+   are at their smallest, and the Archive when it is long. */
+.rooms-grid-wrap { flex: 1; overflow: hidden; position: relative; z-index: 1; }
+.rooms-strip { height: 100%; }
+.rooms-floor { height: 100%; box-sizing: border-box; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rail)); }
+/* A square being dragged shows above the other floors, wherever the strip has slid. */
+.rooms-floor:has(.rooms-tile.dragging) { position: relative; z-index: 2; overflow: visible; }
 
 /* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
    takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
@@ -4987,31 +4994,31 @@ dialog.dialog-box {
     const n = Math.max(1, Math.round(P.netRho * Y2));
     const xs = cuts(m2, X2);
     const ys = cuts(n, Y2);
-    let cells3 = [];
-    for (let i2 = 0; i2 < m2; i2++) for (let j = 0; j < n; j++) cells3.push([xs[i2], ys[j], xs[i2 + 1], ys[j + 1]]);
+    let cells4 = [];
+    for (let i2 = 0; i2 < m2; i2++) for (let j = 0; j < n; j++) cells4.push([xs[i2], ys[j], xs[i2 + 1], ys[j + 1]]);
     const merge = stream(seed, ":planar:net:merge");
     const same2 = (a, b) => Math.abs(a - b) < EPS;
     const joins = (a, b) => (same2(a[2], b[0]) || same2(b[2], a[0])) && same2(a[1], b[1]) && same2(a[3], b[3]) || (same2(a[3], b[1]) || same2(b[3], a[1])) && same2(a[0], b[0]) && same2(a[2], b[2]);
     const target = Math.max(1, Math.round(m2 * n * (1 - P.netMu)));
-    for (let tries = 0; cells3.length > target && tries < 50 * m2 * n; tries++) {
-      const a = cells3[Math.floor(merge.U() * cells3.length)];
-      const nb = cells3.filter((b2) => b2 !== a && joins(a, b2));
+    for (let tries = 0; cells4.length > target && tries < 50 * m2 * n; tries++) {
+      const a = cells4[Math.floor(merge.U() * cells4.length)];
+      const nb = cells4.filter((b2) => b2 !== a && joins(a, b2));
       if (!nb.length) continue;
       const b = nb[Math.floor(merge.U() * nb.length)];
-      cells3 = cells3.filter((c) => c !== a && c !== b);
-      cells3.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+      cells4 = cells4.filter((c) => c !== a && c !== b);
+      cells4.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
     }
-    return cells3;
+    return cells4;
   }
   function network(rects, X2, Y2) {
     const key2 = (x, y) => `${x.toFixed(9)},${y.toFixed(9)}`;
-    const inside3 = (v2, side) => v2 > EPS && v2 < side - EPS;
+    const inside4 = (v2, side) => v2 > EPS && v2 < side - EPS;
     const sides = [];
     for (const [x0, y0, x12, y12] of rects) {
-      if (inside3(y0, Y2)) sides.push([true, y0, x0, x12]);
-      if (inside3(y12, Y2)) sides.push([true, y12, x0, x12]);
-      if (inside3(x0, X2)) sides.push([false, x0, y0, y12]);
-      if (inside3(x12, X2)) sides.push([false, x12, y0, y12]);
+      if (inside4(y0, Y2)) sides.push([true, y0, x0, x12]);
+      if (inside4(y12, Y2)) sides.push([true, y12, x0, x12]);
+      if (inside4(x0, X2)) sides.push([false, x0, y0, y12]);
+      if (inside4(x12, X2)) sides.push([false, x12, y0, y12]);
     }
     const stops = /* @__PURE__ */ new Map();
     const at2 = (h, c) => `${h ? "h" : "v"}:${c.toFixed(9)}`;
@@ -5672,14 +5679,14 @@ dialog.dialog-box {
     if (P.plainDye === "drops") {
       const side = 2.4 * lb;
       const soft = lb * (0.04 + 0.5 * P.dyeSoft);
-      const cells3 = /* @__PURE__ */ new Map();
+      const cells4 = /* @__PURE__ */ new Map();
       const drop = (ci, cj) => {
         const key2 = `${ci},${cj}`;
-        if (!cells3.has(key2)) {
+        if (!cells4.has(key2)) {
           const R = mulberry32(cyrb53(`${seed}:plain:dye:${key2}`) >>> 0);
-          cells3.set(key2, [(ci + R()) * side, (cj + R()) * side, lb * (0.45 + 0.6 * R()), R() < 0.8]);
+          cells4.set(key2, [(ci + R()) * side, (cj + R()) * side, lb * (0.45 + 0.6 * R()), R() < 0.8]);
         }
-        return cells3.get(key2);
+        return cells4.get(key2);
       };
       return (x, y) => {
         const ci = Math.floor(x / side);
@@ -6918,8 +6925,6 @@ dialog.dialog-box {
     emptyWorld: () => emptyWorld,
     fold: () => fold,
     foldedFrom: () => foldedFrom,
-    gridAll: () => gridAll,
-    gridRooms: () => gridRooms,
     groupNames: () => groupNames,
     groupOf: () => groupOf,
     groupsIn: () => groupsIn,
@@ -6946,7 +6951,6 @@ dialog.dialog-box {
     own: () => own,
     pageCount: () => pageCount,
     peek: () => peek,
-    placeRoom: () => placeRoom,
     randomSpot: () => randomSpot,
     remove: () => remove,
     removeTag: () => removeTag,
@@ -6969,14 +6973,12 @@ dialog.dialog-box {
     setRoomSetting: () => setRoomSetting,
     setTagGroup: () => setTagGroup,
     shut: () => shut,
-    sizeRoom: () => sizeRoom,
     startTrain: () => startTrain,
     tagGroup: () => tagGroup,
     tagsByGroup: () => tagsByGroup,
     thing: () => thing,
     thoughtText: () => thoughtText,
     tidyTag: () => tidyTag,
-    toPage: () => toPage,
     topRoom: () => topRoom,
     trainThoughts: () => trainThoughts,
     uid: () => uid,
@@ -10939,7 +10941,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => th.text.split("\n").map((l2, k2) => k2 ? l2 ? "  " + l2 : "" : "- " + l2).join("\n")
     },
-    node: (th, el12) => el12("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
+    node: (th, el13) => el13("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
   };
 
   // dist/web/features/world/items/passage.js
@@ -10973,11 +10975,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th, h) => [th.title ? `### ${th.title}` : "###", ...th.body ? th.body.split("\n").map(h.escape) : []].join("\n")
     },
-    node: (th, el12) => el12(
+    node: (th, el13) => el13(
       "div",
       { class: "room-passage", "data-id": th.id },
-      th.title ? el12("div", { class: "room-passage-title" }, maths(th.title)) : null,
-      th.body ? el12("div", { class: "room-passage-body" }, maths(th.body)) : null
+      th.title ? el13("div", { class: "room-passage-title" }, maths(th.title)) : null,
+      th.body ? el13("div", { class: "room-passage-body" }, maths(th.body)) : null
     )
   };
 
@@ -11002,11 +11004,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => `![${th.text || ""}](${th.src})`
     },
-    node: (th, el12) => el12(
+    node: (th, el13) => el13(
       "figure",
       { class: "room-picture", "data-id": th.id },
-      el12("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
-      th.text ? el12("figcaption", {}, maths(th.text)) : null
+      el13("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
+      th.text ? el13("figcaption", {}, maths(th.text)) : null
     )
   };
 
@@ -11061,7 +11063,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       messy.col = 0;
       messy.row = 0;
     }
-    gridAll(w2);
     return w2;
   }
   var thing = (w2, id) => w2.things[id] || null;
@@ -11334,16 +11335,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete g2.keep;
     return true;
   }
-  function addRoom(w2, text = "Untitled", now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
+  function addRoom(w2, text = "Untitled", now, where = {}, kind = DEFAULT_MODE) {
     const page = where.page || 0;
-    const r = create(w2, null, { kind: "room", name: text, ...cell || {}, page }, now);
+    const r = create(w2, null, { kind: "room", name: text, ...page ? { page } : {} }, now);
     if (!r) return null;
     if (typeof kind === "string" && kind) view3(w2, r.id).mode = kind;
-    if (!cell || !placeRoom(w2, r.id, cell.col, cell.row, cols)) {
-      delete r.col;
-      delete r.row;
-      gridRooms(w2, cols, page);
-    }
     return r;
   }
   function cells(r) {
@@ -11353,47 +11349,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function roomAt(w2, col, row, except = null, page = 0) {
     return roomsOn(w2, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr2]) => c === col && rr2 === row)) || null;
-  }
-  function placeRoom(w2, id, col, row, cols = Infinity) {
-    const r = room(w2, id);
-    if (!r || r.locked || r.archived || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
-    const want = cells({ ...r, col, row });
-    if (want.some(([c, rr2]) => roomAt(w2, c, rr2, id, r.page || 0))) return false;
-    r.col = col;
-    r.row = row;
-    return true;
-  }
-  function gridAll(w2, cols = 6) {
-    for (const page of new Set(rooms(w2).map((r) => r.page || 0))) gridRooms(w2, cols, page);
-  }
-  function gridRooms(w2, cols = 6, page = 0) {
-    const all = roomsOn(w2, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
-    const taken = /* @__PURE__ */ new Set();
-    const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr2]) => !taken.has(`${c},${rr2}`));
-    for (const r of all) {
-      if (r.col == null || !free(r, r.col, r.row)) {
-        for (let i2 = 0; ; i2++) {
-          const col = i2 % cols, row = Math.floor(i2 / cols);
-          if (col + (r.size || 1) <= cols && free(r, col, row)) {
-            r.col = col;
-            r.row = row;
-            break;
-          }
-        }
-      }
-      for (const [c, rr2] of cells(r)) taken.add(`${c},${rr2}`);
-    }
-    return roomsOn(w2, page);
-  }
-  function toPage(w2, id, page = 0, cols = 6) {
-    const r = room(w2, id);
-    if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
-    delete r.col;
-    delete r.row;
-    if (page > 0) r.page = page;
-    else delete r.page;
-    gridRooms(w2, cols, page);
-    return true;
   }
   var pageCount = (w2) => Math.max(w2.pages || 1, ...rooms(w2).map((r) => (r.page || 0) + 1));
   function addPage(w2) {
@@ -11434,15 +11389,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
-  function sizeRoom(w2, id, size, cols = Infinity) {
-    const r = room(w2, id);
-    if (!r || r.locked) return false;
-    const was = r.size || 1;
-    r.size = size === 2 ? 2 : 1;
-    if (r.col == null || placeRoom(w2, id, r.col, r.row, cols)) return true;
-    r.size = was;
-    return false;
-  }
   function lock(w2, id, on = true) {
     const r = room(w2, id);
     if (!r) return false;
@@ -11458,11 +11404,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete r.row;
     return true;
   }
-  function restore(w2, id, cell = null, cols = 6) {
+  function restore(w2, id) {
     const r = room(w2, id);
     if (!r || !r.archived) return false;
     delete r.archived;
-    if (!cell || !placeRoom(w2, id, cell.col, cell.row, cols)) gridRooms(w2, cols, r.page || 0);
+    delete r.col;
+    delete r.row;
     return true;
   }
   function roomTags(w2, id, ontologies = []) {
@@ -11673,11 +11620,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // how strong the rooms' squares are
     glow: 0.55,
     // how brightly a room written in lately glows
-    cell: 120,
-    // a grid cell, in px
-    cols: 0,
-    // the grid's columns and rows at least (0: as many as fit; it grows past them)
-    rows: 0,
     light: LIGHT2,
     // a room's lightness inside, by default
     lightMessy: LIGHT_MESSY,
@@ -11705,20 +11647,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const top = colours2?.top || paper, bottom = colours2?.bottom || paper;
     return { top: css(top), bottom: css(bottom), mask: css(rgb(pal(palette2).ink), prefs.mask) };
   }
-  function roomColour(room5, messy = false, prefs = LOOK, palette2 = PALETTE) {
-    const [, C, h] = toOklch(rgb(room5?.tint) || rgb(pal(palette2).paper));
-    const L = clamp(room5?.light ?? (messy ? prefs.lightMessy : prefs.light), 0.02, 0.99);
+  function roomColour(room6, messy = false, prefs = LOOK, palette2 = PALETTE) {
+    const [, C, h] = toOklch(rgb(room6?.tint) || rgb(pal(palette2).paper));
+    const L = clamp(room6?.light ?? (messy ? prefs.lightMessy : prefs.light), 0.02, 0.99);
     return [L, C, h];
   }
-  function squareLook(room5, messy = false, prefs = LOOK, palette2 = PALETTE) {
-    const [L, C, h] = roomColour(room5, messy, prefs, palette2);
-    const a = clamp(prefs.square * (1.2 - L) * (room5?.opacity ?? OPACITY), 0, 0.95);
+  function squareLook(room6, messy = false, prefs = LOOK, palette2 = PALETTE) {
+    const [L, C, h] = roomColour(room6, messy, prefs, palette2);
+    const a = clamp(prefs.square * (1.2 - L) * (room6?.opacity ?? OPACITY), 0, 0.95);
     return { fill: css(fromOklch([Math.max(0.03, L - DEEPER), C * (prefs.vivid ?? VIVID), h]), a), alpha: a };
   }
-  function roomLook(room5, palette2 = PALETTE, messy = false, prefs = LOOK) {
+  function roomLook(room6, palette2 = PALETTE, messy = false, prefs = LOOK) {
     const p = pal(palette2);
-    const [L, C, h] = roomColour(room5, messy, prefs, p);
-    const a = room5?.opacity ?? OPACITY;
+    const [L, C, h] = roomColour(room6, messy, prefs, p);
+    const a = room6?.opacity ?? OPACITY;
     const at2 = (dl) => fromOklch([clamp(L + dl, 0, 1), C, h]);
     const dark = L < DARK2;
     return {
@@ -12000,7 +11942,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
     // thoughts, a folded train as one block, and the thought being written.
     draw(c) {
-      const w2 = c.world, el12 = c.el;
+      const w2 = c.world, el13 = c.el;
       const nodes = [];
       const svg2 = document.createElementNS(SVG, "svg");
       svg2.setAttribute("class", "room-strands");
@@ -12008,7 +11950,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const t of roomTrains(w2, c.roomId)) {
         const chosen = c.sel?.kind === "train" && c.sel.id === t.id || c.isSel(t.id);
         if (t.folded) {
-          nodes.push(el12("div", {
+          nodes.push(el13("div", {
             class: "room-bead room-folded" + (chosen ? " selected" : ""),
             "data-group": t.id,
             style: `left:${t.x}px;top:${t.y}px`
@@ -12042,7 +11984,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         svg2.append(g2);
         for (const k2 of knots) {
-          nodes.push(el12("div", {
+          nodes.push(el13("div", {
             class: "room-bead" + (chosen || c.isSel(k2.th.id) ? " selected" : "") + (c.found === k2.th.id ? " found" : ""),
             "data-group": t.id,
             ...k2.draft ? {} : { "data-thought": k2.th.id },
@@ -12051,7 +11993,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       }
       if (c.draft && !c.draft.train) {
-        nodes.push(el12("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes.push(el13("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [svg2, ...nodes];
     }
@@ -12385,12 +12327,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const p = foot(b.at, b.size);
     const line = svg("path", { class: "room-russell-arrow room-russell-drawing", "marker-end": "url(#russell-head)" });
     layer.append(line);
-    const move4 = (ev) => {
+    const move5 = (ev) => {
       const q = c.toWorld(ev.clientX, ev.clientY);
       line.setAttribute("d", arrowPath(p, q));
     };
     const up = (ev) => {
-      document.removeEventListener("pointermove", move4);
+      document.removeEventListener("pointermove", move5);
       document.removeEventListener("pointerup", up);
       document.removeEventListener("pointercancel", up);
       line.remove();
@@ -12405,8 +12347,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       c.save();
       c.drawWorld();
     };
-    move4(e);
-    document.addEventListener("pointermove", move4);
+    move5(e);
+    document.addEventListener("pointermove", move5);
     document.addEventListener("pointerup", up);
     document.addEventListener("pointercancel", up);
   }
@@ -12580,7 +12522,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
     // arrows down to its children with their labels, and the thought being written.
     draw(c) {
-      const w2 = c.world, el12 = c.el, roomId = c.roomId;
+      const w2 = c.world, el13 = c.el, roomId = c.roomId;
       const all = boxes(w2, roomId);
       const layer = svg("svg", { class: "room-strands room-russell-arrows" });
       const defs = svg("defs");
@@ -12599,7 +12541,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const two = parentsOf(w2, roomId, to).length > 1;
           const left = two && q.x < p.x;
           const x = two ? p.x : q.x, y = two ? p.y + 10 : q.y - 52;
-          nodes.push(el12("div", {
+          nodes.push(el13("div", {
             class: "room-russell-label" + (left ? " left" : ""),
             "data-group": to,
             title: "What the child forgets",
@@ -12614,17 +12556,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const chosen = c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id);
         const cls = "room-bead" + (picking ? " room-russell-pick" : "");
         if (g2.folded) {
-          nodes.push(el12("div", {
+          nodes.push(el13("div", {
             class: cls + " room-folded room-russell-closed" + (chosen ? " selected" : ""),
             "data-group": g2.id,
             title: "Click to open",
             style: `left:${at2.x}px;top:${at2.y}px`
-          }, el12("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
+          }, el13("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
           const spots2 = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
             const sp = spots2[th.id];
-            nodes.push(el12("div", {
+            nodes.push(el13("div", {
               class: cls + (chosen || c.isSel(th.id) ? " selected" : "") + (c.found === th.id ? " found" : ""),
               "data-group": g2.id,
               "data-thought": th.id,
@@ -12634,18 +12576,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (c.draft?.train === g2.id && !c.draft.edit) {
             const last = members(w2, g2.id).at(-1);
             const y = last ? spots2[last.id].y + stepAfter(last) : at2.y;
-            nodes.push(el12("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
+            nodes.push(el13("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
         if (!g2.folded) layer.append(svg("path", { class: "room-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - 14} ${at2.y + 6}L${at2.x - 14} ${at2.y + size.h - 4}` }));
-        if (g2.title && !g2.folded) nodes.push(el12("div", { class: "room-russell-title", "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y - 30}px` }, g2.title));
+        if (g2.title && !g2.folded) nodes.push(el13("div", { class: "room-russell-title", "data-group": g2.id, style: `left:${at2.x}px;top:${at2.y - 30}px` }, g2.title));
         if (!c.locked) {
           const f2 = foot(at2, size);
-          nodes.push(el12("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
+          nodes.push(el13("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
         }
       }
       if (c.draft && !c.draft.train && !c.draft.edit) {
-        nodes.push(el12("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes.push(el13("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [layer, ...nodes];
     },
@@ -12835,8 +12777,192 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
-  // dist/web/features/panel/Panel.js
+  // dist/web/features/floors/world.js
+  var room2;
+  var roomsOn2;
+  var cells2;
+  var roomAt2;
+  var addPage2;
+  var pageCount2;
+  var MESSY2;
+  function bind(lib) {
+    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, MESSY: MESSY2 } = lib.model);
+  }
+
+  // dist/web/features/floors/rule.js
+  var PRESETS = [
+    { id: "small", name: "Small", cols: 6, rows: 4 },
+    { id: "medium", name: "Medium", cols: 8, rows: 5 },
+    { id: "large", name: "Large", cols: 10, rows: 6 }
+  ];
+  var DEFAULT = "medium";
+  var preset = (id) => PRESETS.find((p) => p.id === id) || PRESETS.find((p) => p.id === DEFAULT);
+  var sizeName = (board) => `${board.cols} × ${board.rows}`;
+  var setPage = (r, page) => {
+    if (page > 0) r.page = page;
+    else delete r.page;
+  };
+  var inside3 = (r, col, row, board) => col >= 0 && row >= 0 && col + (r.size || 1) <= board.cols && row + (r.size || 1) <= board.rows;
+  function free(w2, r, col, row, board, page = r.page || 0) {
+    return inside3(r, col, row, board) && cells2({ ...r, col, row }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
+  }
+  function spot2(w2, r, page, board) {
+    for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
+      if (free(w2, r, col, row, board, page)) return { col, row };
+    }
+    return null;
+  }
+  function place(w2, id, board, cell = null) {
+    const r = room2(w2, id);
+    if (!r || r.archived) return null;
+    const from = r.page || 0;
+    delete r.col;
+    delete r.row;
+    let at2 = cell && free(w2, r, cell.col, cell.row, board, from) ? cell : spot2(w2, r, from, board);
+    let page = from;
+    if (!at2) {
+      page = addPage2(w2);
+      setPage(r, page);
+      at2 = spot2(w2, r, page, board) || { col: 0, row: 0 };
+    }
+    r.col = at2.col;
+    r.row = at2.row;
+    return { page, from, spilled: page !== from };
+  }
+  function settle2(w2, page, board) {
+    const all = roomsOn2(w2, page).sort((a, b) => (b.id === MESSY2) - (a.id === MESSY2));
+    const taken = /* @__PURE__ */ new Set();
+    const loose = [];
+    for (const r of all) {
+      const ok = r.col != null && inside3(r, r.col, r.row, board) && cells2(r).every(([c, rr2]) => !taken.has(`${c},${rr2}`));
+      if (!ok) {
+        loose.push(r);
+        delete r.col;
+        delete r.row;
+        continue;
+      }
+      for (const [c, rr2] of cells2(r)) taken.add(`${c},${rr2}`);
+    }
+    const spilled = [];
+    for (const r of loose) {
+      const out = place(w2, r.id, board);
+      if (out?.spilled) spilled.push({ room: r, ...out });
+    }
+    return spilled;
+  }
+  function move2(w2, id, col, row, board) {
+    const r = room2(w2, id);
+    if (!r || r.locked || r.archived || !free(w2, r, col, row, board)) return false;
+    r.col = col;
+    r.row = row;
+    return true;
+  }
+  function resize(w2, id, size, board) {
+    const r = room2(w2, id);
+    if (!r || r.locked) return false;
+    const was = r.size || 1;
+    r.size = size === 2 ? 2 : 1;
+    if (r.col == null || free(w2, r, r.col, r.row, board)) return true;
+    r.size = was;
+    return false;
+  }
+  function toFloor(w2, id, page, board, cell = null) {
+    const r = room2(w2, id);
+    if (!r || id === MESSY2 || r.locked || r.archived || (r.page || 0) === page) return false;
+    const at2 = cell && free(w2, r, cell.col, cell.row, board, page) ? cell : spot2(w2, r, page, board);
+    if (!at2) return "full";
+    setPage(r, page);
+    r.col = at2.col;
+    r.row = at2.row;
+    return true;
+  }
+  function outside(w2, board) {
+    const out = [];
+    for (let page = 0; page < pageCount2(w2); page++) {
+      if (roomsOn2(w2, page).some((r) => r.col != null && !inside3(r, r.col, r.row, board))) out.push(page);
+    }
+    return out;
+  }
+
+  // dist/web/features/floors/Floors.js
   var { el: el5 } = ui_exports;
+  var Floors = class extends Feature {
+    start() {
+      this.w = this.use("world");
+      bind(this.w.lib);
+      this.size = preset(this.storage.get("size", DEFAULT));
+      const f2 = this;
+      const board = () => ({ cols: f2.size.cols, rows: f2.size.rows });
+      this.provide("floors", {
+        get size() {
+          return board();
+        },
+        // { cols, rows }: every floor's size
+        place: (id, cell = null) => this.place(id, cell),
+        // its floor, else a new one (with a note)
+        settle: (page) => this.settle(page),
+        // places a floor's rooms that have no cell
+        move: (id, col, row) => move2(this.world, id, col, row, board()),
+        resize: (id, size) => resize(this.world, id, size, board()),
+        toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
+        fits: (size) => !outside(this.world, size).length
+        // whether every room fits floors of `size`
+      });
+      this.add("settings", { id: "floors-size", title: "Floors", order: 31, render: () => this.settingsPane() });
+    }
+    get world() {
+      return this.w.world;
+    }
+    place(id, cell) {
+      const out = place(this.world, id, this.size, cell);
+      if (out?.spilled) this.say(room2(this.world, id), out);
+      return out;
+    }
+    settle(page) {
+      const spilled = settle2(this.world, page, this.size);
+      for (const s of spilled) this.say(s.room, s);
+      return spilled;
+    }
+    // "Floor 2 was full, so Algebra is on a new Floor 4."
+    say(r, { page, from }) {
+      this.toast(`Floor ${from + 1} was full, so ${r?.name || "the room"} is on a new Floor ${page + 1}.`);
+    }
+    // Chooses a preset for every floor. A smaller one with rooms outside it is refused: the old size
+    // stays and the message says which floor. Returns '' when it changed, or the message.
+    choose(id) {
+      const next = preset(id);
+      if (next.id === this.size.id) return "";
+      const over = outside(this.world, next);
+      if (over.length) {
+        const floors = over.map((p) => p + 1);
+        const which = floors.length === 1 ? `Floor ${floors[0]} has` : `Floors ${floors.slice(0, -1).join(", ")} and ${floors.at(-1)} have`;
+        return `${which} rooms outside ${sizeName(next)}. Move them first.`;
+      }
+      this.size = next;
+      this.storage.set("size", next.id);
+      this.emit("floors:size", { cols: next.cols, rows: next.rows });
+      return "";
+    }
+    settingsPane() {
+      const error = el5("p", { class: "error", role: "alert", hidden: true });
+      const select2 = el5("select", { "aria-label": "Floor size", onchange: (e) => {
+        const why = this.choose(e.target.value);
+        error.hidden = !why;
+        error.textContent = why;
+        e.target.value = this.size.id;
+      } }, ...PRESETS.map((p) => el5("option", { value: p.id, ...p.id === this.size.id ? { selected: "" } : {} }, `${p.name}, ${sizeName(p)}`)));
+      return el5(
+        "div",
+        { class: "stack" },
+        el5("label", { class: "row" }, el5("span", {}, "Floor size"), select2),
+        error,
+        ui_exports.hint("Every floor of the rooms page is this many columns × rows.", { small: true })
+      );
+    }
+  };
+
+  // dist/web/features/panel/Panel.js
+  var { el: el6 } = ui_exports;
   var WIDTH = 480;
   var LEAST = 300;
   var MOST2 = 0.7;
@@ -12862,10 +12988,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return Math.round(Math.max(LEAST, Math.min(+px || WIDTH, Math.max(LEAST, window.innerWidth * MOST2))));
     }
     build() {
-      this.titleEl = el5("div", { class: "panel-title" });
-      this.kindEl = el5("div", { class: "label panel-kind" });
-      this.body = el5("div", { class: "panel-body" });
-      this.edge = el5("div", {
+      this.titleEl = el6("div", { class: "panel-title" });
+      this.kindEl = el6("div", { class: "label panel-kind" });
+      this.body = el6("div", { class: "panel-body" });
+      this.edge = el6("div", {
         class: "panel-edge",
         role: "separator",
         "aria-orientation": "vertical",
@@ -12874,7 +13000,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         onpointerdown: (e) => this.drag(e),
         ondblclick: () => this.setWidth(WIDTH)
       });
-      this.root = el5(
+      this.root = el6(
         "aside",
         {
           class: "panel side-panel",
@@ -12889,11 +13015,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           }
         },
-        el5(
+        el6(
           "header",
           { class: "panel-head" },
-          el5("div", { class: "panel-names" }, this.kindEl, this.titleEl),
-          el5("button", { type: "button", class: "close-x panel-close", "aria-label": "Close", title: "Close (Escape)", onclick: () => this.close() })
+          el6("div", { class: "panel-names" }, this.kindEl, this.titleEl),
+          el6("button", { type: "button", class: "close-x panel-close", "aria-label": "Close", title: "Close (Escape)", onclick: () => this.close() })
         ),
         this.body,
         this.edge
@@ -12969,15 +13095,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e.preventDefault();
       this.edge.setPointerCapture?.(e.pointerId);
       document.documentElement.classList.add("panel-dragging");
-      const move4 = (ev) => this.setWidth(window.innerWidth - ev.clientX, false);
+      const move5 = (ev) => this.setWidth(window.innerWidth - ev.clientX, false);
       const up = () => {
-        this.edge.removeEventListener("pointermove", move4);
+        this.edge.removeEventListener("pointermove", move5);
         this.edge.removeEventListener("pointerup", up);
         this.edge.removeEventListener("pointercancel", up);
         document.documentElement.classList.remove("panel-dragging");
         this.setWidth(this.width);
       };
-      this.edge.addEventListener("pointermove", move4);
+      this.edge.addEventListener("pointermove", move5);
       this.edge.addEventListener("pointerup", up);
       this.edge.addEventListener("pointercancel", up);
     }
@@ -12991,7 +13117,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/source/Source.js
-  var { el: el6 } = ui_exports;
+  var { el: el7 } = ui_exports;
   var CHECK = 220;
   var SHOWN = 12;
   var Source = class extends Feature {
@@ -13020,11 +13146,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return new Promise((resolve) => {
         let applied = false, base2 = text, timer = 0, asking = null;
         const chosen = Object.fromEntries(options.map((o2) => [o2.key, !!o2.value]));
-        const box = el6("textarea", { class: "code-box source-text", spellcheck: "false", autocomplete: "off", wrap: "off", "aria-label": title || "Source", readonly: readOnly ? "" : null });
+        const box = el7("textarea", { class: "code-box source-text", spellcheck: "false", autocomplete: "off", wrap: "off", "aria-label": title || "Source", readonly: readOnly ? "" : null });
         box.value = text;
-        const sum = el6("div", { class: "source-sum", "aria-live": "polite" });
-        const lists = el6("div", { class: "source-lists" });
-        const opts = el6("div", { class: "source-options" });
+        const sum = el7("div", { class: "source-sum", "aria-live": "polite" });
+        const lists = el7("div", { class: "source-lists" });
+        const opts = el7("div", { class: "source-options" });
         const changed = () => box.value !== base2;
         const say2 = (msg) => {
           sum.dataset.note = msg;
@@ -13032,11 +13158,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           clearTimeout(this.noteTimer);
           this.noteTimer = setTimeout(() => sum.classList.remove("noted"), 1800);
         };
-        const list2 = (label, items, cls) => items?.length ? el6(
+        const list2 = (label, items, cls) => items?.length ? el7(
           "section",
           { class: "source-list " + cls },
-          el6("div", { class: "label" }, label),
-          el6("ul", {}, ...items.slice(0, SHOWN).map((t) => el6("li", {}, t)), items.length > SHOWN ? el6("li", { class: "source-more" }, `and ${items.length - SHOWN} more`) : null)
+          el7("div", { class: "label" }, label),
+          el7("ul", {}, ...items.slice(0, SHOWN).map((t) => el7("li", {}, t)), items.length > SHOWN ? el7("li", { class: "source-more" }, `and ${items.length - SHOWN} more`) : null)
         ) : null;
         const run2 = () => {
           let r = {};
@@ -13050,10 +13176,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             list2(readOnly ? "In it" : "Apply will", r.changes, "source-changes"),
             list2("Couldn't be read", r.report, "source-report")
           ].filter(Boolean));
-          opts.replaceChildren(...readOnly ? [] : (r.options || options).filter((o2) => o2.show !== false).map((o2) => el6(
+          opts.replaceChildren(...readOnly ? [] : (r.options || options).filter((o2) => o2.show !== false).map((o2) => el7(
             "label",
             { class: "source-option" },
-            el6("input", { type: "checkbox", checked: chosen[o2.key] ? "" : null, onchange: (e) => {
+            el7("input", { type: "checkbox", checked: chosen[o2.key] ? "" : null, onchange: (e) => {
               chosen[o2.key] = e.target.checked;
               run2();
             } }),
@@ -13077,7 +13203,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             doApply();
           }
         });
-        const word = (label, fn, extra = "") => el6("button", { type: "button", class: "word " + extra, onclick: fn }, label);
+        const word = (label, fn, extra = "") => el7("button", { type: "button", class: "word " + extra, onclick: fn }, label);
         const copy2 = async () => {
           try {
             await navigator.clipboard.writeText(box.value);
@@ -13089,7 +13215,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         };
         const download = () => {
           const url = URL.createObjectURL(new Blob([full(box.value)], { type: "text/markdown;charset=utf-8" }));
-          const a = el6("a", { href: url, download: fileName2, hidden: true });
+          const a = el7("a", { href: url, download: fileName2, hidden: true });
           document.body.append(a);
           a.click();
           a.remove();
@@ -13138,7 +13264,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           handle?.close(true);
         };
         const go = readOnly || !apply2 ? null : word("Apply", doApply, "source-go");
-        const ask = el6("div", { class: "source-ask", hidden: true });
+        const ask = el7("div", { class: "source-ask", hidden: true });
         const beforeClose = () => {
           if (applied || readOnly || !changed()) return true;
           if (asking) return false;
@@ -13151,7 +13277,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               if (!yes) box.focus();
             };
             ask.replaceChildren(
-              el6("span", {}, "Close without applying your changes?"),
+              el7("span", {}, "Close without applying your changes?"),
               word("Close", () => done(true), "source-go"),
               word("Keep editing", () => done(false))
             );
@@ -13159,7 +13285,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             ask.querySelector("button").focus();
           });
         };
-        const body = el6(
+        const body = el7(
           "div",
           { class: "source", onkeydown: (e) => {
             if (e.key === "Escape" && asking) {
@@ -13176,16 +13302,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           lists,
           box,
           opts,
-          el6(
+          el7(
             "div",
             { class: "source-words" },
             word("Copy", copy2),
             word("Download", download),
-            ...readOnly ? [el6("span", { class: "sheet-keys" }, "Read only")] : [
+            ...readOnly ? [el7("span", { class: "sheet-keys" }, "Read only")] : [
               word("Paste", paste),
               word("Reset", doReset),
               go,
-              el6("span", { class: "sheet-keys" }, "Ctrl+Enter applies · Escape closes")
+              el7("span", { class: "sheet-keys" }, "Ctrl+Enter applies · Escape closes")
             ]
           ),
           ask
@@ -13211,7 +13337,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/roomfile/world.js
-  var room2;
+  var room3;
   var shut2;
   var view4;
   var create2;
@@ -13239,9 +13365,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var setLabel2;
   var chapterName2;
   var broken2;
-  function bind(lib) {
+  function bind2(lib) {
     ({
-      room: room2,
+      room: room3,
       shut: shut2,
       view: view4,
       create: create2,
@@ -13492,7 +13618,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function importInto(w2, roomId, parsed, { ontologies = [], now = Date.now(), at: at2 = null } = {}) {
     const report = [...parsed.report];
     const made = { groups: 0, thoughts: 0, pictures: 0 };
-    if (!room2(w2, roomId) || shut2(w2, roomId)) {
+    if (!room3(w2, roomId) || shut2(w2, roomId)) {
       report.push("This room is locked, so nothing was brought in.");
       return { report, made };
     }
@@ -13567,7 +13693,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const zoom = Math.max(0.5, Math.min(1, box.w / (x12 - x0), box.h / (y12 - y0)));
     Object.assign(view4(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
   }
-  function importRoom(w2, parsed, { ontologies = [], now = Date.now(), cell = null, cols = 6, page = 0, globals = {}, name: name5 = "Untitled" } = {}) {
+  function importRoom(w2, parsed, { ontologies = [], now = Date.now(), page = 0, globals = {}, name: name5 = "Untitled" } = {}) {
     const meta = parsed.meta || {};
     const pre = [];
     let kind = meta.kind || DEFAULT_MODE2;
@@ -13575,7 +13701,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       pre.push(`There is no mode called "${kind}", so the room is a ${ontologies.find((o2) => o2.id === DEFAULT_MODE2)?.name || DEFAULT_MODE2} room.`);
       kind = DEFAULT_MODE2;
     }
-    const r = addRoom2(w2, meta.room || name5, now, cell, cols, { page }, kind);
+    const r = addRoom2(w2, meta.room || name5, now, { page }, kind);
     if (!r) return { room: null, report: [...pre, "A room couldn't be made."], made: { groups: 0, thoughts: 0, pictures: 0 } };
     const fields = {};
     if (meta.description) fields.desc = meta.description;
@@ -13622,7 +13748,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return [head2, ...g2.folded ? ["> folded"] : [], writeItems(members2(w2, g2.id), pictures)].join("\n");
   }
   function exportRoom(w2, roomId, { ontologies = [], pictures = null } = {}) {
-    const r = room2(w2, roomId);
+    const r = room3(w2, roomId);
     if (!r) return "";
     const o2 = modeOf(w2, roomId, ontologies);
     const of = groupsFor(o2);
@@ -13708,7 +13834,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     parsed = { ...parsed, loose: parsed.loose.map(pic), groups: parsed.groups.map((g2) => ({ ...g2, items: g2.items.map(pic) })) };
     const p = { scope, roomId, of: null, word: "group", parsed, replace: [], add: [], missing: [], renames: [], folds: [], meta: [], arrowChanges: [], loose: "add", report };
-    const r = room2(w2, roomId);
+    const r = room3(w2, roomId);
     if (!r) {
       report.push("That room isn't there any more.");
       return p;
@@ -13775,7 +13901,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function metaChanges(w2, roomId, meta, of, ontologies, report) {
     const has = Object.keys(meta || {}).some((k2) => k2 !== "settings") || Object.keys(meta?.settings || {}).length;
     if (!has) return [];
-    const r = room2(w2, roomId);
+    const r = room3(w2, roomId);
     const out = [];
     const say2 = (v2) => v2 == null || v2 === "" ? "nothing" : Array.isArray(v2) ? v2.length ? v2.join(", ") : "nothing" : JSON.stringify(v2);
     const diff = (k2, label, from, to) => {
@@ -13796,7 +13922,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function apply(w2, roomId, p, { now = Date.now(), removeMissing = false } = {}) {
-    if (!room2(w2, roomId) || shut2(w2, roomId) || !p.of) return { report: [...p.report], arrowChanges: [], counts: null };
+    if (!room3(w2, roomId) || shut2(w2, roomId) || !p.of) return { report: [...p.report], arrowChanges: [], counts: null };
     return run(w2, roomId, p, { now, removeMissing });
   }
   function run(w2, roomId, p, { now, removeMissing }) {
@@ -13917,7 +14043,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
     for (const m2 of p.meta) {
-      const r = room2(w2, roomId);
+      const r = room3(w2, roomId);
       if (m2.key.startsWith("setting:")) setRoomSetting2(w2, roomId, m2.of, m2.k, m2.to);
       else if (m2.to == null || m2.key === "desc" && !m2.to) {
         delete r[m2.key];
@@ -14013,7 +14139,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var copyWorld = (w2) => JSON.parse(JSON.stringify(w2));
 
   // dist/web/features/roomfile/Roomfile.js
-  var { el: el7 } = ui_exports;
+  var { el: el8 } = ui_exports;
   var MD = /\.(md|markdown|txt)$/i;
   var isRoomFile = (f2) => !!f2 && (MD.test(f2.name || "") || /markdown/.test(f2.type || ""));
   var REPORT = 8;
@@ -14021,8 +14147,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var Roomfile = class extends Feature {
     start() {
       this.w = this.use("world");
-      bind(this.w.lib);
+      bind2(this.w.lib);
       this.source = this.use("source");
+      this.floors = this.use("floors");
       this.provide("roomfile", {
         isRoomFile,
         importRoom: (o2) => this.importRoom(o2),
@@ -14078,10 +14205,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       return parsed;
     }
-    // A new room from a file (picked, if none is given) in `cell` (or the first free one) of floor
-    // `page`. ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
+    // A new room from a file (picked, if none is given) on floor `page`, placed by the floors feature:
+    // in `cell` if it is free, else that floor's first free one, else a new floor (its `page` says
+    // which). ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
     // with the new room once it is in the world (the caller saves), or null.
-    async importRoom({ file = null, cell = null, page = 0, cols = 6, ok = () => true } = {}) {
+    async importRoom({ file = null, cell = null, page = 0, ok = () => true } = {}) {
       file ||= await this.pick();
       if (!file) return null;
       const parsed = await this.read(file);
@@ -14089,8 +14217,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const opts = () => ({
         ontologies: this.w.ontologies,
         now: Date.now(),
-        cell,
-        cols,
         page,
         globals: this.w.globals,
         name: file.name.replace(MD, "") || "Untitled"
@@ -14102,6 +14228,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.toast("A room couldn't be made.");
         return null;
       }
+      this.floors?.place(out.room.id, cell);
       return out.room;
     }
     // A file's groups and thoughts into a room, as its own mode sees them. at(): where new trains
@@ -14121,7 +14248,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at2() });
       const dry = importInto(copyWorld(this.w.world), roomId, parsed, opts());
       const p = plan(this.w.world, roomId, parsed, { scope: "import", ontologies: this.w.ontologies });
-      const name5 = room2(this.w.world, roomId)?.name || "";
+      const name5 = room3(this.w.world, roomId)?.name || "";
       let choice2;
       if (p.replace.length) {
         const n = p.replace.length, word = p.word;
@@ -14146,11 +14273,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, ok = () => true }) {
       const w2 = () => this.w.world;
       if (!this.source) return false;
-      if (!room2(w2(), roomId) || scope === "group" && !isGroup2(w2().things[groupId])) return false;
+      if (!room3(w2(), roomId) || scope === "group" && !isGroup2(w2().things[groupId])) return false;
       const pictures = shortPictures();
       const ontologies = () => this.w.ontologies;
       const write = () => scope === "group" ? exportGroup(w2(), roomId, groupId, { pictures }) : exportRoom(w2(), roomId, { ontologies: ontologies(), pictures });
-      const title = scope === "group" ? chapterName2(w2(), groupId) || "Untitled" : room2(w2(), roomId).name;
+      const title = scope === "group" ? chapterName2(w2(), groupId) || "Untitled" : room3(w2(), roomId).name;
       const readOnly = shut2(w2(), roomId);
       const opts = { scope, groupId, ontologies: ontologies(), pictures };
       const check = (text, chosen = {}) => {
@@ -14211,7 +14338,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ask(kind, title, { made = null, report = [], sum = null, buttons = null }) {
       this.card?.close();
       return new Promise((resolve) => {
-        const box = el7("div", { class: "panel sheet roomfile-card", role: "dialog", "aria-label": "Import", onpointerdown: (e) => e.stopPropagation() });
+        const box = el8("div", { class: "panel sheet roomfile-card", role: "dialog", "aria-label": "Import", onpointerdown: (e) => e.stopPropagation() });
         const close = (yes = null) => {
           box.remove();
           if (this.card === card) this.card = null;
@@ -14223,21 +14350,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const any = buttons || made.groups || made.thoughts;
         const choices = buttons || (any ? [[true, "Import"]] : []);
         box.append(...[
-          el7("div", { class: "label" }, kind),
-          el7("div", { class: "roomfile-title" }, title),
-          el7("div", { class: "roomfile-sum" }, sum || (any ? say(made) : "Nothing to bring in")),
-          report.length ? el7(
+          el8("div", { class: "label" }, kind),
+          el8("div", { class: "roomfile-title" }, title),
+          el8("div", { class: "roomfile-sum" }, sum || (any ? say(made) : "Nothing to bring in")),
+          report.length ? el8(
             "ul",
             { class: "roomfile-report", "aria-label": "What couldn't be read" },
-            ...shown2.map((r) => el7("li", {}, r)),
-            report.length > REPORT ? el7("li", {}, `and ${report.length - REPORT} more`) : null
+            ...shown2.map((r) => el8("li", {}, r)),
+            report.length > REPORT ? el8("li", {}, `and ${report.length - REPORT} more`) : null
           ) : null,
-          el7(
+          el8(
             "div",
             { class: "sheet-words" },
-            ...choices.map(([value, label], k2) => el7("button", { type: "button", class: "word" + (k2 ? "" : " roomfile-go"), onclick: () => close(value) }, label)),
-            el7("button", { type: "button", class: "word", onclick: () => close() }, "Cancel"),
-            el7("span", { class: "sheet-keys" }, choices.length ? `Enter ${buttons ? "replaces" : "imports"} · Escape cancels` : "Escape cancels")
+            ...choices.map(([value, label], k2) => el8("button", { type: "button", class: "word" + (k2 ? "" : " roomfile-go"), onclick: () => close(value) }, label)),
+            el8("button", { type: "button", class: "word", onclick: () => close() }, "Cancel"),
+            el8("span", { class: "sheet-keys" }, choices.length ? `Enter ${buttons ? "replaces" : "imports"} · Escape cancels` : "Escape cancels")
           )
         ].filter(Boolean));
         box.onkeydown = (e) => {
@@ -14257,11 +14384,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Downloads a room as <its name>.md (a locked room too).
     exportRoom(id) {
-      const r = room2(this.w.world, id);
+      const r = room3(this.w.world, id);
       if (!r) return;
       const text = exportRoom(this.w.world, id, { ontologies: this.w.ontologies });
       const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-      const a = el7("a", { href: url, download: fileName(r.name), hidden: true });
+      const a = el8("a", { href: url, download: fileName(r.name), hidden: true });
       document.body.append(a);
       a.click();
       a.remove();
@@ -14271,33 +14398,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/rooms/world.js
-  var room3;
-  var MESSY2;
+  var room4;
+  var MESSY3;
   var remove3;
   var shut3;
   var DEFAULT_MODE3;
   var addRoom3;
   var name3;
   var update3;
-  var move2;
+  var move3;
   var fold2;
   var roomThoughts2;
-  var gridRooms2;
-  var placeRoom2;
   var search2;
-  var sizeRoom2;
-  var cells2;
-  var roomAt2;
+  var cells3;
+  var roomAt3;
   var lock2;
   var archive2;
   var archived2;
   var restore2;
   var peek2;
   var DESC2;
-  var roomsOn2;
-  var toPage2;
-  var pageCount2;
-  var addPage2;
+  var roomsOn3;
+  var pageCount3;
+  var addPage3;
   var isBig2;
   var rooms2;
   var roomTags2;
@@ -14320,35 +14443,31 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var squareLook2;
   var toOklch2;
   var light2;
-  function bind2(lib) {
+  function bind3(lib) {
     ({
-      room: room3,
-      MESSY: MESSY2,
+      room: room4,
+      MESSY: MESSY3,
       remove: remove3,
       shut: shut3,
       DEFAULT_MODE: DEFAULT_MODE3,
       addRoom: addRoom3,
       name: name3,
       update: update3,
-      move: move2,
+      move: move3,
       fold: fold2,
       roomThoughts: roomThoughts2,
-      gridRooms: gridRooms2,
-      placeRoom: placeRoom2,
       search: search2,
-      sizeRoom: sizeRoom2,
-      cells: cells2,
-      roomAt: roomAt2,
+      cells: cells3,
+      roomAt: roomAt3,
       lock: lock2,
       archive: archive2,
       archived: archived2,
       restore: restore2,
       peek: peek2,
       DESC: DESC2,
-      roomsOn: roomsOn2,
-      toPage: toPage2,
-      pageCount: pageCount2,
-      addPage: addPage2,
+      roomsOn: roomsOn3,
+      pageCount: pageCount3,
+      addPage: addPage3,
       isBig: isBig2,
       rooms: rooms2,
       roomTags: roomTags2,
@@ -14371,8 +14490,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/rooms/shared.js
-  var { el: el8 } = ui_exports;
-  var GRID = { gap: 14, pad: 32, least: 4, most: 10, rail: 206 };
+  var { el: el9 } = ui_exports;
+  var GRID = { gap: 14, pad: 32, rail: 206 };
   var MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var KEY2 = MAC ? "⌘K" : "Ctrl+K";
   var HOLD = 520;
@@ -14387,13 +14506,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/rooms/grid.js
   var RoomsGrid = class {
     // ---- The rooms page ----
-    // How many columns fit, and how big a cell is.
+    // Every floor's columns and rows (the floors feature's size), and how big a cell is: as big as
+    // lets the whole floor fit the canvas, so a floor never scrolls (below 56 px a cell stops
+    // shrinking, and then it does).
     gridSize() {
-      const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad - (window.innerWidth > 560 ? GRID.rail : 0);
-      const fit = Math.floor((width + GRID.gap) / (this.prefs.cell + GRID.gap));
-      const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
-      const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
-      return { cols, cell };
+      const { cols, rows } = this.floors.size;
+      const wrap = this.grid.parentElement;
+      const css2 = wrap && getComputedStyle(wrap);
+      const pad = (a, b) => css2 ? (parseFloat(css2[a]) || 0) + (parseFloat(css2[b]) || 0) : 0;
+      const width = (wrap?.clientWidth || window.innerWidth) - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + GRID.rail);
+      const height = (wrap?.clientHeight || window.innerHeight) - (css2 ? pad("paddingTop", "paddingBottom") : GRID.pad + 64);
+      const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
+      return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
     }
     // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
     // starts with # looks for a tag instead: the rooms with a tag that starts so are lit (true).
@@ -14416,11 +14540,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       return out;
     }
-    drawRooms() {
+    // slide: the strip of floors slides from the floor that showed to this one.
+    drawRooms({ slide = false } = {}) {
       const now = Date.now();
-      this.page = Math.min(this.page, pageCount2(this.world) - 1);
-      const { cols: fit, cell } = this.gridSize();
-      const all = gridRooms2(this.world, fit, this.page);
+      this.page = Math.min(this.page, pageCount3(this.world) - 1);
+      const { cols, rows, cell } = this.gridSize();
+      if (this.floors.settle(this.page).length) this.save();
+      const all = roomsOn3(this.world, this.page);
       const shelved = archived2(this.world);
       this.shelfBtn.setAttribute("aria-current", String(this.shelf));
       this.railRooms.setAttribute("aria-current", String(!this.shelf));
@@ -14446,17 +14572,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.classList.toggle("lights", !!hits);
       this.drawTags();
       if (this.shelf) {
-        this.drawShelf(shelved, fit, cell, hits);
+        this.strip.show([[this.shelfHead, this.grid]], 0);
+        this.drawShelf(shelved, cols, cell, hits);
         return;
       }
-      const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size));
-      const height = this.grid.parentElement?.clientHeight || window.innerHeight;
-      const rows = Math.max(
-        Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)),
-        this.prefs.rows || 0,
-        ...all.map((r) => r.row + r.size + 1)
-      );
       this.cols = cols;
+      this.strip.show(Array.from(
+        { length: pageCount3(this.world) },
+        (_2, i2) => i2 === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i2, cols, rows, cell, now)
+      ), this.page, { slide });
       this.grid.style.setProperty("--cols", cols);
       this.grid.style.setProperty("--cell", cell + "px");
       this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
@@ -14466,7 +14590,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
         if (taken.has(`${col},${row}`)) continue;
         const making = this.making?.col === col && this.making?.row === row;
-        empty.push(el8("button", {
+        empty.push(el9("button", {
           type: "button",
           class: "rooms-cell" + (making ? " target" : ""),
           "aria-label": "New room here",
@@ -14495,6 +14619,27 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.querySelector(".rooms-name-field")?.focus();
       if (!this.root.hidden) this.hint("rooms");
     }
+    // Another floor, as it is, for the strip: its squares on its empty cells, not to be pressed
+    // (it becomes the drawn floor when the strip comes to rest on it).
+    floorCopy(page, cols, rows, cell, now) {
+      const all = roomsOn3(this.world, page).filter((r) => r.col != null);
+      const taken = /* @__PURE__ */ new Set();
+      for (const r of all) for (const [c, rr2] of cells3(r)) taken.add(`${c},${rr2}`);
+      const empty = [];
+      for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+        if (!taken.has(`${col},${row}`)) empty.push(el9("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row + 1}` }));
+      }
+      const g2 = el9(
+        "div",
+        { class: "rooms-grid rooms-grid-copy", "aria-hidden": "true", inert: "", "data-floor": page },
+        ...empty,
+        ...all.map((r) => this.tile(r, now, null))
+      );
+      g2.style.setProperty("--cols", cols);
+      g2.style.setProperty("--cell", cell + "px");
+      g2.style.setProperty("--cell-gap", GRID.gap + "px");
+      return g2;
+    }
     // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
     // of room to make there.
     onCell(col, row) {
@@ -14522,36 +14667,36 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The kinds of room a new one can be, beside the empty cell clicked.
     kindOptions(c, cell, cols) {
-      return el8(
+      return el9(
         "div",
         this.beside(c, cell, cols, " rooms-kinds"),
-        el8("div", { class: "label" }, "A new room"),
-        ...this.ontologies.map((k2) => el8(
+        el9("div", { class: "label" }, "A new room"),
+        ...this.ontologies.map((k2) => el9(
           "button",
           { type: "button", class: "pick rooms-kind", onclick: () => this.newRoom(c, k2.id) },
-          el8("span", { class: "rooms-kind-name" }, k2.name),
-          el8("span", { class: "pick-note" }, k2.note || "")
+          el9("span", { class: "rooms-kind-name" }, k2.name),
+          el9("span", { class: "pick-note" }, k2.note || "")
         )),
         // Or a room from a room Markdown file (the roomfile feature), in this cell.
-        this.files && el8(
+        this.files && el9(
           "button",
           { type: "button", class: "pick rooms-kind rooms-kind-import", onclick: () => {
             this.making = null;
             this.drawRooms();
             this.importRoomFile(null, c);
           } },
-          el8("span", { class: "rooms-kind-name" }, "Import a room…"),
-          el8("span", { class: "pick-note" }, "from a .md file")
+          el9("span", { class: "rooms-kind-name" }, "Import a room…"),
+          el9("span", { class: "pick-note" }, "from a .md file")
         )
       );
     }
     // The menu a right-click on an empty cell opens: Import file…, a room from a room Markdown file
     // (the roomfile feature), placed in this cell.
     cellMenu(c, cell, cols) {
-      return el8(
+      return el9(
         "div",
         { ...this.beside(c, cell, cols, " rooms-kinds rooms-cell-menu"), role: "menu" },
-        el8(
+        el9(
           "button",
           {
             type: "button",
@@ -14563,24 +14708,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               this.importRoomFile(null, { col: c.col, row: c.row });
             }
           },
-          el8("span", { class: "rooms-kind-name" }, "Import file…"),
-          el8("span", { class: "pick-note" }, ".md")
+          el9("span", { class: "rooms-kind-name" }, "Import file…"),
+          el9("span", { class: "pick-note" }, ".md")
         )
       );
     }
     drawPages() {
-      const n = pageCount2(this.world);
+      const n = pageCount3(this.world);
       this.pagesBar.hidden = this.shelf;
       this.pagesBar.replaceChildren(
-        ...Array.from({ length: n }, (_2, i2) => el8("button", {
+        ...Array.from({ length: n }, (_2, i2) => el9("button", {
           type: "button",
           class: "rail-item rooms-page",
           "data-page": i2,
           ...i2 === this.page ? { "aria-current": "page" } : {},
           onclick: () => this.showPage(i2)
         }, `Floor ${i2 + 1}`)),
-        el8("button", { type: "button", class: "rail-item rooms-page rooms-page-new", onclick: () => {
-          const i2 = addPage2(this.world);
+        el9("button", { type: "button", class: "rail-item rooms-page rooms-page-new", onclick: () => {
+          const i2 = addPage3(this.world);
           this.save();
           this.showPage(i2);
         } }, "+ New floor")
@@ -14590,7 +14735,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // a glow if it was the last room gone into, a dot if a thought was left half written there, a
     // thin bar along its top if it is locked, and how many finds it holds while the lights are on.
     tile(r, now = Date.now(), hits = null) {
-      const look = squareLook2(r, r.id === MESSY2, this.prefs, this.palette);
+      const look = squareLook2(r, r.id === MESSY3, this.prefs, this.palette);
       const written = roomThoughts2(this.world, r.id);
       const count2 = written.length;
       const glow2 = light2(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
@@ -14598,13 +14743,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const name5 = this.renaming === r.id ? this.nameField(r, () => {
         this.renaming = null;
         this.drawRooms();
-      }) : el8("span", { class: "rooms-tile-name", title: r.name }, r.name);
+      }) : el9("span", { class: "rooms-tile-name", title: r.name }, r.name);
       const lines2 = peek2(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
       const found = hits?.[r.id] || 0;
-      const tile = el8(
+      const tile = el9(
         "div",
         {
-          class: "rooms-tile" + (lit ? " lit" : "") + (r.id === MESSY2 ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
+          class: "rooms-tile" + (lit ? " lit" : "") + (r.id === MESSY3 ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
           role: "button",
           tabindex: 0,
           style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
@@ -14645,19 +14790,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.held = null;
           }
         },
-        lines2.length || r.desc ? el8(
+        lines2.length || r.desc ? el9(
           "div",
           { class: "rooms-peek", "aria-hidden": "true" },
-          r.desc ? el8("div", { class: "rooms-peek-desc" }, r.desc) : null,
-          ...lines2.map((t) => el8("div", { class: "rooms-peek-line" }, t))
+          r.desc ? el9("div", { class: "rooms-peek-desc" }, r.desc) : null,
+          ...lines2.map((t) => el9("div", { class: "rooms-peek-line" }, t))
         ) : null,
-        this.room?.hasDraft(r.id) ? el8("span", { class: "rooms-tile-dot", title: "A thought left half written" }) : null,
-        typeof found === "number" && found ? el8("span", { class: "rooms-tile-found" }, String(found)) : null,
-        el8(
+        this.room?.hasDraft(r.id) ? el9("span", { class: "rooms-tile-dot", title: "A thought left half written" }) : null,
+        typeof found === "number" && found ? el9("span", { class: "rooms-tile-found" }, String(found)) : null,
+        el9(
           "div",
           { class: "rooms-tile-label" },
           name5,
-          el8("span", { class: "rooms-tile-count" }, count2 ? String(count2) : "")
+          el9("span", { class: "rooms-tile-count" }, count2 ? String(count2) : "")
         )
       );
       return tile;
@@ -14681,7 +14826,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)), Math.ceil(shelved.length / cols) + 1);
       const empty = [];
       for (let i2 = shelved.length; i2 < rows * cols; i2++) {
-        empty.push(el8("div", { class: "rooms-cell inert", "aria-hidden": "true", style: `grid-column:${i2 % cols + 1};grid-row:${Math.floor(i2 / cols) + 1}`, onclick: () => {
+        empty.push(el9("div", { class: "rooms-cell inert", "aria-hidden": "true", style: `grid-column:${i2 % cols + 1};grid-row:${Math.floor(i2 / cols) + 1}`, onclick: () => {
           if (this.roomSel || this.roomPick) {
             this.roomSel = this.roomPick = null;
             this.drawRooms();
@@ -14700,19 +14845,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.replaceChildren(...empty, ...tiles2, ...panel ? [panel] : []);
     }
     shelfOptions(r, col, row, cell, cols) {
-      const word = (label, fn, extra = "") => el8("button", { type: "button", class: "word " + extra, onclick: fn }, label);
-      return el8(
+      const word = (label, fn, extra = "") => el9("button", { type: "button", class: "word " + extra, onclick: fn }, label);
+      return el9(
         "div",
         this.beside({ col, row }, cell, cols),
-        el8("div", { class: "label" }, r.name),
-        r.desc ? el8("p", { class: "pop-note" }, r.desc) : null,
+        el9("div", { class: "label" }, r.name),
+        r.desc ? el9("p", { class: "pop-note" }, r.desc) : null,
         word("Go in", () => this.openRoom(r.id), "rooms-options-go"),
         word("Restore", () => {
-          restore2(this.world, r.id, null, this.gridSize().cols);
+          restore2(this.world, r.id);
+          const out = this.floors.place(r.id);
           this.roomSel = null;
           this.save();
           this.drawRooms();
-          this.toast(`${r.name} is back among the rooms.`);
+          if (!out?.spilled) this.toast(`${r.name} is back among the rooms.`);
         }),
         word("Delete", () => {
           remove3(this.world, r.id);
@@ -14745,7 +14891,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (this.regrouping?.toLowerCase() === t.tag.toLowerCase()) return this.groupField(t.tag);
         const mode = tagGroup2(this.world, t.tag, onts) === ONTOLOGY2;
         let timer = 0;
-        return el8("button", {
+        return el9("button", {
           type: "button",
           class: "rail-item rooms-tag-pick" + (mode ? "" : " draggable"),
           role: "listitem",
@@ -14777,9 +14923,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           },
           onpointerup: () => clearTimeout(timer),
           onpointerleave: () => clearTimeout(timer)
-        }, el8("span", { class: "rooms-tag-name" }, t.tag), el8("span", { class: "rooms-tag-n" }, String(t.n)));
+        }, el9("span", { class: "rooms-tag-name" }, t.tag), el9("span", { class: "rooms-tag-n" }, String(t.n)));
       };
-      const plus = (group, label) => this.makingTag && this.makingTag.group === group ? this.makeField(group) : el8("button", {
+      const plus = (group, label) => this.makingTag && this.makingTag.group === group ? this.makeField(group) : el9("button", {
         type: "button",
         class: "rail-item rooms-tag-plus",
         title: label,
@@ -14788,10 +14934,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.makingTag = { group };
           this.drawTags();
         }
-      }, el8("span", { "aria-hidden": "true" }, "+"), group == null ? "group" : "tag");
+      }, el9("span", { "aria-hidden": "true" }, "+"), group == null ? "group" : "tag");
       const none = !this.tagLight;
       this.tagsList.replaceChildren(
-        el8("button", {
+        el9("button", {
           type: "button",
           class: "rail-item rooms-tag-head",
           role: "listitem",
@@ -14807,10 +14953,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...grouped.map((g2) => {
           const key2 = keyOf(g2), open = this.openGroup === key2;
           const lit = this.tagLight && (tagGroup2(this.world, this.tagLight, onts) || "").toLowerCase() === key2;
-          return el8(
+          return el9(
             "div",
             { class: "rooms-tag-fold" + (open ? " open" : ""), role: "listitem" },
-            el8(
+            el9(
               "button",
               {
                 type: "button",
@@ -14823,10 +14969,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   this.drawTags();
                 }
               },
-              el8("span", {}, g2.group || "Other"),
-              el8("span", { class: "rooms-tag-caret", "aria-hidden": "true" }, "›")
+              el9("span", {}, g2.group || "Other"),
+              el9("span", { class: "rooms-tag-caret", "aria-hidden": "true" }, "›")
             ),
-            open ? el8(
+            open ? el9(
               "div",
               { class: "rooms-tag-tags", role: "list" },
               ...g2.tags.map(pick),
@@ -14851,7 +14997,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         this.drawTags();
       };
-      const field3 = el8("input", {
+      const field3 = el9("input", {
         class: "rooms-tag-field rooms-make-field",
         placeholder: forGroup ? "New group" : "New tag",
         "aria-label": forGroup ? "A new group" : "A new tag",
@@ -14874,7 +15020,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       });
       queueMicrotask(() => field3.focus({ preventScroll: true }));
-      return el8("div", { class: "rooms-group-edit", role: "listitem" }, field3);
+      return el9("div", { class: "rooms-group-edit", role: "listitem" }, field3);
     }
     // Dragging a tag from the Arrange by list: a small chip follows the pointer, and the square it is
     // let go over gets the tag. A press that doesn't move stays a click.
@@ -14883,11 +15029,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const start = { x: e.clientX, y: e.clientY };
       let chip = null, over = null;
       const tileAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.(".rooms-tile[data-room]") || null;
-      const move4 = (ev) => {
+      const move5 = (ev) => {
         if (!chip) {
           if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
           moved();
-          chip = el8("div", { class: "panel rooms-tag-ghost", "aria-hidden": "true" }, tag);
+          chip = el9("div", { class: "panel rooms-tag-ghost", "aria-hidden": "true" }, tag);
           this.root.append(chip);
           this.grid.classList.add("tag-dragging");
         }
@@ -14900,7 +15046,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       };
       const up = (ev) => {
-        window.removeEventListener("pointermove", move4);
+        window.removeEventListener("pointermove", move5);
         window.removeEventListener("pointerup", up);
         window.removeEventListener("pointercancel", up);
         if (!chip) return;
@@ -14912,7 +15058,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.heldTag = false;
         }, 0);
         const id = ev.type === "pointerup" && tileAt(ev)?.dataset.room;
-        const r = id && room3(this.world, id);
+        const r = id && room4(this.world, id);
         if (!r) return;
         if (addTag2(this.world, id, tag, this.ontologies)) {
           this.save();
@@ -14920,7 +15066,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.toast(`${r.name} is tagged ${tag}.`);
         } else this.toast(`${r.name} has ${tag} already.`);
       };
-      window.addEventListener("pointermove", move4);
+      window.addEventListener("pointermove", move5);
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     }
@@ -14931,8 +15077,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (keep && setTagGroup2(this.world, tag, value, this.ontologies)) this.save();
         this.drawTags();
       };
-      const list2 = el8("datalist", { id: "rooms-group-list" }, ...groupNames2(this.world).slice(1).map((g2) => el8("option", { value: g2 })));
-      const field3 = el8("input", {
+      const list2 = el9("datalist", { id: "rooms-group-list" }, ...groupNames2(this.world).slice(1).map((g2) => el9("option", { value: g2 })));
+      const field3 = el9("input", {
         class: "rooms-tag-field rooms-group-field",
         value: tagGroup2(this.world, tag, this.ontologies) || "",
         placeholder: `${tag} in…`,
@@ -14960,7 +15106,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         field3.focus({ preventScroll: true });
         field3.select();
       });
-      return el8("div", { class: "rooms-group-edit", role: "listitem" }, field3, list2);
+      return el9("div", { class: "rooms-group-edit", role: "listitem" }, field3, list2);
     }
     // ---- Search lights ----
     openLights() {
@@ -14979,7 +15125,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The room the lights found most in, on the page that shows.
     bestLit() {
-      const ids = new Set((this.shelf ? archived2(this.world) : roomsOn2(this.world, this.page)).map((r) => r.id));
+      const ids = new Set((this.shelf ? archived2(this.world) : roomsOn3(this.world, this.page)).map((r) => r.id));
       const hits = this.hitsOn(ids);
       return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
@@ -15009,8 +15155,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawRoomsSoon();
       };
       const look = this.lookOf(r);
-      const lightness2 = el8("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set({ light: +e.target.value }) });
-      const nameField = el8("input", {
+      const lightness2 = el9("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set({ light: +e.target.value }) });
+      const nameField = el9("input", {
         class: "pop-name",
         value: r.name,
         "aria-label": "Room name",
@@ -15025,13 +15171,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       });
-      const word = (label, fn, extra = "") => el8("button", { type: "button", class: "word " + extra, onclick: fn }, label);
-      const panel = el8(
+      const word = (label, fn, extra = "") => el9("button", { type: "button", class: "word " + extra, onclick: fn }, label);
+      const panel = el9(
         "div",
         this.beside(r, cell, cols),
         nameField,
         // A line or two about the room: shown under its name inside, and in its square's peek.
-        el8("textarea", {
+        el9("textarea", {
           class: "pop-desc",
           rows: 2,
           maxlength: DESC2,
@@ -15053,43 +15199,43 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         word("Go in", () => this.openRoom(r.id), "rooms-options-go"),
         // Its kind: a small room keeps its one mode; a big one switches inside.
         // (its tags below name the modes).
-        el8("p", { class: "pop-note" }, isBig2(r) ? "Every mode · switched inside" : "One mode"),
+        el9("p", { class: "pop-note" }, isBig2(r) ? "Every mode · switched inside" : "One mode"),
         this.tagsRow(r),
         // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
-        el8(
+        el9(
           "label",
           { class: "rooms-slider" },
-          el8("span", {}, "Colour"),
-          el8("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
+          el9("span", {}, "Colour"),
+          el9("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
             const L = toOklch2(rgb2(e.target.value))[0];
             set({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
             lightness2.value = L;
           } })
         ),
-        el8("label", { class: "rooms-slider" }, el8("span", {}, "Lightness"), lightness2),
-        el8(
+        el9("label", { class: "rooms-slider" }, el9("span", {}, "Lightness"), lightness2),
+        el9(
           "label",
           { class: "rooms-slider" },
-          el8("span", {}, "Opacity"),
-          el8("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) })
+          el9("span", {}, "Opacity"),
+          el9("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) })
         ),
-        r.locked ? null : el8(
+        r.locked ? null : el9(
           "div",
           { class: "pop-row" },
-          el8("span", { class: "label" }, "Size"),
-          ...[1, 2].map((n) => el8("button", {
+          el9("span", { class: "label" }, "Size"),
+          ...[1, 2].map((n) => el9("button", {
             type: "button",
             class: "word",
             "aria-pressed": String((r.size || 1) === n),
             onclick: () => {
-              if (sizeRoom2(this.world, r.id, n, this.cols)) {
+              if (this.floors.resize(r.id, n)) {
                 this.save();
                 this.drawRooms();
               } else this.toast("There isn't room for it to grow here. Move it first.");
             }
           }, n === 1 ? "1 × 1" : "2 × 2"))
         ),
-        el8(
+        el9(
           "div",
           { class: "pop-row" },
           r.tint || r.light != null || r.opacity != null ? word("Back to the tint", () => {
@@ -15105,7 +15251,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.save();
             this.drawRooms();
           }),
-          r.id !== MESSY2 && !r.locked ? word("Archive", () => {
+          r.id !== MESSY3 && !r.locked ? word("Archive", () => {
             archive2(this.world, r.id);
             this.roomSel = null;
             this.save();
@@ -15114,7 +15260,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }) : null,
           // Taken out as room Markdown (the roomfile feature); a locked room too.
           this.files ? word("Export as Markdown", () => this.exportRoomFile(r.id)) : null,
-          r.id !== MESSY2 && !r.locked ? word("Delete", () => {
+          r.id !== MESSY3 && !r.locked ? word("Delete", () => {
             remove3(this.world, r.id);
             this.roomSel = this.roomPick = null;
             this.save();
@@ -15138,12 +15284,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       };
-      const list2 = el8(
+      const list2 = el9(
         "datalist",
         { id: "rooms-tag-list" },
-        ...allTags2(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el8("option", { value: t.tag }))
+        ...allTags2(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el9("option", { value: t.tag }))
       );
-      const field3 = el8("input", {
+      const field3 = el9("input", {
         class: "rooms-tag-field",
         placeholder: "+ tag",
         title: "A tag, or Group: tag",
@@ -15170,14 +15316,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.tagFocus = null;
         requestAnimationFrame(() => field3.focus({ preventScroll: true }));
       }
-      return el8(
+      return el9(
         "div",
         { class: "rooms-tags", role: "group", "aria-label": "Tags" },
-        ...mine.map((o2) => el8(
+        ...mine.map((o2) => el9(
           "span",
           { class: "rooms-chip" + (o2.auto ? " auto" : ""), title: o2.auto ? "Its mode: always a tag" : "" },
           o2.tag,
-          o2.auto ? null : el8("button", { type: "button", class: "rooms-chip-x", "aria-label": `Take off ${o2.tag}`, onclick: () => after(() => removeTag2(this.world, r.id, o2.tag)) }, "×")
+          o2.auto ? null : el9("button", { type: "button", class: "rooms-chip-x", "aria-label": `Take off ${o2.tag}`, onclick: () => after(() => removeTag2(this.world, r.id, o2.tag)) }, "×")
         )),
         field3,
         list2
@@ -15189,17 +15335,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.roomsFrame = requestAnimationFrame(() => {
         this.roomsFrame = 0;
         for (const tile of this.grid.querySelectorAll(".rooms-tile")) {
-          const r = room3(this.world, tile.dataset.room);
-          if (r) tile.style.setProperty("--square", squareLook2(r, r.id === MESSY2, this.prefs, this.palette).fill);
+          const r = room4(this.world, tile.dataset.room);
+          if (r) tile.style.setProperty("--square", squareLook2(r, r.id === MESSY3, this.prefs, this.palette).fill);
         }
       });
     }
-    // The grid cell under a point, or null.
-    cellAt(x, y) {
-      const box = this.grid.getBoundingClientRect();
-      const step = parseFloat(this.grid.style.getPropertyValue("--cell")) + GRID.gap;
+    // The grid cell under a point (on `grid`: this floor's, or a copy in the strip), or null.
+    cellAt(x, y, grid2 = this.grid) {
+      const box = grid2.getBoundingClientRect();
+      const step = parseFloat(grid2.style.getPropertyValue("--cell")) + GRID.gap;
       const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
-      return col >= 0 && row >= 0 && col < this.cols ? { col, row } : null;
+      return col >= 0 && row >= 0 && col < this.cols && row < this.floors.size.rows ? { col, row } : null;
     }
     // What is under a point while a square is dragged: a page number, or the Archive.
     dropAt(x, y) {
@@ -15212,25 +15358,31 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
     // moves it to the cell it is let go over, if that is free (a room dropped on another snaps
-    // back), or onto a page number or Archive.
+    // back), or onto a page number or Archive. Held at the top or bottom edge of the canvas, the
+    // strip slides to the floor above or below, so it can be dropped there.
     onTileDown(e, r, tile) {
       if (e.button || e.target.closest("input, textarea, select")) return;
       if (e.ctrlKey && MAC) return;
       const start = { x: e.clientX, y: e.clientY };
       const grab = this.cellAt(e.clientX, e.clientY);
       const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
-      let dragging = false, target = null, over = null;
+      const top0 = this.grid.getBoundingClientRect().top;
+      let dragging = false, target = null, over = null, last = null;
+      let floor = this.page;
+      let edge = 0, edgeTimer = 0, frame2 = 0;
       this.held = null;
       const hold = e.pointerType !== "mouse" && setTimeout(() => {
         this.held = r.id;
         finish();
         this.chooseRoom(r.id, true);
       }, HOLD);
-      const spot2 = (ev) => {
-        const at2 = this.cellAt(ev.clientX, ev.clientY);
+      const gridOf = (page) => page === this.page ? this.grid : this.strip.floor(page)?.querySelector(".rooms-grid");
+      const spot3 = (ev) => {
+        const g2 = gridOf(floor);
+        const at2 = g2 && this.cellAt(ev.clientX, ev.clientY, g2);
         return at2 && { col: at2.col - offset.col, row: at2.row - offset.row };
       };
-      const drop = el8("div", { class: "rooms-drop", hidden: true });
+      const drop = el9("div", { class: "rooms-drop", hidden: true });
       this.grid.append(drop);
       const mark = (c) => {
         if (!c) {
@@ -15238,15 +15390,51 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         const size = r.size || 1;
-        const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && cells2({ ...r, col: c.col, row: c.row }).every(([cc, rr2]) => !roomAt2(this.world, cc, rr2, r.id, this.page));
+        const free2 = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && c.row + size <= this.floors.size.rows && cells3({ ...r, col: c.col, row: c.row }).every(([cc, rr2]) => !roomAt3(this.world, cc, rr2, r.id, floor));
+        const g2 = gridOf(floor);
+        if (g2 && drop.parentElement !== g2) g2.append(drop);
         drop.hidden = false;
-        drop.classList.toggle("taken", !free);
+        drop.classList.toggle("taken", !free2);
         drop.style.gridColumn = `${c.col + 1} / span ${size}`;
         drop.style.gridRow = `${c.row + 1} / span ${size}`;
       };
       const lit = (n) => {
         for (const x of this.root.querySelectorAll(".drop-on")) if (x !== n) x.classList.remove("drop-on");
         n?.classList.add("drop-on");
+      };
+      const follow = () => {
+        if (!last) return;
+        const shift2 = this.grid.getBoundingClientRect().top - top0;
+        tile.style.transform = `translate(${last.clientX - start.x}px, ${last.clientY - start.y - shift2}px)`;
+      };
+      const following = () => {
+        follow();
+        frame2 = this.strip.sliding ? requestAnimationFrame(following) : 0;
+      };
+      const slide = () => {
+        const next = floor + edge;
+        if (!edge || next < 0 || next >= pageCount3(this.world)) return;
+        floor = next;
+        this.strip.slideTo(floor);
+        for (const b of this.pagesBar.querySelectorAll("[data-page]")) {
+          if (+b.dataset.page === floor) b.setAttribute("aria-current", "page");
+          else b.removeAttribute("aria-current");
+        }
+        cancelAnimationFrame(frame2);
+        following();
+        edgeTimer = setTimeout(() => {
+          slide();
+          if (last) moveFn(last);
+        }, 900);
+      };
+      const atEdge = (ev) => {
+        if (r.id === MESSY3) return;
+        const box = this.strip.el.getBoundingClientRect();
+        const now = ev.clientY < box.top + 36 ? -1 : ev.clientY > box.bottom - 36 ? 1 : 0;
+        if (now === edge) return;
+        edge = now;
+        clearTimeout(edgeTimer);
+        if (edge) edgeTimer = setTimeout(slide, 450);
       };
       const moveFn = (ev) => {
         const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
@@ -15259,16 +15447,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.grid.classList.add("dragging");
           this.roomSel = null;
         }
-        tile.style.transform = `translate(${dx}px, ${dy}px)`;
+        last = ev;
+        follow();
+        atEdge(ev);
         over = this.dropAt(ev.clientX, ev.clientY);
         if (over?.page === (r.page || 0)) over = null;
-        if ((over?.archive || over?.page != null) && r.id === MESSY2) over = null;
+        if ((over?.archive || over?.page != null) && r.id === MESSY3) over = null;
         lit(over?.el);
-        target = over ? null : spot2(ev);
+        target = over ? null : spot3(ev);
         mark(target);
       };
       const finish = () => {
         clearTimeout(hold);
+        clearTimeout(edgeTimer);
+        cancelAnimationFrame(frame2);
         window.removeEventListener("pointermove", moveFn);
         window.removeEventListener("pointerup", up);
         window.removeEventListener("pointercancel", up);
@@ -15290,18 +15482,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         tile.style.transform = "";
-        const cols = this.cols || this.gridSize().cols;
+        const home = r.page || 0;
         if (over?.page != null) {
-          if (toPage2(this.world, r.id, over.page, cols)) {
+          const moved = this.floors.toFloor(r.id, over.page);
+          if (moved === "full") this.toast(`Floor ${over.page + 1} is full.`);
+          else if (moved) {
             this.save();
-            this.toast(`${r.name} is on page ${over.page + 1}.`);
+            this.toast(`${r.name} is on Floor ${over.page + 1}.`);
           }
         } else if (over?.archive) {
           if (archive2(this.world, r.id)) {
             this.save();
             this.toast(`${r.name} is in the Archive.`);
           }
-        } else if (target && placeRoom2(this.world, r.id, target.col, target.row, this.cols)) this.save();
+        } else if (target && floor !== home) {
+          if (this.floors.toFloor(r.id, floor, target) === true) this.save();
+        } else if (target && this.floors.move(r.id, target.col, target.row)) this.save();
+        this.page = floor;
         this.drawRooms();
       };
       window.addEventListener("pointermove", moveFn);
@@ -15311,8 +15508,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A new room of a kind (its mode), in the cell asked for (or the first free one), with
     // its name ready to write.
     newRoom(cell = null, kind = DEFAULT_MODE3) {
-      const r = addRoom3(this.world, "Untitled", Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
-      if (r) seedRoomSettings3(this.world, r.id, this.ontPrefs);
+      const r = addRoom3(this.world, "Untitled", Date.now(), { page: this.page }, kind);
+      if (r) {
+        seedRoomSettings3(this.world, r.id, this.ontPrefs);
+        const out = this.floors.place(r.id, cell);
+        if (out) this.page = out.page;
+      }
       this.making = null;
       if (!r) {
         this.toast("A room can't be made here.");
@@ -15337,7 +15538,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         done();
       };
-      const field3 = el8("input", {
+      const field3 = el9("input", {
         class: "rooms-name-field",
         value: r.name,
         "aria-label": "Room name",
@@ -15353,11 +15554,102 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
+  // dist/web/features/rooms/strip.js
+  var SLIDE = 400;
+  var EASE = "cubic-bezier(.65, 0, .25, 1)";
+  var QUIET = 220;
+  var reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  var Strip = class {
+    constructor({ onFloor = () => {
+    } } = {}) {
+      this.onFloor = onFloor;
+      this.page = 0;
+      this.count = 0;
+      this.track = document.createElement("div");
+      this.track.className = "rooms-strip";
+      this.el = document.createElement("div");
+      this.el.className = "rooms-grid-wrap rooms-strip-view";
+      this.el.append(this.track);
+      this.el.addEventListener("wheel", (e) => this.wheel(e), { passive: false });
+    }
+    get height() {
+      return this.el.clientHeight;
+    }
+    get sliding() {
+      return !!this.anim;
+    }
+    floor(i2) {
+      return this.track.children[i2] || null;
+    }
+    show(floors, page, { slide = false } = {}) {
+      const from = this.page;
+      this.track.replaceChildren(...floors.map((node) => {
+        const box = document.createElement("div");
+        box.className = "rooms-floor";
+        box.append(...[].concat(node));
+        return box;
+      }));
+      this.count = floors.length;
+      if (slide && from !== page && from < this.count) this.slideTo(page, from);
+      else if (this.anim && page === this.page) return;
+      else {
+        this.stop();
+        this.page = page;
+        this.place(page);
+      }
+    }
+    // Slides to floor `page` (from the one at rest, or `from`).
+    slideTo(page, from = this.page) {
+      page = Math.max(0, Math.min(this.count - 1, page));
+      this.stop();
+      this.page = page;
+      if (from === page || reduced() || !this.track.animate) {
+        this.place(page);
+        return;
+      }
+      const H3 = this.height;
+      this.place(page);
+      this.anim = this.track.animate([{ transform: `translateY(${-from * H3}px)` }, { transform: `translateY(${-page * H3}px)` }], { duration: SLIDE, easing: EASE });
+      const done = () => {
+        this.anim = null;
+      };
+      this.anim.finished.then(done, done);
+    }
+    stop() {
+      this.anim?.cancel();
+      this.anim = null;
+    }
+    place(page) {
+      this.track.style.transform = `translateY(${-page * this.height}px)`;
+    }
+    // One gesture, one floor: the first wheel event past a small push asks for the next floor, and
+    // the rest of that gesture (a trackpad's long tail) is let go until it goes quiet. A floor that
+    // scrolls itself (cells at their smallest) scrolls first. Ctrl+wheel (zoom) is left alone.
+    wheel(e) {
+      if (e.ctrlKey) return;
+      const box = this.track.children[this.page];
+      const d = e.deltaY;
+      if (box && box.scrollHeight > box.clientHeight + 1) {
+        const atTop = box.scrollTop <= 0, atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
+        if (d < 0 && !atTop || d > 0 && !atEnd) return;
+      }
+      e.preventDefault();
+      clearTimeout(this.quiet);
+      this.quiet = setTimeout(() => {
+        this.gesture = false;
+      }, QUIET);
+      if (this.gesture || this.anim || Math.abs(d) < 4) return;
+      this.gesture = true;
+      const next = this.page + Math.sign(d);
+      if (next >= 0 && next < this.count) this.onFloor(next);
+    }
+  };
+
   // dist/web/features/rooms/Rooms.js
   var Rooms = class extends Feature {
     start() {
       this.w = this.use("world");
-      bind2(this.w.lib);
+      bind3(this.w.lib);
       this.inRoom = null;
       this.renaming = null;
       this.roomPick = null;
@@ -15375,9 +15667,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.edited = /* @__PURE__ */ new Set();
       this.backdrop = this.use("backdrop");
       this.files = this.use("roomfile");
+      this.floors = this.use("floors");
       this.build();
       this.on("world:palette", () => this.repaint());
       this.on("world:look", () => this.repaint());
+      this.on("floors:size", () => {
+        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+      });
       this.on("world:saved", () => {
         if (!this.inRoom) this.showSaved();
       });
@@ -15401,16 +15697,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       this.defineSlot("rooms.room", "The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.");
       this.provide("create", { open: () => this.open() });
-      const w2 = this;
       this.provide("rooms", {
         openRoom: (id) => this.openRoom(id),
         // goes into a room (from a room, too)
-        showRooms: () => this.showRooms(),
+        showRooms: () => this.showRooms()
         // back to this page, from a room
-        get cols() {
-          return w2.cols;
-        }
-        // how many columns the grid has
       });
       document.addEventListener("keydown", (e) => this.onKey(e));
       window.addEventListener("resize", () => {
@@ -15444,7 +15735,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.slot("rooms.room").items[0] || null;
     }
     lookOf(r) {
-      return roomLook2(r, this.palette, r.id === MESSY2, this.prefs);
+      return roomLook2(r, this.palette, r.id === MESSY3, this.prefs);
     }
     // ---- Opening and closing ----
     open() {
@@ -15498,7 +15789,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     askNote() {
       this.leaving = true;
       this.drawRooms();
-      const text = el8("textarea", { class: "rooms-sheet-body", rows: 3, placeholder: "Where you were, what to pick up next", "aria-label": "Comment for next time" });
+      const text = el9("textarea", { class: "rooms-sheet-body", rows: 3, placeholder: "Where you were, what to pick up next", "aria-label": "Comment for next time" });
       const keep = () => {
         const t = text.value.trim();
         if (t) this.storage.set("note", { text: t, at: Date.now() });
@@ -15513,14 +15804,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep();
       };
       this.leaveBox.replaceChildren(
-        el8("div", { class: "label" }, "Add a comment for next time?"),
+        el9("div", { class: "label" }, "Add a comment for next time?"),
         text,
-        el8(
+        el9(
           "div",
           { class: "sheet-words" },
-          el8("button", { type: "button", class: "word", onclick: keep }, "Keep"),
-          el8("button", { type: "button", class: "word", onclick: () => this.close() }, "Skip"),
-          el8("span", { class: "sheet-keys" }, "Enter keeps it · Ctrl+Enter a new line")
+          el9("button", { type: "button", class: "word", onclick: keep }, "Keep"),
+          el9("button", { type: "button", class: "word", onclick: () => this.close() }, "Skip"),
+          el9("span", { class: "sheet-keys" }, "Enter keeps it · Ctrl+Enter a new line")
         )
       );
       this.leaveBox.hidden = false;
@@ -15532,44 +15823,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.noteLine.hidden = !note?.text;
       if (!note?.text) return;
       this.noteLine.replaceChildren(
-        el8("span", {}, note.text),
-        el8("button", { type: "button", class: "word rooms-note-x", title: "Dismiss", onclick: () => {
+        el9("span", {}, note.text),
+        el9("button", { type: "button", class: "word rooms-note-x", title: "Dismiss", onclick: () => {
           this.storage.set("note", null);
           this.noteLine.hidden = true;
         } }, "dismiss")
       );
     }
-    // Shows a floor of the rooms page.
+    // Shows a floor of the rooms page: the strip of floors slides to it (from the floor that showed).
     showPage(page = this.page) {
       if (this.inRoom) this.showRooms();
       this.closeLights();
-      const from = this.shelf ? null : this.page;
-      const old = from != null && from !== page && !this.roomsPage.hidden ? this.grid.cloneNode(true) : null;
-      const oldTop = this.grid.parentElement?.scrollTop || 0;
+      const slide = !this.shelf && page !== this.page && !this.roomsPage.hidden;
       this.page = page;
       this.shelf = false;
       this.roomPick = this.roomSel = this.making = null;
       this.renaming = null;
-      this.grid.parentElement?.scrollTo?.(0, 0);
-      this.drawRooms();
-      if (old) this.scrollPage(old, oldTop, page > from);
-    }
-    // Going to another floor scrolls: to a later one the old one goes up and away and the new one
-    // comes up from below; to an earlier one, the other way.
-    scrollPage(old, oldTop, down) {
-      const wrap = this.grid.parentElement;
-      if (!wrap?.animate || this.grid.animate == null || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-      this.pageGhost?.remove();
-      const H3 = wrap.clientHeight, d = down ? 1 : -1;
-      old.classList.add("rooms-page-ghost");
-      old.setAttribute("aria-hidden", "true");
-      old.inert = true;
-      Object.assign(old.style, { position: "absolute", top: `${this.grid.offsetTop - oldTop}px`, left: `${this.grid.offsetLeft}px`, margin: "0" });
-      wrap.append(old);
-      this.pageGhost = old;
-      const timing = { duration: 560, easing: "cubic-bezier(.65, 0, .25, 1)" };
-      old.animate([{ transform: "none" }, { transform: `translateY(${-d * H3}px)` }], timing).finished.then(() => old.remove(), () => old.remove());
-      this.grid.animate([{ transform: `translateY(${d * H3}px)` }, { transform: "none" }], timing);
+      this.drawRooms({ slide });
     }
     // Back to the rooms page (from a room, the room feature leaves it, and its square takes it back).
     showRooms() {
@@ -15586,7 +15856,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // feature shows it, zooming in from its square when it is on the page. Back then goes to its
     // floor (or the Archive, if it was opened from there).
     openRoom(id, seed = "") {
-      const r = room3(this.world, id);
+      const r = room4(this.world, id);
       if (!r || !this.room) return;
       if (!this.shelf) this.page = r.page || 0;
       this.closeLights();
@@ -15624,12 +15894,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       clearTimeout(this.zoomTimer);
       this.zoomAnim?.cancel();
       const tile = this.grid.querySelector(`.rooms-tile[data-room="${id}"]`);
-      const r = room3(this.world, id);
+      const r = room4(this.world, id);
       if (!tile || !r || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       const look = this.lookOf(r);
       const a = tile.getBoundingClientRect();
       const W2 = window.innerWidth, H3 = window.innerHeight;
-      const veil = el8("div", { class: "expand go", style: `background:linear-gradient(${look.top}, ${look.bottom})` });
+      const veil = el9("div", { class: "expand go", style: `background:linear-gradient(${look.top}, ${look.bottom})` });
       this.shrinkVeil = veil;
       this.root.append(veil);
       veil.getBoundingClientRect();
@@ -15719,12 +15989,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         else this.back();
         return;
       }
+      if ((e.key === "PageUp" || e.key === "PageDown") && !mod && !this.shelf) {
+        e.preventDefault();
+        const next = this.page + (e.key === "PageDown" ? 1 : -1);
+        if (next >= 0 && next < pageCount3(this.world)) this.showPage(next);
+        return;
+      }
       if (this.shortcut(e, mod)) return;
       if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
       if (e.target.closest?.("button") && e.key === " ") return;
       if (e.key === " ") return;
       e.preventDefault();
-      this.openRoom(MESSY2, e.key);
+      this.openRoom(MESSY3, e.key);
     }
     // ?: the keys. On a grid, Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in;
     // the ContextMenu key (or Shift+F10) opens its properties. True when the key was used.
@@ -15736,9 +16012,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return true;
       }
       const id = this.roomSel || this.roomPick;
-      const r = id && room3(this.world, id);
+      const r = id && room4(this.world, id);
       const deletes = k2 === "Delete" || MAC && e.metaKey && k2 === "Backspace";
-      if (deletes && r && r.id !== MESSY2 && !shut3(this.world, r.id)) {
+      if (deletes && r && r.id !== MESSY3 && !shut3(this.world, r.id)) {
         e.preventDefault();
         remove3(this.world, r.id);
         this.roomSel = this.roomPick = null;
@@ -15783,11 +16059,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ["Escape", "let go, or go back"],
         ["?", "these keys"]
       ];
-      this.keysBox.replaceChildren(el8(
+      this.keysBox.replaceChildren(el9(
         "div",
         { class: "panel top-sheet rooms-keys-panel" },
-        el8("div", { class: "label" }, "Keys"),
-        el8("dl", { class: "keys-list" }, rows.flatMap(([a, b]) => [el8("dt", {}, a), el8("dd", {}, b)]))
+        el9("div", { class: "label" }, "Keys"),
+        el9("dl", { class: "keys-list" }, rows.flatMap(([a, b]) => [el9("dt", {}, a), el9("dd", {}, b)]))
       ));
       this.keysBox.hidden = false;
       this.keysBox.onpointerdown = () => this.closeKeys();
@@ -15809,16 +16085,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     async importRoomFile(file = null, cell = null) {
       if (!this.files) return;
       const page = this.shelf ? 0 : this.page;
-      const r = await this.files.importRoom({ file, cell, page, cols: this.cols || this.gridSize().cols, ok: () => !this.root.hidden });
+      const r = await this.files.importRoom({ file, cell, page, ok: () => !this.root.hidden });
       if (!r) return;
+      const at2 = r.page || 0;
       this.making = this.roomSel = null;
       this.roomPick = r.id;
       this.save();
       if (this.inRoom) this.showRooms();
       if (this.shelf) this.toggleShelf();
-      if (this.page !== page) this.showPage(page);
+      if (this.page !== at2) this.showPage(at2);
       else this.drawRooms();
-      this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
+      if (at2 === page) this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
     }
     // Downloads a room as <its name>.md (a locked room too).
     exportRoomFile(id) {
@@ -15826,13 +16103,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Building the page ----
     build() {
-      this.grid = el8("div", { class: "rooms-grid" });
-      this.lightsField = el8("input", { class: "rooms-lights-field", placeholder: "Light the rooms that hold… (or #tag)", "aria-label": "Search the rooms", autocomplete: "off", spellcheck: "false" });
-      this.lightsBar = el8(
+      this.grid = el9("div", { class: "rooms-grid" });
+      this.strip = new Strip({ onFloor: (i2) => {
+        if (!this.shelf && !this.inRoom) this.showPage(i2);
+      } });
+      this.strip.show([[this.shelfHead = el9("div", { class: "rooms-shelf-head", hidden: true }, "Archive"), this.grid]], 0);
+      this.lightsField = el9("input", { class: "rooms-lights-field", placeholder: "Light the rooms that hold… (or #tag)", "aria-label": "Search the rooms", autocomplete: "off", spellcheck: "false" });
+      this.lightsBar = el9(
         "div",
         { class: "panel rooms-lights", hidden: true },
         this.lightsField,
-        this.lightsNote = el8("span", { class: "rooms-lights-note" })
+        this.lightsNote = el9("span", { class: "rooms-lights-note" })
       );
       this.lightsField.addEventListener("input", () => {
         this.lights = this.lightsField.value;
@@ -15850,17 +16131,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (best) this.openRoom(best);
         }
       });
-      this.railRooms = el8("button", { type: "button", class: "rail-item", onclick: () => {
+      this.railRooms = el9("button", { type: "button", class: "rail-item", onclick: () => {
         if (this.shelf) this.toggleShelf();
       } }, "Rooms");
-      this.shelfBtn = el8(
+      this.shelfBtn = el9(
         "button",
         { type: "button", class: "rail-item rooms-shelf-btn", "data-drop": "archive", onclick: () => {
           if (!this.shelf) this.toggleShelf();
         } },
         "Archive"
       );
-      this.tagsBtn = el8("button", {
+      this.tagsBtn = el9("button", {
         type: "button",
         class: "rail-item rooms-tags-btn",
         "aria-expanded": "false",
@@ -15870,32 +16151,31 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       }, "Arrange by");
-      this.tagsList = el8("div", { class: "rooms-tag-list", hidden: true, role: "list" });
-      this.pagesBar = el8("nav", { class: "rooms-pages", "aria-label": "Floors" });
-      this.rail = el8(
+      this.tagsList = el9("div", { class: "rooms-tag-list", hidden: true, role: "list" });
+      this.pagesBar = el9("nav", { class: "rooms-pages", "aria-label": "Floors" });
+      this.rail = el9(
         "nav",
         { class: "rail rooms-rail", "aria-label": "Rooms and the Archive" },
         this.railRooms,
         this.pagesBar,
         this.shelfBtn,
-        el8("div", { class: "rail-rule", "aria-hidden": "true" }),
+        el9("div", { class: "rail-rule", "aria-hidden": "true" }),
         this.tagsBtn,
         this.tagsList
       );
-      this.shelfHead = el8("div", { class: "rooms-shelf-head", hidden: true }, "Archive");
-      this.roomsPage = el8(
+      this.roomsPage = el9(
         "section",
         { class: "rooms-rooms", "aria-label": "Rooms" },
         this.lightsBar,
         this.rail,
-        el8("div", { class: "rooms-grid-wrap" }, this.shelfHead, this.grid)
+        this.strip.el
       );
-      this.backBtn = el8(
+      this.backBtn = el9(
         "button",
         { type: "button", class: "back-btn rooms-back", "aria-label": "Back to the home page", onclick: () => this.back() },
         ui_exports.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>')
       );
-      this.searchBtn = el8(
+      this.searchBtn = el9(
         "button",
         {
           type: "button",
@@ -15906,14 +16186,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             else this.openLights();
           }
         },
-        el8("span", {}, "Search"),
-        el8("span", { class: "find-key" }, KEY2)
+        el9("span", {}, "Search"),
+        el9("span", { class: "find-key" }, KEY2)
       );
-      this.keysBox = el8("div", { class: "shade", hidden: true, role: "dialog", "aria-label": "Keys" });
-      this.savedMark = el8("div", { class: "saved-note rooms-saved", "aria-live": "polite" });
-      this.hintLine = el8("div", { class: "foot-hint rooms-hint" });
-      this.wordmark = el8("div", { class: "wordmark rooms-wordmark", "aria-hidden": "true" }, "Traumerei");
-      this.root = el8(
+      this.keysBox = el9("div", { class: "shade", hidden: true, role: "dialog", "aria-label": "Keys" });
+      this.savedMark = el9("div", { class: "saved-note rooms-saved", "aria-live": "polite" });
+      this.hintLine = el9("div", { class: "foot-hint rooms-hint" });
+      this.wordmark = el9("div", { class: "wordmark rooms-wordmark", "aria-hidden": "true" }, "Traumerei");
+      this.root = el9(
         "div",
         { class: "rooms", hidden: true },
         this.roomsPage,
@@ -15923,8 +16203,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.keysBox,
         this.savedMark,
         this.hintLine,
-        this.noteLine = el8("div", { class: "rooms-note", hidden: true }),
-        this.leaveBox = el8("div", { class: "panel sheet rooms-leave", hidden: true, role: "dialog", "aria-label": "Comment for next time", onpointerdown: (e) => e.stopPropagation() })
+        this.noteLine = el9("div", { class: "rooms-note", hidden: true }),
+        this.leaveBox = el9("div", { class: "panel sheet rooms-leave", hidden: true, role: "dialog", "aria-label": "Comment for next time", onpointerdown: (e) => e.stopPropagation() })
       );
       (document.getElementById("folio-root") || document.body).append(this.root);
       document.addEventListener("pointerdown", () => this.hintLine.classList.remove("on"));
@@ -15987,25 +16267,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/home/Home.js
-  var { el: el9 } = ui_exports;
+  var { el: el10 } = ui_exports;
   var TITLE = "Traumerei";
   var Home = class extends Feature {
     start() {
       this.font = findFont(this.storage.get("font", DEFAULT_FONT));
       this.applyFont();
-      this.page = el9(
+      this.page = el10(
         "div",
         { class: "home" },
-        el9("h1", { class: "home-title" }, TITLE),
-        el9(
+        el10("h1", { class: "home-title" }, TITLE),
+        el10(
           "nav",
           { class: "home-nav", "aria-label": "Home" },
-          el9("button", { type: "button", class: "word home-link home-create", onclick: () => this.create() }, "Create"),
-          el9(
+          el10("button", { type: "button", class: "word home-link home-create", onclick: () => this.create() }, "Create"),
+          el10(
             "div",
             { class: "home-row" },
-            el9("button", { type: "button", class: "word home-link", onclick: () => this.settings() }, "Settings"),
-            el9("button", { type: "button", class: "word home-link", onclick: () => this.account() }, "Account")
+            el10("button", { type: "button", class: "word home-link", onclick: () => this.settings() }, "Settings"),
+            el10("button", { type: "button", class: "word home-link", onclick: () => this.account() }, "Account")
           )
         )
       );
@@ -16041,10 +16321,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Settings → Typeface: one button per font, each written in its own face.
     typeface() {
       for (const f2 of FONTS) loadFont(f2);
-      return el9(
+      return el10(
         "div",
         { class: "seg home-fonts", role: "radiogroup", "aria-label": "Typeface", style: `--tabs:${FONTS.length}` },
-        FONTS.map((f2) => el9("button", {
+        FONTS.map((f2) => el10("button", {
           type: "button",
           role: "radio",
           "aria-checked": String(f2.id === this.font.id),
@@ -16057,7 +16337,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/search/Search.js
-  var { el: el10 } = ui_exports;
+  var { el: el11 } = ui_exports;
   var Search = class extends Feature {
     start() {
       this.w = this.use("world");
@@ -16070,7 +16350,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return !!box && !box.hidden;
         }
       });
-      const box = this.box = el10("div", { class: "shade search", hidden: true, role: "dialog", "aria-label": "Search" });
+      const box = this.box = el11("div", { class: "shade search", hidden: true, role: "dialog", "aria-label": "Search" });
       box.onpointerdown = (e) => {
         if (e.target === box) this.close();
       };
@@ -16078,21 +16358,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     open() {
       const { search: search4 } = this.w.lib.model;
-      const field3 = el10("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
-      const list2 = el10("div", { class: "search-list", role: "listbox" });
+      const field3 = el11("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
+      const list2 = el11("div", { class: "search-list", role: "listbox" });
       let found = [], at2 = 0;
       const show = () => {
         found = search4(this.w.world, field3.value);
         at2 = Math.min(at2, Math.max(0, found.length - 1));
         list2.replaceChildren(
-          ...found.map((f2, i2) => el10("button", {
+          ...found.map((f2, i2) => el11("button", {
             type: "button",
             class: "pick search-item" + (i2 === at2 ? " on" : ""),
             role: "option",
             "aria-selected": String(i2 === at2),
             onclick: () => this.pick(f2)
-          }, el10("span", { class: "search-text" }, f2.text), el10("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
-          field3.value.trim() && !found.length ? el10("p", { class: "search-none" }, "Nothing yet with those words") : ""
+          }, el11("span", { class: "search-text" }, f2.text), el11("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
+          field3.value.trim() && !found.length ? el11("p", { class: "search-none" }, "Nothing yet with those words") : ""
         );
       };
       field3.addEventListener("input", () => {
@@ -16120,7 +16400,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.pick(found[at2]);
         }
       });
-      this.box.replaceChildren(el10("div", { class: "panel top-sheet search-panel" }, field3, list2));
+      this.box.replaceChildren(el11("div", { class: "panel top-sheet search-panel" }, field3, list2));
       this.box.hidden = false;
       field3.focus();
     }
@@ -16137,15 +16417,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/room/world.js
-  var room4;
+  var room5;
   var view5;
   var shut4;
-  var MESSY3;
+  var MESSY4;
   var name4;
   var create3;
   var update4;
   var remove4;
-  var move3;
+  var move4;
   var fold3;
   var unfold2;
   var kindOf3;
@@ -16176,17 +16456,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var roomLook3;
   var light3;
   var shrinkPicture2;
-  function bind3(lib) {
+  function bind4(lib) {
     ({
-      room: room4,
+      room: room5,
       view: view5,
       shut: shut4,
-      MESSY: MESSY3,
+      MESSY: MESSY4,
       name: name4,
       create: create3,
       update: update4,
       remove: remove4,
-      move: move3,
+      move: move4,
       fold: fold3,
       unfold: unfold2,
       kindOf: kindOf3,
@@ -16372,10 +16652,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       c.editing = null;
       c.docEl.hidden = true;
       c.docEl.replaceChildren();
-      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("pointerdown", outside2, true);
       c.drawWorld();
     };
-    const outside = (e) => {
+    const outside2 = (e) => {
       if (!sheet.contains(e.target)) close();
     };
     const paras = paragraphs(c, chapterId, { locked, gone: () => close(), escaped: () => sheet.focus({ preventScroll: true }) });
@@ -16432,12 +16712,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     paras.draw();
     sheet.focus({ preventScroll: true });
     setTimeout(() => {
-      if (!c.docEl.hidden) document.addEventListener("pointerdown", outside, true);
+      if (!c.docEl.hidden) document.addEventListener("pointerdown", outside2, true);
     }, 0);
   }
 
   // dist/web/features/room/shared.js
-  var { el: el11 } = ui_exports;
+  var { el: el12 } = ui_exports;
   var ZOOM = { min: 0.25, max: 4 };
   var MAC2 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var KEY3 = MAC2 ? "⌘K" : "Ctrl+K";
@@ -16493,8 +16773,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       spots2.push(p);
     }
     const order = spots2.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots2[i2]);
-    const free = order.find((p) => !hits(p));
-    if (free) return free;
+    const free2 = order.find((p) => !hits(p));
+    if (free2) return free2;
     const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
     return order.reduce((best, p) => far(p) > far(best) ? p : best, order[0]);
   }
@@ -16533,21 +16813,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // One setting as a row: a slider, or an on/off switch (type: 'switch').
     settingRow(st, value, onChange) {
       if (st.type === "switch") {
-        return el11(
+        return el12(
           "label",
           { class: "renderer-slider room-switch-row" },
-          el11("span", {}, st.label),
-          el11("span"),
+          el12("span", {}, st.label),
+          el12("span"),
           ui_exports.toggle({ checked: !!value, label: st.label, onChange })
         );
       }
-      const out = el11("output", { class: "renderer-value" }, String(value));
-      return el11(
+      const out = el12("output", { class: "renderer-value" }, String(value));
+      return el12(
         "label",
         { class: "renderer-slider" },
-        el11("span", {}, st.label),
+        el12("span", {}, st.label),
         out,
-        el11("input", {
+        el12("input", {
           type: "range",
           min: st.min,
           max: st.max,
@@ -16563,8 +16843,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // A plain new room (Move to… → a new room), starting from the global settings.
     addPlainRoom() {
-      const r = addRoom4(this.world, "Untitled", Date.now(), null, this.rooms.cols || 6);
+      const r = addRoom4(this.world, "Untitled", Date.now());
       seedRoomSettings4(this.world, r.id, this.ontPrefs);
+      this.floors?.place(r.id);
       return r.id;
     }
     // Shows a change straight away, in the open room.
@@ -16576,13 +16857,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingsPane() {
       const p = this.prefs;
       const slider2 = (label, key2, min, max, step = 0.01) => {
-        const out = el11("output", { class: "renderer-value" }, String(p[key2]));
-        return el11(
+        const out = el12("output", { class: "renderer-value" }, String(p[key2]));
+        return el12(
           "label",
           { class: "renderer-slider" },
-          el11("span", {}, label),
+          el12("span", {}, label),
           out,
-          el11("input", {
+          el12("input", {
             type: "range",
             min,
             max,
@@ -16596,13 +16877,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows) => el11(
+      const fold4 = (title, ...rows) => el12(
         "details",
         { class: "advanced renderer-fold" },
-        el11("summary", {}, title),
-        el11("div", { class: "renderer-fold-body" }, el11("div", { class: "renderer-sliders" }, ...rows))
+        el12("summary", {}, title),
+        el12("div", { class: "renderer-fold-body" }, el12("div", { class: "renderer-sliders" }, ...rows))
       );
-      return el11(
+      return el12(
         "div",
         { class: "room-settings" },
         fold4(
@@ -16611,20 +16892,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Square strength", "square", 0, 1.5),
           slider2("Colour strength", "vivid", 0.5, 3),
           slider2("Glow", "glow", 0, 1),
-          slider2("Size", "cell", 70, 180, 1),
-          slider2("Columns at least", "cols", 0, 30, 1),
-          slider2("Rows at least", "rows", 0, 30, 1),
           // A square's last thoughts: shown when it is hovered over, or always.
-          el11(
+          el12(
             "label",
             { class: "renderer-slider" },
-            el11("span", {}, "Peek"),
-            el11("span"),
-            el11(
+            el12("span", {}, "Peek"),
+            el12("span"),
+            el12(
               "select",
               { "aria-label": "Peek", onchange: (e) => this.setPref("peek", +e.target.value) },
-              el11("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
-              el11("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
+              el12("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
+              el12("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
             )
           )
         ),
@@ -16633,13 +16911,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           ...this.ontologies.flatMap((o2) => [
-            el11("p", { class: "room-settings-ont" }, o2.name),
+            el12("p", { class: "room-settings-ont" }, o2.name),
             ...this.settingsOf(o2).map((st) => this.settingRow(st, this.globalSetting(o2.id, st), (v2) => this.setOntPref(o2.id, st.key, v2)))
           ]),
-          el11("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
+          el12("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
         ),
         ui_exports.hint("A room's own colour is in its pop-up on the rooms page: click its square.", { small: true }),
-        el11("button", { type: "button", class: "btn small", onclick: () => {
+        el12("button", { type: "button", class: "btn small", onclick: () => {
           this.w.resetLook();
           this.w.resetGlobals();
           this.repaint();
@@ -16649,7 +16927,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The open room's colours, on the room page (and the menu's lines take its ink).
     paintRoom() {
-      const look = this.lookOf(room4(this.world, this.roomId));
+      const look = this.lookOf(room5(this.world, this.roomId));
       for (const [k2, v2] of Object.entries({ "--room-top": look.top, "--room-bottom": look.bottom, "--room-ink": look.ink })) {
         this.roomPage.style.setProperty(k2, v2);
         this.root.style.setProperty(k2, v2);
@@ -16659,7 +16937,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return look;
     }
     drawRoom() {
-      const r = room4(this.world, this.roomId);
+      const r = room5(this.world, this.roomId);
       this.paintRoom();
       if (this.renaming === r.id) {
         this.crumbName.replaceChildren(this.nameField(r, () => {
@@ -16676,7 +16954,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const items = [];
       for (const m2 of big ? this.ontologies : [this.ont]) {
         const on = m2.id === this.mode;
-        const word = big ? el11("button", {
+        const word = big ? el12("button", {
           type: "button",
           class: "rail-item",
           role: "radio",
@@ -16686,13 +16964,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (on) this.toggleGear(m2.id);
             else this.setMode(m2.id);
           }
-        }, m2.name) : el11("span", {
+        }, m2.name) : el12("span", {
           class: "rail-item room-rail-fixed",
           "aria-current": "true",
           title: "A small room keeps one mode. Make it 2 × 2 to switch.",
           onclick: () => this.toggleGear(m2.id)
         }, m2.name);
-        const gear = this.settingsOf(m2).length ? el11("button", {
+        const gear = this.settingsOf(m2).length ? el12("button", {
           type: "button",
           class: "room-gear",
           "aria-label": `${m2.name} settings for this room`,
@@ -16700,10 +16978,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-expanded": String(this.settingsFor === m2.id),
           onclick: () => this.openRoomSettings(m2.id)
         }, "⚙") : null;
-        items.push(el11("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
+        items.push(el12("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
-      items.push(el11("div", { class: "rail-rule", "aria-hidden": "true" }));
-      items.push(el11("button", {
+      items.push(el12("div", { class: "rail-rule", "aria-hidden": "true" }));
+      items.push(el12("button", {
         type: "button",
         class: "rail-item room-rail-view",
         "aria-pressed": String(this.historyOpen),
@@ -16731,7 +17009,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         done();
       };
-      const field3 = el11("input", {
+      const field3 = el12("input", {
         class: "room-name-field",
         value: r.name,
         "aria-label": "Room name",
@@ -16778,7 +17056,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.settingsFor = null;
         this.drawRoom();
       };
-      return el11(
+      return el12(
         "div",
         {
           class: "panel pop room-options room-mode-settings",
@@ -16792,19 +17070,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           }
         },
-        el11(
+        el12(
           "div",
           { class: "room-mode-settings-head" },
-          el11("span", {}, o2.name),
-          el11("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close", onclick: close })
+          el12("span", {}, o2.name),
+          el12("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close", onclick: close })
         ),
-        el11("p", { class: "room-mode-settings-note" }, "For this room only"),
+        el12("p", { class: "room-mode-settings-note" }, "For this room only"),
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
           this.w.write();
           this.drawWorld();
         })),
-        el11("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
+        el12("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
           resetRoomSettings2(this.world, this.roomId, o2.id);
           this.w.write();
           this.drawRoom();
@@ -16813,7 +17091,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Only a big room switches its mode.
     setMode(id) {
-      if (!isBig3(room4(this.world, this.roomId))) return;
+      if (!isBig3(room5(this.world, this.roomId))) return;
       const v2 = view5(this.world, this.roomId);
       v2.mode = id;
       this.sel = null;
@@ -16851,7 +17129,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const ont = this.ont;
         for (const th of ont.units(w2, this.roomId)) {
           const p = ont.point(w2, this.roomId, th.id) || { x: 0, y: 0 };
-          nodes.push(el11("div", {
+          nodes.push(el12("div", {
             class: "room-float" + (this.isSel(th.id) ? " selected" : "") + (this.found === th.id ? " found" : ""),
             "data-thought": th.id,
             style: `left:${p.x}px;top:${p.y}px`
@@ -16859,7 +17137,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         if (this.draft && !this.draft.edit) {
           const p = ont.draftPoint?.(w2, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
-          nodes.push(el11("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+          nodes.push(el12("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
         }
       }
       this.world$.replaceChildren(...nodes);
@@ -16945,9 +17223,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
       const items = roomThoughts3(w2, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const list2 = items.length ? el11("ol", { class: "room-history-list" }, items.map((th) => {
+      const list2 = items.length ? el12("ol", { class: "room-history-list" }, items.map((th) => {
         const tag = ont.tag?.(w2, th.id) || null;
-        return el11("li", {}, el11(
+        return el12("li", {}, el12(
           "button",
           {
             type: "button",
@@ -16955,24 +17233,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             style: tag ? `--tag:hsl(${hash2(tag.id) % 360} 32% 46%)` : "",
             onclick: () => this.goTo({ id: th.id, kind: kindOf3(th), room: this.roomId })
           },
-          el11(
+          el12(
             "span",
             { class: "room-history-meta" },
-            el11("span", { class: "room-history-time" }, when(changed(th))),
-            tag ? el11("span", { class: "room-tag" }, tag.name) : null
+            el12("span", { class: "room-history-time" }, when(changed(th))),
+            tag ? el12("span", { class: "room-tag" }, tag.name) : null
           ),
-          el11("span", { class: "room-history-text" }, thoughtText2(w2, th))
+          el12("span", { class: "room-history-text" }, thoughtText2(w2, th))
         ));
       })) : null;
       this.history.hidden = false;
       this.history.replaceChildren(
-        el11(
+        el12(
           "div",
           { class: "room-history-head" },
-          el11("span", {}, "Timeline"),
-          el11("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() })
+          el12("span", {}, "Timeline"),
+          el12("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() })
         ),
-        list2 || el11("p", { class: "room-history-none" }, "Nothing written here yet")
+        list2 || el12("p", { class: "room-history-none" }, "Nothing written here yet")
       );
       list2?.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
@@ -16986,17 +17264,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const kind = kindOf3(th);
       if (kind === "group") {
         const body = thoughtText2(this.world, th);
-        return el11(
+        return el12(
           "div",
           { class: "room-passage folded", "data-id": th.id },
-          th.title ? el11("div", { class: "room-passage-title" }, maths2(th.title)) : null,
-          body ? el11("div", { class: "room-passage-body" }, maths2(body)) : null
+          th.title ? el12("div", { class: "room-passage-title" }, maths2(th.title)) : null,
+          body ? el12("div", { class: "room-passage-body" }, maths2(body)) : null
         );
       }
-      return (ITEMS3[kind] || ITEMS3.line).node(th, el11);
+      return (ITEMS3[kind] || ITEMS3.line).node(th, el12);
     }
     draftNode() {
-      this.draftEl = el11("span", { class: "room-thought room-draft" });
+      this.draftEl = el12("span", { class: "room-thought room-draft" });
       this.paintDraft();
       return this.draftEl;
     }
@@ -17008,9 +17286,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const v2 = this.input.value;
       const a = this.input.selectionStart ?? v2.length, b = this.input.selectionEnd ?? v2.length;
       const back = this.input.selectionDirection === "backward";
-      const caret = document.activeElement === this.input || !d.isConnected ? el11("span", { class: "room-caret", "aria-hidden": "true" }) : null;
-      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el11("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
-      if (!v2 || v2.endsWith("\n")) parts.push(el11("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
+      const caret = document.activeElement === this.input || !d.isConnected ? el12("span", { class: "room-caret", "aria-hidden": "true" }) : null;
+      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el12("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
+      if (!v2 || v2.endsWith("\n")) parts.push(el12("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
       d.replaceChildren(...parts.filter((p) => p != null && p !== "").map((p) => p instanceof Node ? p : document.createTextNode(p)));
     }
     // Where each letter of the thought being written is on the screen (measured, not guessed).
@@ -17266,10 +17544,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const prev = list2[at2 - 1];
       if (d.edit) {
         const t = w2.things[d.train];
-        const spot2 = { x: t.x ?? 0, y: t.y ?? 0 };
+        const spot3 = { x: t.x ?? 0, y: t.y ?? 0 };
         remove4(w2, d.edit);
         this.save();
-        this.draft = w2.things[d.train] ? { train: d.train } : { train: null, ...spot2 };
+        this.draft = w2.things[d.train] ? { train: d.train } : { train: null, ...spot3 };
       }
       if (prev && kindOf3(prev) === "line") {
         this.draft = { train: d.train, edit: prev.id };
@@ -17462,20 +17740,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     listen() {
       const pointers = this.pointers;
-      const move4 = (ev) => this.onMove(ev);
+      const move5 = (ev) => this.onMove(ev);
       const up = (ev) => {
         pointers.delete(ev.pointerId);
         if (pointers.size) {
           if (pointers.size === 1) this.gesture = null;
           return;
         }
-        this.stage.removeEventListener("pointermove", move4);
+        this.stage.removeEventListener("pointermove", move5);
         this.stage.removeEventListener("pointerup", up);
         this.stage.removeEventListener("pointercancel", up);
         this.onUp();
       };
       if (pointers.size === 1) {
-        this.stage.addEventListener("pointermove", move4);
+        this.stage.addEventListener("pointermove", move5);
         this.stage.addEventListener("pointerup", up);
         this.stage.addEventListener("pointercancel", up);
       }
@@ -17680,11 +17958,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ["Escape", "let go, or go back"],
         ["?", "these keys"]
       ];
-      this.keysBox.replaceChildren(el11(
+      this.keysBox.replaceChildren(el12(
         "div",
         { class: "panel top-sheet room-keys-panel" },
-        el11("div", { class: "label" }, "Keys"),
-        el11("dl", { class: "keys-list" }, rows.flatMap(([a, b]) => [el11("dt", {}, a), el11("dd", {}, b)]))
+        el12("div", { class: "label" }, "Keys"),
+        el12("dl", { class: "keys-list" }, rows.flatMap(([a, b]) => [el12("dt", {}, a), el12("dd", {}, b)]))
       ));
       this.keysBox.hidden = false;
       this.keysBox.onpointerdown = () => this.closeSearch();
@@ -17703,7 +17981,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drawBox(g2, e) {
       const b = this.stage.getBoundingClientRect();
       if (!this.box) {
-        this.box = el11("div", { class: "room-box" });
+        this.box = el12("div", { class: "room-box" });
         this.stage.append(this.box);
       }
       const x = Math.min(g2.x0, e.clientX) - b.left, y = Math.min(g2.y0, e.clientY) - b.top;
@@ -17785,11 +18063,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.draft) this.stopWriting();
       const w2 = this.world, units = this.clip.units;
       const cx = units.reduce((a, u) => a + u.x, 0) / units.length, cy = units.reduce((a, u) => a + u.y, 0) / units.length;
-      const spot2 = this.freeSpot();
+      const spot3 = this.freeSpot();
       let now = Date.now();
       const made = [];
       for (const u of units) {
-        const train = startTrain2(w2, this.roomId, Math.round(spot2.x + u.x - cx), Math.round(spot2.y + u.y - cy), now);
+        const train = startTrain2(w2, this.roomId, Math.round(spot3.x + u.x - cx), Math.round(spot3.y + u.y - cy), now);
         if (!train) continue;
         const items = u.items.map((f2) => create3(w2, train.id, f2, now++)).filter(Boolean);
         if (!items.length) {
@@ -17836,14 +18114,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
     addItem(label, note, fn, keep = true) {
-      return el11(
+      return el12(
         "button",
         { type: "button", class: "pick room-add-item", role: "menuitem", onclick: () => {
           this.closeAdd(keep);
           fn();
         } },
-        el11("span", {}, label),
-        el11("span", { class: "pick-note" }, note)
+        el12("span", {}, label),
+        el12("span", { class: "pick-note" }, note)
       );
     }
     toggleAdd() {
@@ -18066,17 +18344,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const kind = kindOf3(th);
       if (this.locked) {
         return [
-          el11("div", { class: "label" }, "Locked"),
-          kind === "group" && inPanel ? null : el11("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText2(this.world, th)),
-          kind === "group" && !inPanel && this.files?.canEdit ? el11("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
+          el12("div", { class: "label" }, "Locked"),
+          kind === "group" && inPanel ? null : el12("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText2(this.world, th)),
+          kind === "group" && !inPanel && this.files?.canEdit ? el12("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
         ].filter(Boolean);
       }
       const stop = (e) => {
         e.stopPropagation();
         if (e.key === "Escape" || e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur();
       };
-      const field3 = (value, label, onchange, cls = "pop-name") => el11("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
-      const word = (label, fn, extra = "") => el11("button", { type: "button", class: "word " + extra, onclick: fn }, label);
+      const field3 = (value, label, onchange, cls = "pop-name") => el12("input", { class: cls, value: value || "", placeholder: label, "aria-label": label, onkeydown: stop, onchange });
+      const word = (label, fn, extra = "") => el12("button", { type: "button", class: "word " + extra, onclick: fn }, label);
       const grow = (t) => {
         t.style.height = "auto";
         t.style.height = t.scrollHeight + "px";
@@ -18088,9 +18366,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const rows = [];
       const gname = kind === "group" ? this.groupName(th) : "Train";
       const title = kind === "group" ? th.folded ? `A folded ${gname.toLowerCase()}` : gname : ITEMS3[kind]?.name || "Thought";
-      if (!inPanel) rows.push(el11("div", { class: "label" }, title));
+      if (!inPanel) rows.push(el12("div", { class: "label" }, title));
       if (kind === "line") {
-        const text = el11("textarea", {
+        const text = el12("textarea", {
           class: "room-edit-text room-edit-lines",
           rows: 1,
           placeholder: "The thought",
@@ -18124,7 +18402,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           update4(this.world, th.id, { title: e.target.value });
           done();
         }));
-        const body = el11("textarea", {
+        const body = el12("textarea", {
           class: "room-edit-body",
           rows: 5,
           "aria-label": "Passage",
@@ -18148,10 +18426,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             name4(this.world, th.id, e.target.value);
             done();
           }),
-          el11(
+          el12(
             "div",
             { class: "pop-row" },
-            el11("span", { class: "pop-note" }, `${n} thought${n === 1 ? "" : "s"}`),
+            el12("span", { class: "pop-note" }, `${n} thought${n === 1 ? "" : "s"}`),
             th.folded ? word("Unfold", () => this.unfoldTrain(th.id)) : n > 1 || this.ont.open ? word("Fold into one", () => this.foldTrain(th.id)) : null,
             this.files?.canEdit && !inPanel ? word("Edit as Markdown", () => this.editAsMarkdown(th.id)) : null
           )
@@ -18174,9 +18452,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return false;
         }
       });
-      if (moves.length) rows.push(el11("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
+      if (moves.length) rows.push(el12("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
       const others = this.moveRooms();
-      const pick = el11(
+      const pick = el12(
         "select",
         {
           class: "room-edit-move",
@@ -18187,13 +18465,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (to) this.moveTo(to);
           }
         },
-        el11("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el11("option", { value: r.id }, r.name)),
-        el11("option", { value: "+" }, "A new room")
+        el12("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el12("option", { value: r.id }, r.name)),
+        el12("option", { value: "+" }, "A new room")
       );
       rows.push(
-        el11("div", { class: "pop-row" }, pick),
-        el11(
+        el12("div", { class: "pop-row" }, pick),
+        el12(
           "div",
           { class: "pop-row" },
           kind !== "group" && this.ont.groups && groupOf2(this.world, th.id, this.mode) ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => {
@@ -18238,7 +18516,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const open = !!this.trayOpen;
-      const word = el11("button", {
+      const word = el12("button", {
         type: "button",
         class: "word room-tray-btn",
         "aria-expanded": String(open),
@@ -18248,13 +18526,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawTray();
         }
       }, `Loose · ${items.length}`);
-      const row = open ? el11("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => el11("div", {
+      const row = open ? el12("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => el12("div", {
         class: "room-tray-item",
         role: "listitem",
         "data-tray": th.id,
         title: "Drag onto the room",
         onpointerdown: (e) => this.trayDrag(e, th.id)
-      }, el11("span", { class: "room-tray-text" }, kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))))) : null;
+      }, el12("span", { class: "room-tray-text" }, kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th))))) : null;
       this.trayEl.hidden = false;
       this.trayEl.replaceChildren(...row ? [row] : [], word);
     }
@@ -18271,12 +18549,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ghost.classList.add("panel", "room-tray-ghost");
       Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
       this.root.append(ghost);
-      const move4 = (ev) => {
+      const move5 = (ev) => {
         ghost.style.left = `${ev.clientX - off.x}px`;
         ghost.style.top = `${ev.clientY - off.y}px`;
       };
       const up = (ev) => {
-        document.removeEventListener("pointermove", move4);
+        document.removeEventListener("pointermove", move5);
         document.removeEventListener("pointerup", up);
         document.removeEventListener("pointercancel", up);
         ghost.remove();
@@ -18287,7 +18565,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.save();
         this.drawWorld();
       };
-      document.addEventListener("pointermove", move4);
+      document.addEventListener("pointermove", move5);
       document.addEventListener("pointerup", up);
       document.addEventListener("pointercancel", up);
     }
@@ -18299,7 +18577,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const ids = this.sel.ids.filter((id) => this.world.things[id]);
       const others = this.moveRooms();
-      const pick = el11(
+      const pick = el12(
         "select",
         {
           class: "room-edit-move",
@@ -18309,26 +18587,26 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
             if (!to) return;
             const v2 = view5(this.world, to);
-            ids.forEach((id, i2) => move3(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
+            ids.forEach((id, i2) => move4(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
             this.sel = null;
             this.save();
             this.drawWorld();
-            this.toast(`Moved ${ids.length} to ${room4(this.world, to).name}`);
+            this.toast(`Moved ${ids.length} to ${room5(this.world, to).name}`);
           }
         },
-        el11("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el11("option", { value: r.id }, r.name)),
-        el11("option", { value: "+" }, "A new room")
+        el12("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el12("option", { value: r.id }, r.name)),
+        el12("option", { value: "+" }, "A new room")
       );
       this.bar.hidden = false;
       this.bar.replaceChildren(
-        el11("div", { class: "label" }, `${ids.length} chosen`),
-        el11("p", { class: "pop-note" }, "Drag any of them to move them together."),
-        el11("div", { class: "pop-row" }, pick),
-        el11(
+        el12("div", { class: "label" }, `${ids.length} chosen`),
+        el12("p", { class: "pop-note" }, "Drag any of them to move them together."),
+        el12("div", { class: "pop-row" }, pick),
+        el12(
           "div",
           { class: "pop-row" },
-          el11("button", { type: "button", class: "word pop-delete", onclick: () => {
+          el12("button", { type: "button", class: "word pop-delete", onclick: () => {
             ids.forEach((id) => remove4(this.world, id));
             this.sel = null;
             this.save();
@@ -18342,7 +18620,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The rooms a thought can be moved to: every room (not this one, nor a locked one).
     moveRooms() {
-      return rooms3(this.world).filter((r) => r.id !== this.roomId && !shut4(this.world, r.id)).sort((a, b) => a.id === MESSY3 ? -1 : b.id === MESSY3 ? 1 : a.name.localeCompare(b.name));
+      return rooms3(this.world).filter((r) => r.id !== this.roomId && !shut4(this.world, r.id)).sort((a, b) => a.id === MESSY4 ? -1 : b.id === MESSY4 ? 1 : a.name.localeCompare(b.name));
     }
     // The pop-up sits beside what is chosen, and follows it as the view moves.
     positionEdit() {
@@ -18381,14 +18659,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The other ontologies of a big room that show a group (laid out: only those that have placed
     // some of its thoughts already).
     elsewhere(g2, laidOut = false) {
-      const r = room4(this.world, g2?.parent);
+      const r = room5(this.world, g2?.parent);
       if (!g2 || !r || !isBig3(r)) return [];
       return this.ontologies.filter((o2) => o2.id !== g2.of && (!laidOut || !o2.placed || g2.members.some((id) => o2.placed(this.world, r.id, id))));
     }
     // Replace · Keep both, for how `others` show a folded group.
     keepChoice(others, keep, choose) {
       const names = others.map((o2) => o2.name).join(" and ");
-      const pick = (label, value, note) => el11("button", {
+      const pick = (label, value, note) => el12("button", {
         type: "button",
         class: "word",
         "aria-pressed": String(keep === value),
@@ -18399,10 +18677,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           e.currentTarget.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
         }
       }, label);
-      return el11(
+      return el12(
         "div",
         { class: "pop-row room-keep" },
-        el11("span", { class: "pop-note" }, `In ${names}:`),
+        el12("span", { class: "pop-note" }, `In ${names}:`),
         pick("Replace", false, "The one folded thought takes the place of its thoughts"),
         pick("Keep both", true, "The folded thought is added beside its thoughts")
       );
@@ -18424,9 +18702,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const cur = this.current[this.roomId];
       const t = this.world.things[cur];
       if (!this.fresh && t?.parent === this.roomId && !t.folded && t.of === this.writer.id) return { train: cur };
-      const spot2 = this.freeSpot();
+      const spot3 = this.freeSpot();
       this.fresh = false;
-      return { train: null, x: Math.round(spot2.x), y: Math.round(spot2.y) };
+      return { train: null, x: Math.round(spot3.x), y: Math.round(spot3.y) };
     }
     async choosePicture() {
       const file = await this.picker.pick();
@@ -18483,30 +18761,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const fields = [];
       if (kind === "group") {
-        this.sheetTitle = el11("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
-        fields.push(this.sheetTitle, el11("div", { class: "room-sheet-preview" }, thoughtText2(this.world, th)));
+        this.sheetTitle = el12("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        fields.push(this.sheetTitle, el12("div", { class: "room-sheet-preview" }, thoughtText2(this.world, th)));
         if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep2) => {
           this.editing.keep = keep2;
           this.sheetTitle.focus();
         }));
       } else if (kind === "passage") {
-        this.sheetTitle = el11("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
-        this.sheetBody = el11("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
+        this.sheetTitle = el12("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
+        this.sheetBody = el12("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
         this.sheetBody.value = th?.body || "";
         fields.push(this.sheetTitle, this.sheetBody);
       } else {
-        this.sheetCaption = el11("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
-        fields.push(el11("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
+        this.sheetCaption = el12("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
+        fields.push(el12("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
       this.sheet.replaceChildren(
-        el11("div", { class: "label" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
+        el12("div", { class: "label" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
         ...fields,
-        el11(
+        el12(
           "div",
           { class: "sheet-words" },
-          el11("button", { type: "button", class: "word", onclick: keep }, "Keep"),
-          el11("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
-          el11("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
+          el12("button", { type: "button", class: "word", onclick: keep }, "Keep"),
+          el12("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
+          el12("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
         )
       );
       this.sheet.hidden = false;
@@ -18539,13 +18817,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const v2 = view5(this.world, toRoom);
       const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
       const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-      const spot2 = randomSpot2(box, taken);
-      const x = Math.round(spot2.x), y = Math.round(spot2.y);
-      move3(this.world, this.sel.id, toRoom, x, y);
+      const spot3 = randomSpot2(box, taken);
+      const x = Math.round(spot3.x), y = Math.round(spot3.y);
+      move4(this.world, this.sel.id, toRoom, x, y);
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.toast(`Moved to ${room4(this.world, toRoom).name}`);
+      this.toast(`Moved to ${room5(this.world, toRoom).name}`);
     }
   };
 
@@ -18553,8 +18831,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var Room = class extends Feature {
     start() {
       this.w = this.use("world");
-      bind3(this.w.lib);
+      bind4(this.w.lib);
       this.rooms = this.use("rooms");
+      this.floors = this.use("floors");
       this.roomId = null;
       this.draft = null;
       this.current = {};
@@ -18582,7 +18861,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.draft = null;
         if (!this.roomId) return;
         this.showSaved(undone ? "Undone" : "Redone");
-        if (!room4(this.world, this.roomId)) this.back();
+        if (!room5(this.world, this.roomId)) this.back();
         else this.drawRoom();
       });
       this.on("room:open", (o2) => this.enter(o2));
@@ -18627,13 +18906,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.w.attention;
     }
     lookOf(r) {
-      return roomLook3(r, this.palette, r.id === MESSY3, this.prefs);
+      return roomLook3(r, this.palette, r.id === MESSY4, this.prefs);
     }
     // ---- Going in and out ----
     // Goes into a room (the rooms page asked: 'room:open'). from: its square on the screen, to grow
     // out of; seed: the first letters of a thought to write.
     enter({ id, from = null, seed = "" }) {
-      if (!room4(this.world, id)) return;
+      if (!room5(this.world, id)) return;
       this.roomId = id;
       this.sel = null;
       this.draft = null;
@@ -18682,9 +18961,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.expandVeil?.remove();
       clearTimeout(this.expandTimer);
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-      const look = this.lookOf(room4(this.world, this.roomId));
+      const look = this.lookOf(room5(this.world, this.roomId));
       const W2 = window.innerWidth, H3 = window.innerHeight;
-      const veil = el11("div", { class: "expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})` });
+      const veil = el12("div", { class: "expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H3})` });
       this.expandVeil = veil;
       this.root.classList.add("expanding");
       this.root.append(veil);
@@ -18753,12 +19032,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Building the pages ----
     build() {
-      this.backBtn = el11(
+      this.backBtn = el12(
         "button",
         { type: "button", class: "back-btn room-back", "aria-label": "Back to the rooms", onclick: () => this.back() },
         ui_exports.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>')
       );
-      this.searchBtn = el11(
+      this.searchBtn = el12(
         "button",
         {
           type: "button",
@@ -18766,61 +19045,61 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-keyshortcuts": MAC2 ? "Meta+K" : "Control+K",
           onclick: () => this.openSearch()
         },
-        el11("span", {}, "Search"),
-        el11("span", { class: "find-key" }, KEY3)
+        el12("span", {}, "Search"),
+        el12("span", { class: "find-key" }, KEY3)
       );
       this.searchBtn.hidden = !this.finder;
-      this.crumbName = el11("button", { type: "button", class: "word room-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
-      this.modes = el11("nav", { class: "rail room-rail room-modes", "aria-label": "Ontological mode" });
-      this.world$ = el11("div", { class: "room-world" });
-      this.stage = el11("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
-      this.input = el11("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
-      this.bar = el11("div", { class: "panel pop room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.history = el11("aside", { class: "panel room-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
-      this.trayEl = el11("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.roomPage = el11(
+      this.crumbName = el12("button", { type: "button", class: "word room-crumb-name", title: "Rename", onclick: () => this.renameOpenRoom() });
+      this.modes = el12("nav", { class: "rail room-rail room-modes", "aria-label": "Ontological mode" });
+      this.world$ = el12("div", { class: "room-world" });
+      this.stage = el12("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
+      this.input = el12("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
+      this.bar = el12("div", { class: "panel pop room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.history = el12("aside", { class: "panel room-history", hidden: true, "aria-label": "Timeline", onpointerdown: (e) => e.stopPropagation() });
+      this.trayEl = el12("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.roomPage = el12(
         "section",
         { class: "room-page", "aria-label": "Room" },
         this.stage,
         this.modes,
-        el11("div", { class: "room-top" }, this.crumbName, this.crumbDesc = el11("div", { class: "room-crumb-desc" })),
-        el11(
+        el12("div", { class: "room-top" }, this.crumbName, this.crumbDesc = el12("div", { class: "room-crumb-desc" })),
+        el12(
           "div",
           { class: "room-add" },
-          this.addMenu = el11(
+          this.addMenu = el12(
             "div",
             { class: "panel room-add-menu", hidden: true, role: "menu" },
             this.addItem("Thought", "Just type", () => this.beginWriting()),
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             ...this.files ? [
-              el11("div", { class: "pick-rule" }),
+              el12("div", { class: "pick-rule" }),
               this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false),
               this.addItem("Export as Markdown", ".md", () => this.exportRoomFile(), false),
               ...this.files.canEdit ? [this.addItem("Edit room as Markdown", "in the panel", () => this.editAsMarkdown(), false)] : []
             ] : [],
-            el11("div", { class: "pick-rule" }),
+            el12("div", { class: "pick-rule" }),
             this.addItem("Keys", "?", () => this.showKeys(), false)
           ),
-          this.addBtn = el11(
+          this.addBtn = el12(
             "button",
             { type: "button", class: "word room-add-btn", "aria-haspopup": "menu", "aria-expanded": "false", onclick: () => this.toggleAdd() },
-            el11("span", { class: "room-add-plus", "aria-hidden": "true" }, "+"),
+            el12("span", { class: "room-add-plus", "aria-hidden": "true" }, "+"),
             "Add"
           )
         ),
         this.history,
         this.trayEl,
         this.bar,
-        this.sheet = el11("div", { class: "panel sheet room-sheet", hidden: true }),
-        this.docEl = el11("div", { class: "room-doc-veil", hidden: true }),
+        this.sheet = el12("div", { class: "panel sheet room-sheet", hidden: true }),
+        this.docEl = el12("div", { class: "room-doc-veil", hidden: true }),
         this.input
       );
-      this.keysBox = el11("div", { class: "shade", hidden: true, role: "dialog", "aria-label": "Keys" });
-      this.savedMark = el11("div", { class: "saved-note room-saved", "aria-live": "polite" });
-      this.hintLine = el11("div", { class: "foot-hint room-hint" });
-      this.wordmark = el11("div", { class: "wordmark room-wordmark", "aria-hidden": "true" }, "Traumerei");
-      this.root = el11("div", { class: "room up in-room", hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
+      this.keysBox = el12("div", { class: "shade", hidden: true, role: "dialog", "aria-label": "Keys" });
+      this.savedMark = el12("div", { class: "saved-note room-saved", "aria-live": "polite" });
+      this.hintLine = el12("div", { class: "foot-hint room-hint" });
+      this.wordmark = el12("div", { class: "wordmark room-wordmark", "aria-hidden": "true" }, "Traumerei");
+      this.root = el12("div", { class: "room up in-room", hidden: true }, this.roomPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine);
       (document.getElementById("folio-root") || document.body).append(this.root);
       this.input.addEventListener("input", () => this.onInput());
       this.input.addEventListener("keydown", (e) => {
@@ -18879,7 +19158,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.ontology(this.mode);
     }
     get el() {
-      return el11;
+      return el12;
     }
     // for an ontology drawing its canvas (ontologies/index.js)
     groupName(g2) {
@@ -18970,20 +19249,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var url1 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature1;"], { type: "text/javascript" }));
   globalThis.__folioFeature2 = World;
   var url2 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature2;"], { type: "text/javascript" }));
-  globalThis.__folioFeature3 = Panel;
+  globalThis.__folioFeature3 = Floors;
   var url3 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature3;"], { type: "text/javascript" }));
-  globalThis.__folioFeature4 = Source;
+  globalThis.__folioFeature4 = Panel;
   var url4 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature4;"], { type: "text/javascript" }));
-  globalThis.__folioFeature5 = Roomfile;
+  globalThis.__folioFeature5 = Source;
   var url5 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature5;"], { type: "text/javascript" }));
-  globalThis.__folioFeature6 = Rooms;
+  globalThis.__folioFeature6 = Roomfile;
   var url6 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature6;"], { type: "text/javascript" }));
-  globalThis.__folioFeature7 = Home;
+  globalThis.__folioFeature7 = Rooms;
   var url7 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature7;"], { type: "text/javascript" }));
-  globalThis.__folioFeature8 = Search;
+  globalThis.__folioFeature8 = Home;
   var url8 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature8;"], { type: "text/javascript" }));
-  globalThis.__folioFeature9 = Room;
+  globalThis.__folioFeature9 = Search;
   var url9 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature9;"], { type: "text/javascript" }));
+  globalThis.__folioFeature10 = Room;
+  var url10 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature10;"], { type: "text/javascript" }));
   var config = {
     "id": "mask-renderer",
     "name": "Träumerei",
@@ -18994,8 +19275,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "panel", "name": "Side panel", "description": "A panel docked on the right, its width set by dragging its edge and remembered, that other features open their editors in. Whatever is beside it moves over.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/panel/Panel.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["panel"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.1.0", "requires": ["world"], "uses": ["renderer", "roomfile"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "panel"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
-  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }]).start();
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "panel", "name": "Side panel", "description": "A panel docked on the right, its width set by dragging its edge and remembered, that other features open their editors in. Whatever is beside it moves over.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/panel/Panel.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["panel"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.1.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "panel", "floors"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
 </script>
