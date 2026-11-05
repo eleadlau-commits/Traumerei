@@ -232,16 +232,27 @@ export class Bars {
     const words = group ? th.title || thoughtText(this.world, th) : kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th);
     return el('div', {
       class: 'room-tray-item' + (this.isSel(th.id) ? ' st-sel' : ''), role: 'listitem', 'data-tray': th.id,
-      title: group ? 'Click to open · drag onto the room' : 'Drag onto the room',
+      title: 'Click to choose · right-click to open · drag onto the room',
       onpointerdown: (e) => this.trayDrag(e, th.id),
+      oncontextmenu: (e) => { e.preventDefault(); this.trayOpenCard(th.id); },
     }, group ? el('span', { class: 'label room-tray-kind' }, this.groupName(th)) : null,
     el('span', { class: 'room-tray-text' }, words));
   }
 
   // A loose card clicked: Ctrl/Shift adds it to (or takes it from) what is chosen; otherwise it is
-  // chosen and opened.
+  // chosen (and the editor, when open, follows it). Without the right dock it opens at once.
   trayClick(e, id) {
     if (e.ctrlKey || e.metaKey || e.shiftKey) { this.chooseMore({ id }, true); return; }
+    const th = this.world.things[id];
+    if (!th) return;
+    if (!this.panel) { this.trayOpenCard(id); return; }
+    if (this.draft) this.stopWriting();
+    this.sel = { kind: isGroup(th) ? 'train' : 'thought', id };
+    this.drawWorld();
+  }
+
+  // A loose card right-clicked: opened in the editor.
+  trayOpenCard(id) {
     const th = this.world.things[id];
     if (!th) return;
     if (isGroup(th)) this.openDocument(id);
