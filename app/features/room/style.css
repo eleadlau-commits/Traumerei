@@ -16,6 +16,11 @@
 /* While a dock (the docks feature) shows, the room moves over beside it: their widths are
    --dock-left / --dock-right, and the transform makes the room's fixed parts sit in the room. */
 :is(.dock-left-open, .dock-right-open, .dock-left-strip, .dock-right-strip) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
+/* In a room the modes rail stays at the screen's edge and the left dock (the loose thoughts) opens
+   beside it: the dock starts after the rail (--dock-left-at), and the rail, inside the moved room,
+   steps back by the dock's width. */
+html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
+:is(.dock-left-open, .dock-left-strip) .room .room-modes { left: calc(-1 * var(--dock-left, 0px)); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
 /* (The menu's lines sit on the top bar's veil, so they keep the ink even in a dark room.) */
