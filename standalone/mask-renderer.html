@@ -15623,17 +15623,36 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var RoomsGrid = class {
     // ---- The rooms page ----
     // Every floor's columns and rows (the floors feature's size), and how big a cell is: as big as
-    // lets the whole floor fit the canvas, so a floor never scrolls (below 56 px a cell stops
-    // shrinking, and then it does).
+    // lets the whole floor fit the window beside the rail, so a floor never scrolls (below 56 px a
+    // cell stops shrinking, and then it does). A dock opening never shrinks the squares: the board
+    // keeps its size and slides sideways under the dock instead (keepInView).
     gridSize() {
       const { cols, rows } = this.floors.size;
       const wrap = this.grid.parentElement;
       const css2 = wrap && getComputedStyle(wrap);
       const pad = (a, b) => css2 ? (parseFloat(css2[a]) || 0) + (parseFloat(css2[b]) || 0) : 0;
-      const width = (wrap?.clientWidth || window.innerWidth) - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rail")) || 206));
+      const rail = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rail")) || 206;
+      const left = wrap ? Math.max(0, wrap.getBoundingClientRect().left) : 0;
+      const width = window.innerWidth - left - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + rail);
       const height = (wrap?.clientHeight || window.innerHeight) - (css2 ? pad("paddingTop", "paddingBottom") : GRID.pad + 64);
       const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
       return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
+    }
+    // The board slides sideways (its floor scrolls) to keep the chosen room in view beside a dock;
+    // otherwise it stays where it was (`left`, the scroll before the floor was drawn again).
+    keepInView(left = 0) {
+      const floor = this.grid.closest(".rooms-floor");
+      if (!floor) return;
+      floor.scrollLeft = left;
+      const tile = this.grid.querySelector(".rooms-tile:is(.chosen, .picked)");
+      if (!tile) return;
+      const css2 = getComputedStyle(floor);
+      const f2 = floor.getBoundingClientRect(), t = tile.getBoundingClientRect();
+      const from = f2.left + (parseFloat(css2.paddingLeft) || 0), to = f2.right - (parseFloat(css2.paddingRight) || 0);
+      const dx = t.right > to ? Math.min(t.right - to, t.left - from) : t.left < from ? t.left - from : 0;
+      if (!dx) return;
+      const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      floor.scrollTo({ left: floor.scrollLeft + dx, behavior: still ? "auto" : "smooth" });
     }
     // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
     // starts with # looks for a tag instead: the rooms with a tag that starts so are lit (true).
@@ -15701,6 +15720,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       this.cols = cols;
+      const scrolled = this.grid.closest(".rooms-floor")?.scrollLeft || 0;
       this.strip.show(Array.from(
         { length: pageCount3(this.world) },
         (_2, i2) => i2 === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i2, cols, rows, cell, now)
@@ -15741,6 +15761,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.panel) this.dockRoom(chosen || null);
       if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
       this.grid.replaceChildren(...empty, ...tiles2, ...panels);
+      this.keepInView(scrolled);
       this.grid.querySelector(".rooms-name-field")?.focus();
       if (!this.root.hidden) this.hint("rooms");
     }
@@ -16834,9 +16855,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // One gesture, one floor: the first wheel event past a small push asks for the next floor, and
     // the rest of that gesture (a trackpad's long tail) is let go until it goes quiet. A floor that
-    // scrolls itself (cells at their smallest) scrolls first. Ctrl+wheel (zoom) is left alone.
+    // scrolls itself (cells at their smallest) scrolls first. Ctrl+wheel (zoom) is left alone, and so
+    // is a sideways push (or Shift+wheel): it scrolls the floor sideways, to columns a dock hides.
     wheel(e) {
-      if (e.ctrlKey) return;
+      if (e.ctrlKey || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       const box = this.track.children[this.page];
       const d = e.deltaY;
       if (box && box.scrollHeight > box.clientHeight + 1) {
