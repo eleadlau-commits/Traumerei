@@ -479,3 +479,9 @@
 /* The Timeline as a tab of the right dock (view.js): its list runs to the dock's edges. */
 .room-timeline { --room-ink: var(--ink); margin: 0 -24px; }
 .room-timeline .room-history-list { overflow: visible; }
+
+/* The sheet and a mode's settings, in the right dock's Editor tab. */
+.room-sheet-docked { display: grid; gap: 16px; align-content: start; }
+.room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
+.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
+.room-mode-settings-docked .room-mode-settings-note { margin: 0; }

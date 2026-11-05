@@ -34,7 +34,8 @@ It offers no service of its own.
   and the rail only names it. A big room (Messy thoughts, or any 2 × 2 room) lists them all and
   switches with a click; a big room made small again keeps the mode it has then. Hovering over a
   mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
-  for that mode in a card beside the rail, with *Reset to global*. Each room keeps its own; a new
+  for that mode in the right dock's Editor tab (without docks, a card beside the rail), with
+  *Reset to global*; the ⚙ again, ×, or Escape closes them, and switching mode switches them. Each room keeps its own; a new
   room starts from the global ones. Under a hairline, *Timeline* opens the list of its thoughts by
   time in the right dock, in any mode.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
@@ -67,11 +68,12 @@ It offers no service of its own.
     `russell.relations: [forgets, generalises]`. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
     **A closed chapter.** *Fold into one* in a chapter's pop-up (it asks for a name) closes it:
-    only its name shows on the canvas. A click opens it as a document (`document.js`): a pop-up
-    with its name and its thoughts in order as flowing paragraphs, maths drawn. Click a paragraph
+    only its name shows on the canvas. A click opens it in the content editor, in the right dock's
+    Editor tab: its name and its thoughts in order as flowing paragraphs, maths drawn (without
+    docks, a document pop-up, `document.js`). Click a paragraph
     to write in it; Enter keeps it and starts the next thought just after it, Ctrl+Enter is a new
     line, Backspace in an empty one goes back into the one before, and a thought emptied goes. Esc
-    stops writing; Esc again, ×, or a click outside closes it. Each paragraph is still its own
+    stops writing; Esc again or × closes it. Each paragraph is still its own
     thought, so search, the Timeline and the other modes see them one by one. *Unfold* opens the
     chapter on the canvas again.
 - **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
@@ -84,7 +86,8 @@ It offers no service of its own.
   *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.
 - **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*
   (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
-  edit it.
+  edit it. Both are written in the right dock's Editor tab (without docks, a sheet over the room):
+  Enter keeps, Esc or × cancels. Naming a folded group is written there too.
 - **Folding.** Select a train and *Fold into one thought*, then name it. It shows as one thought
   (in Pessoa it floats as one); *Unfold* opens it again.
   In a big room, folding also asks how the other ontologies show it: **Replace** (the one folded

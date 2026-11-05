@@ -121,6 +121,7 @@ export default class Room extends Feature {
     this.closeSheet();
     this.closeSearch();
     this.timeline = null; // (so closing it doesn't turn it off for the room)
+    this.modeSettings = null; // (and closing the ⚙ settings doesn't draw the room)
     this.panel?.closeAll(true);
     this.docks?.left.close('loose', true);
     this.shelveDraft();
@@ -307,7 +308,15 @@ export default class Room extends Feature {
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
   groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
-  openDocument(id) { openDocument(this, id); } // a group as a document (document.js)
+  // A folded group opened (Russell's closed chapter): in the content editor, in the right dock's
+  // Editor tab, with its thoughts as paragraphs to write in; without docks, as a document pop-up
+  // (document.js).
+  openDocument(id) {
+    if (!this.panel) { openDocument(this, id); return; }
+    if (this.draft) this.commit();
+    this.sel = { kind: 'train', id };
+    this.openProps(this.sel);
+  }
 
   // ---- Room Markdown: the roomfile feature does the work; this feature says where ----
 
