@@ -61,7 +61,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-mode-settings { position: fixed; top: calc(var(--bar) + var(--s-2)); left: calc(var(--rail) + var(--s-2)); width: 240px; cursor: default; }
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
-.room-mode-settings .renderer-slider { font-size: 13px; }
+.room-mode-settings .renderer-slider, .room-mode-settings-docked .renderer-slider { font-size: 13px; }
 .room-choice-row .seg { grid-column: 1 / -1; gap: 4px 20px; }
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
@@ -463,7 +463,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 /* The sheet and a mode's settings, in the right dock's Editor tab. */
 .room-sheet-docked { display: grid; gap: 16px; align-content: start; }
 .room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
-.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
+.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; min-width: 0; padding-top: 8px; }
+.room-mode-settings-docked .renderer-slider > span:first-child { overflow-wrap: anywhere; }
 .room-mode-settings-docked .room-mode-settings-note { margin: 0; }
 
 /* Ctrl+Enter: the new, empty thought is marked for a moment where it waits. */
