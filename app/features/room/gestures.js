@@ -153,7 +153,7 @@ export class Gestures {
       return;
     }
     if (!g.moved) {
-      // A tap: on a thought (or a folded train, or a line) selects it; on empty space clears the
+      // A tap: on a thought (or a closed train, or a line) selects it; on empty space clears the
       // selection. Double-click selects a whole train (onDouble).
       // The ontology's own tap (Russell: a closed chapter opens as a document).
       if (g.thing && this.ont.open?.(this, g.thing.id)) return;
@@ -263,7 +263,7 @@ export class Gestures {
     }
     const r = g.rect;
     const ids = new Set();
-    for (const n of this.world$.querySelectorAll('[data-thought], .room-folded[data-group]')) {
+    for (const n of this.world$.querySelectorAll('[data-thought], .room-closed[data-group]')) {
       const q = n.getBoundingClientRect();
       if (q.right < r.left || q.left > r.right || q.bottom < r.top || q.top > r.bottom) continue;
       ids.add(n.dataset.thought || n.dataset.group);
@@ -305,7 +305,7 @@ export class Gestures {
       if (!train && !isLeaf(th)) continue;
       const p = this.ont.point(w, this.roomId, id) || { x: train?.x ?? 0, y: train?.y ?? 0 };
       out.push(train
-        ? { x: p.x, y: p.y, title: train.title || '', folded: !!train.folded, keep: !!train.keep, items: trainThoughts(w, id).map(fields) }
+        ? { x: p.x, y: p.y, title: train.title || '', closed: !!train.closed, items: trainThoughts(w, id).filter(isLeaf).map(fields) }
         : { x: p.x, y: p.y, items: [fields(th)] });
     }
     return out;
@@ -341,8 +341,7 @@ export class Gestures {
       const items = u.items.map((f) => create(w, train.id, f, now++)).filter(Boolean);
       if (!items.length) { remove(w, train.id); continue; }
       if (u.title) train.title = u.title;
-      if (u.folded) train.folded = true;
-      if (u.keep) train.keep = true;
+      if (u.closed) train.closed = true;
       made.push(u.items.length === 1 && !u.title ? items[0].id : train.id);
     }
     if (!made.length) return;
@@ -367,7 +366,7 @@ export class Gestures {
   }
 
   // Double-click: where an ontology draws its groups (Joyce's trains), chooses the whole group
-  // (then drag it from any of its thoughts or its line); on a passage, picture or folded group
+  // (then drag it from any of its thoughts or its line); on a passage, picture or closed group
   // floating on its own, opens it to edit.
   onDouble(e) {
     if (this.lastPress && Date.now() - this.lastPress.at < 600) return; // a double-click in the thought being written (onDown)

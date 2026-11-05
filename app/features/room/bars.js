@@ -1,9 +1,9 @@
 // Part of the room feature. The pop-ups in a room: a thing's properties, the loose-thought tray, the bar for several
-// chosen things, folding trains, pictures, the Passage / Picture sheet, and moving thoughts to another room.
+// chosen things, closing groups, pictures, the Passage / Picture sheet, and moving thoughts to another room.
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  MESSY, room, name, view, create, update, remove, move, fold, unfold, kindOf, groupOf,
+  MESSY, room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
   thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms, shrinkPicture, ITEMS,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
@@ -77,7 +77,7 @@ export class Bars {
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const gname = kind === 'group' ? this.groupName(th) : 'Train';
-    const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
+    const title = kind === 'group' ? (th.closed ? `A closed ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
     if (!inPanel) rows.push(el('div', { class: 'label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
@@ -114,12 +114,9 @@ export class Bars {
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
         el('div', { class: 'pop-row' },
           el('span', { class: 'pop-note' }, `${n} thought${n === 1 ? '' : 's'}`),
-          th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
-            : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null,
+          th.closed ? word('Open', () => this.openTrain(th.id))
+            : n > 1 || this.ont.open ? word('Close', () => this.closeTrain(th.id)) : null,
           this.files?.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
-      // Folded in a big room: how the other ontologies show it, in place of its thoughts or beside them.
-      const elsewhere = th.folded ? this.elsewhere(th) : [];
-      if (elsewhere.length) rows.push(this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }));
     }
     // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
     // those that fit.
@@ -178,12 +175,10 @@ export class Bars {
       `${g.title || 'Untitled'}${at >= 0 ? ` · ${at + 1} of ${all.length}` : ''}`);
     }
     const n = kind === 'group' ? trainThoughts(this.world, th.id).length : 0;
-    const elsewhere = kind === 'group' && th.folded ? this.elsewhere(th) : [];
     out.push(sec('Place',
       kv('Room', pick),
       inGroup ? kv(gn, inGroup) : null,
-      kind === 'group' ? kv('Thoughts', el('span', {}, String(n))) : null,
-      elsewhere.length ? this.keepChoice(elsewhere, !!th.keep, (keep) => { update(this.world, th.id, { keep }); done(); }) : null));
+      kind === 'group' ? kv('Thoughts', el('span', {}, String(n))) : null));
     // The mode's own rows for what is chosen (ontologies/index.js: props), and its moves.
     let own = [];
     try { own = this.ont.props?.(this, th) || []; } catch (err) { console.warn('Room: props', err); }
@@ -193,12 +188,12 @@ export class Bars {
         moves.length ? el('div', { class: 'box-btns room-moves' }, ...moves.map((m) => btn(m.label, () => this.runMove(m)))) : null));
     }
     // Actions: the same verbs as the keys (verbs.js), each naming its key.
-    const foldable = kind === 'group' ? (th.folded || n > 1 || this.ont.open) : !!g;
-    const folded = kind === 'group' ? th.folded : g?.folded;
+    const foldable = kind === 'group' ? (th.closed || n > 1 || this.ont.open) : !!g;
+    const closed = kind === 'group' ? th.closed : g?.closed;
     out.push(sec('Actions', el('div', { class: 'box-btns' },
       btn('Duplicate', () => verbs.duplicate(this), 'room.duplicate'),
       btn('Move', () => verbs.moveTo(this), 'room.move'),
-      foldable ? btn(folded ? 'Unfold' : 'Fold', () => verbs.fold(this), 'room.fold') : null,
+      foldable ? btn(closed ? 'Open' : 'Close', () => verbs.close(this), 'room.close') : null,
       btn('Delete', () => {
         remove(this.world, th.id);
         this.sel = null;
@@ -370,41 +365,17 @@ export class Bars {
     this.historyTimer = setTimeout(() => this.drawHistory(), 60);
   }
 
-  // Folds a group, then asks for its name. In a big room where another ontology has laid its
-  // thoughts out, the same sheet asks how that ontology shows it: Replace or Keep both.
-  foldTrain(trainId) {
-    const ask = this.elsewhere(this.world.things[trainId], true);
-    if (!fold(this.world, trainId)) return;
+  // Closes a group, then asks for its name.
+  closeTrain(trainId) {
+    if (!closeGroup(this.world, trainId)) return;
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.openSheet(null, trainId, null, ask);
+    this.openSheet(null, trainId);
   }
 
-  // The other ontologies of a big room that show a group (laid out: only those that have placed
-  // some of its thoughts already).
-  elsewhere(g, laidOut = false) {
-    const r = room(this.world, g?.parent);
-    if (!g || !r || !isBig(r)) return [];
-    return this.ontologies.filter((o) => o.id !== g.of && (!laidOut
-      || !o.placed || g.members.some((id) => o.placed(this.world, r.id, id))));
-  }
-
-  // Replace · Keep both, for how `others` show a folded group.
-  keepChoice(others, keep, choose) {
-    const names = others.map((o) => o.name).join(' and ');
-    const pick = (label, value, note) => el('button', {
-      type: 'button', class: 'word', 'aria-pressed': String(keep === value), title: note,
-      onclick: (e) => { keep = value; choose(value); e.currentTarget.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
-    }, label);
-    return el('div', { class: 'pop-row room-keep' },
-      el('span', { class: 'pop-note' }, `In ${names}:`),
-      pick('Replace', false, 'The one folded thought takes the place of its thoughts'),
-      pick('Keep both', true, 'The folded thought is added beside its thoughts'));
-  }
-
-  unfoldTrain(id) {
-    unfold(this.world, id);
+  openTrain(id) {
+    openGroup(this.world, id);
     this.sel = null;
     this.save();
     this.drawWorld();
@@ -421,7 +392,7 @@ export class Bars {
     }
     const cur = this.current[this.roomId];
     const t = this.world.things[cur];
-    if (!this.fresh && t?.parent === this.roomId && !t.folded && t.of === this.writer.id) return { train: cur };
+    if (!this.fresh && t?.parent === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
     const spot = this.freeSpot();
     this.fresh = false;
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
@@ -455,16 +426,16 @@ export class Bars {
     }
   }
 
-  // The sheet: to write a passage, caption a picture or name a folded group, new (kind) or an
+  // The sheet: to write a passage, caption a picture or name a closed group, new (kind) or an
   // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
   // room). Keep (Enter) saves it; Escape or Cancel leaves it.
-  openSheet(kind, id = null, src = null, ask = []) {
+  openSheet(kind, id = null, src = null) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.commit();
     const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;
-    this.editing = { kind, id, src: src || th?.src || null, ask: ask.length > 0, keep: !!th?.keep };
+    this.editing = { kind, id, src: src || th?.src || null };
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
@@ -475,7 +446,6 @@ export class Bars {
     if (kind === 'group') {
       this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
       fields.push(this.sheetTitle, el('div', { class: 'room-sheet-preview' }, thoughtText(this.world, th)));
-      if (ask.length) fields.push(this.keepChoice(ask, this.editing.keep, (keep) => { this.editing.keep = keep; this.sheetTitle.focus(); }));
     } else if (kind === 'passage') {
       this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
       this.sheetBody = el('textarea', { class: 'room-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
@@ -485,7 +455,7 @@ export class Bars {
       this.sheetCaption = el('input', { class: 'room-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
       fields.push(el('img', { class: 'room-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
-    const label = { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind];
+    const label = { passage: 'Passage', picture: 'Picture', group: `A closed ${this.groupName(th).toLowerCase()}` }[kind];
     const words = el('div', { class: 'sheet-words' },
       el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
       el('button', { type: 'button', class: 'word', onclick: () => this.closeSheet() }, 'Cancel'),
@@ -516,10 +486,7 @@ export class Bars {
   keepSheet() {
     const ed = this.editing;
     if (!ed) return;
-    if (ed.kind === 'group') {
-      name(this.world, ed.id, this.sheetTitle.value);
-      if (ed.ask) update(this.world, ed.id, { keep: ed.keep });
-    }
+    if (ed.kind === 'group') name(this.world, ed.id, this.sheetTitle.value);
     else {
       const fields = ed.kind === 'passage'
         ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }

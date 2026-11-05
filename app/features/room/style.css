@@ -245,7 +245,7 @@
 }
 .room-passage-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .85; margin-bottom: 4px; }
 .room-passage-body { white-space: pre-line; opacity: .9; max-height: 22em; overflow: hidden; }
-.room-passage.folded { border-left-style: dotted; }
+.room-passage.closed { border-left-style: dotted; }
 .room-picture img { display: block; max-width: 240px; max-height: 240px; width: auto; height: auto; opacity: .92; pointer-events: none; }
 .room-picture figcaption { margin-top: 6px; font-size: 13px; opacity: .7; }
 .room-float .room-passage { margin: 0; }
@@ -264,7 +264,6 @@
 .room-settings .btn { justify-self: start; }
 
 /* A pop-up of options. */
-.room-sheet .room-keep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
 
 /* The list of keys (?): a quiet panel near the top. */
 

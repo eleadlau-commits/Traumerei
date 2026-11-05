@@ -14,7 +14,7 @@
 //
 //   ## Matrices {parent="Arrays" forgets="the equations"}   Russell: each parent, then its
 //                                         arrow's relation as a key (one of russell.relations)
-//   > folded                              a group (a train, a chapter), folded; {…} its attributes
+//   > closed                              a group (a train, a chapter), closed; {…} its attributes
 //   - a line                              a line thought; indented lines under it stay in it
 //   ### A title                           a passage: a title and the paragraphs under it
 //   A body with $x_i$ in it.              (a bare ### for no title; a paragraph on its own is a
@@ -44,7 +44,7 @@ const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 const HEADING = /^##(\s|$)/; // a group (### is a passage)
 const IMAGE = /^!\[.*\]\(\S+\)\s*$/;
 // What a line in a passage can't start with unless it has a backslash in front.
-const LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*folded)/i;
+const LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*(closed|folded))/i;
 
 const structural = (l) => HEADING.test(l) || /^###(\s|$)/.test(l) || /^-(\s|$)/.test(l) || IMAGE.test(l);
 export function escape(l) {
@@ -163,7 +163,7 @@ function heading(rest) {
 
 const META = { room: 'room', kind: 'kind', description: 'description', desc: 'description', tags: 'tags', tint: 'tint', light: 'light', opacity: 'opacity' };
 
-// The file read: { meta, loose: [fields], groups: [{ title, attrs, folded, items, line }], report }.
+// The file read: { meta, loose: [fields], groups: [{ title, attrs, closed, items, line }], report }.
 // Nothing changes yet; report lists what couldn't be read, by line.
 export function parse(text) {
   const report = [];
@@ -203,13 +203,13 @@ export function parse(text) {
     if (HEADING.test(l)) {
       const h = heading(l.slice(2));
       if (h.broken) report.push(`Line ${i + 1}: the {…} on "${l.trim()}" isn't closed properly; the heading was kept${h.attrs.length ? ` with the attributes before the break` : ''}.`);
-      cur = { title: h.title, attrs: h.attrs, folded: false, items: [], line: i + 1 };
+      cur = { title: h.title, attrs: h.attrs, closed: false, items: [], line: i + 1 };
       groups.push(cur);
       i++;
       let k = i;
       while (k < lines.length && !lines[k].trim()) k++;
-      const f = /^>\s*folded\s*(?::\s*(.*?))?\s*$/i.exec(lines[k] || '');
-      if (f) { cur.folded = true; if (f[1] && !cur.title) cur.title = f[1]; i = k + 1; }
+      const f = /^>\s*(?:closed|folded)\s*(?::\s*(.*?))?\s*$/i.exec(lines[k] || '');
+      if (f) { cur.closed = true; if (f[1] && !cur.title) cur.title = f[1]; i = k + 1; }
       continue;
     }
     for (const kind of kinds) {
@@ -258,7 +258,7 @@ function spots(w, ids, at = { x: 0, y: 0 }) {
     if (k && k % 4 === 0) { y += tallest + 140; tallest = 0; }
     out[id] = { x: at.x + (k % 4) * 440, y };
     const g = w.things[id];
-    tallest = Math.max(tallest, g.folded ? 60 : members(w, id).reduce((s, th) => s + stepAfter(th), 0));
+    tallest = Math.max(tallest, g.closed ? 60 : members(w, id).reduce((s, th) => s + stepAfter(th), 0));
   });
   return out;
 }
@@ -283,7 +283,7 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
   const left = new Set();
   for (const src of parsed.groups) {
     const name = src.title ? `"${src.title}"` : 'An untitled heading';
-    const g = create(w, roomId, { kind: 'group', of, title: src.title, folded: src.folded }, t++);
+    const g = create(w, roomId, { kind: 'group', of, title: src.title, closed: src.closed }, t++);
     if (!g) continue;
     for (const f of src.items) add(g.id, f);
     if (!members(w, g.id).length) {
@@ -396,7 +396,7 @@ function looseIn(w, roomId, of) {
   return roomItems(w, roomId).filter((th) => isLeaf(th) && !inGroup.has(th.id));
 }
 
-// One group as a ## block: its heading (Russell's arrows, then the attributes kept), > folded, its
+// One group as a ## block: its heading (Russell's arrows, then the attributes kept), > closed, its
 // thoughts.
 function writeGroup(w, roomId, g, pictures) {
   const of = g.of;
@@ -404,7 +404,7 @@ function writeGroup(w, roomId, g, pictures) {
   if (of === RUSSELL) attrs.push(...headingAttrs(w, roomId, g.id, (p) => w.things[p]?.title || ''));
   attrs.push(...((own(w, roomId, of, false).headings || {})[g.id] || []));
   const head = ['##', g.title, attrs.length ? `{${attrs.map(([k, v]) => `${k}=${writeAttr(v)}`).join(' ')}}` : ''].filter(Boolean).join(' ');
-  return [head, ...(g.folded ? ['> folded'] : []), writeItems(members(w, g.id), pictures)].join('\n');
+  return [head, ...(g.closed ? ['> closed'] : []), writeItems(members(w, g.id), pictures)].join('\n');
 }
 
 // The room as room Markdown: the groups of the mode it is seen through (a big room, the mode that
@@ -502,7 +502,7 @@ const named = (title, word) => (title ? `"${title}"` : `an untitled ${word}`);
 //             and its front matter is not used.
 // pictures: the window's short references (shortPictures). Returns { scope, roomId, of, word,
 // parsed, replace: [{ id, src }], add: [src], missing: [id], renames: [{ id, from, to }],
-// folds: [{ id, folded }], meta: [{ key, from, to, text }], arrowChanges: [text], counts, report }.
+// folds: [{ id, closed }], meta: [{ key, from, to, text }], arrowChanges: [text], counts, report }.
 export function plan(w, roomId, parsed, { scope = 'group', groupId = null, ontologies = [], pictures = null, now = Date.now() } = {}) {
   const report = [...parsed.report];
   // Pictures by short reference, and the text read as plain lists (parse's result stays as it was).
@@ -524,7 +524,7 @@ export function plan(w, roomId, parsed, { scope = 'group', groupId = null, ontol
     p.of = g.of;
     p.word = ogName(ontologies, g.of);
     const [first, ...rest] = parsed.groups;
-    if (!first) p.replace.push({ id: g.id, src: { title: g.title, attrs: [], folded: !!g.folded, items: parsed.loose, line: 1, same: true } });
+    if (!first) p.replace.push({ id: g.id, src: { title: g.title, attrs: [], closed: !!g.closed, items: parsed.loose, line: 1, same: true } });
     else {
       p.replace.push({ id: g.id, src: first });
       p.add.push(...rest);
@@ -562,7 +562,7 @@ export function plan(w, roomId, parsed, { scope = 'group', groupId = null, ontol
     if (src.same) continue;
     if (!src.items.length) continue; // reported by the dry run
     if (src.title !== (g.title || '')) p.renames.push({ id, from: g.title || '', to: src.title });
-    if (!!src.folded !== !!g.folded) p.folds.push({ id, folded: !!src.folded });
+    if (!!src.closed !== !!g.closed) p.folds.push({ id, closed: !!src.closed });
   }
   // A dry run on a copy: what Russell refuses, and how many thoughts are kept, made and deleted.
   const dry = run(copyWorld(w), roomId, p, { now, removeMissing: false });
@@ -673,7 +673,7 @@ function run(w, roomId, p, { now, removeMissing }) {
     refill(id, members(w, id), src.items);
     if (src.same) continue;
     if (src.title !== (g.title || '')) update(w, id, { title: src.title }, now);
-    if (!!src.folded !== !!g.folded) update(w, id, { folded: !!src.folded }, now);
+    if (!!src.closed !== !!g.closed) update(w, id, { closed: !!src.closed }, now);
     keepAttrs(id, src.attrs);
     if (of === RUSSELL) arrowsFor.push({ id, src });
   }
@@ -682,7 +682,7 @@ function run(w, roomId, p, { now, removeMissing }) {
 
   const made = [];
   for (const src of p.add) {
-    const g = create(w, roomId, { kind: 'group', of, title: src.title, folded: src.folded }, t++);
+    const g = create(w, roomId, { kind: 'group', of, title: src.title, closed: src.closed }, t++);
     if (!g) continue;
     for (const f of src.items) { const th = create(w, g.id, fields(f), t++); if (th) { counts.made++; if (kindOf(th) === 'picture') counts.pictures++; } }
     if (!members(w, g.id).length) {
@@ -696,7 +696,7 @@ function run(w, roomId, p, { now, removeMissing }) {
     if (of === RUSSELL) arrowsFor.push({ id: g.id, src, added: true });
   }
   if (of !== RUSSELL && made.length) {
-    const below = Math.max(0, ...groupsIn(w, roomId, of).filter((g) => !made.includes(g.id)).map((g) => g.y + (g.folded ? 60 : members(w, g.id).reduce((s, th) => s + stepAfter(th), 0)) + 140));
+    const below = Math.max(0, ...groupsIn(w, roomId, of).filter((g) => !made.includes(g.id)).map((g) => g.y + (g.closed ? 60 : members(w, g.id).reduce((s, th) => s + stepAfter(th), 0)) + 140));
     const where = spots(w, made, { x: 0, y: below });
     for (const id of made) Object.assign(w.things[id], where[id]);
   }

@@ -157,7 +157,7 @@ export default class Roomfile extends Feature {
       const changes = readOnly ? [] : [
         ...p.meta.map((m) => m.text),
         ...p.renames.map((r) => `${r.from ? `"${r.from}"` : `The untitled ${p.word}`} is renamed "${r.to}"`),
-        ...p.folds.map((f) => `${t(f.id)} is ${f.folded ? 'folded' : 'unfolded'}`),
+        ...p.folds.map((f) => `${t(f.id)} is ${f.closed ? 'closed' : 'open'}`),
         ...p.arrowChanges,
         ...p.add.filter((g) => g.items.length).map((g) => `A new ${p.word}: ${g.title ? `"${g.title}"` : 'untitled'}`),
         ...(p.looseAdd?.length ? [`${count(p.looseAdd.length, 'thought')} above the first heading ${p.looseAdd.length === 1 ? 'is' : 'are'} added as loose`] : []),

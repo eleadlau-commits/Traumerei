@@ -2,7 +2,7 @@
 // its own. \$ is a dollar sign. The words are kept as typed (the LaTeX source); only the drawing
 // changes, so search, peeks and the Timeline still read the source, and writing shows the source.
 //
-// Every item's node() (and a folded group's) draws its words with maths(text), so a new kind of
+// Every item's node() (and a closed group's) draws its words with maths(text), so a new kind of
 // item gets mathematics for free. KaTeX (vendor/, MIT, its fonts inside its CSS) draws them at
 // once, so whatever measures a thought after drawing (Joyce, clear.js) sees its real size.
 //

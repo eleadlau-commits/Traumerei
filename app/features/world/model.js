@@ -2,12 +2,14 @@
 //
 //   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
 //            kinds, such as a page of a PDF, are added there)
-//   group    { of, members, x, y, title, folded, keep }   items held together by an ontology.
-//            `of` is the ontology that made it (Joyce makes trains); `members` lists its items.
-//            Folded, a group shows as one thought (its title); every other ontology then shows it
-//            as one thought too: in place of its items (Replace), or beside them (keep: Keep
-//            both). Every group follows the same rules: it can be folded, named, moved and
-//            deleted, and it is always the same group, never a copy.
+//   group    { of, members, x, y, title, closed }   thoughts held together by an ontology.
+//            `of` is the ontology that made it (Joyce makes trains, Russell chapters); `members`
+//            lists what it holds: items, and other groups (a train of trains). A group is one
+//            object shared by every ontology of its room: in the others it is one thought, in
+//            their tray until placed (groups.js), and its members stay where they are there.
+//            Closed, it shows as one thought (its title) in its own ontology too; that is only
+//            how it shows. Every group can be closed, named, moved and deleted, and is always the
+//            same group, never a copy.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size, page,             through an ontology; on the rooms page it is a
 //              desc, tags, locked, archived }    square of size × size cells at (col, row).
@@ -17,8 +19,9 @@
 //                                                the Archive page.
 //
 // Every thought has { id, kind, parent, at }. An item's and a group's `parent` is its room; a
-// room's is null (the rooms page). An item is in a group because the group lists it, so one item
-// can be in groups of several ontologies at once. Each ontology declares whether an item can be
+// room's is null (the rooms page). An item (or a group) is in a group because the group lists it,
+// so one item can be in groups of several ontologies at once. A group never holds itself, nor a
+// group that holds it. Each ontology declares whether an item can be
 // in one of its groups (a train) or in several (later, Perec's sets): see declareGroups.
 //
 // A small room (1 × 1) holds the one ontology it was made with; a big room (Messy thoughts, or any
@@ -92,7 +95,7 @@ export function loadWorld(saved, now = Date.now()) {
   for (const g of Object.values(w.things)) {
     if (!isGroup(g)) continue;
     g.members = [...new Set(Array.isArray(g.members) ? g.members : [])]
-      .filter((id) => isLeaf(w.things[id]) && w.things[id].parent === g.parent);
+      .filter((id) => id !== g.id && (isLeaf(w.things[id]) || isGroup(w.things[id])) && w.things[id].parent === g.parent);
     if (typeof g.of !== 'string' || !g.of) g.of = DEFAULT_MODE;
   }
   const messy = w.things[MESSY];
@@ -146,13 +149,43 @@ export function roomOf(w, id) {
 
 // ---- Groups ----
 
-// A group's items, in the order they were written (or as they were put in, for an ontology that
-// keeps its order: declareOrder).
+// What a group holds (items, and groups), in the order they were written (or as they were put in,
+// for an ontology that keeps its order: declareOrder).
 export function members(w, groupId) {
   const g = w.things[groupId];
   if (!isGroup(g)) return [];
-  const items = g.members.map((id) => w.things[id]).filter(isLeaf);
-  return KEPT.has(g.of) ? items : items.sort(byTime);
+  const held = g.members.map((id) => w.things[id]).filter((th) => isLeaf(th) || isGroup(th));
+  return KEPT.has(g.of) ? held : held.sort(byTime);
+}
+// Every item inside a group, however deep (a train of trains: the thoughts of each), each once,
+// in reading order.
+export function itemsIn(w, groupId, seen = new Set()) {
+  if (seen.has(groupId)) return [];
+  seen.add(groupId);
+  const out = [];
+  for (const th of members(w, groupId)) {
+    if (isGroup(th)) out.push(...itemsIn(w, th.id, seen));
+    else if (!out.includes(th)) out.push(th);
+  }
+  return [...new Set(out)];
+}
+// Everything inside a group, however deep (groups and items), each once.
+export function within(w, groupId, seen = new Set()) {
+  const out = [];
+  for (const th of members(w, groupId)) {
+    if (seen.has(th.id)) continue;
+    seen.add(th.id);
+    out.push(th);
+    if (isGroup(th)) out.push(...within(w, th.id, seen));
+  }
+  return out;
+}
+// True if group `a` holds `id`, however deep.
+export function holds(w, a, id, seen = new Set()) {
+  const g = w.things[a];
+  if (!isGroup(g) || seen.has(a)) return false;
+  seen.add(a);
+  return g.members.includes(id) || g.members.some((m) => holds(w, m, id, seen));
 }
 // The groups in a room (of one ontology, or of all).
 export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
@@ -163,11 +196,13 @@ export const groupOf = (w, id, of = DEFAULT_MODE) => groupsOf(w, id, of)[0] || n
 // The items in a room, in the order they were written.
 export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
 
-// Puts an item into a group (of its room). Where the group's ontology lets an item be in only one
-// of its groups, the item leaves the one it was in.
+// Puts an item, or another group, into a group (of its room). Where the group's ontology lets a
+// thing be in only one of its groups, it leaves the one it was in. Never a group into itself, nor
+// into a group it holds.
 export function join(w, groupId, id) {
   const g = w.things[groupId], th = w.things[id];
-  if (!isGroup(g) || !isLeaf(th) || th.parent !== g.parent || g.members.includes(id)) return false;
+  if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || th.parent !== g.parent || g.members.includes(id)) return false;
+  if (id === groupId || holds(w, id, groupId)) return false;
   if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
   // A group that keeps its order takes a newcomer before the first item written after it (so a
   // thought written between two goes between them); one written last goes at the end.
@@ -202,18 +237,9 @@ export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g)
 // Every line, passage and picture in a room, in time order.
 export const roomThoughts = roomItems;
 
-// What floats on a canvas that places single thoughts (Pessoa): each item on its own, and a folded
-// group as the one thought it is, in place of its items (or beside them, when it keeps both).
-export function roomUnits(w, roomId) {
-  const folded = groupsIn(w, roomId).filter((g) => g.folded && members(w, g.id).length);
-  const hidden = new Set(folded.filter((g) => !g.keep).flatMap((g) => g.members));
-  return [...folded, ...roomItems(w, roomId).filter((th) => !hidden.has(th.id))].sort(byTime);
-}
-
-// The folded groups other ontologies made, which ontology `of` shows as one thought each: one with
-// a tray keeps them there until it places them.
-export const foldedFrom = (w, roomId, of) =>
-  groupsIn(w, roomId).filter((g) => g.folded && g.of !== of && members(w, g.id).length);
+// Every item in a room (what Pessoa floats, each on its own), in time order. Groups are not
+// among them: they are shared objects each ontology places itself (groups.js).
+export const roomUnits = (w, roomId) => roomItems(w, roomId);
 
 export function lastWritten(w, roomId) {
   const all = roomThoughts(w, roomId);
@@ -323,8 +349,7 @@ function tidy(f) {
     const out = { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
       members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
       x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
-    if (f.folded) out.folded = true;
-    if (f.keep) out.keep = true;
+    if (f.closed) out.closed = true;
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
@@ -378,8 +403,7 @@ export function update(w, id, fields, now = Date.now()) {
   if (isGroup(th)) {
     next.members = th.members;
     next.of = th.of;
-    if (!next.folded) delete th.folded;
-    if (!next.keep) delete th.keep;
+    if (!next.closed) delete th.closed;
   }
   if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
@@ -395,7 +419,7 @@ export function remove(w, id) {
   delete w.things[id];
   for (const c of children(w, id)) remove(w, c.id);
   if (isGroup(th) && membership(th.of) === 'one') for (const m of th.members) remove(w, m);
-  if (isLeaf(th)) for (const g of groupsOf(w, id)) leave(w, g.id, id);
+  for (const g of groupsOf(w, id)) leave(w, g.id, id);
   forget(w, id);
   delete w.views[id];
   delete w.own[id];
@@ -428,12 +452,13 @@ export function move(w, id, into, x = 0, y = 0) {
   if (isGroup(th)) {
     if (kindOf(to) !== 'room') return false;
     const from = th.parent;
-    for (const m of members(w, id)) {
-      for (const g of groupsOf(w, m.id)) if (g.id !== id && g.parent === from) leave(w, g.id, m.id);
+    const going = [th, ...within(w, id)];
+    const ids = new Set(going.map((m) => m.id));
+    for (const m of going) {
+      for (const g of groupsOf(w, m.id)) if (!ids.has(g.id) && g.parent === from) leave(w, g.id, m.id);
       forget(w, m.id, from);
-      m.parent = into;
     }
-    forget(w, id, from);
+    for (const m of going) m.parent = into;
     Object.assign(th, { parent: into, x: Math.round(x), y: Math.round(y) });
     return true;
   }
@@ -456,18 +481,17 @@ export function name(w, id, text) {
   if (th) update(w, id, kindOf(th) === 'room' ? { name: text } : { title: text });
 }
 
-// A group folds into one thought, and unfolds back; its items and their order never change.
-// keep: other ontologies show it beside its items (Keep both), not in their place (Replace).
-export function fold(w, groupId, title, keep = false) {
+// A group closes into one thought (its name), and opens back; what it holds, and its order, never
+// change. Only how it shows in its own ontology changes: the others always show it as one.
+export function closeGroup(w, groupId, title) {
   if (!isGroup(w.things[groupId])) return false;
-  update(w, groupId, { folded: true, keep, ...(title != null ? { title } : {}) });
+  update(w, groupId, { closed: true, ...(title != null ? { title } : {}) });
   return true;
 }
-export function unfold(w, groupId) {
+export function openGroup(w, groupId) {
   const g = w.things[groupId];
-  if (!isGroup(g) || !g.folded || shut(w, groupId)) return false;
-  delete g.folded;
-  delete g.keep;
+  if (!isGroup(g) || !g.closed || shut(w, groupId)) return false;
+  delete g.closed;
   return true;
 }
 

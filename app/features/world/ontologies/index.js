@@ -12,21 +12,18 @@
 //   point(w, room, id)    where a thought sits ({ x, y }, world units)
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits
 //   draftPoint(w, room)   (optional) where a thought being written shows
-//   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. A
-//                         folded group another ontology made is one thought here
-//                         (foldedFrom() in model.js), and waits in the tray until placed. The
-//                         tray shows along the foot of the room; a thought dragged out of it onto
-//                         the canvas goes to drop()
+//   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. The
+//                         tray shows in the left dock (or along the foot of the room); a thought
+//                         dragged out of it onto the canvas goes to drop()
 //   placed(w, room, id)   (optional) whether it has laid a thought out yet; without it, every
-//                         thought counts as laid out. Folding a group in a big room asks Replace
-//                         or Keep both when another ontology there has laid out its thoughts
+//                         thought counts as laid out
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
 //                         floats at its point. c is the room feature: world, roomId, sel, isSel(id),
 //                         found, draft, prefs, setting(key), el, thoughtNode(th), draftNode(). A node marked
 //                         data-thought is one thought; one marked data-group (with no
-//                         data-thought, or for a folded group) is the whole group, which a
+//                         data-thought, or for a closed group) is the whole group, which a
 //                         double-click chooses; one marked data-measure="id" has its size
 //                         passed to measured() under that id (Russell: a chapter's name)
 //   tag(w, id)            (optional) a thought's tag in the room's Timeline ({ id, name }, or

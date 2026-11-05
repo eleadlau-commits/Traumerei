@@ -8,7 +8,7 @@
 // ontology's (the world feature's ontologies/). This feature keeps no mode of its own. Writing is the
 // same in every room: Enter goes on with the train, and Ctrl+Enter starts a new one.
 // Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Keys. A
-// train can be folded into one thought, which you name, and unfolded again.
+// group can be closed into one thought, which you name, and opened again.
 // Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
 // world is written down, and a line of help shows the first time a room is seen.
 //
@@ -71,7 +71,7 @@ export default class Room extends Feature {
       // The same verbs as on the rooms page (verbs.js).
       'room.rename': (e) => verbs.rename(this, e),
       'room.duplicate': (e) => verbs.duplicate(this, e),
-      'room.fold': (e) => verbs.fold(this, e),
+      'room.close': (e) => verbs.close(this, e),
       'room.group': (e) => verbs.group(this, e),
       'room.ungroup': (e) => verbs.ungroup(this, e),
       'room.move': (e) => verbs.moveTo(this, e),
@@ -334,7 +334,7 @@ export default class Room extends Feature {
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
   groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
-  // A folded group opened (Russell's closed chapter): in the content editor, in the right dock's
+  // A closed group opened (Russell's closed chapter): in the content editor, in the right dock's
   // Editor tab, with its thoughts as paragraphs to write in; without docks, as a document pop-up
   // (document.js).
   openDocument(id) {

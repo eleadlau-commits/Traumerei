@@ -75,10 +75,10 @@ test('a picture comes in with its caption; one that can\'t be fetched becomes a 
   assert.equal(report.filter((r) => /couldn't be fetched/.test(r)).length, 2);
 });
 
-test('> folded folds the group; > folded: X names a bare heading', () => {
-  const { w, id } = into('joyce', '## Arrays\n> folded\n- a\n\n##\n\n> folded: Named here\n- b\n\n## Kept\n> folded: Not this\n- c');
+test('> closed folds the group; > closed: X names a bare heading', () => {
+  const { w, id } = into('joyce', '## Arrays\n> closed\n- a\n\n##\n\n> closed: Named here\n- b\n\n## Kept\n> closed: Not this\n- c');
   const gs = groupsIn(w, id, 'joyce');
-  assert.deepEqual(gs.map((g) => [g.title, !!g.folded]), [['Arrays', true], ['Named here', true], ['Kept', true]]);
+  assert.deepEqual(gs.map((g) => [g.title, !!g.closed]), [['Arrays', true], ['Named here', true], ['Kept', true]]);
 });
 
 test('thoughts are stamped in the file\'s order, a millisecond apart', () => {
@@ -120,7 +120,7 @@ test('LaTeX passes through untouched: $ inside passages, and $$ blocks over seve
 });
 
 test('text that looks like structure gets a backslash, and loses it again', () => {
-  for (const l of ['## not a heading', '- not a line', '> folded', '![not](a-picture)', '\\## already', '\\frac{a}{b}', '\\\\ newline']) {
+  for (const l of ['## not a heading', '- not a line', '> closed', '![not](a-picture)', '\\## already', '\\frac{a}{b}', '\\\\ newline']) {
     assert.equal(unescape(escape(l)), l, l);
   }
   assert.equal(escape('## x'), '\\## x');
@@ -265,7 +265,7 @@ test('a round trip: export, import, export again gives the same file', () => {
   r.tags = ['maths', 'book, draft'];
   w.settings[r.id] = { russell: { overlap: false } };
   const m = groupNamed(w, r.id, 'Matrices');
-  m.folded = true;
+  m.closed = true;
   (own(w, r.id, 'russell').headings ||= {})[m.id] = [['status', 'draft "two"']];
   let t = 5000;
   create(w, m.id, { kind: 'passage', title: 'Why $A$', body: 'One $x$.\n\n## looks like a heading\n- and a line\n$$\na \\\\ b\n$$' }, t++);
@@ -280,10 +280,10 @@ test('a round trip: export, import, export again gives the same file', () => {
   const second = exportRoom(w2, back.room.id, { ontologies });
   assert.equal(second, first);
   assert.match(first, /^---\nroom: Linear algebra\nkind: russell\n/);
-  assert.match(first, /## Matrices \{parent="Arrays" forgets="the individual equations" status="draft \\"two\\""\}\n> folded\n/);
+  assert.match(first, /## Matrices \{parent="Arrays" forgets="the individual equations" status="draft \\"two\\""\}\n> closed\n/);
   assert.match(first, /\\## looks like a heading/);
   // The same thoughts, in the same order, with the same folds.
-  const ids = (ww, rid) => groupsIn(ww, rid, 'russell').map((g) => [g.title, !!g.folded, members(ww, g.id).map((th) => th.kind + ':' + (th.text || th.title || th.body))]);
+  const ids = (ww, rid) => groupsIn(ww, rid, 'russell').map((g) => [g.title, !!g.closed, members(ww, g.id).map((th) => th.kind + ':' + (th.text || th.title || th.body))]);
   assert.deepEqual(ids(w2, back.room.id).sort(), ids(w, r.id).sort());
 });
 
@@ -375,11 +375,11 @@ test('editing: a thought another mode\'s group holds leaves this group only', ()
 test('editing: a changed title renames, and new thoughts go between in order', () => {
   const { w, id, g } = book();
   const a = g('Arrays');
-  const { p } = edit(w, id, a.id, '## Arrays of numbers\n> folded\n- first\n- tables of numbers\n- last');
+  const { p } = edit(w, id, a.id, '## Arrays of numbers\n> closed\n- first\n- tables of numbers\n- last');
   assert.deepEqual(p.renames.map((r) => [r.from, r.to]), [['Arrays', 'Arrays of numbers']]);
-  assert.deepEqual(p.folds, [{ id: a.id, folded: true }]);
+  assert.deepEqual(p.folds, [{ id: a.id, closed: true }]);
   assert.equal(w.things[a.id].title, 'Arrays of numbers');
-  assert.ok(w.things[a.id].folded);
+  assert.ok(w.things[a.id].closed);
   assert.deepEqual(members(w, a.id).map((th) => th.text), ['first', 'tables of numbers', 'last']);
   // Matrices still points at it, by id.
   assert.deepEqual(parentsOf(w, id, g('Matrices').id), [a.id]);
@@ -462,7 +462,7 @@ test('editing: apply then undo gives back the exact world', () => {
   const { w, id, g } = book();
   const before = snap(w);
   const undoSnap = JSON.stringify({ things: w.things, own: w.own, pages: w.pages }); // what World keeps per step
-  edit(w, id, g('Eigenvalues').id, '## Eigen {parent="Arrays" status="draft"}\n> folded\n- new words\n## More\n- m');
+  edit(w, id, g('Eigenvalues').id, '## Eigen {parent="Arrays" status="draft"}\n> closed\n- new words\n## More\n- m');
   assert.ok(snap(w) !== before);
   Object.assign(w, JSON.parse(undoSnap));
   assert.equal(snap(w), before);

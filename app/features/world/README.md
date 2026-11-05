@@ -42,9 +42,11 @@ rules binds them once from `lib` into a file of its own that lists what it needs
 **Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
 kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*
 and *rooms*. Items and groups sit in a room. A group belongs to the ontology that made it (Joyce
-makes trains) and lists its items, so one item can be in groups of several ontologies. Each
+makes trains) and lists what it holds: items, and other groups (a train of trains; never itself
+or a group holding it). One item can be in groups of several ontologies. `itemsIn` gives every item
+inside a group however deep, `within` everything inside it, `holds` whether it holds a thing. Each
 ontology says whether an item can be in **one** of its groups (a train) or in **many**. Every
-group can be folded, named, moved and deleted, and is always the same group, never a copy.
+group can be closed, named, moved and deleted, and is always the same group, never a copy.
 
 **Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa, Russell), or come from another feature
 through the slot `world.ontologies`. `ontologies/index.js` describes their shape: name, groups,
@@ -72,7 +74,7 @@ the key `world3` (a world saved in an older shape is not kept) and follows the a
 
 Any thought's words can hold LaTeX: `$…$` is inline maths and `$$…$$` is display maths, on a line
 of its own; `\$` is a dollar sign. This is for every kind of words: a line, a passage's title
-and body, a picture's caption, a folded group's title. The words are kept exactly as typed, so
+and body, a picture's caption, a closed group's title. The words are kept exactly as typed, so
 search, peeks, the Timeline and `text(th)` read the source, and the draft, edit in place and the
 sheet show the source too. Once a thought is kept, it shows drawn, in the thought's own colour and
 size. A formula that doesn't parse shows its source in a quiet rust and never breaks the canvas.
@@ -83,7 +85,7 @@ words. Inline maths stays on one line; display maths may span lines. A `$` that 
 and an empty `$$ $$`, stay as words.
 
 `maths.js` has `split(text)` (words into text, inline and display pieces, tested in
-`tests/maths.test.js`) and `maths(text)`, which every item's `node()` and the folded group call,
+`tests/maths.test.js`) and `maths(text)`, which every item's `node()` and the closed group call,
 so a new kind of item gets mathematics for free, and `broken(text)`, the formulas in some words that KaTeX can't draw (with their line), for whoever wants to warn before they are kept. The drawing is KaTeX 0.19.1 (`vendor/`, MIT,
 see `LICENSE-KaTeX.txt`): `katex.js` is its ESM build, minified with esbuild, and `katex.css`
 holds its 20 fonts as base64 woff2, so it works offline and in the one-file page (about 640 KB

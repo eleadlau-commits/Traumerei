@@ -70,14 +70,14 @@ It offers no service of its own.
     after its parent (`{parent="Rings" generalises="to two operations"}`), and the list is
     `russell.relations: [forgets, generalises]`. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
-    **A closed chapter.** *Fold into one* in a chapter's pop-up (it asks for a name) closes it:
+    **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click opens it in the content editor, in the right dock's
     Editor tab: its name and its thoughts in order as flowing paragraphs, maths drawn (without
     docks, a document pop-up, `document.js`). Click a paragraph
     to write in it; Enter keeps it and starts the next thought just after it, Ctrl+Enter is a new
     line, Backspace in an empty one goes back into the one before, and a thought emptied goes. Esc
     stops writing; Esc again or × closes it. Each paragraph is still its own
-    thought, so search, the Timeline and the other modes see them one by one. *Unfold* opens the
+    thought, so search, the Timeline and the other modes see them one by one. *Open* shows the
     chapter on the canvas again.
 - **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
   say); Russell, those in no chapter. They fill the **left dock** (the docks feature) whenever the
@@ -90,12 +90,10 @@ It offers no service of its own.
 - **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*
   (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
   edit it. Both are written in the right dock's Editor tab (without docks, a sheet over the room):
-  Enter keeps, Esc or × cancels. Naming a folded group is written there too.
-- **Folding.** Select a train and *Fold into one thought*, then name it. It shows as one thought
-  (in Pessoa it floats as one); *Unfold* opens it again.
-  In a big room, folding also asks how the other ontologies show it: **Replace** (the one folded
-  thought takes the place of its thoughts) or **Keep both** (it is added beside them). It is the
-  same train either way, never a copy, and its pop-up can change the choice later.
+  Enter keeps, Esc or × cancels. Naming a closed group is written there too.
+- **Closing.** Select a train or chapter and *Close* (Ctrl+F), then name it. It shows as one
+  thought in its own mode; *Open* shows its thoughts again. Closing is only how it shows: its
+  thoughts, and the other modes, are not changed.
 
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
 saving and undo are the **world** feature's (`app/features/world`, see its README); the room
