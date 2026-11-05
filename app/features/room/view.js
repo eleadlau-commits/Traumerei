@@ -168,13 +168,15 @@ export class RoomView {
     const big = isBig(r);
     const items = [el('div', { class: 'rail-head', 'aria-hidden': 'true' }, big ? 'Modes' : 'Mode')];
     const mark = (m) => (m.icon ? railIcon(m.icon) : el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, m.name.slice(0, 1)));
+    // With the rail narrow the ⚙ is hidden, so clicking the current mode opens its settings.
+    const gearOrSettings = (id) => (this.frame?.railNarrow ? this.openRoomSettings(id) : this.toggleGear(id));
     for (const m of big ? this.ontologies : [this.ont]) {
       const on = m.id === this.mode;
       const word = big
         ? el('button', { type: 'button', class: 'rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on), title: m.name,
-          onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, mark(m), railWord(m.name))
+          onclick: () => { if (on) gearOrSettings(m.id); else this.setMode(m.id); } }, mark(m), railWord(m.name))
         : el('span', { class: 'rail-item room-rail-fixed', 'aria-current': 'true', title: `${m.name}: a small room keeps one mode. Make it 2 × 2 to switch.`,
-          onclick: () => this.toggleGear(m.id) }, mark(m), railWord(m.name));
+          onclick: () => gearOrSettings(m.id) }, mark(m), railWord(m.name));
       const gear = this.settingsOf(m).length ? el('button', {
         type: 'button', class: 'room-gear rail-wide', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
         'aria-expanded': String(this.settingsFor === m.id), onclick: () => this.openRoomSettings(m.id),
