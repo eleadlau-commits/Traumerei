@@ -71,7 +71,7 @@ It offers no service of its own.
     `russell.relations: [forgets, generalises]`. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
     **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
-    only its name shows on the canvas. A click opens it in the content editor, in the right dock's
+    only its name shows on the canvas. A click chooses it; a right-click opens it in the content editor, in the right dock's
     Editor tab: its name and its thoughts in order as flowing paragraphs, maths drawn (without
     docks, a document pop-up, `document.js`). Click a paragraph
     to write in it; Enter keeps it and starts the next thought just after it, Ctrl+Enter is a new
@@ -87,9 +87,10 @@ It offers no service of its own.
   let go on, or a new chapter of its own on the empty canvas).
   **Groups are shared.** A train or chapter is one object for the whole room: in every other mode
   (Pessoa too) it waits in the tray as one card, tagged by the kind of its outermost group
-  ("Train", "Chapter"), and its thoughts stay wherever they were there. Click a card to open it
-  (its thoughts in the editor); drag it onto the room to place it (Joyce and Pessoa: where it is
-  let go; Russell: into a chapter, like a thought). On the canvas a tap opens it.
+  ("Train", "Chapter"), and its thoughts stay wherever they were there. Click a card to choose it; right-click
+  it to open it (its thoughts in the editor); drag it onto the room to place it (Joyce and Pessoa: where it is
+  let go; Russell: into a chapter, like a thought). On the canvas a click chooses it and a right-click opens it
+  (without docks, a tap opens it).
   Ctrl+click or Shift+click cards to choose several; Ctrl+G then makes a group of them that stays
   in the tray until it is dragged out.
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or

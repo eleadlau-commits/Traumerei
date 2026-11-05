@@ -155,13 +155,18 @@ export class Gestures {
     if (!g.moved) {
       // A tap: on a thought (or a closed train, or a line) selects it; on empty space clears the
       // selection. Double-click selects a whole train (onDouble).
-      // The ontology's own tap (Russell: a closed chapter opens as a document).
-      if (g.thing && this.ont.open?.(this, g.thing.id)) return;
-      // Another mode's group (a chapter seen in Joyce, say) opens, as a closed chapter does.
+      // With the right dock, a tap only chooses: a closed chapter or another mode's group is chosen
+      // like anything else, and opens in the editor only on a right-click (or when the editor is
+      // already open, which follows what is chosen). Without the dock, they open as a document.
       const tapped = g.thing && this.world.things[g.thing.id];
-      if (isGroup(tapped) && tapped.of !== this.mode && !g.toggle && !g.add) { this.openDocument(tapped.id); return; }
+      if (!this.panel) {
+        // The ontology's own tap (Russell: a closed chapter opens as a document).
+        if (g.thing && this.ont.open?.(this, g.thing.id)) return;
+        // Another mode's group (a chapter seen in Joyce, say) opens, as a closed chapter does.
+        if (isGroup(tapped) && tapped.of !== this.mode && !g.toggle && !g.add) { this.openDocument(tapped.id); return; }
+      }
       const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
-      this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
+      this.sel = keep ? this.sel : isGroup(tapped) ? { kind: 'train', id: tapped.id } : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
       // Two taps on the same group (the page is redrawn between them, so no dblclick comes).
       const train = g.el?.dataset.group;
       const now = Date.now();
