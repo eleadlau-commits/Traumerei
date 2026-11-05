@@ -23,6 +23,7 @@ import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } f
 import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { RoomsVerbs } from './verbs.js';
+import { RoomsMany } from './many.js';
 import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
 
@@ -42,6 +43,7 @@ export default class Rooms extends Feature {
     this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
     this.regrouping = null; // the tag whose group is being typed in the Arrange by list
     this.tagsOpen = false; // the rail's Arrange by list is open
+    this.picks = [];       // the rooms chosen, while more than one is (many.js)
     this.openGroup = null; // the group open in it (its name in lower case; '' for Other), or null
     this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
     this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
@@ -84,6 +86,8 @@ export default class Rooms extends Feature {
       'rooms.rename': (e) => this.renameChosen(e),
       'rooms.duplicate': (e) => this.duplicateChosen(e),
       'rooms.move': (e) => this.moveChosen(e),
+      'rooms.group': (e) => this.tagChosen(e),
+      'rooms.ungroup': (e) => this.untagChosen(e),
     };
     for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom, ...(run[k.id] ? { run: run[k.id] } : {}) });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
@@ -338,12 +342,14 @@ export default class Rooms extends Feature {
     if (e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openLights(); return; }
+    if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') { e.preventDefault(); this.pickAll(); return; }
     if (mod && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
       e.preventDefault();
       this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey);
       return;
     }
     if (e.key === 'Escape') {
+      if (this.clearPicks()) return;
       if (this.roomSel || this.making) { this.roomSel = this.making = null; this.drawRooms(); }
       else if (this.roomPick) { this.roomPick = null; this.drawRooms(); }
       else if (this.lights != null) this.closeLights();
@@ -372,6 +378,7 @@ export default class Rooms extends Feature {
     const id = this.roomSel || this.roomPick;
     const r = id && room(this.world, id);
     const deletes = k === 'Delete' || (MAC && e.metaKey && k === 'Backspace');
+    if (deletes && this.picks.length > 1) { e.preventDefault(); this.deleteMany(); return true; }
     if (deletes && r && r.id !== MESSY && !shut(this.world, r.id)) {
       e.preventDefault();
       remove(this.world, r.id);
@@ -480,9 +487,9 @@ export default class Rooms extends Feature {
   }
 }
 
-// The grid (grid.js) and the verbs (verbs.js) are written as classes of their own, whose methods
+// The grid (grid.js), the verbs (verbs.js) and choosing many (many.js) are written as classes of their own, whose methods
 // are copied onto Rooms here, so `this` there is this feature.
-for (const part of [RoomsGrid, RoomsVerbs]) {
+for (const part of [RoomsGrid, RoomsVerbs, RoomsMany]) {
   for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(part.prototype))) {
     if (key !== 'constructor') Object.defineProperty(Rooms.prototype, key, d);
   }
