@@ -1667,10 +1667,11 @@ html.rail-narrow { --rail: 48px; }
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
 :is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
 
-/* Move to floor (Ctrl+M): a short list of floors near the top (verbs.js). */
-.rooms-floor-pick { z-index: 21; width: min(300px, calc(100% - 2 * var(--gutter))); padding: var(--s-3) 0; display: grid; }
-.rooms-floor-pick > .label { margin: 0 18px var(--s-2); }
-.rooms-floor-pick .pick[disabled] { opacity: var(--off); cursor: default; }
+/* A small sheet near the top (verbs.js): Move to floor (Ctrl+M), a tag for the chosen rooms (Ctrl+G). */
+.rooms-sheet { z-index: 21; width: min(320px, calc(100% - 2 * var(--gutter))); padding: var(--s-3) 0; display: grid; }
+.rooms-sheet > .label { margin: 0 18px var(--s-2); }
+.rooms-sheet .pick[disabled] { opacity: var(--off); cursor: default; }
+.rooms-sheet .rooms-group-tag { margin: 0 18px var(--s-2); width: auto; }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
@@ -15796,20 +15797,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.shelfHead.hidden = !this.shelf;
       this.roomsPage.classList.toggle("shelf", this.shelf);
       this.drawPages();
-      if (!this.inRoom) {
-        const chosen2 = room4(this.world, this.roomSel || this.roomPick);
-        this.frame?.update(this, {
-          backLabel: this.shelf ? "Back to the rooms" : "Back to the home page",
-          crumbs: this.crumbs(),
-          selection: chosen2 ? `${chosen2.name} chosen` : "",
-          mode: this.shelf ? "Archive" : `Floor ${this.page + 1} of ${pageCount3(this.world)}`,
-          idle: HINT
-        });
-      }
       this.grid.classList.toggle("peek-always", this.prefs.peek >= 0.5);
       const shown2 = new Set((this.shelf ? shelved : all).map((r) => r.id));
       if (!shown2.has(this.roomPick)) this.roomPick = null;
       if (!shown2.has(this.roomSel)) this.roomSel = null;
+      this.picks = (this.picks || []).filter((id) => shown2.has(id));
+      if (this.picks.length < 2) this.picks = [];
+      if (!this.inRoom) {
+        const chosen2 = room4(this.world, this.roomSel || this.roomPick);
+        const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : "";
+        this.frame?.update(this, {
+          backLabel: this.shelf ? "Back to the rooms" : "Back to the home page",
+          crumbs: this.crumbs(),
+          selection: many || (chosen2 ? `${chosen2.name} chosen` : ""),
+          mode: this.shelf ? "Archive" : `Floor ${this.page + 1} of ${pageCount3(this.world)}`,
+          idle: HINT
+        });
+      }
       const byTag = this.lights?.trim().startsWith("#");
       let hits = this.lights?.trim() && (!byTag || tidyTag2(this.lights)) ? this.hitsOn(shown2) : null;
       if (hits) {
@@ -16005,7 +16009,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const tile = el11(
         "div",
         {
-          class: "rooms-tile" + (lit ? " lit" : "") + (r.id === MESSY3 ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
+          class: "rooms-tile" + (lit ? " lit" : "") + (r.id === MESSY3 ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id || this.picks?.includes(r.id) ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
           role: "button",
           tabindex: 0,
           style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
@@ -16030,7 +16034,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           },
           onfocus: () => {
-            if (this.roomPick !== r.id && !this.roomSel) {
+            if (this.roomPick !== r.id && !this.roomSel && !(this.picks?.length > 1)) {
               this.roomPick = r.id;
               tile.classList.add("picked");
               this.grid.querySelectorAll(".rooms-tile.picked").forEach((t) => {
@@ -16430,7 +16434,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
     // A click on a square chooses it (an outline); the properties wait for a right-click.
-    pickRoom(id) {
+    pickRoom(id, e = null) {
+      if (e && (e.shiftKey || e.metaKey || e.ctrlKey && !MAC3)) {
+        this.addPick(id);
+        return;
+      }
+      this.picks = [];
       if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) {
         this.chooseRoom(id, true);
         return;
@@ -16443,6 +16452,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Opens (or, with open false, toggles) a room's properties beside its square.
     chooseRoom(id, open = false) {
+      this.picks = [];
       this.roomSel = open || this.roomSel !== id ? id : null;
       this.roomPick = id;
       this.making = null;
@@ -16709,6 +16719,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // strip slides to the floor above or below, so it can be dropped there.
     onTileDown(e, r, tile) {
       if (e.button || e.target.closest("input, textarea, select")) return;
+      this.pickBefore = this.roomPick;
       if (e.ctrlKey && MAC3) return;
       const start = { x: e.clientX, y: e.clientY };
       const grab = this.cellAt(e.clientX, e.clientY);
@@ -16824,8 +16835,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const now = Date.now();
           const twice = this.lastTap?.id === r.id && now - this.lastTap.at < 380;
           this.lastTap = { id: r.id, at: now };
-          if (twice) this.openRoom(r.id);
-          else this.pickRoom(r.id);
+          if (twice && !(ev.shiftKey || ev.ctrlKey || ev.metaKey)) this.openRoom(r.id);
+          else this.pickRoom(r.id, ev);
           return;
         }
         tile.style.transform = "";
@@ -16909,77 +16920,90 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/rooms/verbs.js
   var RoomsVerbs = class {
     // A copy of room `id`, beside it (`cell`: where it was dropped, on floor `page`, or else its
-    // original's cell), chosen. Returns the copy, or null.
-    duplicateRoom(id, { cell = null, page = null } = {}) {
+    // original's cell), with no saving: the world changes only. Returns { copy, page } or null.
+    copyBeside(id, { cell = null, page = null } = {}) {
       const r = room4(this.world, id);
       if (!r || r.archived) return null;
       const c = copyRoom2(this.world, id);
       if (!c) return null;
-      let out;
-      if (page != null && page !== (c.page || 0) && this.floors.toFloor(c.id, page, cell) === true) out = { page };
-      else out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
+      if (page != null && page !== (c.page || 0) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
+      const out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
+      return { copy: c, page: out ? out.page : c.page || 0 };
+    }
+    // Duplicates rooms (one step for them all) and chooses the copies. `at`: where one was dropped.
+    duplicateRooms(ids, at2 = {}) {
+      const made = ids.map((id) => this.copyBeside(id, ids.length === 1 ? at2 : {})).filter(Boolean);
+      if (!made.length) return [];
       this.save();
-      if (out) this.page = out.page;
+      const last = made[made.length - 1];
+      this.page = last.page;
       this.shelf = false;
-      this.roomSel = this.panel && this.propsDock ? c.id : null;
-      this.roomPick = c.id;
       this.making = null;
+      this.picks = made.length > 1 ? made.map((m2) => m2.copy.id) : [];
+      this.roomPick = last.copy.id;
+      this.roomSel = made.length === 1 && this.panel && this.propsDock ? last.copy.id : null;
       this.drawRooms();
-      this.toast(`${c.name} is on Floor ${(c.page || 0) + 1}. Ctrl+Z takes it back.`);
-      return c;
+      this.toast(made.length === 1 ? `${last.copy.name} is on Floor ${last.page + 1}. Ctrl+Z takes it back.` : `Duplicated ${made.length} rooms. Ctrl+Z takes them back.`);
+      return made.map((m2) => m2.copy);
     }
-    // Moves room `id` to floor `page` (its first free spot): one step. False when it can't go.
-    moveRoomTo(id, page) {
-      const r = room4(this.world, id);
-      if (!r) return false;
+    duplicateRoom(id, at2 = {}) {
+      return this.duplicateRooms([id], at2)[0] || null;
+    }
+    // Moves rooms to floor `page` ('new': a new floor at the end), each at its first free spot: one
+    // step. Says which could not go (Messy thoughts, a locked room, a full floor).
+    moveRoomsTo(ids, page) {
       if (page === "new") page = addPage3(this.world);
-      const moved = this.floors.toFloor(id, page);
-      if (moved === "full") {
-        this.toast(`Floor ${page + 1} is full.`);
-        return false;
+      let moved = 0, full = false, stuck = 0;
+      for (const id of ids) {
+        const out = this.floors.toFloor(id, page);
+        if (out === true) moved++;
+        else if (out === "full") full = true;
+        else stuck++;
       }
-      if (!moved) {
-        this.toast(r.locked ? `${r.name} is locked, so it keeps its place.` : `${r.name} stays where it is.`);
-        return false;
+      if (moved) {
+        this.save();
+        this.page = page;
+        this.shelf = false;
       }
-      this.save();
-      this.page = page;
-      this.roomPick = id;
       this.drawRooms();
-      this.toast(`${r.name} is on Floor ${page + 1}.`);
-      return true;
+      const one2 = ids.length === 1 && room4(this.world, ids[0]);
+      if (moved) this.toast(one2 ? `${one2.name} is on Floor ${page + 1}.` : `Moved ${moved} to Floor ${page + 1}${full || stuck ? `; ${ids.length - moved} stayed` : ""}.`);
+      else if (full) this.toast(`Floor ${page + 1} is full.`);
+      else this.toast(one2?.locked ? `${one2.name} is locked, so it keeps its place.` : "Nothing could move there.");
+      return moved > 0;
     }
-    // The chosen room, for Ctrl+D and Ctrl+M (not while typing in a field).
+    moveRoomTo(id, page) {
+      return this.moveRoomsTo([id], page);
+    }
+    // The chosen rooms, for the keys (not while typing in a field): many, or the one.
     chosenFor(e) {
-      if (e?.target?.matches?.("input, textarea, select, [contenteditable]")) return null;
-      if (this.root.hidden || this.inRoom) return null;
-      return room4(this.world, this.roomSel || this.roomPick);
+      if (e?.target?.matches?.("input, textarea, select, [contenteditable]")) return [];
+      if (this.root.hidden || this.inRoom) return [];
+      return this.chosenIds().map((id) => room4(this.world, id)).filter(Boolean);
     }
     duplicateChosen(e) {
-      const r = this.chosenFor(e);
-      if (r) this.duplicateRoom(r.id);
+      const rs = this.chosenFor(e).filter((r) => !r.archived);
+      if (rs.length) this.duplicateRooms(rs.map((r) => r.id));
     }
-    // Ctrl+M: a short list of the floors to move the chosen room to (its own is not one), and
-    // + New floor. A number key or a click picks; Escape or a click elsewhere lets go.
+    // Ctrl+M: a short list of the floors to move the chosen rooms to, and a new floor.
     moveChosen(e) {
-      const r = this.chosenFor(e);
-      if (!r) return;
-      if (r.id === MESSY3) {
-        this.toast("Messy thoughts stays on Floor 1.");
+      const rs = this.chosenFor(e);
+      if (!rs.length) return;
+      const movable = rs.filter((r) => r.id !== MESSY3 && !r.locked && !r.archived);
+      if (!movable.length) {
+        this.toast(rs.length === 1 && rs[0].id === MESSY3 ? "Messy thoughts stays on Floor 1." : "A locked room keeps its place.");
         return;
       }
-      if (r.locked) {
-        this.toast(`${r.name} is locked, so it keeps its place.`);
-        return;
-      }
-      this.floorPicker(r);
+      this.floorPicker(movable);
     }
-    floorPicker(r) {
-      this.closeFloorPicker();
-      const here = r.page || 0;
+    // The floors to move rooms to (`rs`: one room or many). A number key or a click picks, N a new
+    // floor; Escape or a click elsewhere lets go.
+    floorPicker(rs) {
+      rs = [].concat(rs);
+      const here = rs.length === 1 ? rs[0].page || 0 : -1;
       const pick = (page) => {
-        this.closeFloorPicker();
-        this.moveRoomTo(r.id, page);
+        this.closeSheet();
+        this.moveRoomsTo(rs.map((r) => r.id), page);
       };
       const rows = Array.from({ length: pageCount3(this.world) }, (_2, i2) => el11("button", {
         type: "button",
@@ -16988,43 +17012,150 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         onclick: () => pick(i2)
       }, `Floor ${i2 + 1}`, el11("span", { class: "pick-note" }, i2 === here ? "here" : String(i2 + 1))));
       rows.push(el11("button", { type: "button", class: "pick", onclick: () => pick("new") }, "New floor", el11("span", { class: "pick-note" }, "N")));
+      const what = rs.length === 1 ? rs[0].name : `${rs.length} rooms`;
+      this.openSheet(`Move ${what} to`, rows, (ev) => {
+        const n = ev.key.toLowerCase() === "n" ? "new" : /^[1-9]$/.test(ev.key) ? +ev.key - 1 : null;
+        if (n === "new" || n != null && n < pageCount3(this.world) && n !== here) {
+          ev.preventDefault();
+          pick(n);
+        }
+      });
+    }
+    // Ctrl+G: a tag for every chosen room (one step), written in a small field (the tags there are
+    // offered). It is how rooms are grouped on the rooms page: by a tag they share.
+    tagChosen(e) {
+      const rs = this.chosenFor(e).filter((r) => !r.locked);
+      if (!rs.length) {
+        this.toast(this.chosenFor(e).length ? "A locked room keeps its tags." : "Choose rooms first (Shift+click, or Ctrl+A).");
+        return;
+      }
+      const list2 = el11("datalist", { id: "rooms-group-tags" }, ...allTags2(this.world, this.ontologies).map((t) => el11("option", { value: t.tag || t })));
+      const field3 = el11("input", { class: "field rooms-group-tag", placeholder: "A tag they share (or Group: tag)", "aria-label": "A tag for the chosen rooms", list: "rooms-group-tags", maxlength: 61, autocomplete: "off", spellcheck: "false" });
+      const keep = () => {
+        const text = field3.value.trim(), tag = tidyTag2(text.split(":").pop());
+        this.closeSheet();
+        if (!tag) return;
+        let n = 0;
+        for (const r of rs) if (addTag2(this.world, r.id, text, this.ontologies)) n++;
+        if (n) this.save();
+        this.drawRooms();
+        this.toast(n ? `${n} room${n === 1 ? "" : "s"} tagged ${tag}. Arrange by → Tags shows them together.` : `They all have ${tag} already.`);
+      };
+      this.openSheet(`Tag ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}`, [field3, list2], (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          keep();
+        }
+      });
+      field3.focus({ preventScroll: true });
+    }
+    // Ctrl+Shift+G: the tags every chosen room shares (their own, not their mode's) come off: one step.
+    untagChosen(e) {
+      const rs = this.chosenFor(e).filter((r) => !r.locked);
+      if (!rs.length) return;
+      const own3 = (r) => roomTags2(this.world, r.id, this.ontologies).filter((t) => !t.auto).map((t) => t.tag.toLowerCase());
+      const shared = rs.map(own3).reduce((a, b) => a.filter((t) => b.includes(t)));
+      if (!shared.length) {
+        this.toast(rs.length === 1 ? "It has no tags of its own." : "They share no tag of their own.");
+        return;
+      }
+      for (const r of rs) for (const t of shared) removeTag2(this.world, r.id, t);
+      this.save();
+      this.drawRooms();
+      this.toast(`Took ${shared.join(", ")} off ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}. Ctrl+Z puts it back.`);
+    }
+    // A small sheet near the top (Folio's top-sheet): a label, then `nodes`. `onKey(ev)` sees its keys
+    // first; Escape or a click elsewhere closes it.
+    openSheet(label2, nodes, onKey = () => {
+    }) {
+      this.closeSheet();
       const box = el11(
         "div",
         {
-          class: "panel top-sheet rooms-floor-pick",
+          class: "panel top-sheet rooms-sheet",
           role: "dialog",
-          "aria-label": `Move ${r.name} to a floor`,
+          "aria-label": label2,
           onpointerdown: (ev) => ev.stopPropagation(),
           onkeydown: (ev) => {
             ev.stopPropagation();
             if (ev.key === "Escape") {
               ev.preventDefault();
-              this.closeFloorPicker();
+              this.closeSheet();
               return;
             }
-            const n = ev.key.toLowerCase() === "n" ? "new" : /^[1-9]$/.test(ev.key) ? +ev.key - 1 : null;
-            if (n === "new" || n != null && n < pageCount3(this.world) && n !== here) {
-              ev.preventDefault();
-              pick(n);
-            }
+            onKey(ev);
           }
         },
-        el11("p", { class: "label" }, `Move ${r.name} to`),
-        ...rows
+        el11("p", { class: "label" }, label2),
+        ...nodes
       );
-      this.floorPick = box;
+      this.sheet = box;
       this.root.append(box);
-      box.querySelector("button:not([disabled])")?.focus({ preventScroll: true });
-      this.floorPickAway = (ev) => {
-        if (!box.contains(ev.target)) this.closeFloorPicker();
+      box.querySelector("button:not([disabled]), input")?.focus({ preventScroll: true });
+      this.sheetAway = (ev) => {
+        if (!box.contains(ev.target)) this.closeSheet();
       };
-      document.addEventListener("pointerdown", this.floorPickAway, true);
+      document.addEventListener("pointerdown", this.sheetAway, true);
     }
-    closeFloorPicker() {
-      if (!this.floorPick) return;
-      this.floorPick.remove();
-      this.floorPick = null;
-      document.removeEventListener("pointerdown", this.floorPickAway, true);
+    closeSheet() {
+      if (!this.sheet) return;
+      this.sheet.remove();
+      this.sheet = null;
+      document.removeEventListener("pointerdown", this.sheetAway, true);
+    }
+  };
+
+  // dist/web/features/rooms/many.js
+  var RoomsMany = class {
+    // The chosen rooms' ids: many, or the one picked (or whose properties show).
+    chosenIds() {
+      if (this.picks?.length > 1) return this.picks.filter((id2) => room4(this.world, id2));
+      const id = this.roomSel || this.roomPick;
+      return id && room4(this.world, id) ? [id] : [];
+    }
+    // Shift+click or Ctrl+click: the square joins the choice, or leaves it.
+    addPick(id) {
+      const before = this.pickBefore !== void 0 ? this.pickBefore : this.roomPick;
+      this.pickBefore = void 0;
+      const now = this.picks?.length ? [...this.picks] : before && before !== id ? [before] : [];
+      const i2 = now.indexOf(id);
+      if (i2 >= 0) now.splice(i2, 1);
+      else now.push(id);
+      this.picks = now.length > 1 ? now : [];
+      this.roomPick = now.includes(id) ? id : now[now.length - 1] || null;
+      this.roomSel = null;
+      this.making = null;
+      this.drawRooms();
+    }
+    // Ctrl+A: every room shown (this floor, or the Archive).
+    pickAll() {
+      const ids = [...this.grid.querySelectorAll(".rooms-tile[data-room]")].map((t) => t.dataset.room);
+      if (!ids.length) return;
+      this.picks = ids.length > 1 ? ids : [];
+      this.roomPick = ids[ids.length - 1];
+      this.roomSel = null;
+      this.making = null;
+      this.drawRooms();
+    }
+    clearPicks() {
+      if (!this.picks?.length) return false;
+      this.picks = [];
+      this.drawRooms();
+      return true;
+    }
+    // Delete with many chosen: every one that can go (not Messy thoughts, not a locked room), one step.
+    deleteMany() {
+      const ids = this.chosenIds().filter((id) => id !== MESSY3 && !shut3(this.world, id));
+      if (!ids.length) {
+        this.toast("Messy thoughts and locked rooms stay.");
+        return;
+      }
+      for (const id of ids) remove3(this.world, id);
+      this.picks = [];
+      this.roomSel = this.roomPick = null;
+      this.save();
+      this.drawRooms();
+      this.toast(`Deleted ${ids.length} room${ids.length === 1 ? "" : "s"}. Ctrl+Z brings them back.`);
     }
   };
 
@@ -17124,12 +17255,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var ROOMS_KEYS = [
     { id: "rooms.write", shows: "Type anywhere", words: "a thought in Messy thoughts" },
     { id: "rooms.choose", shows: "Click a room", words: "choose it" },
+    { id: "rooms.more", shows: "Shift+click · Ctrl+click", words: "add a room to the choice, or take it out" },
+    { id: "rooms.all", keys: ["Ctrl+A"], words: "choose every room shown" },
     { id: "rooms.open", keys: ["Enter"], shows: "Double-click · Enter", words: "go into the chosen room" },
     { id: "rooms.properties", keys: ["ContextMenu", "Shift+F10"], shows: "Right-click", words: "the properties of a room" },
-    { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen room" },
+    { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen rooms" },
     { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
-    { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen room (or Alt+drag it)" },
-    { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen room to another floor" },
+    { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen rooms (or Alt+drag one)" },
+    { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen rooms to another floor" },
+    { id: "rooms.group", keys: ["Ctrl+G"], words: "group the chosen rooms: a tag they share" },
+    { id: "rooms.ungroup", keys: ["Ctrl+Shift+G"], words: "take off the tags they share" },
     { id: "rooms.floor", keys: ["PageUp", "PageDown"], words: "the floor above · below" },
     { id: "rooms.search", keys: ["Ctrl+K"], words: "search every room" },
     { id: "rooms.undo", keys: ["Ctrl+Z", "Ctrl+Shift+Z", "Ctrl+Y"], shows: "Ctrl+Z · Ctrl+Shift+Z", words: "undo · redo" },
@@ -17153,6 +17288,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.tagLight = null;
       this.regrouping = null;
       this.tagsOpen = false;
+      this.picks = [];
       this.openGroup = null;
       this.makingTag = null;
       this.edited = /* @__PURE__ */ new Set();
@@ -17219,7 +17355,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // the same verbs as in a room (room/verbs.js)
         "rooms.rename": (e) => this.renameChosen(e),
         "rooms.duplicate": (e) => this.duplicateChosen(e),
-        "rooms.move": (e) => this.moveChosen(e)
+        "rooms.move": (e) => this.moveChosen(e),
+        "rooms.group": (e) => this.tagChosen(e),
+        "rooms.ungroup": (e) => this.untagChosen(e)
       };
       for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       window.addEventListener("resize", () => {
@@ -17507,12 +17645,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.openLights();
         return;
       }
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        this.pickAll();
+        return;
+      }
       if (mod && !e.altKey && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
         e.preventDefault();
         this.undo(e.key.toLowerCase() === "z" && !e.shiftKey);
         return;
       }
       if (e.key === "Escape") {
+        if (this.clearPicks()) return;
         if (this.roomSel || this.making) {
           this.roomSel = this.making = null;
           this.drawRooms();
@@ -17543,6 +17687,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const id = this.roomSel || this.roomPick;
       const r = id && room4(this.world, id);
       const deletes = k2 === "Delete" || MAC3 && e.metaKey && k2 === "Backspace";
+      if (deletes && this.picks.length > 1) {
+        e.preventDefault();
+        this.deleteMany();
+        return true;
+      }
       if (deletes && r && r.id !== MESSY3 && !shut3(this.world, r.id)) {
         e.preventDefault();
         remove3(this.world, r.id);
@@ -17695,7 +17844,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
   };
-  for (const part2 of [RoomsGrid, RoomsVerbs]) {
+  for (const part2 of [RoomsGrid, RoomsVerbs, RoomsMany]) {
     for (const [key2, d] of Object.entries(Object.getOwnPropertyDescriptors(part2.prototype))) {
       if (key2 !== "constructor") Object.defineProperty(Rooms.prototype, key2, d);
     }
