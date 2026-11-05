@@ -5,7 +5,7 @@
 import {
   room, addRoom, view, create, kindOf, thoughtText, roomThoughts, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  hash, light,
+  hash, light, twinOf,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
@@ -156,10 +156,11 @@ export class RoomView {
   drawRoom() {
     const r = room(this.world, this.roomId);
     this.paintRoom();
+    const twin = twinOf(this.world, r.id); // a Twin's side: the Twin's name, then the side's
     if (this.renaming === r.id) {
-      this.crumbName.replaceChildren(this.nameField(r, () => { this.renaming = null; this.drawRoom(); }));
+      this.crumbName.replaceChildren(this.nameField(twin || r, () => { this.renaming = null; this.drawRoom(); }));
       this.crumbName.querySelector('input').focus();
-    } else this.crumbName.replaceChildren(r.name);
+    } else this.crumbName.replaceChildren(twin ? `${twin.name} · ${r.name}` : r.name);
     this.crumbDesc.textContent = r.desc || '';
     this.crumbDesc.hidden = !r.desc;
     this.roomPage.classList.toggle('locked', !!this.locked);

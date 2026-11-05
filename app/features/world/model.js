@@ -89,7 +89,7 @@ export function loadWorld(saved, now = Date.now()) {
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
   for (const th of Object.values(w.things)) {
-    if (kindOf(th) === 'room') { th.parent = null; continue; }
+    if (kindOf(th) === 'room') { if (!isTwin(w.things[th.parent])) th.parent = null; continue; } // a Twin's side stays in it
     if (kindOf(w.things[th.parent]) !== 'room') th.parent = MESSY;
   }
   for (const g of Object.values(w.things)) {
@@ -242,7 +242,10 @@ export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce')
   .filter((g) => !g.loose && members(w, g.id).length && !groupsOf(w, g.id, 'joyce').length);
 
 // Every line, passage and picture in a room, in time order.
-export const roomThoughts = roomItems;
+// A room's thoughts; a Twin's are its two sides'.
+export const roomThoughts = (w, roomId) => (isTwin(w.things[roomId])
+  ? children(w, roomId).filter((th) => kindOf(th) === 'room').flatMap((s) => roomItems(w, s.id)).sort(byTime)
+  : roomItems(w, roomId));
 
 // Every item in a room (what Pessoa floats, each on its own), in time order. Groups are not
 // among them: they are shared objects each ontology places itself (groups.js).
@@ -373,15 +376,20 @@ function tidy(f) {
   if (f.locked) out.locked = true;
   if (f.archived) { out.archived = Number.isFinite(f.archived) ? f.archived : true; delete out.col; delete out.row; }
   if (Number.isInteger(f.page) && f.page > 0) out.page = f.page;
+  if (f.side === 0 || f.side === 1) out.side = f.side; // one side of a Twin (twin.js)
   return out;
 }
 
-// What can sit inside what: items and groups in rooms, rooms at the top (null).
+// A Twin room (on the rooms page, size 'twin') holds its two sides, each a room of its own with its
+// own mode and thoughts (twin.js); nothing else is ever a room inside a room.
+export const isTwin = (th) => kindOf(th) === 'room' && th.parent == null && th.size === 'twin';
+
+// What can sit inside what: items and groups in rooms, rooms at the top (null), and a Twin's sides.
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
-  if (LEAVES.includes(kind) || kind === 'group') return p != null && kindOf(p) === 'room';
-  if (kind === 'room') return p == null;
+  if (LEAVES.includes(kind) || kind === 'group') return p != null && kindOf(p) === 'room' && !isTwin(p);
+  if (kind === 'room') return p == null || isTwin(p);
   return false;
 }
 
@@ -458,6 +466,7 @@ function rehome(w, th, to) {
 export function move(w, id, into, x = 0, y = 0) {
   const th = w.things[id], to = w.things[into];
   if (!th || !to || th.parent === into && !isLeaf(th) || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
+  if (isTwin(to)) return false; // a Twin holds only its two sides: a thought goes to one of them
   if (isGroup(th)) {
     if (kindOf(to) !== 'room') return false;
     const from = th.parent;
@@ -633,7 +642,8 @@ function renamed(v, ids) {
 export function copyRoom(w, id, now = Date.now()) {
   const r = room(w, id);
   if (!r || r.archived) return null;
-  const inner = Object.values(w.things).filter((th) => th.parent === id);
+  // Everything inside it, however deep (a Twin's sides and their thoughts).
+  const inner = Object.values(w.things).filter((th) => th.id !== id && topRoom(w, th.id)?.id === id);
   const ids = { [id]: uid('r') };
   for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
   const fresh = renamed(copy(r), ids);
@@ -644,8 +654,9 @@ export function copyRoom(w, id, now = Date.now()) {
   for (const th of inner) {
     const c = renamed(copy(th), ids);
     c.id = ids[th.id];
-    c.parent = fresh.id;
+    c.parent = ids[th.parent];
     w.things[c.id] = c;
+    for (const store of ['views', 'own', 'settings']) if (w[store]?.[th.id]) w[store][c.id] = renamed(copy(w[store][th.id]), ids); // a side's
   }
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
   if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);
@@ -664,8 +675,10 @@ export function roomTags(w, id, ontologies = []) {
   const r = room(w, id);
   if (!r) return [];
   const mode = view(w, id).mode;
+  const nameOf = (m) => ontologies.find((o) => o.id === m)?.name || '';
   const names = isBig(r) ? ontologies.map((o) => o.name)
-    : [ontologies.find((o) => o.id === mode)?.name || ''].filter(Boolean);
+    : isTwin(r) ? [...new Set(children(w, id).filter((s) => kindOf(s) === 'room').map((s) => nameOf(view(w, s.id).mode)))].filter(Boolean)
+      : [nameOf(mode)].filter(Boolean);
   const out = names.map((tag) => ({ tag, auto: true }));
   for (const tag of r.tags || []) if (!out.some((o) => same(o.tag, tag))) out.push({ tag, auto: false });
   return out;

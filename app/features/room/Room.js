@@ -20,7 +20,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, view, shut, MESSY, roomLook } from './world.js';
+import { bind, room, view, shut, MESSY, roomLook, sides, twinOf } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -119,13 +119,15 @@ export default class Room extends Feature {
   get palette() { return this.w.palette; }   // the app's colours
   get attention() { return this.w.attention; }
 
-  lookOf(r) { return roomLook(r, this.palette, r.id === MESSY, this.prefs); }
+  lookOf(r) { return roomLook(twinOf(this.world, r.id) || r, this.palette, r.id === MESSY, this.prefs); } // a Twin's side: the Twin's look
 
   // ---- Going in and out ----
 
   // Goes into a room (the rooms page asked: 'room:open'). from: its square on the screen, to grow
   // out of; seed: the first letters of a thought to write.
   enter({ id, from = null, seed = '' }) {
+    const twin = sides(this.world, id); // a Twin: its left side first (twin.js)
+    if (twin.length) id = twin[0].id;
     if (!room(this.world, id)) return;
     this.roomId = id;
     this.sel = null;
@@ -146,7 +148,7 @@ export default class Room extends Feature {
   // Leaves the room (the rooms page shows again). Returns the room's id, if it showed.
   leave() {
     if (!this.roomId) return null;
-    const from = this.root.hidden ? null : this.roomId;
+    const from = this.root.hidden ? null : twinOf(this.world, this.roomId)?.id || this.roomId; // a side: its Twin's square
     this.closeSheet();
     this.closeSearch();
     this.timeline = null; // (so closing it doesn't turn it off for the room)
@@ -172,7 +174,7 @@ export default class Room extends Feature {
 
   // Where you are, for the frame's breadcrumb: Rooms › Floor 1 › the room (or Rooms › Archive › …).
   crumbs() {
-    const r = room(this.world, this.roomId);
+    const r = twinOf(this.world, this.roomId) || room(this.world, this.roomId); // a Twin's side: the Twin's floor
     const floor = r?.archived ? { label: 'Archive', onClick: () => this.rooms.showArchive?.() }
       : { label: `Floor ${(r?.page || 0) + 1}`, onClick: () => this.rooms.showFloor?.(r?.page || 0) };
     return [{ label: 'Rooms', title: 'Back to the rooms', onClick: () => this.back() }, floor, { node: this.crumb }];
