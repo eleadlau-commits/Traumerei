@@ -16,7 +16,7 @@
 // Thoughts stay shared with every other mode.
 
 import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, setRoomSetting } from '../model.js';
-import { trayForeign, place } from '../groups.js';
+import { trayForeign, place, inForeign } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
@@ -471,11 +471,15 @@ export default {
 
   // The thoughts in no chapter yet, chapters made in the tray, and other modes' groups in no
   // chapter yet, oldest first. Another mode's group is placed like a thought: into a chapter.
-  tray: (w, roomId) => [
-    ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, ID)),
-    ...groupsIn(w, roomId, ID).filter((g) => g.loose && members(w, g.id).length),
-    ...trayForeign(w, roomId, ID).filter((g) => !groupOf(w, g.id, ID)),
-  ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+  // A thought inside another mode's shared group is not loose here too: the group stands for it.
+  tray(w, roomId) {
+    const inside = inForeign(w, roomId, ID);
+    return [
+      ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, ID)),
+      ...groupsIn(w, roomId, ID).filter((g) => g.loose && members(w, g.id).length),
+      ...trayForeign(w, roomId, ID).filter((g) => !groupOf(w, g.id, ID)),
+    ].filter((th) => !inside(th.id)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  },
   placed(w, roomId, id) {
     const th = w.things[id];
     return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w, id, ID);

@@ -361,6 +361,7 @@ function tidy(f) {
       x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) });
     if (f.closed) out.closed = true;
     if (f.loose) out.loose = true;
+    if (f.shared) out.shared = true; // made on purpose (Ctrl+G, the tray): one object in every mode (groups.js)
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };

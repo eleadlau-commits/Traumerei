@@ -76,7 +76,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds } from '../model.js';
+import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
 import russell from './russell.js';
@@ -149,7 +149,19 @@ function unitsOf(w, roomId, ids) {
 // groups): its own group(), or a new group where the first one is, which they all join. loose: they were chosen in the tray, so the group stays
 // there too (groups.js), until it is dragged out. Null when it makes none (an ontology without
 // groups, or nothing to group).
-export function groupChosen(o, w, roomId, ids, now = Date.now(), { loose = false } = {}) {
+// The group made is shared (groups.js): one object in the room's other modes too. One group of its
+// own chosen alone that is layout only (a train made by writing on) becomes shared as it is.
+export function groupChosen(o, w, roomId, ids, now = Date.now(), opts = {}) {
+  const one = unitsOf(w, roomId, ids);
+  if (o?.groups && one.length === 1 && isGroup(one[0]) && one[0].of === o.id && !one[0].shared && !shut(w, roomId)) {
+    one[0].shared = true;
+    return one[0];
+  }
+  const g = makeGroup(o, w, roomId, ids, now, opts);
+  if (g) g.shared = true;
+  return g;
+}
+function makeGroup(o, w, roomId, ids, now, { loose = false } = {}) {
   if (!o?.groups) return null;
   const items = unitsOf(w, roomId, ids);
   if (!items.length || (items.length === 1 && isGroup(items[0]) && items[0].of === o.id)) return null; // one group of its own: grouped already

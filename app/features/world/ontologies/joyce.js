@@ -12,7 +12,7 @@
 // where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
 import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
-import { placedForeign, trayForeign, spot, putAt, place } from '../groups.js';
+import { placedForeign, trayForeign, spot, putAt, place, inForeign } from '../groups.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
@@ -203,11 +203,15 @@ export default {
 
   // The thoughts in no train yet, trains made in the tray, and other modes' groups not placed
   // here yet, oldest first.
-  tray: (w, roomId) => [
-    ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
-    ...groupsIn(w, roomId, 'joyce').filter((g) => g.loose && members(w, g.id).length),
-    ...trayForeign(w, roomId, 'joyce'),
-  ].sort(byTime),
+  // A thought inside another mode's shared group is not loose here too: the group stands for it.
+  tray(w, roomId) {
+    const inside = inForeign(w, roomId, 'joyce');
+    return [
+      ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
+      ...groupsIn(w, roomId, 'joyce').filter((g) => g.loose && members(w, g.id).length),
+      ...trayForeign(w, roomId, 'joyce'),
+    ].filter((th) => !inside(th.id)).sort(byTime);
+  },
   placed(w, roomId, id) {
     const th = w.things[id];
     if (isGroup(th)) return th.of === 'joyce' ? !th.loose : !!spot(w, roomId, 'joyce', id);
