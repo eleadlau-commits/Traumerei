@@ -5,8 +5,9 @@
 //   id, name, note        'pessoa', 'Pessoa', 'each thought on its own'
 //   icon                  (optional) its hairline icon in the rail: an SVG drawing on a 24 × 24 grid
 //   order                 where it sits in lists (lower first; the built-in ones are 10, 20)
-//   groups                null, or { form, name, membership }: the groups it makes (Joyce: trains)
-//                         and whether an item can be in 'one' of them or in 'many' (model.js)
+//   groups                null, or { form, name, membership, order }: the groups it makes (Joyce: trains),
+//                         whether an item can be in 'one' of them or in 'many', and order: 'kept'
+//                         when its items stay in the order they were put in, not time (model.js)
 //   units(w, room)        what is on its canvas: items, and groups shown as one thought
 //   point(w, room, id)    where a thought sits ({ x, y }, world units)
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits

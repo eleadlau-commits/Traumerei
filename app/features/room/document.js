@@ -8,7 +8,7 @@
 // end of the one before. A thought emptied goes. Escape stops writing, and Escape again (or a click
 // outside) closes the document. A passage or picture in the chapter shows as it is, not written in.
 
-import { members, isGroup, update, remove, create, name, kindOf, shut, maths } from './world.js';
+import { members, isGroup, update, remove, create, name, kindOf, shut, maths, setOrder } from './world.js';
 
 // The `at` for a thought written just after `prev` (and before `next`): members are kept in the
 // order they were written, so a thought put between two takes a time between theirs.
@@ -34,7 +34,12 @@ export function keepWords(w, chapterId, id, text, prev = null, now = Date.now())
   const i = prev ? list.findIndex((th) => th.id === prev) : -1;
   const at = between(list[i] || null, list[i + 1] || null, now);
   const th = create(w, chapterId, { kind: 'line', text: words }, now);
-  if (th) th.at = at;
+  if (!th) return null;
+  th.at = at;
+  // A chapter keeps its order by place, not time: the new thought goes just after `prev`.
+  const ids = list.map((x) => x.id);
+  ids.splice(i + 1, 0, th.id);
+  setOrder(w, chapterId, ids);
   return th;
 }
 
