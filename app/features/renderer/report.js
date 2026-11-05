@@ -73,7 +73,7 @@ export function describePlain(hue, base, field, P) {
   return lines;
 }
 
-// The Planar fog's report: its palette (F2), its grids and how long it took.
+// The Mondrian fog's report: its palette (F2), its grids and how long it took.
 export function describeFog(fog, P) {
   const lines = [];
   if (fog.grey) lines.push('The picture has almost no colour, so the fog takes the tint τ\'s hue.');
@@ -83,7 +83,7 @@ export function describeFog(fog, P) {
   return lines;
 }
 
-// The Planar network's report: its counts (N1–N4).
+// The Mondrian network's report: its counts (N1–N4).
 export function describeNetwork(net, P) {
   const c = counts(net);
   return `Network (streams :planar:net:grid :planar:net:merge): ${c.rectangles} rectangles, ` +
@@ -92,7 +92,7 @@ export function describeNetwork(net, P) {
     `grid density ρ ${P.netRho}, merging μ ${P.netMu}, made in ${Math.round(net.ms)} ms.`;
 }
 
-// The Planar flashes' report: what the Hawkes process gives on average (E1).
+// The Mondrian flashes' report: what the Hawkes process gives on average (E1).
 export function describeFlashes(P) {
   const n = Math.min(P.flashN, 0.95);
   const rate = P.flashMu / (1 - n);

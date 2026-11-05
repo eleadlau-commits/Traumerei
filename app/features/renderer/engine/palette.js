@@ -2,7 +2,7 @@
 // picture's own marks is one of these roles, so changing s changes everything together. At the
 // default beige they come out where the old fixed colours were.
 //
-//   paper = s itself                                  the base layer, washi, Plain, Planar's fog
+//   paper = s itself                                  the base layer, washi, Plain, Mondrian's fog
 //   ink   = OKLCh(0.285, 0.2 C_s, h_s)                words, the cross, Joyce's lines
 //   pale  = OKLCh(0.93, 1.2 C_s, h_s)                 words on a dark room
 //   veil  = OKLCh(0.977, 0.4 C_s, h_s)                the menu's veil, pop-ups, Settings

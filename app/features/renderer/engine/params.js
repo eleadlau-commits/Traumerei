@@ -131,7 +131,7 @@ export const PARAMS = [
   { group: 'Glow', key: 'glowDh', label: 'Hue offset Δh (°)', min: -90, max: 90, step: 1, value: 14 },
   { group: 'Glow', key: 'glowL', label: 'Glow lightness L_g', min: 0.5, max: 1, step: 0.01, value: 0.88 },
 
-  // The Planar mode (engine/planar.js)
+  // The Mondrian mode (engine/mondrian.js)
   { group: 'Fog', key: 'fogSigma', label: 'Coarseness σ', min: 0.05, max: 0.6, step: 0.005, value: 0.25 },
   { group: 'Fog', key: 'fogA', label: 'Unevenness A', min: 0, max: 0.3, step: 0.005, value: 0.08 },
   { group: 'Fog', key: 'fogLo', label: 'Darkest L_lo', min: 0, max: 1, step: 0.01, value: 0.45 },
@@ -162,7 +162,7 @@ export const SPONT_KEYS = keysOf(['Timing', 'Placement', 'Marks', 'Life']);
 export const PLAIN_FIELD_KEYS = ['lambdaPsi', 'flowD', 'nu', 'eddy', 'lambdaB', 'dyeSoft', 'blurP', 'plainDye'];
 export const PLAIN_KEYS = keysOf(['Hue', 'Flow', 'Dye', 'Glow']);
 
-// The Planar mode's sliders, by stage.
+// The Mondrian mode's sliders, by stage.
 export const FOG_KEYS = keysOf(['Fog']);
 export const NETWORK_KEYS = keysOf(['Network']);
 export const FLASH_KEYS = keysOf(['Flashes']);
