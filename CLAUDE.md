@@ -14,8 +14,10 @@ Build Träumerei so each piece can be changed by reading only that piece.
   events (see `folio/README.md`), never another feature's files, fields or state. Each service
   has a short written list of what it offers, in its feature's README; that list is all another
   feature may use. Don't add to shared state bags or mix new parts onto one class.
-- **Own styles, no Folio look.** Each feature keeps its own CSS file(s). Folio is used for
-  structure only, never for its look (`folio/runtime/base.css`'s classes and colours).
+- **One look, in Folio.** The whole look (colours, type, words as buttons, panels, the veil,
+  hairlines) lives once, in `folio/runtime/base.css`; see its class list in `folio/README.md`.
+  Features use those classes and names and keep only their layout in their own CSS file(s). Never
+  copy a piece of the look into a feature: change it in `base.css`, or add a shared class there.
 - **Say where a change lives.** Every plan names the feature a change lives in and the services
   it uses, and flags any change that crosses a feature boundary before building it.
 

@@ -85,7 +85,7 @@ export function dialog({ title = '', className = '', size = 'full', onClose } = 
     el('div', { class: 'dialog-body' },
       el('div', { class: 'dialog-head' },
         heading,
-        el('button', { type: 'button', class: 'icon-btn ghost', 'aria-label': 'Close', onclick: () => element.close() }, icon('close'))),
+        el('button', { type: 'button', class: 'close-x', 'aria-label': 'Close', onclick: () => element.close() }, icon('close'))),
       content));
   element.addEventListener('click', (e) => { if (e.target === element) element.close(); }); // tap outside a box to close
   if (onClose) element.addEventListener('close', onClose);
