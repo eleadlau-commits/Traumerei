@@ -32,7 +32,13 @@ export class Bars {
     const ed = this.editor;
     if (!ed || !this.panel?.isOpen('content')) return;
     const id = this.sel && this.sel.kind !== 'many' ? this.sel.id : null;
-    if (id && id !== ed.id && this.world.things[id]) { ed.keep(); openEditor(this, id); return; }
+    if (id && id !== ed.id && this.world.things[id]) {
+      ed.keep();
+      // Choosing something brings the Editor to the front, unless it was chosen in the Timeline.
+      const behind = this.fromTimeline && this.panel.isShowing('timeline');
+      openEditor(this, id).then(() => { if (behind) this.panel.show('timeline'); });
+      return;
+    }
     ed.refresh();
   }
 

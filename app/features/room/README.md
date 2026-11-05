@@ -17,9 +17,9 @@ It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, t
 rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
 each saved step. It uses the `rooms` service to go back to the rooms page or into another room.
 It opens Search through the `search` service and listens to `search:found`.
-Its editors open in the right dock (the docks feature's `panel` service); while a dock shows,
-the room moves over beside it (`--dock-left`, `--dock-right`, `docks:resized`), and leaving the
-room closes the right dock.
+Its editors open in the right dock's Editor tab (the docks feature's `panel` service), and the
+Timeline in its Timeline tab; while a dock shows, the room moves over beside it (`--dock-left`,
+`--dock-right`, `docks:resized`), and leaving the room closes everything in the right dock.
 It offers no service of its own.
 
 ## What it does
@@ -36,7 +36,7 @@ It offers no service of its own.
   mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
   for that mode in a card beside the rail, with *Reset to global*. Each room keeps its own; a new
   room starts from the global ones. Under a hairline, *Timeline* opens the list of its thoughts by
-  time down the right, in any mode.
+  time in the right dock, in any mode.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random
     place. A train can't be broken: it is dragged, and moved, whole.
@@ -121,10 +121,16 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   written stays put. Each room's ⚙ has *Hand-placed can be overlapped* (on by default): on, what
   was dragged into place is left out; off, it stays where it is and the rest moves around it.
   A push belongs to the change that caused it, so Ctrl+Z takes both back together.
-- **Timeline:** the quiet word under the modes. It opens a list down the right of everything
+- **Timeline:** the quiet word under the modes, or **Ctrl+Alt+T**. It opens a list of everything
   written in the room, in any mode, in the order it was last changed (latest at the bottom),
   each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its train). Scroll it to see
-  everything; a click takes the view to that thought.
+  everything; a click takes the view to that thought. It is the **Timeline tab** of the right
+  dock, beside the Editor tab: while both are open, tabs show at the top of the dock. The same
+  key (or word) brings the Timeline to the front when the Editor is in front, and closes it when it
+  is already in front; × closes it too. Each room remembers whether its Timeline is open. Choosing
+  a thing on the canvas while the editor is open brings the Editor to the front; a click in the
+  Timeline switches the editor too but keeps the Timeline in front. (Without the docks feature it
+  is a list down the right of the room.)
 - **Editing:** a click on a thought (or a double click on a train) only chooses it. A right-click
   (or a long press, or Enter) opens the **content editor** (`editor.js`) in the side panel on the
   right, and the room moves over. At its top is what the old pop-up had: edit its words (a

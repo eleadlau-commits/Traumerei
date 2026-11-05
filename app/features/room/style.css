@@ -475,3 +475,7 @@
 .room-editor .room-doc-paras { font-size: 15.5px; line-height: 1.65; }
 .room-editor-foot { display: flex; justify-content: flex-end; }
 .room-editor-source { --word-spacing: .22em; font-size: 11px; opacity: .45; }
+
+/* The Timeline as a tab of the right dock (view.js): its list runs to the dock's edges. */
+.room-timeline { --room-ink: var(--ink); margin: 0 -24px; }
+.room-timeline .room-history-list { overflow: visible; }

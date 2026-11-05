@@ -11,6 +11,7 @@ import { DOCK_KEYS } from './keys.js';
 
 const SIDES = ['left', 'right'];
 const LABEL = { left: 'Left dock', right: 'Right dock' };
+const TAB = { left: '', right: 'Editor' }; // the tab a thing opens in when it names none
 
 export default class Docks extends Feature {
   start() {
@@ -19,6 +20,7 @@ export default class Docks extends Feature {
       this.docks[side] = new Dock({
         side,
         label: LABEL[side],
+        tab: TAB[side],
         saved: this.storage.get(side),
         keep: (px) => this.storage.set(side, px),
         resized: (px) => this.publish(side, px),
@@ -40,7 +42,10 @@ export default class Docks extends Feature {
     return {
       open: (o) => dock.open(o),
       close: (key = null, force = false) => dock.close(key, force),
+      closeAll: (force = false) => dock.closeAll(force),
+      show: (key) => dock.show(key),
       isOpen: (key = null) => dock.isOpen(key),
+      isShowing: (key) => dock.isShowing(key),
       toggle: () => this.toggle(dock.side),
       get shown() { return dock.visible; },
       get width() { return dock.showing; },
