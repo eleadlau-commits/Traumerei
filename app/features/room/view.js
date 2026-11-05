@@ -43,9 +43,28 @@ export class RoomView {
     return st ? roomSetting(this.world, this.roomId, ont.id, st, this.ontPrefs) : undefined;
   }
 
-  // One setting as a row: a slider, an on/off switch (type: 'switch'), or a row of words to pick
-  // one from (type: 'choice', options [[value, word]]).
+  // One setting as a row: a slider, an on/off switch (type: 'switch'), a row of words to pick
+  // one from (type: 'choice', options [[value, word]]), or a list of words written with commas
+  // (type: 'list'; word: what each must match, note: a line under it).
   settingRow(st, value, onChange) {
+    if (st.type === 'list') {
+      const words = (v) => (Array.isArray(v) ? v : String(v ?? '').replace(/^\s*\[(.*)\]\s*$/s, '$1').split(','))
+        .map((x) => String(x).trim()).filter((x, i, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);
+      const shown = () => (words(value).length ? words(value) : st.default).join(', ');
+      return el('label', { class: 'renderer-slider room-list-row' }, el('span', {}, st.label), el('span'),
+        el('input', {
+          type: 'text', class: 'room-edit-text', value: shown(), 'aria-label': st.label, spellcheck: 'false',
+          onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.target.value = shown(); e.target.blur(); } },
+          onchange: (e) => {
+            const next = words(e.target.value);
+            if (!next.length) { e.target.value = shown(); return; }
+            value = next;
+            e.target.value = next.join(', ');
+            onChange(next);
+          },
+        }),
+        st.note ? el('span', { class: 'room-list-note' }, st.note) : null);
+    }
     if (st.type === 'choice') {
       const words = st.options.map(([v, word]) => el('button', {
         type: 'button', role: 'radio', 'aria-checked': String(v === value),
@@ -236,7 +255,9 @@ export class RoomView {
         el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close', onclick: close })),
       el('p', { class: 'room-mode-settings-note' }, 'For this room only'),
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
+        const before = this.setting(st.key, o);
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
+        o.settingChanged?.(this.world, this.roomId, st.key, before, v);
         this.w.write();
         this.drawWorld();
       })),

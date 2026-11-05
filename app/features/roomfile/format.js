@@ -8,10 +8,12 @@
 //   description: Each chapter abstracts the last
 //   tags: [maths, book]
 //   russell.overlap: false
+//   russell.relations: [forgets, generalises]   a list setting, in [ ]
 //   ---
 //   - a thought with no group             loose (Pessoa places it; a tray holds it elsewhere)
 //
-//   ## Matrices {parent="Arrays" forgets="the equations"}
+//   ## Matrices {parent="Arrays" forgets="the equations"}   Russell: each parent, then its
+//                                         arrow's relation as a key (one of russell.relations)
 //   > folded                              a group (a train, a chapter), folded; {…} its attributes
 //   - a line                              a line thought; indented lines under it stay in it
 //   ### A title                           a passage: a title and the paragraphs under it
@@ -31,7 +33,7 @@
 import {
   view, room, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, addRoom,
   seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, link, arrowsInto, stepAfter,
-  remove, leave, groupsOf, isGroup, unlink, setLabel, broken,
+  remove, leave, groupsOf, isGroup, unlink, setLabel, broken, setRelation, relations, readHeading, headingAttrs,
 } from './world.js';
 
 const RUSSELL = 'russell';
@@ -187,7 +189,7 @@ export function parse(text) {
       else if (META[key]) meta[META[key]] = META[key] === 'light' || META[key] === 'opacity' ? scalar(raw) : String(scalar(raw));
       else if (key.includes('.')) {
         const dot = key.indexOf('.');
-        (meta.settings[key.slice(0, dot)] ||= {})[key.slice(dot + 1)] = scalar(raw);
+        (meta.settings[key.slice(0, dot)] ||= {})[key.slice(dot + 1)] = /^\s*\[/.test(raw) ? list(raw) : scalar(raw);
       } else report.push(`Line ${k + 1}: Träumerei doesn't know "${key}", so it was left out.`);
     }
     i = from;
@@ -298,17 +300,15 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
     const where = spots(w, madeGroups.map((m) => m.id), at || undefined);
     for (const { id } of madeGroups) Object.assign(w.things[id], where[id]);
   }
-  // Attributes: Russell's arrows (parent, then what the child forgets about it), and the rest kept.
+  // Attributes: Russell's arrows (each parent, then its relation with its label), and the rest kept.
   const arrows = [];
+  const names = of === RUSSELL ? relations(w, roomId) : [];
   for (const { id, src } of madeGroups) {
-    const rest = [];
-    for (const [k, v] of src.attrs) {
-      if (of === RUSSELL && k === 'parent') arrows.push({ child: id, parent: v, label: '', line: src.line, title: src.title });
-      else if (of === RUSSELL && k === 'forgets') {
-        const last = arrows.at(-1);
-        if (last && last.child === id && !last.labelled) Object.assign(last, { label: v, labelled: true });
-        else report.push(`Line ${src.line}: forgets="${v}" has no parent before it, so it was left out.`);
-      } else rest.push([k, v]);
+    let rest = src.attrs;
+    if (of === RUSSELL) {
+      const read = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`));
+      for (const a of read.arrows) arrows.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: src.line, title: src.title });
+      rest = read.rest;
     }
     if (rest.length) (own(w, roomId, of).headings ||= {})[id] = rest;
   }
@@ -322,7 +322,7 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
       let why = '';
       if (found.length > 1) why = `two chapters are called "${a.parent}"`;
       else if (!found.length) why = left.has(a.parent) ? `"${a.parent}" was left out` : `no chapter is called "${a.parent}"`;
-      else why = link(w, roomId, found[0].id, a.child, a.label).replace(/\.$/, '');
+      else why = link(w, roomId, found[0].id, a.child, a.label, a.rel === names[0] ? '' : a.rel).replace(/\.$/, '');
       if (why) report.push(`Line ${a.line}: the arrow from "${a.parent}" to ${child} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1)}.`);
     }
   }
@@ -401,10 +401,7 @@ function looseIn(w, roomId, of) {
 function writeGroup(w, roomId, g, pictures) {
   const of = g.of;
   const attrs = [];
-  if (of === RUSSELL) {
-    const { parents, labels } = arrowsInto(w, roomId, g.id);
-    for (const p of parents) { attrs.push(['parent', w.things[p]?.title || '']); if (labels[p]) attrs.push(['forgets', labels[p]]); }
-  }
+  if (of === RUSSELL) attrs.push(...headingAttrs(w, roomId, g.id, (p) => w.things[p]?.title || ''));
   attrs.push(...((own(w, roomId, of, false).headings || {})[g.id] || []));
   const head = ['##', g.title, attrs.length ? `{${attrs.map(([k, v]) => `${k}=${writeAttr(v)}`).join(' ')}}` : ''].filter(Boolean).join(' ');
   return [head, ...(g.folded ? ['> folded'] : []), writeItems(members(w, g.id), pictures)].join('\n');
@@ -422,7 +419,7 @@ export function exportRoom(w, roomId, { ontologies = [], pictures = null } = {})
   if (r.tags?.length) front.push(`tags: ${writeList(r.tags)}`);
   for (const k of ['tint', 'light', 'opacity']) if (r[k] != null) front.push(`${k}: ${writeScalar(r[k])}`);
   for (const [ont, set] of Object.entries(w.settings?.[roomId] || {})) {
-    for (const [k, v] of Object.entries(set || {})) if (v !== undefined) front.push(`${ont}.${k}: ${writeScalar(v)}`);
+    for (const [k, v] of Object.entries(set || {})) if (v !== undefined) front.push(`${ont}.${k}: ${Array.isArray(v) ? writeList(v) : writeScalar(v)}`);
   }
   front.push('---');
   const loose = looseIn(w, roomId, of);
@@ -591,7 +588,7 @@ function metaChanges(w, roomId, meta, of, ontologies, report) {
   for (const [ont, set] of Object.entries(meta.settings || {})) {
     for (const [k, v] of Object.entries(set)) {
       const now = w.settings?.[roomId]?.[ont]?.[k];
-      if (now !== v) out.push({ key: `setting:${ont}.${k}`, of: ont, k, from: now, to: v, text: `${ont}.${k}: ${say(now)} → ${say(v)} (Ctrl+Z doesn't take settings back)` });
+      if (JSON.stringify(now ?? null) !== JSON.stringify(v ?? null)) out.push({ key: `setting:${ont}.${k}`, of: ont, k, from: now, to: v, text: `${ont}.${k}: ${say(now)} → ${say(v)} (Ctrl+Z doesn't take settings back)` });
     }
   }
   const mode = view(w, roomId).mode;
@@ -656,8 +653,10 @@ function run(w, roomId, p, { now, removeMissing }) {
     for (const th of old) if (!keep.has(th.id) && w.things[th.id]) drop(th, parent === roomId ? null : parent);
   };
 
+  // The room's relations as they will be once the front matter is in.
+  const names = of === RUSSELL ? (p.parsed.meta?.settings?.[RUSSELL]?.relations ?? relations(w, roomId)) : [];
   const keepAttrs = (id, attrs) => {
-    const rest = attrs.filter(([k]) => of !== RUSSELL || (k !== 'parent' && k !== 'forgets'));
+    const rest = of === RUSSELL ? readHeading(attrs, names).rest : attrs;
     const had = own(w, roomId, of, false).headings?.[id];
     if (rest.length) { if (JSON.stringify(had) !== JSON.stringify(rest)) (own(w, roomId, of).headings ||= {})[id] = rest; }
     else if (had) delete own(w, roomId, of).headings[id];
@@ -732,7 +731,7 @@ function increasing(ats) {
   return out;
 }
 
-// Russell's arrows into each chapter made to follow its heading's parent and forgets attributes,
+// Russell's arrows into each chapter made to follow its heading's parent and relation attributes,
 // through Russell's own rules. A link it refuses is reported and the arrow it would have taken the
 // place of stays. Returns the changes as words ("A1: parent Matrices → Arrays").
 function redraw(w, roomId, list, fromText, report) {
@@ -740,16 +739,10 @@ function redraw(w, roomId, list, fromText, report) {
   const title = (id) => w.things[id]?.title || 'an untitled chapter';
   for (const { id, src } of list) {
     const child = src.title || 'An untitled chapter';
-    const want = [];
-    for (const [k, v] of src.attrs) {
-      if (k === 'parent') want.push({ title: v, label: '' });
-      else if (k === 'forgets') {
-        const last = want.at(-1);
-        if (last && !last.labelled) Object.assign(last, { label: oneLine(v), labelled: true });
-        else report.push(`Line ${src.line}: forgets="${v}" has no parent before it, so it was left out.`);
-      }
-    }
-    const { parents: had, labels: hadLabels } = arrowsInto(w, roomId, id);
+    const names = relations(w, roomId);
+    const want = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows
+      .map((a) => ({ ...a, rel: a.rel === names[0] ? '' : a.rel }));
+    const { parents: had, labels: hadLabels, rel: hadRel } = arrowsInto(w, roomId, id);
     // Each wanted parent, by its heading: one it already has first, then one from the text, then
     // any chapter of the room with that title.
     const resolved = [];
@@ -764,7 +757,7 @@ function redraw(w, roomId, list, fromText, report) {
         report.push(`Line ${src.line}: the arrow from "${a.title}" to "${child}" can't be drawn: ${found.length ? `two chapters are called "${a.title}"` : `no chapter is called "${a.title}"`}.`);
         continue;
       }
-      resolved.push({ id: found[0].id, label: a.label });
+      resolved.push({ id: found[0].id, label: a.label, rel: a.rel });
     }
     const wantIds = resolved.map((a) => a.id);
     const gone = had.filter((pId) => !wantIds.includes(pId));
@@ -772,7 +765,7 @@ function redraw(w, roomId, list, fromText, report) {
     for (const pId of gone) unlink(w, roomId, pId, id);
     const drawn = [], refused = [];
     for (const a of fresh) {
-      const why = link(w, roomId, a.id, id, a.label);
+      const why = link(w, roomId, a.id, id, a.label, a.rel);
       if (why) refused.push({ ...a, why: why.replace(/\.$/, '') }); else drawn.push(a);
     }
     // A refused link leaves the arrow it would have replaced as it was.
@@ -780,15 +773,20 @@ function redraw(w, roomId, list, fromText, report) {
     if (refused.length) {
       for (const pId of gone) {
         if (!refused.length || back.length >= refused.length) break;
-        if (!link(w, roomId, pId, id, hadLabels[pId] || '')) back.push(pId);
+        if (!link(w, roomId, pId, id, hadLabels[pId] || '', hadRel[pId] || '')) back.push(pId);
       }
     }
     for (const a of resolved) {
       if (!had.includes(a.id)) continue;
+      const q = (x) => (x ? `"${x}"` : 'nothing');
+      const was = hadRel[a.id] || '';
+      if (was !== a.rel && (was || names[0]) !== (a.rel || names[0])) {
+        setRelation(w, roomId, a.id, id, a.rel);
+        out.push(`${child}: ${was || names[0]} → ${a.rel || names[0]} (about ${title(a.id)})`);
+      }
       if ((hadLabels[a.id] || '') !== a.label) {
         setLabel(w, roomId, a.id, id, a.label);
-        const q = (x) => (x ? `"${x}"` : 'nothing');
-        out.push(`${child}: forgets ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
+        out.push(`${child}: ${a.rel || names[0]} ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
       }
     }
     const lost = gone.filter((pId) => !back.includes(pId));

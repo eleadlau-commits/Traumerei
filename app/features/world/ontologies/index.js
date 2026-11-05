@@ -31,9 +31,12 @@
 //                         null): Joyce, its train
 //   settings              (optional) its settings: sliders { key, label, min, max, step, default },
 //                         switches { key, label, type: 'switch', default }, or choices
-//                         { key, label, type: 'choice', options: [[value, word]], default }. Each room keeps its
+//                         { key, label, type: 'choice', options: [[value, word]], default }, or lists
+//                         of words { key, label, type: 'list', default: [...], word?: RegExp, note? }. Each room keeps its
 //                         own (the ⚙ beside the mode's name in the rail); the global ones are under
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
+//   settingChanged(w, room, key, before, after)   (optional) one of a room's settings was just
+//                         changed in its ⚙ (Russell: a relation renamed is renamed on its arrows)
 //   moves                 (optional) [{ id, label, run(c), when?(c) }], its own actions. They
 //                         show as words in the pop-up of what is chosen, those whose when(c) is
 //                         true (all of them, without when). c.sel is what is chosen
@@ -70,7 +73,7 @@ export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function' };
+const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

@@ -491,3 +491,36 @@ test('editing: pictures as short references, full data to download; bad maths fo
   assert.match(p.report.join('\n'), /couldn't be fetched/);
   assert.deepEqual(badMaths('## A $x$\n- fine $y$\n### T\nok\n$\\frac{1$ bad\n- $$\\nope$$'), [{ line: 5, tex: '\\frac{1' }, { line: 6, tex: '\\nope' }]);
 });
+
+test('Russell: relations as heading keys, the room\'s list in the front matter, and back out the same', () => {
+  const text = [
+    '---', 'room: Algebra', 'kind: russell', 'russell.relations: [forgets, generalises]', 'russell.line: curved', '---',
+    '## Groups', '- a set with one operation', '',
+    '## Rings {parent="Groups" generalises="to two operations"}', '- a second operation', '',
+    '## Fields {parent="Rings" forgets="the zero divisors"}', '- every non-zero has an inverse', '',
+    '## Modules {parent="Rings" generalises=""}', '- vector spaces over a ring', '',
+  ].join('\n');
+  const p = parse(text);
+  assert.deepEqual(p.meta.settings.russell, { relations: ['forgets', 'generalises'], line: 'curved' });
+  const w = emptyWorld(1);
+  const { room: r, report } = importRoom(w, p, { ontologies, now: NOW });
+  assert.deepEqual(report, []);
+  const as = Object.fromEntries(arrows(w, r.id).map((a) => [chapterName(w, a.to), `${a.rel || 'default'}: ${a.label}`]));
+  assert.deepEqual(as, { Rings: 'generalises: to two operations', Fields: 'default: the zero divisors', Modules: 'generalises: ' });
+  const out = exportRoom(w, r.id, { ontologies });
+  assert.match(out, /russell\.relations: \[forgets, generalises\]/);
+  assert.match(out, /## Rings \{parent="Groups" generalises="to two operations"\}/);
+  assert.match(out, /## Fields \{parent="Rings" forgets="the zero divisors"\}/);
+  assert.match(out, /## Modules \{parent="Rings" generalises=""\}/);
+  const w2 = emptyWorld(1);
+  const back = importRoom(w2, parse(out), { ontologies, now: NOW });
+  assert.equal(exportRoom(w2, back.room.id, { ontologies }), out);
+});
+
+test('Russell: an older file still reads; a relation the room lacks is kept as an attribute and said', () => {
+  const { w, id, report } = into('russell', '## A\n- a\n## B {parent="A" forgets="all"}\n- b\n## C {parent="A" needs="b"}\n- c');
+  const g = (t) => groupNamed(w, id, t).id;
+  assert.deepEqual(arrows(w, id).map((a) => [chapterName(w, a.to), a.label]), [['B', 'all'], ['C', '']]);
+  assert.match(report.join('\n'), /"needs" isn't one of this room's relations/);
+  assert.deepEqual(own(w, id, 'russell').headings[g('C')], [['needs', 'b']]);
+});
