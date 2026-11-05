@@ -300,6 +300,7 @@ export class Bars {
       this.loose.list.replaceChildren(...list);
       this.loose.handle?.setTitle(title);
       this.loose.handle?.setLabel(`Loose · ${items.length}`);
+      this.loose.add.hidden = this.locked;
       return;
     }
     this.looseQuery = '';
@@ -314,15 +315,45 @@ export class Bars {
         e.preventDefault();
         if (e.target.value) { e.target.value = ''; this.looseQuery = ''; this.drawTray(); } else e.target.blur();
       } });
+    const add = this.looseAddBar();
     const body = el('div', { class: 'room-loose' },
       search,
       el('p', { class: 'room-loose-hint' }, 'Thoughts not placed in this mode yet, newest first. Drag one onto the room.'),
-      listEl);
-    const loose = (this.loose = { list: listEl, search, handle: null });
+      listEl, add);
+    const loose = (this.loose = { list: listEl, search, add, handle: null });
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
     dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, beforeClose: () => { dock.toggle(); return false; },
       onClose: () => { if (this.loose === loose) { this.loose = null; this.looseQuery = ''; } } })
       .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
+  }
+
+  // The add bar at the foot of the loose dock: a box always ready for a new thought. Enter keeps it
+  // as a loose thought of this room (in no group, so it waits in the tray; Pessoa places it on its
+  // spiral at once) and leaves the box empty for the next; Ctrl+Enter starts a new line in it.
+  looseAddBar() {
+    const grow = (t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; };
+    const box = el('textarea', { class: 'room-loose-new', rows: 1, placeholder: 'A new thought',
+      'aria-label': 'A new loose thought', title: 'Enter keeps it in the tray · Ctrl+Enter starts a new line',
+      oninput: (e) => grow(e.target),
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); return; }
+        if (e.key !== 'Enter' || e.isComposing) return;
+        if (!enterKeeps(e)) { grow(e.target); return; }
+        if (this.keepLoose(e.target.value)) { e.target.value = ''; grow(e.target); }
+      } });
+    return el('div', { class: 'room-loose-add', hidden: this.locked }, box);
+  }
+
+  // Keeps text as a new loose thought of this room, as one step. Returns it, or null.
+  keepLoose(text) {
+    if (!this.roomId || this.locked || !text.trim()) return null;
+    if (this.draft) this.stopWriting();
+    const th = create(this.world, this.roomId, { kind: 'line', text: text.trim() });
+    if (!th) return null;
+    this.save();
+    this.drawWorld();
+    return th;
   }
 
   // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
