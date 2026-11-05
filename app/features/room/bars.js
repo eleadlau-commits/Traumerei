@@ -215,7 +215,26 @@ export class Bars {
   trayItems() {
     let own = [];
     try { own = this.ont.tray?.(this.world, this.roomId) || []; } catch { own = []; }
-    return this.twinTrayItems(own); // a Twin: one tray for both sides (twin.js)
+    // A Twin: one tray for both sides (twin.js). Newest first: when it came loose (thrown back),
+    // else when it was made.
+    const when = (th) => th.looseAt ?? th.at ?? 0;
+    return this.twinTrayItems(own).slice().sort((a, b) => when(b) - when(a));
+  }
+
+  // The words a loose card shows, which the tray's search box looks in.
+  looseWords(th) {
+    if (isGroup(th)) return th.title || thoughtText(this.world, th);
+    return kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th);
+  }
+
+  // The loose cards the search box lets through: every word typed must be in the card (any case).
+  looseFilter(items) {
+    const words = (this.looseQuery || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return items;
+    return items.filter((th) => {
+      const text = `${this.looseWords(th)} ${isGroup(th) ? this.groupName(th) : ''}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
   }
 
   // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
@@ -223,7 +242,7 @@ export class Bars {
   // adds it to what is chosen (so Ctrl+G makes a group of them here, in the tray); drag places it.
   looseCard(th) {
     const group = isGroup(th);
-    const words = group ? th.title || thoughtText(this.world, th) : kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th);
+    const words = this.looseWords(th);
     return el('div', {
       class: 'room-tray-item' + (this.isSel(th.id) ? ' st-sel' : ''), role: 'listitem', 'data-tray': th.id,
       title: 'Click to choose · right-click to open · drag onto the room',
@@ -272,24 +291,37 @@ export class Bars {
   drawLoose(items) {
     const dock = this.docks.left;
     const open = this.loose && dock.isOpen('loose');
-    if (!this.roomId && !open) { this.loose = null; return; }
+    if (!this.roomId && !open) { this.loose = null; this.looseQuery = ''; return; }
     const title = items.length ? `${items.length} not placed` : 'Nothing loose';
-    const list = items.length ? items.map((th) => this.looseCard(th))
-      : [el('p', { class: 'room-loose-hint' }, `Every thought is placed in ${this.ont.name}.`)];
+    const shown = this.looseFilter(items);
+    const list = shown.length ? shown.map((th) => this.looseCard(th))
+      : [el('p', { class: 'room-loose-hint' }, items.length ? 'Nothing loose has those words.' : `Every thought is placed in ${this.ont.name}.`)];
     if (open) { // (open() fills the dock at once; its handle comes after)
       this.loose.list.replaceChildren(...list);
       this.loose.handle?.setTitle(title);
       this.loose.handle?.setLabel(`Loose · ${items.length}`);
       return;
     }
+    this.looseQuery = '';
     const listEl = el('div', { class: 'room-loose-list', role: 'list' }, list);
+    // The search box: the list follows what is typed; Escape clears it (and, when empty, leaves it).
+    const search = el('input', { type: 'search', class: 'room-loose-search', placeholder: 'Search loose thoughts',
+      'aria-label': 'Search loose thoughts', spellcheck: 'false',
+      oninput: (e) => { this.looseQuery = e.target.value; this.drawTray(); },
+      onkeydown: (e) => {
+        e.stopPropagation();
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        if (e.target.value) { e.target.value = ''; this.looseQuery = ''; this.drawTray(); } else e.target.blur();
+      } });
     const body = el('div', { class: 'room-loose' },
-      el('p', { class: 'room-loose-hint' }, 'Thoughts not placed in this mode yet. Drag one onto the room.'),
+      search,
+      el('p', { class: 'room-loose-hint' }, 'Thoughts not placed in this mode yet, newest first. Drag one onto the room.'),
       listEl);
-    const loose = (this.loose = { list: listEl, handle: null });
+    const loose = (this.loose = { list: listEl, search, handle: null });
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
     dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, beforeClose: () => { dock.toggle(); return false; },
-      onClose: () => { if (this.loose === loose) this.loose = null; } })
+      onClose: () => { if (this.loose === loose) { this.loose = null; this.looseQuery = ''; } } })
       .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
   }
 
