@@ -128,3 +128,19 @@ test('a smaller size is refused while a room sits outside it', () => {
   move(w, r.id, 2, 2, M);
   assert.deepEqual(outside(w, S), []);
 });
+
+test('near: a room placed near a cell takes the free spot nearest it, else spills', () => {
+  const w = emptyWorld();
+  const a = made(w, 'A', 0, { col: 5, row: 2 });
+  const b = addRoom(w, 'B', 1);
+  place(w, b.id, M, { col: 5, row: 2 }, { near: true });
+  assert.deepEqual([b.col, b.row], [6, 2], 'beside A, on its right');
+  assert.ok(a.col === 5);
+  const S2 = { cols: 2, rows: 1 };
+  const w2 = emptyWorld();
+  const x = addRoom(w2, 'X', 1, { page: 1 }); place(w2, x.id, S2, { col: 0, row: 0 });
+  const y = addRoom(w2, 'Y', 1, { page: 1 }); place(w2, y.id, S2, { col: 1, row: 0 });
+  const z = addRoom(w2, 'Z', 1, { page: 1 });
+  const out = place(w2, z.id, S2, { col: 0, row: 0 }, { near: true });
+  assert.ok(out.spilled, 'a full floor spills to a new one');
+});

@@ -22,6 +22,7 @@ import { Feature } from 'folio';
 import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
 import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
+import { RoomsVerbs } from './verbs.js';
 import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
 
@@ -79,7 +80,11 @@ export default class Rooms extends Feature {
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     this.keyMap = this.use('keys'); // the key map: the ? list, or null
-    const run = { 'rooms.rename': (e) => this.renameChosen(e) }; // the same verb as in a room (room/verbs.js)
+    const run = { // the same verbs as in a room (room/verbs.js)
+      'rooms.rename': (e) => this.renameChosen(e),
+      'rooms.duplicate': (e) => this.duplicateChosen(e),
+      'rooms.move': (e) => this.moveChosen(e),
+    };
     for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom, ...(run[k.id] ? { run: run[k.id] } : {}) });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
   }
@@ -475,8 +480,10 @@ export default class Rooms extends Feature {
   }
 }
 
-// The grid (grid.js) is written as a class of its own, whose methods are copied onto Rooms here, so
-// `this` there is this feature.
-for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(RoomsGrid.prototype))) {
-  if (key !== 'constructor') Object.defineProperty(Rooms.prototype, key, d);
+// The grid (grid.js) and the verbs (verbs.js) are written as classes of their own, whose methods
+// are copied onto Rooms here, so `this` there is this feature.
+for (const part of [RoomsGrid, RoomsVerbs]) {
+  for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(part.prototype))) {
+    if (key !== 'constructor') Object.defineProperty(Rooms.prototype, key, d);
+  }
 }

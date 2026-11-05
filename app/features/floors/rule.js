@@ -31,15 +31,27 @@ export function spot(w, r, page, board) {
   return null;
 }
 
-// Places room `id` for you: in `cell` if it is free, else the first free spot on its own floor,
-// else a new floor at the end. Returns { page, from, spilled } (from: the floor it was meant for),
-// or null when it can't be placed (no such room, or archived).
-export function place(w, id, board, cell = null) {
+// The free spot for room `r` on floor `page` nearest to `cell`: fewest steps, and of those, one in
+// the same row first, then one to the right. Null when there is none.
+export function nearest(w, r, page, board, cell) {
+  let best = null, far = Infinity;
+  for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
+    const d = 4 * (Math.abs(col - cell.col) + Math.abs(row - cell.row)) + (row !== cell.row ? 2 : 0) + (col < cell.col ? 1 : 0);
+    if (d < far && free(w, r, col, row, board, page)) { best = { col, row }; far = d; }
+  }
+  return best;
+}
+
+// Places room `id` for you: in `cell` if it is free, else the first free spot on its own floor
+// (near: the free spot nearest `cell`), else a new floor at the end. Returns { page, from,
+// spilled } (from: the floor it was meant for), or null when it can't be placed (no such room, or
+// archived).
+export function place(w, id, board, cell = null, { near = false } = {}) {
   const r = room(w, id);
   if (!r || r.archived) return null;
   const from = r.page || 0;
   delete r.col; delete r.row; // so its old cell doesn't hold its own place
-  let at = cell && free(w, r, cell.col, cell.row, board, from) ? cell : spot(w, r, from, board);
+  let at = cell && free(w, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w, r, from, board, cell) : spot(w, r, from, board);
   let page = from;
   if (!at) {
     page = addPage(w);

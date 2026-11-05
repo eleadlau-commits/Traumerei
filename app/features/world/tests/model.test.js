@@ -9,7 +9,7 @@ import {
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
   roomsOn, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells,
+  roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells, copyRoom,
 } from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
@@ -506,4 +506,44 @@ test('+ makes tags and groups before any room has them; they show with 0', () =>
   assert.deepEqual(allTags(w, ONTS).find((t) => t.tag.toLowerCase() === 'algebra').n, 1);
   const back = loadWorld(JSON.parse(JSON.stringify(w)));
   assert.deepEqual([back.tagsMade, back.groupsMade], [['Algebra'], ['Subject']]);
+});
+
+test('a copied room has everything in it copied, with new ids, and shares nothing', () => {
+  const w = emptyWorld();
+  const r = addRoom(w, 'Algebra', 1, { page: 1 });
+  update(w, r.id, { desc: 'Groups', tags: ['maths'], col: 2, row: 1 });
+  const t = train(w, r.id, 'one', 'two');
+  const [a, b] = trainThoughts(w, t.id);
+  own(w, r.id, 'russell').arrows = [{ from: a.id, to: b.id, label: 'forgets' }];
+  own(w, r.id, 'pessoa')[a.id] = { x: 5, y: 6 };
+  view(w, r.id).mode = 'pessoa';
+  lock(w, r.id);
+  const c = copyRoom(w, r.id, 9);
+  assert.equal(c.name, 'Algebra copy');
+  assert.equal(c.desc, 'Groups');
+  assert.deepEqual(c.tags, ['maths']);
+  assert.equal(c.page, 1);
+  assert.ok(!c.locked && c.col == null && c.row == null, 'unlocked, with no cell yet');
+  assert.equal(roomThoughts(w, c.id).map((th) => th.text).join(), 'one,two');
+  const [ct] = roomTrains(w, c.id);
+  assert.ok(ct.id !== t.id);
+  const [ca, cb] = trainThoughts(w, ct.id);
+  assert.ok(ca.id !== a.id && cb.id !== b.id, 'new ids');
+  assert.deepEqual(own(w, c.id, 'russell').arrows, [{ from: ca.id, to: cb.id, label: 'forgets' }]);
+  assert.deepEqual(own(w, c.id, 'pessoa')[ca.id], { x: 5, y: 6 });
+  assert.equal(view(w, c.id).mode, 'pessoa');
+  lock(w, c.id, false);
+  update(w, ca.id, { text: 'changed' });
+  assert.equal(w.things[a.id].text, 'one', 'the first room is untouched');
+  assert.equal(trainThoughts(w, t.id).length, 2);
+});
+
+test('Messy thoughts copies into an ordinary 2 × 2 room; an archived room is not copied', () => {
+  const w = emptyWorld();
+  const c = copyRoom(w, MESSY, 2);
+  assert.ok(c.id !== MESSY);
+  assert.equal(c.size, 2);
+  const r = addRoom(w, 'Old', 1);
+  archive(w, r.id);
+  assert.equal(copyRoom(w, r.id), null);
 });
