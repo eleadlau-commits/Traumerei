@@ -181,6 +181,20 @@ export default {
     } else nudge(w, id, x, y);
   },
 
+  // Ctrl+Shift+G: every thought in Joyce is in a train, so each one taken out of its train starts
+  // a train of its own, just where it was.
+  ungroup(w, roomId, items, now) {
+    let n = 0;
+    for (const th of items) {
+      const t = groupOf(w, th.id, 'joyce');
+      if (!t || trainThoughts(w, t.id).length < 2) continue;
+      const at = trainSpots(w, t.id)[th.id] || { x: t.x, y: t.y };
+      const own = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(at.x), y: Math.round(at.y) }, now);
+      if (own && join(w, own.id, th.id)) { own.hand = true; n++; }
+    }
+    return n;
+  },
+
   // The thoughts in no train yet, oldest first.
   tray: (w, roomId) => roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
   placed: (w, roomId, id) => !!groupOf(w, id, 'joyce') || isGroup(w.things[id]),

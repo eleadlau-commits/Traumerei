@@ -1,9 +1,9 @@
 // Tests for the ontologies: each has the parts it needs, and the registry keeps only whole ones.
 
 import { test, assert } from 'folio/testing';
-import { BUILT_IN, gather, missing, FALLBACK } from '../ontologies/index.js';
+import { BUILT_IN, gather, missing, FALLBACK, groupChosen, ungroupChosen } from '../ontologies/index.js';
 import russell from '../ontologies/russell.js';
-import { membership, emptyWorld, create, groupOf, MESSY } from '../model.js';
+import { membership, emptyWorld, create, groupOf, MESSY, members, startTrain, addThought } from '../model.js';
 
 test('every built-in ontology has the parts it needs', () => {
   for (const o of BUILT_IN) assert.deepEqual(missing(o), [], o.id);
@@ -55,4 +55,25 @@ test('Russell has the parts it needs, and holds each thought in one chapter', ()
   assert.equal(russell.id, 'russell');
   assert.equal(russell.groups.membership, 'one');
   for (const k of ['begin', 'tray', 'placed', 'tag', 'blocks', 'shift', 'measured']) assert.equal(typeof russell[k], 'function', k);
+});
+
+test('Ctrl+G: each mode groups what is chosen by its own rule; Ctrl+Shift+G takes it out', () => {
+  gather();
+  const [joyce, pessoa] = BUILT_IN;
+  const w = emptyWorld();
+  const t1 = startTrain(w, MESSY, 0, 0), t2 = startTrain(w, MESSY, 400, 0);
+  const a = addThought(w, t1.id, 'a', 1), b = addThought(w, t1.id, 'b', 2), c = addThought(w, t2.id, 'c', 3);
+  const g = groupChosen(joyce, w, MESSY, [a.id, c.id], 10);
+  assert.deepEqual(members(w, g.id).map((th) => th.text), ['a', 'c'], 'one train of the two');
+  assert.equal(groupOf(w, b.id, 'joyce').id, t1.id, 'the rest of the old train stays');
+  assert.equal(w.things[t2.id], undefined, 'a train left empty goes');
+  assert.equal(ungroupChosen(joyce, w, MESSY, [g.id], 11), 1, 'one came out: the last keeps the train');
+  assert.ok(groupOf(w, a.id, 'joyce').id !== groupOf(w, c.id, 'joyce').id, 'each in a train of its own');
+  const ch = groupChosen(russell, w, MESSY, [a.id, b.id], 12);
+  assert.equal(ch.of, 'russell');
+  assert.equal(members(w, ch.id).length, 2);
+  assert.ok(groupOf(w, a.id, 'joyce'), 'still in its Joyce train');
+  assert.equal(ungroupChosen(russell, w, MESSY, [a.id], 13), 1);
+  assert.equal(groupOf(w, a.id, 'russell'), null, 'loose in Russell again');
+  assert.equal(groupChosen(pessoa, w, MESSY, [a.id, b.id]), null, 'Pessoa has no groups');
 });

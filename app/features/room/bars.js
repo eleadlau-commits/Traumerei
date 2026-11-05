@@ -328,6 +328,8 @@ export class Bars {
       el('p', { class: 'pop-note' }, 'Drag any of them to move them together.'),
       el('div', { class: 'pop-row' }, pick),
       el('div', { class: 'pop-row' },
+        this.ont.groups ? el('button', { type: 'button', class: 'word', title: this.keyMap ? `Group · ${this.keyMap.label('room.group')}` : 'Group',
+          onclick: () => verbs.group(this) }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
         el('button', { type: 'button', class: 'word pop-delete', onclick: () => {
           ids.forEach((id) => remove(this.world, id));
           this.sel = null;
