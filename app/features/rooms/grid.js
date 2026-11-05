@@ -556,6 +556,7 @@ export class RoomsGrid {
 
   // Opens (or, with open false, toggles) a room's properties beside its square.
   chooseRoom(id, open = false) {
+    this.picks = []; // its properties are for one room
     this.roomSel = open || this.roomSel !== id ? id : null;
     this.roomPick = id;
     this.making = null;
