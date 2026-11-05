@@ -17,8 +17,9 @@ It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, t
 rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
 each saved step. It uses the `rooms` service to go back to the rooms page or into another room.
 It opens Search through the `search` service and listens to `search:found`.
-Its editors open in the side panel on the right (the `panel` service); while the panel shows,
-the room moves over beside it (`--panel-width`, `panel:resized`), and leaving the room closes it.
+Its editors open in the right dock (the docks feature's `panel` service); while a dock shows,
+the room moves over beside it (`--dock-left`, `--dock-right`, `docks:resized`), and leaving the
+room closes the right dock.
 It offers no service of its own.
 
 ## What it does
@@ -132,7 +133,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   back). A small *Source* at the foot opens the group (or the group a thought is in) as room
   Markdown in the source editor, in the same panel. While the editor shows, a click on another
   thought, group or train switches it there; Escape or × closes it. Several things chosen together
-  still get the small pop-up beside them, and with no panel feature the pop-up is used for all. In a thought's
+  still get the small pop-up beside them, and with no docks feature the pop-up is used for all. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
 - **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys, and (with the roomfile

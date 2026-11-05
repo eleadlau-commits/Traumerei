@@ -1,0 +1,9 @@
+{
+  "name": "Docks",
+  "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.",
+  "version": "0.2.0",
+  "main": "Docks.js",
+  "styles": [
+    "style.css"
+  ]
+}

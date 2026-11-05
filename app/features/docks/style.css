@@ -1,0 +1,72 @@
+/* The docks, fixed to the left and right edges: layout only. Class names start with "dock-"; a
+   dock's box is Folio's .panel (the pale, blurred veil) with .dock for its place. What opens in a
+   dock puts its own content in .dock-body. */
+
+:root { --dock-left: 0px; --dock-right: 0px; }
+
+.dock {
+  position: fixed;
+  z-index: 40;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--veil-rgb) / .94); /* a docked panel: a little more solid */
+}
+.dock[hidden] { display: none; }
+/* The right dock runs the full height; the left one starts under the strip at the top, so the
+   menu (☰) stays where it is. */
+.dock-right {
+  top: 0;
+  right: 0;
+  width: 480px;
+  box-shadow: -1px 0 0 var(--line), -8px 0 32px rgb(var(--ink-rgb) / .08);
+  animation: dock-in-right .3s ease both;
+}
+.dock-left {
+  top: var(--strip, 0px);
+  left: 0;
+  width: 300px;
+  box-shadow: 1px 0 0 var(--line), 8px 0 32px rgb(var(--ink-rgb) / .08);
+  animation: dock-in-left .3s ease both;
+}
+@keyframes dock-in-right { from { opacity: 0; transform: translateX(12px); } }
+@keyframes dock-in-left { from { opacity: 0; transform: translateX(-12px); } }
+
+.dock-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 12px 24px;
+}
+.dock-names { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.dock-kind:empty { display: none; }
+.dock-title { font-size: 17px; letter-spacing: .04em; overflow-wrap: anywhere; }
+.dock-close { --x-size: 32px; }
+
+.dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px 16px; }
+
+/* The inner edge: drag it to change the width. */
+.dock-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.dock-right .dock-edge { left: -4px; }
+.dock-left .dock-edge { right: -4px; }
+.dock-edge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.dock-edge:hover::after, .dock-dragging .dock-edge::after { opacity: .25; }
+.dock-dragging, .dock-dragging * { cursor: col-resize !important; user-select: none !important; }

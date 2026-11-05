@@ -9,7 +9,7 @@
   "uses": [
     "roomfile",
     "search",
-    "panel",
+    "docks",
     "floors"
   ],
   "requires": [

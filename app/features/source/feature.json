@@ -7,6 +7,6 @@
     "style.css"
   ],
   "requires": [
-    "panel"
+    "docks"
   ]
 }
