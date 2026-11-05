@@ -2079,7 +2079,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
-.room-loose { display: grid; gap: 14px; }
+.room-loose { display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+.room-loose-list { flex: 1; align-content: start; }
+.room-loose > :not(.room-loose-list) { flex-shrink: 0; }
+.room-loose-add { position: sticky; bottom: calc(-1 * var(--s-4)); margin: 0 calc(-1 * var(--s-4)); padding: 10px var(--s-4) var(--s-4); border-top: 1px solid var(--chrome-edge); background: var(--chrome); }
+.room-loose-new { width: 100%; box-sizing: border-box; resize: none; overflow: hidden; }
 .room-loose-search { width: 100%; box-sizing: border-box; }
 .room-loose-hint { margin: 0; font-size: 13px; line-height: 1.5; opacity: .7; }
 .room-loose-list { display: grid; gap: 8px; }
@@ -22160,6 +22164,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.loose.list.replaceChildren(...list2);
         this.loose.handle?.setTitle(title);
         this.loose.handle?.setLabel(`Loose · ${items.length}`);
+        this.loose.add.hidden = this.locked;
         return;
       }
       this.looseQuery = "";
@@ -22185,14 +22190,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           } else e.target.blur();
         }
       });
+      const add = this.looseAddBar();
       const body = el15(
         "div",
         { class: "room-loose" },
         search4,
         el15("p", { class: "room-loose-hint" }, "Thoughts not placed in this mode yet, newest first. Drag one onto the room."),
-        listEl
+        listEl,
+        add
       );
-      const loose = this.loose = { list: listEl, search: search4, handle: null };
+      const loose = this.loose = { list: listEl, search: search4, add, handle: null };
       dock.open({
         key: "loose",
         kind: "Loose",
@@ -22215,6 +22222,51 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           else this.loose = null;
         }
       });
+    }
+    // The add bar at the foot of the loose dock: a box always ready for a new thought. Enter keeps it
+    // as a loose thought of this room (in no group, so it waits in the tray; Pessoa places it on its
+    // spiral at once) and leaves the box empty for the next; Ctrl+Enter starts a new line in it.
+    looseAddBar() {
+      const grow = (t) => {
+        t.style.height = "auto";
+        t.style.height = `${t.scrollHeight}px`;
+      };
+      const box = el15("textarea", {
+        class: "room-loose-new",
+        rows: 1,
+        placeholder: "A new thought",
+        "aria-label": "A new loose thought",
+        title: "Enter keeps it in the tray · Ctrl+Enter starts a new line",
+        oninput: (e) => grow(e.target),
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.target.blur();
+            return;
+          }
+          if (e.key !== "Enter" || e.isComposing) return;
+          if (!enterKeeps2(e)) {
+            grow(e.target);
+            return;
+          }
+          if (this.keepLoose(e.target.value)) {
+            e.target.value = "";
+            grow(e.target);
+          }
+        }
+      });
+      return el15("div", { class: "room-loose-add", hidden: this.locked }, box);
+    }
+    // Keeps text as a new loose thought of this room, as one step. Returns it, or null.
+    keepLoose(text) {
+      if (!this.roomId || this.locked || !text.trim()) return null;
+      if (this.draft) this.stopWriting();
+      const th = create3(this.world, this.roomId, { kind: "line", text: text.trim() });
+      if (!th) return null;
+      this.save();
+      this.drawWorld();
+      return th;
     }
     // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
     // canvas, the ontology places it there.
