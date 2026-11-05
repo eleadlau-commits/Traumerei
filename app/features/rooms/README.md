@@ -113,14 +113,15 @@ written there. With nothing in it, the rooms page works on its own.
   words dim, and the others show how many things in them hold the words. Enter goes into the
   room with the most; Escape puts the lights out. (Inside a room, Ctrl+K still searches every
   room in a list.)
-- **Lock** (in a room's pop-up): nothing in a locked room can be written, moved or deleted, and its
+- **Lock** (Ctrl+L, or Lock in its properties): nothing in a locked room can be written, moved or deleted, and its
   square keeps its place on the grid (no dragging, no resizing, no Delete). A thin bar runs along
-  its top. Inside, a click shows a thought's words, read only. Unlock from the same pop-up.
+  its top. Inside, a click shows a thought's words, read only. Ctrl+L again (or Unlock) unlocks; inside a room Ctrl+L locks or unlocks it too.
 - **Description:** a line or two about a room, written in its pop-up; it shows under the room's
   name inside, and in its peek.
 - **Choosing many** (`many.js`): Shift+click or Ctrl+click adds a square to the choice or takes it
   out, Ctrl+A chooses every room shown, Escape lets go; the status bar says how many. Delete,
-  Ctrl+D and Ctrl+M work on them all, each as one undo step. **Ctrl+G** groups them the rooms
+  Ctrl+D, Ctrl+M, Ctrl+L and Ctrl+Backspace work on them all, each as one undo step (Ctrl+L locks
+  them all, or unlocks them all when every one is locked). **Ctrl+G** groups them the rooms
   page's way, by a tag they share (written in a small field; "Group: tag" puts the tag in a group
   too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
 - **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy
@@ -129,11 +130,11 @@ written there. With nothing in it, the rooms page works on its own.
   spills onto a new one. **Move** to another floor: drag the square onto a floor in the rail, or
   Ctrl+M for a short list of floors (a number key picks, N a new
   floor). Each is one undo step (`verbs.js`).
-- **Archive** (in a room's pop-up, or drop a square on *Archive* in the rail): the room leaves the
+- **Archive** (Ctrl+Backspace, Archive in its properties, or drop a square on *Archive* in the rail; on a Mac the Control key, since Cmd+Backspace deletes): the room leaves the
   grid for the Archive, a page of its own reached from *Archive* in the rail on the left (Escape,
   back or *Rooms* goes back). It has the same grid lines as the rooms page, with the rooms in the
   order they were archived, but its empty cells make no rooms. A right-click on a room shows
-  Restore (to the first free cell) and Delete; Enter goes in. Archived rooms are still found by search.
+  Restore (to the first free cell) and Delete; Ctrl+Backspace restores too, and Enter goes in. Archived rooms are still found by search.
 - **Colour:** a square shows its room's colour more vividly than before: (L − 0.25, vivid × C, h)
   at α = strength × (1.2 − L) × opacity (Settings → Rooms → Colour strength, 1.6 by default).
 - **Going in:** the square grows to fill the screen in the room's own colour, then fades into the

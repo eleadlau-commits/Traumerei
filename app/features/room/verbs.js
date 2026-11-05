@@ -1,10 +1,10 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
 // page): rename (Ctrl+R), duplicate (Ctrl+D), fold into one (Ctrl+F), close or open (Ctrl+Shift+F), move to another room
-// (Ctrl+M), group (Ctrl+G) and ungroup (Ctrl+Shift+G); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
+// (Ctrl+M), group (Ctrl+G), ungroup (Ctrl+Shift+G) and lock the room (Ctrl+L); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto } from './world.js';
+import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, lock as lockRoom } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -108,4 +108,19 @@ export function ungroup(c, e) {
   c.save();
   c.drawWorld();
   c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
+}
+
+// Lock: this room is locked (nothing in it can change), or unlocked again. One step.
+export function lock(c, e) {
+  if (typing(e) || c.editing || !c.roomId) return;
+  const r = room(c.world, c.roomId);
+  if (!r) return;
+  const on = !r.locked;
+  lockRoom(c.world, r.id, on);
+  c.save();
+  c.drawRoom();
+  c.drawWorld();
+  if (c.sel && props(c)) c.openProps(c.sel); // the Editor shows it read only, or writable again
+  const key = c.keyMap?.label?.('room.lock');
+  c.toast(`${on ? 'Locked' : 'Unlocked'}.${key ? ` ${key} ${on ? 'unlocks' : 'locks'} it.` : ''}`);
 }
