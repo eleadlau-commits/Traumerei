@@ -7,7 +7,7 @@ import {
   search, cells, roomAt, lock, archive, archived, restore,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb,
+  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 
@@ -117,7 +117,7 @@ export class RoomsGrid {
     this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
 
     const taken = new Set();
-    for (const r of all) for (let c = 0; c < (r.size || 1); c++) for (let d = 0; d < (r.size || 1); d++) taken.add(`${r.col + c},${r.row + d}`);
+    for (const r of all) for (const [c, d] of cells(r)) taken.add(`${c},${d}`);
     const empty = [];
     for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
       if (taken.has(`${col},${row}`)) continue;
@@ -178,7 +178,7 @@ export class RoomsGrid {
   // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
   beside(c, cell, cols, extra = '') {
     const step = cell + GRID.gap;
-    const size = c.size || 1;
+    const size = c.size ? span(c).w : 1; // a room's width in cells (a cell clicked: 1)
     const right = c.col + size + 1 + 2 <= cols;
     return {
       class: 'panel pop rooms-options' + (right ? '' : ' left') + extra,
@@ -240,14 +240,15 @@ export class RoomsGrid {
     const name = this.renaming === r.id
       ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
       : el('span', { class: 'rooms-tile-name', title: r.name }, r.name);
-    const lines = peek(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
+    const { w: across, h: down } = span(r);
+    const lines = peek(this.world, r.id, down > 1 ? 3 : across > 1 ? 2 : 1);
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
       class: 'rooms-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
         + (this.roomPick === r.id || this.picks?.includes(r.id) ? ' picked' : '')
         + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
-      style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+      style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${across};grid-row:${r.row + 1} / span ${down}`,
       'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
       'aria-selected': String(this.roomPick === r.id),
       'data-room': r.id,
@@ -774,20 +775,20 @@ export class RoomsGrid {
       const at = g && this.cellAt(ev.clientX, ev.clientY, g);
       return at && { col: at.col - offset.col, row: at.row - offset.row };
     };
-    // Where it would land: a shadow the room's own size (2 × 2 for a big room), faint if taken.
+    // Where it would land: a shadow the room's own shape (2 × 2 for a big room, 2 × 1 for a Twin), faint if taken.
     const drop = el('div', { class: 'rooms-drop', hidden: true });
     this.grid.append(drop);
     const mark = (c) => {
       if (!c) { drop.hidden = true; return; }
-      const size = r.size || 1;
-      const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && c.row + size <= this.floors.size.rows &&
+      const { w: across, h: down } = span(r);
+      const free = c.col >= 0 && c.row >= 0 && c.col + across <= this.cols && c.row + down <= this.floors.size.rows &&
         cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, floor));
       const g = gridOf(floor);
       if (g && drop.parentElement !== g) g.append(drop);
       drop.hidden = false;
       drop.classList.toggle('taken', !free);
-      drop.style.gridColumn = `${c.col + 1} / span ${size}`;
-      drop.style.gridRow = `${c.row + 1} / span ${size}`;
+      drop.style.gridColumn = `${c.col + 1} / span ${across}`;
+      drop.style.gridRow = `${c.row + 1} / span ${down}`;
     };
     const lit = (n) => {
       for (const x of this.root.querySelectorAll('.drop-on')) if (x !== n) x.classList.remove('drop-on');

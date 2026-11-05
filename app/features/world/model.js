@@ -12,7 +12,7 @@
 //            same group, never a copy. loose: made in its ontology's tray, and still there.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size, page,             through an ontology; on the rooms page it is a
-//              desc, tags, locked, archived }    square of size × size cells at (col, row).
+//              desc, tags, locked, archived }    square at (col, row), its shape from size (span()).
 //                                                desc: a line or two about it. tags: words it is
 //                                                sorted by (its ontology is one too: roomTags).
 //                                                locked: nothing in it can change. archived: on
@@ -113,9 +113,14 @@ export const room = (w, id) => (kindOf(w.things[id]) === 'room' ? w.things[id] :
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
-// A big room (Messy thoughts, or any 2 × 2 room) switches between the ontologies inside; a small
-// one keeps the one it was made with.
-export const isBig = (th) => kindOf(th) === 'room' && (th.id === MESSY || (th.size || 1) > 1);
+// A room's shape on the rooms page says how many ontologies it holds (Borges's rule): 1 × 1 holds
+// one (the one it was made with), a Twin, two cells wide and one high, holds two side by side, and
+// 2 × 2 (Messy thoughts, any big room) holds them all and switches between them inside. Saved as
+// `size`: 1, 'twin' or 2.
+export const SHAPES = { one: { w: 1, h: 1 }, twin: { w: 2, h: 1 }, all: { w: 2, h: 2 } };
+export const shapeOf = (r) => (r.id === MESSY || r.size === 2 ? 'all' : r.size === 'twin' ? 'twin' : 'one');
+export const span = (r) => SHAPES[shapeOf(r)];
+export const isBig = (th) => kindOf(th) === 'room' && shapeOf(th) === 'all';
 
 export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
 
@@ -360,7 +365,7 @@ function tidy(f) {
   if (f.light != null) out.light = clamp01(f.light, 0.5);
   if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
   if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0) { out.col = f.col; out.row = f.row; }
-  out.size = f.size === 2 ? 2 : 1;
+  out.size = f.size === 2 || f.size === 'twin' ? f.size : 1;
   const desc = lines(f.desc).slice(0, DESC);
   if (desc) out.desc = desc;
   const tags = tidyTags(f.tags);
@@ -516,7 +521,8 @@ export function addRoom(w, text = 'Untitled', now, where = {}, kind = DEFAULT_MO
 // The cells a room covers.
 export function cells(r) {
   const out = [];
-  for (let dc = 0; dc < (r.size || 1); dc++) for (let dr = 0; dr < (r.size || 1); dr++) out.push([r.col + dc, r.row + dr]);
+  const { w, h } = span(r);
+  for (let dc = 0; dc < w; dc++) for (let dr = 0; dr < h; dr++) out.push([r.col + dc, r.row + dr]);
   return out;
 }
 

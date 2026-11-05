@@ -202,3 +202,25 @@ test('Borges: the rooms page ontology, rooms on cells, never a room\'s', async (
   assert.equal(o.drop(w, 1, a.id, 2, 1), true);       // onto Floor 2
   assert.deepEqual([a.page, a.col, a.row], [1, 2, 1]);
 });
+
+test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and rooms never overlap', async () => {
+  const { borges } = await import('../borges.js');
+  const o = borges(() => M);
+  const w = emptyWorld();
+  const one = made(w, 'One', 0, { col: 4, row: 0 });
+  const twin = addRoom(w, 'Twin', 1, { page: 0 });
+  twin.size = 'twin';
+  place(w, twin.id, M, { col: 3, row: 0 });            // would cover One's cell: goes to the first free spot
+  assert.deepEqual([twin.col, twin.row], [2, 0]);
+  assert.deepEqual(roomAt(w, 3, 0)?.id, twin.id);      // two cells wide, one high
+  assert.equal(roomAt(w, 2, 1), null);
+  assert.deepEqual(o.shape(w, one.id), { w: 1, h: 1, holds: 1 });
+  assert.deepEqual(o.shape(w, twin.id), { w: 2, h: 1, holds: 2 });
+  assert.deepEqual(o.shape(w, MESSY), { w: 2, h: 2, holds: 'all' });
+  assert.equal(move(w, twin.id, 7, 4, M), false);      // its second cell would be off the board
+  assert.equal(move(w, twin.id, 6, 4, M), true);
+  assert.equal(resize(w, one.id, 'twin', M), true);    // One at (4, 0) grows to (5, 0)
+  assert.equal(resize(w, one.id, 2, M), true);
+  assert.equal(resize(w, twin.id, 2, M), false);       // (6, 4) 2 × 2 would leave the board
+  assert.equal(twin.size, 'twin');
+});
