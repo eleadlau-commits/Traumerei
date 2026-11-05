@@ -4,7 +4,7 @@
 
 import {
   MESSY, DEFAULT_MODE, room, addRoom, name, update, remove, move, fold, roomThoughts,
-  search, cells, roomAt, lock, archive, archived, restore,
+  search, cells, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span,
@@ -311,14 +311,7 @@ export class RoomsGrid {
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
     return [
       r.desc ? el('p', { class: 'pop-note' }, r.desc) : null,
-      word('Restore', () => {
-        restore(this.world, r.id);
-        const out = this.floors.place(r.id); // its old floor, else a new one
-        this.roomSel = null;
-        this.save();
-        this.drawRooms();
-        if (!out?.spilled) this.toast(`${r.name} is back among the rooms.`);
-      }),
+      word('Restore', () => this.restoreRooms([r.id])),
       word('Delete', () => {
         remove(this.world, r.id);
         this.roomSel = null;
@@ -606,14 +599,8 @@ export class RoomsGrid {
     }, n === 1 ? '1 × 1' : '2 × 2'));
     p.untint = r.tint || r.light != null || r.opacity != null ? () => { delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms(); } : null;
     // Locked: nothing inside can change, and the square stays where it is.
-    p.lock = () => { lock(this.world, r.id, !r.locked); this.save(); this.drawRooms(); };
-    p.archive = r.id !== MESSY && !r.locked ? () => {
-      archive(this.world, r.id);
-      this.roomSel = null;
-      this.save();
-      this.drawRooms();
-      this.toast(`${r.name} is in the Archive.`);
-    } : null;
+    p.lock = () => this.lockRooms([r.id]);
+    p.archive = r.id !== MESSY && !r.locked ? () => this.archiveRooms([r.id]) : null;
     // Taken out as room Markdown (the roomfile feature); a locked room too.
     p.export = this.files ? () => this.exportRoomFile(r.id) : null;
     p.remove = r.id !== MESSY && !r.locked ? () => {
@@ -669,8 +656,8 @@ export class RoomsGrid {
         p.sizes ? kv('Size', el('div', { class: 'seg' }, ...p.sizes)) : null,
         p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
       sec('Actions', el('div', { class: 'box-btns' },
-        btn(r.locked ? 'Unlock' : 'Lock', p.lock),
-        btn('Archive', p.archive),
+        btn(r.locked ? 'Unlock' : 'Lock', p.lock, this.keyMap?.label?.('rooms.lock') || ''),
+        btn('Archive', p.archive, this.keyMap?.label?.('rooms.archive') || ''),
         btn('Export', p.export),
         btn('Delete', p.remove, 'Delete', 'danger pop-delete'))),
     ];

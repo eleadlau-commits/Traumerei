@@ -14,6 +14,8 @@ export const ROOMS_KEYS = [
   { id: 'rooms.rename', keys: ['Ctrl+R'], words: 'rename the chosen room', typing: true },
   { id: 'rooms.duplicate', keys: ['Ctrl+D'], words: 'duplicate the chosen rooms (or Alt+drag one)' },
   { id: 'rooms.move', keys: ['Ctrl+M'], words: 'move the chosen rooms to another floor' },
+  { id: 'rooms.lock', keys: ['Ctrl+L'], words: 'lock or unlock the chosen rooms' },
+  { id: 'rooms.archive', keys: ['Ctrl+Backspace'], words: 'archive the chosen rooms (in the Archive: restore them)' },
   { id: 'rooms.group', keys: ['Ctrl+G'], words: 'group the chosen rooms: a tag they share' },
   { id: 'rooms.ungroup', keys: ['Ctrl+Shift+G'], words: 'take off the tags they share' },
   { id: 'rooms.floor', keys: ['PageUp', 'PageDown'], words: 'the floor above · below' },

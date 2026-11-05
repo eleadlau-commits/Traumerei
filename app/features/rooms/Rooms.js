@@ -89,6 +89,8 @@ export default class Rooms extends Feature {
       'rooms.rename': (e) => this.renameChosen(e),
       'rooms.duplicate': (e) => this.duplicateChosen(e),
       'rooms.move': (e) => this.moveChosen(e),
+      'rooms.lock': (e) => this.lockChosen(e),
+      'rooms.archive': (e) => this.archiveChosen(e),
       'rooms.group': (e) => this.tagChosen(e),
       'rooms.ungroup': (e) => this.untagChosen(e),
     };

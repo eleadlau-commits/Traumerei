@@ -5,11 +5,14 @@
 // one undo step. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 //
 // Duplicate: Ctrl+D, or Alt+drag a square (grid.js) to where the copy should go. Move: Ctrl+M
-// (a short list of floors), or drag a square
-// onto a floor in the rail (grid.js).
+// (a short list of floors), or drag a square onto a floor in the rail (grid.js). Lock: Ctrl+L, or
+// Lock in its properties (locks them all, or unlocks them all when every one is locked). Archive:
+// Ctrl+Backspace, or Archive in its properties; in the Archive the same key restores.
 
-import { MESSY, room, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag } from './world.js';
-import { el } from './shared.js';
+
+
+import { MESSY, room, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
+import { el, MAC } from './shared.js';
 
 export class RoomsVerbs {
   // A copy of room `id`, beside it (`cell`: where it was dropped, on floor `page`, or else its
@@ -70,6 +73,65 @@ export class RoomsVerbs {
     if (e?.target?.matches?.('input, textarea, select, [contenteditable]')) return [];
     if (this.root.hidden || this.inRoom) return [];
     return this.chosenIds().map((id) => room(this.world, id)).filter(Boolean);
+  }
+
+  // Locks rooms, or unlocks them when every one is locked already: one step.
+  lockRooms(ids) {
+    const rs = ids.map((id) => room(this.world, id)).filter(Boolean);
+    if (!rs.length) return;
+    const on = rs.some((r) => !r.locked);
+    for (const r of rs) lock(this.world, r.id, on);
+    this.save();
+    this.drawRooms();
+    const key = this.keyMap?.label?.('rooms.lock');
+    this.toast(rs.length === 1 ? `${rs[0].name} is ${on ? 'locked' : 'unlocked'}.${key ? ` ${key} ${on ? 'unlocks' : 'locks'} it.` : ''}`
+      : `${on ? 'Locked' : 'Unlocked'} ${rs.length} rooms.`);
+  }
+
+  // Takes rooms to the Archive (not Messy thoughts, nor a locked room): one step.
+  archiveRooms(ids) {
+    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && !r.archived);
+    const ok = rs.filter((r) => r.id !== MESSY && !r.locked);
+    if (!ok.length) { if (rs.length) this.toast('Messy thoughts and locked rooms stay.'); return; }
+    for (const r of ok) archive(this.world, r.id);
+    this.picks = [];
+    this.roomSel = this.roomPick = null;
+    this.save();
+    this.drawRooms();
+    const stayed = rs.length - ok.length;
+    this.toast(ok.length === 1 && !stayed ? `${ok[0].name} is in the Archive.` : `Archived ${ok.length} room${ok.length === 1 ? '' : 's'}${stayed ? `; ${stayed} stayed` : ''}.`);
+  }
+
+  // Brings archived rooms back, each to its old floor (else a new one): one step.
+  restoreRooms(ids) {
+    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && r.archived);
+    if (!rs.length) return;
+    let spilled = false;
+    for (const r of rs) {
+      restore(this.world, r.id);
+      if (this.floors.place(r.id)?.spilled) spilled = true; // the floors feature says where it went
+    }
+    this.picks = [];
+    this.roomSel = this.roomPick = null;
+    this.save();
+    this.drawRooms();
+    if (!spilled) this.toast(rs.length === 1 ? `${rs[0].name} is back among the rooms.` : `${rs.length} rooms are back among the rooms.`);
+  }
+
+  // Ctrl+L: lock or unlock the chosen rooms.
+  lockChosen(e) {
+    const rs = this.chosenFor(e);
+    if (rs.length) this.lockRooms(rs.map((r) => r.id));
+  }
+
+  // Ctrl+Backspace: archive the chosen rooms; in the Archive, restore them. (On a Mac, Cmd+Backspace
+  // still deletes; the Control key archives.)
+  archiveChosen(e) {
+    if (MAC && e?.metaKey && !e.ctrlKey) { this.shortcut(e, true); return; }
+    const rs = this.chosenFor(e);
+    if (!rs.length) return;
+    if (this.shelf) this.restoreRooms(rs.map((r) => r.id));
+    else this.archiveRooms(rs.map((r) => r.id));
   }
 
   duplicateChosen(e) {

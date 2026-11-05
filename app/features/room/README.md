@@ -199,8 +199,8 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   group (folding asks for a name, in the Editor tab), **Ctrl+M** opens Move to…, **Ctrl+G** makes what is
   chosen one group of this mode (a Joyce train, a Russell chapter: each mode's own rule, the
   world's `groupChosen`; Pessoa has no groups and says so), **Ctrl+Shift+G** takes it out of its
-  group (Joyce: each its own train, where it was; Russell: loose again), and **Delete**
-  deletes. In a field these keys do nothing (so the browser doesn't reload, bookmark or find).
+  group (Joyce: each its own train, where it was; Russell: loose again), **Ctrl+L** locks or
+  unlocks the room, and **Delete** deletes. In a field these keys do nothing (so the browser doesn't reload, bookmark or find).
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or Add → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.
