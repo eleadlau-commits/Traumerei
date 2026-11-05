@@ -11948,7 +11948,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return true;
   }
   var trainThoughts = members;
-  var roomTrains = (w2, roomId) => groupsIn(w2, roomId, "joyce").filter((g2) => !g2.loose && members(w2, g2.id).length);
+  var roomTrains = (w2, roomId) => groupsIn(w2, roomId, "joyce").filter((g2) => !g2.loose && members(w2, g2.id).length && !groupsOf(w2, g2.id, "joyce").length);
   var roomThoughts = roomItems;
   var roomUnits = (w2, roomId) => roomItems(w2, roomId);
   function lastWritten(w2, roomId) {
@@ -12027,14 +12027,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return own3 ? spot(f2, { kind, ...own3 }) : null;
     }
     if (kind === "group") {
-      const out2 = {
+      const out2 = spot(f2, {
         kind,
         of: typeof f2.of === "string" && f2.of ? f2.of : DEFAULT_MODE,
         members: Array.isArray(f2.members) ? [...new Set(f2.members)] : [],
         x: Math.round(+f2.x || 0),
         y: Math.round(+f2.y || 0),
         title: oneLine(f2.title)
-      };
+      });
       if (f2.closed) out2.closed = true;
       if (f2.loose) out2.loose = true;
       return out2;
@@ -12723,7 +12723,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function nudge(w2, id, x, y, now = Date.now()) {
     const th = w2.things[id];
     const t = th && groupOf(w2, id, "joyce");
-    if (!t || !isLeaf(th) || shut(w2, id)) return false;
+    if (!t || !(isLeaf(th) || isGroup(th)) || shut(w2, id)) return false;
     th.dx = Math.round(x - t.x);
     th.dy = Math.round(y - t.y);
     th.edited = now;
@@ -12794,8 +12794,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     units: (w2, roomId) => [...roomTrains(w2, roomId).flatMap((t) => t.closed ? [t] : trainThoughts(w2, t.id)), ...placedForeign(w2, roomId, "joyce")],
     point(w2, roomId, id) {
       const th = w2.things[id];
-      if (isGroup(th) && th.of !== "joyce") return spot2(w2, roomId, "joyce", id);
-      if (isGroup(th)) return { x: th.x, y: th.y };
+      if (isGroup(th) && th.of !== "joyce" && !groupOf(w2, id, "joyce")) return spot2(w2, roomId, "joyce", id);
+      if (isGroup(th) && !groupOf(w2, id, "joyce")) return { x: th.x, y: th.y };
       const t = groupOf(w2, id, "joyce");
       if (!t) return null;
       return t.closed ? { x: t.x, y: t.y } : trainSpots(w2, t.id)[id] || null;
@@ -12805,7 +12805,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th) && th.of !== "joyce") putAt(w2, roomId, "joyce", id, x, y);
+      if (isGroup(th) && groupOf(w2, id, "joyce")) nudge(w2, id, x, y);
+      else if (isGroup(th) && th.of !== "joyce") putAt(w2, roomId, "joyce", id, x, y);
       else if (isGroup(th)) {
         Object.assign(th, { x, y, hand: true });
         place(w2, id);
@@ -12857,7 +12858,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     shift(w2, roomId, id, dx, dy) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th) && th.of !== "joyce") {
+      if (isGroup(th) && groupOf(w2, id, "joyce")) {
+        if (Number.isFinite(th.dx)) {
+          th.dx += dx;
+          th.dy += dy;
+        }
+      } else if (isGroup(th) && th.of !== "joyce") {
         const p = spot2(w2, roomId, "joyce", id);
         if (p) putAt(w2, roomId, "joyce", id, p.x + dx, p.y + dy);
       } else if (isGroup(th)) {
@@ -13105,10 +13111,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MOST_PARENTS = 2;
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
   var LINES = ["straight", "curved"];
-  var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => !g2.loose && members(w2, g2.id).length);
+  var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => !g2.loose && members(w2, g2.id).length && !groupOf(w2, g2.id, ID));
   var isChapter = (w2, roomId, id) => {
     const g2 = w2.things[id];
-    return isGroup(g2) && g2.of === ID && g2.parent === roomId;
+    return isGroup(g2) && g2.of === ID && g2.parent === roomId && !groupOf(w2, id, ID);
   };
   var RELATION = /^[A-Za-z][\w-]*$/;
   var RELATIONS = { key: "relations", label: "Relations", type: "list", default: ["forgets"], word: RELATION, note: "The first is the default." };
@@ -13564,7 +13570,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     units: (w2, roomId) => chapters(w2, roomId).flatMap((g2) => g2.closed ? [g2] : members(w2, g2.id)),
     point(w2, roomId, id) {
       const th = w2.things[id];
-      const g2 = isGroup(th) && th.of === ID ? th : groupOf(w2, id, ID);
+      const g2 = isGroup(th) && th.of === ID && !groupOf(w2, id, ID) ? th : groupOf(w2, id, ID);
       if (!g2 || g2.parent !== roomId) return null;
       const at2 = layout(w2, roomId)[g2.id];
       if (!at2) return null;
@@ -13577,7 +13583,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th) && th.of === ID) {
+      if (isGroup(th) && th.of === ID && !groupOf(w2, id, ID)) {
         Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true });
         place(w2, id);
         return;
@@ -13906,15 +13912,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const out = /* @__PURE__ */ new Map();
     for (const id of ids) {
       const th = w2.things[id];
-      if (isGroup(th)) for (const m2 of members(w2, id)) out.set(m2.id, m2);
+      if (isGroup(th)) for (const m2 of itemsIn(w2, id)) out.set(m2.id, m2);
       else if (isLeaf(th) && th.parent === roomId) out.set(id, th);
     }
     return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   }
+  function unitsOf(w2, roomId, ids) {
+    const out = /* @__PURE__ */ new Map();
+    for (const id of ids) {
+      const th = w2.things[id];
+      if ((isGroup(th) || isLeaf(th)) && th.parent === roomId) out.set(id, th);
+    }
+    for (const id of [...out.keys()]) if ([...out.keys()].some((o2) => o2 !== id && holds(w2, o2, id))) out.delete(id);
+    return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  }
   function groupChosen(o2, w2, roomId, ids, now = Date.now(), { loose = false } = {}) {
     if (!o2?.groups) return null;
-    const items = itemsOf(w2, roomId, ids);
-    if (!items.length) return null;
+    const items = unitsOf(w2, roomId, ids);
+    if (!items.length || items.length === 1 && isGroup(items[0]) && items[0].of === o2.id) return null;
     if (loose) {
       const g3 = create(w2, roomId, { kind: "group", of: o2.id, loose: true }, now);
       if (!g3) return null;
@@ -13935,6 +13950,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function ungroupChosen(o2, w2, roomId, ids, now = Date.now()) {
     if (!o2?.groups) return 0;
+    let freed = 0;
+    for (const id of ids) {
+      const g2 = w2.things[id];
+      if (!isGroup(g2) || g2.of !== o2.id || g2.parent !== roomId) continue;
+      const inner = members(w2, id).filter(isGroup);
+      if (!inner.length) continue;
+      for (const m2 of inner) {
+        leave(w2, id, m2.id);
+        freed++;
+      }
+    }
+    if (freed) return freed;
     const items = itemsOf(w2, roomId, ids);
     if (o2.ungroup) return o2.ungroup(w2, roomId, items, now) || 0;
     let n = 0;
@@ -15112,7 +15139,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (of === RUSSELL) attrs.push(...headingAttrs2(w2, roomId, g2.id, (p) => w2.things[p]?.title || ""));
     attrs.push(...(own2(w2, roomId, of, false).headings || {})[g2.id] || []);
     const head = ["##", g2.title, attrs.length ? `{${attrs.map(([k2, v2]) => `${k2}=${writeAttr(v2)}`).join(" ")}}` : ""].filter(Boolean).join(" ");
-    return [head, ...g2.closed ? ["> closed"] : [], writeItems(members2(w2, g2.id), pictures)].join("\n");
+    return [head, ...g2.closed ? ["> closed"] : [], writeItems(members2(w2, g2.id).filter(isLeaf2), pictures)].join("\n");
   }
   function exportRoom(w2, roomId, { ontologies = [], pictures = null } = {}) {
     const r = room3(w2, roomId);
@@ -15367,7 +15394,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         report.push(`Line ${src.line}: ${named(src.title, word)} has nothing under it, so that ${word} was left as it is.`);
         continue;
       }
-      refill(id, members2(w2, id), src.items);
+      refill(id, members2(w2, id).filter(isLeaf2), src.items);
       if (src.same) continue;
       if (src.title !== (g2.title || "")) update2(w2, id, { title: src.title }, now);
       if (!!src.closed !== !!g2.closed) update2(w2, id, { closed: !!src.closed }, now);
@@ -15409,7 +15436,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const id of p.missing) {
         const g2 = w2.things[id];
         if (!g2) continue;
-        for (const th of members2(w2, id)) drop(th, id);
+        for (const th of members2(w2, id).filter(isLeaf2)) drop(th, id);
         if (w2.things[id]) remove2(w2, id);
         counts2.groupsRemoved++;
       }
