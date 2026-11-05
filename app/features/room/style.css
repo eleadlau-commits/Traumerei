@@ -42,16 +42,18 @@
 .room-stage.panning { cursor: grab; }
 .room-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
-/* A room's rail, where the rooms page has Rooms and Archive: its modes, then a hairline and Timeline. */
-.room-page .room-modes { top: calc(var(--strip) + 32px); z-index: 3; }
+/* A room's rail (Folio's .rail): under Modes its modes, under Views Timeline. The canvas starts
+   beside it, so nothing lies under it. */
+.room-page .room-modes { z-index: 3; }
+.room-stage { left: var(--rail); }
 .room-rail-fixed { cursor: default; }
-/* A mode and its ⚙, which shows only while the mode is hovered over (or tapped, on a phone). */
-.room-rail-row { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
-.room-gear { padding: 0 3px; font-size: 16.5px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* A mode and its ⚙, which shows at its right only while the mode is hovered over. */
+.room-rail-row { position: relative; }
+.room-gear { position: absolute; top: 50%; right: var(--s-3); transform: translateY(-50%); padding: 0 3px; font-size: 15px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--quick); }
 .room-rail-row:is(:hover, :focus-within, .show) .room-gear { opacity: .55; pointer-events: auto; }
-.room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; outline: none; }
-/* This room's settings for a mode: a card beside the rail. */
-.room-mode-settings { top: -8px; left: calc(var(--rail) - 8px); width: 240px; cursor: default; }
+.room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; }
+/* This room's settings for a mode: a card beside the rail (when there are no docks). */
+.room-mode-settings { position: fixed; top: calc(var(--bar) + var(--s-2)); left: calc(var(--rail) + var(--s-2)); width: 240px; cursor: default; }
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .room-mode-settings .renderer-slider { font-size: 13px; }
@@ -81,8 +83,8 @@
 .room-crumb-name .room-name-field { width: 18ch; font-size: var(--t-work); }
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
-/* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(var(--status, 0px) + 14px); }
+/* On the canvas, at its foot beside the rail. */
+.room-add { position: absolute; left: calc(var(--rail) + var(--s-4)); bottom: calc(var(--status, 0px) + 14px); transition: left var(--quick) ease; }
 .room-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
 .room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--ease); }
 .room-add-btn.open .room-add-plus { transform: rotate(45deg); }
@@ -280,8 +282,6 @@
 .room.expanding .room-page { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
 
 
-/* ---- The rail on the left, under the menu: the room's modes ---- */
-/* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */
 
 /* Add, opened by a right-click on the canvas: there, at the pointer. */
 .room-add-menu.at { position: fixed; bottom: auto; z-index: 8; }

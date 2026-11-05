@@ -764,37 +764,74 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .back-btn:is(:hover, :focus-visible) { opacity: 1; }
 .back-btn svg { width: 24px; height: 24px; }
 
-/* The rail: words down the left, under the menu; the current one has a hairline at its left. */
+/* The rail: a column of flat veil down the left, from under the top bar to the status bar, with a
+   hairline at its edge (the washi shows on the canvas only). Its parts are under quiet spaced
+   heads (.rail-head: Floors, Modes, Views); each item is a hairline icon (.rail-icon, 16px, or a
+   number in it, .rail-num) beside its word, in sentence case, one 30px row each. The one you are
+   on has an amber line at its left. Ctrl+Alt+B narrows it to its icons (48px): <html> has
+   .rail-narrow and --rail is 48px; the heads and the words hide, and each item says its name on
+   hover. A part that only makes sense wide (.rail-wide) hides too. */
 .rail {
-  position: absolute;
+  position: fixed;
   z-index: 2;
-  top: 32px;
-  left: var(--gutter);
-  width: calc(var(--rail) - 24px);
-  display: grid;
-  gap: 22px;
-  justify-items: start;
+  top: var(--bar);
+  bottom: var(--status, 0px);
+  left: 0;
+  width: var(--rail);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: var(--s-2) 0 var(--s-4);
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  background: var(--chrome);
+  box-shadow: 1px 0 0 var(--chrome-edge);
+  transition: width var(--quick) ease;
 }
+.rail-head {
+  margin: var(--s-3) 0 var(--s-1);
+  padding: 0 var(--s-4);
+  font-size: 10.5px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+  user-select: none;
+}
+.rail-head:first-child { margin-top: var(--s-1); }
 .rail-item {
   margin: 0;
-  padding: 3px 0 3px 15px;
-  display: grid;
-  gap: 6px;
+  min-height: var(--row);
+  padding: 4px var(--s-4) 4px calc(var(--s-4) - 2px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
   max-width: 100%;
-  font-size: 15px;
+  font-size: var(--t-work);
   line-height: 1.3;
-  letter-spacing: .2em;
+  letter-spacing: .01em;
   text-align: left;
-  text-transform: uppercase;
-  overflow-wrap: break-word;
-  opacity: .5;
-  box-shadow: inset 1px 0 0 transparent;
-  transition: opacity .2s, box-shadow .25s;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  background: none;
+  border-left: 2px solid transparent;
+  transition: color var(--quick), background-color var(--quick), border-color var(--quick);
 }
-.rail-item:is(:hover, :focus-visible) { opacity: .85; }
-.rail-item:is([aria-current="true"], [aria-current="page"], [aria-pressed="true"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
-.rail-item.drop-on { opacity: 1; outline: var(--drop-line); outline-offset: 2px; }
-.rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
+.rail-item:is(:hover, :focus-visible) { color: var(--ink); background-color: var(--hover-wash); }
+.rail-item:is([aria-current="true"], [aria-current="page"], [aria-pressed="true"], .on) { color: var(--ink); border-left-color: var(--amber); }
+.rail-item:focus-visible { outline-offset: -2px; }
+.rail-item.drop-on { color: var(--ink); outline: var(--drop-line); outline-offset: -3px; }
+.rail-icon { flex: none; width: 16px; height: 16px; stroke-width: 1.2; }
+.rail-num { display: inline-flex; align-items: center; justify-content: center; font: 10.5px/1 var(--font-mono); border: 1px solid currentColor; opacity: .8; }
+.rail-word { flex: 1; min-width: 0; }
+.rail-rule { height: 1px; margin: var(--s-2) var(--s-4); background: var(--chrome-edge); }
+html.rail-narrow { --rail: 48px; }
+.rail-narrow .rail { padding-top: var(--s-3); }
+.rail-narrow .rail :is(.rail-head, .rail-word, .rail-wide) { display: none !important; }
+.rail-narrow .rail .rail-item { justify-content: center; padding-left: 0; padding-right: 2px; }
 
 /* The status bar: a 26px band of flat veil at the foot (Ableton's Info View, Blender's status
    bar). On the left it explains what the pointer is over (.status-info); on the right what is

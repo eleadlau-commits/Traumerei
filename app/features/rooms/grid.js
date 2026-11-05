@@ -9,7 +9,7 @@ import {
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb,
 } from './world.js';
-import { el, GRID, MAC, HOLD, HINT } from './shared.js';
+import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 
 export class RoomsGrid {
   // ---- The rooms page ----
@@ -22,7 +22,7 @@ export class RoomsGrid {
     const wrap = this.grid.parentElement;
     const css = wrap && getComputedStyle(wrap);
     const pad = (a, b) => (css ? (parseFloat(css[a]) || 0) + (parseFloat(css[b]) || 0) : 0);
-    const width = (wrap?.clientWidth || window.innerWidth) - (css ? pad('paddingLeft', 'paddingRight') : 2 * GRID.pad + GRID.rail);
+    const width = (wrap?.clientWidth || window.innerWidth) - (css ? pad('paddingLeft', 'paddingRight') : 2 * GRID.pad + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 206));
     const height = (wrap?.clientHeight || window.innerHeight) - (css ? pad('paddingTop', 'paddingBottom') : GRID.pad + 64);
     const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
     return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
@@ -56,7 +56,6 @@ export class RoomsGrid {
     const all = roomsOn(this.world, this.page);
     const shelved = archived(this.world);
     this.shelfBtn.setAttribute('aria-current', String(this.shelf));
-    this.railRooms.setAttribute('aria-current', String(!this.shelf));
     this.shelfHead.hidden = !this.shelf;
     this.roomsPage.classList.toggle('shelf', this.shelf);
     this.drawPages();
@@ -186,18 +185,18 @@ export class RoomsGrid {
 
   drawPages() {
     const n = pageCount(this.world);
-    this.pagesBar.hidden = this.shelf;
+    const go = (i) => this.showPage(i); // from the Archive too
     this.pagesBar.replaceChildren(
       ...Array.from({ length: n }, (_, i) => el('button', {
-        type: 'button', class: 'rail-item rooms-page', 'data-page': i,
-        ...(i === this.page ? { 'aria-current': 'page' } : {}),
-        onclick: () => this.showPage(i),
-      }, `Floor ${i + 1}`)),
-      el('button', { type: 'button', class: 'rail-item rooms-page rooms-page-new', onclick: () => {
+        type: 'button', class: 'rail-item rooms-page', 'data-page': i, title: `Floor ${i + 1}`,
+        ...(i === this.page && !this.shelf ? { 'aria-current': 'page' } : {}),
+        onclick: () => go(i),
+      }, railNum(i + 1), railWord(`Floor ${i + 1}`))),
+      el('button', { type: 'button', class: 'rail-item rooms-page rooms-page-new', title: 'New floor', onclick: () => {
         const i = addPage(this.world);
         this.save();
-        this.showPage(i);
-      } }, '+ New floor'));
+        go(i);
+      } }, railIcon('plus'), railWord('New floor')));
   }
 
   // One room's square: its colour, its light, its name and count; its last thoughts (the peek);

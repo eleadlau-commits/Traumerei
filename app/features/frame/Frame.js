@@ -8,18 +8,24 @@
 // say (`frame.show(owner, …)`); the one shown last is the one that shows, and hiding it brings
 // back the one before (leaving a room brings back the rooms page's).
 //
-// It saves nothing. Its service is the only way in (README.md).
+// It also holds how wide the rail is (the rooms page and a room each draw their own rail in
+// Folio's .rail): Ctrl+Alt+B, or the rail button at the left of the status bar, narrows it to its
+// icons (48px) and back. That is the one thing it saves. Its service is the only way in (README.md).
 
 import { Feature, ui } from 'folio';
 
 const { el } = ui;
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const HINT_MS = 9000;
+const RAIL_KEY = { id: 'frame.rail', keys: ['Ctrl+Alt+B'], words: 'narrow the rail to its icons, or widen it', order: 79, typing: true };
 
 export default class Frame extends Feature {
   start() {
+    const self = this;
     this.stack = []; // [{ owner, o }]: the last one shows
+    this.narrow = !!this.storage.get('railNarrow');
     this.build();
+    this.drawRail();
     this.provide('frame', {
       show: (owner, o) => this.show(owner, o),
       update: (owner, o) => this.update(owner, o),
@@ -28,7 +34,10 @@ export default class Frame extends Feature {
       hint: (text) => this.hint(text),
       clearHint: () => this.clearHint(),
       hover: (text) => this.hover(text),
+      toggleRail: () => this.toggleRail(),
+      get railNarrow() { return self.narrow; },
     });
+    this.add('keys', { ...RAIL_KEY, zone: 'everywhere', run: () => this.toggleRail() });
     // A line of help fades on the first key or click.
     document.addEventListener('keydown', () => this.clearHint(), true);
     document.addEventListener('pointerdown', () => this.clearHint(), true);
@@ -49,11 +58,30 @@ export default class Frame extends Feature {
     this.hintLine = el('span', { class: 'status-info frame-info' });
     this.selEl = el('span', { class: 'frame-sel' });
     this.modeEl = el('span', { class: 'frame-mode' });
-    this.status = el('footer', { class: 'status-bar frame-status' }, this.hintLine,
+    this.railBtn = el('button', { type: 'button', class: 'frame-rail-btn', 'aria-keyshortcuts': 'Control+Alt+B',
+      onclick: () => this.toggleRail() }, ui.icon('rail'));
+    this.status = el('footer', { class: 'status-bar frame-status' }, this.railBtn, this.hintLine,
       el('span', { class: 'status-right' }, this.selEl, this.modeEl, this.savedMark));
     this.root = el('div', { class: 'frame', hidden: true },
       this.bar, this.wordmark, this.crumbs, this.searchBtn, this.backBtn, this.status);
     (document.getElementById('folio-root') || document.body).append(this.root);
+  }
+
+  // The rail: narrow (its icons, 48px) or wide. <html> has .rail-narrow while narrow (base.css
+  // sets --rail from it), and frame:rail says so.
+  toggleRail() {
+    this.narrow = !this.narrow;
+    this.storage.set('railNarrow', this.narrow);
+    this.drawRail();
+    this.emit('frame:rail', { narrow: this.narrow });
+  }
+
+  drawRail() {
+    document.documentElement.classList.toggle('rail-narrow', this.narrow);
+    const label = `${this.narrow ? 'Widen' : 'Narrow'} the rail`;
+    this.railBtn.setAttribute('aria-label', label);
+    this.railBtn.setAttribute('title', `${label} · Ctrl+Alt+B`);
+    this.railBtn.setAttribute('aria-pressed', String(this.narrow));
   }
 
   top() { return this.stack[this.stack.length - 1] || null; }

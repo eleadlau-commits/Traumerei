@@ -29,15 +29,17 @@ It offers no service of its own.
   tint's paper colour at the default lightness; Messy is a little darker). It is a canvas. Drag to move around; the mouse wheel, Ctrl+wheel or a pinch zooms;
   a trackpad's two-finger scroll moves around. Type anywhere to write a thought; Enter ends it.
   On a phone, *Write* opens the keyboard. Escape goes back to the rooms (and from there, home).
-- **Ontological modes**, in a rail on the left of a room, where *Rooms* and *Archive* sit on the
-  rooms page; the current one is marked. A small room (1 × 1) keeps the one mode it was made with,
+- **Ontological modes**, under *Modes* in the rail on the left of a room (where the rooms page has its
+  floors), each with its icon (the ontology's `icon`); the current one is marked. The canvas starts
+  beside the rail, so nothing sits under it; Ctrl+Alt+B narrows the rail to its icons (the frame
+  feature's), and the canvas takes the room. A small room (1 × 1) keeps the one mode it was made with,
   and the rail only names it. A big room (Messy thoughts, or any 2 × 2 room) lists them all and
   switches with a click, or with **Tab** (the next mode) and **Shift+Tab** (the one before) while
   nothing is being written and no field or word has the focus; a big room made small again keeps the mode it has then. Hovering over a
   mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
   for that mode in the right dock's Editor tab (without docks, a card beside the rail), with
   *Reset to global*; the ⚙ again, ×, or Escape closes them, and switching mode switches them. Each room keeps its own; a new
-  room starts from the global ones. Under a hairline, *Timeline* opens the list of its thoughts by
+  room starts from the global ones. Under *Views*, *Timeline* opens the list of its thoughts by
   time in the right dock, in any mode.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random

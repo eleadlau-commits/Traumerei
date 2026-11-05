@@ -242,11 +242,9 @@
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
-/* ---- The floors of the rooms page, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor ---- */
-.rooms-pages { display: grid; gap: 10px; justify-items: start; width: 100%; }
-.rooms-pages[hidden] { display: none; }
-.rooms-page-new { opacity: .35; }
-.rooms-page-new:is(:hover, :focus-visible) { opacity: .85; }
+/* ---- The floors of the rooms page, in the rail under Floors: Floor 1, Floor 2, + New floor ---- */
+.rooms-pages { display: flex; flex-direction: column; gap: 1px; }
+.rooms-page-new { color: var(--faint); }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .rooms-tile:is(.picked, .chosen) { outline: var(--sel-line); outline-offset: 3px; }
@@ -302,30 +300,24 @@
 }
 .rooms-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
 
-/* The rail's Arrange by: under a hairline, None and the tag groups; a group opens to its tags. */
-.rooms-tags-btn.on { opacity: 1; }
-.rooms-tag-list { display: grid; gap: 6px; margin-top: -10px; width: 100%; }
-.rooms-tag-list[hidden] { display: none; }
-.rooms-tag-head, .rooms-tag-pick, .rooms-tag-plus { display: flex; align-items: baseline; justify-content: flex-start; }
-
-/* None and a group's name: small capitals, like the rail's words. */
-.rooms-tag-head { width: 100%; padding: 4px 0 4px 15px; font-size: 14.25px; }
-.rooms-tag-head[aria-expanded="true"] { opacity: .85; }
-.rooms-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 18px; transition: transform .25s var(--ease); }
+/* The rail's Arrange by: Tags opens None and the tag groups; a group opens to its tags. Each row is
+   a rail item, indented under Tags. */
+.rooms-tag-list { display: flex; flex-direction: column; gap: 1px; }
+.rooms-tag-list .rail-item { padding-left: 40px; }
+.rooms-tag-caret { margin-left: auto; color: var(--faint); transition: transform var(--quick); }
 .rooms-tag-head[aria-expanded="true"] .rooms-tag-caret { transform: rotate(90deg); }
-.rooms-tag-tags { display: grid; gap: 6px; padding: 4px 0 9px 15px; }
+.rooms-tag-tags { display: flex; flex-direction: column; gap: 1px; }
+.rooms-tag-tags .rail-item { padding-left: 52px; }
 
 /* A tag: its name and how many rooms have it. One of your own can be dragged onto a square. */
-.rooms-tag-pick { padding: 2px 0 2px 15px; font-size: 16.5px; letter-spacing: .03em; line-height: 1.25; text-transform: none; }
+.rooms-tag-pick { justify-content: space-between; }
 .rooms-tag-pick.draggable { cursor: grab; touch-action: none; }
 .rooms-tag-name { overflow-wrap: anywhere; }
-.rooms-tag-n { font-size: 15px; opacity: .6; font-variant-numeric: tabular-nums; }
-.rooms-tag-plus { padding: 2px 0 2px 15px; letter-spacing: .14em; line-height: 1.25; opacity: .4; }
-.rooms-tag-plus > span { font-size: 19.5px; font-weight: 300; letter-spacing: 0; }
-.rooms-tag-list > .rooms-tag-plus { margin-top: 4px; }
-.rooms-tag-plus:is(:hover, :focus-visible) { opacity: .9; }
-.rooms-group-edit { padding-left: 15px; }
-.rooms-group-field, .rooms-group-field:focus, .rooms-make-field, .rooms-make-field:focus { width: 100%; max-width: 160px; font-size: 16.5px; opacity: 1; border-bottom-color: currentColor; }
+.rooms-tag-n { color: var(--faint); font-variant-numeric: tabular-nums; }
+.rooms-tag-plus { gap: 6px; color: var(--faint); }
+.rooms-group-edit { padding: 2px var(--s-4) 2px 40px; }
+.rooms-tag-tags .rooms-group-edit { padding-left: 52px; }
+.rooms-group-field, .rooms-group-field:focus, .rooms-make-field, .rooms-make-field:focus { width: 100%; font-size: var(--t-work); opacity: 1; border-bottom-color: currentColor; }
 
 /* A tag being dragged onto a square: a small chip at the pointer; the square under it outlined. */
 .rooms-tag-ghost {

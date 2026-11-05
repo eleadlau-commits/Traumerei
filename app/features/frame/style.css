@@ -28,3 +28,7 @@
 .frame-status { position: fixed; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity .4s; }
 .frame.on .frame-status { opacity: 1; }
 .frame:not(.on) .frame-status { pointer-events: none; }
+/* The rail button, at the far left of the status bar, under the rail: narrows it or widens it. */
+.frame-rail-btn { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 100%; margin-left: calc(var(--s-2) - var(--s-4)); padding: 0; opacity: .6; }
+.frame-rail-btn:is(:hover, :focus-visible) { opacity: 1; }
+.frame-rail-btn svg { width: 15px; height: 15px; }
