@@ -40,7 +40,7 @@ It offers no service of its own.
   mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
   for that mode in the right dock's Editor tab (without docks, a card beside the rail), with
   *Reset to global*; the ⚙ again, ×, or Escape closes them, and switching mode switches them. Each room keeps its own; a new
-  room starts from the global ones. Under *Views*, *Time* (the time feature) opens the list of its
+  room starts from the global ones. At the foot of the rail, ⋯ More holds *Time* (the time feature), which opens the list of its
   thoughts by time in the right dock, in any mode.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random
@@ -149,7 +149,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   written stays put. Each room's ⚙ has *Hand-placed can be overlapped* (on by default): on, what
   was dragged into place is left out; off, it stays where it is and the rest moves around it.
   A push belongs to the change that caused it, so Ctrl+Z takes both back together.
-- **Time:** the quiet word under the modes, or **Ctrl+Alt+T**: the time feature's dock (see its
+- **Time:** under ⋯ More at the foot of the rail, or **Ctrl+Alt+T**: the time feature's dock (see its
   README), here the room's Timeline. A click there chooses the thought and switches the editor
   too, but keeps Time in front; choosing on the canvas brings the Editor to the front.
 - **Editing:** a click on a thought (or a double click on a train) only chooses it. A right-click

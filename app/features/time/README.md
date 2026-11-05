@@ -10,7 +10,7 @@ A tab of the right dock, **Time** (Ctrl+Alt+T), the same everywhere Create shows
   under each day the rooms written in (most first) with how many thoughts. A click chooses that
   room, on its floor (or the Archive).
 
-Ctrl+Alt+T (or Time in a room's rail) turns it on, brings its tab to the front when another is in
+Ctrl+Alt+T (or Time under ⋯ More, at the foot of both rails: the frame feature's `rail.more`) turns it on, brings its tab to the front when another is in
 front, or turns it off; its × or Escape turns it off too. Whether it is on is one choice for
 everywhere, saved as 'open': going into a room or back out keeps it on, showing that place.
 Without the docks feature, Time is off and adds no key.

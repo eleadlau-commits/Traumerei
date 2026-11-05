@@ -70,6 +70,8 @@ export class RoomsGrid {
   // slide: the strip of floors slides from the floor that showed to this one.
   drawRooms({ slide = false } = {}) {
     this.time?.refresh(); // the Time dock follows what is chosen (a moment later)
+    const more = this.frame?.more(); // ⋯ More at the foot of the rail (Time is in it)
+    this.moreBox.replaceChildren(...(more ? [more] : []));
     const now = Date.now();
     this.page = Math.min(this.page, pageCount(this.world) - 1);
     const { cols, rows, cell } = this.gridSize();

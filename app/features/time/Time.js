@@ -50,6 +50,10 @@ export default class Time extends Feature {
     this.recordSoon();
     this.add('settings', { id: 'time-history', title: 'History', order: 31, render: () => this.settingsPane() });
     if (!this.panel) return;
+    // Time under ⋯ More, at the foot of both rails (the frame feature's).
+    this.add('rail.more', { id: 'time', label: 'Time', icon: 'clock', order: 10, run: () => this.toggle(),
+      on: () => this.isOn, visible: () => !!this.place(),
+      title: () => (this.keyMap ? `Time · ${this.keyMap.label('time.toggle')}` : 'Time') });
     for (const k of TIME_KEYS) this.add('keys', { ...k, zone: 'everywhere', when: () => !!this.place(), run: () => this.toggle() });
     this.on('world:saved', () => this.refreshSoon());
     this.on('world:changed', () => this.refreshSoon());

@@ -10,7 +10,9 @@
 //
 // It also holds how wide the rail is (the rooms page and a room each draw their own rail in
 // Folio's .rail): Ctrl+Alt+B, or the rail button at the left of the status bar, narrows it to its
-// icons (48px) and back. That is the one thing it saves. Its service is the only way in (README.md).
+// icons (48px) and back. At the foot of both rails it draws ⋯ More, which unfolds what other
+// features put in the slot `rail.more` (Time). It saves how wide the rail is and whether More is
+// open. Its service is the only way in (README.md).
 
 import { Feature, ui } from 'folio';
 
@@ -24,6 +26,8 @@ export default class Frame extends Feature {
     const self = this;
     this.stack = []; // [{ owner, o }]: the last one shows
     this.narrow = !!this.storage.get('railNarrow');
+    this.moreOpen = !!this.storage.get('moreOpen');
+    this.defineSlot('rail.more', 'Under ⋯ More, at the foot of the rooms page\'s rail and a room\'s: { id, label, icon (a ui.ICONS name), order, run(), on?() → shown as pressed, visible?(), title?() → its hover words }.');
     this.build();
     this.drawRail();
     this.provide('frame', {
@@ -35,6 +39,7 @@ export default class Frame extends Feature {
       clearHint: () => this.clearHint(),
       hover: (text) => this.hover(text),
       toggleRail: () => this.toggleRail(),
+      more: () => this.more(),
       get railNarrow() { return self.narrow; },
     });
     this.add('keys', { ...RAIL_KEY, zone: 'everywhere', run: () => this.toggleRail() });
@@ -43,6 +48,32 @@ export default class Frame extends Feature {
     document.addEventListener('pointerdown', () => this.clearHint(), true);
     // The status bar explains whatever the pointer is over.
     document.addEventListener('pointerover', (e) => this.over(e.target), true);
+  }
+
+  // ⋯ More, for the foot of a rail: a node the rail puts where it likes. Folded, it is one word;
+  // a click unfolds what is in the slot `rail.more` under it (remembered). Empty when nothing is
+  // there to show.
+  more() {
+    const box = el('div', { class: 'frame-more', role: 'group', 'aria-label': 'More' });
+    const icon = (name) => { const s = ui.icon(name); s.classList.add('rail-icon'); return s; };
+    const word = (text) => el('span', { class: 'rail-word' }, text);
+    const draw = () => {
+      const items = this.slot('rail.more').items
+        .filter((i) => { try { return i.visible ? !!i.visible() : true; } catch { return false; } })
+        .sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
+      if (!items.length) { box.replaceChildren(); return; }
+      box.replaceChildren(
+        el('div', { class: 'rail-rule' }),
+        el('button', { type: 'button', class: 'rail-item frame-more-btn', 'aria-expanded': String(this.moreOpen), title: 'More',
+          onclick: () => { this.moreOpen = !this.moreOpen; this.storage.set('moreOpen', this.moreOpen); draw(); } },
+        icon('dots'), word('More')),
+        ...(this.moreOpen ? items.map((i) => el('button', {
+          type: 'button', class: 'rail-item frame-more-item', 'aria-pressed': String(!!i.on?.()), title: i.title?.() || i.label,
+          onclick: () => i.run(),
+        }, icon(i.icon), word(i.label))) : []));
+    };
+    draw();
+    return box;
   }
 
   build() {
