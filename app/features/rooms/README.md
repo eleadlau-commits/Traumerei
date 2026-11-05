@@ -82,9 +82,9 @@ written there. With nothing in it, the rooms page works on its own.
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a
   right-click (or a long press, the ContextMenu key, Shift+F10) shows its properties in
-  the right dock's Editor tab (name, description, Go in, its kind, tags, colour, lightness,
-  opacity, size 1 × 1 or 2 × 2, Back to the tint, Lock, Archive, Delete; an archived room's: Go
-  in, Restore, Delete). While they show, a click on another square switches them to it; Escape
+  the right dock's Editor tab (name, description, its kind, tags, colour, lightness,
+  opacity, size 1 × 1 or 2 × 2, Back to the tint, Lock, Archive, Export, Delete; an archived
+  room's: Restore, Delete). Going in, duplicating and moving are keys alone (Enter, Ctrl+D, Ctrl+M). While they show, a click on another square switches them to it; Escape
   or × closes them, and going in closes them. The page moves over beside the dock, its squares
   drawn smaller to fit (`docks:resized`). Without the docks feature they show in a pop-up beside
   the square. A double click or Enter goes in. **Ctrl+R** renames the chosen room (its properties open with
@@ -123,17 +123,17 @@ written there. With nothing in it, the rooms page works on its own.
   Ctrl+D and Ctrl+M work on them all, each as one undo step. **Ctrl+G** groups them the rooms
   page's way, by a tag they share (written in a small field; "Group: tag" puts the tag in a group
   too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
-- **Duplicate** (Ctrl+D, *Duplicate* in its properties, or Alt+drag the square to where the copy
+- **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy
   should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
   named "… copy", in the nearest free cell (the floors feature's `place` with `near`); a full floor
   spills onto a new one. **Move** to another floor: drag the square onto a floor in the rail, or
-  Ctrl+M (*Move…* in its properties) for a short list of floors (a number key picks, N a new
+  Ctrl+M for a short list of floors (a number key picks, N a new
   floor). Each is one undo step (`verbs.js`).
 - **Archive** (in a room's pop-up, or drop a square on *Archive* in the rail): the room leaves the
   grid for the Archive, a page of its own reached from *Archive* in the rail on the left (Escape,
   back or *Rooms* goes back). It has the same grid lines as the rooms page, with the rooms in the
-  order they were archived, but its empty cells make no rooms. A click on a room shows Go in,
-  Restore (to the first free cell) and Delete. Archived rooms are still found by search.
+  order they were archived, but its empty cells make no rooms. A right-click on a room shows
+  Restore (to the first free cell) and Delete; Enter goes in. Archived rooms are still found by search.
 - **Colour:** a square shows its room's colour more vividly than before: (L − 0.25, vivid × C, h)
   at α = strength × (1.2 − L) × opacity (Settings → Rooms → Colour strength, 1.6 by default).
 - **Going in:** the square grows to fill the screen in the room's own colour, then fades into the

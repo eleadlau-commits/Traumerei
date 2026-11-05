@@ -100,7 +100,7 @@ It offers no service of its own.
   (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
   edit it. Both are written in the right dock's Editor tab (without docks, a sheet over the room):
   Enter keeps, Esc or × cancels. Naming a closed group is written there too.
-- **Folding** (Ctrl+F, or *Fold into one*). What is chosen (thoughts, or whole groups: all that is
+- **Folding** (Ctrl+F). What is chosen (thoughts, or whole groups: all that is
   inside them) becomes ONE new thought, and the old ones are deleted, in every mode: the new one
   takes their place in every train and chapter that held them (once in each, where the first
   was), and their place in Pessoa. All lines fold into one line (a line each); anything else

@@ -4,8 +4,8 @@
 // shared); where it goes is the floors feature's (beside the original, else a new floor). Each is
 // one undo step. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 //
-// Duplicate: Ctrl+D, Duplicate in a room's properties, or Alt+drag a square (grid.js) to where the
-// copy should go. Move: Ctrl+M, Move… in its properties (a short list of floors), or drag a square
+// Duplicate: Ctrl+D, or Alt+drag a square (grid.js) to where the copy should go. Move: Ctrl+M
+// (a short list of floors), or drag a square
 // onto a floor in the rail (grid.js).
 
 import { MESSY, room, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag } from './world.js';
