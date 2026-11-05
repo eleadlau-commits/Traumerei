@@ -812,34 +812,28 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .rail-item.drop-on { opacity: 1; outline: var(--drop-line); outline-offset: 2px; }
 .rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
 
-/* A quiet "Saved" at the bottom right, and a line of help at the foot, the first time a page is seen. */
-.saved-note {
-  position: fixed;
-  right: calc(var(--gutter) + 12px);
-  bottom: 20px;
-  font-size: 11px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  opacity: 0;
-  pointer-events: none;
+/* The status bar: a 26px band of flat veil at the foot (Ableton's Info View, Blender's status
+   bar). On the left it explains what the pointer is over (.status-info); on the right what is
+   chosen, the mode, and Saved with a quiet dot (.status-saved). */
+.status-bar {
+  height: var(--status-h, 26px);
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: 0 var(--s-4);
+  background: var(--chrome);
+  box-shadow: 0 -1px 0 var(--chrome-edge);
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: .02em;
+  white-space: nowrap;
 }
-.saved-note.on { animation: saved-note 2.2s ease both; }
-@keyframes saved-note { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
-.foot-hint {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  transform: translate(-50%, 6px);
-  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: .05em;
-  line-height: 1.5;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s, transform .6s var(--ease);
-}
-.foot-hint.on { opacity: .6; transform: translate(-50%, 0); }
+.status-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status-right { display: flex; align-items: center; gap: var(--s-4); }
+.status-right > :empty { display: none; }
+.status-saved::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #6d8a5a; vertical-align: 1px; }
+.status-saved.on { animation: status-saved 1.2s ease; }
+@keyframes status-saved { 0% { color: var(--ink); } }
 
 /* Going into a room: the square grows to fill the screen (from where Room.js puts it), then fades. */
 .expand { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 5; transform-origin: 0 0; pointer-events: none; }
@@ -1056,7 +1050,7 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .dock {
   position: fixed;
   z-index: 40;
-  bottom: 0;
+  bottom: var(--status, 0px); /* above the frame's status bar, while it shows */
   display: flex;
   flex-direction: column;
   background: var(--chrome); /* chrome is the flat veil */
@@ -1199,7 +1193,7 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 }
 .frame > * { pointer-events: auto; }
 .frame[hidden], .frame [hidden] { display: none !important; }
-.frame-saved, .frame-hint, .frame-wordmark, .frame-bar { pointer-events: none !important; }
+.frame-wordmark, .frame-bar { pointer-events: none !important; }
 
 .frame-bar { opacity: 0; transition: opacity .4s; }
 .frame.on .frame-bar { opacity: 1; }
@@ -1210,10 +1204,11 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .frame.on .frame-search { opacity: .8; }
 .frame:not(.on) :is(.frame-back, .frame-search, .frame-crumbs) { pointer-events: none; }
 
-/* "Saved" and the line of help sit on the canvas (they take the room's ink there), clear of the docks. */
-.frame-saved, .frame-hint { color: var(--frame-ink, var(--ink)); }
-.frame-hint { left: calc((100vw + var(--dock-left, 0px) - var(--dock-right, 0px)) / 2); }
-.frame-saved { right: calc(var(--gutter) + 12px + var(--dock-right, 0px)); }
+/* The status bar: the foot of the window, full width; the docks end above it (--status). */
+:root { --status-h: 26px; --status: 0px; }
+.frame-status { position: fixed; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity .4s; }
+.frame.on .frame-status { opacity: 1; }
+.frame:not(.on) .frame-status { pointer-events: none; }
 
 /* ---- feature: source (style.css) ---- */
 /* The source editor, inside the side panel (the panel feature): layout only. Class names start
@@ -1764,7 +1759,7 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
 /* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: 18px; }
+.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(var(--status, 0px) + 14px); }
 .room-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
 .room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--ease); }
 .room-add-btn.open .room-add-plus { transform: rotate(45deg); }
@@ -13921,10 +13916,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         hide: (owner) => this.hide(owner),
         saved: (word) => this.saved(word),
         hint: (text) => this.hint(text),
-        clearHint: () => this.clearHint()
+        clearHint: () => this.clearHint(),
+        hover: (text) => this.hover(text)
       });
       document.addEventListener("keydown", () => this.clearHint(), true);
       document.addEventListener("pointerdown", () => this.clearHint(), true);
+      document.addEventListener("pointerover", (e) => this.over(e.target), true);
     }
     build() {
       this.bar = el8("div", { class: "chrome-bar frame-bar" });
@@ -13946,8 +13943,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         { type: "button", class: "back-btn frame-back", "aria-label": "Back", onclick: () => this.top()?.o.back?.() },
         ui_exports.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>')
       );
-      this.savedMark = el8("div", { class: "saved-note frame-saved", "aria-live": "polite" });
-      this.hintLine = el8("div", { class: "foot-hint frame-hint" });
+      this.savedMark = el8("span", { class: "status-saved frame-saved", "aria-live": "polite" }, "Saved");
+      this.hintLine = el8("span", { class: "status-info frame-info" });
+      this.selEl = el8("span", { class: "frame-sel" });
+      this.modeEl = el8("span", { class: "frame-mode" });
+      this.status = el8(
+        "footer",
+        { class: "status-bar frame-status" },
+        this.hintLine,
+        el8("span", { class: "status-right" }, this.selEl, this.modeEl, this.savedMark)
+      );
       this.root = el8(
         "div",
         { class: "frame", hidden: true },
@@ -13956,8 +13961,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.crumbs,
         this.searchBtn,
         this.backBtn,
-        this.savedMark,
-        this.hintLine
+        this.status
       );
       (document.getElementById("folio-root") || document.body).append(this.root);
     }
@@ -13987,6 +13991,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       clearTimeout(this.hiding);
       if (!s) {
         this.root.classList.remove("on");
+        document.documentElement.style.setProperty("--status", "0px");
         this.clearHint();
         this.hiding = setTimeout(() => {
           if (!this.top()) this.root.hidden = true;
@@ -13999,6 +14004,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.searchBtn.hidden = !o2.search;
       this.backBtn.setAttribute("aria-label", o2.backLabel || "Back");
       this.drawCrumbs(o2.crumbs || []);
+      this.selEl.textContent = o2.selection || "";
+      this.modeEl.textContent = o2.mode || "";
+      this.drawInfo();
+      document.documentElement.style.setProperty("--status", "var(--status-h)");
       this.root.style.setProperty("--frame-ink", o2.ink || "var(--ink)");
       if (wasHidden) this.root.getBoundingClientRect();
       this.root.classList.add("on");
@@ -14019,23 +14028,55 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       this.crumbs.replaceChildren(...out);
     }
-    // A quiet word in the corner when the world has been written down ("Saved", "Undone").
+    // At the right of the status bar, "Saved" (with a quiet dot) when the world has been written
+    // down; another word ("Undone") for a moment, then Saved again.
     saved(word = "Saved") {
       this.savedMark.textContent = word;
       this.savedMark.classList.remove("on");
       void this.savedMark.offsetWidth;
       this.savedMark.classList.add("on");
+      clearTimeout(this.savedTimer);
+      if (word !== "Saved") this.savedTimer = setTimeout(() => {
+        this.savedMark.textContent = "Saved";
+      }, 2200);
     }
-    // A line of help at the foot, for a while (or until the first key or click).
+    // A line of help on the left of the status bar, for a while (or until the first key or click).
     hint(text) {
-      this.hintLine.textContent = text;
-      this.hintLine.classList.add("on");
+      this.helpText = text;
       clearTimeout(this.hintTimer);
       this.hintTimer = setTimeout(() => this.clearHint(), HINT_MS);
+      this.drawInfo();
     }
     clearHint() {
+      if (!this.helpText) return;
       clearTimeout(this.hintTimer);
-      this.hintLine.classList.remove("on");
+      this.helpText = "";
+      this.drawInfo();
+    }
+    // What the owner says the pointer is over (null lets the frame find it again).
+    hover(text) {
+      this.hoverText = text || "";
+      this.drawInfo();
+    }
+    // The pointer came over `node`: its data-hint, else its title or name, with its keys.
+    over(node) {
+      if (this.root.hidden) return;
+      const t = node?.closest?.("[data-hint], [title], [aria-label]");
+      let text = "";
+      if (t && !t.matches(".frame-status, .frame-status *")) {
+        text = t.dataset.hint || t.getAttribute("title") || (t.matches('button, a, [role="tab"], [role="separator"]') ? t.getAttribute("aria-label") : "") || "";
+        const keys = t.getAttribute("aria-keyshortcuts");
+        if (text && keys && !text.includes("Ctrl") && !text.includes("⌘")) text += ` · ${keys.replace(/Control/g, "Ctrl").replace(/Meta/g, "⌘")}`;
+      }
+      if (text === this.overText) return;
+      this.overText = text;
+      this.drawInfo();
+    }
+    // The left of the status bar: what the pointer is over, else a line of help, else the owner's
+    // quiet idle line.
+    drawInfo() {
+      const idle = this.top()?.o.idle || "";
+      this.hintLine.textContent = this.hoverText || this.overText || this.helpText || idle;
     }
   };
 
@@ -15467,7 +15508,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.shelfHead.hidden = !this.shelf;
       this.roomsPage.classList.toggle("shelf", this.shelf);
       this.drawPages();
-      if (!this.inRoom) this.frame?.update(this, { backLabel: this.shelf ? "Back to the rooms" : "Back to the home page", crumbs: this.crumbs() });
+      if (!this.inRoom) {
+        const chosen2 = room4(this.world, this.roomSel || this.roomPick);
+        this.frame?.update(this, {
+          backLabel: this.shelf ? "Back to the rooms" : "Back to the home page",
+          crumbs: this.crumbs(),
+          selection: chosen2 ? `${chosen2.name} chosen` : "",
+          mode: this.shelf ? "Archive" : `Floor ${this.page + 1} of ${pageCount3(this.world)}`,
+          idle: HINT
+        });
+      }
       this.grid.classList.toggle("peek-always", this.prefs.peek >= 0.5);
       const shown2 = new Set((this.shelf ? shelved : all).map((r) => r.id));
       if (!shown2.has(this.roomPick)) this.roomPick = null;
@@ -18262,9 +18312,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       }
       this.world$.replaceChildren(...nodes);
+      this.showStatus();
       this.drawBar();
       this.drawTray();
       this.clearSoon();
+    }
+    // The frame's status bar: what is chosen, and the mode.
+    showStatus() {
+      const s = this.sel;
+      const n = !s ? 0 : s.kind === "many" ? s.ids.length : 1;
+      const what = !s ? "" : s.kind === "many" ? `${n} chosen` : s.kind === "train" ? `1 ${this.groupName(this.world.things[s.id]).toLowerCase()} chosen` : "1 chosen";
+      this.frame?.update(this, { selection: what, mode: this.locked ? `${this.ont.name} · locked` : this.ont.name });
     }
     // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----
     clearSoon() {
@@ -20264,6 +20322,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   ].map((k2, i2) => ({ order: 10 + i2, ...k2 }));
 
   // dist/web/features/room/Room.js
+  var IDLE = "Type anywhere to write · Enter keeps it · Ctrl+Enter a new train · Right-click edits";
+  var OVER = {
+    thought: "Thought · Click to choose · Triple-click to write in it · Right-click edits · Drag to move",
+    group: "Click to choose · Double-click for the whole group · Right-click edits"
+  };
   var Room = class extends Feature {
     start() {
       this.w = this.use("world");
@@ -20371,7 +20434,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.gearFor = this.settingsFor = null;
       this.root.hidden = false;
       document.documentElement.classList.add("room-open");
-      this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: "Back to the rooms", crumbs: this.crumbs() });
+      this.frame?.show(this, {
+        search: this.finder ? () => this.openSearch() : null,
+        back: () => this.back(),
+        backLabel: "Back to the rooms",
+        crumbs: this.crumbs(),
+        idle: IDLE
+      });
       this.closeAdd();
       this.drawRoom();
       if (from) this.expand(from);
@@ -20575,6 +20644,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!this.addMenu.hidden && !e.target.closest(".room-add-menu, .room-add-btn")) this.closeAdd();
       });
       this.stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+      this.stage.addEventListener("pointerover", (e) => {
+        const t = e.target.closest?.("[data-thought]");
+        this.frame?.hover(t ? OVER.thought : e.target.closest?.("[data-train], .room-strand") ? OVER.group : null);
+      });
+      this.stage.addEventListener("pointerleave", () => this.frame?.hover(null));
       this.listenForFiles();
     }
     // ---- A room ----
