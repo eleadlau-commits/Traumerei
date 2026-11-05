@@ -64,6 +64,7 @@
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .room-mode-settings .renderer-slider { font-size: 13px; }
+.room-choice-row .seg { grid-column: 1 / -1; gap: 4px 20px; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
@@ -346,7 +347,7 @@
 .room-moves { flex-wrap: wrap; }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
-   foot of a parent down to its children, with what the child forgets beside them. */
+   side of a parent facing a child to the child's facing side, with their label at the middle. */
 .room-russell-arrow { fill: none; stroke: currentColor; stroke-width: 1; opacity: .4; }
 .room-russell-drawing { opacity: .7; stroke-dasharray: 4 4; }
 .room-russell-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
@@ -387,7 +388,13 @@
 .room-russell-pick { cursor: copy; }
 .room-russell-pick:hover { outline: 1px dashed color-mix(in srgb, var(--room-ink) 50%, transparent); outline-offset: 7px; }
 .room-russell-forgets { display: grid; gap: 4px; }
-.room-russell-label.left { transform: translateX(-100%); text-align: right; }
+.room-russell-label.side-right { transform: translateY(-50%); }
+.room-russell-label.side-left { transform: translate(-100%, -50%); text-align: right; }
+.room-russell-label.side-above { transform: translate(-50%, -100%); text-align: center; }
+.room-russell-label.side-right-up { transform: translateY(-100%); }
+.room-russell-label.side-right-down { transform: none; }
+.room-russell-label.side-left-up { transform: translate(-100%, -100%); text-align: right; }
+.room-russell-label.side-left-down { transform: translateX(-100%); text-align: right; }
 
 /* Russell: a closed chapter shows only its name; a click opens it as a document. */
 .room-russell-closed { cursor: pointer; }

@@ -43,8 +43,17 @@ export class RoomView {
     return st ? roomSetting(this.world, this.roomId, ont.id, st, this.ontPrefs) : undefined;
   }
 
-  // One setting as a row: a slider, or an on/off switch (type: 'switch').
+  // One setting as a row: a slider, an on/off switch (type: 'switch'), or a row of words to pick
+  // one from (type: 'choice', options [[value, word]]).
   settingRow(st, value, onChange) {
+    if (st.type === 'choice') {
+      const words = st.options.map(([v, word]) => el('button', {
+        type: 'button', role: 'radio', 'aria-checked': String(v === value),
+        onclick: (e) => { for (const b of words) b.setAttribute('aria-checked', String(b === e.currentTarget)); onChange(v); },
+      }, word));
+      return el('div', { class: 'renderer-slider room-choice-row' }, el('span', {}, st.label),
+        el('div', { class: 'seg', role: 'radiogroup', 'aria-label': st.label }, ...words));
+    }
     if (st.type === 'switch') {
       return el('label', { class: 'renderer-slider room-switch-row' }, el('span', {}, st.label), el('span'),
         ui.toggle({ checked: !!value, label: st.label, onChange }));
