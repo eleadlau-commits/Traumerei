@@ -10,10 +10,10 @@ the card, changes the world and downloads. The world itself is the world feature
 
 | Member | What it does |
 |---|---|
-| `isRoomFile(file)` | Whether a dropped file is room Markdown (`.md`, `.markdown`, `.txt`). |
+| `isRoomFile(file)` | Whether a dropped file can come in: a `.traum` room file, or plain Markdown or text (`.md`, `.markdown`, `.txt`), which comes in as loose thoughts. |
 | `importRoom({ file, cell, page, ok })` | A new room from `file` (picked, if none) on floor `page`, placed by the floors feature: in `cell` if it is free, else that floor's first free one, else a new floor (the room's `page` says which). `ok()` says whether it is still wanted, before the card and on Import. Resolves with the new room once it is in the world, or `null`. The caller saves. |
-| `importInto(roomId, { file, at, ok, before })` | The file's groups and thoughts into a room (not a locked one). `at()` is where new trains start; `before()` runs just before the world changes. Resolves `true` once they are in, else `false`. The caller saves. |
-| `exportRoom(id)` | Downloads the room as `<its name>.md` (a locked room too). |
+| `importInto(roomId, { file, at, ok, before })` | The file's objects (groups and thoughts, with their places) into a room as new ones (not a locked one). `at()` is where new trains start; `before()` runs just before the world changes. Resolves `true` once they are in, else `false`. The caller saves. |
+| `exportRoom(id)` | Downloads the room as `<its name>.traum` (a locked room too). |
 | `canEdit` | Whether editing as Markdown is there (it needs the source editor feature). |
 | `editGroup(roomId, groupId, { before, ok })` | The group as room Markdown in the source editor (read only in a locked room). `before()` runs just before Apply changes the world; `ok()` says whether it is still wanted. Resolves `true` once Apply has changed the world, else `false` when it closes. The caller saves (one step). |
 | `editRoom(roomId, { before, ok })` | The same for the whole room. |
@@ -143,7 +143,13 @@ already there, the card offers *Replace matching groups* or *Add all as new* (or
 Apply is one step: one Ctrl+Z takes all of it back. A locked room opens read only (Copy and
 Download).
 
-## The .traum format (being built)
+## The .traum format
+
+Import and export now use `.traum` files (below); a plain `.md` file comes in as loose thoughts
+(`plain.js`: a list item or a one-line paragraph is a line, a heading and its paragraph a passage,
+`![…](…)` a picture). The source editor still uses room Markdown until it moves over; the
+sections about room Markdown below describe it.
+
 
 Room Markdown is being replaced by `.traum` files (FORMAT.md, when it lands, is the spec): one
 neutral `# Objects` list and one `# In <mode>` section per ontology. `grammar.js` reads and writes

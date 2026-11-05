@@ -464,7 +464,7 @@ export default class Rooms extends Feature {
     if (at === page) this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
   }
 
-  // Downloads a room as <its name>.md (a locked room too).
+  // Downloads a room as <its name>.traum (a locked room too).
   exportRoomFile(id) { this.files?.exportRoom(id); }
 
   // ---- Building the page ----
@@ -523,7 +523,7 @@ export default class Rooms extends Feature {
       if (!files(e)) return;
       e.preventDefault();
       const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
-      if (!file) { this.toast('Only a room Markdown file (.md) can be dropped here.'); return; }
+      if (!file) { this.toast('Only a room file (.traum) or a Markdown file (.md) can be dropped here.'); return; }
       this.importRoomFile(file);
     });
   }
