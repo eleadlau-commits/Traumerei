@@ -5833,29 +5833,29 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   function network(rects, X2, Y2) {
     const key2 = (x, y) => `${x.toFixed(9)},${y.toFixed(9)}`;
     const inside4 = (v2, side) => v2 > EPS && v2 < side - EPS;
-    const sides4 = [];
+    const sides5 = [];
     for (const [x0, y0, x12, y12] of rects) {
-      if (inside4(y0, Y2)) sides4.push([true, y0, x0, x12]);
-      if (inside4(y12, Y2)) sides4.push([true, y12, x0, x12]);
-      if (inside4(x0, X2)) sides4.push([false, x0, y0, y12]);
-      if (inside4(x12, X2)) sides4.push([false, x12, y0, y12]);
+      if (inside4(y0, Y2)) sides5.push([true, y0, x0, x12]);
+      if (inside4(y12, Y2)) sides5.push([true, y12, x0, x12]);
+      if (inside4(x0, X2)) sides5.push([false, x0, y0, y12]);
+      if (inside4(x12, X2)) sides5.push([false, x12, y0, y12]);
     }
     const stops = /* @__PURE__ */ new Map();
     const at2 = (h, c) => `${h ? "h" : "v"}:${c.toFixed(9)}`;
-    for (const [h, c, a, b] of sides4) {
+    for (const [h, c, a, b] of sides5) {
       if (!stops.has(at2(h, c))) stops.set(at2(h, c), /* @__PURE__ */ new Map());
       const s = stops.get(at2(h, c));
       s.set(a.toFixed(9), a);
       s.set(b.toFixed(9), b);
     }
-    for (const [h, c, a, b] of sides4) {
+    for (const [h, c, a, b] of sides5) {
       for (const v2 of [a, b]) {
         const s = stops.get(at2(!h, v2));
         if (s) s.set(c.toFixed(9), c);
       }
     }
     const seen = /* @__PURE__ */ new Map();
-    for (const [h, c, a, b] of sides4) {
+    for (const [h, c, a, b] of sides5) {
       const pos = [...stops.get(at2(h, c)).values()].filter((v2) => v2 >= a - EPS && v2 <= b + EPS).sort((p, q) => p - q);
       for (let k2 = 0; k2 + 1 < pos.length; k2++) {
         const [p, q] = [pos[k2], pos[k2 + 1]];
@@ -15399,6 +15399,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var relationName2;
   var setOrder2;
   var join2;
+  var isTwin2;
+  var addTwin2;
+  var sides2;
+  var within2;
   function bind2(lib) {
     ({
       room: room3,
@@ -15421,8 +15425,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       groupsOf: groupsOf2,
       isGroup: isGroup2,
       setOrder: setOrder2,
-      join: join2
+      join: join2,
+      within: within2
     } = lib.model);
+    ({ isTwin: isTwin2, addTwin: addTwin2, sides: sides2 } = lib.twin);
     ({ ITEMS: ITEMS2 } = lib.items);
     ({ keepOrShrink: keepOrShrink2 } = lib.picture);
     ({ stepAfter: stepAfter2 } = lib.joyce);
@@ -16978,8 +16984,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var groupNames2;
   var copyRoom2;
   var span3;
-  var addTwin2;
-  var sides2;
+  var addTwin3;
+  var sides3;
   var pageLook2;
   var roomLook2;
   var rgb2;
@@ -17030,7 +17036,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       copyRoom: copyRoom2,
       span: span3
     } = lib.model);
-    ({ addTwin: addTwin2, sides: sides2 } = lib.twin);
+    ({ addTwin: addTwin3, sides: sides3 } = lib.twin);
     ({ pageLook: pageLook2, roomLook: roomLook2, rgb: rgb2, squareLook: squareLook2, toOklch: toOklch2 } = lib.look);
     ({ light: light2 } = lib.attention);
   }
@@ -18327,9 +18333,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A new Twin in the cell asked for (or the first free spot two cells wide), its sides seen
     // through `modes` ([left, right]), with its name ready to write.
     newTwin(cell, modes) {
-      const t = addTwin2(this.world, "Untitled", Date.now(), { page: this.page }, modes);
+      const t = addTwin3(this.world, "Untitled", Date.now(), { page: this.page }, modes);
       if (t) {
-        for (const r of [t, ...sides2(this.world, t.id)]) seedRoomSettings3(this.world, r.id, this.ontPrefs);
+        for (const r of [t, ...sides3(this.world, t.id)]) seedRoomSettings3(this.world, r.id, this.ontPrefs);
         const out = this.floors.place(t.id, cell ? { col: cell.col, row: cell.row } : null);
         if (out) this.page = out.page;
       }
@@ -19837,7 +19843,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var foldInto;
   var foldPlan2;
   var lock3;
-  var sides3;
+  var sides4;
   var twinOf2;
   var otherSide2;
   var across2;
@@ -19889,7 +19895,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2 } = lib.ontologies);
     ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
-    ({ sides: sides3, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
+    ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
   }
 
   // dist/web/features/room/document.js
@@ -23095,7 +23101,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Goes into a room (the rooms page asked: 'room:open'). from: its square on the screen, to grow
     // out of; seed: the first letters of a thought to write.
     enter({ id, from = null, seed = "" }) {
-      const twin = sides3(this.world, id);
+      const twin = sides4(this.world, id);
       if (twin.length) id = twin[0].id;
       if (!room5(this.world, id)) return;
       this.roomId = id;
