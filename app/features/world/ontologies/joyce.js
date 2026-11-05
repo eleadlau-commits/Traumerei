@@ -153,6 +153,7 @@ export default {
   id: 'joyce',
   name: 'Joyce',
   note: 'thoughts joined by time',
+  icon: '<circle cx="5" cy="7" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="17" r="2"/><path d="M6.7 8.2l3.6 2.6M13.7 13.2l3.6 2.6"/>', // thoughts on a line
   order: 10,
   groups: { form: 'train', name: 'Train', membership: 'one' },
   live: true, // a drag moves the thought (or train) at once, so the line follows it

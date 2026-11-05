@@ -80,6 +80,7 @@ export default class Room extends Feature {
     const when = { 'room.mode': () => live() && this.tabSwaps() };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
+    this.on('frame:rail', () => { if (this.roomId) this.place(); });    // the canvas starts beside the rail
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });

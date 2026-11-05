@@ -525,6 +525,7 @@ export default {
   id: ID,
   name: 'Russell',
   note: 'chapters in a tree',
+  icon: '<rect x="9" y="3" width="6" height="4"/><rect x="3" y="16" width="6" height="4"/><rect x="15" y="16" width="6" height="4"/><path d="M12 7v4.5M6 16v-4.5h12V16"/>', // a tree
   order: 30,
   groups: { form: 'chapter', name: 'Chapter', membership: 'one' },
   settings: [

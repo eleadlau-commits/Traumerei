@@ -9,7 +9,7 @@ import {
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
-import { el } from './shared.js';
+import { el, railIcon, railWord } from './shared.js';
 
 export class RoomView {
   // ---- Settings → Rooms ----
@@ -161,30 +161,32 @@ export class RoomView {
     this.crumbDesc.hidden = !r.desc;
     this.roomPage.classList.toggle('locked', !!this.locked);
     const v = view(this.world, this.roomId);
-    // The rail, where the rooms page has Rooms and Archive: a big room (Messy, or 2 × 2) lists the
-    // ontologies and switches between them; a small one shows its one. Hovering over a mode shows a
-    // small ⚙ beside it, which opens this room's settings for it. Under a hairline, Timeline.
+    // The rail (Folio's column of veil, its width the frame's): under Modes, a big room (Messy, or
+    // 2 × 2) lists the ontologies and switches between them; a small one shows its one. Each has
+    // its icon (the ontology's own). Hovering over a mode shows a small ⚙ beside it, which opens
+    // this room's settings for it. Under Views, Timeline.
     const big = isBig(r);
-    const items = [];
+    const items = [el('div', { class: 'rail-head', 'aria-hidden': 'true' }, big ? 'Modes' : 'Mode')];
+    const mark = (m) => (m.icon ? railIcon(m.icon) : el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, m.name.slice(0, 1)));
     for (const m of big ? this.ontologies : [this.ont]) {
       const on = m.id === this.mode;
       const word = big
-        ? el('button', { type: 'button', class: 'rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on),
-          onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, m.name)
-        : el('span', { class: 'rail-item room-rail-fixed', 'aria-current': 'true', title: 'A small room keeps one mode. Make it 2 × 2 to switch.',
-          onclick: () => this.toggleGear(m.id) }, m.name);
+        ? el('button', { type: 'button', class: 'rail-item', role: 'radio', 'aria-checked': String(on), 'aria-current': String(on), title: m.name,
+          onclick: () => { if (on) this.toggleGear(m.id); else this.setMode(m.id); } }, mark(m), railWord(m.name))
+        : el('span', { class: 'rail-item room-rail-fixed', 'aria-current': 'true', title: `${m.name}: a small room keeps one mode. Make it 2 × 2 to switch.`,
+          onclick: () => this.toggleGear(m.id) }, mark(m), railWord(m.name));
       const gear = this.settingsOf(m).length ? el('button', {
-        type: 'button', class: 'room-gear', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
+        type: 'button', class: 'room-gear rail-wide', 'aria-label': `${m.name} settings for this room`, title: 'Settings for this room',
         'aria-expanded': String(this.settingsFor === m.id), onclick: () => this.openRoomSettings(m.id),
       }, '⚙') : null;
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
-    items.push(el('div', { class: 'rail-rule', 'aria-hidden': 'true' }));
+    items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Views'));
     items.push(el('button', {
       type: 'button', class: 'rail-item room-rail-view', 'aria-pressed': String(this.historyOpen),
-      title: this.keyMap ? `Timeline (${this.keyMap.label('room.timeline')})` : 'Timeline',
+      title: this.keyMap ? `Timeline · ${this.keyMap.label('room.timeline')}` : 'Timeline',
       onclick: () => this.toggleTimeline(),
-    }, 'Timeline'));
+    }, railIcon('clock'), railWord('Timeline')));
     const card = !this.panel && this.settingsFor && this.roomSettingsCard();
     if (card) items.push(card);
     this.drawModeSettings();

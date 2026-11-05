@@ -23,8 +23,16 @@ last is the one that shows, and hiding it brings back the one before.
 | `hint(text)` | A line of help on the left of the status bar for a while; the first key or click takes it away. |
 | `hover(text)` | What the pointer is over, said by the owner (a thought on the canvas); `null` lets the frame read it again from the element's `data-hint`, `title` or name. |
 | `clearHint()` | Takes it away now. |
+| `toggleRail()` | Narrows the rail to its icons (48 px), or widens it again (206 px). |
+| `railNarrow` | Whether the rail is narrow now. |
 
-It has no slots or events and saves nothing. While it shows, `<html>` has `--status` (the status
+**The rail.** The rooms page and a room each draw their own rail (Folio's `.rail`, a column of
+veil down the left); the frame holds only how wide it is. **Ctrl+Alt+B** (in the key map, working
+everywhere) or the rail button at the left of the status bar narrows it to its icons and back.
+While it is narrow `<html>` has the class `rail-narrow` (so `--rail` is 48 px), and each change is
+sent as **`frame:rail`** `{ narrow }`. It saves only that (`railNarrow`).
+
+It has no slots. While it shows, `<html>` has `--status` (the status
 bar's height, else `0px`): the docks start under its top bar and end above its status bar. An
 element says what it is in the status bar with `data-hint` (or its `title`).
 

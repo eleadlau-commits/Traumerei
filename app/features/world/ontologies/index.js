@@ -3,6 +3,7 @@
 // A room whose ontology is missing is seen through Pessoa. An ontology is shaped:
 //
 //   id, name, note        'pessoa', 'Pessoa', 'each thought on its own'
+//   icon                  (optional) its hairline icon in the rail: an SVG drawing on a 24 × 24 grid
 //   order                 where it sits in lists (lower first; the built-in ones are 10, 20)
 //   groups                null, or { form, name, membership }: the groups it makes (Joyce: trains)
 //                         and whether an item can be in 'one' of them or in 'many' (model.js)

@@ -1,9 +1,12 @@
 {
   "name": "Frame",
-  "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back) and the quiet words at the foot (Saved, a line of help). The rooms page and a room each say what it shows.",
+  "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.",
   "version": "0.1.0",
   "main": "Frame.js",
   "styles": [
     "style.css"
+  ],
+  "uses": [
+    "keys"
   ]
 }

@@ -128,8 +128,12 @@ written there. With nothing in it, the rooms page works on its own.
 - **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
   dropped on a number moves there. Messy thoughts stays on page 1.
 - **The rail and the menu.** The menu (☰, with Settings) sits at the top left of the top bar on
-  every page. On the rooms page and inside a room the back arrow sits in the top-right corner. Under it, on the rooms page, a thin rail
-  holds *Rooms* and *Archive* (no count).
+  every page. On the rooms page and inside a room the back arrow sits in the top-right corner. Under it, on the rooms page, the rail
+  (a column of veil down the left) holds, under *Floors*, each floor with its number, *+ New floor*
+  and *Archive*, then under *Arrange by*, *Tags*. Each has a hairline icon beside its word;
+  **Ctrl+Alt+B** (or the rail button at the left of the status bar) narrows it to the icons, and
+  the grid takes the room it leaves (the frame feature holds how wide it is; `frame:rail`). Tags on
+  a narrow rail widens it first.
 - **Moving thoughts** (*Move to…*) lists every room, Messy thoughts first. Search and the timeline
   choose what they find without opening its properties.
 - On a Mac, Ctrl+click is a right-click; Ctrl+drag still moves the canvas.

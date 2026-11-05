@@ -20,7 +20,7 @@
 
 import { Feature } from 'folio';
 import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
-import { el, MAC, HINT, enterKeeps } from './shared.js';
+import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
@@ -52,6 +52,7 @@ export default class Rooms extends Feature {
     this.frame = this.use('frame');       // the top bar and the foot around the page (the frame feature), or null
     this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
     // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
+    this.on('frame:rail', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); }); // the rail narrowed or widened
     this.on('docks:resized', ({ side }) => { if (side === 'right' && !this.inRoom && !this.root.hidden) this.drawRooms(); });
     this.build();
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
@@ -430,23 +431,25 @@ export default class Rooms extends Feature {
       if (e.key === 'Escape') { e.preventDefault(); this.closeLights(); }
       if (e.key === 'Enter') { e.preventDefault(); const best = this.bestLit(); if (best) this.openRoom(best); }
     });
-    // The rail on the left, under the menu: the rooms, and the Archive. A room dragged onto Archive
-    // goes there.
-    this.railRooms = el('button', { type: 'button', class: 'rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
-    this.shelfBtn = el('button', { type: 'button', class: 'rail-item rooms-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
-      'Archive');
-    // Under a hairline, Arrange by: None, then the tag groups, each opening to its tags with how
-    // many rooms have each. Picking a tag dims the rooms without it, as the search lights do
-    // (nothing hides or moves); None, picking it again, or Escape, lets go. + makes groups and tags,
-    // and a tag dragged onto a square is added to that room.
-    this.tagsBtn = el('button', { type: 'button', class: 'rail-item rooms-tags-btn', 'aria-expanded': 'false',
-      onclick: () => { this.tagsOpen = !this.tagsOpen; this.makingTag = null; this.drawRooms(); } }, 'Arrange by');
-    this.tagsList = el('div', { class: 'rooms-tag-list', hidden: true, role: 'list' });
-    // The floors, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor. A room
-    // dropped on a floor goes to that floor.
-    this.pagesBar = el('nav', { class: 'rooms-pages', 'aria-label': 'Floors' });
-    this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
-      el('div', { class: 'rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
+    // The rail on the left (Folio's column of veil, its width the frame's): under Floors, each
+    // floor, + New floor and the Archive (a room dropped on a floor goes to that floor, on Archive
+    // goes there); under Arrange by, Tags.
+    this.shelfBtn = el('button', { type: 'button', class: 'rail-item rooms-shelf-btn', 'data-drop': 'archive', title: 'Archive',
+      onclick: () => { if (!this.shelf) this.toggleShelf(); } }, railIcon('archive'), railWord('Archive'));
+    // Tags opens the tag groups, each opening to its tags with how many rooms have each. Picking a
+    // tag dims the rooms without it, as the search lights do (nothing hides or moves); None,
+    // picking it again, or Escape, lets go. + makes groups and tags, and a tag dragged onto a
+    // square is added to that room. On a narrow rail it widens the rail first.
+    this.tagsBtn = el('button', { type: 'button', class: 'rail-item rooms-tags-btn', 'aria-expanded': 'false', title: 'Tags',
+      onclick: () => {
+        if (this.frame?.railNarrow) { this.frame.toggleRail(); this.tagsOpen = true; } else this.tagsOpen = !this.tagsOpen;
+        this.makingTag = null; this.drawRooms();
+      } }, railIcon('tag'), railWord('Tags'));
+    this.tagsList = el('div', { class: 'rooms-tag-list rail-wide', hidden: true, role: 'list' });
+    this.pagesBar = el('div', { class: 'rooms-pages', role: 'group', 'aria-label': 'Floors' });
+    this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Floors and the Archive' },
+      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Floors'), this.pagesBar, this.shelfBtn,
+      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Arrange by'), this.tagsBtn, this.tagsList);
     this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
       this.rail,
