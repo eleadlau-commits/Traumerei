@@ -70,7 +70,7 @@ export function emptyWorld(now = Date.now()) {
   return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
 }
 
-// A saved world, repaired: the messy room always exists; every room sits on the rooms page; an
+// A saved world, repaired: the messy room always exists; every room is on the rooms page; an
 // item or group whose room is gone goes to the messy room, and a group forgets members that are
 // gone. A world saved in an older shape is not kept: it starts afresh.
 export function loadWorld(saved, now = Date.now()) {
@@ -93,7 +93,7 @@ export function loadWorld(saved, now = Date.now()) {
   messy.size = 2;
   delete messy.page;
   if (messy.col == null) { messy.col = 0; messy.row = 0; }
-  gridAll(w);
+  // Rooms without a cell, or outside the floor size, are placed by the floors feature (floors.settle).
   return w;
 }
 
@@ -451,17 +451,13 @@ export function unfold(w, groupId) {
 
 // ---- Shortcuts the screens use ----
 
-// A new room on a page of the rooms page (`where`: { page }), in `cell` if it is free, or the first
-// free one. `kind`: its ontology ('joyce', 'pessoa', …).
-export function addRoom(w, text = 'Untitled', now, cell = null, cols = 6, where = {}, kind = DEFAULT_MODE) {
+// A new room on a floor of the rooms page (`where`: { page }), with no cell yet: the floors
+// feature places it (floors.place). `kind`: its ontology ('joyce', 'pessoa', …).
+export function addRoom(w, text = 'Untitled', now, where = {}, kind = DEFAULT_MODE) {
   const page = where.page || 0;
-  const r = create(w, null, { kind: 'room', name: text, ...(cell || {}), page }, now);
+  const r = create(w, null, { kind: 'room', name: text, ...(page ? { page } : {}) }, now);
   if (!r) return null;
   if (typeof kind === 'string' && kind) view(w, r.id).mode = kind;
-  if (!cell || !placeRoom(w, r.id, cell.col, cell.row, cols)) {
-    delete r.col; delete r.row;
-    gridRooms(w, cols, page);
-  }
   return r;
 }
 
@@ -479,51 +475,7 @@ export function roomAt(w, col, row, except = null, page = 0) {
   return roomsOn(w, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
 }
 
-// Puts a room at (col, row) of its page if all its cells are free. Returns whether it moved.
-export function placeRoom(w, id, col, row, cols = Infinity) {
-  const r = room(w, id);
-  if (!r || r.locked || r.archived || col < 0 || row < 0 || col + (r.size || 1) > cols) return false;
-  const want = cells({ ...r, col, row });
-  if (want.some(([c, rr]) => roomAt(w, c, rr, id, r.page || 0))) return false;
-  r.col = col;
-  r.row = row;
-  return true;
-}
-
-// Every page's rooms given a place.
-export function gridAll(w, cols = 6) {
-  for (const page of new Set(rooms(w).map((r) => r.page || 0))) gridRooms(w, cols, page);
-}
-
-// Gives every room on one page without a place the first free cell (left to right, top to bottom,
-// `cols` wide), and returns the page's rooms.
-export function gridRooms(w, cols = 6, page = 0) {
-  const all = roomsOn(w, page).sort((a, b) => (b.id === MESSY) - (a.id === MESSY));
-  const taken = new Set();
-  const free = (r, col, row) => cells({ ...r, col, row }).every(([c, rr]) => !taken.has(`${c},${rr}`));
-  for (const r of all) {
-    if (r.col == null || !free(r, r.col, r.row)) {
-      for (let i = 0; ; i++) {
-        const col = i % cols, row = Math.floor(i / cols);
-        if (col + (r.size || 1) <= cols && free(r, col, row)) { r.col = col; r.row = row; break; }
-      }
-    }
-    for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
-  }
-  return roomsOn(w, page);
-}
-
 // ---- Pages ----
-
-// Moves a room to another page, at the first free cell there (not Messy thoughts, nor a locked room).
-export function toPage(w, id, page = 0, cols = 6) {
-  const r = room(w, id);
-  if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
-  delete r.col; delete r.row;
-  if (page > 0) r.page = page; else delete r.page;
-  gridRooms(w, cols, page);
-  return true;
-}
 
 // The rooms page's pages: at least one, and enough for every room on them.
 export const pageCount = (w) => Math.max(w.pages || 1, ...rooms(w).map((r) => (r.page || 0) + 1));
@@ -569,17 +521,6 @@ export function search(w, query, most = 30) {
   return out;
 }
 
-// A room's size on the grid (1 or 2 cells a side), if the cells it would take are free.
-export function sizeRoom(w, id, size, cols = Infinity) {
-  const r = room(w, id);
-  if (!r || r.locked) return false;
-  const was = r.size || 1;
-  r.size = size === 2 ? 2 : 1;
-  if (r.col == null || placeRoom(w, id, r.col, r.row, cols)) return true;
-  r.size = was;
-  return false;
-}
-
 // ---- The rooms page: lock, archive, peek, search lights ----
 
 // Locks or unlocks a room: locked, nothing in it can be written, moved or deleted, and its square
@@ -601,12 +542,14 @@ export function archive(w, id, now = Date.now()) {
   return true;
 }
 
-// Brings an archived room back to the grid: to `cell` if it is free, or the first free one.
-export function restore(w, id, cell = null, cols = 6) {
+// Brings an archived room back from the Archive, to its old floor with no cell yet: the floors
+// feature places it (floors.place).
+export function restore(w, id) {
   const r = room(w, id);
   if (!r || !r.archived) return false;
   delete r.archived;
-  if (!cell || !placeRoom(w, id, cell.col, cell.row, cols)) gridRooms(w, cols, r.page || 0);
+  delete r.col;
+  delete r.row;
   return true;
 }
 

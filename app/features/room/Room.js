@@ -35,6 +35,7 @@ export default class Room extends Feature {
     this.w = this.use('world');
     bind(this.w.lib);
     this.rooms = this.use('rooms'); // the rooms page: back to it, and into another room
+    this.floors = this.use('floors'); // where a new room goes (the floors feature)
     this.roomId = null;   // the open room, or null
     this.draft = null;    // the thought being written: { train | null, x, y }, or { train, edit } for a thought opened again
     this.current = {};    // per room: the train Enter goes on with

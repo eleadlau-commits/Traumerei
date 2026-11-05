@@ -342,10 +342,10 @@ export function frame(w, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
   Object.assign(view(w, roomId), { x: Math.round((x0 + x1) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y1) / 2), zoom: Math.round(zoom * 100) / 100 });
 }
 
-// A new room from the file, on a page of the rooms page (in `cell` if it is free, or the first free
-// one), with the file's name, mode, description, tags, colour and settings. globals: the settings
-// a new room starts from. Returns { room, report, made }.
-export function importRoom(w, parsed, { ontologies = [], now = Date.now(), cell = null, cols = 6, page = 0, globals = {}, name = 'Untitled' } = {}) {
+// A new room from the file, on a floor of the rooms page (with no cell yet: the floors feature
+// places it), with the file's name, mode, description, tags, colour and settings. globals: the
+// settings a new room starts from. Returns { room, report, made }.
+export function importRoom(w, parsed, { ontologies = [], now = Date.now(), page = 0, globals = {}, name = 'Untitled' } = {}) {
   const meta = parsed.meta || {};
   const pre = [];
   let kind = meta.kind || DEFAULT_MODE;
@@ -353,7 +353,7 @@ export function importRoom(w, parsed, { ontologies = [], now = Date.now(), cell 
     pre.push(`There is no mode called "${kind}", so the room is a ${ontologies.find((o) => o.id === DEFAULT_MODE)?.name || DEFAULT_MODE} room.`);
     kind = DEFAULT_MODE;
   }
-  const r = addRoom(w, meta.room || name, now, cell, cols, { page }, kind);
+  const r = addRoom(w, meta.room || name, now, { page }, kind);
   if (!r) return { room: null, report: [...pre, 'A room couldn\'t be made.'], made: { groups: 0, thoughts: 0, pictures: 0 } };
   const fields = {};
   if (meta.description) fields.desc = meta.description;

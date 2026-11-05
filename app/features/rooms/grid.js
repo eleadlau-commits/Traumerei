@@ -4,8 +4,8 @@
 
 import {
   MESSY, DEFAULT_MODE, room, addRoom, name, update, remove, move, fold, roomThoughts,
-  gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore,
-  peek, DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
+  search, cells, roomAt, lock, archive, archived, restore,
+  peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb,
 } from './world.js';
@@ -14,13 +14,12 @@ import { el, GRID, MAC, HOLD } from './shared.js';
 export class RoomsGrid {
   // ---- The rooms page ----
 
-  // How many columns fit, and how big a cell is.
+  // Every floor's columns and rows (the floors feature's size), and how big a cell is.
   gridSize() {
+    const { cols, rows } = this.floors.size;
     const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad - (window.innerWidth > 560 ? GRID.rail : 0);
-    const fit = Math.floor((width + GRID.gap) / (this.prefs.cell + GRID.gap));
-    const cols = Math.min(GRID.most, Math.max(GRID.least, fit));
     const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
-    return { cols, cell };
+    return { cols, rows, cell };
   }
 
   // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
@@ -45,8 +44,9 @@ export class RoomsGrid {
   drawRooms() {
     const now = Date.now();
     this.page = Math.min(this.page, pageCount(this.world) - 1);
-    const { cols: fit, cell } = this.gridSize();
-    const all = gridRooms(this.world, fit, this.page);
+    const { cols, rows, cell } = this.gridSize();
+    if (this.floors.settle(this.page).length) this.save(); // rooms with no cell, or off the board, are placed
+    const all = roomsOn(this.world, this.page);
     const shelved = archived(this.world);
     this.shelfBtn.setAttribute('aria-current', String(this.shelf));
     this.railRooms.setAttribute('aria-current', String(!this.shelf));
@@ -72,13 +72,8 @@ export class RoomsGrid {
     }
     this.grid.classList.toggle('lights', !!hits);
     this.drawTags();
-    if (this.shelf) { this.drawShelf(shelved, fit, cell, hits); return; }
-    // The grid is as wide as the screen allows (or the size set in Settings → Rooms, or as far as
-    // the furthest room) and grows a spare row below the lowest room. The page scrolls down.
-    const cols = Math.max(fit, this.prefs.cols || 0, ...all.map((r) => r.col + r.size));
-    const height = this.grid.parentElement?.clientHeight || window.innerHeight;
-    const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)),
-      this.prefs.rows || 0, ...all.map((r) => r.row + r.size + 1));
+    if (this.shelf) { this.drawShelf(shelved, cols, cell, hits); return; }
+    // The floor is the floors feature's fixed board: it never grows a row or column.
     this.cols = cols;
     this.grid.style.setProperty('--cols', cols);
     this.grid.style.setProperty('--cell', cell + 'px');
@@ -259,11 +254,12 @@ export class RoomsGrid {
       r.desc ? el('p', { class: 'pop-note' }, r.desc) : null,
       word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
       word('Restore', () => {
-        restore(this.world, r.id, null, this.gridSize().cols);
+        restore(this.world, r.id);
+        const out = this.floors.place(r.id); // its old floor, else a new one
         this.roomSel = null;
         this.save();
         this.drawRooms();
-        this.toast(`${r.name} is back among the rooms.`);
+        if (!out?.spilled) this.toast(`${r.name} is back among the rooms.`);
       }),
       word('Delete', () => {
         remove(this.world, r.id);
@@ -509,7 +505,7 @@ export class RoomsGrid {
         ...[1, 2].map((n) => el('button', {
           type: 'button', class: 'word', 'aria-pressed': String((r.size || 1) === n),
           onclick: () => {
-            if (sizeRoom(this.world, r.id, n, this.cols)) { this.save(); this.drawRooms(); }
+            if (this.floors.resize(r.id, n)) { this.save(); this.drawRooms(); }
             else this.toast('There isn\'t room for it to grow here. Move it first.');
           },
         }, n === 1 ? '1 × 1' : '2 × 2'))),
@@ -617,7 +613,7 @@ export class RoomsGrid {
     const mark = (c) => {
       if (!c) { drop.hidden = true; return; }
       const size = r.size || 1;
-      const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols &&
+      const free = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && c.row + size <= this.floors.size.rows &&
         cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, this.page));
       drop.hidden = false;
       drop.classList.toggle('taken', !free);
@@ -665,12 +661,13 @@ export class RoomsGrid {
         return;
       }
       tile.style.transform = '';
-      const cols = this.cols || this.gridSize().cols;
       if (over?.page != null) {
-        if (toPage(this.world, r.id, over.page, cols)) { this.save(); this.toast(`${r.name} is on page ${over.page + 1}.`); }
+        const moved = this.floors.toFloor(r.id, over.page);
+        if (moved === 'full') this.toast(`Floor ${over.page + 1} is full.`);
+        else if (moved) { this.save(); this.toast(`${r.name} is on Floor ${over.page + 1}.`); }
       } else if (over?.archive) {
         if (archive(this.world, r.id)) { this.save(); this.toast(`${r.name} is in the Archive.`); }
-      } else if (target && placeRoom(this.world, r.id, target.col, target.row, this.cols)) this.save();
+      } else if (target && this.floors.move(r.id, target.col, target.row)) this.save();
       this.drawRooms();
     };
     window.addEventListener('pointermove', moveFn);
@@ -681,8 +678,12 @@ export class RoomsGrid {
   // A new room of a kind (its mode), in the cell asked for (or the first free one), with
   // its name ready to write.
   newRoom(cell = null, kind = DEFAULT_MODE) {
-    const r = addRoom(this.world, 'Untitled', Date.now(), cell, this.cols || this.gridSize().cols, { page: this.page }, kind);
-    if (r) seedRoomSettings(this.world, r.id, this.ontPrefs);
+    const r = addRoom(this.world, 'Untitled', Date.now(), { page: this.page }, kind);
+    if (r) {
+      seedRoomSettings(this.world, r.id, this.ontPrefs);
+      const out = this.floors.place(r.id, cell); // in that cell, else its floor's first free one, else a new floor
+      if (out) this.page = out.page;
+    }
     this.making = null;
     if (!r) { this.toast('A room can\'t be made here.'); this.drawRooms(); return; }
     this.save();

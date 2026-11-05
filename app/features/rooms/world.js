@@ -5,8 +5,8 @@
 
 export let
   room, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
-  gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore, peek,
-  DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
+  search, cells, roomAt, lock, archive, archived, restore, peek,
+  DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
   tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
   allTags, groupNames, pageLook, roomLook, rgb, squareLook, toOklch, light;
 
@@ -14,8 +14,8 @@ export let
 export function bind(lib) {
   ({
     room, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
-    gridRooms, placeRoom, search, sizeRoom, cells, roomAt, lock, archive, archived, restore, peek,
-    DESC, roomsOn, toPage, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
+    search, cells, roomAt, lock, archive, archived, restore, peek,
+    DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
     tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
     allTags, groupNames,
   } = lib.model);

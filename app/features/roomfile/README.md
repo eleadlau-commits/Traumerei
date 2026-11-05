@@ -11,7 +11,7 @@ the card, changes the world and downloads. The world itself is the world feature
 | Member | What it does |
 |---|---|
 | `isRoomFile(file)` | Whether a dropped file is room Markdown (`.md`, `.markdown`, `.txt`). |
-| `importRoom({ file, cell, page, cols, ok })` | A new room from `file` (picked, if none) in `cell` (or the first free one) of floor `page`. `ok()` says whether it is still wanted, before the card and on Import. Resolves with the new room once it is in the world, or `null`. The caller saves. |
+| `importRoom({ file, cell, page, ok })` | A new room from `file` (picked, if none) on floor `page`, placed by the floors feature: in `cell` if it is free, else that floor's first free one, else a new floor (the room's `page` says which). `ok()` says whether it is still wanted, before the card and on Import. Resolves with the new room once it is in the world, or `null`. The caller saves. |
 | `importInto(roomId, { file, at, ok, before })` | The file's groups and thoughts into a room (not a locked one). `at()` is where new trains start; `before()` runs just before the world changes. Resolves `true` once they are in, else `false`. The caller saves. |
 | `exportRoom(id)` | Downloads the room as `<its name>.md` (a locked room too). |
 | `canEdit` | Whether editing as Markdown is there (it needs the source editor feature). |
@@ -29,7 +29,7 @@ A room can come in and go out as one plain Markdown file ("room Markdown"), so i
 written somewhere else (by hand, or by Claude) and brought in in one step.
 
 - **In.** On the rooms page: *Import a room…* in an empty cell's choices (the room goes in that
-  cell) or in the menu, or drop a `.md` file on the page (the first free cell). Inside a room:
+  cell) or in the menu, or drop a `.md` file on the page (the floor's first free cell, else a new floor). Inside a room:
   *Import into this room…* in Add, or drop a file on the canvas; the file's groups and thoughts
   join the room as its own mode sees them, and its front matter is not used. First a quiet card
   says what will arrive ("12 groups, 85 thoughts, 2 pictures") and anything that couldn't be

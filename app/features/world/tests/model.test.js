@@ -4,10 +4,10 @@ import { test, assert } from 'folio/testing';
 import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, fold, unfold,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
-  roomOf, thoughtText, randomSpot, view, roomAt, placeRoom, gridRooms,
-  search, sizeRoom,
+  roomOf, thoughtText, randomSpot, view, roomAt,
+  search,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  roomsOn, toPage, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
+  roomsOn, pageCount, addPage, isBig, own, foldedFrom, members, groupsOf, groupOf, join, declareGroups, isGroup,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
   roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells,
 } from '../model.js';
@@ -108,7 +108,7 @@ test('a train left empty by a move is removed', () => {
 
 test('a new room is Joyce by default, or the ontology asked for', () => {
   const w = emptyWorld();
-  const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, null, 6, {}, 'pessoa');
+  const j = addRoom(w, 'J'), p = addRoom(w, 'P', 1, {}, 'pessoa');
   assert.equal(view(w, j.id).mode, 'joyce');
   assert.equal(view(w, p.id).mode, 'pessoa');
   assert.ok(!move(w, j.id, p.id)); // a room never goes inside another
@@ -119,17 +119,14 @@ test('pages: rooms on the rooms page sit on one page each, with grids of their o
   assert.equal(pageCount(w), 1);
   const p = addPage(w);
   assert.equal(p, 1);
-  const r = addRoom(w, 'Two', 1, { col: 0, row: 0 }, 6, { page: 1 });
+  const r = addRoom(w, 'Two', 1, { page: 1 });
   assert.equal(r.page, 1);
-  assert.deepEqual([r.col, r.row], [0, 0]); // Messy's cells are on page 0
+  assert.equal(r.col, undefined); // the floors feature places it
+  Object.assign(r, { col: 0, row: 0 }); // Messy's cells are on page 0
   assert.equal(roomAt(w, 0, 0, null, 1).id, r.id);
   assert.equal(roomAt(w, 0, 0).id, MESSY);
   assert.equal(pageCount(w), 2);
   assert.deepEqual(roomsOn(w, 1).map((x) => x.id), [r.id]);
-  assert.ok(!toPage(w, MESSY, 1)); // Messy thoughts stays on page 1
-  assert.ok(toPage(w, r.id, 0));
-  assert.equal(r.page, undefined);
-  assert.ok(!(r.col === 0 && r.row === 0));
 });
 
 test('Messy thoughts and 2 × 2 rooms are big; 1 × 1 rooms are not', () => {
@@ -220,41 +217,6 @@ test('Messy thoughts takes four squares at the top left of the grid', () => {
   assert.equal(roomAt(w, 2, 0), null);
 });
 
-test('a room is made in the square asked for, or the first free one', () => {
-  const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, { col: 4, row: 3 });
-  assert.deepEqual([a.col, a.row], [4, 3]);
-  const b = addRoom(w, 'B', 2, { col: 1, row: 1 }); // taken by Messy
-  assert.deepEqual([b.col, b.row], [2, 0]);
-  const c = addRoom(w, 'C', 3);
-  assert.deepEqual([c.col, c.row], [3, 0]);
-});
-
-test('rooms move to free squares only', () => {
-  const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, { col: 3, row: 0 });
-  assert.ok(placeRoom(w, a.id, 5, 5));
-  assert.ok(!placeRoom(w, a.id, 0, 1));
-  assert.ok(!placeRoom(w, MESSY, 4, 5)); // would cover A
-  assert.ok(placeRoom(w, MESSY, 2, 2));
-  assert.ok(placeRoom(w, a.id, 0, 0));
-});
-
-test('a saved world gets its rooms placed on the grid without overlaps', () => {
-  const w = loadWorld({ v: 3, things: {
-    messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
-    r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'One', col: 1, row: 0 },
-    r2: { id: 'r2', kind: 'room', parent: null, at: 2, name: 'Two' },
-  } });
-  const seen = new Set();
-  for (const r of gridRooms(w)) for (let c = 0; c < r.size; c++) for (let d = 0; d < r.size; d++) {
-    const k = `${r.col + c},${r.row + d}`;
-    assert.ok(!seen.has(k), k);
-    seen.add(k);
-  }
-  assert.deepEqual([w.things.messy.col, w.things.messy.row], [0, 0]);
-});
-
 test('A thought edited over several lines keeps its lines and pushes the next one down', () => {
   const w = emptyWorld();
   const t = startTrain(w, MESSY, 0, 0, 0);
@@ -317,17 +279,6 @@ test('search finds thoughts, trains and rooms by their words', () => {
   assert.deepEqual(search(w, '  '), []);
 });
 
-test('a room grows to four squares only where there is room', () => {
-  const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, { col: 2, row: 0 });
-  addRoom(w, 'B', 2, { col: 3, row: 1 });
-  assert.ok(!sizeRoom(w, a.id, 2));
-  assert.equal(a.size, 1);
-  assert.ok(placeRoom(w, a.id, 4, 3));
-  assert.ok(sizeRoom(w, a.id, 2));
-  assert.equal(roomAt(w, 5, 4).id, a.id);
-});
-
 test('a room keeps a short description, and loses it when it is cleared', () => {
   const w = emptyWorld();
   const r = addRoom(w, 'Ontology', 1);
@@ -341,7 +292,7 @@ test('a room keeps a short description, and loses it when it is cleared', () => 
 
 test('nothing in a locked room can be written, changed, moved or deleted, and its square stays put', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Done', 1, { col: 3, row: 0 }, 6);
+  const r = Object.assign(addRoom(w, 'Done', 1), { col: 3, row: 0 });
   const t = train(w, r.id, 'kept');
   const th = trainThoughts(w, t.id)[0];
   lock(w, r.id);
@@ -357,8 +308,6 @@ test('nothing in a locked room can be written, changed, moved or deleted, and it
   const other = train(w, MESSY, 'outside');
   assert.equal(move(w, other.id, r.id), false);
   assert.equal(nudge(w, th.id, 50, 50), false);
-  assert.equal(placeRoom(w, r.id, 4, 0, 6), false);
-  assert.equal(sizeRoom(w, r.id, 2, 6), false);
   assert.equal(r.col, 3);
   update(w, r.id, { name: 'Done, renamed' }); // the room itself can still be named
   assert.equal(r.name, 'Done, renamed');
@@ -366,9 +315,9 @@ test('nothing in a locked room can be written, changed, moved or deleted, and it
   assert.ok(addThought(w, t.id, 'more'));
 });
 
-test('an archived room leaves the grid for the Archive, and comes back to a free cell', () => {
+test('an archived room leaves the grid for the Archive, and comes back with no cell (the floors feature places it)', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Old', 1, { col: 4, row: 1 }, 6);
+  const r = Object.assign(addRoom(w, 'Old', 1), { col: 4, row: 1 });
   train(w, r.id, 'a thought about washi');
   assert.ok(archive(w, r.id));
   assert.equal(rooms(w).some((x) => x.id === r.id), false);
@@ -376,9 +325,9 @@ test('an archived room leaves the grid for the Archive, and comes back to a free
   assert.equal(r.col, undefined);
   assert.equal(search(w, 'washi').length, 1); // still found
   assert.equal(archive(w, MESSY), false);
-  assert.ok(restore(w, r.id, { col: 5, row: 2 }, 6));
+  assert.ok(restore(w, r.id));
   assert.equal(r.archived, undefined);
-  assert.deepEqual([r.col, r.row], [5, 2]);
+  assert.equal(r.col, undefined);
   lock(w, r.id);
   assert.equal(archive(w, r.id), false); // unlock it first
 });
@@ -484,16 +433,16 @@ const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, 
 
 test('a small room is tagged with its one mode; a big room with every mode', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Algebra', 1, null, 6, {}, 'pessoa');
+  const r = addRoom(w, 'Algebra', 1, {}, 'pessoa');
   assert.deepEqual(roomTags(w, r.id, ONTS), [{ tag: 'Pessoa', auto: true }]);
   assert.deepEqual(roomTags(w, MESSY, ONTS).map((t) => t.tag), ['Joyce', 'Pessoa', 'Russell']);
-  sizeRoom(w, r.id, 2);
+  r.size = 2;
   assert.equal(roomTags(w, r.id, ONTS).length, 3);
 });
 
 test('tags are added once whatever their case, and a mode tag cannot be taken off', () => {
   const w = emptyWorld();
-  const r = addRoom(w, 'Algebra', 1, null, 6, {}, 'joyce');
+  const r = addRoom(w, 'Algebra', 1, {}, 'joyce');
   assert.equal(addTag(w, r.id, '  #Linear algebra ', ONTS), true);
   assert.equal(addTag(w, r.id, 'linear ALGEBRA', ONTS), false);
   assert.equal(addTag(w, r.id, 'joyce', ONTS), false);
@@ -506,8 +455,8 @@ test('tags are added once whatever their case, and a mode tag cannot be taken of
 
 test('tags survive a save and a rename, and are counted across the rooms', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
-  const b = addRoom(w, 'B', 2, null, 6, {}, 'russell');
+  const a = addRoom(w, 'A', 1, {}, 'joyce');
+  const b = addRoom(w, 'B', 2, {}, 'russell');
   addTag(w, a.id, 'Book', ONTS);
   addTag(w, b.id, 'book', ONTS);
   name(w, a.id, 'A2');
@@ -522,8 +471,8 @@ test('tags survive a save and a rename, and are counted across the rooms', () =>
 
 test('tag groups: Ontology holds the modes; "Group: tag" makes a group; a tag is in one group', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
-  const b = addRoom(w, 'B', 2, null, 6, {}, 'pessoa');
+  const a = addRoom(w, 'A', 1, {}, 'joyce');
+  const b = addRoom(w, 'B', 2, {}, 'pessoa');
   assert.equal(addTag(w, a.id, 'Subject: Algebra', ONTS), true);
   assert.deepEqual(a.tags, ['Algebra']);
   assert.equal(tagGroup(w, 'algebra', ONTS), 'Subject');
@@ -544,7 +493,7 @@ test('tag groups: Ontology holds the modes; "Group: tag" makes a group; a tag is
 
 test('+ makes tags and groups before any room has them; they show with 0', () => {
   const w = emptyWorld();
-  const a = addRoom(w, 'A', 1, null, 6, {}, 'joyce');
+  const a = addRoom(w, 'A', 1, {}, 'joyce');
   assert.equal(makeGroup(w, 'Subject'), true);
   assert.equal(makeGroup(w, 'subject'), false);
   assert.equal(makeGroup(w, 'Ontology'), false);
