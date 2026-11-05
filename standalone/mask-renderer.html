@@ -1793,7 +1793,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 /* A mode and its ⚙, which shows at its right only while the mode is hovered over. */
 .room-rail-row { position: relative; }
 .room-gear { position: absolute; top: 50%; right: var(--s-3); transform: translateY(-50%); padding: 0 3px; font-size: 15px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--quick); }
-.room-rail-row:is(:hover, :focus-within, .show) .room-gear { opacity: .55; pointer-events: auto; }
+.room-rail-row:is(:hover, :focus-within, .show) .room-gear { opacity: .85; pointer-events: auto; }
 .room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; }
 /* This room's settings for a mode: a card beside the rail (when there are no docks). */
 .room-mode-settings { position: fixed; top: calc(var(--bar) + var(--s-2)); left: calc(var(--rail) + var(--s-2)); width: 240px; cursor: default; }
@@ -18899,6 +18899,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const big = isBig3(r);
       const items = [el14("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
       const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el14("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
+      const gearOrSettings = (id) => this.frame?.railNarrow ? this.openRoomSettings(id) : this.toggleGear(id);
       for (const m2 of big ? this.ontologies : [this.ont]) {
         const on = m2.id === this.mode;
         const word = big ? el14("button", {
@@ -18909,14 +18910,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-current": String(on),
           title: m2.name,
           onclick: () => {
-            if (on) this.toggleGear(m2.id);
+            if (on) gearOrSettings(m2.id);
             else this.setMode(m2.id);
           }
         }, mark(m2), railWord2(m2.name)) : el14("span", {
           class: "rail-item room-rail-fixed",
           "aria-current": "true",
           title: `${m2.name}: a small room keeps one mode. Make it 2 × 2 to switch.`,
-          onclick: () => this.toggleGear(m2.id)
+          onclick: () => gearOrSettings(m2.id)
         }, mark(m2), railWord2(m2.name));
         const gear = this.settingsOf(m2).length ? el14("button", {
           type: "button",
@@ -20880,14 +20881,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.trayEl.hidden = false;
       this.trayEl.replaceChildren(...row ? [row] : [], word);
     }
-    // The loose thoughts in the left dock: opened when there are some, and kept up to date while it
-    // shows (or is hidden). Once open it stays, empty or not, while you stay in the room, so
-    // switching mode (Tab) changes what it lists without shutting and opening it again; leaving the
-    // room shuts it.
+    // The loose thoughts in the left dock: always there in a room, empty or not ("Loose · 0"), and
+    // kept up to date while it shows (or is hidden), so switching mode (Tab) changes what it lists
+    // without shutting and opening it again; leaving the room shuts it.
     drawLoose(items) {
       const dock = this.docks.left;
       const open = this.loose && dock.isOpen("loose");
-      if (!items.length && !open) {
+      if (!this.roomId && !open) {
         this.loose = null;
         return;
       }
