@@ -201,8 +201,22 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
     put(w, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations(w, roomId)[0] } });
   }
 
+  // In a .traum file (the roomfile feature): the arrow: lines of any ontology that uses these
+  // arrows, `arrow: ^from -> ^to | relation | label`. c: the roomfile feature's helpers
+  // (ref, writeArrow; thing, report). traumLines gives the lines; traumArrows draws the arrows read
+  // ([{ from, to, rel, label, line }], from and to as ids), through this ontology's own rules, and
+  // reports each it refuses.
+  const traumLines = (w, roomId, c) => arrows(w, roomId).filter((a) => c.ref(a.from) && c.ref(a.to))
+    .map((a) => `arrow: ${c.writeArrow({ from: c.ref(a.from), to: c.ref(a.to), rel: a.rel, label: a.label })}`);
+  function traumArrows(w, roomId, list, c) {
+    for (const a of list) {
+      const why = link(w, roomId, a.from, a.to, a.label || '', a.rel ?? '');
+      if (why) c.report(a.line, `the arrow wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, '')}.`);
+    }
+  }
+
   return {
     relations, renameRelations, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
-    link, unlink, setLabel, setRelation, adopt,
+    link, unlink, setLabel, setRelation, adopt, traumLines, traumArrows,
   };
 }

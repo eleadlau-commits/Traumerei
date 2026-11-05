@@ -14,7 +14,7 @@
 // keeps one (a Russell chapter); a mode that reads by time (a Joyce train) orders them by when
 // they were written.
 
-import { parse, keysOf, write, writeValue, writeFront, frontValue, ref } from './grammar.js';
+import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow } from './grammar.js';
 import {
   room, view, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, isGroup,
   addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, join, setOrder,
@@ -159,8 +159,19 @@ export function exportRoom(w, roomId, { ontologies = [], pictures = null, sectio
   return write({ front, objects, sections: [...sections(w, roomId, ids, modes, ontologies), ...(kept.sections || [])] });
 }
 
-// The # In <mode> sections (none yet).
-export function placementSections() { return []; }
+// The # In <mode> sections: each mode's own lines (its traum.write), then the lines kept from a
+// file that it didn't understand.
+export function placementSections(w, roomId, ids, modes, ontologies) {
+  const kept = own(w, roomId, KEPT, false).modeLines || {};
+  const c = { ref: (id) => (ids.has(id) ? ref(ids.get(id)) : null), writeArrow };
+  const out = [];
+  for (const m of modes) {
+    const o = ontology(ontologies, m);
+    const lines = [...(o?.traum ? o.traum.write(w, roomId, c) : []), ...(kept[m] || [])];
+    if (lines.length) out.push({ name: `In ${m}`, lines });
+  }
+  return out;
+}
 
 // ---- Bringing objects in ----
 
@@ -251,25 +262,93 @@ export function unfetched(f, line, report) {
 function keep(w, roomId, kept, meta, unread) {
   const sections = unread?.sections;
   kept.objects.push(...(unread?.objects || []));
-  const has = kept.objects.length || Object.keys(kept.keys).length || meta?.kept?.length || sections?.length;
+  const modeLines = unread?.modeLines || {};
+  const has = kept.objects.length || Object.keys(kept.keys).length || meta?.kept?.length || sections?.length || Object.keys(modeLines).length;
   if (!has) return;
   const data = own(w, roomId, KEPT);
   if (meta?.kept?.length) data.front = [...new Set([...(data.front || []), ...meta.kept])];
   if (kept.objects.length) data.objects = [...(data.objects || []), ...kept.objects];
   if (Object.keys(kept.keys).length) data.keys = { ...(data.keys || {}), ...kept.keys };
   if (sections?.length) data.sections = [...(data.sections || []), ...sections];
+  for (const [m, lines] of Object.entries(modeLines)) (data.modeLines ||= {})[m] = [...(data.modeLines?.[m] || []), ...lines];
 }
 
-// The placement sections read (none yet). Returns what it didn't understand, to keep: { sections:
-// [{ name, lines }], objects: [relation objects it didn't take] }.
-export function readSections(w, roomId, parts, { relations = [], report = [] } = {}) {
-  const sections = [];
-  for (const s of parts.sections) {
-    sections.push({ name: s.name, lines: s.lines.map((l) => l.text) });
-    report.push(`Line ${s.line}: the section "# ${s.name}" isn't read yet; it was kept and will be written back out.`);
+// A relation object read: { from: [values], to: [values], rel, label, of }, from its keys
+// (from:, to:, label:, made in:) and its title (the relation's name).
+function relationOf(obj, report) {
+  const { keys } = keysOf(obj);
+  const out = { from: [], to: [], rel: obj.title || '', label: '', of: null, line: obj.line };
+  for (const k of keys) {
+    if (k.key === 'from' || k.key === 'to') out[k.key].push(...k.values);
+    else if (k.key === 'label') out.label = k.values.length === 1 && k.values[0].t === 'text' ? k.values[0].v : k.raw;
+    else if (k.key === 'made in') out.of = String(k.values[0]?.v ?? '').toLowerCase();
+    else report.push(`Line ${k.line}: a relation's "${k.key}" isn't known, so it was left out.`);
   }
-  for (const o of relations) report.push(`Line ${o.line}: relation ^${o.id} isn't read yet; it was kept and will be written back out.`);
-  return { sections, objects: relations.map((o) => ({ id: o.id, kind: o.kind, title: o.title || '', lines: o.lines })) };
+  return out;
+}
+
+// The # In <mode> sections read, each by its mode's traum.read (called for every mode of the room,
+// with no lines when the file has no section for it, so it can place new things itself). Returns
+// what it didn't understand, to keep: { sections: [{ name, lines }], objects: [relation objects
+// no mode took], modeLines: { [mode]: [lines] } }.
+export function readSections(w, roomId, parts, { ids = new Map(), relations = [], ontologies = [], modes = [], report = [], at = null } = {}) {
+  const unread = { sections: [], objects: [], modeLines: {} };
+  const byMode = {};
+  for (const s of parts.sections) {
+    const m = /^in\s+(\S+)$/i.exec(s.name);
+    const mode = m?.[1].toLowerCase();
+    if (!mode || !modes.includes(mode) || !ontology(ontologies, mode)?.traum) {
+      unread.sections.push({ name: s.name, lines: s.lines.map((l) => l.text) });
+      report.push(`Line ${s.line}: ${!mode ? `"# ${s.name}" isn't a section Träumerei knows` : !modes.includes(mode) ? `"${mode}" isn't one of this room's modes` : `${mode} doesn't read its section yet`}; it was kept and will be written back out.`);
+      continue;
+    }
+    (byMode[mode] ||= []).push(...s.lines);
+  }
+  const fresh = new Set(ids.values());
+  const helpers = (mode) => {
+    const say = (line, words) => report.push(`Line ${line}: ${words}`);
+    const thing = (v, line) => {
+      if (v?.t !== 'ref') { say(line, `"${writeValue(v)}" isn't a ^reference.`); return null; }
+      const id = ids.get(v.id);
+      if (!id) { say(line, `^${v.id} isn't in the file.`); return null; }
+      if (v.occ || v.span != null) say(line, `${mode} doesn't use occurrences or spans; ${writeValue(v)} was read as ^${v.id}.`);
+      return id;
+    };
+    const arrow = (a, line) => {
+      const from = thing(a.from, line), to = thing(a.to, line);
+      return from && to ? { from, to, rel: a.rel, label: a.label, line } : null;
+    };
+    return {
+      thing, report: say, fresh, at,
+      keep(l) {
+        (unread.modeLines[mode] ||= []).push(l.text ?? (l.flag ? l.key : `${l.key}: ${l.raw}`));
+        say(l.line, l.key ? `${mode} doesn't know "${l.key}"; it was kept and will be written back out.` : `"${String(l.text).trim().slice(0, 40)}" isn't a line of the form key: values; it was kept.`);
+      },
+      arrow(l) {
+        const a = readArrow(l.raw);
+        if (!a) { say(l.line, 'an arrow is written ^from -> ^to | relation | label.'); return null; }
+        return arrow(a, l.line);
+      },
+      relations: [],
+      fromRelation: arrow,
+    };
+  };
+  const cs = Object.fromEntries(modes.filter((m) => ontology(ontologies, m)?.traum).map((m) => [m, helpers(m)]));
+  // Relation objects with one end each go to their mode as arrows; the rest are kept.
+  const arrowMode = modes.find((m) => ontology(ontologies, m)?.groups && cs[m]);
+  for (const obj of relations) {
+    const r = relationOf(obj, report);
+    const mode = r.of || arrowMode;
+    if (r.from.length !== 1 || r.to.length !== 1 || !cs[mode]) {
+      unread.objects.push({ id: obj.id, kind: obj.kind, title: obj.title || '', lines: obj.lines });
+      report.push(`Line ${obj.line}: relation ^${obj.id} ${!cs[mode] ? `is for ${mode || 'no mode'}, which doesn't read relations here` : 'joins more than two things, which no mode here reads yet'}; it was kept and will be written back out.`);
+      continue;
+    }
+    const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label }, obj.line);
+    if (a) cs[mode].relations.push(a);
+  }
+  for (const [m, c] of Object.entries(cs)) ontology(ontologies, m).traum.read(w, roomId, byMode[m] || [], c);
+  return unread;
 }
 
 // ---- Bringing a file in ----
@@ -287,12 +366,12 @@ export const say = (n) => [plural(n.groups, 'group'), plural(n.thoughts, 'though
 
 // The file's objects and placement added to a room (the front matter is for new rooms only).
 // Returns { report, made }.
-export function importInto(w, roomId, parts, { ontologies = [], now = Date.now(), fetched = null, read = readSections } = {}) {
+export function importInto(w, roomId, parts, { ontologies = [], now = Date.now(), fetched = null, at = null, read = readSections } = {}) {
   const report = [...parts.report];
   if (!room(w, roomId) || shut(w, roomId)) { report.push('This room is locked, so nothing was brought in.'); return { report, made: { groups: 0, thoughts: 0, pictures: 0 } }; }
   const modes = modesOf(w, roomId, ontologies);
   const got = bringObjects(w, roomId, parts, { modes, ontologies, now, report, fetched });
-  const unread = read(w, roomId, parts, { ids: got.ids, relations: got.relations, ontologies, modes, report });
+  const unread = read(w, roomId, parts, { ids: got.ids, relations: got.relations, ontologies, modes, report, at });
   keep(w, roomId, got.kept, null, unread);
   return { report, made: got.made, ids: got.ids };
 }

@@ -272,3 +272,30 @@ export function write({ front = [], objects = [], sections = [] }) {
   for (const s of sections) out.push([`# ${s.name}`, ...s.lines].join('\n'));
   return out.join('\n\n') + '\n';
 }
+
+// ---- Arrows ----
+
+// An arrow: line's words read: `^from -> ^to | relation | label` (relation and label may be left
+// out or empty; either may be in "quotes"). Returns { from, to, rel, label } (from and to as ref
+// values), or null.
+export function readArrow(raw) {
+  const m = /^\s*(\^\S+)\s*->\s*(\^\S+)\s*(?:\|(.*))?$/s.exec(String(raw ?? ''));
+  if (!m) return null;
+  const [from] = values(m[1]), [to] = values(m[2]);
+  if (from?.t !== 'ref' || to?.t !== 'ref') return null;
+  let rest = (m[3] ?? '').trim(), rel = '', label = '';
+  if (m[3] != null) {
+    if (rest.startsWith('"')) { const q = quoted(rest, 0); rel = q.v; rest = rest.slice(q.end).trim().replace(/^\|/, ''); }
+    else { const k = rest.indexOf('|'); rel = (k < 0 ? rest : rest.slice(0, k)).trim(); rest = k < 0 ? '' : rest.slice(k + 1); }
+    rest = rest.trim();
+    label = rest.startsWith('"') && rest.endsWith('"') && rest.length > 1 ? quoted(rest, 0).v : rest;
+  }
+  return { from, to, rel, label };
+}
+
+// An arrow written as readArrow reads it: { from, to } as '^a' words, rel, label.
+export function writeArrow({ from, to, rel = '', label = '' }) {
+  const r = /\||^"|^\s|\s$/.test(rel) ? quote(rel) : rel;
+  const l = /^"|^\s|\s$/.test(label) ? quote(label) : label;
+  return `${from} -> ${to}${r || l ? ` |${r ? ` ${r}` : ''}` : ''}${l ? ` | ${l}` : ''}`;
+}

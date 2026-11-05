@@ -150,7 +150,10 @@ neutral `# Objects` list and one `# In <mode>` section per ontology. `grammar.js
 the text into parts (front matter, objects, sections, typed values) with no world; `traum.js`
 makes the parts into a room and writes a room out (`importRoom`, `importInto`, `exportRoom`).
 Each kind of item says how it reads and writes itself there (`traum` in the world feature's
-`items/`). Anything not understood (a kind, a key, a section, a front matter line) is reported and
+`items/`), and so does each ontology for its own `# In <mode>` section (`traum` in
+`ontologies/`: Joyce's `at:`/`offset:`/`tray:`, Pessoa's `at:`/`on canvas:`, Russell's
+`on canvas:`/`at:`/`tray:`/`arrow:`; the `arrow:` line comes from the shared arrows part,
+`relations.js`). A `## ^r relation` object with one `from:` and one `to:` is an arrow too. Anything not understood (a kind, a key, a section, a front matter line) is reported and
 kept with the room (`own(w, room, 'traum')`), and written back out next time. Tested in
 `tests/grammar.test.js` and `tests/traum.test.js`. Not used by the screens yet.
 
