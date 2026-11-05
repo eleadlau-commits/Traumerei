@@ -22,7 +22,7 @@ import {
 
 export const FORMAT = 'room/2';
 export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/features/roomfile/FORMAT.md';
-const KEPT = 'traum'; // where what wasn't understood is kept with the room: own(w, room, KEPT)
+export const KEPT = 'traum'; // where what wasn't understood is kept with the room: own(w, room, KEPT)
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
@@ -83,10 +83,10 @@ export function modesOf(w, roomId, ontologies = []) {
   if (r?.size === 2 || r?.id === 'messy') return [mine, ...ontologies.map((o) => o.id).filter((id) => id !== mine)];
   return [mine];
 }
-const ontology = (ontologies, id) => ontologies.find((o) => o.id === id) || null;
+export const ontology = (ontologies, id) => ontologies.find((o) => o.id === id) || null;
 // The ontology whose groups a group with no made in: belongs to: the room's first mode with groups,
 // or Joyce's trains.
-const groupMode = (modes, ontologies) => modes.find((m) => ontology(ontologies, m)?.groups) || DEFAULT_MODE;
+export const groupMode = (modes, ontologies) => modes.find((m) => ontology(ontologies, m)?.groups) || DEFAULT_MODE;
 
 // ---- Objects ----
 
@@ -117,7 +117,7 @@ export function objectOrder(w, roomId) {
 
 // One thing as an object: { id, kind, title, lines }. ids: thing id → file id. pictures (optional):
 // short references in place of each picture's data.
-function writeObject(w, roomId, th, ids, pictures) {
+export function writeObject(w, roomId, th, ids, pictures) {
   const id = ids.get(th.id);
   if (isGroup(th)) {
     const lines = [`made in: ${th.of}`, `holds: ${members(w, th.id).map((m) => ref(ids.get(m.id))).join(' ')}`];
@@ -148,9 +148,12 @@ export function fileIds(things, taken = new Set()) {
 
 // The room as a .traum file. pictures (optional): short references in place of each picture's data
 // (the source editor's). sections(w, roomId, ids, modes): the # In <mode> sections ([{ name, lines }]).
-export function exportRoom(w, roomId, { ontologies = [], pictures = null, sections = placementSections } = {}) {
+export function exportRoom(w, roomId, o = {}) { return roomText(w, roomId, o).text; }
+
+// The same, with the ids it gave: { text, ids: Map(thing id → file id) }.
+export function roomText(w, roomId, { ontologies = [], pictures = null, sections = placementSections } = {}) {
   const r = room(w, roomId);
-  if (!r) return '';
+  if (!r) return { text: '', ids: new Map() };
   const kept = own(w, roomId, KEPT, false);
   const twin = isTwin(r) ? sides(w, roomId) : null;
   const modes = twin ? twin.map((s) => view(w, s.id).mode) : modesOf(w, roomId, ontologies);
@@ -166,7 +169,7 @@ export function exportRoom(w, roomId, { ontologies = [], pictures = null, sectio
   const placed = twin
     ? twin.flatMap((s, k) => sections(w, s.id, ids, [modes[k]], ontologies).map((x) => ({ ...x, name: x.name.replace(/^In /, `${SIDES[k]}: `) })))
     : sections(w, roomId, ids, modes, ontologies);
-  return write({ front, objects, sections: [...placed, ...(kept.sections || [])] });
+  return { text: write({ front, objects, sections: [...placed, ...(kept.sections || [])] }), ids };
 }
 const SIDES = ['Left', 'Right'];
 
@@ -270,7 +273,7 @@ export function unfetched(f, line, report) {
 }
 
 // What wasn't understood, kept with the room so it is written back out.
-function keep(w, roomId, kept, meta, unread) {
+export function keep(w, roomId, kept, meta, unread) {
   const sections = unread?.sections;
   kept.objects.push(...(unread?.objects || []));
   const modeLines = unread?.modeLines || {};
@@ -302,7 +305,7 @@ function relationOf(obj, report) {
 // with no lines when the file has no section for it, so it can place new things itself). Returns
 // what it didn't understand, to keep: { sections: [{ name, lines }], objects: [relation objects
 // no mode took], modeLines: { [mode]: [lines] } }.
-export function readSections(w, roomId, parts, { ids = new Map(), relations = [], ontologies = [], modes = [], report = [], at = null } = {}) {
+export function readSections(w, roomId, parts, { ids = new Map(), relations = [], ontologies = [], modes = [], report = [], at = null, scope = null, change = null, name = null, fresh: freshIds = null } = {}) {
   const unread = { sections: [], objects: [], modeLines: {} };
   const byMode = {};
   for (const s of parts.sections) {
@@ -315,7 +318,7 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
     }
     (byMode[mode] ||= []).push(...s.lines);
   }
-  const fresh = new Set(ids.values());
+  const fresh = freshIds || new Set(ids.values());
   const helpers = (mode) => {
     const say = (line, words) => report.push(`Line ${line}: ${words}`);
     const thing = (v, line) => {
@@ -330,7 +333,7 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
       return from && to ? { from, to, rel: a.rel, label: a.label, line } : null;
     };
     return {
-      thing, report: say, fresh, at,
+      thing, report: say, fresh, at, scope, change, name,
       keep(l) {
         (unread.modeLines[mode] ||= []).push(l.text ?? (l.flag ? l.key : `${l.key}: ${l.raw}`));
         say(l.line, l.key ? `${mode} doesn't know "${l.key}"; it was kept and will be written back out.` : `"${String(l.text).trim().slice(0, 40)}" isn't a line of the form key: values; it was kept.`);

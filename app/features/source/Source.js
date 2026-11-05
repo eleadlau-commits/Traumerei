@@ -1,4 +1,4 @@
-// The source editor: a thing's source as plain text (room Markdown, from the roomfile feature) in
+// The source editor: a thing's source as plain text (.traum text, from the roomfile feature) in
 // the side panel. Whoever opens it gives the text and two functions: check(text), which says what
 // the text holds and what Apply would do, and apply(text), which does it. This feature knows
 // nothing of rooms or Markdown; it is the box, the quiet lines above it and the words below it.
@@ -65,7 +65,7 @@ export default class Source extends Feature {
       const soon = () => { clearTimeout(timer); timer = setTimeout(run, CHECK); };
       box.addEventListener('input', soon);
       box.addEventListener('keydown', (e) => {
-        // A tab is two spaces (room Markdown indents with spaces).
+        // A tab is two spaces.
         if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !readOnly) { e.preventDefault(); box.setRangeText('  ', box.selectionStart, box.selectionEnd, 'end'); soon(); }
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !readOnly && apply) { e.preventDefault(); doApply(); }
       });
@@ -75,7 +75,7 @@ export default class Source extends Feature {
         try { await navigator.clipboard.writeText(box.value); say('Copied'); } catch { box.select(); say('Press Ctrl+C to copy'); }
       };
       const download = () => {
-        const url = URL.createObjectURL(new Blob([full(box.value)], { type: 'text/markdown;charset=utf-8' }));
+        const url = URL.createObjectURL(new Blob([full(box.value)], { type: 'text/plain;charset=utf-8' }));
         const a = el('a', { href: url, download: fileName, hidden: true });
         document.body.append(a);
         a.click();

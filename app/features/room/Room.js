@@ -61,7 +61,7 @@ export default class Room extends Feature {
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
-    this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
+    this.files = this.use('roomfile');    // a room in and out as a .traum file (the roomfile feature), or null
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
@@ -372,9 +372,9 @@ export default class Room extends Feature {
     this.openProps(this.sel);
   }
 
-  // ---- Room Markdown: the roomfile feature does the work; this feature says where ----
+  // ---- Room files (.traum): the roomfile feature does the work; this feature says where ----
 
-  // A room Markdown file dropped on a room: its groups and thoughts join it.
+  // A room file (.traum, or plain .md) dropped on a room: its groups and thoughts join it.
   listenForFiles() {
     const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');
     this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
@@ -403,7 +403,7 @@ export default class Room extends Feature {
   // Downloads a room as <its name>.traum (a locked room too).
   exportRoomFile(id = this.roomId) { this.files?.exportRoom(id); }
 
-  // A group (or, with none, the whole room) as room Markdown in the source editor, in the side
+  // A group (or, with none, the whole room) as .traum text in the source editor, in the side
   // panel; Apply puts it back as one step (read only in a locked room).
   async editAsMarkdown(groupId = null) {
     if (!this.roomId || !this.files?.canEdit) return;

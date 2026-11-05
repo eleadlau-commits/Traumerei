@@ -54,7 +54,7 @@ export default class Rooms extends Feature {
     this.past = null;        // a past day from the Time dock, while it shows (past.js), or null
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
-    this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
+    this.files = this.use('roomfile');    // a room in and out as a .traum file (the roomfile feature), or null
     this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
     this.panel = this.use('panel');       // the right dock, where a room's properties open, or null
     this.frame = this.use('frame');       // the top bar and the foot around the page (the frame feature), or null
@@ -75,7 +75,7 @@ export default class Rooms extends Feature {
       this.drawRooms();
     });
     this.on('room:changed', (id) => this.edited.add(id)); // a room was written in
-    // In the menu, on the rooms page: a new room from a room Markdown file (the roomfile feature).
+    // In the menu, on the rooms page: a new room from a room file (the roomfile feature).
     if (this.files) this.add('header.buttons', { id: 'rooms-import', label: 'Import a room…', icon: 'book', order: 40,
       visible: () => !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.');
@@ -446,7 +446,7 @@ export default class Rooms extends Feature {
     field?.select();
   }
 
-  // ---- Room Markdown: the roomfile feature does the work; this page says where ----
+  // ---- Room files (.traum): the roomfile feature does the work; this page says where ----
 
   // On the rooms page: a new room from a file, in `cell` (or the first free one).
   async importRoomFile(file = null, cell = null) {
@@ -516,7 +516,7 @@ export default class Rooms extends Feature {
       this.leaveBox = el('div', { class: 'panel sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
 
-    // A room Markdown file dropped on the page: a new room, in the first free cell.
+    // A room file dropped on the page: a new room, in the first free cell.
     const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');
     this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
     this.root.addEventListener('drop', (e) => {

@@ -1,4 +1,4 @@
-// Room files: a room in and out as one Markdown file ("room Markdown", format.js). A file comes
+// Room files: a room in and out as one .traum file (traum.js; FORMAT.md is the spec). A file comes
 // in as a new room or into a room; before anything changes, a quiet card says what will arrive and
 // what couldn't be read, and Import brings it all in as one step. A room goes out as a download.
 // The rooms page and the room ask for all of it through the `roomfile` service below (README.md
@@ -7,10 +7,7 @@
 
 import { Feature, ui } from 'folio';
 import { bind, room, shut, keepOrShrink, chapterName, isGroup } from './world.js';
-// The source editor still uses room Markdown (format.js) until it moves to .traum.
-import {
-  parse, exportGroup, exportRoom, plan, apply, shortPictures, badMaths, fileName, copyWorld, unfetched,
-} from './format.js';
+import * as edit from './edit.js';
 import * as traum from './traum.js';
 import { parse as parseTraum } from './grammar.js';
 import { plain } from './plain.js';
@@ -78,35 +75,6 @@ export default class Roomfile extends Feature {
     return parts;
   }
 
-  // The text read's pictures at an address (or as data) fetched and shrunk; a short reference
-  // (picture:3, from the Markdown window) is left for plan() to read.
-  async fetchPictures(parsed) {
-    const lists = [parsed.loose, ...parsed.groups.map((g) => g.items)];
-    const wanted = (x) => x.kind === 'picture' && !/^picture:\d+$/.test(x.url || '');
-    if (lists.some((l) => l.some((x) => wanted(x) && x.url))) this.toast('Fetching pictures…');
-    for (const list of lists) {
-      for (let k = 0; k < list.length; k++) {
-        const it = list[k];
-        if (!wanted(it)) continue;
-        try {
-          let blob;
-          if (it.src) blob = await (await fetch(it.src)).blob();
-          else if (/^https?:\/\//i.test(it.url)) {
-            const res = await fetch(it.url);
-            if (!res.ok) throw new Error(res.status);
-            blob = await res.blob();
-          } else throw new Error('no address');
-          if (!blob.type.startsWith('image/')) throw new Error('not a picture');
-          const { url, ...rest } = it;
-          list[k] = { ...rest, src: await keepOrShrink(blob, it.src) };
-        } catch {
-          list[k] = unfetched(it, parsed.report);
-        }
-      }
-    }
-    return parsed;
-  }
-
   // A new room from a file (picked, if none is given) on floor `page`, placed by the floors feature:
   // in `cell` if it is free, else that floor's first free one, else a new floor (its `page` says
   // which). ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
@@ -120,7 +88,7 @@ export default class Roomfile extends Feature {
       ontologies: this.w.ontologies, now: Date.now(), page,
       globals: this.w.globals, name: file.name.replace(FILE, '') || 'Untitled',
     });
-    const dry = traum.importRoom(copyWorld(this.w.world), parts, opts());
+    const dry = traum.importRoom(edit.copyWorld(this.w.world), parts, opts());
     if (!await this.ask('Import a room', dry.room?.name || 'A new room', dry) || !ok()) return null;
     const out = traum.importRoom(this.w.world, parts, opts());
     if (!out.room) { this.toast('A room couldn\'t be made.'); return null; }
@@ -139,7 +107,7 @@ export default class Roomfile extends Feature {
     const parts = await this.read(file);
     if (!parts || !ok()) return false;
     const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at() });
-    const dry = traum.importInto(copyWorld(this.w.world), roomId, parts, opts());
+    const dry = traum.importInto(edit.copyWorld(this.w.world), roomId, parts, opts());
     const name = room(this.w.world, roomId)?.name || '';
     if (!await this.ask('Import into this room', name, dry) || !ok() || shut(this.w.world, roomId)) return false;
     before();
@@ -147,62 +115,51 @@ export default class Roomfile extends Feature {
     return true;
   }
 
-  // ---- Editing as Markdown, in the source editor ----
+  // ---- Editing as .traum text, in the source editor ----
 
-  // A group (scope 'group', groupId) or the whole room (scope 'room') as room Markdown in the
-  // source editor, with what Apply would do checked as it is typed. A locked room shows it read
+  // A group (scope 'group', groupId) or the whole room (scope 'room') as .traum text in the source
+  // editor (edit.js), with what Apply would do checked as it is typed. A locked room shows it read
   // only. before(): called just before the world changes; ok(): whether it is still wanted.
   // Resolves true once Apply has changed the world (the caller saves, as one step).
   async edit(roomId, { scope, groupId = null, before = () => {}, ok = () => true }) {
     const w = () => this.w.world;
     if (!this.source) return false;
     if (!room(w(), roomId) || (scope === 'group' && !isGroup(w().things[groupId]))) return false;
-    const pictures = shortPictures();
+    const pictures = edit.shortPictures();
     const ontologies = () => this.w.ontologies;
-    const write = () => (scope === 'group' ? exportGroup(w(), roomId, groupId, { pictures }) : exportRoom(w(), roomId, { ontologies: ontologies(), pictures }));
+    let session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures });
     const title = scope === 'group' ? chapterName(w(), groupId) || 'Untitled' : room(w(), roomId).name;
     const readOnly = shut(w(), roomId);
-    const opts = { scope, groupId, ontologies: ontologies(), pictures };
+    const opts = (chosen = {}) => ({ ontologies: ontologies(), pictures, removeMissing: !!chosen.remove });
     const check = (text, chosen = {}) => {
-      const parsed = parse(text);
-      const p = plan(w(), roomId, parsed, opts);
-      const n = { groups: parsed.groups.length, thoughts: parsed.loose.length + parsed.groups.reduce((s, g) => s + g.items.length, 0) };
-      const holds = `${count(n.groups, p.word)}, ${count(n.thoughts, 'thought')}`;
-      const c = p.counts;
-      const doing = c && !readOnly ? [c.kept && `${c.kept} kept`, c.made && `${c.made} new`, c.deleted && `${c.deleted} deleted`].filter(Boolean).join(', ') : '';
-      const t = (id) => `"${w().things[id]?.title || `an untitled ${p.word}`}"`;
-      const missing = p.missing.map(t);
-      const changes = readOnly ? [] : [
-        ...p.meta.map((m) => m.text),
-        ...p.renames.map((r) => `${r.from ? `"${r.from}"` : `The untitled ${p.word}`} is renamed "${r.to}"`),
-        ...p.folds.map((f) => `${t(f.id)} is ${f.closed ? 'closed' : 'open'}`),
-        ...p.arrowChanges,
-        ...p.add.filter((g) => g.items.length).map((g) => `A new ${p.word}: ${g.title ? `"${g.title}"` : 'untitled'}`),
-        ...(p.looseAdd?.length ? [`${count(p.looseAdd.length, 'thought')} above the first heading ${p.looseAdd.length === 1 ? 'is' : 'are'} added as loose`] : []),
-        ...(missing.length ? [`${chosen.remove ? 'Removed' : 'Not in the text, left as they are'}: ${missing.join(', ')}`] : []),
-      ];
-      const report = [...p.report, ...badMaths(text).map((b) => `Line ${b.line}: KaTeX can't draw ${b.tex.length > 50 ? b.tex.slice(0, 47) + '…' : b.tex}`)];
+      const parts = parseTraum(text);
+      const n = traum.summary(parts);
+      const r = edit.apply(edit.copyWorld(w()), roomId, session, parts, opts(chosen));
+      const c = r.counts;
+      const doing = !readOnly ? [c.kept && `${c.kept} kept`, c.changed && `${c.changed} changed`, c.made && `${c.made} new`, c.deleted && `${c.deleted} deleted`].filter(Boolean).join(', ') : '';
+      const report = [...r.report, ...edit.badMaths(parts).map((b) => `Line ${b.line}: KaTeX can't draw ${b.tex.length > 50 ? b.tex.slice(0, 47) + '…' : b.tex}`)];
       return {
-        summary: [holds, doing].filter(Boolean).join(' · '), changes, report,
-        options: scope === 'room' ? [{ key: 'remove', label: `Remove ${p.word}s not in the text`, show: !!missing.length }] : [],
-        blocked: !p.of,
+        summary: [say(n), doing].filter(Boolean).join(' · '), changes: readOnly ? [] : r.changes, report,
+        options: scope === 'room' ? [{ key: 'remove', label: 'Delete what isn\'t in the text', show: !!r.missing.length }] : [],
+        blocked: r.blocked,
       };
     };
     const applyText = async (text, chosen = {}) => {
-      const parsed = await this.fetchPictures(parse(text));
+      const parts = await this.fetchObjectPictures(parseTraum(text));
       if (!ok() || shut(w(), roomId)) return false;
-      const p = plan(w(), roomId, parsed, opts);
-      if (!p.of) { this.toast(p.report.at(-1) || 'That couldn\'t be applied.'); return false; }
+      const dry = edit.apply(edit.copyWorld(w()), roomId, session, parts, opts(chosen));
+      if (dry.blocked) { this.toast(dry.report.at(-1) || 'That couldn\'t be applied.'); return false; }
       before();
-      apply(w(), roomId, p, { removeMissing: !!chosen.remove });
+      edit.apply(w(), roomId, session, parts, opts(chosen));
       return true;
     };
+    const reset = () => { session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures }); return session.text; };
     return this.source.open({
-      kind: scope === 'group' ? 'Source' : 'Source · whole room', title, text: write(), readOnly,
-      fileName: fileName(title), full: (t) => pictures.full(t), reset: write,
-      options: scope === 'room' ? [{ key: 'remove', label: 'Remove groups not in the text', value: false }] : [],
+      kind: scope === 'group' ? 'Source' : 'Source · whole room', title, text: session.text, readOnly,
+      fileName: traum.fileName(title), full: (t) => pictures.full(t), reset,
+      options: scope === 'room' ? [{ key: 'remove', label: 'Delete what isn\'t in the text', value: false }] : [],
       check, apply: readOnly ? null : applyText,
-      draft: scope === 'group' ? `group:${groupId}` : `room:${roomId}`, // changes closed unapplied come back next time
+      draft: scope === 'group' ? `traum-group:${groupId}` : `traum-room:${roomId}`, // changes closed unapplied come back next time
     });
   }
 
