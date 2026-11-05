@@ -234,7 +234,7 @@ export class RoomsGrid {
         el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')));
   }
 
-  // A right-click on an empty cell: a room from a room Markdown file, put in that cell.
+  // A right-click on an empty cell: a room from a room file, put in that cell.
   importOptions(c, cell, cols) {
     return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
       el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem',
@@ -674,7 +674,7 @@ export class RoomsGrid {
     // Locked: nothing inside can change, and the square stays where it is.
     p.lock = () => this.lockRooms([r.id]);
     p.archive = r.id !== MESSY && !r.locked ? () => this.archiveRooms([r.id]) : null;
-    // Taken out as room Markdown (the roomfile feature); a locked room too.
+    // Taken out as a .traum file (the roomfile feature); a locked room too.
     p.export = this.files ? () => this.exportRoomFile(r.id) : null;
     p.remove = r.id !== MESSY && !r.locked ? () => {
       remove(this.world, r.id);

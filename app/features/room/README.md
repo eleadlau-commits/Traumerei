@@ -70,8 +70,8 @@ It offers no service of its own.
     tells arrows apart. Double-click an arrow or its label to edit it where it is: its relation
     (any of the room's, "(no relation)", or "+ New…", which adds one to the room's list) and its
     label; Enter keeps it, Esc lets it go. The chapter's pop-up has the same picker for each arrow
-    into it. In room Markdown an arrow is a line under its chapter's heading,
-    `> relation [[Parent]]: label` (roomfile's README). Enter
+    into it. In a .traum file an arrow is an `arrow: ^from -> ^to | relation | label` line in its
+    `# In russell` section (roomfile's FORMAT.md). Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
     **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click chooses it; a right-click opens it in the content editor, in the right dock's
@@ -135,7 +135,7 @@ rail and settings, clear space), `writing.js` (thoughts, the draft, the caret),
 sheets, pictures) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
-A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); the room
+A room in and out as a `.traum` file is the **roomfile** feature's (`app/features/roomfile`); the room
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
 
 ## Editing, the line, the timeline
@@ -167,8 +167,8 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   the mode's own rows (Russell's arrows), move it to another room, or delete it. Under that, a
   group's thoughts show as paragraphs to write in, as in a closed chapter's document (click one to
   write; Enter keeps it and starts the next; Ctrl+Enter a new line; Backspace in an empty one goes
-  back). A small *Source* at the foot opens the group (or the group a thought is in) as room
-  Markdown in the source editor, in the same panel. While the editor shows, a click on another
+  back). A small *Source* at the foot opens the group (or the group a thought is in) as .traum
+  text in the source editor, in the same panel. While the editor shows, a click on another
   thought, group or train switches it there; Escape or × closes it. Several things chosen together
   still get the small pop-up beside them, and with no docks feature the pop-up is used for all. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
@@ -177,9 +177,9 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   the roomfile feature) *Import…*; a passage or picture made there is kept loose, in the tray. A
   right-click on the empty canvas opens **Add** at the pointer (Thought, Passage, Picture, Import
   into this room…), and what is made goes just there. Alt+P and Alt+I still make a passage or a
-  picture on the canvas. *Export* and *Edit as text* (the whole room in the source editor on the
-  right) are under ⋯ More at the foot of the rail. A group's pop-up has *Edit as Markdown* for just
-  that group.
+  picture on the canvas. *Export* (a .traum file) and *Edit as text* (the whole room as .traum
+  text in the source editor on the right) are under ⋯ More at the foot of the rail. A group's
+  pop-up has *Source* for just that group.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
   panel (`app/features/search`), which searches every room; a find opened there (`search:found`)
   brings the view to it, in its room. With no search feature the bar isn't there.

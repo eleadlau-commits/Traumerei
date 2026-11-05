@@ -187,7 +187,7 @@ const traum = {
     return out;
   },
   read(w, roomId, lines, c) {
-    const placed = new Set();
+    const placed = new Set(), nudged = new Set();
     const there = groupsIn(w, roomId, 'joyce').filter((g) => !c.fresh.has(g.id) && !g.loose && members(w, g.id).length);
     const num = (v) => (v?.t === 'num' ? v.v : null);
     for (const l of lines) {
@@ -196,7 +196,7 @@ const traum = {
         if (!id) continue;
         if (x == null || y == null) { c.report(l.line, `${l.key}: needs a ^reference and two numbers.`); continue; }
         const th = w.things[id];
-        if (l.key === 'offset') { th.dx = Math.round(x); th.dy = Math.round(y); continue; }
+        if (l.key === 'offset') { th.dx = Math.round(x); th.dy = Math.round(y); nudged.add(id); continue; }
         if (placed.has(id)) { c.report(l.line, 'Joyce places a thing once; this second at: was left out.'); continue; }
         placed.add(id);
         const hand = l.values.slice(3).some((v) => v.t === 'word' && v.v === 'hand');
@@ -217,6 +217,9 @@ const traum = {
         }
       } else c.keep(l);
     }
+    // Editing (c.scope: the ids the text holds): a thought it holds with no offset: line sits where
+    // its train puts it.
+    if (c.scope) for (const id of c.scope) { const th = w.things[id]; if (th && Number.isFinite(th.dx) && !nudged.has(id)) { delete th.dx; delete th.dy; } }
     // New trains with no place: side by side in clear space, below what was there.
     const fresh = groupsIn(w, roomId, 'joyce').filter((g) => c.fresh.has(g.id) && !placed.has(g.id) && !g.loose && !groupOf(w, g.id, 'joyce'));
     if (!fresh.length) return;

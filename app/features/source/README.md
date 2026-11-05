@@ -1,7 +1,7 @@
 # Source editor
 
 A thing's source as plain text, in the right dock (the docks feature's `panel` service): for now the
-room Markdown of a group or a whole room, which the roomfile feature gives it. It is a large
+the .traum text of a group or a whole room, which the roomfile feature gives it. It is a large
 monospace box with two quiet lists above it, and plain words below.
 
 - **Above the box**, a line says what the text holds now ("1 chapter, 14 thoughts · 12 kept, 2
