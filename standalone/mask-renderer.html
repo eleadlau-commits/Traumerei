@@ -780,37 +780,74 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .back-btn:is(:hover, :focus-visible) { opacity: 1; }
 .back-btn svg { width: 24px; height: 24px; }
 
-/* The rail: words down the left, under the menu; the current one has a hairline at its left. */
+/* The rail: a column of flat veil down the left, from under the top bar to the status bar, with a
+   hairline at its edge (the washi shows on the canvas only). Its parts are under quiet spaced
+   heads (.rail-head: Floors, Modes, Views); each item is a hairline icon (.rail-icon, 16px, or a
+   number in it, .rail-num) beside its word, in sentence case, one 30px row each. The one you are
+   on has an amber line at its left. Ctrl+Alt+B narrows it to its icons (48px): <html> has
+   .rail-narrow and --rail is 48px; the heads and the words hide, and each item says its name on
+   hover. A part that only makes sense wide (.rail-wide) hides too. */
 .rail {
-  position: absolute;
+  position: fixed;
   z-index: 2;
-  top: 32px;
-  left: var(--gutter);
-  width: calc(var(--rail) - 24px);
-  display: grid;
-  gap: 22px;
-  justify-items: start;
+  top: var(--bar);
+  bottom: var(--status, 0px);
+  left: 0;
+  width: var(--rail);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: var(--s-2) 0 var(--s-4);
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  background: var(--chrome);
+  box-shadow: 1px 0 0 var(--chrome-edge);
+  transition: width var(--quick) ease;
 }
+.rail-head {
+  margin: var(--s-3) 0 var(--s-1);
+  padding: 0 var(--s-4);
+  font-size: 10.5px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+  user-select: none;
+}
+.rail-head:first-child { margin-top: var(--s-1); }
 .rail-item {
   margin: 0;
-  padding: 3px 0 3px 15px;
-  display: grid;
-  gap: 6px;
+  min-height: var(--row);
+  padding: 4px var(--s-4) 4px calc(var(--s-4) - 2px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
   max-width: 100%;
-  font-size: 15px;
+  font-size: var(--t-work);
   line-height: 1.3;
-  letter-spacing: .2em;
+  letter-spacing: .01em;
   text-align: left;
-  text-transform: uppercase;
-  overflow-wrap: break-word;
-  opacity: .5;
-  box-shadow: inset 1px 0 0 transparent;
-  transition: opacity .2s, box-shadow .25s;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  background: none;
+  border-left: 2px solid transparent;
+  transition: color var(--quick), background-color var(--quick), border-color var(--quick);
 }
-.rail-item:is(:hover, :focus-visible) { opacity: .85; }
-.rail-item:is([aria-current="true"], [aria-current="page"], [aria-pressed="true"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
-.rail-item.drop-on { opacity: 1; outline: var(--drop-line); outline-offset: 2px; }
-.rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
+.rail-item:is(:hover, :focus-visible) { color: var(--ink); background-color: var(--hover-wash); }
+.rail-item:is([aria-current="true"], [aria-current="page"], [aria-pressed="true"], .on) { color: var(--ink); border-left-color: var(--amber); }
+.rail-item:focus-visible { outline-offset: -2px; }
+.rail-item.drop-on { color: var(--ink); outline: var(--drop-line); outline-offset: -3px; }
+.rail-icon { flex: none; width: 16px; height: 16px; stroke-width: 1.2; }
+.rail-num { display: inline-flex; align-items: center; justify-content: center; font: 10.5px/1 var(--font-mono); border: 1px solid currentColor; opacity: .8; }
+.rail-word { flex: 1; min-width: 0; }
+.rail-rule { height: 1px; margin: var(--s-2) var(--s-4); background: var(--chrome-edge); }
+html.rail-narrow { --rail: 48px; }
+.rail-narrow .rail { padding-top: var(--s-3); }
+.rail-narrow .rail :is(.rail-head, .rail-word, .rail-wide) { display: none !important; }
+.rail-narrow .rail .rail-item { justify-content: center; padding-left: 0; padding-right: 2px; }
 
 /* The status bar: a 26px band of flat veil at the foot (Ableton's Info View, Blender's status
    bar). On the left it explains what the pointer is over (.status-info); on the right what is
@@ -1209,6 +1246,10 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .frame-status { position: fixed; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity .4s; }
 .frame.on .frame-status { opacity: 1; }
 .frame:not(.on) .frame-status { pointer-events: none; }
+/* The rail button, at the far left of the status bar, under the rail: narrows it or widens it. */
+.frame-rail-btn { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 100%; margin-left: calc(var(--s-2) - var(--s-4)); padding: 0; opacity: .6; }
+.frame-rail-btn:is(:hover, :focus-visible) { opacity: 1; }
+.frame-rail-btn svg { width: 15px; height: 15px; }
 
 /* ---- feature: source (style.css) ---- */
 /* The source editor, inside the side panel (the panel feature): layout only. Class names start
@@ -1507,11 +1548,9 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
-/* ---- The floors of the rooms page, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor ---- */
-.rooms-pages { display: grid; gap: 10px; justify-items: start; width: 100%; }
-.rooms-pages[hidden] { display: none; }
-.rooms-page-new { opacity: .35; }
-.rooms-page-new:is(:hover, :focus-visible) { opacity: .85; }
+/* ---- The floors of the rooms page, in the rail under Floors: Floor 1, Floor 2, + New floor ---- */
+.rooms-pages { display: flex; flex-direction: column; gap: 1px; }
+.rooms-page-new { color: var(--faint); }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
 .rooms-tile:is(.picked, .chosen) { outline: var(--sel-line); outline-offset: 3px; }
@@ -1567,30 +1606,24 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 }
 .rooms-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
 
-/* The rail's Arrange by: under a hairline, None and the tag groups; a group opens to its tags. */
-.rooms-tags-btn.on { opacity: 1; }
-.rooms-tag-list { display: grid; gap: 6px; margin-top: -10px; width: 100%; }
-.rooms-tag-list[hidden] { display: none; }
-.rooms-tag-head, .rooms-tag-pick, .rooms-tag-plus { display: flex; align-items: baseline; justify-content: flex-start; }
-
-/* None and a group's name: small capitals, like the rail's words. */
-.rooms-tag-head { width: 100%; padding: 4px 0 4px 15px; font-size: 14.25px; }
-.rooms-tag-head[aria-expanded="true"] { opacity: .85; }
-.rooms-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 18px; transition: transform .25s var(--ease); }
+/* The rail's Arrange by: Tags opens None and the tag groups; a group opens to its tags. Each row is
+   a rail item, indented under Tags. */
+.rooms-tag-list { display: flex; flex-direction: column; gap: 1px; }
+.rooms-tag-list .rail-item { padding-left: 40px; }
+.rooms-tag-caret { margin-left: auto; color: var(--faint); transition: transform var(--quick); }
 .rooms-tag-head[aria-expanded="true"] .rooms-tag-caret { transform: rotate(90deg); }
-.rooms-tag-tags { display: grid; gap: 6px; padding: 4px 0 9px 15px; }
+.rooms-tag-tags { display: flex; flex-direction: column; gap: 1px; }
+.rooms-tag-tags .rail-item { padding-left: 52px; }
 
 /* A tag: its name and how many rooms have it. One of your own can be dragged onto a square. */
-.rooms-tag-pick { padding: 2px 0 2px 15px; font-size: 16.5px; letter-spacing: .03em; line-height: 1.25; text-transform: none; }
+.rooms-tag-pick { justify-content: space-between; }
 .rooms-tag-pick.draggable { cursor: grab; touch-action: none; }
 .rooms-tag-name { overflow-wrap: anywhere; }
-.rooms-tag-n { font-size: 15px; opacity: .6; font-variant-numeric: tabular-nums; }
-.rooms-tag-plus { padding: 2px 0 2px 15px; letter-spacing: .14em; line-height: 1.25; opacity: .4; }
-.rooms-tag-plus > span { font-size: 19.5px; font-weight: 300; letter-spacing: 0; }
-.rooms-tag-list > .rooms-tag-plus { margin-top: 4px; }
-.rooms-tag-plus:is(:hover, :focus-visible) { opacity: .9; }
-.rooms-group-edit { padding-left: 15px; }
-.rooms-group-field, .rooms-group-field:focus, .rooms-make-field, .rooms-make-field:focus { width: 100%; max-width: 160px; font-size: 16.5px; opacity: 1; border-bottom-color: currentColor; }
+.rooms-tag-n { color: var(--faint); font-variant-numeric: tabular-nums; }
+.rooms-tag-plus { gap: 6px; color: var(--faint); }
+.rooms-group-edit { padding: 2px var(--s-4) 2px 40px; }
+.rooms-tag-tags .rooms-group-edit { padding-left: 52px; }
+.rooms-group-field, .rooms-group-field:focus, .rooms-make-field, .rooms-make-field:focus { width: 100%; font-size: var(--t-work); opacity: 1; border-bottom-color: currentColor; }
 
 /* A tag being dragged onto a square: a small chip at the pointer; the square under it outlined. */
 .rooms-tag-ghost {
@@ -1719,16 +1752,18 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .room-stage.panning { cursor: grab; }
 .room-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 
-/* A room's rail, where the rooms page has Rooms and Archive: its modes, then a hairline and Timeline. */
-.room-page .room-modes { top: calc(var(--strip) + 32px); z-index: 3; }
+/* A room's rail (Folio's .rail): under Modes its modes, under Views Timeline. The canvas starts
+   beside it, so nothing lies under it. */
+.room-page .room-modes { z-index: 3; }
+.room-stage { left: var(--rail); }
 .room-rail-fixed { cursor: default; }
-/* A mode and its ⚙, which shows only while the mode is hovered over (or tapped, on a phone). */
-.room-rail-row { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
-.room-gear { padding: 0 3px; font-size: 16.5px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* A mode and its ⚙, which shows at its right only while the mode is hovered over. */
+.room-rail-row { position: relative; }
+.room-gear { position: absolute; top: 50%; right: var(--s-3); transform: translateY(-50%); padding: 0 3px; font-size: 15px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--quick); }
 .room-rail-row:is(:hover, :focus-within, .show) .room-gear { opacity: .55; pointer-events: auto; }
-.room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; outline: none; }
-/* This room's settings for a mode: a card beside the rail. */
-.room-mode-settings { top: -8px; left: calc(var(--rail) - 8px); width: 240px; cursor: default; }
+.room-gear:is(:hover, :focus-visible), .room-gear[aria-expanded="true"] { opacity: 1 !important; }
+/* This room's settings for a mode: a card beside the rail (when there are no docks). */
+.room-mode-settings { position: fixed; top: calc(var(--bar) + var(--s-2)); left: calc(var(--rail) + var(--s-2)); width: 240px; cursor: default; }
 .room-mode-settings-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .room-mode-settings .renderer-slider { font-size: 13px; }
@@ -1758,8 +1793,8 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .room-crumb-name .room-name-field { width: 18ch; font-size: var(--t-work); }
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
-/* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-.room-add { position: absolute; left: calc(var(--gutter) + 13px); bottom: calc(var(--status, 0px) + 14px); }
+/* On the canvas, at its foot beside the rail. */
+.room-add { position: absolute; left: calc(var(--rail) + var(--s-4)); bottom: calc(var(--status, 0px) + 14px); transition: left var(--quick) ease; }
 .room-add-btn { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; }
 .room-add-plus { display: inline-block; font-weight: 300; transition: transform .3s var(--ease); }
 .room-add-btn.open .room-add-plus { transform: rotate(45deg); }
@@ -1957,8 +1992,6 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .room.expanding .room-page { opacity: 0; pointer-events: none; } /* not hidden: it must take the keys typed meanwhile */
 
 
-/* ---- The rail on the left, under the menu: the room's modes ---- */
-/* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */
 
 /* Add, opened by a right-click on the canvas: there, at the pointer. */
 .room-add-menu.at { position: fixed; bottom: auto; z-index: 8; }
@@ -2209,6 +2242,10 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8"/><path d="M12 17h.01"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.5h.01"/>',
     chat: '<path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+    floor: '<path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5"/><path d="M3.5 16.5L12 21l8.5-4.5"/>',
+    archive: '<rect x="3" y="4" width="18" height="5"/><path d="M5 9v11h14V9"/><path d="M10 13h4"/>',
+    tag: '<path d="M3.5 12.2V4h8.2l8.8 8.8-8.2 8.2z"/><circle cx="8" cy="8.5" r="1.3"/>',
+    rail: '<rect x="3.5" y="4.5" width="17" height="15"/><path d="M9 4.5v15"/>',
     qr: '<rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><path d="M14.5 14.5h2.5v2.5M20.5 14.5v6h-3M14.5 18.5v2"/>'
   };
   function icon(nameOrDrawing) {
@@ -12535,6 +12572,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     id: "joyce",
     name: "Joyce",
     note: "thoughts joined by time",
+    icon: '<circle cx="5" cy="7" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="17" r="2"/><path d="M6.7 8.2l3.6 2.6M13.7 13.2l3.6 2.6"/>',
+    // thoughts on a line
     order: 10,
     groups: { form: "train", name: "Train", membership: "one" },
     live: true,
@@ -12673,6 +12712,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     id: "pessoa",
     name: "Pessoa",
     note: "each thought on its own",
+    icon: '<circle cx="6" cy="7" r="2"/><circle cx="17" cy="6" r="2"/><circle cx="11" cy="13" r="2"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18" cy="17" r="2"/>',
+    // each on its own
     order: 20,
     groups: null,
     units: (w2, roomId) => roomUnits(w2, roomId),
@@ -13241,6 +13282,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     id: ID,
     name: "Russell",
     note: "chapters in a tree",
+    icon: '<rect x="9" y="3" width="6" height="4"/><rect x="3" y="16" width="6" height="4"/><rect x="15" y="16" width="6" height="4"/><path d="M12 7v4.5M6 16v-4.5h12V16"/>',
+    // a tree
     order: 30,
     groups: { form: "chapter", name: "Chapter", membership: "one" },
     settings: [
@@ -13906,10 +13949,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var { el: el8 } = ui_exports;
   var MAC2 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var HINT_MS = 9e3;
+  var RAIL_KEY = { id: "frame.rail", keys: ["Ctrl+Alt+B"], words: "narrow the rail to its icons, or widen it", order: 79, typing: true };
   var Frame = class extends Feature {
     start() {
+      const self = this;
       this.stack = [];
+      this.narrow = !!this.storage.get("railNarrow");
       this.build();
+      this.drawRail();
       this.provide("frame", {
         show: (owner, o2) => this.show(owner, o2),
         update: (owner, o2) => this.update(owner, o2),
@@ -13917,8 +13964,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         saved: (word) => this.saved(word),
         hint: (text) => this.hint(text),
         clearHint: () => this.clearHint(),
-        hover: (text) => this.hover(text)
+        hover: (text) => this.hover(text),
+        toggleRail: () => this.toggleRail(),
+        get railNarrow() {
+          return self.narrow;
+        }
       });
+      this.add("keys", { ...RAIL_KEY, zone: "everywhere", run: () => this.toggleRail() });
       document.addEventListener("keydown", () => this.clearHint(), true);
       document.addEventListener("pointerdown", () => this.clearHint(), true);
       document.addEventListener("pointerover", (e) => this.over(e.target), true);
@@ -13947,9 +13999,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.hintLine = el8("span", { class: "status-info frame-info" });
       this.selEl = el8("span", { class: "frame-sel" });
       this.modeEl = el8("span", { class: "frame-mode" });
+      this.railBtn = el8("button", {
+        type: "button",
+        class: "frame-rail-btn",
+        "aria-keyshortcuts": "Control+Alt+B",
+        onclick: () => this.toggleRail()
+      }, ui_exports.icon("rail"));
       this.status = el8(
         "footer",
         { class: "status-bar frame-status" },
+        this.railBtn,
         this.hintLine,
         el8("span", { class: "status-right" }, this.selEl, this.modeEl, this.savedMark)
       );
@@ -13964,6 +14023,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.status
       );
       (document.getElementById("folio-root") || document.body).append(this.root);
+    }
+    // The rail: narrow (its icons, 48px) or wide. <html> has .rail-narrow while narrow (base.css
+    // sets --rail from it), and frame:rail says so.
+    toggleRail() {
+      this.narrow = !this.narrow;
+      this.storage.set("railNarrow", this.narrow);
+      this.drawRail();
+      this.emit("frame:rail", { narrow: this.narrow });
+    }
+    drawRail() {
+      document.documentElement.classList.toggle("rail-narrow", this.narrow);
+      const label2 = `${this.narrow ? "Widen" : "Narrow"} the rail`;
+      this.railBtn.setAttribute("aria-label", label2);
+      this.railBtn.setAttribute("title", `${label2} · Ctrl+Alt+B`);
+      this.railBtn.setAttribute("aria-pressed", String(this.narrow));
     }
     top() {
       return this.stack[this.stack.length - 1] || null;
@@ -15447,7 +15521,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/rooms/shared.js
   var { el: el11 } = ui_exports;
-  var GRID = { gap: 14, pad: 32, rail: 206 };
+  var GRID = { gap: 14, pad: 32 };
+  var railIcon = (name5) => {
+    const s = ui_exports.icon(name5);
+    s.classList.add("rail-icon");
+    return s;
+  };
+  var railNum = (n) => el11("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, String(n));
+  var railWord = (text) => el11("span", { class: "rail-word" }, text);
   var MAC3 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var HOLD = 520;
   var HINT = "Click to choose · double-click to go in · right-click for properties · or just start typing";
@@ -15469,7 +15550,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const wrap = this.grid.parentElement;
       const css2 = wrap && getComputedStyle(wrap);
       const pad = (a, b) => css2 ? (parseFloat(css2[a]) || 0) + (parseFloat(css2[b]) || 0) : 0;
-      const width = (wrap?.clientWidth || window.innerWidth) - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + GRID.rail);
+      const width = (wrap?.clientWidth || window.innerWidth) - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rail")) || 206));
       const height = (wrap?.clientHeight || window.innerHeight) - (css2 ? pad("paddingTop", "paddingBottom") : GRID.pad + 64);
       const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
       return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
@@ -15504,7 +15585,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const all = roomsOn3(this.world, this.page);
       const shelved = archived2(this.world);
       this.shelfBtn.setAttribute("aria-current", String(this.shelf));
-      this.railRooms.setAttribute("aria-current", String(!this.shelf));
       this.shelfHead.hidden = !this.shelf;
       this.roomsPage.classList.toggle("shelf", this.shelf);
       this.drawPages();
@@ -15680,20 +15760,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     drawPages() {
       const n = pageCount3(this.world);
-      this.pagesBar.hidden = this.shelf;
+      const go = (i2) => this.showPage(i2);
       this.pagesBar.replaceChildren(
         ...Array.from({ length: n }, (_2, i2) => el11("button", {
           type: "button",
           class: "rail-item rooms-page",
           "data-page": i2,
-          ...i2 === this.page ? { "aria-current": "page" } : {},
-          onclick: () => this.showPage(i2)
-        }, `Floor ${i2 + 1}`)),
-        el11("button", { type: "button", class: "rail-item rooms-page rooms-page-new", onclick: () => {
+          title: `Floor ${i2 + 1}`,
+          ...i2 === this.page && !this.shelf ? { "aria-current": "page" } : {},
+          onclick: () => go(i2)
+        }, railNum(i2 + 1), railWord(`Floor ${i2 + 1}`))),
+        el11("button", { type: "button", class: "rail-item rooms-page rooms-page-new", title: "New floor", onclick: () => {
           const i2 = addPage3(this.world);
           this.save();
-          this.showPage(i2);
-        } }, "+ New floor")
+          go(i2);
+        } }, railIcon("plus"), railWord("New floor"))
       );
     }
     // One room's square: its colour, its light, its name and count; its last thoughts (the peek);
@@ -16734,6 +16815,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.panel = this.use("panel");
       this.frame = this.use("frame");
       this.propsDock = null;
+      this.on("frame:rail", () => {
+        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+      });
       this.on("docks:resized", ({ side }) => {
         if (side === "right" && !this.inRoom && !this.root.hidden) this.drawRooms();
       });
@@ -17190,35 +17274,38 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (best) this.openRoom(best);
         }
       });
-      this.railRooms = el11("button", { type: "button", class: "rail-item", onclick: () => {
-        if (this.shelf) this.toggleShelf();
-      } }, "Rooms");
-      this.shelfBtn = el11(
-        "button",
-        { type: "button", class: "rail-item rooms-shelf-btn", "data-drop": "archive", onclick: () => {
+      this.shelfBtn = el11("button", {
+        type: "button",
+        class: "rail-item rooms-shelf-btn",
+        "data-drop": "archive",
+        title: "Archive",
+        onclick: () => {
           if (!this.shelf) this.toggleShelf();
-        } },
-        "Archive"
-      );
+        }
+      }, railIcon("archive"), railWord("Archive"));
       this.tagsBtn = el11("button", {
         type: "button",
         class: "rail-item rooms-tags-btn",
         "aria-expanded": "false",
+        title: "Tags",
         onclick: () => {
-          this.tagsOpen = !this.tagsOpen;
+          if (this.frame?.railNarrow) {
+            this.frame.toggleRail();
+            this.tagsOpen = true;
+          } else this.tagsOpen = !this.tagsOpen;
           this.makingTag = null;
           this.drawRooms();
         }
-      }, "Arrange by");
-      this.tagsList = el11("div", { class: "rooms-tag-list", hidden: true, role: "list" });
-      this.pagesBar = el11("nav", { class: "rooms-pages", "aria-label": "Floors" });
+      }, railIcon("tag"), railWord("Tags"));
+      this.tagsList = el11("div", { class: "rooms-tag-list rail-wide", hidden: true, role: "list" });
+      this.pagesBar = el11("div", { class: "rooms-pages", role: "group", "aria-label": "Floors" });
       this.rail = el11(
         "nav",
-        { class: "rail rooms-rail", "aria-label": "Rooms and the Archive" },
-        this.railRooms,
+        { class: "rail rooms-rail", "aria-label": "Floors and the Archive" },
+        el11("div", { class: "rail-head", "aria-hidden": "true" }, "Floors"),
         this.pagesBar,
         this.shelfBtn,
-        el11("div", { class: "rail-rule", "aria-hidden": "true" }),
+        el11("div", { class: "rail-head", "aria-hidden": "true" }, "Arrange by"),
         this.tagsBtn,
         this.tagsList
       );
@@ -17759,6 +17846,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/room/shared.js
   var { el: el14 } = ui_exports;
+  var railIcon2 = (drawing) => {
+    const s = ui_exports.icon(drawing);
+    s.classList.add("rail-icon");
+    return s;
+  };
+  var railWord2 = (text) => el14("span", { class: "rail-word" }, text);
   var ZOOM = { min: 0.25, max: 4 };
   var MAC4 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var HOLD2 = 520;
@@ -18047,7 +18140,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.roomPage.classList.toggle("locked", !!this.locked);
       const v2 = view5(this.world, this.roomId);
       const big = isBig3(r);
-      const items = [];
+      const items = [el14("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
+      const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el14("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
       for (const m2 of big ? this.ontologies : [this.ont]) {
         const on = m2.id === this.mode;
         const word = big ? el14("button", {
@@ -18056,19 +18150,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           role: "radio",
           "aria-checked": String(on),
           "aria-current": String(on),
+          title: m2.name,
           onclick: () => {
             if (on) this.toggleGear(m2.id);
             else this.setMode(m2.id);
           }
-        }, m2.name) : el14("span", {
+        }, mark(m2), railWord2(m2.name)) : el14("span", {
           class: "rail-item room-rail-fixed",
           "aria-current": "true",
-          title: "A small room keeps one mode. Make it 2 × 2 to switch.",
+          title: `${m2.name}: a small room keeps one mode. Make it 2 × 2 to switch.`,
           onclick: () => this.toggleGear(m2.id)
-        }, m2.name);
+        }, mark(m2), railWord2(m2.name));
         const gear = this.settingsOf(m2).length ? el14("button", {
           type: "button",
-          class: "room-gear",
+          class: "room-gear rail-wide",
           "aria-label": `${m2.name} settings for this room`,
           title: "Settings for this room",
           "aria-expanded": String(this.settingsFor === m2.id),
@@ -18076,14 +18171,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }, "⚙") : null;
         items.push(el14("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
-      items.push(el14("div", { class: "rail-rule", "aria-hidden": "true" }));
+      items.push(el14("div", { class: "rail-head", "aria-hidden": "true" }, "Views"));
       items.push(el14("button", {
         type: "button",
         class: "rail-item room-rail-view",
         "aria-pressed": String(this.historyOpen),
-        title: this.keyMap ? `Timeline (${this.keyMap.label("room.timeline")})` : "Timeline",
+        title: this.keyMap ? `Timeline · ${this.keyMap.label("room.timeline")}` : "Timeline",
         onclick: () => this.toggleTimeline()
-      }, "Timeline"));
+      }, railIcon2("clock"), railWord2("Timeline")));
       const card = !this.panel && this.settingsFor && this.roomSettingsCard();
       if (card) items.push(card);
       this.drawModeSettings();
@@ -20366,6 +20461,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.on("docks:resized", () => {
         if (this.roomId) this.place();
       });
+      this.on("frame:rail", () => {
+        if (this.roomId) this.place();
+      });
       this.on("world:palette", () => this.repaint());
       this.on("world:look", () => this.repaint());
       this.on("world:saved", () => {
@@ -20796,7 +20894,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back) and the quiet words at the foot (Saved, a line of help). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
