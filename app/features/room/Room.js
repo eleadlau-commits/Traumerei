@@ -23,6 +23,14 @@ import { Feature, ui } from 'folio';
 import { bind, room, view, shut, MESSY, roomLook } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
+
+// The status bar's quiet line in a room, while the pointer is over nothing in particular.
+const IDLE = 'Type anywhere to write · Enter keeps it · Ctrl+Enter a new train · Right-click edits';
+// What it says over a thought or a group on the canvas.
+const OVER = {
+  thought: 'Thought · Click to choose · Triple-click to write in it · Right-click edits · Drag to move',
+  group: 'Click to choose · Double-click for the whole group · Right-click edits',
+};
 import { RoomView } from './view.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
@@ -120,7 +128,8 @@ export default class Room extends Feature {
     this.gearFor = this.settingsFor = null;
     this.root.hidden = false;
     document.documentElement.classList.add('room-open');
-    this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms', crumbs: this.crumbs() });
+    this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms', crumbs: this.crumbs(),
+      idle: IDLE });
     this.closeAdd();
     this.drawRoom();
     if (from) this.expand(from);
@@ -303,6 +312,12 @@ export default class Room extends Feature {
       if (!this.addMenu.hidden && !e.target.closest('.room-add-menu, .room-add-btn')) this.closeAdd();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    // The status bar explains what is under the pointer on the canvas.
+    this.stage.addEventListener('pointerover', (e) => {
+      const t = e.target.closest?.('[data-thought]');
+      this.frame?.hover(t ? OVER.thought : e.target.closest?.('[data-train], .room-strand') ? OVER.group : null);
+    });
+    this.stage.addEventListener('pointerleave', () => this.frame?.hover(null));
     this.listenForFiles();
   }
 

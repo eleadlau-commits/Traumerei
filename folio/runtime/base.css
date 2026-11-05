@@ -796,34 +796,28 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
 .rail-item.drop-on { opacity: 1; outline: var(--drop-line); outline-offset: 2px; }
 .rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
 
-/* A quiet "Saved" at the bottom right, and a line of help at the foot, the first time a page is seen. */
-.saved-note {
-  position: fixed;
-  right: calc(var(--gutter) + 12px);
-  bottom: 20px;
-  font-size: 11px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  opacity: 0;
-  pointer-events: none;
+/* The status bar: a 26px band of flat veil at the foot (Ableton's Info View, Blender's status
+   bar). On the left it explains what the pointer is over (.status-info); on the right what is
+   chosen, the mode, and Saved with a quiet dot (.status-saved). */
+.status-bar {
+  height: var(--status-h, 26px);
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: 0 var(--s-4);
+  background: var(--chrome);
+  box-shadow: 0 -1px 0 var(--chrome-edge);
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: .02em;
+  white-space: nowrap;
 }
-.saved-note.on { animation: saved-note 2.2s ease both; }
-@keyframes saved-note { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
-.foot-hint {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  transform: translate(-50%, 6px);
-  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: .05em;
-  line-height: 1.5;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s, transform .6s var(--ease);
-}
-.foot-hint.on { opacity: .6; transform: translate(-50%, 0); }
+.status-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status-right { display: flex; align-items: center; gap: var(--s-4); }
+.status-right > :empty { display: none; }
+.status-saved::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #6d8a5a; vertical-align: 1px; }
+.status-saved.on { animation: status-saved 1.2s ease; }
+@keyframes status-saved { 0% { color: var(--ink); } }
 
 /* Going into a room: the square grows to fill the screen (from where Room.js puts it), then fades. */
 .expand { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 5; transform-origin: 0 0; pointer-events: none; }

@@ -1,7 +1,10 @@
 // The frame: what sits around Create's canvas, the same on the rooms page and in a room. The top
 // bar is a band of flat veil holding the wordmark beside the menu (☰), where you are (a
 // breadcrumb: Rooms › Floor 1 › Messy thoughts, each step a word to press), Search always at the
-// right, and the back arrow; the foot holds a quiet "Saved" and a line of help. The rooms page and a room each show the frame with what it should
+// right, and the back arrow. The foot is the status bar, a thin band of veil: on the left it
+// explains whatever the pointer is over (its data-hint, title or name, and its keys), or a line
+// of help; on the right what is chosen, the mode, and Saved. It holds no things, so it is not a
+// dock. While it shows, its height is --status on <html> (the docks end above it). The rooms page and a room each show the frame with what it should
 // say (`frame.show(owner, …)`); the one shown last is the one that shows, and hiding it brings
 // back the one before (leaving a room brings back the rooms page's).
 //
@@ -24,10 +27,13 @@ export default class Frame extends Feature {
       saved: (word) => this.saved(word),
       hint: (text) => this.hint(text),
       clearHint: () => this.clearHint(),
+      hover: (text) => this.hover(text),
     });
     // A line of help fades on the first key or click.
     document.addEventListener('keydown', () => this.clearHint(), true);
     document.addEventListener('pointerdown', () => this.clearHint(), true);
+    // The status bar explains whatever the pointer is over.
+    document.addEventListener('pointerover', (e) => this.over(e.target), true);
   }
 
   build() {
@@ -39,10 +45,14 @@ export default class Frame extends Feature {
     el('span', {}, 'Search'), el('span', { class: 'find-key' }, MAC ? '⌘K' : 'Ctrl+K'));
     this.backBtn = el('button', { type: 'button', class: 'back-btn frame-back', 'aria-label': 'Back', onclick: () => this.top()?.o.back?.() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
-    this.savedMark = el('div', { class: 'saved-note frame-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'foot-hint frame-hint' });
+    this.savedMark = el('span', { class: 'status-saved frame-saved', 'aria-live': 'polite' }, 'Saved');
+    this.hintLine = el('span', { class: 'status-info frame-info' });
+    this.selEl = el('span', { class: 'frame-sel' });
+    this.modeEl = el('span', { class: 'frame-mode' });
+    this.status = el('footer', { class: 'status-bar frame-status' }, this.hintLine,
+      el('span', { class: 'status-right' }, this.selEl, this.modeEl, this.savedMark));
     this.root = el('div', { class: 'frame', hidden: true },
-      this.bar, this.wordmark, this.crumbs, this.searchBtn, this.backBtn, this.savedMark, this.hintLine);
+      this.bar, this.wordmark, this.crumbs, this.searchBtn, this.backBtn, this.status);
     (document.getElementById('folio-root') || document.body).append(this.root);
   }
 
@@ -74,6 +84,7 @@ export default class Frame extends Feature {
     clearTimeout(this.hiding);
     if (!s) {
       this.root.classList.remove('on');
+      document.documentElement.style.setProperty('--status', '0px');
       this.clearHint();
       this.hiding = setTimeout(() => { if (!this.top()) this.root.hidden = true; }, 450);
       return;
@@ -84,6 +95,10 @@ export default class Frame extends Feature {
     this.searchBtn.hidden = !o.search;
     this.backBtn.setAttribute('aria-label', o.backLabel || 'Back');
     this.drawCrumbs(o.crumbs || []);
+    this.selEl.textContent = o.selection || '';
+    this.modeEl.textContent = o.mode || '';
+    this.drawInfo();
+    document.documentElement.style.setProperty('--status', 'var(--status-h)');
     this.root.style.setProperty('--frame-ink', o.ink || 'var(--ink)');
     if (wasHidden) this.root.getBoundingClientRect(); // so it fades in
     this.root.classList.add('on');
@@ -103,24 +118,57 @@ export default class Frame extends Feature {
     this.crumbs.replaceChildren(...out);
   }
 
-  // A quiet word in the corner when the world has been written down ("Saved", "Undone").
+  // At the right of the status bar, "Saved" (with a quiet dot) when the world has been written
+  // down; another word ("Undone") for a moment, then Saved again.
   saved(word = 'Saved') {
     this.savedMark.textContent = word;
     this.savedMark.classList.remove('on');
     void this.savedMark.offsetWidth;
     this.savedMark.classList.add('on');
+    clearTimeout(this.savedTimer);
+    if (word !== 'Saved') this.savedTimer = setTimeout(() => { this.savedMark.textContent = 'Saved'; }, 2200);
   }
 
-  // A line of help at the foot, for a while (or until the first key or click).
+  // A line of help on the left of the status bar, for a while (or until the first key or click).
   hint(text) {
-    this.hintLine.textContent = text;
-    this.hintLine.classList.add('on');
+    this.helpText = text;
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => this.clearHint(), HINT_MS);
+    this.drawInfo();
   }
 
   clearHint() {
+    if (!this.helpText) return;
     clearTimeout(this.hintTimer);
-    this.hintLine.classList.remove('on');
+    this.helpText = '';
+    this.drawInfo();
+  }
+
+  // What the owner says the pointer is over (null lets the frame find it again).
+  hover(text) {
+    this.hoverText = text || '';
+    this.drawInfo();
+  }
+
+  // The pointer came over `node`: its data-hint, else its title or name, with its keys.
+  over(node) {
+    if (this.root.hidden) return;
+    const t = node?.closest?.('[data-hint], [title], [aria-label]');
+    let text = '';
+    if (t && !t.matches('.frame-status, .frame-status *')) {
+      text = t.dataset.hint || t.getAttribute('title') || (t.matches('button, a, [role="tab"], [role="separator"]') ? t.getAttribute('aria-label') : '') || '';
+      const keys = t.getAttribute('aria-keyshortcuts');
+      if (text && keys && !text.includes('Ctrl') && !text.includes('⌘')) text += ` · ${keys.replace(/Control/g, 'Ctrl').replace(/Meta/g, '⌘')}`;
+    }
+    if (text === this.overText) return;
+    this.overText = text;
+    this.drawInfo();
+  }
+
+  // The left of the status bar: what the pointer is over, else a line of help, else the owner's
+  // quiet idle line.
+  drawInfo() {
+    const idle = this.top()?.o.idle || '';
+    this.hintLine.textContent = this.hoverText || this.overText || this.helpText || idle;
   }
 }

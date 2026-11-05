@@ -7,7 +7,7 @@
 .dock {
   position: fixed;
   z-index: 40;
-  bottom: 0;
+  bottom: var(--status, 0px); /* above the frame's status bar, while it shows */
   display: flex;
   flex-direction: column;
   background: var(--chrome); /* chrome is the flat veil */
