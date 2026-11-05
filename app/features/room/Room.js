@@ -45,6 +45,7 @@ export default class Room extends Feature {
     this.renaming = null; // the open room, while its name is being edited
     this.barFor = null;   // what the properties pop-up is open for (selKey)
     this.editor = null;   // the content editor in the side panel (editor.js), while it shows
+    this.timeline = null; // the Timeline in the right dock's Timeline tab, while it shows: { body, handle }
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
@@ -54,7 +55,8 @@ export default class Room extends Feature {
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
-    for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId });
+    const run = { 'room.timeline': () => this.toggleTimeline() };
+    for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId, ...(run[k.id] ? { run: run[k.id] } : {}) });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
@@ -118,7 +120,8 @@ export default class Room extends Feature {
     const from = this.root.hidden ? null : this.roomId;
     this.closeSheet();
     this.closeSearch();
-    this.panel?.close(null, true);
+    this.timeline = null; // (so closing it doesn't turn it off for the room)
+    this.panel?.closeAll(true);
     this.docks?.left.close('loose', true);
     this.shelveDraft();
     this.stopWriting();

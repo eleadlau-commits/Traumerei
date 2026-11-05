@@ -45,6 +45,13 @@
 .dock-close { --x-size: 32px; }
 
 .dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px 16px; }
+.dock-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dock-page[hidden] { display: none; }
+
+/* The tabs, along the top while a dock holds two or more things: Folio's words (.word). */
+.dock-tabs { flex: none; display: flex; gap: 20px; padding: 14px 18px 0 24px; }
+.dock-tabs[hidden] { display: none; }
+.dock-tabs:not([hidden]) + .dock-head { padding-top: 10px; }
 
 /* The inner edge: drag it to change the width. */
 .dock-edge {
