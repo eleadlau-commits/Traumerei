@@ -53,49 +53,6 @@ export const {
   link, unlink, setLabel, setRelation,
 } = net;
 
-// ---- In room Markdown ----
-
-const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
-
-// A chapter heading's attributes read: its arrows [{ title, label, rel }] (each parent="…", then
-// the relation of its arrow as a key, forgets="…"; with no key, the room's first) and the rest,
-// kept as written. names: the room's relations. say(text) hears what couldn't be read.
-export function readHeading(attrs, names, say = () => {}) {
-  const known = new Map(cleanRelations(names).map((n) => [n.toLowerCase(), n]));
-  const arrows = [], rest = [];
-  let after = false; // just after a parent
-  for (const [k, v] of attrs) {
-    const last = arrows.at(-1);
-    if (k === 'parent') { arrows.push({ title: v, label: '', rel: cleanRelations(names)[0] }); after = true; continue; }
-    const rel = known.get(String(k).toLowerCase());
-    if (rel) {
-      if (last && !last.read) Object.assign(last, { label: tidy(v), rel, read: true });
-      else say(`${k}="${v}" has no parent before it, so it was left out.`);
-    } else {
-      if (after && last && !last.read && WORD.test(k)) say(`"${k}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
-      rest.push([k, v]);
-    }
-    after = false;
-  }
-  return { arrows: arrows.map(({ title, label, rel }) => ({ title, label, rel })), rest };
-}
-
-// The attributes for the arrows into a chapter: parent="…", then its relation as the key of its
-// label when it has one or its relation isn't the room's first (and is one word, so it can be a
-// key). title(id): a parent's heading.
-const WORD = /^[A-Za-z][\w-]*$/;
-export function headingAttrs(w, roomId, child, title) {
-  const { parents, labels, rel } = arrowsInto(w, roomId, child);
-  const first = relations(w, roomId)[0];
-  const out = [];
-  for (const p of parents) {
-    out.push(['parent', title(p)]);
-    const r = WORD.test(rel[p]) ? rel[p] : first;
-    if (labels[p] || r !== first) out.push([r, labels[p] || '']);
-  }
-  return out;
-}
-
 // A new chapter in the room (empty until a thought joins it: an empty group goes), as a child of
 // `parent` when given. Returns it.
 export function addChapter(w, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {

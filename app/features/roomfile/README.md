@@ -67,7 +67,9 @@ until the next thing.
 A passage with no title.
 ![A caption](data:image/jpeg;base64,...)
 
-## Matrices {parent="Arrays" forgets="the individual equations"}
+## Matrices
+> forgets [[Arrays]]: the individual equations
+> ⊂ [[Vectors]]
 \- a paragraph that starts with a dash, kept as words
 ##
 - a thought in a group with no title
@@ -81,6 +83,16 @@ A passage with no title.
   train). Everything until the next `##` is in it, in order. A bare `##` is a group with no title.
   `> closed` right under it closes it (`> folded` is read the same); `> closed: A title` also names a bare heading. A heading
   with nothing under it is left out and reported.
+- **Russell's arrows** are lines right under a chapter's heading (before or after `> closed`), one
+  per arrow into it: `> relation [[Parent]]: label`. The relation is any words or signs
+  (`forgets`, `is a case of`, `⊂`) or nothing (`> [[Parent]]` is an unnamed arrow); the parent is
+  a chapter's heading; `: label` is optional, with maths if it has any. A chapter has as many as
+  it needs. Arrows are drawn after every chapter exists, through Russell's own rules (no loops),
+  so what it refuses (a loop, an unknown or twice-used heading) is reported and the rest still
+  arrive. Importing into a room, a parent can also be a chapter already there. The room's list
+  of relations is `russell.relations: [forgets, "less, or equal", ⊂]` in the front matter (a
+  name with a comma in quotes). Older files' `{parent="…"}` is no longer read: it is reported
+  with the line to write instead.
 - **`- words`** is a line thought; indented lines under it stay in it. **`### Title`** and the
   paragraphs under it (blank lines between them) are a passage; a bare `###` has no title, and a
   paragraph with no `###` above it is a passage of its own. **`![caption](address)`** is a
@@ -89,17 +101,12 @@ A passage with no title.
   are shrunk as pasted ones are.
 - **Everything else** is kept exactly as written, LaTeX included: `$…$`, and `$$…$$` blocks over
   several lines. A line inside a passage that would read as structure (`## …`, `- …`, `> closed`,
-  `![…`) is written with a backslash in front and read back without it.
+  `> … [[…]]`, `![…`) is written with a backslash in front and read back without it.
 - **Order.** The thoughts are stamped in the file's order, a millisecond apart, so trains and the
   Timeline read in the file's order. Where things sit is left to the mode: new trains start side
   by side in clear space, Pessoa places loose thoughts on its spiral, Russell lays out its tree.
 - **Attributes** go in braces at the end of a heading, `key="value"`, with `\"` for a quote.
-  Russell reads `parent="…"` (a chapter, by its heading) each followed by an optional
-  `forgets="…"` (the arrow's label); a junction has more than one. Arrows are drawn after every chapter
-  exists, through Russell's own rules (no loops), so what it refuses (a
-  loop, an unknown or twice-used heading) is reported and the rest still arrive.
-  Importing into a room, a parent can also be a chapter already there. Any other attribute (and
-  in Joyce and Pessoa, every one) is kept with the group and written back out.
+  Each is kept with the group and written back out.
 
 ## Editing as Markdown
 
