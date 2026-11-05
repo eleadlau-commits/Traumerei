@@ -1,6 +1,7 @@
 // The frame: what sits around Create's canvas, the same on the rooms page and in a room. The top
-// bar holds the wordmark beside the menu (☰), Search, and the back arrow; the foot holds a quiet
-// "Saved" and a line of help. The rooms page and a room each show the frame with what it should
+// bar is a band of flat veil holding the wordmark beside the menu (☰), where you are (a
+// breadcrumb: Rooms › Floor 1 › Messy thoughts, each step a word to press), Search always at the
+// right, and the back arrow; the foot holds a quiet "Saved" and a line of help. The rooms page and a room each show the frame with what it should
 // say (`frame.show(owner, …)`); the one shown last is the one that shows, and hiding it brings
 // back the one before (leaving a room brings back the rooms page's).
 //
@@ -30,7 +31,9 @@ export default class Frame extends Feature {
   }
 
   build() {
+    this.bar = el('div', { class: 'chrome-bar frame-bar' });
     this.wordmark = el('div', { class: 'wordmark frame-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.crumbs = el('nav', { class: 'crumbs frame-crumbs', 'aria-label': 'Where you are' });
     this.searchBtn = el('button', { type: 'button', class: 'word find-btn frame-search', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.top()?.o.search?.() },
     el('span', {}, 'Search'), el('span', { class: 'find-key' }, MAC ? '⌘K' : 'Ctrl+K'));
@@ -39,7 +42,7 @@ export default class Frame extends Feature {
     this.savedMark = el('div', { class: 'saved-note frame-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'foot-hint frame-hint' });
     this.root = el('div', { class: 'frame', hidden: true },
-      this.wordmark, this.searchBtn, this.backBtn, this.savedMark, this.hintLine);
+      this.bar, this.wordmark, this.crumbs, this.searchBtn, this.backBtn, this.savedMark, this.hintLine);
     (document.getElementById('folio-root') || document.body).append(this.root);
   }
 
@@ -80,9 +83,24 @@ export default class Frame extends Feature {
     this.root.hidden = false;
     this.searchBtn.hidden = !o.search;
     this.backBtn.setAttribute('aria-label', o.backLabel || 'Back');
+    this.drawCrumbs(o.crumbs || []);
     this.root.style.setProperty('--frame-ink', o.ink || 'var(--ink)');
     if (wasHidden) this.root.getBoundingClientRect(); // so it fades in
     this.root.classList.add('on');
+  }
+
+  // Where you are: each step a word to press (or the owner's own node, as a room's name that can
+  // be renamed in place), with a quiet › between them.
+  drawCrumbs(list) {
+    const out = [];
+    list.forEach((c, i) => {
+      if (i) out.push(el('span', { class: 'crumb-sep', 'aria-hidden': 'true' }, '›'));
+      if (c.node) { out.push(c.node); return; }
+      const attrs = { class: 'crumb', ...(c.title ? { title: c.title } : {}), ...(c.current ? { 'aria-current': 'page' } : {}) };
+      out.push(c.onClick ? el('button', { type: 'button', ...attrs, onclick: c.onClick }, c.label) : el('span', attrs, c.label));
+      if (c.note) out.push(el('span', { class: 'crumb-note' }, c.note));
+    });
+    this.crumbs.replaceChildren(...out);
   }
 
   // A quiet word in the corner when the world has been written down ("Saved", "Undone").

@@ -73,6 +73,8 @@ export default class Rooms extends Feature {
     this.provide('rooms', {
       openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
       showRooms: () => this.showRooms(),   // back to this page, from a room
+      showFloor: (i) => { if (this.shelf) this.toggleShelf(); this.showPage(i); }, // back to this page, on floor i
+      showArchive: () => { this.showRooms(); if (!this.shelf) this.toggleShelf(); }, // back to this page, on the Archive
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     this.keyMap = this.use('keys'); // the key map: the ? list, or null
@@ -136,6 +138,14 @@ export default class Rooms extends Feature {
       this.root.hidden = true;
       document.documentElement.classList.remove('rooms-open');
     }, 520);
+  }
+
+  // Where you are, for the frame's breadcrumb: Rooms › Floor 2 (or › Archive).
+  crumbs() {
+    return [
+      { label: 'Rooms', title: 'The rooms', onClick: () => { if (this.shelf) this.toggleShelf(); else if (this.page) this.showPage(0); } },
+      this.shelf ? { label: 'Archive', current: true } : { label: `Floor ${this.page + 1}`, current: true },
+    ];
   }
 
   // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.

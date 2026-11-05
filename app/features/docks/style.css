@@ -15,10 +15,9 @@
   backdrop-filter: none;
 }
 .dock[hidden] { display: none; }
-/* The right dock runs the full height; the left one starts under the strip at the top, so the
-   menu (☰) stays where it is. */
+/* Both start under the top bar (--bar), so the menu (☰), Search and the back arrow stay put. */
 .dock-right {
-  top: 0;
+  top: var(--bar, 0px);
   right: 0;
   width: 340px;
   box-shadow: -1px 0 0 var(--chrome-edge);

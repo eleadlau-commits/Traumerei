@@ -18,7 +18,7 @@
 :is(.dock-left-open, .dock-right-open) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
-.room-dark .topbar .top-btn { color: var(--room-ink); }
+/* (The menu's lines sit on the top bar's veil, so they keep the ink even in a dark room.) */
 
 
 /* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
@@ -76,15 +76,9 @@
 /* The Timeline: down the right, a view of the room's thoughts in time (in any mode). */
 .room-page .room-history { left: auto; right: 0; animation-name: room-slide-in-right; }
 @keyframes room-slide-in-right { from { opacity: 0; transform: translateX(12px); } }
-.room-top {
-  position: absolute;
-  top: 56px; /* under the search bar */
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 40vw;
-}
-.room-crumb-name { opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.room-crumb-name .room-name-field { width: 18ch; letter-spacing: .1em; }
+.room-crumb { display: inline-flex; align-items: baseline; gap: var(--s-3); min-width: 0; max-width: 100%; }
+.room-crumb-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-crumb-name .room-name-field { width: 18ch; font-size: var(--t-work); }
 
 /* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
 /* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
@@ -279,7 +273,7 @@
 .room-page.locked .room-add { display: none; }
 
 /* A room's description: under its name inside the room, and in its pop-up. */
-.room-crumb-desc { margin-top: 2px; font-size: 12px; letter-spacing: .03em; font-style: italic; text-align: center; opacity: .55; max-width: 40vw; white-space: normal; }
+.room-crumb-desc { min-width: 0; }
 .room-edit-read { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */

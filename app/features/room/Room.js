@@ -120,7 +120,7 @@ export default class Room extends Feature {
     this.gearFor = this.settingsFor = null;
     this.root.hidden = false;
     document.documentElement.classList.add('room-open');
-    this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms' });
+    this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms', crumbs: this.crumbs() });
     this.closeAdd();
     this.drawRoom();
     if (from) this.expand(from);
@@ -155,6 +155,14 @@ export default class Room extends Feature {
 
   // Back to the rooms page.
   back() { this.rooms.showRooms(); }
+
+  // Where you are, for the frame's breadcrumb: Rooms › Floor 1 › the room (or Rooms › Archive › …).
+  crumbs() {
+    const r = room(this.world, this.roomId);
+    const floor = r?.archived ? { label: 'Archive', onClick: () => this.rooms.showArchive?.() }
+      : { label: `Floor ${(r?.page || 0) + 1}`, onClick: () => this.rooms.showFloor?.(r?.page || 0) };
+    return [{ label: 'Rooms', title: 'Back to the rooms', onClick: () => this.back() }, floor, { node: this.crumb }];
+  }
 
   // Into another room (from search, say): the rooms page goes in.
   openRoom(id) { this.rooms.openRoom(id); }
@@ -237,7 +245,10 @@ export default class Room extends Feature {
   // ---- Building the pages ----
 
   build() {
-    this.crumbName = el('button', { type: 'button', class: 'word room-crumb-name', title: 'Rename', onclick: () => this.renameOpenRoom() });
+    // The room's name and its line, the last step of the frame's breadcrumb (click the name to rename).
+    this.crumbName = el('button', { type: 'button', class: 'crumb room-crumb-name', 'aria-current': 'page', title: 'Rename', onclick: () => this.renameOpenRoom() });
+    this.crumbDesc = el('span', { class: 'crumb-note room-crumb-desc' });
+    this.crumb = el('span', { class: 'room-crumb' }, this.crumbName, this.crumbDesc);
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
     // between them; a small one names its one), and Timeline under Joyce.
     this.modes = el('nav', { class: 'rail room-rail room-modes', 'aria-label': 'Ontological mode' });
@@ -250,7 +261,6 @@ export default class Room extends Feature {
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
       this.modes,
-      el('div', { class: 'room-top' }, this.crumbName, this.crumbDesc = el('div', { class: 'room-crumb-desc' })),
       el('div', { class: 'room-add' },
         this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' },
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
