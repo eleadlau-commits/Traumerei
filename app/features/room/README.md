@@ -151,7 +151,10 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   A push belongs to the change that caused it, so Ctrl+Z takes both back together.
 - **Time:** under ⋯ More at the foot of the rail, or **Ctrl+Alt+T**: the time feature's dock (see its
   README), here the room's Timeline. A click there chooses the thought and switches the editor
-  too, but keeps Time in front; choosing on the canvas brings the Editor to the front.
+  too, but keeps Time in front; choosing on the canvas brings the Editor to the front. Going back
+  to a day there (its slider) keeps everything where it is now, fades the thoughts made after
+  that day and lights those written that day (`markPast` in `view.js`, from the `time.place`
+  slot's `showDay`); the status bar says *As on* the day.
 - **Editing:** a click on a thought (or a double click on a train) only chooses it. A right-click
   (or a long press, or Enter) opens the **content editor** (`editor.js`) in the side panel on the
   right, and the room moves over. At its top is what the old pop-up had: edit its words (a

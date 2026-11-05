@@ -18,6 +18,11 @@ A tab of the right dock, **Time** (Ctrl+Alt+T), the same everywhere Create shows
   week); Escape, × or Now comes back to now, and so does leaving the rooms page. Days before the
   record began are rebuilt from the stamps: the rooms made by then, where they sit now, lit if
   their thoughts were last changed that day.
+- **Going back in a room**: the same slider (from the day the room or its first thought was
+  made). The list keeps only the thoughts made by the end of that day, those written that day
+  with their time lit. On the canvas everything stays where it is now; the room (through
+  `showDay`, `{ day, later, lit }` from `days.js`'s `roomBoard`) fades the thoughts made later
+  and lights those written that day. Leaving the room comes back to now.
 
 Ctrl+Alt+T (or Time under ⋯ More, at the foot of both rails: the frame feature's `rail.more`) turns it on, brings its tab to the front when another is in
 front, or turns it off; its × or Escape turns it off too. Whether it is on is one choice for
@@ -50,7 +55,7 @@ feature and the rooms feature each add one item. The first whose `live()` is tru
 | `chosen()` | The id chosen there (a thought, group or room), lit in the list |
 | `go(f)` | Goes to a find `{ id, kind, room }` (a room: `{ id, kind: 'room' }`) |
 | `redraw()` | Time was turned on or off (a rail shows whether it is on) |
-| `showDay(past)` | Show a past day: `{ day, rooms, written, counts }` (`record.js`'s `pastBoard`), or `null` for now. Only a place with it gets the slider. |
+| `showDay(past)` | Show a past day, or `null` for now. The rooms page gets `{ day, rooms, written, counts }` (`record.js`'s `pastBoard`), a room `{ day, later, lit }` (`days.js`'s `roomBoard`). Only a place with it gets the slider. |
 
 ## The time service
 

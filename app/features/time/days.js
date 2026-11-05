@@ -40,3 +40,23 @@ export function days(m, w) {
   return [...by].sort((a, b) => b[0] - a[0])
     .map(([day, rooms]) => ({ day, rooms: [...rooms].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n) }));
 }
+
+const DAY = 864e5;
+
+// A room on a past day, everything where it is now: the thoughts made after that day (`later`)
+// and those written or written in that day (`lit`), by id.
+export function roomBoard(m, w, roomId, day) {
+  const end = day + DAY - 1, later = [], lit = [];
+  for (const th of m.roomThoughts(w, roomId)) {
+    if ((th.at ?? 0) > end) later.push(th.id);
+    else if (dayOf(th.at) === day || dayOf(changed(th)) === day) lit.push(th.id);
+  }
+  return { day, later, lit };
+}
+
+// The first day a room knows of: when it, or its first thought, was made.
+export function roomFirst(m, w, roomId, when = Date.now()) {
+  let first = w.things[roomId]?.at || when;
+  for (const th of m.roomThoughts(w, roomId)) if (th.at > 0 && th.at < first) first = th.at;
+  return dayOf(first);
+}
