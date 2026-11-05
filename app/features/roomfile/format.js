@@ -8,12 +8,14 @@
 //   description: Each chapter abstracts the last
 //   tags: [maths, book]
 //   russell.overlap: false
-//   russell.relations: [forgets, generalises]   a list setting, in [ ]
+//   russell.relations: [forgets, "is a case of", ⊂]   a list setting, in [ ] ("…" around a comma)
 //   ---
 //   - a thought with no group             loose (Pessoa places it; a tray holds it elsewhere)
 //
-//   ## Matrices {parent="Arrays" forgets="the equations"}   Russell: each parent, then its
-//                                         arrow's relation as a key (one of russell.relations)
+//   ## Matrices                           Russell: a chapter, and under its heading a line for
+//   > forgets [[Arrays]]: the equations   each arrow into it: its relation (any words or signs),
+//   > ⊂ [[Rings]]                         the parent's heading in [[ ]], then : and its label.
+//   > [[Fields]]                          With nothing before [[ ]], the arrow has no relation
 //   > closed                              a group (a train, a chapter), closed; {…} its attributes
 //   - a line                              a line thought; indented lines under it stay in it
 //   ### A title                           a passage: a title and the paragraphs under it
@@ -27,13 +29,13 @@
 //
 // The thoughts are stamped in the file's order, a millisecond apart. Where they sit is left to the
 // room's mode and clear space; Russell's arrows go through link(), so its rules hold, and what it
-// refuses is reported, never fatal. Attributes other than Russell's arrows are kept in
+// refuses is reported, never fatal. A heading's attributes are kept in
 // own(w, room, of).headings[group] as [[key, value], …], so nothing is lost on the way back out.
 
 import {
   view, room, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, addRoom,
   seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, link, arrowsInto, stepAfter,
-  remove, leave, groupsOf, isGroup, unlink, setLabel, broken, setRelation, relations, readHeading, headingAttrs, setOrder,
+  remove, leave, groupsOf, isGroup, unlink, setLabel, broken, setRelation, relationName, setOrder,
 } from './world.js';
 
 const RUSSELL = 'russell';
@@ -44,7 +46,9 @@ const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 const HEADING = /^##(\s|$)/; // a group (### is a passage)
 const IMAGE = /^!\[.*\]\(\S+\)\s*$/;
 // What a line in a passage can't start with unless it has a backslash in front.
-const LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*(closed|folded))/i;
+const LOOKS = /^(#{2,3}(\s|$)|-(\s|$)|!\[|>\s*(closed|folded)|>.*\[\[.+?\]\])/i;
+// A Russell arrow under a chapter's heading: > relation [[Parent]]: label.
+const ARROW = /^>\s*(.*?)\s*\[\[(.+?)\]\]\s*(?::\s*(.*?))?\s*$/;
 
 const structural = (l) => HEADING.test(l) || /^###(\s|$)/.test(l) || /^-(\s|$)/.test(l) || IMAGE.test(l);
 export function escape(l) {
@@ -163,7 +167,8 @@ function heading(rest) {
 
 const META = { room: 'room', kind: 'kind', description: 'description', desc: 'description', tags: 'tags', tint: 'tint', light: 'light', opacity: 'opacity' };
 
-// The file read: { meta, loose: [fields], groups: [{ title, attrs, closed, items, line }], report }.
+// The file read: { meta, loose: [fields], groups: [{ title, attrs, closed, arrows, items, line }],
+// report }. arrows: the > lines under a heading, [{ rel, title, label, line }].
 // Nothing changes yet; report lists what couldn't be read, by line.
 export function parse(text) {
   const report = [];
@@ -203,13 +208,20 @@ export function parse(text) {
     if (HEADING.test(l)) {
       const h = heading(l.slice(2));
       if (h.broken) report.push(`Line ${i + 1}: the {…} on "${l.trim()}" isn't closed properly; the heading was kept${h.attrs.length ? ` with the attributes before the break` : ''}.`);
-      cur = { title: h.title, attrs: h.attrs, closed: false, items: [], line: i + 1 };
+      cur = { title: h.title, attrs: h.attrs, closed: false, arrows: [], items: [], line: i + 1 };
       groups.push(cur);
       i++;
-      let k = i;
-      while (k < lines.length && !lines[k].trim()) k++;
-      const f = /^>\s*(?:closed|folded)\s*(?::\s*(.*?))?\s*$/i.exec(lines[k] || '');
-      if (f) { cur.closed = true; if (f[1] && !cur.title) cur.title = f[1]; i = k + 1; }
+      // Under it, in any order: > closed, and a line for each arrow into it.
+      for (;;) {
+        let k = i;
+        while (k < lines.length && !lines[k].trim()) k++;
+        const f = /^>\s*(?:closed|folded)\s*(?::\s*(.*?))?\s*$/i.exec(lines[k] || '');
+        const a = !f && ARROW.exec(lines[k] || '');
+        if (f) { cur.closed = true; if (f[1] && !cur.title) cur.title = f[1]; }
+        else if (a) cur.arrows.push({ rel: relationName(a[1]) ?? '', title: a[2].trim(), label: (a[3] || '').trim(), line: k + 1 });
+        else break;
+        i = k + 1;
+      }
       continue;
     }
     for (const kind of kinds) {
@@ -300,16 +312,11 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
     const where = spots(w, madeGroups.map((m) => m.id), at || undefined);
     for (const { id } of madeGroups) Object.assign(w.things[id], where[id]);
   }
-  // Attributes: Russell's arrows (each parent, then its relation with its label), and the rest kept.
+  // Russell's arrows (the > lines under each heading), and the attributes kept.
   const arrows = [];
-  const names = of === RUSSELL ? relations(w, roomId) : [];
   for (const { id, src } of madeGroups) {
-    let rest = src.attrs;
-    if (of === RUSSELL) {
-      const read = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`));
-      for (const a of read.arrows) arrows.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: src.line, title: src.title });
-      rest = read.rest;
-    }
+    const rest = of === RUSSELL ? oldParents(src, report) : src.attrs;
+    if (of === RUSSELL) for (const a of src.arrows || []) arrows.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: a.line, title: src.title });
     if (rest.length) (own(w, roomId, of).headings ||= {})[id] = rest;
   }
   if (arrows.length) {
@@ -327,6 +334,14 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
     }
   }
   return { report, made };
+}
+
+// A heading's attributes without parent="…", which older files used for Russell's arrows (now a
+// > line under the heading); each one left out is said, with the line to write instead.
+function oldParents(src, report) {
+  const parents = src.attrs.filter(([k]) => k === 'parent');
+  if (parents.length) report.push(`Line ${src.line}: parent="…" is no longer read; write each arrow as a line under the heading instead: ${parents.map(([, v]) => `> [[${v}]]`).join(', ')}.`);
+  return src.attrs.filter(([k]) => k !== 'parent');
 }
 
 // A new room opens looking at what arrived: the middle of its thoughts as its mode places them,
@@ -396,15 +411,20 @@ function looseIn(w, roomId, of) {
   return roomItems(w, roomId).filter((th) => isLeaf(th) && !inGroup.has(th.id));
 }
 
-// One group as a ## block: its heading (Russell's arrows, then the attributes kept), > closed, its
-// thoughts.
+// One group as a ## block: its heading (with the attributes kept), Russell's arrows into it, >
+// closed, its thoughts.
 function writeGroup(w, roomId, g, pictures) {
   const of = g.of;
-  const attrs = [];
-  if (of === RUSSELL) attrs.push(...headingAttrs(w, roomId, g.id, (p) => w.things[p]?.title || ''));
-  attrs.push(...((own(w, roomId, of, false).headings || {})[g.id] || []));
+  const attrs = (own(w, roomId, of, false).headings || {})[g.id] || [];
   const head = ['##', g.title, attrs.length ? `{${attrs.map(([k, v]) => `${k}=${writeAttr(v)}`).join(' ')}}` : ''].filter(Boolean).join(' ');
-  return [head, ...(g.closed ? ['> closed'] : []), writeItems(members(w, g.id).filter(isLeaf), pictures)].join('\n');
+  return [head, ...(of === RUSSELL ? arrowLines(w, roomId, g.id) : []), ...(g.closed ? ['> closed'] : []),
+    writeItems(members(w, g.id).filter(isLeaf), pictures)].join('\n');
+}
+
+// The arrows into a chapter, a line each: > relation [[Parent]]: label.
+function arrowLines(w, roomId, id) {
+  const { parents, labels, rel } = arrowsInto(w, roomId, id);
+  return parents.map((p) => `> ${rel[p] ? `${rel[p]} ` : ''}[[${w.things[p]?.title || ''}]]${labels[p] ? `: ${labels[p]}` : ''}`);
 }
 
 // The room as room Markdown: the groups of the mode it is seen through (a big room, the mode that
@@ -656,10 +676,8 @@ function run(w, roomId, p, { now, removeMissing }) {
     if (parent !== roomId) setOrder(w, parent, order); // a group that keeps its order reads as the text does
   };
 
-  // The room's relations as they will be once the front matter is in.
-  const names = of === RUSSELL ? (p.parsed.meta?.settings?.[RUSSELL]?.relations ?? relations(w, roomId)) : [];
   const keepAttrs = (id, attrs) => {
-    const rest = of === RUSSELL ? readHeading(attrs, names).rest : attrs;
+    const rest = of === RUSSELL ? attrs.filter(([k]) => k !== 'parent') : attrs;
     const had = own(w, roomId, of, false).headings?.[id];
     if (rest.length) { if (JSON.stringify(had) !== JSON.stringify(rest)) (own(w, roomId, of).headings ||= {})[id] = rest; }
     else if (had) delete own(w, roomId, of).headings[id];
@@ -734,7 +752,7 @@ function increasing(ats) {
   return out;
 }
 
-// Russell's arrows into each chapter made to follow its heading's parent and relation attributes,
+// Russell's arrows into each chapter made to follow the > lines under its heading,
 // through Russell's own rules. A link it refuses is reported and the arrow it would have taken the
 // place of stays. Returns the changes as words ("A1: parent Matrices → Arrays").
 function redraw(w, roomId, list, fromText, report) {
@@ -742,8 +760,8 @@ function redraw(w, roomId, list, fromText, report) {
   const title = (id) => w.things[id]?.title || 'an untitled chapter';
   for (const { id, src } of list) {
     const child = src.title || 'An untitled chapter';
-    const names = relations(w, roomId);
-    const want = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows;
+    const want = src.arrows || [];
+    oldParents(src, report);
     const { parents: had, labels: hadLabels, rel: hadRel } = arrowsInto(w, roomId, id);
     // Each wanted parent, by its heading: one it already has first, then one from the text, then
     // any chapter of the room with that title.
@@ -756,7 +774,7 @@ function redraw(w, roomId, list, fromText, report) {
       let found = mine.length ? mine : chapters.filter((g) => fromText.has(g.id));
       if (!found.length) found = chapters;
       if (found.length !== 1) {
-        report.push(`Line ${src.line}: the arrow from "${a.title}" to "${child}" can't be drawn: ${found.length ? `two chapters are called "${a.title}"` : `no chapter is called "${a.title}"`}.`);
+        report.push(`Line ${a.line || src.line}: the arrow from "${a.title}" to "${child}" can't be drawn: ${found.length ? `two chapters are called "${a.title}"` : `no chapter is called "${a.title}"`}.`);
         continue;
       }
       resolved.push({ id: found[0].id, label: a.label, rel: a.rel });

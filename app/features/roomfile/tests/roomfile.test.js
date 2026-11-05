@@ -151,16 +151,21 @@ kind: russell
 ## Arrays
 - tables of numbers
 
-## Matrices {parent="Arrays" forgets="the individual equations"}
+## Matrices
+> forgets [[Arrays]]: the individual equations
 - arrays that act
 
-## Inner products {parent="Matrices"}
+## Inner products
+> [[Matrices]]
 - lengths and angles
 
-## Eigenvalues {parent="Matrices" forgets="the basis"}
+## Eigenvalues
+> forgets [[Matrices]]: the basis
 - directions that stay
 
-## Spectral theorem {parent="Inner products" forgets="the basis" parent="Eigenvalues" forgets="non-orthogonal bases"}
+## Spectral theorem
+> forgets [[Inner products]]: the basis
+> forgets [[Eigenvalues]]: non-orthogonal bases
 - symmetric means diagonal
 `;
 
@@ -184,10 +189,10 @@ test('Russell: each ## is a chapter, and parent attributes draw arrows, a juncti
 
 test('Russell: a loop, an unknown parent and a twice-used heading are reported, the rest arrive (any number of parents)', () => {
   const { w, id, report } = into('russell', [
-    '## A {parent="C"}', '- a', '## B {parent="A"}', '- b', '## C {parent="B"}', '- c',
-    '## D {parent="Nowhere" parent="A" parent="B" parent="C"}', '- d',
-    '## Twice', '- t1', '## Twice', '- t2', '## E {parent="Twice"}', '- e',
-    '## Empty', '', '## F {parent="Empty" forgets="it all"}', '- f',
+    '## A', '> [[C]]', '- a', '## B', '> [[A]]', '- b', '## C', '> [[B]]', '- c',
+    '## D', '> [[Nowhere]]', '> [[A]]', '> [[B]]', '> [[C]]', '- d',
+    '## Twice', '- t1', '## Twice', '- t2', '## E', '> [[Twice]]', '- e',
+    '## Empty', '', '## F', '> forgets [[Empty]]: it all', '- f',
   ].join('\n'));
   const g = (t) => groupNamed(w, id, t).id;
   assert.equal(groupsIn(w, id, 'russell').length, 8);
@@ -206,7 +211,7 @@ test('Russell: a loop, an unknown parent and a twice-used heading are reported, 
 test('Russell: importing into a room, a parent can be a chapter already there', () => {
   const w = emptyWorld(1);
   const { room: r } = importRoom(w, parse(BOOK), { ontologies, now: NOW });
-  const out = importInto(w, r.id, parse('## Singular values {parent="Spectral theorem" forgets="symmetry"}\n- any matrix'), { ontologies, now: NOW + 100 });
+  const out = importInto(w, r.id, parse('## Singular values\n> forgets [[Spectral theorem]]: symmetry\n- any matrix'), { ontologies, now: NOW + 100 });
   assert.deepEqual(out.report, []);
   const sv = groupNamed(w, r.id, 'Singular values').id;
   assert.deepEqual(parentsOf(w, r.id, sv), [groupNamed(w, r.id, 'Spectral theorem').id]);
@@ -279,7 +284,7 @@ test('a round trip: export, import, export again gives the same file', () => {
   const second = exportRoom(w2, back.room.id, { ontologies });
   assert.equal(second, first);
   assert.match(first, /^---\nroom: Linear algebra\nkind: russell\n/);
-  assert.match(first, /## Matrices \{parent="Arrays" forgets="the individual equations" status="draft \\"two\\""\}\n> closed\n/);
+  assert.match(first, /## Matrices \{status="draft \\"two\\""\}\n> forgets \[\[Arrays\]\]: the individual equations\n> closed\n/);
   assert.match(first, /\\## looks like a heading/);
   // The same thoughts, in the same order, with the same folds.
   const ids = (ww, rid) => groupsIn(ww, rid, 'russell').map((g) => [g.title, !!g.closed, members(ww, g.id).map((th) => th.kind + ':' + (th.text || th.title || th.body))]);
@@ -345,7 +350,7 @@ test('editing: replacing a chapter keeps its id, place, children and arrows; sam
   m.x = 77; m.hand = 'hand';
   const kept = members(w, m.id)[0];
   const kids = ['Inner products', 'Eigenvalues'].map((t) => g(t).id);
-  const { p } = edit(w, id, m.id, '## Matrices {parent="Arrays" forgets="the individual equations"}\n- arrays that act\n- a new one\n### Why\nBecause $A x$.');
+  const { p } = edit(w, id, m.id, '## Matrices\n> forgets [[Arrays]]: the individual equations\n- arrays that act\n- a new one\n### Why\nBecause $A x$.');
   assert.deepEqual(p.arrowChanges, []);
   const after = w.things[m.id];
   assert.ok(after && after.x === 77 && after.hand === 'hand');
@@ -384,27 +389,43 @@ test('editing: a changed title renames, and new thoughts go between in order', (
   assert.deepEqual(parentsOf(w, id, g('Matrices').id), [a.id]);
 });
 
+test('editing: an arrow line\'s relation changed, emptied, or a parent added; each said', () => {
+  const { w, id, g } = book();
+  const st = g('Spectral theorem').id, ip = g('Inner products').id, ev = g('Eigenvalues').id, ar = g('Arrays').id;
+  let { p } = edit(w, id, st, '## Spectral theorem\n> ⊂ [[Inner products]]: the basis\n> [[Eigenvalues]]: non-orthogonal bases\n> is a case of [[Arrays]]\n- symmetric means diagonal');
+  assert.deepEqual(p.arrowChanges, [
+    'Spectral theorem: forgets → ⊂ (about Inner products)',
+    'Spectral theorem: forgets → no relation (about Eigenvalues)',
+    'Spectral theorem: parent Arrays added',
+  ]);
+  const rel = (from) => arrows(w, id).find((x) => x.from === from && x.to === st);
+  assert.equal(rel(ip).rel, '⊂');
+  assert.equal(rel(ev).rel, '');
+  assert.deepEqual([rel(ar).rel, rel(ar).label], ['is a case of', '']);
+  assert.match(exportGroup(w, id, st, { ontologies }), /## Spectral theorem\n> ⊂ \[\[Inner products\]\]: the basis\n> \[\[Eigenvalues\]\]: non-orthogonal bases\n> is a case of \[\[Arrays\]\]\n/);
+});
+
 test('editing: a changed parent relinks; one that would make a loop is refused and the rest applies', () => {
   const { w, id, g } = book();
   const ev = g('Eigenvalues');
-  let { p } = edit(w, id, ev.id, '## Eigenvalues {parent="Arrays" forgets="all of it"}\n- directions that stay');
+  let { p } = edit(w, id, ev.id, '## Eigenvalues\n> forgets [[Arrays]]: all of it\n- directions that stay');
   assert.deepEqual(p.arrowChanges, ['Eigenvalues: parent Matrices → Arrays']);
   assert.deepEqual(parentsOf(w, id, ev.id), [g('Arrays').id]);
   assert.equal(arrows(w, id).find((x) => x.to === ev.id).label, 'all of it');
   // Arrays under Spectral theorem would close a loop: refused, the words still change.
-  ({ p } = edit(w, id, g('Arrays').id, '## Arrays {parent="Spectral theorem"}\n- tables of numbers, now'));
+  ({ p } = edit(w, id, g('Arrays').id, '## Arrays\n> [[Spectral theorem]]\n- tables of numbers, now'));
   assert.match(p.arrowChanges[0], /Arrays: parent Spectral theorem refused \(that arrow would make a loop\)/);
   assert.match(p.report.join('\n'), /wasn't drawn: that arrow would make a loop/);
   assert.deepEqual(parentsOf(w, id, g('Arrays').id), []);
   assert.deepEqual(members(w, g('Arrays').id).map((th) => th.text), ['tables of numbers, now']);
   // A swap whose new parent is refused keeps the old arrow.
-  edit(w, id, g('Matrices').id, '## Matrices {parent="Spectral theorem"}\n- arrays that act');
+  edit(w, id, g('Matrices').id, '## Matrices\n> [[Spectral theorem]]\n- arrays that act');
   assert.deepEqual(parentsOf(w, id, g('Matrices').id), [g('Arrays').id]);
 });
 
 test('editing: extra headings are added as new groups, loose thoughts as loose', () => {
   const { w, id, g } = book();
-  const { p } = edit(w, id, g('Arrays').id, '- loose above\n## Arrays\n- tables of numbers\n## Vectors {parent="Arrays"}\n- arrows\n## Empty');
+  const { p } = edit(w, id, g('Arrays').id, '- loose above\n## Arrays\n- tables of numbers\n## Vectors\n> [[Arrays]]\n- arrows\n## Empty');
   assert.deepEqual(p.add.map((s) => s.title), ['Vectors', 'Empty']);
   const v = groupNamed(w, id, 'Vectors');
   assert.ok(v);
@@ -429,7 +450,7 @@ test('editing: with no ## the text is the group\'s thoughts; an empty heading le
 test('editing a room: headings matched by title, new ones added, missing ones listed and removed only when asked', () => {
   const { w, id, g } = book();
   const text = ['---', 'room: Linear algebra', 'kind: russell', 'description: Now with a line', '---', '- a loose one',
-    '## arrays ', '- tables of numbers', '## Matrices {parent="Arrays"}', '- arrays that act', '## Determinants {parent="Matrices"}', '- volume'].join('\n');
+    '## arrays ', '- tables of numbers', '## Matrices', '> forgets [[Arrays]]', '- arrays that act', '## Determinants', '> [[Matrices]]', '- volume'].join('\n');
   const p = plan(w, id, parse(text), { scope: 'room', ontologies, now: NOW + 1000 });
   assert.deepEqual(p.replace.map((x) => w.things[x.id].title), ['Arrays', 'Matrices']);
   assert.deepEqual(p.add.map((s) => s.title), ['Determinants']);
@@ -461,7 +482,7 @@ test('editing: apply then undo gives back the exact world', () => {
   const { w, id, g } = book();
   const before = snap(w);
   const undoSnap = JSON.stringify({ things: w.things, own: w.own, pages: w.pages }); // what World keeps per step
-  edit(w, id, g('Eigenvalues').id, '## Eigen {parent="Arrays" status="draft"}\n> closed\n- new words\n## More\n- m');
+  edit(w, id, g('Eigenvalues').id, '## Eigen {status="draft"}\n> [[Arrays]]\n> closed\n- new words\n## More\n- m');
   assert.ok(snap(w) !== before);
   Object.assign(w, JSON.parse(undoSnap));
   assert.equal(snap(w), before);
@@ -491,35 +512,50 @@ test('editing: pictures as short references, full data to download; bad maths fo
   assert.deepEqual(badMaths('## A $x$\n- fine $y$\n### T\nok\n$\\frac{1$ bad\n- $$\\nope$$'), [{ line: 5, tex: '\\frac{1' }, { line: 6, tex: '\\nope' }]);
 });
 
-test('Russell: relations as heading keys, the room\'s list in the front matter, and back out the same', () => {
+test('Russell: an arrow a line under its chapter, any relation or none; the room\'s list in the front matter; back out the same', () => {
   const text = [
-    '---', 'room: Algebra', 'kind: russell', 'russell.relations: [forgets, generalises]', 'russell.line: curved', '---',
+    '---', 'room: Algebra', 'kind: russell', 'russell.relations: [forgets, "less, or equal", ⊂]', 'russell.line: curved', '---',
     '## Groups', '- a set with one operation', '',
-    '## Rings {parent="Groups" generalises="to two operations"}', '- a second operation', '',
-    '## Fields {parent="Rings" forgets="the zero divisors"}', '- every non-zero has an inverse', '',
-    '## Modules {parent="Rings" generalises=""}', '- vector spaces over a ring', '',
+    '## Rings', '> is a case of [[Groups]]: to two operations', '- a second operation', '',
+    '## Fields', '> forgets [[Rings]]: the zero divisors', '> ⊂ [[Groups]]', '- every non-zero has an inverse', '',
+    '## Modules {status="draft"}', '> [[Rings]]: over a ring', '> closed', '- vector spaces over a ring', '',
+    '## Ideals', '>    less, or equal   [[Rings]]   :   $I \\subseteq R$', '- a kernel', '',
   ].join('\n');
   const p = parse(text);
-  assert.deepEqual(p.meta.settings.russell, { relations: ['forgets', 'generalises'], line: 'curved' });
+  assert.deepEqual(p.meta.settings.russell, { relations: ['forgets', 'less, or equal', '⊂'], line: 'curved' });
+  assert.deepEqual(p.groups[2].arrows.map((a) => [a.rel, a.title, a.label, a.line]), [['forgets', 'Rings', 'the zero divisors', 15], ['⊂', 'Groups', '', 16]]);
+  assert.ok(p.groups[3].closed);
   const w = emptyWorld(1);
   const { room: r, report } = importRoom(w, p, { ontologies, now: NOW });
   assert.deepEqual(report, []);
-  const as = Object.fromEntries(arrows(w, r.id).map((a) => [chapterName(w, a.to), `${a.rel || 'default'}: ${a.label}`]));
-  assert.deepEqual(as, { Rings: 'generalises: to two operations', Fields: 'forgets: the zero divisors', Modules: 'generalises: ' });
+  const as = arrows(w, r.id).map((a) => `${chapterName(w, a.from)} → ${chapterName(w, a.to)}: [${a.rel}] ${a.label}`);
+  assert.deepEqual(as.sort(), [
+    'Groups → Fields: [⊂] ', 'Groups → Rings: [is a case of] to two operations', 'Rings → Fields: [forgets] the zero divisors',
+    'Rings → Ideals: [less, or equal] $I \\subseteq R$', 'Rings → Modules: [] over a ring',
+  ]);
   const out = exportRoom(w, r.id, { ontologies });
-  assert.match(out, /russell\.relations: \[forgets, generalises\]/);
-  assert.match(out, /## Rings \{parent="Groups" generalises="to two operations"\}/);
-  assert.match(out, /## Fields \{parent="Rings" forgets="the zero divisors"\}/);
-  assert.match(out, /## Modules \{parent="Rings" generalises=""\}/);
+  assert.match(out, /russell\.relations: \[forgets, "less, or equal", ⊂\]/);
+  assert.match(out, /## Rings\n> is a case of \[\[Groups\]\]: to two operations\n- a second operation/);
+  assert.match(out, /## Fields\n> forgets \[\[Rings\]\]: the zero divisors\n> ⊂ \[\[Groups\]\]\n/);
+  assert.match(out, /## Modules \{status="draft"\}\n> \[\[Rings\]\]: over a ring\n> closed\n/);
+  assert.match(out, /## Ideals\n> less, or equal \[\[Rings\]\]: \$I \\subseteq R\$\n/);
   const w2 = emptyWorld(1);
   const back = importRoom(w2, parse(out), { ontologies, now: NOW });
   assert.equal(exportRoom(w2, back.room.id, { ontologies }), out);
 });
 
-test('Russell: an older file still reads; a relation the room lacks is kept as an attribute and said', () => {
-  const { w, id, report } = into('russell', '## A\n- a\n## B {parent="A" forgets="all"}\n- b\n## C {parent="A" needs="b"}\n- c');
+test('Russell: an older file\'s parent="…" is left out and said, with the line to write; a thought like an arrow is escaped', () => {
+  const { w, id, report } = into('russell', '## A\n- a\n## B {parent="A" forgets="all"}\n- b');
   const g = (t) => groupNamed(w, id, t).id;
-  assert.deepEqual(arrows(w, id).map((a) => [chapterName(w, a.to), a.label]), [['B', 'all'], ['C', '']]);
-  assert.match(report.join('\n'), /"needs" isn't one of this room's relations/);
-  assert.deepEqual(own(w, id, 'russell').headings[g('C')], [['needs', 'b']]);
+  assert.deepEqual(arrows(w, id), []);
+  assert.match(report.join('\n'), /parent="…" is no longer read; write each arrow as a line under the heading instead: > \[\[A\]\]/);
+  assert.deepEqual(own(w, id, 'russell').headings[g('B')], [['forgets', 'all']]);
+  // A thought that would read as an arrow line goes out with a backslash and comes back as it was.
+  create(w, g('B'), { kind: 'passage', title: '', body: '> see [[A]]: later' }, NOW + 5);
+  const out = exportRoom(w, id, { ontologies });
+  assert.match(out, /\n\\> see \[\[A\]\]: later\n/);
+  const w2 = emptyWorld(1);
+  const back = importRoom(w2, parse(out), { ontologies, now: NOW });
+  assert.deepEqual(arrows(w2, back.room.id), []);
+  assert.ok(members(w2, groupNamed(w2, back.room.id, 'B').id).some((th) => th.body === '> see [[A]]: later'));
 });

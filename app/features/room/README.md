@@ -49,7 +49,7 @@ It offers no service of its own.
     changed by them).
   - **Russell**. Chapters in a tree, each an abstraction of the one above it. A chapter holds
     its thoughts in order, read top to bottom like a train. Arrows go from a parent chapter down to
-    its children: any number of children, usually one parent, at most two (a *junction*). An
+    its children: any number of children and any number of parents (more than one makes a *junction*). An
     arrow that would make a loop is refused. The tree lays itself out: the roots at the top, each
     generation a level lower, siblings side by side, a junction under both its parents. Each
     chapter's box is what is drawn (its name, or its title and thoughts), and the gaps grow when a
@@ -59,16 +59,17 @@ It offers no service of its own.
     settings choose straight or curved arrows. A chapter
     dragged somewhere stays there, and its children still hang under it. Drag from the small
     circle at a chapter's foot onto another chapter to draw an arrow. A chapter's pop-up has *New
-    child chapter* (the chapter and its arrow are made when its first thought is kept), *Add second
+    child chapter* (the chapter and its arrow are made when its first thought is kept), *Add
     parent* and *Remove arrow*, and a line for each arrow into it: its relation and its label
-    ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Each room's
-    Russell settings keep its list of relations, written with commas ("forgets, generalises"); the
-    first is the default, a relation renamed there is renamed on its arrows, and when there are
-    several each label shows its relation's word. Double-click an arrow or its label to edit it where
-    it is: its label, and its relation when the room has several; Enter keeps it, Esc lets it go.
-    An arrow with no label shows a faint hint of its relation when the pointer is on it. In room Markdown a relation is a heading key
-    after its parent (`{parent="Rings" generalises="to two operations"}`), and the list is
-    `russell.relations: [forgets, generalises]`. Enter
+    ("forgets the coordinates"), shown beside the arrow, with maths if it has any. A relation is any
+    words or signs ("is a case of", "⊂"), or none. Each room's Russell settings keep its list of
+    relations, written with commas (a name with a comma in quotes); a new arrow gets the first, and
+    a relation renamed there is renamed on its arrows. A relation shows beside its label when it
+    tells arrows apart. Double-click an arrow or its label to edit it where it is: its relation
+    (any of the room's, "(no relation)", or "+ New…", which adds one to the room's list) and its
+    label; Enter keeps it, Esc lets it go. The chapter's pop-up has the same picker for each arrow
+    into it. In room Markdown an arrow is a line under its chapter's heading,
+    `> relation [[Parent]]: label` (roomfile's README). Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
     **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click chooses it; a right-click opens it in the content editor, in the right dock's
