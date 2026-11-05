@@ -6,7 +6,8 @@
 export let
   room, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, addRoom,
   seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, keepOrShrink, stepAfter, link, arrowsInto,
-  remove, leave, groupsOf, isGroup, unlink, setLabel, chapterName, broken;
+  remove, leave, groupsOf, isGroup, unlink, setLabel, chapterName, broken,
+  setRelation, relations, readHeading, headingAttrs;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
@@ -17,6 +18,6 @@ export function bind(lib) {
   ({ ITEMS } = lib.items);
   ({ keepOrShrink } = lib.picture);
   ({ stepAfter } = lib.joyce);
-  ({ link, arrowsInto, unlink, setLabel, chapterName } = lib.russell);
+  ({ link, arrowsInto, unlink, setLabel, chapterName, setRelation, relations, readHeading, headingAttrs } = lib.russell);
   ({ broken } = lib.maths);
 }

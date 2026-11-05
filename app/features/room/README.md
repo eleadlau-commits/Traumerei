@@ -55,8 +55,13 @@ It offers no service of its own.
     dragged somewhere stays there, and its children still hang under it. Drag from the small
     circle at a chapter's foot onto another chapter to draw an arrow. A chapter's pop-up has *New
     child chapter* (the chapter and its arrow are made when its first thought is kept), *Add second
-    parent* and *Remove arrow*, and a line for each arrow into it: what it forgets about that
-    parent ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Enter
+    parent* and *Remove arrow*, and a line for each arrow into it: its relation and its label
+    ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Each room's
+    Russell settings keep its list of relations, written with commas ("forgets, generalises"); the
+    first is the default, a relation renamed there is renamed on its arrows, and when there are
+    several each label shows its relation's word. In room Markdown a relation is a heading key
+    after its parent (`{parent="Rings" generalises="to two operations"}`), and the list is
+    `russell.relations: [forgets, generalises]`. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
     **A closed chapter.** *Fold into one* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click opens it as a document (`document.js`): a pop-up

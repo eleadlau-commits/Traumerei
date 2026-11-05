@@ -1,18 +1,20 @@
 // Russell: chapters joined into a tree, each an abstraction of the one above it. A chapter holds
 // its thoughts in order, read top to bottom like a Joyce train. Arrows go from a parent chapter to
 // a child: a chapter has any number of children and usually one parent, at most two (a junction).
-// There are no cycles: an arrow that would make one is refused. Each arrow can carry a short
-// label, what the child forgets about its parent ("forgets the coordinates").
+// There are no cycles: an arrow that would make one is refused. Each arrow has a relation, how the
+// child stands to its parent, and a short label: "forgets the coordinates". Each room keeps its own
+// list of relations (the setting 'relations', starting with "forgets"); the first is the default.
 //
 // The tree lays itself out: the roots at the top, each generation a level lower, siblings side by
 // side, a junction under both its parents. A chapter dragged somewhere stays there (placed by
 // hand); its children still hang under it. A thought in no chapter waits in the tray.
 //
 // A chapter is a group that holds each thought in only one chapter. The arrows and their labels
-// are Russell's own data in the room: own(w, room, 'russell')[child] = { parents, labels }, where
-// labels is { [parent]: text }. Thoughts stay shared with every other mode.
+// are Russell's own data in the room: own(w, room, 'russell')[child] = { parents, labels, rel },
+// where labels is { [parent]: text } and rel { [parent]: relation } (the default when missing).
+// Thoughts stay shared with every other mode.
 
-import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own } from '../model.js';
+import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own, roomSetting } from '../model.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
@@ -38,25 +40,65 @@ const isChapter = (w, roomId, id) => {
   return isGroup(g) && g.of === ID && g.parent === roomId;
 };
 
-// The arrows into a chapter: { parents, labels }, only to chapters still there.
+// ---- Relations ----
+
+// A relation's name is one word (hyphens are fine), so it can be a heading's key in room Markdown.
+export const RELATION = /^[A-Za-z][\w-]*$/;
+export const RELATIONS = { key: 'relations', label: 'Relations', type: 'list', default: ['forgets'], word: RELATION, note: 'The first is the default.' };
+
+// A list of relations made tidy: from a list, or words with commas ("forgets, generalises", or in
+// [ ]); each a single word, once (whatever its case). Never empty: "forgets" when nothing is left.
+export function cleanRelations(v) {
+  const words = Array.isArray(v) ? v : String(v ?? '').replace(/^\s*\[(.*)\]\s*$/s, '$1').split(',');
+  const out = [];
+  for (const x of words) {
+    const t = String(x ?? '').trim().replace(/^"(.*)"$/, '$1');
+    if (RELATION.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+  }
+  return out.length ? out : [...RELATIONS.default];
+}
+
+// A room's relations, the default first (globals: the global settings, for a room with none).
+export const relations = (w, roomId, globals = {}) => cleanRelations(roomSetting(w, roomId, ID, RELATIONS, globals));
+
+// After a room's relations change from one list to another of the same length, a relation renamed
+// in place is renamed on its arrows too. Returns how many arrows changed.
+export function renameRelations(w, roomId, before, after) {
+  const a = cleanRelations(before), b = cleanRelations(after);
+  if (a.length !== b.length) return 0;
+  const map = new Map(a.map((x, i) => [x, b[i]]).filter(([x, y]) => x !== y));
+  if (!map.size) return 0;
+  let n = 0;
+  for (const data of Object.values(own(w, roomId, ID, false))) {
+    for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) { data.rel[p] = map.get(r); n++; }
+  }
+  return n;
+}
+
+// The arrows into a chapter: { parents, labels, rel }, only to chapters still there.
 export function arrowsInto(w, roomId, id) {
   const a = own(w, roomId, ID, false)[id];
   const parents = (a?.parents || []).filter((p) => p !== id && isChapter(w, roomId, p));
-  const labels = {};
-  for (const p of parents) if (a.labels?.[p]) labels[p] = a.labels[p];
-  return { parents, labels };
+  const labels = {}, rel = {};
+  for (const p of parents) {
+    if (a.labels?.[p]) labels[p] = a.labels[p];
+    if (a.rel?.[p]) rel[p] = a.rel[p];
+  }
+  return { parents, labels, rel };
 }
 
 export const parentsOf = (w, roomId, id) => arrowsInto(w, roomId, id).parents;
 export const childrenOf = (w, roomId, id) => groupsIn(w, roomId, ID).filter((g) => parentsOf(w, roomId, g.id).includes(id)).map((g) => g.id);
 export const labelOf = (w, roomId, parent, child) => arrowsInto(w, roomId, child).labels[parent] || '';
+// An arrow's relation: the one it was given, or the room's default.
+export const relationOf = (w, roomId, parent, child, globals = {}) => arrowsInto(w, roomId, child).rel[parent] || relations(w, roomId, globals)[0];
 
-// Every arrow in the room: [{ from, to, label }].
+// Every arrow in the room: [{ from, to, label, rel }] (rel: '' for the default).
 export function arrows(w, roomId) {
   const out = [];
   for (const g of chapters(w, roomId)) {
-    const { parents, labels } = arrowsInto(w, roomId, g.id);
-    for (const p of parents) out.push({ from: p, to: g.id, label: labels[p] || '' });
+    const { parents, labels, rel } = arrowsInto(w, roomId, g.id);
+    for (const p of parents) out.push({ from: p, to: g.id, label: labels[p] || '', rel: rel[p] || '' });
   }
   return out;
 }
@@ -82,38 +124,92 @@ export function whyNot(w, roomId, parent, child) {
 
 // ---- Changing the tree ----
 
-// Draws an arrow from parent to child (with a label). Returns '' when drawn, or why not.
-export function link(w, roomId, parent, child, label = '') {
+const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, ID)[child] = { parents, labels, rel }; };
+
+// Draws an arrow from parent to child (with a label, and a relation: '' for the default). Returns
+// '' when drawn, or why not.
+export function link(w, roomId, parent, child, label = '', relation = '') {
   const why = whyNot(w, roomId, parent, child);
   if (why || shut(w, roomId)) return why || 'This room is locked.';
-  const mine = own(w, roomId, ID);
-  const a = (mine[child] = { parents: parentsOf(w, roomId, child), labels: { ...arrowsInto(w, roomId, child).labels } });
+  const a = arrowsInto(w, roomId, child);
   a.parents.push(parent);
-  const text = String(label || '').trim();
-  if (text) a.labels[parent] = text;
+  if (tidy(label)) a.labels[parent] = tidy(label);
+  if (RELATION.test(relation || '')) a.rel[parent] = relation;
+  put(w, roomId, child, a);
   settle(w, roomId);
   return '';
 }
 
 export function unlink(w, roomId, parent, child) {
   if (shut(w, roomId)) return false;
-  const { parents, labels } = arrowsInto(w, roomId, child);
+  const { parents, labels, rel } = arrowsInto(w, roomId, child);
   if (!parents.includes(parent)) return false;
   delete labels[parent];
-  own(w, roomId, ID)[child] = { parents: parents.filter((p) => p !== parent), labels };
+  delete rel[parent];
+  put(w, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
   settle(w, roomId);
   return true;
 }
 
-// What the child forgets about its parent: the arrow's label ('' takes it away).
+// An arrow's label ('' takes it away).
 export function setLabel(w, roomId, parent, child, text) {
   if (shut(w, roomId)) return false;
-  const { parents, labels } = arrowsInto(w, roomId, child);
-  if (!parents.includes(parent)) return false;
-  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
-  if (t) labels[parent] = t; else delete labels[parent];
-  own(w, roomId, ID)[child] = { parents, labels };
+  const a = arrowsInto(w, roomId, child);
+  if (!a.parents.includes(parent)) return false;
+  const t = tidy(text);
+  if (t) a.labels[parent] = t; else delete a.labels[parent];
+  put(w, roomId, child, a);
   return true;
+}
+
+// An arrow's relation ('' for the room's default).
+export function setRelation(w, roomId, parent, child, relation) {
+  if (shut(w, roomId)) return false;
+  const a = arrowsInto(w, roomId, child);
+  if (!a.parents.includes(parent)) return false;
+  if (RELATION.test(relation || '')) a.rel[parent] = relation; else delete a.rel[parent];
+  put(w, roomId, child, a);
+  return true;
+}
+
+// ---- In room Markdown ----
+
+// A chapter heading's attributes read: its arrows [{ title, label, rel }] (each parent="…", then
+// the relation of its arrow as a key, forgets="…") and the rest, kept as written. names: the
+// room's relations. say(text) hears what couldn't be read.
+export function readHeading(attrs, names, say = () => {}) {
+  const known = new Map(cleanRelations(names).map((n) => [n.toLowerCase(), n]));
+  const arrows = [], rest = [];
+  let after = false; // just after a parent
+  for (const [k, v] of attrs) {
+    const last = arrows.at(-1);
+    if (k === 'parent') { arrows.push({ title: v, label: '', rel: '' }); after = true; continue; }
+    const rel = known.get(String(k).toLowerCase());
+    if (rel) {
+      if (last && !last.read) Object.assign(last, { label: tidy(v), rel, read: true });
+      else say(`${k}="${v}" has no parent before it, so it was left out.`);
+    } else {
+      if (after && last && !last.read && RELATION.test(k)) say(`"${k}" isn't one of this room's relations (russell.relations), so it was kept as it is.`);
+      rest.push([k, v]);
+    }
+    after = false;
+  }
+  return { arrows: arrows.map(({ title, label, rel }) => ({ title, label, rel })), rest };
+}
+
+// The attributes for the arrows into a chapter: parent="…", then its relation as the key of its
+// label when it has one or its relation isn't the default. title(id): a parent's heading.
+export function headingAttrs(w, roomId, child, title) {
+  const { parents, labels, rel } = arrowsInto(w, roomId, child);
+  const first = relations(w, roomId)[0];
+  const out = [];
+  for (const p of parents) {
+    out.push(['parent', title(p)]);
+    const r = rel[p] || first;
+    if (labels[p] || r !== first) out.push([r, labels[p] || '']);
+  }
+  return out;
 }
 
 // A new chapter in the room (empty until a thought joins it: an empty group goes), as a child of
@@ -121,7 +217,7 @@ export function setLabel(w, roomId, parent, child, text) {
 export function addChapter(w, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {
   const g = create(w, roomId, { kind: 'group', of: ID, x, y }, now);
   if (!g) return null;
-  if (parent && isChapter(w, roomId, parent)) own(w, roomId, ID)[g.id] = { parents: [parent], labels: {} };
+  if (parent && isChapter(w, roomId, parent)) put(w, roomId, g.id, { parents: [parent], labels: {}, rel: {} });
   return g;
 }
 
@@ -200,9 +296,11 @@ export function layout(w, roomId, size = (id) => chapterSize(w, id)) {
   const lv = levels(w, roomId);
   const sz = Object.fromEntries(all.map((g) => [g.id, size(g.id)]));
   const ps = Object.fromEntries(all.map((g) => [g.id, parentsOf(w, roomId, g.id).filter((p) => sz[p])]));
-  // The biggest label on an arrow into each chapter.
+  // The biggest label on an arrow into each chapter (with its relation, when the room has several).
+  const names = relations(w, roomId);
   const lab = Object.fromEntries(all.map((g) => {
-    const ls = Object.values(arrowsInto(w, roomId, g.id).labels).map(labelSize);
+    const { parents, labels, rel } = arrowsInto(w, roomId, g.id);
+    const ls = parents.filter((p) => labels[p]).map((p) => labelSize((names.length > 1 ? `${rel[p] || names[0]} ` : '') + labels[p]));
     return [g.id, { w: Math.max(0, ...ls.map((l) => l.w)), h: Math.max(0, ...ls.map((l) => l.h)) }];
   }));
   const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD));
@@ -373,7 +471,15 @@ export default {
   note: 'chapters in a tree',
   order: 30,
   groups: { form: 'chapter', name: 'Chapter', membership: 'one' },
-  settings: [{ key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' }],
+  settings: [
+    { key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' },
+    RELATIONS,
+  ],
+
+  // A relation renamed in the room's list is renamed on its arrows.
+  settingChanged(w, roomId, key, before, after) {
+    if (key === RELATIONS.key) renameRelations(w, roomId, before, after);
+  },
 
   // Each chapter's thoughts, or a folded chapter as one thought.
   units: (w, roomId) => chapters(w, roomId).flatMap((g) => (g.folded ? [g] : members(w, g.id))),
@@ -491,17 +597,27 @@ export default {
     },
   ],
 
-  // In a chapter's pop-up: each arrow into it, with what it forgets about that parent.
+  // In a chapter's pop-up: each arrow into it, its relation (when the room has several) and label.
   props(c, th) {
     if (!isGroup(th) || th.of !== ID) return [];
-    const { parents, labels } = arrowsInto(c.world, c.roomId, th.id);
-    return parents.map((p) => c.el('label', { class: 'room-russell-forgets' },
-      c.el('span', { class: 'pop-note' }, `From ${chapterName(c.world, p)}, it forgets`),
+    const { parents, labels, rel } = arrowsInto(c.world, c.roomId, th.id);
+    const names = cleanRelations(c.setting(RELATIONS.key));
+    return parents.map((p) => {
+      const now = rel[p] || names[0];
+      const pick = names.length > 1 || !names.includes(now)
+        ? c.el('select', {
+          class: 'room-russell-pick-rel', 'aria-label': `How it stands to ${chapterName(c.world, p)}`,
+          onchange: (e) => { setRelation(c.world, c.roomId, p, th.id, e.target.value === names[0] ? '' : e.target.value); c.save(); c.drawWorld(); },
+        }, ...[...new Set([...names, now])].map((n) => c.el('option', { value: n, selected: n === now }, n)))
+        : null;
+      return c.el('label', { class: 'room-russell-forgets' },
+      c.el('span', { class: 'pop-note' }, `From ${chapterName(c.world, p)}, it ${pick ? '' : now}`, pick),
       c.el('input', {
-        class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it forgets about ${chapterName(c.world, p)}`,
+        class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it ${now} about ${chapterName(c.world, p)}`,
         onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
         onchange: (e) => { setLabel(c.world, c.roomId, p, th.id, e.target.value); c.save(); c.drawWorld(); },
-      })));
+      }));
+    });
   },
 
   // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
@@ -518,7 +634,8 @@ export default {
     const nodes = [];
     const picking = pending && pending.room === roomId;
     const line = c.setting('line') || 'straight';
-    for (const { from, to, label } of arrows(w, roomId)) {
+    const names = cleanRelations(c.setting(RELATIONS.key));
+    for (const { from, to, label, rel } of arrows(w, roomId)) {
       const a = all[from], b = all[to];
       if (!a || !b) continue;
       // From the side of the parent that faces the child to the child's facing side; the label
@@ -533,9 +650,9 @@ export default {
         const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
         const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
         nodes.push(el('div', {
-          class: `room-russell-label side-${spot.side}`, 'data-group': to, title: 'What the child forgets',
+          class: `room-russell-label side-${spot.side}`, 'data-group': to, title: `${rel || names[0]} ${label}`,
           style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
-        }, maths(label)));
+        }, names.length > 1 ? el('span', { class: 'room-russell-rel' }, `${rel || names[0]} `) : null, maths(label)));
       }
     }
     for (const g of chapters(w, roomId)) {

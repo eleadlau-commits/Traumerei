@@ -1,10 +1,11 @@
 // Tests for Russell: chapters in a tree, joined by arrows with no loops and at most two parents.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, create, remove, MESSY, groupOf } from '../model.js';
+import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting } from '../model.js';
 import russell, {
   addChapter, link, unlink, setLabel, labelOf, parentsOf, childrenOf, arrows, whyNot, levels, layout,
   chapterSize, chapters, chapterName, LAYOUT, labelSize,
+  relations, relationOf, setRelation, cleanRelations, renameRelations, readHeading, headingAttrs, RELATIONS,
 } from '../ontologies/russell.js';
 
 // A chapter with one thought in it (a chapter with no thoughts goes).
@@ -161,4 +162,50 @@ test('writing: a move asks for a child chapter; with none asked, a thought waits
   russell.drop(w, MESSY, loose.id, at.x, at.y);
   assert.equal(groupOf(w, loose.id, 'russell').id, p);
   assert.equal(russell.tag(w, loose.id).name, 'parent');
+});
+
+test('relations: each room keeps a list, the first the default; a renamed one follows on its arrows', () => {
+  const w = emptyWorld(1);
+  assert.deepEqual(relations(w, MESSY), ['forgets']);
+  assert.deepEqual(cleanRelations('generalises, forgets, Forgets, two words, needs-a'), ['generalises', 'forgets', 'needs-a']);
+  assert.deepEqual(cleanRelations('[]'), ['forgets']);
+  const a = chapter(w, 'a'), b = chapter(w, 'b'), c = chapter(w, 'c');
+  setRoomSetting(w, MESSY, 'russell', 'relations', ['forgets', 'generalises']);
+  link(w, MESSY, a, b, 'the order');
+  link(w, MESSY, a, c, 'to rings', 'generalises');
+  assert.equal(relationOf(w, MESSY, a, b), 'forgets');
+  assert.equal(relationOf(w, MESSY, a, c), 'generalises');
+  setLabel(w, MESSY, a, c, 'to fields');
+  assert.equal(relationOf(w, MESSY, a, c), 'generalises', 'a new label keeps the relation');
+  // Renamed in place in the room's list: its arrows follow.
+  setRoomSetting(w, MESSY, 'russell', 'relations', ['forgets', 'extends']);
+  assert.equal(russell.settingChanged(w, MESSY, RELATIONS.key, ['forgets', 'generalises'], ['forgets', 'extends']), undefined);
+  assert.equal(relationOf(w, MESSY, a, c), 'extends');
+  assert.equal(renameRelations(w, MESSY, ['a'], ['b', 'c']), 0, 'a list of another length renames nothing');
+  setRelation(w, MESSY, a, c, '');
+  assert.equal(relationOf(w, MESSY, a, c), 'forgets');
+  unlink(w, MESSY, a, b);
+  assert.deepEqual(arrows(w, MESSY).map((x) => x.to), [c]);
+});
+
+test('relations in a heading: each parent, then its relation as a key; the rest kept', () => {
+  const said = [];
+  const r = readHeading([['parent', 'A'], ['Generalises', 'x'], ['parent', 'B'], ['status', 'draft'], ['forgets', 'y']], ['forgets', 'generalises'], (t) => said.push(t));
+  assert.deepEqual(r.arrows, [{ title: 'A', label: 'x', rel: 'generalises' }, { title: 'B', label: 'y', rel: 'forgets' }]);
+  assert.deepEqual(r.rest, [['status', 'draft']]);
+  assert.match(said.join(), /"status" isn't one of this room's relations/);
+  const lone = [];
+  readHeading([['forgets', 'z']], ['forgets'], (t) => lone.push(t));
+  assert.match(lone.join(), /no parent before it/);
+  // Written back: a label, or a relation other than the default, gives the key.
+  const w = emptyWorld(1);
+  setRoomSetting(w, MESSY, 'russell', 'relations', ['forgets', 'generalises']);
+  const a = chapter(w, 'a'), b = chapter(w, 'b'), c = chapter(w, 'c'), d = chapter(w, 'd');
+  link(w, MESSY, a, b, 'it');
+  link(w, MESSY, a, c, '', 'generalises');
+  link(w, MESSY, a, d);
+  const t = () => 'A';
+  assert.deepEqual(headingAttrs(w, MESSY, b, t), [['parent', 'A'], ['forgets', 'it']]);
+  assert.deepEqual(headingAttrs(w, MESSY, c, t), [['parent', 'A'], ['generalises', '']]);
+  assert.deepEqual(headingAttrs(w, MESSY, d, t), [['parent', 'A']]);
 });

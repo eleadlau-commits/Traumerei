@@ -65,6 +65,9 @@
 .room-mode-settings-note { margin: -6px 0 0; font-size: 11px; opacity: .55; }
 .room-mode-settings .renderer-slider { font-size: 13px; }
 .room-choice-row .seg { grid-column: 1 / -1; gap: 4px 20px; }
+.room-list-row input { grid-column: 1 / -1; }
+.room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
+.room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
