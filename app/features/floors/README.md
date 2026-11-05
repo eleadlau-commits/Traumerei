@@ -22,7 +22,10 @@ The rooms page's floors: how big every floor is, and where a room goes when it i
 but is marked `roomsPage`: it is never a room's mode, and no list inside a room shows it. Its
 "room" is a floor (from 0), its units the rooms on that floor, a point a room's cell
 (`{ x: col, y: row }`), and `drop()` moves a room to a cell (or onto another floor) by the rule
-above. The rooms page reaches it through the world service's `roomsPage`.
+above. **Its rule:** rooms sit on the floors' cells and never overlap, and a room's shape
+says how many ontologies it holds: 1 × 1 one, a **Twin** (two cells wide, one high) two side by
+side, 2 × 2 all of them. `shape(w, id)` gives `{ w, h, holds }` (holds: 1, 2 or `'all'`); the
+world's `span(r)` and `shapeOf(r)` say the same, from a room's saved `size` (1, `'twin'`, 2). The rooms page reaches it through the world service's `roomsPage`.
 
 ## The floors service
 
@@ -34,7 +37,7 @@ above. The rooms page reaches it through the world service's `roomsPage`.
 | `place(id, cell, { near })` | Places room `id` by the rule above (`cell`: `{ col, row }`, optional); with `near`, a taken cell sends it to the free spot nearest that cell instead of the first (a duplicated room, beside its original). Returns `{ page, from, spilled }`, or `null` (no such room, or archived). The caller saves. |
 | `settle(page)` | Places every room on floor `page` with no cell, outside the board or on another's cells (Messy thoughts first). Returns the rooms that went to a new floor. |
 | `move(id, col, row)` | Moves a room to a cell of its floor, if it is on the board and free (not a locked room). True when it moved. |
-| `resize(id, size)` | A room 1 × 1 or 2 × 2, if its cells stay on the board and free. True when it changed. |
+| `resize(id, size)` | A room 1 × 1 (`1`), a Twin 2 × 1 (`'twin'`) or 2 × 2 (`2`), if its cells stay on the board and free. True when it changed. |
 | `toFloor(id, page, cell)` | Moves a room to floor `page`, in `cell` if it is free there, else the first free spot: true, false (Messy thoughts, a locked room, its own floor), or `'full'`. |
 | `fits(size)` | Whether every room fits floors of `size` (`{ cols, rows }`). |
 | `removeFloor(page)` | Deletes floor `page`: its rooms go to the Archive (restored, they go to the floor above), and every floor below moves up one. Returns `{ archived }` (the rooms archived), or `{ error }`: `'first'` (Floor 1, where Messy thoughts lives, stays), `'none'` (no such floor) or `'locked'` (a locked room is on it). The caller saves. |

@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, MESSY } from './world.js';
+import { room, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -15,7 +15,8 @@ export const preset = (id) => PRESETS.find((p) => p.id === id) || PRESETS.find((
 export const sizeName = (board) => `${board.cols} × ${board.rows}`;
 
 const setPage = (r, page) => { if (page > 0) r.page = page; else delete r.page; };
-const inside = (r, col, row, board) => col >= 0 && row >= 0 && col + (r.size || 1) <= board.cols && row + (r.size || 1) <= board.rows;
+// Whether room `r`, at (col, row), lies on the board: its whole shape (1 × 1, a Twin 2 × 1, or 2 × 2).
+const inside = (r, col, row, board) => { const { w, h } = span(r); return col >= 0 && row >= 0 && col + w <= board.cols && row + h <= board.rows; };
 
 // Whether room `r` could sit at (col, row) of floor `page` (its own by default): on the board and
 // clear of every other room there.
@@ -93,12 +94,13 @@ export function move(w, id, col, row, board) {
   return true;
 }
 
-// A room's size (1 or 2 cells a side), if the cells it would take are on the board and free.
+// A room's size: 1 (1 × 1), 'twin' (2 × 1) or 2 (2 × 2), if the cells it would take are on the
+// board and free.
 export function resize(w, id, size, board) {
   const r = room(w, id);
   if (!r || r.locked) return false;
   const was = r.size || 1;
-  r.size = size === 2 ? 2 : 1;
+  r.size = size === 2 || size === 'twin' ? size : 1;
   if (r.col == null || free(w, r, r.col, r.row, board)) return true;
   r.size = was;
   return false;
