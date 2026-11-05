@@ -2,7 +2,7 @@
    dock's box is Folio's .panel (the pale, blurred veil) with .dock for its place. What opens in a
    dock puts its own content in .dock-body. */
 
-:root { --dock-left: 0px; --dock-right: 0px; }
+:root { --dock-left: 0px; --dock-right: 0px; --dock-left-at: 0px; } /* --dock-left-at: how far from the screen's edge the left dock (and its strip) starts: a page may keep its rail outside it */
 
 .dock {
   position: fixed;
@@ -25,7 +25,7 @@
 }
 .dock-left {
   top: var(--strip, 0px);
-  left: 0;
+  left: var(--dock-left-at);
   width: 280px;
   box-shadow: 1px 0 0 var(--chrome-edge);
   animation: dock-in-left var(--quick) ease both;
@@ -88,7 +88,7 @@
   background: var(--chrome);
 }
 .dock-tuck[hidden] { display: none; }
-.dock-tuck-left { left: 0; box-shadow: 1px 0 0 var(--chrome-edge); }
+.dock-tuck-left { left: var(--dock-left-at); box-shadow: 1px 0 0 var(--chrome-edge); }
 .dock-tuck-right { right: 0; box-shadow: -1px 0 0 var(--chrome-edge); }
 .dock-tuck-tab { writing-mode: vertical-rl; justify-content: center; padding: var(--s-3) 0; max-height: 50%; overflow: hidden; text-overflow: ellipsis; }
 .dock-tuck-left .dock-tuck-tab { transform: rotate(180deg); }
