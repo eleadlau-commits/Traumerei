@@ -262,9 +262,10 @@ export class RoomView {
   }
 
   // This room's settings for one ontology, and Reset to global (redraw(): after a reset).
-  modeSettingsRows(o, redraw) {
+  // The docked tab's head already says "Settings for this room", so only the card adds the note.
+  modeSettingsRows(o, redraw, { note = true } = {}) {
     return [
-      el('p', { class: 'room-mode-settings-note' }, 'For this room only'),
+      note ? el('p', { class: 'room-mode-settings-note' }, 'For this room only') : null,
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         const before = this.setting(st.key, o);
         setRoomSetting(this.world, this.roomId, o.id, st.key, v);
@@ -292,8 +293,9 @@ export class RoomView {
     if (open && open.id === this.settingsFor && this.panel.isOpen('mode-settings')) return;
     const o = this.ontologies.find((x) => x.id === this.settingsFor);
     if (!o) { this.settingsFor = null; return; }
-    const body = el('div', { class: 'room-mode-settings room-mode-settings-docked' });
-    const fill = () => { body.replaceChildren(...this.modeSettingsRows(o, () => { fill(); this.drawWorld(); })); };
+    // Not the card's class: the card is fixed beside the rail, which left these floating over the dock.
+    const body = el('div', { class: 'room-mode-settings-docked' });
+    const fill = () => { body.replaceChildren(...this.modeSettingsRows(o, () => { fill(); this.drawWorld(); }, { note: false }).filter(Boolean)); };
     fill();
     const now = (this.modeSettings = { id: o.id });
     this.panel.open({ key: 'mode-settings', kind: 'Settings for this room', title: o.name, body,
