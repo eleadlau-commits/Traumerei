@@ -85,6 +85,7 @@ export default class Rooms extends Feature {
       showArchive: () => { this.showRooms(); if (!this.shelf) this.toggleShelf(); }, // back to this page, on the Archive
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
+    document.addEventListener('pointerdown', (e) => this.makingAway(e), true); // the new-room menu closes on a press elsewhere (grid.js)
     this.keyMap = this.use('keys'); // the key map: the ? list, or null
     const run = { // the same verbs as in a room (room/verbs.js)
       'rooms.rename': (e) => this.renameChosen(e),
