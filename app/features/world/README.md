@@ -12,7 +12,7 @@ list is everything it offers:
 
 | Member | What it is |
 |---|---|
-| `lib` | The rules, by module (`lib.js`): `model`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`. Plain functions of a world; none touches the screen. |
+| `lib` | The rules, by module (`lib.js`): `model`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `relations` (named arrows between groups, shared by any ontology that joins its groups). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |

@@ -322,7 +322,7 @@ export function importInto(w, roomId, parsed, { ontologies = [], now = Date.now(
       let why = '';
       if (found.length > 1) why = `two chapters are called "${a.parent}"`;
       else if (!found.length) why = left.has(a.parent) ? `"${a.parent}" was left out` : `no chapter is called "${a.parent}"`;
-      else why = link(w, roomId, found[0].id, a.child, a.label, a.rel === names[0] ? '' : a.rel).replace(/\.$/, '');
+      else why = link(w, roomId, found[0].id, a.child, a.label, a.rel).replace(/\.$/, '');
       if (why) report.push(`Line ${a.line}: the arrow from "${a.parent}" to ${child} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1)}.`);
     }
   }
@@ -743,8 +743,7 @@ function redraw(w, roomId, list, fromText, report) {
   for (const { id, src } of list) {
     const child = src.title || 'An untitled chapter';
     const names = relations(w, roomId);
-    const want = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows
-      .map((a) => ({ ...a, rel: a.rel === names[0] ? '' : a.rel }));
+    const want = readHeading(src.attrs, names, (why) => report.push(`Line ${src.line}: ${why}`)).arrows;
     const { parents: had, labels: hadLabels, rel: hadRel } = arrowsInto(w, roomId, id);
     // Each wanted parent, by its heading: one it already has first, then one from the text, then
     // any chapter of the room with that title.
@@ -783,13 +782,13 @@ function redraw(w, roomId, list, fromText, report) {
       if (!had.includes(a.id)) continue;
       const q = (x) => (x ? `"${x}"` : 'nothing');
       const was = hadRel[a.id] || '';
-      if (was !== a.rel && (was || names[0]) !== (a.rel || names[0])) {
+      if (was !== a.rel) {
         setRelation(w, roomId, a.id, id, a.rel);
-        out.push(`${child}: ${was || names[0]} → ${a.rel || names[0]} (about ${title(a.id)})`);
+        out.push(`${child}: ${was || 'no relation'} → ${a.rel || 'no relation'} (about ${title(a.id)})`);
       }
       if ((hadLabels[a.id] || '') !== a.label) {
         setLabel(w, roomId, a.id, id, a.label);
-        out.push(`${child}: ${a.rel || names[0]} ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
+        out.push(`${child}: ${a.rel || 'no relation'} ${q(hadLabels[a.id])} → ${q(a.label)} (about ${title(a.id)})`);
       }
     }
     const lost = gone.filter((pId) => !back.includes(pId));

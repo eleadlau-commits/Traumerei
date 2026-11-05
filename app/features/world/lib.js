@@ -12,3 +12,4 @@ export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, FALLBA
 export * as joyce from './ontologies/joyce.js';
 export * as pessoa from './ontologies/pessoa.js';
 export * as russell from './ontologies/russell.js';
+export * as relations from './ontologies/relations.js'; // arrows and their relations, for any ontology

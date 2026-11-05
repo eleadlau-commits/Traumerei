@@ -1,4 +1,4 @@
-// Tests for Russell: chapters in a tree, joined by arrows with no loops and at most two parents.
+// Tests for Russell: chapters in a tree, joined by arrows with no loops and any number of parents.
 
 import { test, assert } from 'folio/testing';
 import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting, members, declareGroups } from '../model.js';
@@ -45,17 +45,20 @@ test('an arrow that would make a loop is refused', () => {
   assert.deepEqual(arrows(w, MESSY).map((x) => [x.from, x.to]), [[a, b], [b, c]]);
 });
 
-test('a junction has two parents; a third is refused', () => {
+test('a junction has as many parents as it is given', () => {
   const w = emptyWorld(1);
-  const a = chapter(w, 'a'), b = chapter(w, 'b'), j = chapter(w, 'j'), d = chapter(w, 'd');
-  assert.equal(link(w, MESSY, a, j), '');
-  assert.equal(link(w, MESSY, b, j), '');
-  assert.match(link(w, MESSY, d, j), /two parents/);
-  assert.deepEqual(parentsOf(w, MESSY, j), [a, b]);
+  const a = chapter(w, 'a'), b = chapter(w, 'b'), j = chapter(w, 'j'), d = chapter(w, 'd'), e = chapter(w, 'e');
+  for (const p of [a, b, d, e]) assert.equal(link(w, MESSY, p, j), '');
+  assert.deepEqual(parentsOf(w, MESSY, j), [a, b, d, e]);
   assert.deepEqual(childrenOf(w, MESSY, a), [j]);
   assert.ok(unlink(w, MESSY, a, j));
-  assert.deepEqual(parentsOf(w, MESSY, j), [b]);
-  assert.equal(whyNot(w, MESSY, d, j), '');
+  assert.deepEqual(parentsOf(w, MESSY, j), [b, d, e]);
+  assert.equal(whyNot(w, MESSY, a, j), '');
+  // Laid out under all of them, a level below the deepest.
+  assert.equal(levels(w, MESSY)[j], 1);
+  const at = layout(w, MESSY, () => ({ w: 100, h: 40 }));
+  const xs = [b, d, e].map((p) => at[p].x);
+  assert.ok(at[j].x >= Math.min(...xs) && at[j].x <= Math.max(...xs));
 });
 
 test('labels: what the child forgets, kept on the arrow', () => {
@@ -164,10 +167,10 @@ test('writing: a move asks for a child chapter; with none asked, a thought waits
   assert.equal(russell.tag(w, loose.id).name, 'parent');
 });
 
-test('relations: each room keeps a list, the first the default; a renamed one follows on its arrows', () => {
+test('relations: each room keeps a list, the first for new arrows; a renamed one follows on its arrows', () => {
   const w = emptyWorld(1);
   assert.deepEqual(relations(w, MESSY), ['forgets']);
-  assert.deepEqual(cleanRelations('generalises, forgets, Forgets, two words, needs-a'), ['generalises', 'forgets', 'needs-a']);
+  assert.deepEqual(cleanRelations('generalises, forgets, Forgets, is a case of, ⊂'), ['generalises', 'forgets', 'is a case of', '⊂']);
   assert.deepEqual(cleanRelations('[]'), ['forgets']);
   const a = chapter(w, 'a'), b = chapter(w, 'b'), c = chapter(w, 'c');
   setRoomSetting(w, MESSY, 'russell', 'relations', ['forgets', 'generalises']);
@@ -182,8 +185,12 @@ test('relations: each room keeps a list, the first the default; a renamed one fo
   assert.equal(russell.settingChanged(w, MESSY, RELATIONS.key, ['forgets', 'generalises'], ['forgets', 'extends']), undefined);
   assert.equal(relationOf(w, MESSY, a, c), 'extends');
   assert.equal(renameRelations(w, MESSY, ['a'], ['b', 'c']), 0, 'a list of another length renames nothing');
-  setRelation(w, MESSY, a, c, '');
-  assert.equal(relationOf(w, MESSY, a, c), 'forgets');
+  assert.ok(setRelation(w, MESSY, a, c, ''));
+  assert.equal(relationOf(w, MESSY, a, c), '', 'an unnamed arrow');
+  assert.ok(setRelation(w, MESSY, a, c, '  ≅  '));
+  assert.equal(relationOf(w, MESSY, a, c), '≅');
+  assert.ok(!setRelation(w, MESSY, a, c, 'see [[B]]'), '[[ ]] are refused');
+  assert.equal(relationOf(w, MESSY, a, c), '≅');
   unlink(w, MESSY, a, b);
   assert.deepEqual(arrows(w, MESSY).map((x) => x.to), [c]);
 });
