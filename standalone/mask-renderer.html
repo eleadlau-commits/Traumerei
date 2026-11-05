@@ -3025,7 +3025,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       const features2 = [...this.app.features.values()].filter((f2) => f2.status !== "not-for-platform");
       const rows = features2.map((f2) => {
         const on = !disabled.has(f2.manifest.id);
-        const note = {
+        const note2 = {
           active: f2.problem ? `Had a problem: ${f2.problem}` : f2.manifest.description,
           failed: `Couldn't start: ${f2.reason}`,
           disabled: "Switched off",
@@ -3034,7 +3034,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         return el(
           "div",
           { class: `feature-row${f2.status === "active" ? "" : " off"}` },
-          el("div", { class: "feature-text" }, el("b", {}, f2.manifest.name), el("small", {}, note)),
+          el("div", { class: "feature-text" }, el("b", {}, f2.manifest.name), el("small", {}, note2)),
           toggle({
             checked: on,
             label: `Use ${f2.manifest.name}`,
@@ -5775,8 +5775,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     let cells4 = [];
     for (let i2 = 0; i2 < m2; i2++) for (let j = 0; j < n; j++) cells4.push([xs[i2], ys[j], xs[i2 + 1], ys[j + 1]]);
     const merge = stream(seed, ":planar:net:merge");
-    const same2 = (a, b) => Math.abs(a - b) < EPS;
-    const joins = (a, b) => (same2(a[2], b[0]) || same2(b[2], a[0])) && same2(a[1], b[1]) && same2(a[3], b[3]) || (same2(a[3], b[1]) || same2(b[3], a[1])) && same2(a[0], b[0]) && same2(a[2], b[2]);
+    const same3 = (a, b) => Math.abs(a - b) < EPS;
+    const joins = (a, b) => (same3(a[2], b[0]) || same3(b[2], a[0])) && same3(a[1], b[1]) && same3(a[3], b[3]) || (same3(a[3], b[1]) || same3(b[3], a[1])) && same3(a[0], b[0]) && same3(a[2], b[2]);
     const target = Math.max(1, Math.round(m2 * n * (1 - P.netMu)));
     for (let tries = 0; cells4.length > target && tries < 50 * m2 * n; tries++) {
       const a = cells4[Math.floor(merge.U() * cells4.length)];
@@ -14839,7 +14839,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       fileName: fileName2 = "source.md",
       options = [],
       check = () => ({}),
-      apply: apply2 = null,
+      apply: apply3 = null,
       full = (t) => t,
       reset = null,
       draft = null
@@ -14900,7 +14900,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             box.setRangeText("  ", box.selectionStart, box.selectionEnd, "end");
             soon();
           }
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !readOnly && apply2) {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !readOnly && apply3) {
             e.preventDefault();
             doApply();
           }
@@ -14948,11 +14948,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           say2("Back to what it holds now");
         };
         const doApply = async () => {
-          if (!apply2 || go.disabled) return;
+          if (!apply3 || go.disabled) return;
           go.disabled = true;
           let ok = false;
           try {
-            ok = await apply2(unfence(box.value), { ...chosen });
+            ok = await apply3(unfence(box.value), { ...chosen });
           } catch (err) {
             console.warn("Source: apply", err);
             say2("That couldn't be applied");
@@ -14965,7 +14965,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           applied = true;
           handle?.close(true);
         };
-        const go = readOnly || !apply2 ? null : word("Apply", doApply, "source-go");
+        const go = readOnly || !apply3 ? null : word("Apply", doApply, "source-go");
         const beforeClose = () => {
           if (draft && !readOnly) this.keepDraft(draft, !applied && changed2() ? { text: box.value, base: base2 } : null);
           return true;
@@ -16114,6 +16114,71 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return [...by].sort((a, b) => b[0] - a[0]).map(([day, rooms4]) => ({ day, rooms: [...rooms4].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n) }));
   }
 
+  // dist/web/features/time/record.js
+  var DAY2 = 864e5;
+  var KEEP2 = [{ days: 30, words: "1 month" }, { days: 365, words: "1 year" }, { days: 0, words: "Forever" }];
+  var KEEP_DEFAULT = 365;
+  var emptyRecord = () => ({ base: null, days: {} });
+  function snapshot(w2) {
+    const rooms4 = {};
+    for (const r of Object.values(w2.things)) {
+      if (r?.kind !== "room" || r.parent) continue;
+      rooms4[r.id] = {
+        name: r.name || "",
+        page: r.page || 0,
+        col: r.col ?? null,
+        row: r.row ?? null,
+        size: r.size || 1,
+        archived: !!r.archived,
+        tint: r.tint ?? null,
+        light: r.light ?? null,
+        opacity: r.opacity ?? null
+      };
+    }
+    return rooms4;
+  }
+  var same2 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  var sortedDays = (rec) => Object.keys(rec.days).map(Number).sort((a, b) => a - b);
+  function apply2(rooms4, d) {
+    for (const id of d.gone || []) delete rooms4[id];
+    Object.assign(rooms4, d.set || {});
+    return rooms4;
+  }
+  function stateAt(rec, day = Infinity) {
+    const rooms4 = { ...rec.base?.rooms || {} };
+    for (const d of sortedDays(rec)) if (d <= day) apply2(rooms4, rec.days[d]);
+    return rooms4;
+  }
+  function note(rec, now, written = [], when = Date.now()) {
+    const today = dayOf(when);
+    const before = stateAt(rec, today - 1);
+    const set = {}, gone = [];
+    for (const [id, r] of Object.entries(now)) if (!same2(before[id], r)) set[id] = r;
+    for (const id of Object.keys(before)) if (!(id in now)) gone.push(id);
+    const was = rec.days[today]?.written || [];
+    const all = [.../* @__PURE__ */ new Set([...was, ...written])];
+    const d = {};
+    if (Object.keys(set).length) d.set = set;
+    if (gone.length) d.gone = gone;
+    if (all.length) d.written = all;
+    if (Object.keys(d).length) rec.days[today] = d;
+    else delete rec.days[today];
+    return rec;
+  }
+  function prune(rec, keep, when = Date.now()) {
+    if (!keep) return rec;
+    const from = dayOf(when - (keep - 1) * DAY2);
+    const old = sortedDays(rec).filter((d) => d < from);
+    if (!old.length) return rec;
+    const rooms4 = { ...rec.base?.rooms || {} };
+    for (const d of old) {
+      apply2(rooms4, rec.days[d]);
+      delete rec.days[d];
+    }
+    rec.base = { day: from, rooms: rooms4 };
+    return rec;
+  }
+
   // dist/web/features/time/keys.js
   var TIME_KEYS = [
     { id: "time.toggle", keys: ["Ctrl+Alt+T"], words: "Time: show it, bring it to the front, or hide it" }
@@ -16146,6 +16211,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return !!self.panel?.isShowing(KEY2);
         }
       });
+      this.keep = this.storage.get("keep", KEEP_DEFAULT);
+      this.record = this.storage.get("record", null) || emptyRecord();
+      this.written = /* @__PURE__ */ new Set();
+      this.on("world:saved", () => this.recordSoon());
+      this.on("world:changed", () => this.recordSoon());
+      this.on("room:changed", (id) => {
+        this.written.add(this.squareId(id));
+        this.recordSoon();
+      });
+      this.recordSoon();
+      this.add("settings", { id: "time-history", title: "History", order: 31, render: () => this.settingsPane() });
       if (!this.panel) return;
       for (const k2 of TIME_KEYS) this.add("keys", { ...k2, zone: "everywhere", when: () => !!this.place(), run: () => this.toggle() });
       this.on("world:saved", () => this.refreshSoon());
@@ -16157,6 +16233,47 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     get m() {
       return this.w.lib.model;
+    }
+    // ---- The daily record ----
+    // The square on the rooms page a room is: itself, or its Twin (a side's).
+    squareId(id) {
+      const r = this.m.room(this.world, id);
+      return r?.parent && this.m.room(this.world, r.parent) ? r.parent : id;
+    }
+    recordSoon() {
+      clearTimeout(this.recordTimer);
+      this.recordTimer = setTimeout(() => this.writeRecord(), 1500);
+    }
+    // Today, as it is now, into the record; days older than the history kept are folded away.
+    writeRecord() {
+      clearTimeout(this.recordTimer);
+      note(this.record, snapshot(this.world), [...this.written]);
+      this.written.clear();
+      prune(this.record, this.keep);
+      this.storage.set("record", this.record);
+    }
+    // Settings → History: how long the record is kept.
+    settingsPane() {
+      return el11(
+        "div",
+        { class: "stack" },
+        el11(
+          "label",
+          { class: "row" },
+          el11("span", {}, "Keep the history"),
+          el11(
+            "select",
+            { "aria-label": "Keep the rooms' history", onchange: (e) => this.setKeep(+e.target.value) },
+            ...KEEP2.map((k2) => el11("option", { value: k2.days, ...k2.days === this.keep ? { selected: "" } : {} }, k2.words))
+          )
+        ),
+        ui_exports.hint("A day by day record of the rooms page, for going back in Time. A shorter history forgets the older days.", { small: true })
+      );
+    }
+    setKeep(days2) {
+      this.keep = days2;
+      this.storage.set("keep", days2);
+      this.writeRecord();
     }
     // The place that shows now, or null (the home page).
     place() {
@@ -18482,11 +18599,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The comment left last time, faint under the search bar until it is dismissed.
     showNote() {
-      const note = this.storage.get("note");
-      this.noteLine.hidden = !note?.text;
-      if (!note?.text) return;
+      const note2 = this.storage.get("note");
+      this.noteLine.hidden = !note2?.text;
+      if (!note2?.text) return;
       this.noteLine.replaceChildren(
-        el12("span", {}, note.text),
+        el12("span", {}, note2.text),
         el12("button", { type: "button", class: "word rooms-note-x", title: "Dismiss", onclick: () => {
           this.storage.set("note", null);
           this.noteLine.hidden = true;
@@ -19780,9 +19897,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // This room's settings for one ontology, and Reset to global (redraw(): after a reset).
     // The docked tab's head already says "Settings for this room", so only the card adds the note.
-    modeSettingsRows(o2, redraw2, { note = true } = {}) {
+    modeSettingsRows(o2, redraw2, { note: note2 = true } = {}) {
       return [
-        note ? el15("p", { class: "room-mode-settings-note" }, "For this room only") : null,
+        note2 ? el15("p", { class: "room-mode-settings-note" }, "For this room only") : null,
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           const before = this.setting(st.key, o2);
           setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
@@ -20309,11 +20426,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Starts writing a new thought at x, y (world units), with no group to go on with; for is kept
     // with it and handed to the writing ontology's begin (a move's own note: say, the chapter it is
     // a child of).
-    write({ x, y, for: note = null } = {}) {
+    write({ x, y, for: note2 = null } = {}) {
       if (!this.roomId || this.locked) return;
       if (this.draft) this.commit();
       this.sel = null;
-      this.draft = { train: null, x: Math.round(x ?? 0), y: Math.round(y ?? 0), ...note != null ? { for: note } : {} };
+      this.draft = { train: null, x: Math.round(x ?? 0), y: Math.round(y ?? 0), ...note2 != null ? { for: note2 } : {} };
       this.input.focus({ preventScroll: true });
       this.drawWorld();
       this.showDraft();
@@ -20880,7 +20997,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (id && kindOf3(this.world.things[id]) !== "line") this.openSheet(null, id);
     }
     // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
-    addItem(label2, note, fn, keep = true) {
+    addItem(label2, note2, fn, keep = true) {
       return el15(
         "button",
         { type: "button", class: "pick room-add-item", role: "menuitem", onclick: () => {
@@ -20888,7 +21005,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           fn();
         } },
         el15("span", {}, label2),
-        el15("span", { class: "pick-note" }, note)
+        el15("span", { class: "pick-note" }, note2)
       );
     }
     toggleAdd() {
