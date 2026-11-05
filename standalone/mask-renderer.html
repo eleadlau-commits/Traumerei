@@ -16528,14 +16528,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const word = (label2, fn, extra = "") => el11("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
       return [
         r.desc ? el11("p", { class: "pop-note" }, r.desc) : null,
-        word("Restore", () => {
-          restore2(this.world, r.id);
-          const out = this.floors.place(r.id);
-          this.roomSel = null;
-          this.save();
-          this.drawRooms();
-          if (!out?.spilled) this.toast(`${r.name} is back among the rooms.`);
-        }),
+        word("Restore", () => this.restoreRooms([r.id])),
         word("Delete", () => {
           remove3(this.world, r.id);
           this.roomSel = null;
@@ -16954,18 +16947,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.save();
         this.drawRooms();
       } : null;
-      p.lock = () => {
-        lock2(this.world, r.id, !r.locked);
-        this.save();
-        this.drawRooms();
-      };
-      p.archive = r.id !== MESSY3 && !r.locked ? () => {
-        archive3(this.world, r.id);
-        this.roomSel = null;
-        this.save();
-        this.drawRooms();
-        this.toast(`${r.name} is in the Archive.`);
-      } : null;
+      p.lock = () => this.lockRooms([r.id]);
+      p.archive = r.id !== MESSY3 && !r.locked ? () => this.archiveRooms([r.id]) : null;
       p.export = this.files ? () => this.exportRoomFile(r.id) : null;
       p.remove = r.id !== MESSY3 && !r.locked ? () => {
         remove3(this.world, r.id);
@@ -17027,8 +17010,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         sec("Actions", el11(
           "div",
           { class: "box-btns" },
-          btn(r.locked ? "Unlock" : "Lock", p.lock),
-          btn("Archive", p.archive),
+          btn(r.locked ? "Unlock" : "Lock", p.lock, this.keyMap?.label?.("rooms.lock") || ""),
+          btn("Archive", p.archive, this.keyMap?.label?.("rooms.archive") || ""),
           btn("Export", p.export),
           btn("Delete", p.remove, "Delete", "danger pop-delete")
         ))
@@ -17394,6 +17377,65 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (e?.target?.matches?.("input, textarea, select, [contenteditable]")) return [];
       if (this.root.hidden || this.inRoom) return [];
       return this.chosenIds().map((id) => room4(this.world, id)).filter(Boolean);
+    }
+    // Locks rooms, or unlocks them when every one is locked already: one step.
+    lockRooms(ids) {
+      const rs = ids.map((id) => room4(this.world, id)).filter(Boolean);
+      if (!rs.length) return;
+      const on = rs.some((r) => !r.locked);
+      for (const r of rs) lock2(this.world, r.id, on);
+      this.save();
+      this.drawRooms();
+      const key2 = this.keyMap?.label?.("rooms.lock");
+      this.toast(rs.length === 1 ? `${rs[0].name} is ${on ? "locked" : "unlocked"}.${key2 ? ` ${key2} ${on ? "unlocks" : "locks"} it.` : ""}` : `${on ? "Locked" : "Unlocked"} ${rs.length} rooms.`);
+    }
+    // Takes rooms to the Archive (not Messy thoughts, nor a locked room): one step.
+    archiveRooms(ids) {
+      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && !r.archived);
+      const ok = rs.filter((r) => r.id !== MESSY3 && !r.locked);
+      if (!ok.length) {
+        if (rs.length) this.toast("Messy thoughts and locked rooms stay.");
+        return;
+      }
+      for (const r of ok) archive3(this.world, r.id);
+      this.picks = [];
+      this.roomSel = this.roomPick = null;
+      this.save();
+      this.drawRooms();
+      const stayed = rs.length - ok.length;
+      this.toast(ok.length === 1 && !stayed ? `${ok[0].name} is in the Archive.` : `Archived ${ok.length} room${ok.length === 1 ? "" : "s"}${stayed ? `; ${stayed} stayed` : ""}.`);
+    }
+    // Brings archived rooms back, each to its old floor (else a new one): one step.
+    restoreRooms(ids) {
+      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && r.archived);
+      if (!rs.length) return;
+      let spilled = false;
+      for (const r of rs) {
+        restore2(this.world, r.id);
+        if (this.floors.place(r.id)?.spilled) spilled = true;
+      }
+      this.picks = [];
+      this.roomSel = this.roomPick = null;
+      this.save();
+      this.drawRooms();
+      if (!spilled) this.toast(rs.length === 1 ? `${rs[0].name} is back among the rooms.` : `${rs.length} rooms are back among the rooms.`);
+    }
+    // Ctrl+L: lock or unlock the chosen rooms.
+    lockChosen(e) {
+      const rs = this.chosenFor(e);
+      if (rs.length) this.lockRooms(rs.map((r) => r.id));
+    }
+    // Ctrl+Backspace: archive the chosen rooms; in the Archive, restore them. (On a Mac, Cmd+Backspace
+    // still deletes; the Control key archives.)
+    archiveChosen(e) {
+      if (MAC3 && e?.metaKey && !e.ctrlKey) {
+        this.shortcut(e, true);
+        return;
+      }
+      const rs = this.chosenFor(e);
+      if (!rs.length) return;
+      if (this.shelf) this.restoreRooms(rs.map((r) => r.id));
+      else this.archiveRooms(rs.map((r) => r.id));
     }
     duplicateChosen(e) {
       const rs = this.chosenFor(e).filter((r) => !r.archived);
@@ -17807,6 +17849,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
     { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen rooms (or Alt+drag one)" },
     { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen rooms to another floor" },
+    { id: "rooms.lock", keys: ["Ctrl+L"], words: "lock or unlock the chosen rooms" },
+    { id: "rooms.archive", keys: ["Ctrl+Backspace"], words: "archive the chosen rooms (in the Archive: restore them)" },
     { id: "rooms.group", keys: ["Ctrl+G"], words: "group the chosen rooms: a tag they share" },
     { id: "rooms.ungroup", keys: ["Ctrl+Shift+G"], words: "take off the tags they share" },
     { id: "rooms.floor", keys: ["PageUp", "PageDown"], words: "the floor above · below" },
@@ -17902,6 +17946,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "rooms.rename": (e) => this.renameChosen(e),
         "rooms.duplicate": (e) => this.duplicateChosen(e),
         "rooms.move": (e) => this.moveChosen(e),
+        "rooms.lock": (e) => this.lockChosen(e),
+        "rooms.archive": (e) => this.archiveChosen(e),
         "rooms.group": (e) => this.tagChosen(e),
         "rooms.ungroup": (e) => this.untagChosen(e)
       };
@@ -18653,6 +18699,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var setOrder3;
   var foldInto;
   var foldPlan2;
+  var lock3;
   function bind4(lib) {
     ({
       room: room5,
@@ -18689,7 +18736,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       applySettingsToAll: applySettingsToAll2,
       hash: hash2,
       DEFAULT_MODE: DEFAULT_MODE4,
-      setOrder: setOrder3
+      setOrder: setOrder3,
+      lock: lock3
     } = lib.model);
     ({ ITEMS: ITEMS3 } = lib.items);
     ({ maths: maths2 } = lib.maths);
@@ -20824,6 +20872,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     c.drawWorld();
     c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
   }
+  function lock4(c, e) {
+    if (typing(e) || c.editing || !c.roomId) return;
+    const r = room5(c.world, c.roomId);
+    if (!r) return;
+    const on = !r.locked;
+    lock3(c.world, r.id, on);
+    c.save();
+    c.drawRoom();
+    c.drawWorld();
+    if (c.sel && props(c)) c.openProps(c.sel);
+    const key2 = c.keyMap?.label?.("room.lock");
+    c.toast(`${on ? "Locked" : "Unlocked"}.${key2 ? ` ${key2} ${on ? "unlocks" : "locks"} it.` : ""}`);
+  }
 
   // dist/web/features/room/bars.js
   var Bars = class {
@@ -21586,6 +21647,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.group", keys: ["Ctrl+G"], words: "make what is chosen one group of this mode (a train, a chapter)", typing: true },
     { id: "room.ungroup", keys: ["Ctrl+Shift+G"], words: "take what is chosen out of its group", typing: true },
     { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room", typing: true },
+    { id: "room.lock", keys: ["Ctrl+L"], words: "lock or unlock this room", typing: true },
     { id: "room.back-into", shows: "Backspace in an empty thought", words: "back into the one before" },
     { id: "room.nudge", keys: ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight", "Shift+ArrowUp", "Shift+ArrowDown"], shows: "Arrows · Shift+arrows", words: "nudge what is chosen" },
     { id: "room.search", keys: ["Ctrl+K"], words: "search every room" },
@@ -21635,7 +21697,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "room.close": (e) => close(this, e),
         "room.group": (e) => group(this, e),
         "room.ungroup": (e) => ungroup(this, e),
-        "room.move": (e) => moveTo(this, e)
+        "room.move": (e) => moveTo(this, e),
+        "room.lock": (e) => lock4(this, e)
       };
       const live = () => !this.root.hidden && !!this.roomId;
       const when = { "room.mode": () => live() && this.tabSwaps() };
