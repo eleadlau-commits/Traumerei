@@ -127,10 +127,10 @@ export class RoomsGrid {
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
         onclick: () => this.onCell(col, row),
-        // A right-click opens a small menu with Import file… (a left click shows the kinds of room).
+        // A right-click shows the kinds of room too (right-click on empty space adds, as in a room).
         oncontextmenu: (e) => {
-          e.preventDefault(); if (!this.files) return; this.roomSel = null; this.roomPick = null; this.making = { col, row, menu: true }; this.drawRooms();
-          this.grid.querySelector('.rooms-cell-menu button')?.focus({ preventScroll: true });
+          e.preventDefault(); this.roomSel = this.roomPick = this.floorSel = null; this.making = { col, row }; this.drawRooms();
+          this.grid.querySelector('.rooms-kinds button')?.focus({ preventScroll: true });
         },
       }));
     }
@@ -140,7 +140,7 @@ export class RoomsGrid {
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
     if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
     if (this.panel) { if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel); else this.dockRoom(chosen || null); }
-    if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
+    if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.keepInView(scrolled);
     this.grid.querySelector('.rooms-name-field')?.focus();
@@ -188,24 +188,16 @@ export class RoomsGrid {
     };
   }
 
-  // The kinds of room a new one can be, beside the empty cell clicked.
+  // The kinds of room a new one can be, beside the empty cell clicked (or right-clicked): one room
+  // of each ontology (1 × 1), then All ontology, a 2 × 2 room that holds them all (Borges's rule:
+  // a room's shape says how many ontologies it holds). A room from a file is the top bar's Import.
   kindOptions(c, cell, cols) {
-    return el('div', this.beside(c, cell, cols, ' rooms-kinds'),
+    return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
       el('div', { class: 'label' }, 'A new room'),
-      ...this.ontologies.map((k) => el('button', { type: 'button', class: 'pick rooms-kind', onclick: () => this.newRoom(c, k.id) },
+      ...this.ontologies.map((k) => el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.newRoom(c, k.id) },
         el('span', { class: 'rooms-kind-name' }, k.name), el('span', { class: 'pick-note' }, k.note || ''))),
-      // Or a room from a room Markdown file (the roomfile feature), in this cell.
-      this.files && el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-import', onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, c); } },
-        el('span', { class: 'rooms-kind-name' }, 'Import a room…'), el('span', { class: 'pick-note' }, 'from a .md file')));
-  }
-
-  // The menu a right-click on an empty cell opens: Import file…, a room from a room Markdown file
-  // (the roomfile feature), placed in this cell.
-  cellMenu(c, cell, cols) {
-    return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds rooms-cell-menu'), role: 'menu' },
-      el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-import', role: 'menuitem',
-        onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, { col: c.col, row: c.row }); } },
-      el('span', { class: 'rooms-kind-name' }, 'Import file…'), el('span', { class: 'pick-note' }, '.md')));
+      el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-more', role: 'menuitem', onclick: () => this.newRoom(c, DEFAULT_MODE, 2) },
+        el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')));
   }
 
   drawPages() {
@@ -893,10 +885,11 @@ export class RoomsGrid {
   }
 
   // A new room of a kind (its mode), in the cell asked for (or the first free one), with
-  // its name ready to write.
-  newRoom(cell = null, kind = DEFAULT_MODE) {
+  // its name ready to write. size: 1, or 2 for All ontology (a 2 × 2 room holding every mode).
+  newRoom(cell = null, kind = DEFAULT_MODE, size = 1) {
     const r = addRoom(this.world, 'Untitled', Date.now(), { page: this.page }, kind);
     if (r) {
+      if (size !== 1) r.size = size; // its shape, before it is placed (Borges's rule)
       seedRoomSettings(this.world, r.id, this.ontPrefs);
       const out = this.floors.place(r.id, cell); // in that cell, else its floor's first free one, else a new floor
       if (out) this.page = out.page;

@@ -28,8 +28,7 @@ no slots.
 A room can come in and go out as one plain Markdown file ("room Markdown"), so its contents can be
 written somewhere else (by hand, or by Claude) and brought in in one step.
 
-- **In.** On the rooms page: *Import a room…* in an empty cell's choices (the room goes in that
-  cell) or in the menu, or drop a `.md` file on the page (the floor's first free cell, else a new floor). Inside a room:
+- **In.** On the rooms page: *Import a room…* in the top bar, or drop a `.md` file on the page (the floor's first free cell, else a new floor). Inside a room:
   *Import into this room…* in Add, or drop a file on the canvas; the file's groups and thoughts
   join the room as its own mode sees them, and its front matter is not used. First a quiet card
   says what will arrive ("12 groups, 85 thoughts, 2 pictures") and anything that couldn't be

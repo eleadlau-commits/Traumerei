@@ -141,8 +141,11 @@ written there. With nothing in it, the rooms page works on its own.
 
 ## Step 2: kinds of room, pages, the rail
 
-- **Kinds.** A click (or a right-click) on an empty cell asks which kind the new room is:
-  *Joyce · Pessoa*. Rooms sit only on the rooms page; nothing nests. A square dropped on another
+- **Kinds.** A click (or a right-click) on an empty cell asks which kind the new room is: one
+  room of each mode (*Joyce · Pessoa · Russell*, 1 × 1), or *All ontology*, a 2 × 2 room that
+  holds every mode (a room's shape says how many ontologies it holds: Borges, the rooms page's
+  own ontology, in the floors feature). A room from a file comes from *Import a room…* in the top
+  bar, or a file dropped on the page. Rooms sit only on the rooms page; nothing nests. A square dropped on another
   square goes back to its place.
 - **Pages.** The rooms page has pages, *1 2 3 +* along the bottom. *+* makes a new one; a square
   dropped on a number moves there. Messy thoughts stays on page 1.
