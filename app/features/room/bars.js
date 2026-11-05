@@ -213,7 +213,9 @@ export class Bars {
   // ontology with a tray has loose thoughts.
 
   trayItems() {
-    try { return this.ont.tray?.(this.world, this.roomId) || []; } catch { return []; }
+    let own = [];
+    try { own = this.ont.tray?.(this.world, this.roomId) || []; } catch { own = []; }
+    return this.twinTrayItems(own); // a Twin: one tray for both sides (twin.js)
   }
 
   // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
@@ -320,7 +322,17 @@ export class Bars {
       if (!ghost) { if (ev.type === 'pointerup') this.trayClick(ev, id); return; }
       ghost.remove();
       const over = document.elementFromPoint(ev.clientX, ev.clientY);
-      if (ev.type !== 'pointerup' || !over || !this.stage.contains(over) || !this.world.things[id]) return;
+      if (ev.type !== 'pointerup' || !over || !this.world.things[id]) return;
+      // A Twin: let go over its other side, it goes there (or stays there, if it came from there).
+      const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
+      if (there && this.world.things[id].parent === there.id) {
+        this.ontology(view(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
+        this.save();
+        this.drawWorld();
+        return;
+      }
+      if (there) { this.dropAcross(id, ev.clientX - off.x, ev.clientY - off.y); return; }
+      if (!this.stage.contains(over) || !this.fromOtherSide(id)) return;
       const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
       this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
       this.save();

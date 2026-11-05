@@ -110,6 +110,13 @@ It offers no service of its own.
 - **Closing.** Select a train or chapter and *Close* (Ctrl+Shift+F), then name it. It shows as one
   thought in its own mode; *Open* shows its thoughts again. Closing is only how it shows: its
   thoughts, and the other modes, are not changed.
+- **A Twin** (`twin.js`): two rooms bundled in one, side by side (the world's `twin.js`). Going
+  in works on its left side; the other side shows in the other half of the canvas, quieter, as
+  it is (its own mode and view), with its name and mode at its foot. A click there, or a side
+  under *Sides* in the rail, works on that side instead. A thought or a whole group dragged from
+  the side you work on and let go over the other goes across, to where it was let go, and belongs
+  to that side alone. The two sides share one loose tray: the left dock lists both sides' loose
+  thoughts, and one dragged onto either canvas goes to that side.
 
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
 saving and undo are the **world** feature's (`app/features/world`, see its README); the room
@@ -118,8 +125,8 @@ uses, so every file imports them from there. It goes back to the rooms page, or 
 room, through the `rooms` service. The `Room` class is written across several files:
 `Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space, Timeline), `writing.js` (thoughts, the draft, the caret),
-`gestures.js` (pointer, keys, selection, copy and paste, opening Search) and `bars.js` (pop-ups, tray,
-sheets, pictures). `editor.js` (the content editor) and `document.js` (a closed chapter as a
+`gestures.js` (pointer, keys, selection, copy and paste, opening Search), `bars.js` (pop-ups, tray,
+sheets, pictures) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
 A room in and out as Markdown is the **roomfile** feature's (`app/features/roomfile`); the room

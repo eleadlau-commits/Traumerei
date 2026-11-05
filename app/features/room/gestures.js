@@ -108,6 +108,7 @@ export class Gestures {
     }
     if (g.kind === 'text') { if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) >= 3) this.selectText(g.anchor, this.offsetAt(e.clientX, e.clientY)); return; }
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    g.last = { x: e.clientX, y: e.clientY }; // where it is let go (a Twin: over the other side?)
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
     if (g.kind === 'box') { this.drawBox(g, e); return; }
@@ -179,6 +180,8 @@ export class Gestures {
       this.drawWorld();
       return;
     }
+    // Let go over a Twin's other side: it goes across (twin.js).
+    if (g.thing && g.last && this.dropAcross(g.thing.id, g.last.x, g.last.y)) return;
     if (g.thing?.live) { this.drawWorld(); this.save(); return; }
     if (g.thing && g.to) {
       if (g.thing.placed) this.ont.drop(this.world, this.roomId, g.thing.id, g.to.x, g.to.y);
