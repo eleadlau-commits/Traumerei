@@ -9,6 +9,11 @@
 //                      read looks at lines[i] and, if it is this kind, returns the fields for
 //                      tidy() and the line after it; kinds are asked in order. Without md, a
 //                      thought of this kind is written as a line of its text().
+//   traum              (optional) how it reads and writes a .traum file (the roomfile feature's traum.js):
+//                      { read({ title, body }) → fields for tidy(), write(th) → { title?, body } }.
+//                      title: the words after the colon on its ## ^id kind: line; body: the lines
+//                      under it, as written. Without traum, a thought of this kind is written as
+//                      its text() and read back as a line.
 //   node(th, el)       how it shows on a canvas (el is Folio's ui.el); words go through
 //                      maths(text) from ../maths.js, so $…$ and $$…$$ show as mathematics
 //

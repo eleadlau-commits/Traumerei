@@ -30,6 +30,11 @@ export default {
     },
     write: (th, h) => [th.title ? `### ${th.title}` : '###', ...(th.body ? th.body.split('\n').map(h.escape) : [])].join('\n'),
   },
+  // In a .traum file (the roomfile feature): ## ^id passage: its title, then its body as written.
+  traum: {
+    read: ({ title, body }) => ({ kind: 'passage', title: title || '', body }),
+    write: (th) => ({ title: th.title || '', body: th.body || '' }),
+  },
   node: (th, el) => el('div', { class: 'room-passage', 'data-id': th.id },
     th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
     th.body ? el('div', { class: 'room-passage-body' }, maths(th.body)) : null),
