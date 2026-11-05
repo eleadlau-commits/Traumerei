@@ -69,7 +69,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf } from '../model.js';
+import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
 import russell from './russell.js';
@@ -114,20 +114,32 @@ function itemsOf(w, roomId, ids) {
   const out = new Map();
   for (const id of ids) {
     const th = w.things[id];
-    if (isGroup(th)) for (const m of members(w, id)) out.set(m.id, m);
+    if (isGroup(th)) for (const m of itemsIn(w, id)) out.set(m.id, m);
     else if (isLeaf(th) && th.parent === roomId) out.set(id, th);
   }
   return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
 }
 
-// Makes one group of ontology `o` of the chosen things: its own group(), or a new group where the
-// first one is, which they all join. loose: they were chosen in the tray, so the group stays
+// What Ctrl+G groups: the chosen thoughts and whole groups, each as itself (so groups chosen make
+// a group of groups: a train of trains), leaving out what a chosen group already holds. Oldest first.
+function unitsOf(w, roomId, ids) {
+  const out = new Map();
+  for (const id of ids) {
+    const th = w.things[id];
+    if ((isGroup(th) || isLeaf(th)) && th.parent === roomId) out.set(id, th);
+  }
+  for (const id of [...out.keys()]) if ([...out.keys()].some((o) => o !== id && holds(w, o, id))) out.delete(id);
+  return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+}
+
+// Makes one group of ontology `o` of the chosen things (thoughts, and whole groups: a group of
+// groups): its own group(), or a new group where the first one is, which they all join. loose: they were chosen in the tray, so the group stays
 // there too (groups.js), until it is dragged out. Null when it makes none (an ontology without
 // groups, or nothing to group).
 export function groupChosen(o, w, roomId, ids, now = Date.now(), { loose = false } = {}) {
   if (!o?.groups) return null;
-  const items = itemsOf(w, roomId, ids);
-  if (!items.length) return null;
+  const items = unitsOf(w, roomId, ids);
+  if (!items.length || (items.length === 1 && isGroup(items[0]) && items[0].of === o.id)) return null; // one group of its own: grouped already
   if (loose) {
     const g = create(w, roomId, { kind: 'group', of: o.id, loose: true }, now);
     if (!g) return null;
@@ -147,6 +159,17 @@ export function groupChosen(o, w, roomId, ids, now = Date.now(), { loose = false
 // them (a group left empty goes). Returns how many came out.
 export function ungroupChosen(o, w, roomId, ids, now = Date.now()) {
   if (!o?.groups) return 0;
+  // A group of groups chosen (a train of trains) comes apart one level: the groups it held are
+  // free again, and it goes.
+  let freed = 0;
+  for (const id of ids) {
+    const g = w.things[id];
+    if (!isGroup(g) || g.of !== o.id || g.parent !== roomId) continue;
+    const inner = members(w, id).filter(isGroup);
+    if (!inner.length) continue;
+    for (const m of inner) { leave(w, id, m.id); freed++; }
+  }
+  if (freed) return freed;
   const items = itemsOf(w, roomId, ids);
   if (o.ungroup) return o.ungroup(w, roomId, items, now) || 0;
   let n = 0;

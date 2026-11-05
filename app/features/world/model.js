@@ -232,7 +232,9 @@ export function leave(w, groupId, id) {
 
 // Joyce's names for the same things.
 export const trainThoughts = members;
-export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce').filter((g) => !g.loose && members(w, g.id).length);
+// (A train held by another train is drawn inside it, so it is not one of the room's trains.)
+export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce')
+  .filter((g) => !g.loose && members(w, g.id).length && !groupsOf(w, g.id, 'joyce').length);
 
 // Every line, passage and picture in a room, in time order.
 export const roomThoughts = roomItems;
@@ -346,9 +348,9 @@ function tidy(f) {
     return own ? spot(f, { kind, ...own }) : null;
   }
   if (kind === 'group') {
-    const out = { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
+    const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
       members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
-      x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) };
+      x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) });
     if (f.closed) out.closed = true;
     if (f.loose) out.loose = true;
     return out;

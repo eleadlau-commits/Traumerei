@@ -404,7 +404,7 @@ function writeGroup(w, roomId, g, pictures) {
   if (of === RUSSELL) attrs.push(...headingAttrs(w, roomId, g.id, (p) => w.things[p]?.title || ''));
   attrs.push(...((own(w, roomId, of, false).headings || {})[g.id] || []));
   const head = ['##', g.title, attrs.length ? `{${attrs.map(([k, v]) => `${k}=${writeAttr(v)}`).join(' ')}}` : ''].filter(Boolean).join(' ');
-  return [head, ...(g.closed ? ['> closed'] : []), writeItems(members(w, g.id), pictures)].join('\n');
+  return [head, ...(g.closed ? ['> closed'] : []), writeItems(members(w, g.id).filter(isLeaf), pictures)].join('\n');
 }
 
 // The room as room Markdown: the groups of the mode it is seen through (a big room, the mode that
@@ -670,7 +670,7 @@ function run(w, roomId, p, { now, removeMissing }) {
     const g = w.things[id];
     if (!g) continue;
     if (!src.items.length) { report.push(`Line ${src.line}: ${named(src.title, word)} has nothing under it, so that ${word} was left as it is.`); continue; }
-    refill(id, members(w, id), src.items);
+    refill(id, members(w, id).filter(isLeaf), src.items); // groups it holds stay as they are
     if (src.same) continue;
     if (src.title !== (g.title || '')) update(w, id, { title: src.title }, now);
     if (!!src.closed !== !!g.closed) update(w, id, { closed: !!src.closed }, now);
@@ -704,7 +704,7 @@ function run(w, roomId, p, { now, removeMissing }) {
     for (const id of p.missing) {
       const g = w.things[id];
       if (!g) continue;
-      for (const th of members(w, id)) drop(th, id);
+      for (const th of members(w, id).filter(isLeaf)) drop(th, id);
       if (w.things[id]) remove(w, id);
       counts.groupsRemoved++;
     }
