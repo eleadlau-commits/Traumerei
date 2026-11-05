@@ -63,9 +63,10 @@ export class Strip {
 
   // One gesture, one floor: the first wheel event past a small push asks for the next floor, and
   // the rest of that gesture (a trackpad's long tail) is let go until it goes quiet. A floor that
-  // scrolls itself (cells at their smallest) scrolls first. Ctrl+wheel (zoom) is left alone.
+  // scrolls itself (cells at their smallest) scrolls first. Ctrl+wheel (zoom) is left alone, and so
+  // is a sideways push (or Shift+wheel): it scrolls the floor sideways, to columns a dock hides.
   wheel(e) {
-    if (e.ctrlKey) return;
+    if (e.ctrlKey || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     const box = this.track.children[this.page];
     const d = e.deltaY;
     if (box && box.scrollHeight > box.clientHeight + 1) {

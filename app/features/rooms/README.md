@@ -86,8 +86,10 @@ written there. With nothing in it, the rooms page works on its own.
   lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Fixed floors:** every floor is the same fixed board (Settings → Floors: 6 × 4, 8 × 5 or
-  10 × 6), and never grows. Its cells are as big as lets the whole floor fit the canvas (the
-  space beside the rail), so a floor never scrolls; below 56 px a cell stops shrinking. Where a room goes is the **floors** feature's rule (its service:
+  10 × 6), and never grows. Its cells are as big as lets the whole floor fit the window beside
+  the rail, so a floor never scrolls; below 56 px a cell stops shrinking. A dock opening never
+  shrinks the squares: the board keeps its size and slides sideways so the chosen room stays in
+  view beside the dock, and a sideways push (or Shift+wheel) scrolls to the columns it hides. Where a room goes is the **floors** feature's rule (its service:
   `place`, `move`, `resize`, `toFloor`, `settle`): a room made, imported or restored goes to its
   floor's first free cell, else a new floor; a room dragged onto a full floor's number stays.
 - **Lights:** a room's glow follows your attention lately: going in and writing there light it,

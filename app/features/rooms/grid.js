@@ -15,17 +15,37 @@ export class RoomsGrid {
   // ---- The rooms page ----
 
   // Every floor's columns and rows (the floors feature's size), and how big a cell is: as big as
-  // lets the whole floor fit the canvas, so a floor never scrolls (below 56 px a cell stops
-  // shrinking, and then it does).
+  // lets the whole floor fit the window beside the rail, so a floor never scrolls (below 56 px a
+  // cell stops shrinking, and then it does). A dock opening never shrinks the squares: the board
+  // keeps its size and slides sideways under the dock instead (keepInView).
   gridSize() {
     const { cols, rows } = this.floors.size;
     const wrap = this.grid.parentElement;
     const css = wrap && getComputedStyle(wrap);
     const pad = (a, b) => (css ? (parseFloat(css[a]) || 0) + (parseFloat(css[b]) || 0) : 0);
-    const width = (wrap?.clientWidth || window.innerWidth) - (css ? pad('paddingLeft', 'paddingRight') : 2 * GRID.pad + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 206));
+    const rail = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 206;
+    const left = wrap ? Math.max(0, wrap.getBoundingClientRect().left) : 0;
+    const width = window.innerWidth - left - (css ? pad('paddingLeft', 'paddingRight') : 2 * GRID.pad + rail);
     const height = (wrap?.clientHeight || window.innerHeight) - (css ? pad('paddingTop', 'paddingBottom') : GRID.pad + 64);
     const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
     return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
+  }
+
+  // The board slides sideways (its floor scrolls) to keep the chosen room in view beside a dock;
+  // otherwise it stays where it was (`left`, the scroll before the floor was drawn again).
+  keepInView(left = 0) {
+    const floor = this.grid.closest('.rooms-floor');
+    if (!floor) return;
+    floor.scrollLeft = left;
+    const tile = this.grid.querySelector('.rooms-tile:is(.chosen, .picked)');
+    if (!tile) return;
+    const css = getComputedStyle(floor);
+    const f = floor.getBoundingClientRect(), t = tile.getBoundingClientRect();
+    const from = f.left + (parseFloat(css.paddingLeft) || 0), to = f.right - (parseFloat(css.paddingRight) || 0);
+    const dx = t.right > to ? Math.min(t.right - to, t.left - from) : t.left < from ? t.left - from : 0;
+    if (!dx) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    floor.scrollTo({ left: floor.scrollLeft + dx, behavior: still ? 'auto' : 'smooth' });
   }
 
   // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
@@ -86,6 +106,7 @@ export class RoomsGrid {
     // The floor is the floors feature's fixed board: it never grows a row or column. Every floor
     // is in the strip, one under another: this one drawn here, the others as still copies.
     this.cols = cols;
+    const scrolled = this.grid.closest('.rooms-floor')?.scrollLeft || 0;
     this.strip.show(Array.from({ length: pageCount(this.world) },
       (_, i) => (i === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i, cols, rows, cell, now))), this.page, { slide });
     this.grid.style.setProperty('--cols', cols);
@@ -118,6 +139,7 @@ export class RoomsGrid {
     if (this.panel) this.dockRoom(chosen || null);
     if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
+    this.keepInView(scrolled);
     this.grid.querySelector('.rooms-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
   }
