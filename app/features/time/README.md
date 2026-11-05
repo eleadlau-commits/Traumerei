@@ -15,6 +15,18 @@ front, or turns it off; its × or Escape turns it off too. Whether it is on is o
 everywhere, saved as 'open': going into a room or back out keeps it on, showing that place.
 Without the docks feature, Time is off and adds no key.
 
+## The daily record
+
+Time also keeps a record of the rooms page, day by day (`record.js`), for going back in time:
+at the end of each day, every square on the rooms page (name, floor, cell, size, archived, colour)
+and which rooms were written in that day (from `room:changed`; a Twin's side counts for its
+Twin). Only changes are kept: a day holds the rooms that changed since the day before, the rooms
+that went, and the rooms written in, and a day with none holds nothing. It is written a moment
+after the world is saved (or a step undone), and when Create starts.
+
+**Settings → History** says how long it is kept: 1 month, 1 year (the usual) or forever. Days
+older than that are folded into one starting picture (`base`), so the record never grows past it.
+
 ## The time.place slot
 
 Time draws only the dock. Where Create is, and what a click does, belongs to the place: the room
@@ -42,8 +54,9 @@ feature and the rooms feature each add one item. The first whose `live()` is tru
 | `on` | Whether Time is on |
 | `showing` | Whether its tab is in front and the dock shows |
 
-It listens to `world:saved`, `world:changed` and `room:open`, and reads the world through the
-`world` service.
+It listens to `world:saved`, `world:changed`, `room:open` and `room:changed`, and reads the
+world through the `world` service. Saved data: 'open' (whether it is on), 'record' (the daily
+record), 'keep' (days of history kept, 0 for forever).
 
-**The code.** `Time.js` is the feature; `days.js` its rules with no screen (tested in
-`tests/days.test.js`); `keys.js` its key; `style.css` its layout (classes start with `time-`).
+**The code.** `Time.js` is the feature; `days.js` and `record.js` its rules with no screen
+(tested in `tests/`); `keys.js` its key; `style.css` its layout (classes start with `time-`).
