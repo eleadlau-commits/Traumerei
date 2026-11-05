@@ -10,6 +10,7 @@ import {
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
+import { pastFloor, pastWords } from './past.js';
 
 export class RoomsGrid {
   // ---- The rooms page ----
@@ -92,7 +93,8 @@ export class RoomsGrid {
       const chosen = room(this.world, this.roomSel || this.roomPick);
       const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : '';
       this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs(),
-        selection: many || (chosen ? `${chosen.name} chosen` : ''), mode: this.shelf ? 'Archive' : `Floor ${this.page + 1} of ${pageCount(this.world)}`, idle: HINT });
+        selection: many || (chosen ? `${chosen.name} chosen` : ''), idle: HINT,
+        mode: this.shelf ? 'Archive' : `${this.past ? `${pastWords(this.past.day)} · ` : ''}Floor ${this.page + 1} of ${pageCount(this.world)}` });
     }
     const byTag = this.lights?.trim().startsWith('#');
     let hits = this.lights?.trim() && (!byTag || tidyTag(this.lights)) ? this.hitsOn(shown) : null;
@@ -118,6 +120,9 @@ export class RoomsGrid {
     this.grid.style.setProperty('--cols', cols);
     this.grid.style.setProperty('--cell', cell + 'px');
     this.grid.style.setProperty('--cell-gap', GRID.gap + 'px');
+    this.roomsPage.classList.toggle('past', !!this.past);
+    // Gone back in the Time dock: the floor as it was that day, view only (past.js).
+    if (this.past) { this.grid.replaceChildren(...pastFloor(this, cols, rows)); this.keepInView(scrolled); return; }
 
     const taken = new Set();
     for (const r of all) for (const [c, d] of cells(r)) taken.add(`${c},${d}`);

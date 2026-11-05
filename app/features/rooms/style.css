@@ -344,3 +344,8 @@
 .rooms-sheet > .label { margin: 0 18px var(--s-2); }
 .rooms-sheet .pick[disabled] { opacity: var(--off); cursor: default; }
 .rooms-sheet .rooms-group-tag { margin: 0 18px var(--s-2); width: auto; }
+
+/* A past day from the Time dock (past.js): view only; a room deleted since is a faint ghost. */
+.rooms-past-tile { cursor: default; }
+.rooms-past-tile.ghost { opacity: .35; outline: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent); outline-offset: -1px; }
+.rooms-rooms.past .rooms-cell { cursor: default; }

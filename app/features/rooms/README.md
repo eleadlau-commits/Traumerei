@@ -78,6 +78,11 @@ written there. With nothing in it, the rooms page works on its own.
   Then its rooms go to the Archive, the floors below move up one, and Ctrl+Z brings it all back. Floor 1 stays (Messy thoughts lives there); a floor with a locked
   room says so and stays (the floors feature's `removeFloor`). The floor that shows is drawn in full; the others are still
   copies until the strip rests on them.
+- **A past day** (`past.js`): when the Time dock (the time feature) goes back to a day, it hands
+  this page that day's board through the `time.place` slot's `showDay`, and the drawn floor shows
+  it: the rooms of that day where they sat, named as they were, rooms deleted since as faint
+  ghosts, rooms written in that day glowing, nothing made later. It is view only (no keys but
+  Page Up / Page Down; Escape comes back to now), and the status bar says *As on* the day.
 ## Choosing and editing rooms
 
 - **Rooms page:** hovering over a square outlines it; a click chooses it (a fine outline); a

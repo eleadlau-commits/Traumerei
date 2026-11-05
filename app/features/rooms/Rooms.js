@@ -51,6 +51,7 @@ export default class Rooms extends Feature {
     this.openGroup = null; // the group open in it (its name in lower case; '' for Other), or null
     this.makingTag = null; // a + field open in it: { group } for a tag in that group, { group: null } for a new group
     this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
+    this.past = null;        // a past day from the Time dock, while it shows (past.js), or null
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
@@ -86,6 +87,7 @@ export default class Rooms extends Feature {
       chosen: () => this.roomPick,
       go: (f) => this.showRoom(f.id),
       redraw: () => { if (!this.inRoom) this.drawRooms(); },
+      showDay: (past) => { this.past = past; this.roomPick = this.roomSel = this.making = null; if (!this.inRoom && !this.root.hidden) this.drawRooms(); },
     });
     this.provide('rooms', {
       openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
@@ -105,7 +107,7 @@ export default class Rooms extends Feature {
       'rooms.group': (e) => this.tagChosen(e),
       'rooms.ungroup': (e) => this.untagChosen(e),
     };
-    for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom, ...(run[k.id] ? { run: run[k.id] } : {}) });
+    for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom && !this.past, ...(run[k.id] ? { run: run[k.id] } : {}) });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
   }
 
@@ -369,6 +371,12 @@ export default class Rooms extends Feature {
   onKey(e) {
     if (this.root.hidden || this.inRoom || document.querySelector('dialog[open]')) return;
     if (e.target.matches?.('input, textarea, select, [contenteditable]')) return;
+    // A past day from the Time dock is view only: Escape comes back to now, and the floors still
+    // slide (Page Up, Page Down); nothing else.
+    if (this.past) {
+      if (e.key === 'Escape') { e.preventDefault(); this.time?.now(); return; }
+      if (e.key !== 'PageUp' && e.key !== 'PageDown') return;
+    }
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openLights(); return; }
     if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') { e.preventDefault(); this.pickAll(); return; }

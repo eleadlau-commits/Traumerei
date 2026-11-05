@@ -1,5 +1,5 @@
 import { test, assert } from 'folio/testing';
-import { snapshot, note, prune, stateAt, writtenOn, firstDay, emptyRecord, DAY } from '../record.js';
+import { snapshot, note, prune, stateAt, writtenOn, firstDay, emptyRecord, pastBoard, earliest, DAY } from '../record.js';
 import { dayOf } from '../days.js';
 
 const t = new Date(2026, 10, 5, 12).getTime(); // 5 Nov, noon
@@ -60,4 +60,29 @@ test('old days fold into the base; forever keeps them', () => {
   assert.equal(rec.base.rooms.a.name, 'A');
   assert.equal(firstDay(rec), dayOf(t - 29 * DAY));
   assert.equal(stateAt(rec).a.name, 'B');
+});
+
+test('a past day shows the rooms the record kept, or those made by then', () => {
+  const m = { isLeaf: (th) => th.kind === 'line' };
+  const w = world();
+  w.things.a.at = t - 10 * DAY;
+  w.things.messy.at = t - 20 * DAY;
+  w.things.tw.at = t - DAY;
+  w.things.x.at = t - 10 * DAY + 1000;
+  const rec = emptyRecord();
+  // Before the record: rebuilt from the stamps.
+  let b = pastBoard(m, w, rec, dayOf(t - 5 * DAY));
+  assert.deepEqual(Object.keys(b.rooms).sort(), ['a', 'messy']);
+  assert.deepEqual(b.counts, { a: 1 });
+  b = pastBoard(m, w, rec, dayOf(t - 10 * DAY));
+  assert.deepEqual(b.written, ['a']);
+  // From the record on: what it kept, a room gone since included.
+  note(rec, { ...snapshot(w), old: { name: 'Old', page: 0, col: 4, row: 1, size: 1, archived: false } }, [], t - 2 * DAY);
+  note(rec, snapshot(w), ['tw'], t);
+  b = pastBoard(m, w, rec, dayOf(t - 2 * DAY));
+  assert.ok(b.rooms.old);
+  b = pastBoard(m, w, rec, dayOf(t));
+  assert.ok(!b.rooms.old);
+  assert.deepEqual(b.written, ['tw']);
+  assert.equal(earliest(w, rec, t), dayOf(t - 20 * DAY));
 });
