@@ -153,7 +153,12 @@ Each kind of item says how it reads and writes itself there (`traum` in the worl
 `items/`), and so does each ontology for its own `# In <mode>` section (`traum` in
 `ontologies/`: Joyce's `at:`/`offset:`/`tray:`, Pessoa's `at:`/`on canvas:`, Russell's
 `on canvas:`/`at:`/`tray:`/`arrow:`; the `arrow:` line comes from the shared arrows part,
-`relations.js`). A `## ^r relation` object with one `from:` and one `to:` is an arrow too. Anything not understood (a kind, a key, a section, a front matter line) is reported and
+`relations.js`). A `## ^r relation` object with one `from:` and one `to:` is an arrow too.
+A big room writes `modes: [...]` with every ontology and a section for each. A Twin writes
+`twin: [left, right]`, its sides' settings as `left.mode.key` / `right.mode.key`, one objects list
+for both sides, and `# Left: mode` / `# Right: mode`; coming in, each object goes to the side whose
+section names it (a group takes what it holds along), and the rest to the left, in the shared
+tray. Anything not understood (a kind, a key, a section, a front matter line) is reported and
 kept with the room (`own(w, room, 'traum')`), and written back out next time. Tested in
 `tests/grammar.test.js` and `tests/traum.test.js`. Not used by the screens yet.
 
