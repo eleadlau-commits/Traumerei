@@ -23012,6 +23012,39 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const live = () => !this.root.hidden && !!this.roomId;
       const when = { "room.mode": () => live() && this.tabSwaps() };
       for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: when[k2.id] || live, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
+      if (this.frame) {
+        if (this.files) {
+          this.add("rail.more", {
+            id: "room-export",
+            label: "Export",
+            order: 20,
+            visible: live,
+            run: () => this.exportRoomFile(),
+            icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>',
+            title: () => "Export this room as a file"
+          });
+          this.add("rail.more", {
+            id: "room-text",
+            label: "Edit as text",
+            order: 21,
+            icon: "note",
+            run: () => this.editAsMarkdown(),
+            visible: () => live() && !!this.files.canEdit,
+            title: () => "Edit this room as text, in the right dock"
+          });
+        }
+        if (this.keyMap) {
+          this.add("rail.more", {
+            id: "room-keys",
+            label: "Keys",
+            order: 30,
+            icon: "help",
+            visible: live,
+            run: () => this.showKeys(),
+            title: () => "Every key · ?"
+          });
+        }
+      }
       this.on("docks:resized", () => {
         if (this.roomId) this.place();
       });
@@ -23261,11 +23294,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             ...this.files ? [
               el15("div", { class: "pick-rule" }),
-              this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false),
-              this.addItem("Export as Markdown", ".md", () => this.exportRoomFile(), false),
-              ...this.files.canEdit ? [this.addItem("Edit room as Markdown", "in the panel", () => this.editAsMarkdown(), false)] : []
-            ] : [],
-            ...this.keyMap ? [el15("div", { class: "pick-rule" }), this.addItem("Keys", "?", () => this.showKeys(), false)] : []
+              this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false)
+            ] : []
           ),
           this.addBtn = el15(
             "button",
