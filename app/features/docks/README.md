@@ -4,14 +4,17 @@ A dock on the left and a dock on the right of the screen, that other features op
 the room's content editor and the source editor open in the right one's **Editor** tab, and the
 room's Timeline in its **Timeline** tab. The two behave the same, mirrored. A dock holds one thing
 per tab: opening into a tab asks what that tab held first (it may have changes) and then takes its
-place; opening into another tab keeps the first and comes to the front. While a dock holds two or
-more things, their tabs show along its top, and a click brings one to the front. Escape or ×
+place; opening into another tab keeps the first and comes to the front. Its tabs show along its top,
+and a click brings one to the front. Escape or ×
 closes the one in front; the dock shuts when it holds nothing. The right dock's first tab is
-Editor; the left dock's has no name (it shows no tabs unless something names one).
+Editor; a thing in the left dock is named by its tab, or else its kind.
 
-A dock's inner edge is dragged to set its width (at least 220 px, at most 70% of the window),
-which is remembered; a double-click on the edge sets it back to the usual width (left 300 px,
-right 480 px). The right dock runs the full height; the left one starts under the strip at the
+Every dock wears the same frame: a 32 px strip of tabs (one for each thing it holds, the one in
+front underlined in amber) with the dock's key and × on the right; under it, the front one's quiet
+kind and title (left out when both are empty); then its body. A dock's inner edge is dragged to
+set its width (the right one 280 to 560 px, the left one 220 to 560 px, never more than 70% of the
+window), which is remembered; a double-click on the edge sets it back to the usual width (left
+280 px, right 340 px). The right dock runs the full height; the left one starts under the strip at the
 top, so the menu stays put. Whatever sits beside a dock moves over rather than being covered:
 while it shows, its width is the CSS variable `--dock-left` or `--dock-right` on `<html>` (`0px`
 when it is shut), `<html>` has the class `dock-left-open` or `dock-right-open`, and every change

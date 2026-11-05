@@ -884,6 +884,76 @@ dialog.dialog-box {
 .keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
 .keys-list dd { margin: 0; opacity: .8; }
 
+/* ---- Panel chrome: every dock wears the same frame ----
+   A 32px strip of tabs (capitals; an amber line under the one in front) with the key and × on the
+   right; under it, folding sections (.sec, a <details>) with small capital heads, each holding
+   label/value rows (.kv); actions are real buttons (.box-btn: a hairline box, a word, its key). */
+.tab-strip { display: flex; align-items: stretch; height: 32px; padding: 0 var(--s-2); border-bottom: 1px solid var(--chrome-edge); }
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: .55;
+  transition: opacity var(--quick);
+}
+.tab:hover { opacity: .85; }
+.tab[aria-selected="true"] { opacity: 1; box-shadow: inset 0 -2px 0 var(--amber); }
+.tab-tail { margin-left: auto; display: flex; align-items: center; gap: var(--s-2); padding-left: var(--s-2); }
+/* A key, named beside what it does: small monospace, quiet. */
+.key { font: 10.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none; white-space: nowrap; opacity: .55; }
+.key:empty { display: none; }
+
+.sec { margin: 0 calc(-1 * var(--s-4)); padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--chrome-edge); }
+.sec > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  padding: 0;
+  font-size: 10.5px;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+.sec > summary::before { content: none; }
+.sec > summary::after { content: "+"; letter-spacing: 0; opacity: .7; }
+.sec[open] > summary::after { content: "−"; }
+.sec[open] > summary { margin-bottom: var(--s-2); }
+.sec-body { display: grid; gap: var(--s-1); }
+
+.kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: var(--s-2); min-height: var(--row); font-size: var(--t-work); }
+.kv > :first-child { font-size: var(--t-label); color: var(--muted); }
+.kv > :last-child { min-width: 0; }
+
+.box-btns { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.box-btn {
+  height: var(--field);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 10px;
+  border: 1px solid var(--chrome-edge);
+  background: var(--chrome);
+  font-size: var(--t-label);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  transition: background-color var(--quick);
+}
+.box-btn:hover { background: var(--hover-wash); }
+.box-btn:disabled { opacity: var(--off); cursor: default; }
+.box-btn.danger { color: var(--danger); }
+/* The one editable title of what is chosen, at the top of a dock. */
+.title-field, :is(input, textarea).title-field { font-size: var(--t-title); letter-spacing: .02em; text-transform: none; }
+/* In a dock, working words are sentence case at the working size: a choice, a value that can be
+   pressed (.value-btn, a hairline under it on hover), a description. */
+.dock :where(select) { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
+.value-btn { padding: 2px 0; font-size: var(--t-work); letter-spacing: .02em; text-align: left; background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 100%; background-size: 0 1px; transition: background-size .25s; }
+.value-btn:hover { background-size: 100% 1px; }
+
 /* ---- Message at the bottom ---- */
 
 .toast {

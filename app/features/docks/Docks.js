@@ -24,6 +24,7 @@ export default class Docks extends Feature {
         saved: this.storage.get(side),
         keep: (px) => this.storage.set(side, px),
         resized: (px) => this.publish(side, px),
+        keyLabel: () => this.use('keys')?.label?.(`docks.${side}`) || '',
       });
     }
     const services = {};

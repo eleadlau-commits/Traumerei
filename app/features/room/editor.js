@@ -8,7 +8,7 @@
 // While it shows, a click on another thought, group or train switches it there (followEditor, from
 // drawBar). It is a plain function of the room (c), like document.js, not a part mixed onto Room.
 
-import { isGroup, groupOf, shut, thoughtText } from './world.js';
+import { isGroup, groupOf, shut } from './world.js';
 import { paragraphs } from './document.js';
 
 // Opens (or switches) the editor to thing `id`. Resolves once it shows.
@@ -44,14 +44,14 @@ export async function openEditor(c, id) {
     if (!top.contains(document.activeElement)) top.replaceChildren(...c.propRows(now, true));
     if (paras && !paras.writing) paras.draw();
     drawFoot();
-    handle?.setTitle(title(now));
+    handle?.setKind(kindWord(now));
   };
-  const words = (x) => { const t = thoughtText(c.world, x).replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.slice(0, 57) + '…' : t || c.kindName(x); };
-  const title = (x) => (isGroup(x) ? x.title || `An untitled ${c.groupName(x).toLowerCase()}` : words(x));
   const close = () => { handle?.close(true); };
   const editor = { id, body, refresh, keep: () => paras?.keep() };
+  // The dock's head names only what it is and in which mode; the title is the field at the top.
+  const kindWord = (x) => `${isGroup(x) ? c.groupName(x) : c.kindName(x)} · ${c.ont.name}`;
   const handle = await c.panel.open({
-    key: 'content', kind: group ? c.groupName(th) : c.kindName(th), title: title(th), body,
+    key: 'content', kind: kindWord(th), title: '', body,
     beforeClose: () => { paras?.keep(); return true; },
     onClose: () => { if (c.editor === editor) { c.editor = null; c.drawWorld(); } },
   });
