@@ -21,6 +21,8 @@ export const ROOM_KEYS = [
   { id: 'room.rename', keys: ['Ctrl+R'], words: 'rename what is chosen (a thought: write in it)', typing: true },
   { id: 'room.duplicate', keys: ['Ctrl+D'], words: 'duplicate what is chosen', typing: true },
   { id: 'room.fold', keys: ['Ctrl+F'], words: 'fold or unfold its group', typing: true },
+  { id: 'room.group', keys: ['Ctrl+G'], words: 'make what is chosen one group of this mode (a train, a chapter)', typing: true },
+  { id: 'room.ungroup', keys: ['Ctrl+Shift+G'], words: 'take what is chosen out of its group', typing: true },
   { id: 'room.move', keys: ['Ctrl+M'], words: 'move what is chosen to another room', typing: true },
   { id: 'room.back-into', shows: 'Backspace in an empty thought', words: 'back into the one before' },
   { id: 'room.nudge', keys: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight', 'Shift+ArrowUp', 'Shift+ArrowDown'], shows: 'Arrows · Shift+arrows', words: 'nudge what is chosen' },

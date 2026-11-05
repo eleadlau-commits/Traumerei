@@ -38,6 +38,12 @@
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
 //   settingChanged(w, room, key, before, after)   (optional) one of a room's settings was just
 //                         changed in its ⚙ (Russell: a relation renamed is renamed on its arrows)
+//   group(w, room, items, now)   (optional) Ctrl+G: its own way to make one group of these items
+//                         (thoughts, oldest first); returns the group, or null. Without it, a new
+//                         group of this ontology where the first one is, which they all join
+//   ungroup(w, room, items, now) (optional) Ctrl+Shift+G: its own way to take these items out of
+//                         their groups; returns how many came out. Without it, each leaves its
+//                         groups of this ontology (Joyce gives each a train of its own instead)
 //   moves                 (optional) [{ id, label, run(c), when?(c) }], its own actions. They
 //                         show as words in the pop-up of what is chosen, those whose when(c) is
 //                         true (all of them, without when). c.sel is what is chosen
@@ -65,7 +71,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { declareGroups } from '../model.js';
+import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
 import russell from './russell.js';
@@ -74,7 +80,7 @@ export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -101,4 +107,48 @@ export function gather(extra = [], warn = () => {}) {
     declareGroups(o.id, o.groups);
   }
   return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
+}
+
+// ---- Ctrl+G and Ctrl+Shift+G: grouping what is chosen, each ontology by its own rule ----
+
+// The items among `ids` in the room (a group counts as its items), each once, oldest first.
+function itemsOf(w, roomId, ids) {
+  const out = new Map();
+  for (const id of ids) {
+    const th = w.things[id];
+    if (isGroup(th)) for (const m of members(w, id)) out.set(m.id, m);
+    else if (isLeaf(th) && th.parent === roomId) out.set(id, th);
+  }
+  return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+}
+
+// Makes one group of ontology `o` of the chosen things: its own group(), or a new group where the
+// first one is, which they all join. Null when it makes none (an ontology without groups, or
+// nothing to group).
+export function groupChosen(o, w, roomId, ids, now = Date.now()) {
+  if (!o?.groups) return null;
+  const items = itemsOf(w, roomId, ids);
+  if (!items.length) return null;
+  if (o.group) return o.group(w, roomId, items, now) || null;
+  let at = null;
+  try { at = o.point(w, roomId, items[0].id); } catch { at = null; }
+  const g = create(w, roomId, { kind: 'group', of: o.id, x: Math.round(at?.x || 0), y: Math.round(at?.y || 0) }, now);
+  if (!g) return null;
+  for (const th of items) join(w, g.id, th.id);
+  return members(w, g.id).length ? g : null;
+}
+
+// Takes the chosen things out of their groups of ontology `o`: its own ungroup(), or each leaves
+// them (a group left empty goes). Returns how many came out.
+export function ungroupChosen(o, w, roomId, ids, now = Date.now()) {
+  if (!o?.groups) return 0;
+  const items = itemsOf(w, roomId, ids);
+  if (o.ungroup) return o.ungroup(w, roomId, items, now) || 0;
+  let n = 0;
+  for (const th of items) {
+    const gs = groupsOf(w, th.id, o.id).filter((g) => g.parent === roomId);
+    for (const g of gs) leave(w, g.id, th.id);
+    if (gs.length) n++;
+  }
+  return n;
 }

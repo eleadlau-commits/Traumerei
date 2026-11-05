@@ -72,6 +72,8 @@ export default class Room extends Feature {
       'room.rename': (e) => verbs.rename(this, e),
       'room.duplicate': (e) => verbs.duplicate(this, e),
       'room.fold': (e) => verbs.fold(this, e),
+      'room.group': (e) => verbs.group(this, e),
+      'room.ungroup': (e) => verbs.ungroup(this, e),
       'room.move': (e) => verbs.moveTo(this, e),
     };
     const live = () => !this.root.hidden && !!this.roomId;

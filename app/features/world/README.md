@@ -55,6 +55,11 @@ dragged places, Russell's arrows and their labels). An ontology can draw its own
 canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); the room keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
+**Grouping what is chosen** (Ctrl+G, Ctrl+Shift+G in a room) is each ontology's own rule:
+`ontologies/index.js`'s `groupChosen` and `ungroupChosen` use an ontology's `group` / `ungroup`
+when it has them, or else make one group of its own where the first thing is (and take things
+out of their groups). Joyce's `ungroup` gives each thought a train of its own; Pessoa has no groups.
+
 **Copying a room** is one rule, `copyRoom(w, id)`: a new room with everything in it copied (items,
 groups and their members, each ontology's own data, its view and settings), every copied thought
 a new id and every mention of an old id changed, so the copy shares nothing with the original.

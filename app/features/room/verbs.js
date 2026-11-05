@@ -1,10 +1,10 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
 // page): rename (Ctrl+R), duplicate (Ctrl+D), fold or unfold (Ctrl+F), move to another room
-// (Ctrl+M); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
+// (Ctrl+M), group (Ctrl+G) and ungroup (Ctrl+Shift+G); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts } from './world.js';
+import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -60,4 +60,33 @@ export async function moveTo(c, e) {
   if (!pick) return;
   pick.focus({ preventScroll: true });
   try { pick.showPicker?.(); } catch { /* the list opens with Alt+Down instead */ }
+}
+
+// Group: what is chosen becomes one group of this mode, by the mode's own rule (the world's
+// groupChosen: a Joyce train, a Russell chapter); the group is then chosen. A mode without groups
+// (Pessoa) says so.
+export function group(c, e) {
+  if (typing(e) || c.editing || !c.sel) return;
+  if (c.locked) { c.toast('This room is locked.'); return; }
+  if (!c.ont.groups) { c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`); return; }
+  const g = groupChosen(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
+  if (!g) { c.toast('Nothing here to group.'); return; }
+  c.sel = { kind: 'train', id: g.id };
+  c.save();
+  c.drawWorld();
+  c.toast(`One ${c.ont.groups.name.toLowerCase()} of ${trainThoughts(c.world, g.id).length}.`);
+}
+
+// Ungroup: what is chosen comes out of its groups of this mode (a whole group chosen: all of it),
+// by the mode's own rule (Joyce: each its own train; Russell: loose again).
+export function ungroup(c, e) {
+  if (typing(e) || c.editing || !c.sel) return;
+  if (c.locked) { c.toast('This room is locked.'); return; }
+  if (!c.ont.groups) { c.toast(`${c.ont.name} has no groups.`); return; }
+  const n = ungroupChosen(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
+  if (!n) { c.toast(`Not in a ${c.ont.groups.name.toLowerCase()} with others.`); return; }
+  c.sel = null;
+  c.save();
+  c.drawWorld();
+  c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
 }
