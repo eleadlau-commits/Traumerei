@@ -59,7 +59,9 @@ It offers no service of its own.
     ("forgets the coordinates"), shown beside the arrow, with maths if it has any. Each room's
     Russell settings keep its list of relations, written with commas ("forgets, generalises"); the
     first is the default, a relation renamed there is renamed on its arrows, and when there are
-    several each label shows its relation's word. In room Markdown a relation is a heading key
+    several each label shows its relation's word. Double-click an arrow or its label to edit it where
+    it is: its label, and its relation when the room has several; Enter keeps it, Esc lets it go.
+    An arrow with no label shows a faint hint of its relation when the pointer is on it. In room Markdown a relation is a heading key
     after its parent (`{parent="Rings" generalises="to two operations"}`), and the list is
     `russell.relations: [forgets, generalises]`. Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
