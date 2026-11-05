@@ -14,9 +14,10 @@ export class Writing {
   thoughtNode(th) {
     if (this.draft?.edit === th.id) return this.draftNode(); // a thought opened again to write in
     const kind = kindOf(th);
-    if (kind === 'group') { // a closed group reads as one passage
+    if (kind === 'group') { // a closed group reads as one passage; another mode's says what kind it is
       const body = thoughtText(this.world, th);
       return el('div', { class: 'room-passage closed', 'data-id': th.id },
+        th.of !== this.mode ? el('div', { class: 'label room-passage-kind' }, this.groupName(th)) : null,
         th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
         body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
     }

@@ -157,6 +157,9 @@ export class Gestures {
       // selection. Double-click selects a whole train (onDouble).
       // The ontology's own tap (Russell: a closed chapter opens as a document).
       if (g.thing && this.ont.open?.(this, g.thing.id)) return;
+      // Another mode's group (a chapter seen in Joyce, say) opens, as a closed chapter does.
+      const tapped = g.thing && this.world.things[g.thing.id];
+      if (isGroup(tapped) && tapped.of !== this.mode && !g.toggle && !g.add) { this.openDocument(tapped.id); return; }
       const keep = this.sel?.kind === 'train' && g.thing?.kind === 'train' && this.sel.id === g.thing.id;
       this.sel = keep ? this.sel : g.thing ? { kind: g.thing.kind, id: g.thing.id } : null;
       // Two taps on the same group (the page is redrawn between them, so no dblclick comes).

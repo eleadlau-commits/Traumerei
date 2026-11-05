@@ -3,7 +3,7 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  MESSY, room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
+  MESSY, room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf, isGroup,
   thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms, shrinkPicture, ITEMS,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
@@ -223,11 +223,28 @@ export class Bars {
     try { return this.ont.tray?.(this.world, this.roomId) || []; } catch { return []; }
   }
 
+  // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
+  // or first words. Click opens it (a group's thoughts in the editor); Ctrl+click or Shift+click
+  // adds it to what is chosen (so Ctrl+G makes a group of them here, in the tray); drag places it.
   looseCard(th) {
+    const group = isGroup(th);
+    const words = group ? th.title || thoughtText(this.world, th) : kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th);
     return el('div', {
-      class: 'room-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
+      class: 'room-tray-item' + (this.isSel(th.id) ? ' st-sel' : ''), role: 'listitem', 'data-tray': th.id,
+      title: group ? 'Click to open · drag onto the room' : 'Drag onto the room',
       onpointerdown: (e) => this.trayDrag(e, th.id),
-    }, el('span', { class: 'room-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)));
+    }, group ? el('span', { class: 'label room-tray-kind' }, this.groupName(th)) : null,
+    el('span', { class: 'room-tray-text' }, words));
+  }
+
+  // A loose card clicked: Ctrl/Shift adds it to (or takes it from) what is chosen; otherwise it is
+  // chosen and opened.
+  trayClick(e, id) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) { this.chooseMore({ id }, true); return; }
+    const th = this.world.things[id];
+    if (!th) return;
+    if (isGroup(th)) this.openDocument(id);
+    else this.openProps({ kind: 'thought', id });
   }
 
   drawTray() {
@@ -274,21 +291,30 @@ export class Bars {
   // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
   // canvas, the ontology places it there.
   trayDrag(e, id) {
-    if (e.button !== 0 || this.locked) return;
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     const card = e.currentTarget;
     const r = card.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
-    const ghost = card.cloneNode(true);
-    ghost.classList.add('panel', 'room-tray-ghost');
-    Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
-    (document.getElementById('folio-root') || document.body).append(ghost); // fixed to the window, wherever the room sits
-    const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
+    const start = { x: e.clientX, y: e.clientY };
+    let ghost = null; // made once the pointer has moved a little: until then it is a click
+    const move = (ev) => {
+      if (!ghost) {
+        if (this.locked || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+        ghost = card.cloneNode(true);
+        ghost.classList.add('panel', 'room-tray-ghost');
+        ghost.classList.remove('st-sel');
+        Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
+        (document.getElementById('folio-root') || document.body).append(ghost); // fixed to the window, wherever the room sits
+      }
+      ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`;
+    };
     const up = (ev) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
+      if (!ghost) { if (ev.type === 'pointerup') this.trayClick(ev, id); return; }
       ghost.remove();
       const over = document.elementFromPoint(ev.clientX, ev.clientY);
       if (ev.type !== 'pointerup' || !over || !this.stage.contains(over) || !this.world.things[id]) return;

@@ -57,6 +57,12 @@ dragged places, Russell's arrows and their labels). An ontology can draw its own
 canvas (Joyce's line and trains) and tag thoughts in the Timeline (Joyce: their train; Russell: their chapter); the room keeps
 no mode of its own. A room whose ontology is missing is seen through Pessoa.
 
+**Groups are shared objects** (`groups.js`, `lib.groups`): every other ontology of the room sees
+a group as one thought, in its tray until it places it (`foreign`, `trayForeign`, `placedForeign`;
+Joyce and Pessoa keep where they placed one in their own data, `spot` / `putAt`). Only the
+outermost groups show this way: a train of trains is one Train. A group made from thoughts in an
+ontology's tray is `loose` and stays in the tray until dragged out (`place`).
+
 **Grouping what is chosen** (Ctrl+G, Ctrl+Shift+G in a room) is each ontology's own rule:
 `ontologies/index.js`'s `groupChosen` and `ungroupChosen` use an ontology's `group` / `ungroup`
 when it has them, or else make one group of its own where the first thing is (and take things

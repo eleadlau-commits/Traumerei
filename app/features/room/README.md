@@ -85,6 +85,13 @@ It offers no service of its own.
   the docks feature, *Loose · n* at the foot of the room opens them in a row.) Drag one onto the
   room to place it (Joyce: a train of its own; Russell: into the chapter it is
   let go on, or a new chapter of its own on the empty canvas).
+  **Groups are shared.** A train or chapter is one object for the whole room: in every other mode
+  (Pessoa too) it waits in the tray as one card, tagged by the kind of its outermost group
+  ("Train", "Chapter"), and its thoughts stay wherever they were there. Click a card to open it
+  (its thoughts in the editor); drag it onto the room to place it (Joyce and Pessoa: where it is
+  let go; Russell: into a chapter, like a thought). On the canvas a tap opens it.
+  Ctrl+click or Shift+click cards to choose several; Ctrl+G then makes a group of them that stays
+  in the tray until it is dragged out.
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
   *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.
 - **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*

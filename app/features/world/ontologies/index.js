@@ -121,12 +121,19 @@ function itemsOf(w, roomId, ids) {
 }
 
 // Makes one group of ontology `o` of the chosen things: its own group(), or a new group where the
-// first one is, which they all join. Null when it makes none (an ontology without groups, or
-// nothing to group).
-export function groupChosen(o, w, roomId, ids, now = Date.now()) {
+// first one is, which they all join. loose: they were chosen in the tray, so the group stays
+// there too (groups.js), until it is dragged out. Null when it makes none (an ontology without
+// groups, or nothing to group).
+export function groupChosen(o, w, roomId, ids, now = Date.now(), { loose = false } = {}) {
   if (!o?.groups) return null;
   const items = itemsOf(w, roomId, ids);
   if (!items.length) return null;
+  if (loose) {
+    const g = create(w, roomId, { kind: 'group', of: o.id, loose: true }, now);
+    if (!g) return null;
+    for (const th of items) join(w, g.id, th.id);
+    return members(w, g.id).length ? g : null;
+  }
   if (o.group) return o.group(w, roomId, items, now) || null;
   let at = null;
   try { at = o.point(w, roomId, items[0].id); } catch { at = null; }

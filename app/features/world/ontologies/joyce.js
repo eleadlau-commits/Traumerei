@@ -7,9 +7,12 @@
 //
 // A train is a group that holds each thought in only one train. A thought in no train (written
 // in another mode of a big room) waits in the tray; dragged out of it, it starts a train where it
-// is let go. Its arrangement lives on the trains (x, y) and their thoughts (dx, dy).
+// is let go. Its arrangement lives on the trains (x, y) and their thoughts (dx, dy). A group
+// another mode made (a chapter) is one thought here: in the tray until it is dragged out, then
+// where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
-import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join } from '../model.js';
+import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
+import { placedForeign, trayForeign, spot, putAt, place } from '../groups.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
@@ -159,10 +162,11 @@ export default {
   live: true, // a drag moves the thought (or train) at once, so the line follows it
 
   // Each train's thoughts, or a closed train as one thought.
-  units: (w, roomId) => roomTrains(w, roomId).flatMap((t) => (t.closed ? [t] : trainThoughts(w, t.id))),
+  units: (w, roomId) => [...roomTrains(w, roomId).flatMap((t) => (t.closed ? [t] : trainThoughts(w, t.id))), ...placedForeign(w, roomId, 'joyce')],
 
   point(w, roomId, id) {
     const th = w.things[id];
+    if (isGroup(th) && th.of !== 'joyce') return spot(w, roomId, 'joyce', id);
     if (isGroup(th)) return { x: th.x, y: th.y };
     const t = groupOf(w, id, 'joyce');
     if (!t) return null;
@@ -174,7 +178,8 @@ export default {
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th)) Object.assign(th, { x, y, hand: true });
+    if (isGroup(th) && th.of !== 'joyce') putAt(w, roomId, 'joyce', id, x, y);
+    else if (isGroup(th)) { Object.assign(th, { x, y, hand: true }); place(w, id); }
     else if (isLeaf(th) && !groupOf(w, id, 'joyce')) {
       const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
       if (t) { join(w, t.id, id); t.hand = true; }
@@ -195,14 +200,24 @@ export default {
     return n;
   },
 
-  // The thoughts in no train yet, oldest first.
-  tray: (w, roomId) => roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
-  placed: (w, roomId, id) => !!groupOf(w, id, 'joyce') || isGroup(w.things[id]),
+  // The thoughts in no train yet, trains made in the tray, and other modes' groups not placed
+  // here yet, oldest first.
+  tray: (w, roomId) => [
+    ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
+    ...groupsIn(w, roomId, 'joyce').filter((g) => g.loose && members(w, g.id).length),
+    ...trayForeign(w, roomId, 'joyce'),
+  ].sort(byTime),
+  placed(w, roomId, id) {
+    const th = w.things[id];
+    if (isGroup(th)) return th.of === 'joyce' ? !th.loose : !!spot(w, roomId, 'joyce', id);
+    return !!groupOf(w, id, 'joyce');
+  },
 
   // Clear space (clear.js): a train is one block from its start, and one more from each thought
   // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
   // were placed by hand.
-  blocks: (w, roomId) => joyceBlocks(w, roomId),
+  blocks: (w, roomId) => [...joyceBlocks(w, roomId),
+    ...placedForeign(w, roomId, 'joyce').map((g) => ({ id: g.id, thoughts: [], group: g.id, hand: true, at: g.at ?? 0 }))],
 
   // Each thought's height as drawn: the steps in a train follow them.
   measured: (sizes) => setHeights(sizes),
@@ -210,7 +225,10 @@ export default {
   shift(w, roomId, id, dx, dy) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th)) {
+    if (isGroup(th) && th.of !== 'joyce') {
+      const p = spot(w, roomId, 'joyce', id);
+      if (p) putAt(w, roomId, 'joyce', id, p.x + dx, p.y + dy);
+    } else if (isGroup(th)) {
       th.x += dx; th.y += dy;
       // Thoughts dragged on their own stay where they are.
       for (const m of trainThoughts(w, id)) if (Number.isFinite(m.dx)) { m.dx -= dx; m.dy -= dy; }
@@ -275,6 +293,14 @@ export default {
           style: `left:${k.x}px;top:${k.y}px`,
         }, k.draft ? c.draftNode() : c.thoughtNode(k.th)));
       }
+    }
+    // Other modes' groups placed here: each one closed thought, where it was let go.
+    for (const g of placedForeign(w, c.roomId, 'joyce')) {
+      const at = spot(w, c.roomId, 'joyce', g.id);
+      nodes.push(el('div', {
+        class: 'room-bead room-closed room-foreign' + ((c.sel?.kind === 'train' && c.sel.id === g.id) || c.isSel(g.id) ? ' selected' : ''),
+        'data-group': g.id, style: `left:${at.x}px;top:${at.y}px`,
+      }, c.thoughtNode(g)));
     }
     if (c.draft && !c.draft.train) {
       nodes.push(el('div', { class: 'room-bead', style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
