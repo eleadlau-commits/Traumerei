@@ -1,6 +1,8 @@
-// Groups as shared objects. A group (a Joyce train, a Russell chapter) belongs to the ontology that
-// made it, but it is one object for the whole room: every other ontology there sees it as one
-// thought. Until that ontology places it, it waits in its tray, tagged by the kind of its
+// Groups as shared objects. A group made on purpose (Ctrl+G, or grouped in the tray: `shared`)
+// belongs to the ontology that made it, but it is one object for the whole room: every other
+// ontology there sees it as one thought, and its thoughts are not loose there as well, so every
+// mode counts the same objects. Groups made by the way an ontology lays things out (a Joyce train
+// made by writing on, a Russell chapter made by a drop) are layout only: no other mode sees them. Until that ontology places it, it waits in its tray, tagged by the kind of its
 // outermost group (a train of trains is a Train); it can be opened there and dragged onto the
 // canvas. Its members stay wherever they are in that ontology.
 //
@@ -14,14 +16,26 @@
 // the old ones go, everywhere: the new one takes their place in every group, of every ontology,
 // that held them.
 
-import { groupsIn, groupsOf, itemsIn, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership } from './model.js';
+import { groupsIn, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership } from './model.js';
 
-// The groups no group holds (with something inside), oldest first: what a room's other ontologies
-// see of its groups.
-export const outermost = (w, roomId) => groupsIn(w, roomId).filter((g) => !groupsOf(w, g.id).length && itemsIn(w, g.id).length);
+export const isShared = (g) => isGroup(g) && !!g.shared;
 
-// The outermost groups another ontology made, which ontology `of` sees as one thought each.
+// The shared groups no shared group holds, however deep (with something inside), oldest first:
+// what a room's other ontologies see of its groups.
+export function outermost(w, roomId) {
+  const shared = groupsIn(w, roomId).filter((g) => g.shared && itemsIn(w, g.id).length);
+  return shared.filter((g) => !shared.some((o) => o !== g && holds(w, o.id, g.id)));
+}
+
+// The outermost shared groups another ontology made, which ontology `of` sees as one thought each.
 export const foreign = (w, roomId, of) => outermost(w, roomId).filter((g) => g.of !== of);
+
+// Whether a thought is inside a group ontology `of` sees as one thought: it isn't loose there too.
+export function inForeign(w, roomId, of) {
+  const inside = new Set();
+  for (const g of foreign(w, roomId, of)) for (const th of within(w, g.id)) inside.add(th.id);
+  return (id) => inside.has(id);
+}
 
 // Where ontology `of` placed a foreign group, or null (it waits in the tray).
 export const spot = (w, roomId, of, id) => {

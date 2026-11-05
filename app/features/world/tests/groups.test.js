@@ -16,37 +16,64 @@ const train = (w, ...texts) => {
 };
 const ids = (list) => list.map((th) => th.id);
 
-test('a train is one thought in the other modes: in their tray, tagged, until placed', () => {
+test('a train made by writing is layout only: the other modes see its thoughts, not the train', () => {
   const w = emptyWorld();
   const t = train(w, 'a', 'b');
+  assert.deepEqual(outermost(w, MESSY), []);
+  assert.deepEqual(pessoa.tray(w, MESSY), []);
+  assert.deepEqual(ids(russell.tray(w, MESSY)).sort(), ids(members(w, t.id)).sort()); // no double count
+  // Ctrl+G on it alone makes it an object as it is: one Train in the other modes, instead of its thoughts.
+  assert.equal(groupChosen(joyce, w, MESSY, [t.id], 9), t);
+  assert.ok(t.shared);
+  assert.deepEqual(ids(russell.tray(w, MESSY)), [t.id]);
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [t.id]);
+  assert.equal(groupChosen(joyce, w, MESSY, [t.id], 10), null); // shared already
+});
+
+test('a group made with Ctrl+G is one thought in the other modes: in their tray, tagged, until placed', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
+  const c = create(w, MESSY, { kind: 'line', text: 'c' }, 3);
+  const t = groupChosen(joyce, w, MESSY, [a.id, b.id], 4);
+  assert.ok(t.shared);
   assert.deepEqual(ids(outermost(w, MESSY)), [t.id]);
   assert.deepEqual(ids(foreign(w, MESSY, 'joyce')), []); // Joyce's own
   assert.deepEqual(ids(pessoa.tray(w, MESSY)), [t.id]);
   assert.equal(kindTag(t, { joyce: 'Train' }), 'Train');
   // Pessoa still floats each thought; the train joins them once placed.
-  assert.equal(pessoa.units(w, MESSY).length, 2);
+  assert.equal(pessoa.units(w, MESSY).length, 3);
   pessoa.drop(w, MESSY, t.id, 40, 50);
   assert.deepEqual(ids(placedForeign(w, MESSY, 'pessoa')), [t.id]);
   assert.deepEqual(pessoa.tray(w, MESSY), []);
   assert.deepEqual(pessoa.point(w, MESSY, t.id), { x: 40, y: 50 });
-  assert.equal(pessoa.units(w, MESSY).length, 3);
-  // In Russell its thoughts are loose, and the train waits beside them, as one thought.
-  assert.deepEqual(ids(russell.tray(w, MESSY)).sort(), [t.id, ...ids(members(w, t.id))].sort());
+  assert.equal(pessoa.units(w, MESSY).length, 4);
+  // In Russell the train waits in the tray as one thought, and its thoughts are not loose there too:
+  // Joyce has a, b (in the train) and c loose; Russell has the train and c, the same objects.
+  assert.deepEqual(ids(russell.tray(w, MESSY)), [c.id, t.id]);
+  assert.deepEqual(ids(joyce.tray(w, MESSY)), [c.id]);
 });
 
 test('Russell places another mode\'s group as a thought: into a chapter, or a chapter of its own', () => {
   const w = emptyWorld();
-  const t = train(w, 'a', 'b');
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
+  const t = groupChosen(joyce, w, MESSY, [a.id, b.id], 3);
   russell.drop(w, MESSY, t.id, 100, 100);
   const [ch] = chapters(w, MESSY);
   assert.ok(ch && members(w, ch.id).some((m) => m.id === t.id));
   assert.ok(!ids(russell.tray(w, MESSY)).includes(t.id));
-  // Now the chapter is the outermost group: Pessoa's tray has the chapter, not the train.
-  assert.deepEqual(ids(trayForeign(w, MESSY, 'pessoa')), [ch.id]);
-  assert.deepEqual(ids(joyce.tray(w, MESSY)), [ch.id]);
-  joyce.drop(w, MESSY, ch.id, 7, 8);
-  assert.deepEqual(joyce.point(w, MESSY, ch.id), { x: 7, y: 8 });
-  assert.ok(joyce.units(w, MESSY).some((u) => u.id === ch.id));
+  // The chapter a drop made is layout only: Joyce doesn't get it in its tray; Pessoa still has the train.
+  assert.deepEqual(joyce.tray(w, MESSY), []);
+  assert.deepEqual(ids(trayForeign(w, MESSY, 'pessoa')), [t.id]);
+  // A chapter made with Ctrl+G around it is shared: now Joyce and Pessoa see that chapter.
+  const x = create(w, MESSY, { kind: 'line', text: 'x' }, 4);
+  const big = groupChosen(russell, w, MESSY, [ch.id, x.id], 5);
+  assert.deepEqual(ids(trayForeign(w, MESSY, 'pessoa')), [big.id]);
+  assert.deepEqual(ids(joyce.tray(w, MESSY)), [big.id]); // x is inside it, so not loose too
+  joyce.drop(w, MESSY, big.id, 7, 8);
+  assert.deepEqual(joyce.point(w, MESSY, big.id), { x: 7, y: 8 });
+  assert.ok(joyce.units(w, MESSY).some((u) => u.id === big.id));
 });
 
 test('a group made in the tray stays in the tray until it is dragged out', () => {
