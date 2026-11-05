@@ -35,7 +35,7 @@ written there. With nothing in it, the rooms page works on its own.
   square; a room written in during the last day glows. **Messy thoughts** is always there,
   four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
   a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** has two folds: *The rooms page* (mask
-  opacity, square strength, glow, size) and *Inside a room* (lightness,
+  opacity, square strength, glow) and *Inside a room* (lightness,
   Messy's lightness, and the global ontology settings such as Joyce's line tension, with *Apply
   to all rooms*). Every colour comes from the app's palette (Settings →
   Colour, the Renderer's one tint): the mask is its ink, and a room with no colour of its own
@@ -73,7 +73,8 @@ written there. With nothing in it, the rooms page works on its own.
   lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
 - **Fixed floors:** every floor is the same fixed board (Settings → Floors: 6 × 4, 8 × 5 or
-  10 × 6), and never grows. Where a room goes is the **floors** feature's rule (its service:
+  10 × 6), and never grows. Its cells are as big as lets the whole floor fit the canvas (the
+  space beside the rail), so a floor never scrolls; below 56 px a cell stops shrinking. Where a room goes is the **floors** feature's rule (its service:
   `place`, `move`, `resize`, `toFloor`, `settle`): a room made, imported or restored goes to its
   floor's first free cell, else a new floor; a room dragged onto a full floor's number stays.
 - **Lights:** a room's glow follows your attention lately: going in and writing there light it,

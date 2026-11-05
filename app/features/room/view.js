@@ -86,7 +86,6 @@ export class RoomView {
         slider('Square strength', 'square', 0, 1.5),
         slider('Colour strength', 'vivid', 0.5, 3),
         slider('Glow', 'glow', 0, 1),
-        slider('Size', 'cell', 70, 180, 1),
         // A square's last thoughts: shown when it is hovered over, or always.
         el('label', { class: 'renderer-slider' }, el('span', {}, 'Peek'), el('span'),
           el('select', { 'aria-label': 'Peek', onchange: (e) => this.setPref('peek', +e.target.value) },

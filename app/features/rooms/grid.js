@@ -14,12 +14,18 @@ import { el, GRID, MAC, HOLD } from './shared.js';
 export class RoomsGrid {
   // ---- The rooms page ----
 
-  // Every floor's columns and rows (the floors feature's size), and how big a cell is.
+  // Every floor's columns and rows (the floors feature's size), and how big a cell is: as big as
+  // lets the whole floor fit the canvas, so a floor never scrolls (below 56 px a cell stops
+  // shrinking, and then it does).
   gridSize() {
     const { cols, rows } = this.floors.size;
-    const width = (this.grid.parentElement?.clientWidth || window.innerWidth) - 2 * GRID.pad - (window.innerWidth > 560 ? GRID.rail : 0);
-    const cell = Math.max(56, Math.min(this.prefs.cell, Math.floor((width - GRID.gap * (cols - 1)) / cols)));
-    return { cols, rows, cell };
+    const wrap = this.grid.parentElement;
+    const css = wrap && getComputedStyle(wrap);
+    const pad = (a, b) => (css ? (parseFloat(css[a]) || 0) + (parseFloat(css[b]) || 0) : 0);
+    const width = (wrap?.clientWidth || window.innerWidth) - (css ? pad('paddingLeft', 'paddingRight') : 2 * GRID.pad + GRID.rail);
+    const height = (wrap?.clientHeight || window.innerHeight) - (css ? pad('paddingTop', 'paddingBottom') : GRID.pad + 64);
+    const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
+    return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
   }
 
   // For each room shown (ids), how many thoughts in it (and its name) hold the words. A query that
