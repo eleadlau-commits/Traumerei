@@ -900,6 +900,76 @@ dialog.dialog-box {
 .keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
 .keys-list dd { margin: 0; opacity: .8; }
 
+/* ---- Panel chrome: every dock wears the same frame ----
+   A 32px strip of tabs (capitals; an amber line under the one in front) with the key and × on the
+   right; under it, folding sections (.sec, a <details>) with small capital heads, each holding
+   label/value rows (.kv); actions are real buttons (.box-btn: a hairline box, a word, its key). */
+.tab-strip { display: flex; align-items: stretch; height: 32px; padding: 0 var(--s-2); border-bottom: 1px solid var(--chrome-edge); }
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: .55;
+  transition: opacity var(--quick);
+}
+.tab:hover { opacity: .85; }
+.tab[aria-selected="true"] { opacity: 1; box-shadow: inset 0 -2px 0 var(--amber); }
+.tab-tail { margin-left: auto; display: flex; align-items: center; gap: var(--s-2); padding-left: var(--s-2); }
+/* A key, named beside what it does: small monospace, quiet. */
+.key { font: 10.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none; white-space: nowrap; opacity: .55; }
+.key:empty { display: none; }
+
+.sec { margin: 0 calc(-1 * var(--s-4)); padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--chrome-edge); }
+.sec > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  padding: 0;
+  font-size: 10.5px;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+.sec > summary::before { content: none; }
+.sec > summary::after { content: "+"; letter-spacing: 0; opacity: .7; }
+.sec[open] > summary::after { content: "−"; }
+.sec[open] > summary { margin-bottom: var(--s-2); }
+.sec-body { display: grid; gap: var(--s-1); }
+
+.kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: var(--s-2); min-height: var(--row); font-size: var(--t-work); }
+.kv > :first-child { font-size: var(--t-label); color: var(--muted); }
+.kv > :last-child { min-width: 0; }
+
+.box-btns { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.box-btn {
+  height: var(--field);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 10px;
+  border: 1px solid var(--chrome-edge);
+  background: var(--chrome);
+  font-size: var(--t-label);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  transition: background-color var(--quick);
+}
+.box-btn:hover { background: var(--hover-wash); }
+.box-btn:disabled { opacity: var(--off); cursor: default; }
+.box-btn.danger { color: var(--danger); }
+/* The one editable title of what is chosen, at the top of a dock. */
+.title-field, :is(input, textarea).title-field { font-size: var(--t-title); letter-spacing: .02em; text-transform: none; }
+/* In a dock, working words are sentence case at the working size: a choice, a value that can be
+   pressed (.value-btn, a hairline under it on hover), a description. */
+.dock :where(select) { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
+.value-btn { padding: 2px 0; font-size: var(--t-work); letter-spacing: .02em; text-align: left; background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 100%; background-size: 0 1px; transition: background-size .25s; }
+.value-btn:hover { background-size: 100% 1px; }
+
 /* ---- Message at the bottom ---- */
 
 .toast {
@@ -970,7 +1040,9 @@ dialog.dialog-box {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: rgb(var(--veil-rgb) / .94); /* a docked panel: a little more solid */
+  background: var(--chrome); /* chrome is the flat veil */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .dock[hidden] { display: none; }
 /* The right dock runs the full height; the left one starts under the strip at the top, so the
@@ -978,40 +1050,33 @@ dialog.dialog-box {
 .dock-right {
   top: 0;
   right: 0;
-  width: 480px;
-  box-shadow: -1px 0 0 var(--line), -8px 0 32px rgb(var(--ink-rgb) / .08);
-  animation: dock-in-right .3s ease both;
+  width: 340px;
+  box-shadow: -1px 0 0 var(--chrome-edge);
+  animation: dock-in-right var(--quick) ease both;
 }
 .dock-left {
   top: var(--strip, 0px);
   left: 0;
-  width: 300px;
-  box-shadow: 1px 0 0 var(--line), 8px 0 32px rgb(var(--ink-rgb) / .08);
-  animation: dock-in-left .3s ease both;
+  width: 280px;
+  box-shadow: 1px 0 0 var(--chrome-edge);
+  animation: dock-in-left var(--quick) ease both;
 }
 @keyframes dock-in-right { from { opacity: 0; transform: translateX(12px); } }
 @keyframes dock-in-left { from { opacity: 0; transform: translateX(-12px); } }
 
-.dock-head {
-  flex: none;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px 18px 12px 24px;
-}
-.dock-names { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.dock-strip { flex: none; }
+.dock-tabs { display: flex; align-items: stretch; min-width: 0; overflow: hidden; }
+.dock-close { --x-size: 28px; }
+.dock-head { flex: none; display: flex; align-items: baseline; gap: var(--s-3); padding: var(--s-3) var(--s-4) var(--s-2); }
+.dock-head[hidden] { display: none; }
+.dock-names { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.dock-names .dock-kind { order: 2; margin: 0; flex: none; }
 .dock-kind:empty { display: none; }
-.dock-title { font-size: 17px; letter-spacing: .04em; overflow-wrap: anywhere; }
-.dock-close { --x-size: 32px; }
+.dock-title { font-size: var(--t-work); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px 16px; }
+.dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 var(--s-4) var(--s-4); }
 .dock-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .dock-page[hidden] { display: none; }
-
-/* The tabs, along the top while a dock holds two or more things: Folio's words (.word). */
-.dock-tabs { flex: none; display: flex; gap: 20px; padding: 14px 18px 0 24px; }
-.dock-tabs[hidden] { display: none; }
-.dock-tabs:not([hidden]) + .dock-head { padding-top: 10px; }
 
 /* The inner edge: drag it to change the width. */
 .dock-edge {
@@ -1525,8 +1590,10 @@ dialog.dialog-box {
 
 /* A room's properties in the right dock's Editor tab (grid.js dockRoom): the pop-up's rows, down
    the dock. The page moves over beside the dock. */
-.rooms-props { display: grid; gap: 14px; align-content: start; }
-.rooms-props .pop-name { font-size: 18px; }
+.rooms-props { display: grid; gap: var(--s-2); align-content: start; }
+.rooms-props .kv input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--chrome-edge); }
+.rooms-props .kv input[type="range"] { width: 100%; }
+.rooms-props .pop-desc { margin-bottom: var(--s-2); }
 .dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
 
 /* ---- feature: home (style.css) ---- */
@@ -1794,6 +1861,7 @@ dialog.dialog-box {
 .room-edit-lines { resize: none; overflow: hidden; line-height: 1.5; display: block; }
 .room-thought { white-space: pre-line; }
 .room-edit-move { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.dock .room-edit-move { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
 
 /* The thought being written: its real caret and selection, drawn from the hidden box. */
 .room-draft { opacity: 1; white-space: pre-wrap; cursor: text; }
@@ -2042,7 +2110,6 @@ dialog.dialog-box {
   outline: none;
 }
 .room-editor-top { display: grid; gap: 12px; }
-.room-editor-top .pop-name { font-size: 15px; }
 .room-editor-top .room-edit-body { min-height: 10em; }
 .room-editor-content { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--room-ink) 12%, transparent); }
 .room-editor-content:empty { display: none; }
@@ -3812,15 +3879,18 @@ dialog.dialog-box {
 
   // dist/web/features/docks/dock.js
   var { el: el4 } = ui_exports;
-  var WIDTH = { left: 300, right: 480 };
-  var LEAST = 220;
-  var MOST = 0.7;
+  var WIDTH = { left: 280, right: 340 };
+  var LEAST = { left: 220, right: 280 };
+  var MOST = 560;
   var Dock = class {
     // side: 'left' or 'right'. saved: its remembered width, or undefined. keep(px): remember a width.
     // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
     // names none ('' for a dock without tabs).
-    constructor({ side, saved, keep, resized, label: label2, tab = "" }) {
+    // keyLabel(): the dock's key as the screen shows it ("Ctrl+Alt+E"), shown in its tab strip.
+    constructor({ side, saved, keep, resized, label: label2, tab = "", keyLabel = () => "" }) {
       this.side = side;
+      this.keyLabel = keyLabel;
+      this.least = LEAST[side];
       this.usual = WIDTH[side];
       this.keep = keep;
       this.resized = resized;
@@ -3832,7 +3902,7 @@ dialog.dialog-box {
       this.build(label2);
     }
     fit(px) {
-      return Math.round(Math.max(LEAST, Math.min(+px || this.usual, Math.max(LEAST, window.innerWidth * MOST))));
+      return Math.round(Math.max(this.least, Math.min(+px || this.usual, MOST, Math.max(this.least, window.innerWidth * 0.7))));
     }
     get showing() {
       return this.held.length && !this.tucked ? this.width : 0;
@@ -3841,7 +3911,8 @@ dialog.dialog-box {
       return this.held.length > 0 && !this.tucked;
     }
     build(label2) {
-      this.tabsEl = el4("div", { class: "dock-tabs", role: "tablist", hidden: true });
+      this.tabsEl = el4("div", { class: "dock-tabs", role: "tablist" });
+      this.keyEl = el4("span", { class: "key dock-key" });
       this.titleEl = el4("div", { class: "dock-title" });
       this.kindEl = el4("div", { class: "label dock-kind" });
       this.body = el4("div", { class: "dock-body" });
@@ -3869,12 +3940,21 @@ dialog.dialog-box {
             }
           }
         },
-        this.tabsEl,
         el4(
+          "div",
+          { class: "tab-strip dock-strip" },
+          this.tabsEl,
+          el4(
+            "div",
+            { class: "tab-tail" },
+            this.keyEl,
+            el4("button", { type: "button", class: "close-x dock-close", "aria-label": "Close", title: "Close (Escape)", onclick: () => this.close() })
+          )
+        ),
+        this.headEl = el4(
           "header",
           { class: "dock-head" },
-          el4("div", { class: "dock-names" }, this.kindEl, this.titleEl),
-          el4("button", { type: "button", class: "close-x dock-close", "aria-label": "Close", title: "Close (Escape)", onclick: () => this.close() })
+          el4("div", { class: "dock-names" }, this.kindEl, this.titleEl)
         ),
         this.body,
         this.edge
@@ -3906,11 +3986,11 @@ dialog.dialog-box {
         close: (force = false) => this.held.includes(shown2) ? this.closeOne(shown2, force) : Promise.resolve(true),
         setTitle: (t) => {
           shown2.title = t;
-          if (this.front === shown2) this.titleEl.textContent = t;
+          if (this.front === shown2) this.draw();
         },
         setKind: (t) => {
           shown2.kind = t;
-          if (this.front === shown2) this.kindEl.textContent = t;
+          if (this.front === shown2) this.draw();
         },
         get open() {
           return dock.held.includes(shown2);
@@ -3922,16 +4002,17 @@ dialog.dialog-box {
       const f2 = this.front;
       this.kindEl.textContent = f2?.kind || "";
       this.titleEl.textContent = f2?.title || "";
+      this.headEl.hidden = !f2?.kind && !f2?.title;
       for (const x of this.held) x.page.hidden = x !== f2;
-      const tabs = this.held.length > 1 ? [...this.held].sort((a, b) => (b.tab === this.firstTab) - (a.tab === this.firstTab)) : [];
-      this.tabsEl.hidden = !tabs.length;
+      const tabs = [...this.held].sort((a, b) => (b.tab === this.firstTab) - (a.tab === this.firstTab));
       this.tabsEl.replaceChildren(...tabs.map((x) => el4("button", {
         type: "button",
-        class: "word dock-tab",
+        class: "tab dock-tab",
         role: "tab",
         "aria-selected": String(x === f2),
         onclick: () => this.bring(x)
       }, x.tab || x.kind || "Untitled")));
+      this.keyEl.textContent = this.keyLabel() || "";
     }
     bring(x) {
       if (!this.held.includes(x)) return false;
@@ -4057,7 +4138,8 @@ dialog.dialog-box {
           tab: TAB[side],
           saved: this.storage.get(side),
           keep: (px) => this.storage.set(side, px),
-          resized: (px) => this.publish(side, px)
+          resized: (px) => this.publish(side, px),
+          keyLabel: () => this.use("keys")?.label?.(`docks.${side}`) || ""
         });
       }
       const services = {};
@@ -15681,12 +15763,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         return;
       }
-      const rows = (shelf ? this.shelfRows(r) : this.roomRows(r)).filter(Boolean);
+      const rows = (shelf ? [el11("div", { class: "title-field" }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
       const kind = shelf ? "Archived room" : "Room";
       if (open && this.panel.isOpen("room")) {
         open.id = r.id;
         open.body.replaceChildren(...rows);
-        open.handle?.setTitle(r.name);
         open.handle?.setKind(kind);
         return;
       }
@@ -15695,7 +15776,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.panel.open({
         key: "room",
         kind,
-        title: r.name,
+        title: "",
         body,
         onClose: () => {
           if (this.propsDock !== now) return;
@@ -15998,7 +16079,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
     // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
     // size, Back to the tint, Lock, Archive and Delete (not for Messy).
-    roomRows(r) {
+    // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
+    // (roomRows) or in folding sections in the dock (roomDockRows).
+    roomParts(r) {
       const set = (fields) => {
         update3(this.world, r.id, fields);
         this.save();
@@ -16006,7 +16089,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const look = this.lookOf(r);
       const lightness2 = el11("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set({ light: +e.target.value }) });
-      const nameField = el11("input", {
+      const p = {};
+      p.name = el11("input", {
         class: "pop-name",
         value: r.name,
         "aria-label": "Room name",
@@ -16021,101 +16105,133 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       });
-      const word = (label2, fn, extra = "") => el11("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
-      return [
-        nameField,
-        // A line or two about the room: shown under its name inside, and in its square's peek.
-        el11("textarea", {
-          class: "pop-desc",
-          rows: 2,
-          maxlength: DESC2,
-          placeholder: "A line about this room",
-          "aria-label": "Description",
-          onkeydown: (e) => {
-            e.stopPropagation();
-            if (e.key === "Escape" || e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              e.target.blur();
-            }
-          },
-          onchange: (e) => {
-            update3(this.world, r.id, { desc: e.target.value });
-            this.save();
-            this.drawRooms();
+      p.desc = el11("textarea", {
+        class: "pop-desc",
+        rows: 2,
+        maxlength: DESC2,
+        placeholder: "A line about this room",
+        "aria-label": "Description",
+        onkeydown: (e) => {
+          e.stopPropagation();
+          if (e.key === "Escape" || e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            e.target.blur();
           }
-        }, r.desc || ""),
-        word("Go in", () => this.openRoom(r.id), "rooms-options-go"),
-        // Its kind: a small room keeps its one mode; a big one switches inside.
-        // (its tags below name the modes).
-        el11("p", { class: "pop-note" }, isBig2(r) ? "Every mode · switched inside" : "One mode"),
-        this.tagsRow(r),
-        // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
+        },
+        onchange: (e) => {
+          update3(this.world, r.id, { desc: e.target.value });
+          this.save();
+          this.drawRooms();
+        }
+      }, r.desc || "");
+      p.go = () => this.openRoom(r.id);
+      p.kind = isBig2(r) ? "Every mode · switched inside" : "One mode";
+      p.tags = this.tagsRow(r);
+      p.colour = el11("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
+        const L = toOklch2(rgb2(e.target.value))[0];
+        set({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
+        lightness2.value = L;
+      } });
+      p.lightness = lightness2;
+      p.opacity = el11("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) });
+      p.sizes = r.locked ? null : [1, 2].map((n) => el11("button", {
+        type: "button",
+        class: "word",
+        "aria-pressed": String((r.size || 1) === n),
+        onclick: () => {
+          if (this.floors.resize(r.id, n)) {
+            this.save();
+            this.drawRooms();
+          } else this.toast("There isn't room for it to grow here. Move it first.");
+        }
+      }, n === 1 ? "1 × 1" : "2 × 2"));
+      p.untint = r.tint || r.light != null || r.opacity != null ? () => {
+        delete r.tint;
+        delete r.light;
+        delete r.opacity;
+        this.save();
+        this.drawRooms();
+      } : null;
+      p.lock = () => {
+        lock2(this.world, r.id, !r.locked);
+        this.save();
+        this.drawRooms();
+      };
+      p.archive = r.id !== MESSY3 && !r.locked ? () => {
+        archive2(this.world, r.id);
+        this.roomSel = null;
+        this.save();
+        this.drawRooms();
+        this.toast(`${r.name} is in the Archive.`);
+      } : null;
+      p.export = this.files ? () => this.exportRoomFile(r.id) : null;
+      p.remove = r.id !== MESSY3 && !r.locked ? () => {
+        remove3(this.world, r.id);
+        this.roomSel = this.roomPick = null;
+        this.save();
+        this.drawRooms();
+        this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
+      } : null;
+      return p;
+    }
+    roomRows(r) {
+      const p = this.roomParts(r);
+      const word = (label2, fn, extra = "") => fn ? el11("button", { type: "button", class: "word " + extra, onclick: fn }, label2) : null;
+      return [
+        p.name,
+        p.desc,
+        word("Go in", p.go, "rooms-options-go"),
+        el11("p", { class: "pop-note" }, p.kind),
+        p.tags,
+        el11("label", { class: "rooms-slider" }, el11("span", {}, "Colour"), p.colour),
+        el11("label", { class: "rooms-slider" }, el11("span", {}, "Lightness"), p.lightness),
+        el11("label", { class: "rooms-slider" }, el11("span", {}, "Opacity"), p.opacity),
+        p.sizes ? el11("div", { class: "pop-row" }, el11("span", { class: "label" }, "Size"), ...p.sizes) : null,
         el11(
-          "label",
-          { class: "rooms-slider" },
-          el11("span", {}, "Colour"),
-          el11("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
-            const L = toOklch2(rgb2(e.target.value))[0];
-            set({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
-            lightness2.value = L;
-          } })
-        ),
-        el11("label", { class: "rooms-slider" }, el11("span", {}, "Lightness"), lightness2),
-        el11(
-          "label",
-          { class: "rooms-slider" },
-          el11("span", {}, "Opacity"),
-          el11("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) })
-        ),
-        r.locked ? null : el11(
           "div",
           { class: "pop-row" },
-          el11("span", { class: "label" }, "Size"),
-          ...[1, 2].map((n) => el11("button", {
-            type: "button",
-            class: "word",
-            "aria-pressed": String((r.size || 1) === n),
-            onclick: () => {
-              if (this.floors.resize(r.id, n)) {
-                this.save();
-                this.drawRooms();
-              } else this.toast("There isn't room for it to grow here. Move it first.");
-            }
-          }, n === 1 ? "1 × 1" : "2 × 2"))
-        ),
-        el11(
-          "div",
-          { class: "pop-row" },
-          r.tint || r.light != null || r.opacity != null ? word("Back to the tint", () => {
-            delete r.tint;
-            delete r.light;
-            delete r.opacity;
-            this.save();
-            this.drawRooms();
-          }) : null,
-          // Locked: nothing inside can change, and the square stays where it is.
-          word(r.locked ? "Unlock" : "Lock", () => {
-            lock2(this.world, r.id, !r.locked);
-            this.save();
-            this.drawRooms();
-          }),
-          r.id !== MESSY3 && !r.locked ? word("Archive", () => {
-            archive2(this.world, r.id);
-            this.roomSel = null;
-            this.save();
-            this.drawRooms();
-            this.toast(`${r.name} is in the Archive.`);
-          }) : null,
-          // Taken out as room Markdown (the roomfile feature); a locked room too.
-          this.files ? word("Export as Markdown", () => this.exportRoomFile(r.id)) : null,
-          r.id !== MESSY3 && !r.locked ? word("Delete", () => {
-            remove3(this.world, r.id);
-            this.roomSel = this.roomPick = null;
-            this.save();
-            this.drawRooms();
-            this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-          }, "pop-delete") : null
+          word("Back to the tint", p.untint),
+          word(r.locked ? "Unlock" : "Lock", p.lock),
+          word("Archive", p.archive),
+          word("Export as Markdown", p.export),
+          word("Delete", p.remove, "pop-delete")
         )
+      ];
+    }
+    // In the dock: one editable title, then folding sections of label/value rows (Folio's .sec, .kv)
+    // and real buttons that name their keys (.box-btn).
+    roomDockRows(r) {
+      const p = this.roomParts(r);
+      p.name.classList.add("title-field");
+      const key2 = (k2) => el11("span", { class: "key" }, k2);
+      const btn = (label2, fn, k2 = "", extra = "") => fn ? el11("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label2, k2 ? key2(k2) : "") : null;
+      const kv = (label2, value) => el11("div", { class: "kv" }, el11("span", {}, label2), value);
+      const sec = (title, ...body) => el11("details", { class: "sec", open: "" }, el11("summary", {}, title), el11("div", { class: "sec-body" }, ...body.filter(Boolean)));
+      return [
+        p.name,
+        p.desc,
+        sec(
+          "Room",
+          kv("Modes", el11("span", {}, p.kind)),
+          kv("Tags", p.tags)
+        ),
+        sec(
+          "Look",
+          kv("Colour", p.colour),
+          kv("Lightness", p.lightness),
+          kv("Opacity", p.opacity),
+          p.sizes ? kv("Size", el11("div", { class: "seg" }, ...p.sizes)) : null,
+          p.untint ? el11("div", { class: "box-btns" }, btn("Back to the tint", p.untint)) : null
+        ),
+        sec("Actions", el11(
+          "div",
+          { class: "box-btns" },
+          btn("Go in", p.go, "Enter", "rooms-options-go"),
+          btn(r.locked ? "Unlock" : "Lock", p.lock),
+          btn("Archive", p.archive),
+          btn("Export", p.export),
+          btn("Delete", p.remove, "Delete", "danger pop-delete")
+        ))
       ];
     }
     // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
@@ -19229,21 +19345,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!top.contains(document.activeElement)) top.replaceChildren(...c.propRows(now, true));
       if (paras && !paras.writing) paras.draw();
       drawFoot();
-      handle?.setTitle(title(now));
+      handle?.setKind(kindWord(now));
     };
-    const words = (x) => {
-      const t = thoughtText2(c.world, x).replace(/\s+/g, " ").trim();
-      return t.length > 60 ? t.slice(0, 57) + "…" : t || c.kindName(x);
-    };
-    const title = (x) => isGroup3(x) ? x.title || `An untitled ${c.groupName(x).toLowerCase()}` : words(x);
     const close = () => {
       handle?.close(true);
     };
     const editor = { id, body, refresh, keep: () => paras?.keep() };
+    const kindWord = (x) => `${isGroup3(x) ? c.groupName(x) : c.kindName(x)} · ${c.ont.name}`;
     const handle = await c.panel.open({
       key: "content",
-      kind: group ? c.groupName(th) : c.kindName(th),
-      title: title(th),
+      kind: kindWord(th),
+      title: "",
       body,
       beforeClose: () => {
         paras?.keep();
@@ -19259,6 +19371,77 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!handle) return;
     c.editor = editor;
     refresh();
+  }
+
+  // dist/web/features/room/verbs.js
+  var FIELD2 = "input, textarea, select, [contenteditable]";
+  var typing = (e) => !!e?.target?.matches?.(FIELD2);
+  var one = (c) => c.sel && c.sel.kind !== "many" && c.world.things[c.sel.id] ? c.world.things[c.sel.id] : null;
+  var props = (c) => c.editor?.body || (c.bar.hidden ? null : c.bar);
+  async function rename(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    if (kindOf3(th) === "line" && c.editThought(th.id)) return;
+    await c.openProps(c.sel);
+    const field3 = props(c)?.querySelector(".pop-name, input, textarea");
+    field3?.focus({ preventScroll: true });
+    field3?.select?.();
+  }
+  function duplicate(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const units = c.copyOf(c.sel.ids || [c.sel.id]);
+    if (!units.length) {
+      c.toast("That can't be duplicated here yet.");
+      return;
+    }
+    c.pasteUnits(units);
+  }
+  function fold4(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const g2 = isGroup3(th) ? th : groupOf2(c.world, th.id, c.mode);
+    if (!g2) {
+      c.toast("It is in no group to fold.");
+      return;
+    }
+    if (g2.folded) {
+      c.unfoldTrain(g2.id);
+      return;
+    }
+    if (trainThoughts2(c.world, g2.id).length < 2 && !c.ont.open) {
+      c.toast("One thought: nothing to fold.");
+      return;
+    }
+    c.foldTrain(g2.id);
+  }
+  async function moveTo(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    await c.openProps(c.sel);
+    const pick = props(c)?.querySelector(".room-edit-move");
+    if (!pick) return;
+    pick.focus({ preventScroll: true });
+    try {
+      pick.showPicker?.();
+    } catch {
+    }
   }
 
   // dist/web/features/room/bars.js
@@ -19353,7 +19536,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!inPanel) rows.push(el14("div", { class: "label" }, title));
       if (kind === "line") {
         const text = el14("textarea", {
-          class: "room-edit-text room-edit-lines",
+          class: `room-edit-text room-edit-lines${inPanel ? " title-field" : ""}`,
           rows: 1,
           placeholder: "The thought",
           "aria-label": "The thought",
@@ -19385,7 +19568,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         rows.push(field3(th.title, "Title", (e) => {
           update4(this.world, th.id, { title: e.target.value });
           done();
-        }));
+        }, inPanel ? "pop-name title-field" : "pop-name"));
         const body = el14("textarea", {
           class: "room-edit-body",
           rows: 5,
@@ -19402,7 +19585,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (kind === "picture") rows.push(field3(th.text, "A caption", (e) => {
         update4(this.world, th.id, { text: e.target.value });
         done();
-      }, "room-edit-text"));
+      }, inPanel ? "room-edit-text title-field" : "room-edit-text"));
+      if (kind === "group" && inPanel) rows.push(field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
+        name4(this.world, th.id, e.target.value);
+        done();
+      }, "pop-name title-field"));
+      if (inPanel) return [...rows, ...this.dockSections(th, kind, gname, done)];
       if (kind === "group") {
         const n = trainThoughts2(this.world, th.id).length;
         rows.push(
@@ -19472,6 +19660,100 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         )
       );
       return rows;
+    }
+    // What is chosen, in the dock (the content editor): under its one title, folding sections of
+    // label/value rows (Folio's .sec and .kv) and real buttons that name their keys (.box-btn).
+    dockSections(th, kind, gname, done) {
+      const key2 = (id) => el14("span", { class: "key" }, this.keyMap?.label?.(id) || "");
+      const btn = (label2, fn, id = null, extra = "") => el14("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label2, id ? key2(id) : "");
+      const kv = (label2, value) => el14("div", { class: "kv" }, el14("span", {}, label2), value);
+      const sec = (title, ...body) => el14("details", { class: "sec", open: "" }, el14("summary", {}, title), el14("div", { class: "sec-body" }, ...body.filter(Boolean)));
+      const out = [];
+      const others = this.moveRooms();
+      const here = room5(this.world, this.roomId);
+      const pick = el14(
+        "select",
+        {
+          class: "room-edit-move",
+          "aria-label": "Move to a room",
+          onkeydown: (e) => e.stopPropagation(),
+          onchange: (e) => {
+            const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
+            if (to && to !== this.roomId) this.moveTo(to);
+          }
+        },
+        el14("option", { value: this.roomId }, here?.name || "This room"),
+        ...others.map((r) => el14("option", { value: r.id }, r.name)),
+        el14("option", { value: "+" }, "A new room")
+      );
+      const g2 = kind !== "group" && this.ont.groups ? groupOf2(this.world, th.id, this.mode) : null;
+      const gn = this.ont.groups?.name || "Group";
+      let inGroup = null;
+      if (g2) {
+        const all = trainThoughts2(this.world, g2.id);
+        const at2 = all.findIndex((x) => x.id === th.id);
+        inGroup = el14(
+          "button",
+          {
+            type: "button",
+            class: "value-btn room-edit-group",
+            title: `Choose the whole ${gn.toLowerCase()}`,
+            onclick: () => {
+              this.sel = { kind: "train", id: g2.id };
+              this.openProps(this.sel);
+            }
+          },
+          `${g2.title || "Untitled"}${at2 >= 0 ? ` · ${at2 + 1} of ${all.length}` : ""}`
+        );
+      }
+      const n = kind === "group" ? trainThoughts2(this.world, th.id).length : 0;
+      const elsewhere = kind === "group" && th.folded ? this.elsewhere(th) : [];
+      out.push(sec(
+        "Place",
+        kv("Room", pick),
+        inGroup ? kv(gn, inGroup) : null,
+        kind === "group" ? kv("Thoughts", el14("span", {}, String(n))) : null,
+        elsewhere.length ? this.keepChoice(elsewhere, !!th.keep, (keep) => {
+          update4(this.world, th.id, { keep });
+          done();
+        }) : null
+      ));
+      let own3 = [];
+      try {
+        own3 = this.ont.props?.(this, th) || [];
+      } catch (err) {
+        console.warn("Room: props", err);
+      }
+      const moves = (this.ont.moves || []).filter((m2) => {
+        try {
+          return !m2.when || m2.when(this);
+        } catch {
+          return false;
+        }
+      });
+      if (own3.length || moves.length) {
+        out.push(sec(
+          this.ont.name || "Mode",
+          ...own3,
+          moves.length ? el14("div", { class: "box-btns room-moves" }, ...moves.map((m2) => btn(m2.label, () => this.runMove(m2)))) : null
+        ));
+      }
+      const foldable = kind === "group" ? th.folded || n > 1 || this.ont.open : !!g2;
+      const folded = kind === "group" ? th.folded : g2?.folded;
+      out.push(sec("Actions", el14(
+        "div",
+        { class: "box-btns" },
+        btn("Duplicate", () => duplicate(this), "room.duplicate"),
+        btn("Move", () => moveTo(this), "room.move"),
+        foldable ? btn(folded ? "Unfold" : "Fold", () => fold4(this), "room.fold") : null,
+        btn("Delete", () => {
+          remove4(this.world, th.id);
+          this.sel = null;
+          done();
+          this.toast("Deleted. Ctrl+Z brings it back.");
+        }, "room.delete", "danger pop-delete")
+      )));
+      return out;
     }
     // One of the ontology's moves: it changes the world (or starts writing), then the room is drawn
     // again and the change saved as one step.
@@ -19924,77 +20206,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.undo", keys: ["Ctrl+Z", "Ctrl+Shift+Z", "Ctrl+Y"], shows: "Ctrl+Z · Ctrl+Shift+Z", words: "undo · redo" },
     { id: "room.escape", keys: ["Escape"], words: "let go, or go back" }
   ].map((k2, i2) => ({ order: 10 + i2, ...k2 }));
-
-  // dist/web/features/room/verbs.js
-  var FIELD2 = "input, textarea, select, [contenteditable]";
-  var typing = (e) => !!e?.target?.matches?.(FIELD2);
-  var one = (c) => c.sel && c.sel.kind !== "many" && c.world.things[c.sel.id] ? c.world.things[c.sel.id] : null;
-  var props = (c) => c.editor?.body || (c.bar.hidden ? null : c.bar);
-  async function rename(c, e) {
-    if (typing(e) || c.editing) return;
-    const th = one(c);
-    if (!th) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    if (kindOf3(th) === "line" && c.editThought(th.id)) return;
-    await c.openProps(c.sel);
-    const field3 = props(c)?.querySelector(".pop-name, input, textarea");
-    field3?.focus({ preventScroll: true });
-    field3?.select?.();
-  }
-  function duplicate(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    const units = c.copyOf(c.sel.ids || [c.sel.id]);
-    if (!units.length) {
-      c.toast("That can't be duplicated here yet.");
-      return;
-    }
-    c.pasteUnits(units);
-  }
-  function fold4(c, e) {
-    if (typing(e) || c.editing) return;
-    const th = one(c);
-    if (!th) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    const g2 = isGroup3(th) ? th : groupOf2(c.world, th.id, c.mode);
-    if (!g2) {
-      c.toast("It is in no group to fold.");
-      return;
-    }
-    if (g2.folded) {
-      c.unfoldTrain(g2.id);
-      return;
-    }
-    if (trainThoughts2(c.world, g2.id).length < 2 && !c.ont.open) {
-      c.toast("One thought: nothing to fold.");
-      return;
-    }
-    c.foldTrain(g2.id);
-  }
-  async function moveTo(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    await c.openProps(c.sel);
-    const pick = props(c)?.querySelector(".room-edit-move");
-    if (!pick) return;
-    pick.focus({ preventScroll: true });
-    try {
-      pick.showPicker?.();
-    } catch {
-    }
-  }
 
   // dist/web/features/room/Room.js
   var Room = class extends Feature {
