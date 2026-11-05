@@ -7,7 +7,8 @@
 // canvas opens Add there. What is on the canvas, where it sits and what a drag does is the
 // ontology's (the world feature's ontologies/). This feature keeps no mode of its own. Writing is the
 // same in every room: Enter goes on with the train, and Ctrl+Enter starts a new one.
-// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Keys. A
+// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Import;
+// Export, Edit as text and Keys are under ⋯ More at the foot of the rail. A
 // group can be closed into one thought, which you name, and opened again.
 // Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
 // world is written down, and a line of help shows the first time a room is seen.
@@ -84,6 +85,20 @@ export default class Room extends Feature {
     // the focus but the room's canvas; elsewhere Tab keeps its usual job.
     const when = { 'room.mode': () => live() && this.tabSwaps() };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
+    // Export, Edit as text and Keys under ⋯ More, at the foot of the room's rail (the frame
+    // feature's slot rail.more), shown only inside a room.
+    if (this.frame) {
+      if (this.files) {
+        this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: live, run: () => this.exportRoomFile(),
+          icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a file' });
+        this.add('rail.more', { id: 'room-text', label: 'Edit as text', order: 21, icon: 'note', run: () => this.editAsMarkdown(),
+          visible: () => live() && !!this.files.canEdit, title: () => 'Edit this room as text, in the right dock' });
+      }
+      if (this.keyMap) {
+        this.add('rail.more', { id: 'room-keys', label: 'Keys', order: 30, icon: 'help', visible: live, run: () => this.showKeys(),
+          title: () => 'Every key · ?' });
+      }
+    }
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('frame:rail', () => { if (this.roomId) this.place(); });    // the canvas starts beside the rail
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
@@ -296,10 +311,7 @@ export default class Room extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           ...(this.files ? [el('div', { class: 'pick-rule' }),
-            this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false),
-            this.addItem('Export as Markdown', '.md', () => this.exportRoomFile(), false),
-            ...(this.files.canEdit ? [this.addItem('Edit room as Markdown', 'in the panel', () => this.editAsMarkdown(), false)] : [])] : []),
-          ...(this.keyMap ? [el('div', { class: 'pick-rule' }), this.addItem('Keys', '?', () => this.showKeys(), false)] : [])),
+            this.addItem('Import into this room…', 'or drop a .md file', () => this.importIntoRoom(), false)] : [])),
         this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
       this.trayEl,

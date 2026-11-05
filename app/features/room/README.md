@@ -41,7 +41,8 @@ It offers no service of its own.
   for that mode in the right dock's Editor tab (without docks, a card beside the rail), with
   *Reset to global*; the ⚙ again, ×, or Escape closes them, and switching mode switches them. Each room keeps its own; a new
   room starts from the global ones. At the foot of the rail, ⋯ More holds *Time* (the time feature), which opens the list of its
-  thoughts by time in the right dock, in any mode.
+  thoughts by time in the right dock, in any mode, and the room's own *Export* and *Edit as text*
+  (with the roomfile feature) and *Keys* (with the keys feature), through the frame's `rail.more` slot.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random
     place. A train can't be broken: it is dragged, and moved, whole.
@@ -172,9 +173,9 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   still get the small pop-up beside them, and with no docks feature the pop-up is used for all. In a thought's
   box Enter keeps it and **Ctrl+Enter** (Cmd+Enter) starts a new line inside the thought; the
   thought below makes room. Writing keeps its own keys: there Ctrl+Enter still starts a new train.
-- **Add** (bottom left) unfolds to Thought, Passage, Picture and Keys, and (with the roomfile
-  feature) *Import into this room…*, *Export as Markdown* and *Edit room as Markdown*, which opens
-  the whole room as room Markdown in the source editor on the right. A group's pop-up has *Edit as
+- **Add** (bottom left) unfolds to Thought, Passage, Picture and (with the roomfile feature)
+  *Import into this room…*. *Export* and *Edit as text* (the whole room in the source editor on the
+  right) are under ⋯ More at the foot of the rail. A group's pop-up has *Edit as
   Markdown* for just that group. A right-click on the empty
   canvas opens Add at the pointer, and what is made goes just there.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
@@ -212,5 +213,5 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   group (Joyce: each its own train, where it was; Russell: loose again), **Ctrl+L** locks or
   unlocks the room, and **Delete** deletes. In a field these keys do nothing (so the browser doesn't reload, bookmark or find).
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
-  (Shift for bigger steps); ? (or Add → Keys) lists them all, from the key map (the keys feature;
+  (Shift for bigger steps); ? (or ⋯ More → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.
