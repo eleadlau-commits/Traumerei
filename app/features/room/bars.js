@@ -36,9 +36,9 @@ export class Bars {
     const id = this.sel && this.sel.kind !== 'many' ? this.sel.id : null;
     if (id && id !== ed.id && this.world.things[id]) {
       ed.keep();
-      // Choosing something brings the Editor to the front, unless it was chosen in the Timeline.
-      const behind = this.fromTimeline && this.panel.isShowing('timeline');
-      openEditor(this, id).then(() => { if (behind) this.panel.show('timeline'); });
+      // Choosing something brings the Editor to the front, unless it was chosen in Time.
+      const behind = this.fromTimeline && this.time?.showing;
+      openEditor(this, id).then(() => { if (behind) this.time.show(); });
       return;
     }
     ed.refresh();
@@ -404,11 +404,8 @@ export class Bars {
     this.bar.style.top = `${y - page.top}px`;
   }
 
-  drawHistorySoon() {
-    if (!this.historyOpen) return;
-    clearTimeout(this.historyTimer);
-    this.historyTimer = setTimeout(() => this.drawHistory(), 60);
-  }
+  // What is chosen changed: the Time dock lights it (the time feature).
+  drawHistorySoon() { this.time?.refresh(); }
 
   // Closes a group, then asks for its name.
   closeTrain(trainId) {

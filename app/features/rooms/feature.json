@@ -15,6 +15,7 @@
     "roomfile",
     "keys",
     "docks",
-    "frame"
+    "frame",
+    "time"
   ]
 }

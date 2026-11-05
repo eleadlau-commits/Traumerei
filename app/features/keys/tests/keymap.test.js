@@ -6,6 +6,7 @@ import { parse, normal, matches, label, clashes } from '../keymap.js';
 import { ROOM_KEYS } from '../../room/keys.js';
 import { ROOMS_KEYS } from '../../rooms/keys.js';
 import { DOCK_KEYS } from '../../docks/keys.js';
+import { TIME_KEYS } from '../../time/keys.js';
 
 const press = (o) => ({ key: '', code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...o });
 
@@ -54,7 +55,7 @@ test('two actions on one key in one place clash; in different places they do not
 });
 
 test('the keys the app adds are all readable and never clash', () => {
-  const all = [{ id: 'keys.list', keys: ['?'], zone: 'everywhere' }, ...ROOM_KEYS.map((k) => ({ ...k, zone: 'room' })), ...ROOMS_KEYS.map((k) => ({ ...k, zone: 'rooms' })), ...DOCK_KEYS.map((k) => ({ ...k, zone: 'everywhere' }))];
+  const all = [{ id: 'keys.list', keys: ['?'], zone: 'everywhere' }, ...ROOM_KEYS.map((k) => ({ ...k, zone: 'room' })), ...ROOMS_KEYS.map((k) => ({ ...k, zone: 'rooms' })), ...DOCK_KEYS.map((k) => ({ ...k, zone: 'everywhere' })), ...TIME_KEYS.map((k) => ({ ...k, zone: 'everywhere' }))];
   for (const k of all) for (const c of k.keys || []) assert.ok(parse(c), `${k.id}: ${c}`);
   for (const k of all) assert.ok((k.keys || []).length || k.shows, `${k.id} has keys or words to show`);
   assert.deepEqual(clashes(all), []);

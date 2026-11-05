@@ -1,7 +1,7 @@
 // The room feature: inside a room. A room fills the screen as one gradient of its own colour, laid out like
 // the rooms page: the back arrow (to the rooms) top right, the menu top left and Search in the
 // middle, its name at the top, and a rail on the left with its modes, where a big room switches
-// between them (and Timeline under them). A room is a canvas: drag to move around, wheel / pinch /
+// between them. A room is a canvas: drag to move around, wheel / pinch /
 // Ctrl+wheel to zoom. Typing anywhere writes a thought; Enter ends it. A click chooses a thought; a
 // right-click (or long press, or Enter) opens its properties beside it; a right-click on the empty
 // canvas opens Add there. What is on the canvas, where it sits and what a drag does is the
@@ -55,7 +55,6 @@ export default class Room extends Feature {
     this.renaming = null; // the open room, while its name is being edited
     this.barFor = null;   // what the properties pop-up is open for (selKey)
     this.editor = null;   // the content editor in the side panel (editor.js), while it shows
-    this.timeline = null; // the Timeline in the right dock's Timeline tab, while it shows: { body, handle }
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
@@ -66,8 +65,8 @@ export default class Room extends Feature {
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
     this.frame = this.use('frame');       // the top bar and the foot around the room (the frame feature), or null
+    this.time = this.use('time');         // the Time dock (the time feature), or null
     const run = {
-      'room.timeline': () => this.toggleTimeline(),
       'room.mode': (e) => this.nextMode(e.shiftKey ? -1 : 1),
       // The same verbs as on the rooms page (verbs.js).
       'room.rename': (e) => verbs.rename(this, e),
@@ -104,6 +103,15 @@ export default class Room extends Feature {
     this.add('rooms.room', {
       leave: () => this.leave(),                // leaves the open room; returns its id, if it showed
       hasDraft: (id) => !!this.drafts[id],      // a thought was left half written there
+    });
+    // Where the Time dock is (the time feature): this room's Timeline. A click there chooses what it
+    // names; the Editor follows, but Time stays in front (bars.js).
+    this.add('time.place', {
+      live: () => !this.root.hidden && !!this.roomId,
+      room: () => this.roomId,
+      chosen: () => (this.sel && this.sel.kind !== 'many' ? this.sel.id : null),
+      go: (f) => { this.fromTimeline = true; try { this.goTo(f); } finally { this.fromTimeline = false; } },
+      redraw: () => { if (this.roomId) this.drawRoom(); },
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); });
@@ -152,7 +160,6 @@ export default class Room extends Feature {
     const from = this.root.hidden ? null : twinOf(this.world, this.roomId)?.id || this.roomId; // a side: its Twin's square
     this.closeSheet();
     this.closeSearch();
-    this.timeline = null; // (so closing it doesn't turn it off for the room)
     this.modeSettings = null; // (and closing the ⚙ settings doesn't draw the room)
     this.panel?.closeAll(true);
     this.docks?.left.close('loose', true);
@@ -167,6 +174,7 @@ export default class Room extends Feature {
     this.root.hidden = true;
     this.frame?.hide(this);
     document.documentElement.classList.remove('room-open', 'room-dark');
+    this.time?.refresh(); // Time shows the rooms page now, or closes
     return from;
   }
 
@@ -267,14 +275,13 @@ export default class Room extends Feature {
     this.crumbDesc = el('span', { class: 'crumb-note room-crumb-desc' });
     this.crumb = el('span', { class: 'room-crumb' }, this.crumbName, this.crumbDesc);
     // The room's rail, where the rooms page has Rooms and Archive: its modes (a big room switches
-    // between them; a small one names its one), and Timeline under Joyce.
+    // between them; a small one names its one), and Time under Views.
     this.modes = el('nav', { class: 'rail room-rail room-modes', 'aria-label': 'Ontological mode' });
     this.world$ = el('div', { class: 'room-world' });
     this.stage = el('div', { class: 'room-stage', 'data-own-swipe': '' }, this.world$);
     const otherSide = this.twinPanel(); // a Twin's other side, beside the canvas (twin.js)
     this.input = el('textarea', { class: 'room-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
     this.bar = el('div', { class: 'panel pop room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
-    this.history = el('aside', { class: 'panel room-history', hidden: true, 'aria-label': 'Timeline', onpointerdown: (e) => e.stopPropagation() });
     this.trayEl = el('div', { class: 'room-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
@@ -292,7 +299,6 @@ export default class Room extends Feature {
           ...(this.keyMap ? [el('div', { class: 'pick-rule' }), this.addItem('Keys', '?', () => this.showKeys(), false)] : [])),
         this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
           el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
-      this.history,
       this.trayEl,
       this.bar,
       this.sheet = el('div', { class: 'panel sheet room-sheet', hidden: true }),
