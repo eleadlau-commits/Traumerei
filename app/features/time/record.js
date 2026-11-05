@@ -7,7 +7,7 @@
 // record = { base: { day, rooms } | null, days: { [day]: { set?, gone?, written? } } }
 // rooms  = { [id]: { name, page, col, row, size, archived, tint, light, opacity } }   (a square each)
 
-import { dayOf } from './days.js';
+import { dayOf, squareOf, changed } from './days.js';
 
 export const DAY = 864e5;
 // How long the history is kept (Settings → History): days, 0 for always.
@@ -83,4 +83,40 @@ export function prune(rec, keep, when = Date.now()) {
   for (const d of old) { apply(rooms, rec.days[d]); delete rec.days[d]; }
   rec.base = { day: from, rooms };
   return rec;
+}
+
+// ---- Going back: the rooms page on a past day ----
+
+// The first day anything is known of: the record's first day, or the oldest stamp on a thought
+// or room, whichever is earlier. Today when there is nothing.
+export function earliest(w, rec, when = Date.now()) {
+  let first = firstDay(rec) ?? dayOf(when);
+  for (const th of Object.values(w.things)) if (th?.at > 0 && th.at < first) first = th.at;
+  return dayOf(first);
+}
+
+// The rooms page at the end of `day`: { day, rooms, written, counts }. rooms: as the record kept
+// them that day; before the record began, rebuilt from the stamps (the rooms made by then, where
+// they sit now). written: the rooms written in that day (the record's, and any whose thoughts
+// were last changed then). counts: per room, the thoughts made by then (those still here).
+// m: the world's model rules.
+export function pastBoard(m, w, rec, day) {
+  const end = day + DAY - 1;
+  const first = firstDay(rec);
+  let rooms;
+  if (first != null && day >= first) rooms = stateAt(rec, day);
+  else {
+    rooms = {};
+    for (const [id, r] of Object.entries(snapshot(w))) if ((w.things[id].at ?? 0) <= end) rooms[id] = r;
+  }
+  const written = new Set(writtenOn(rec, day));
+  const counts = {};
+  for (const th of Object.values(w.things)) {
+    if (!m.isLeaf(th)) continue;
+    const sq = squareOf(w, th);
+    if (!sq) continue;
+    if ((th.at ?? 0) <= end) counts[sq.id] = (counts[sq.id] || 0) + 1;
+    if (dayOf(changed(th)) === day) written.add(sq.id);
+  }
+  return { day, rooms, written: [...written].filter((id) => rooms[id]), counts };
 }
