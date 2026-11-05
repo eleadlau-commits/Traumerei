@@ -20,7 +20,7 @@
 
 import washi from './washi.js';
 import plain from './plain.js';
-import planar from './planar.js';
+import mondrian from './mondrian.js';
 
-export const MODES = [washi, plain, planar];
+export const MODES = [washi, plain, mondrian];
 export const modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];

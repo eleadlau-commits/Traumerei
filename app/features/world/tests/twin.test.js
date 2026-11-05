@@ -3,7 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig } from '../model.js';
-import { addTwin, sides, twinOf, otherSide, across, isTwin } from '../twin.js';
+import { addTwin, sides, twinOf, otherSide, across, isTwin, placeName, moveTargets } from '../twin.js';
 
 const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, { id: 'russell', name: 'Russell' }];
 
@@ -53,4 +53,17 @@ test('a Twin survives a reload, copies with its sides, and goes with them', () =
   assert.deepEqual(roomThoughts(w, c.id).map((x) => x.text), ['kept']);
   remove(w, t.id);
   assert.equal(Object.values(w.things).filter((x) => x.parent === l.id).length, 0);
+});
+
+test('Move to lists a Twin as its two sides, the other side first from inside one', () => {
+  const w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['joyce', 'russell']);
+  const [l, r] = sides(w, t.id);
+  assert.equal(placeName(w, l.id), 'Pair · Left');
+  assert.equal(placeName(w, r.id), 'Pair · Right');
+  const names = (from) => moveTargets(w, from).map((x) => x.name);
+  assert.deepEqual(names('messy'), ['Pair · Left', 'Pair · Right']);
+  assert.ok(!moveTargets(w, 'messy').some((x) => x.id === t.id)); // never the Twin itself
+  assert.deepEqual(names(r.id), ['Pair · Left', 'Messy thoughts']);
+  assert.deepEqual(names(l.id), ['Pair · Right', 'Messy thoughts']);
 });

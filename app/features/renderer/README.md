@@ -54,17 +54,17 @@ Washi is shown. The maths is in `engine/plain.js`:
   OKLCh(L_g, min(0.14, 1.4 C_b + 0.03), h_b + Δh). They're drawn on a canvas a quarter of the screen's
   size and screen-blended over the picture by the browser.
 
-## The Planar theme
+## The Mondrian theme
 
-**Settings → Theme → Planar** (saved as `theme`, its view as `planarView`). Its base is the picture
+**Settings → Theme → Mondrian** (saved as `theme`, its view as `mondrianView`). Its base is the picture
 dissolved into a still fog of its own colours, where you can sense its palette and where its light,
 dark and colour lie, but no shape. Its pattern is a latent network of lines tiling the frame with
-rectangles, which the Planar picture never draws: only the **Pattern** view shows it, over the fog. Its
+rectangles, which the Mondrian picture never draws: only the **Pattern** view shows it, over the fog. Its
 spontaneity is flashes along that network, played in the **Living** view (the one it starts on): glints
 of light that run along a straight line, and black lines that spread from a point and fade. Its views are
-**Base**, **Pattern**, **Planar** (the still picture: the fog, with the network latent) and **Living**,
+**Base**, **Pattern**, **Mondrian** (the still picture: the fog, with the network latent) and **Living**,
 and its sliders are under **Fog**, **Network** and **Flashes**. The
-fog's maths is in `engine/planar.js`:
+fog's maths is in `engine/mondrian.js`:
 
 - **F1 sample.** The picture, area-averaged in linear light onto 48 cells on the short side, to OKLab.
   A picture with almost no colour (mean chroma under 0.012, such as the white start) keeps its
@@ -136,7 +136,7 @@ nothing is remembered:
 - Drawn as a `layer` animation at the screen's own resolution on a clear canvas over the fog; nothing is
   written into the fog's pixels.
 - **Revealed fraction.** R(t) = the length of network showing at more than 10% strength (each part counted
-  once) ÷ the total length. `tests/planar.test.js` simulates six hours from a fixed seed and checks the
+  once) ÷ the total length. `tests/mondrian.test.js` simulates six hours from a fixed seed and checks the
   largest R in each 10 minutes. A 48-hour run at the defaults (μ 0.2, n 0.85, π_g 0.5, r 0.05): median of
   the 10-minute maxima 0.20, 90th percentile 0.27, 3 windows of 288 reached 40%, 1 reached 50%, none 60%;
   the largest was 0.53. With F_b = 3 s: median 0.26, 15 reached 40%, 3 reached 50%, none 60%.
@@ -175,9 +175,9 @@ mode, so a new theme is a new file in `engine/modes/` listed in `MODES`. The old
 | `engine/field.js` | M5–M7: the warped field, roughness, threshold |
 | `engine/components.js` | M8: connected components and the two rules |
 | `engine/pattern.js` | P1–P5: fibres, web and flakes (the warm density D_w), specks (D_k), cloudiness C and the relief grain (the shading S) |
-| `engine/planar.js` | The Planar theme: the fog (F1–F6) |
-| `engine/flashes.js` | The Planar theme: the flashes (E1–E5), the revealed fraction and the long run |
-| `engine/network.js` | The Planar theme: the latent network (N1–N4), its counts and the Pattern view's lines |
+| `engine/mondrian.js` | The Mondrian theme: the fog (F1–F6) |
+| `engine/flashes.js` | The Mondrian theme: the flashes (E1–E5), the revealed fraction and the long run |
+| `engine/network.js` | The Mondrian theme: the latent network (N1–N4), its counts and the Pattern view's lines |
 | `engine/plain.js` | The Plain theme: the dominant hue (B), the blurred fluid field (P), its colours, and the glow's lights (G) |
 | `engine/spontaneity.js` | S1–S5: the Hawkes timing, placement, the three kinds of mark, their life, and `Living`, which redraws only where marks are |
 | `engine/render.js` | Upscaling the mask, the views, the P6 composite, the contour |

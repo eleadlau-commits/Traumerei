@@ -1,4 +1,4 @@
-// The Planar mode's spontaneity, E1–E5: two kinds of flash on the latent network, nothing else.
+// The Mondrian mode's spontaneity, E1–E5: two kinds of flash on the latent network, nothing else.
 // Each fades away completely, so nothing is remembered.
 //   E1  timing:  the shared Hawkes process (engine/hawkes.js, stream ':planar:time'), background rate μ,
 //                branching ratio n, memory τ_h. Each event is a glint with probability π_g, else a black line.

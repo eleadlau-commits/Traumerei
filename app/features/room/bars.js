@@ -3,8 +3,8 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  MESSY, room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, roomTrains, randomSpot, shut, isBig, rooms, shrinkPicture, ITEMS,
+  room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf, isGroup,
+  thoughtText, trainThoughts, roomTrains, randomSpot, isBig, shrinkPicture, ITEMS, placeName, moveTargets,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -159,7 +159,7 @@ export class Bars {
         const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (to && to !== this.roomId) this.moveTo(to);
       } },
-      el('option', { value: this.roomId }, here?.name || 'This room'),
+      el('option', { value: this.roomId }, (here && placeName(this.world, here.id)) || 'This room'),
       ...others.map((r) => el('option', { value: r.id }, r.name)),
       el('option', { value: '+' }, 'A new room'));
     const g = kind !== 'group' && this.ont.groups ? groupOf(this.world, th.id, this.mode) : null;
@@ -420,7 +420,7 @@ export class Bars {
         this.sel = null;
         this.save();
         this.drawWorld();
-        this.toast(`Moved ${ids.length} to ${room(this.world, to).name}`);
+        this.toast(`Moved ${ids.length} to ${placeName(this.world, to)}`);
       } },
       el('option', { value: '' }, 'Move to…'),
       ...others.map((r) => el('option', { value: r.id }, r.name)),
@@ -444,10 +444,10 @@ export class Bars {
     this.drawHistorySoon();
   }
 
-  // The rooms a thought can be moved to: every room (not this one, nor a locked one).
+  // The rooms a thought can be moved to, as [{ id, name }]: every room but this one, none locked,
+  // a Twin as "Name · Left" / "Name · Right" (inside a side, the other side first): world/twin.js.
   moveRooms() {
-    return rooms(this.world).filter((r) => r.id !== this.roomId && !shut(this.world, r.id))
-      .sort((a, b) => (a.id === MESSY ? -1 : b.id === MESSY ? 1 : a.name.localeCompare(b.name)));
+    return moveTargets(this.world, this.roomId);
   }
 
   // The pop-up sits beside what is chosen, and follows it as the view moves.
@@ -625,6 +625,6 @@ export class Bars {
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.toast(`Moved to ${room(this.world, toRoom).name}`);
+    this.toast(`Moved to ${placeName(this.world, toRoom)}`);
   }
 }

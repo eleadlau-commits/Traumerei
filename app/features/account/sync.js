@@ -28,7 +28,18 @@ export function unpack(text) {
 //   'upload'  the account is new: give it this device's settings
 //   'same'    nothing to do
 //   'apply'   the account wins: take its settings and reload the page so they're used
-export function decide(cloud, local) {
+// `justReloaded` is true when this page was reloaded to apply the account's settings less than
+// RELOAD_GUARD ago. Then the device's copy is the account's plus whatever opening the app saved
+// (a day's record, a last visit), so it is sent up instead: never a second reload, never a loop.
+export const RELOAD_GUARD = 60 * 1000; // ms
+
+export function decide(cloud, local, justReloaded = false) {
   if (cloud == null) return 'upload';
-  return pack(cloud) === pack(local) ? 'same' : 'apply';
+  if (pack(cloud) === pack(local)) return 'same';
+  return justReloaded ? 'upload' : 'apply';
+}
+
+// True if the last automatic reload (a time in ms, or null) was less than RELOAD_GUARD before `now`.
+export function reloadedRecently(at, now) {
+  return at != null && now - at >= 0 && now - at < RELOAD_GUARD;
 }

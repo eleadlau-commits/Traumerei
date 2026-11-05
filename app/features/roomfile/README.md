@@ -143,6 +143,17 @@ already there, the card offers *Replace matching groups* or *Add all as new* (or
 Apply is one step: one Ctrl+Z takes all of it back. A locked room opens read only (Copy and
 Download).
 
+## The .traum format (being built)
+
+Room Markdown is being replaced by `.traum` files (FORMAT.md, when it lands, is the spec): one
+neutral `# Objects` list and one `# In <mode>` section per ontology. `grammar.js` reads and writes
+the text into parts (front matter, objects, sections, typed values) with no world; `traum.js`
+makes the parts into a room and writes a room out (`importRoom`, `importInto`, `exportRoom`).
+Each kind of item says how it reads and writes itself there (`traum` in the world feature's
+`items/`). Anything not understood (a kind, a key, a section, a front matter line) is reported and
+kept with the room (`own(w, room, 'traum')`), and written back out next time. Tested in
+`tests/grammar.test.js` and `tests/traum.test.js`. Not used by the screens yet.
+
 `format.js` reads and writes the format with no screen (`parse`, `importRoom`, `importInto`,
 `exportRoom`, and for editing `exportGroup`, `plan` and `apply`, tested in `tests/roomfile.test.js`); each kind of item says how it reads and writes
 itself next to its `tidy()` and `text()` (`md` in the world feature's `items/`). `Roomfile.js` is
