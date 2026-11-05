@@ -64,12 +64,13 @@
   font: 300 22px/1 var(--font);
 }
 .rooms-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
-.rooms-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .14); }
+.rooms-cell:hover { background: var(--hover-wash); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .14); }
+.rooms-cell:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
 .rooms-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .rooms-grid.dragging .rooms-cell::after { content: ''; }
-.rooms-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .4); }
+.rooms-drop { pointer-events: none; z-index: 1; outline: var(--drop-line); outline-offset: -2px; }
 .rooms-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .15); }
-.rooms-cell.target { background: rgb(var(--ink-rgb) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .3); }
+.rooms-cell.target { outline: var(--drop-line); outline-offset: -2px; }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
 .rooms-tile {
@@ -83,7 +84,7 @@
   -webkit-user-select: none;
   transition: box-shadow .5s, transform .3s var(--ease), opacity .3s;
 }
-.rooms-tile:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+.rooms-tile:focus-visible { outline: var(--focus-ring); outline-offset: 4px; }
 .rooms-tile:hover { transform: translateY(-2px); }
 
 /* Lit as much as you have been in it lately (--lit, 0 to 1). */
@@ -95,7 +96,7 @@
 .rooms-tile.deep { color: var(--pale); }
 
 /* a deep square: pale words */
-.rooms-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
+.rooms-tile.dragging { z-index: 2; transition: none; opacity: .92; cursor: grabbing; box-shadow: var(--lift); }
 .rooms-tile-label {
   position: absolute;
   left: 10px;
@@ -135,8 +136,8 @@
 
 /* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
 .rooms-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
-.rooms-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 55%, transparent); }
-.rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--ink); }
+.rooms-tile:hover::after { background: var(--hover-wash); }
+.rooms-tile.chosen::after { background: var(--sel-fill); }
 
 /* "Saved" and the line of help take the room's ink while a room is open. */
 
@@ -248,7 +249,7 @@
 .rooms-page-new:is(:hover, :focus-visible) { opacity: .85; }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
-.rooms-tile.picked { outline: 1px solid color-mix(in srgb, var(--ink) 70%, transparent); outline-offset: 3px; }
+.rooms-tile:is(.picked, .chosen) { outline: var(--sel-line); outline-offset: 3px; }
 .rooms-tile.dragging { pointer-events: none; }
 
 /* A new room: its kinds, beside the empty cell. */
@@ -332,7 +333,7 @@
   padding: 3px 9px; font-size: 11px; letter-spacing: .03em; white-space: nowrap;
 }
 .rooms-grid.tag-dragging, .rooms-grid.tag-dragging .rooms-tile { cursor: copy; }
-.rooms-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--ink) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
+.rooms-tile.tag-over { outline: var(--drop-line); outline-offset: 3px; }
 
 /* Import a room… among an empty cell's choices (the roomfile feature) */
 .rooms-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
