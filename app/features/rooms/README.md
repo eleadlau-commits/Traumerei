@@ -13,7 +13,6 @@ room hands it to the **room** feature (`app/features/room`), which shows it and 
 |---|---|
 | `openRoom(id)` | Goes into room `id` (its square grows to fill the screen). |
 | `showRooms()` | Back to the rooms page from the open room (it shrinks into its square). |
-| `cols` | How many columns the grid has now, for placing a new room. |
 
 It sends `room:open` `{ id, from, seed }` when a room is gone into (`from`: the square's
 rectangle; `seed`: a first key typed on the rooms page, for Messy thoughts). It listens to
@@ -36,7 +35,7 @@ written there. With nothing in it, the rooms page works on its own.
   square; a room written in during the last day glows. **Messy thoughts** is always there,
   four cells at the top left, the deepest square. Click an empty cell to make a room there; drag
   a room to any free cell (it snaps back if the cells are taken). **Settings → Rooms** has two folds: *The rooms page* (mask
-  opacity, square strength, glow, size, columns and rows at least) and *Inside a room* (lightness,
+  opacity, square strength, glow, size) and *Inside a room* (lightness,
   Messy's lightness, and the global ontology settings such as Joyce's line tension, with *Apply
   to all rooms*). Every colour comes from the app's palette (Settings →
   Colour, the Renderer's one tint): the mask is its ink, and a room with no colour of its own
@@ -73,8 +72,10 @@ written there. With nothing in it, the rooms page works on its own.
   to the tint, Lock, Archive, Delete); a double click or Enter goes in. A colour picked there is the room's colour inside, its
   lightness included; the square shows a deeper version of it.
   There are no words along the bottom: empty squares make rooms, and Settings is in the menu.
-- **The grid grows:** there is always a spare column and row past the furthest room, and the
-  page scrolls; Settings → Rooms sets columns and rows at least.
+- **Fixed floors:** every floor is the same fixed board (Settings → Floors: 6 × 4, 8 × 5 or
+  10 × 6), and never grows. Where a room goes is the **floors** feature's rule (its service:
+  `place`, `move`, `resize`, `toFloor`, `settle`): a room made, imported or restored goes to its
+  floor's first free cell, else a new floor; a room dragged onto a full floor's number stays.
 - **Lights:** a room's glow follows your attention lately: going in and writing there light it,
   and the light fades over a day or two (`attention.js`, saved as 'attention').
 
@@ -120,7 +121,7 @@ written there. With nothing in it, the rooms page works on its own.
 - On a Mac, Ctrl+click is a right-click; Ctrl+drag still moves the canvas.
 
 In `model.js`: a room's `page` and `archived` (when); `world.pages`. `addRoom` takes the page and
-the kind; `toPage`, `addPage`, `archive` and `restore` do the rest. A train sits in any room, a room
+the kind; `addPage`, `archive` and `restore` do the rest, and the floors feature gives it a cell. A train sits in any room, a room
 only on the rooms page.
 
 **The code.** `Rooms.js` starts it, opens and closes the page, goes in and out of rooms, and builds

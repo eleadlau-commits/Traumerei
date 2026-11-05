@@ -45,9 +45,11 @@ export default class Rooms extends Feature {
 
     this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.files = this.use('roomfile');    // a room in and out as Markdown (the roomfile feature), or null
+    this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
     this.build();
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
+    this.on('floors:size', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); }); // Settings → Floors changed
     this.on('world:saved', () => { if (!this.inRoom) this.showSaved(); });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone
       this.roomSel = this.making = null;
@@ -61,11 +63,9 @@ export default class Rooms extends Feature {
       visible: () => !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.');
     this.provide('create', { open: () => this.open() });
-    const w = this;
     this.provide('rooms', {
       openRoom: (id) => this.openRoom(id), // goes into a room (from a room, too)
       showRooms: () => this.showRooms(),   // back to this page, from a room
-      get cols() { return w.cols; },       // how many columns the grid has
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
@@ -414,15 +414,16 @@ export default class Rooms extends Feature {
   async importRoomFile(file = null, cell = null) {
     if (!this.files) return;
     const page = this.shelf ? 0 : this.page;
-    const r = await this.files.importRoom({ file, cell, page, cols: this.cols || this.gridSize().cols, ok: () => !this.root.hidden });
+    const r = await this.files.importRoom({ file, cell, page, ok: () => !this.root.hidden });
     if (!r) return;
+    const at = r.page || 0; // a full floor sends it to a new one (the floors feature says so)
     this.making = this.roomSel = null;
     this.roomPick = r.id;
     this.save();
     if (this.inRoom) this.showRooms();
     if (this.shelf) this.toggleShelf();
-    if (this.page !== page) this.showPage(page); else this.drawRooms();
-    this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
+    if (this.page !== at) this.showPage(at); else this.drawRooms();
+    if (at === page) this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
   }
 
   // Downloads a room as <its name>.md (a locked room too).

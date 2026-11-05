@@ -1,0 +1,128 @@
+// Tests for the floor rule: a fixed board for every floor, full floors spilling onto a new floor,
+// moving and resizing within the board, and the check before a smaller size.
+
+import { test, assert } from 'folio/testing';
+import * as lib from '../../world/lib.js';
+import { bind } from '../world.js';
+import { emptyWorld, loadWorld, addRoom, addPage, pageCount, roomAt, lock, archive, restore, MESSY } from '../../world/model.js';
+import { PRESETS, preset, place, settle, move, resize, toFloor, outside, spot } from '../rule.js';
+
+bind(lib); // the world's rules, as floors gets them from the world service
+
+const M = { cols: 8, rows: 5 };
+const S = { cols: 6, rows: 4 };
+const made = (w, name, page = 0, cell = null, board = M) => { const r = addRoom(w, name, 1, { page }); place(w, r.id, board, cell); return r; };
+
+test('three presets, Medium 8 × 5 by default', () => {
+  assert.deepEqual(PRESETS.map((p) => [p.id, p.cols, p.rows]), [['small', 6, 4], ['medium', 8, 5], ['large', 10, 6]]);
+  assert.equal(preset('nonsense').id, 'medium');
+  assert.equal(preset('large').cols, 10);
+});
+
+test('a room goes in the cell asked for, or the first free one', () => {
+  const w = emptyWorld();
+  const a = made(w, 'A', 0, { col: 4, row: 3 });
+  assert.deepEqual([a.col, a.row], [4, 3]);
+  const b = made(w, 'B', 0, { col: 1, row: 1 }); // Messy's
+  assert.deepEqual([b.col, b.row], [2, 0]);
+  const c = made(w, 'C', 0, { col: 8, row: 0 }); // off the board
+  assert.deepEqual([c.col, c.row], [3, 0]);
+});
+
+test('a full floor sends a room placed for you onto a new floor, without searching the others', () => {
+  const w = emptyWorld();
+  addPage(w); // an empty Floor 2 is not searched
+  for (let i = 0; i < 36; i++) made(w, `R${i}`); // Floor 1: Messy (4 cells) and 36 more
+  assert.equal(spot(w, { id: 'x', size: 1 }, 0, M), null);
+  const r = addRoom(w, 'Algebra', 1, { page: 0 });
+  const out = place(w, r.id, M);
+  assert.deepEqual(out, { page: 2, from: 0, spilled: true });
+  assert.equal(r.page, 2);
+  assert.deepEqual([r.col, r.row], [0, 0]);
+  assert.equal(pageCount(w), 3);
+});
+
+test('a 2 × 2 room needs a free 2 × 2 block on its floor', () => {
+  const w = emptyWorld();
+  for (let row = 0; row < 5; row++) for (let col = 0; col < 8; col++) {
+    if (col < 2 && row < 2) continue; // Messy
+    if ((col + row) % 2 === 0) made(w, `c${col}${row}`, 0, { col, row }); // a checkerboard leaves no 2 × 2 block
+  }
+  const big = addRoom(w, 'Big', 1, {});
+  big.size = 2;
+  assert.ok(place(w, big.id, M).spilled);
+  assert.equal(big.page, 1);
+});
+
+test('dragging and resizing stay on the board', () => {
+  const w = emptyWorld();
+  const a = made(w, 'A', 0, { col: 3, row: 0 });
+  assert.ok(move(w, a.id, 7, 4, M));
+  assert.ok(!move(w, a.id, 8, 0, M)); // past the right edge
+  assert.ok(!move(w, a.id, 0, 5, M)); // past the bottom edge
+  assert.ok(!move(w, a.id, 1, 1, M)); // Messy's
+  assert.ok(!resize(w, a.id, 2, M));  // would leave the board
+  assert.equal(a.size || 1, 1);
+  assert.ok(move(w, a.id, 6, 3, M));
+  assert.ok(resize(w, a.id, 2, M));
+  assert.equal(roomAt(w, 7, 4).id, a.id);
+  lock(w, a.id);
+  assert.ok(!move(w, a.id, 3, 0, M));
+  assert.ok(!resize(w, a.id, 1, M));
+});
+
+test('a room dragged onto a full floor stays; onto one with space it goes to the first free spot', () => {
+  const w = emptyWorld();
+  const r = made(w, 'R');
+  const p = addPage(w);
+  for (let i = 0; i < 40; i++) made(w, `F${i}`, p);
+  assert.equal(toFloor(w, r.id, p, M), 'full');
+  assert.equal(r.page, undefined);
+  const q = addPage(w);
+  assert.equal(toFloor(w, r.id, q, M), true);
+  assert.deepEqual([r.page, r.col, r.row], [q, 0, 0]);
+  assert.equal(toFloor(w, MESSY, q, M), false);
+});
+
+test('a room restored from the Archive goes back to its own floor, or a new one', () => {
+  const w = emptyWorld();
+  const p = addPage(w);
+  const r = made(w, 'Old', p);
+  archive(w, r.id);
+  assert.equal(place(w, r.id, M), null); // archived: nowhere
+  restore(w, r.id);
+  assert.deepEqual(place(w, r.id, M), { page: p, from: p, spilled: false });
+});
+
+test('rooms from old saved data are placed again on the board without overlaps', () => {
+  const w = loadWorld({ v: 3, things: {
+    messy: { id: 'messy', kind: 'room', parent: null, at: 0, name: 'Messy thoughts' },
+    r1: { id: 'r1', kind: 'room', parent: null, at: 1, name: 'One', col: 1, row: 0 }, // on Messy
+    r2: { id: 'r2', kind: 'room', parent: null, at: 2, name: 'Two' },                 // no cell
+    r3: { id: 'r3', kind: 'room', parent: null, at: 3, name: 'Three', col: 12, row: 9 }, // off the board
+    r4: { id: 'r4', kind: 'room', parent: null, at: 4, name: 'Four', col: 5, row: 2 },
+  } });
+  assert.deepEqual(settle(w, 0, M), []);
+  const seen = new Set();
+  for (const id of ['messy', 'r1', 'r2', 'r3', 'r4']) {
+    const r = w.things[id];
+    assert.ok(r.col + (r.size || 1) <= 8 && r.row + (r.size || 1) <= 5, id);
+    for (let c = 0; c < (r.size || 1); c++) for (let d = 0; d < (r.size || 1); d++) {
+      const k = `${r.col + c},${r.row + d}`;
+      assert.ok(!seen.has(k), k);
+      seen.add(k);
+    }
+  }
+  assert.deepEqual([w.things.r4.col, w.things.r4.row], [5, 2]); // a room in a good cell stays
+});
+
+test('a smaller size is refused while a room sits outside it', () => {
+  const w = emptyWorld();
+  const p = addPage(w);
+  const r = made(w, 'Wide', p, { col: 7, row: 0 });
+  assert.deepEqual(outside(w, S), [p]);
+  assert.deepEqual(outside(w, M), []);
+  assert.deepEqual(outside(w, preset('large')), []);
+  move(w, r.id, 2, 2, M);
+  assert.deepEqual(outside(w, S), []);
+});

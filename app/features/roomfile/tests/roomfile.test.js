@@ -16,7 +16,7 @@ const NOW = 1000;
 
 // A new room of a mode, with the file brought in.
 function into(kind, text, w = emptyWorld(1)) {
-  const r = addRoom(w, 'Test', 2, null, 6, {}, kind);
+  const r = addRoom(w, 'Test', 2, {}, kind);
   const out = importInto(w, r.id, parse(text), { ontologies, now: NOW });
   return { w, id: r.id, ...out };
 }

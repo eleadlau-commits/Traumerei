@@ -1,0 +1,9 @@
+{
+  "name": "Floors",
+  "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.",
+  "version": "0.1.0",
+  "main": "Floors.js",
+  "requires": [
+    "world"
+  ]
+}

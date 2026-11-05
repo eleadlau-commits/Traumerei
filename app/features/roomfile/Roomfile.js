@@ -23,6 +23,7 @@ export default class Roomfile extends Feature {
     this.w = this.use('world');
     bind(this.w.lib);
     this.source = this.use('source'); // the source editor, for editing as Markdown, or null
+    this.floors = this.use('floors'); // where a new room goes on the rooms page, or null
     this.provide('roomfile', {
       isRoomFile,
       importRoom: (o) => this.importRoom(o),
@@ -77,22 +78,24 @@ export default class Roomfile extends Feature {
     return parsed;
   }
 
-  // A new room from a file (picked, if none is given) in `cell` (or the first free one) of floor
-  // `page`. ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
+  // A new room from a file (picked, if none is given) on floor `page`, placed by the floors feature:
+  // in `cell` if it is free, else that floor's first free one, else a new floor (its `page` says
+  // which). ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
   // with the new room once it is in the world (the caller saves), or null.
-  async importRoom({ file = null, cell = null, page = 0, cols = 6, ok = () => true } = {}) {
+  async importRoom({ file = null, cell = null, page = 0, ok = () => true } = {}) {
     file ||= await this.pick();
     if (!file) return null;
     const parsed = await this.read(file);
     if (!parsed || !ok()) return null;
     const opts = () => ({
-      ontologies: this.w.ontologies, now: Date.now(), cell, cols, page,
+      ontologies: this.w.ontologies, now: Date.now(), page,
       globals: this.w.globals, name: file.name.replace(MD, '') || 'Untitled',
     });
     const dry = importRoom(copyWorld(this.w.world), parsed, opts());
     if (!await this.ask('Import a room', dry.room?.name || 'A new room', dry) || !ok()) return null;
     const out = importRoom(this.w.world, parsed, opts());
     if (!out.room) { this.toast('A room couldn\'t be made.'); return null; }
+    this.floors?.place(out.room.id, cell);
     return out.room;
   }
 

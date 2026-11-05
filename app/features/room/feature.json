@@ -9,7 +9,8 @@
   "uses": [
     "roomfile",
     "search",
-    "panel"
+    "panel",
+    "floors"
   ],
   "requires": [
     "world",

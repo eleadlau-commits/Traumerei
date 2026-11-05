@@ -57,8 +57,9 @@ export class RoomView {
 
   // A plain new room (Move to… → a new room), starting from the global settings.
   addPlainRoom() {
-    const r = addRoom(this.world, 'Untitled', Date.now(), null, this.rooms.cols || 6);
+    const r = addRoom(this.world, 'Untitled', Date.now());
     seedRoomSettings(this.world, r.id, this.ontPrefs);
+    this.floors?.place(r.id); // Floor 1's first free cell, else a new floor
     return r.id;
   }
 
@@ -86,8 +87,6 @@ export class RoomView {
         slider('Colour strength', 'vivid', 0.5, 3),
         slider('Glow', 'glow', 0, 1),
         slider('Size', 'cell', 70, 180, 1),
-        slider('Columns at least', 'cols', 0, 30, 1),
-        slider('Rows at least', 'rows', 0, 30, 1),
         // A square's last thoughts: shown when it is hovered over, or always.
         el('label', { class: 'renderer-slider' }, el('span', {}, 'Peek'), el('span'),
           el('select', { 'aria-label': 'Peek', onchange: (e) => this.setPref('peek', +e.target.value) },
