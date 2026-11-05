@@ -1,9 +1,9 @@
-// The Planar mode: a still fog of the picture's colours (F1–F6, base, engine/planar.js) and a latent
+// The Mondrian mode: a still fog of the picture's colours (F1–F6, base, engine/mondrian.js) and a latent
 // network of lines tiling the frame (N1–N4, pattern, engine/network.js), which only the Pattern view
 // draws, and flashes along that network (E1–E5, spontaneity, engine/flashes.js): glints of light and
 // spreading black lines, which the Living view plays over the fog.
 
-import { fog, fogRGB } from '../planar.js';
+import { fog, fogRGB } from '../mondrian.js';
 import { tiles, network, drawNetwork } from '../network.js';
 import { Flashes } from '../flashes.js';
 import { LINEAR_BYTE, linearToOklab, oklabToOklch, delinearise } from '../colour.js';
@@ -28,20 +28,20 @@ function glintColour(fog, X, Y, x, y, L) {
 
 // F1–F6 on its grid, cached while the fog's sliders (and the tint) stay the same.
 export function fogOf(e, P) {
-  return e.stage(planarMode, 'fog', P);
+  return e.stage(mondrianMode, 'fog', P);
 }
 
 // N1–N4, cached while the network's sliders stay the same.
 export function networkOf(e, P) {
-  return e.stage(planarMode, 'network', P);
+  return e.stage(mondrianMode, 'network', P);
 }
 
-const planarMode = {
-  id: 'planar',
-  label: 'Planar',
-  viewKey: 'planarView',
+const mondrianMode = {
+  id: 'mondrian',
+  label: 'Mondrian',
+  viewKey: 'mondrianView',
   startView: 'living',
-  views: [['base', 'Base'], ['pattern', 'Pattern'], ['planar', 'Planar'], ['living', 'Living']],
+  views: [['base', 'Base'], ['pattern', 'Pattern'], ['mondrian', 'Mondrian'], ['living', 'Living']],
   folds: [['Base layer', ['Fog']], ['Pattern layer', ['Network']], ['Spontaneity layer', ['Flashes']]],
   usesAnchor: false,
   // The flashes' sliders only change the animation, not the still picture.
@@ -66,7 +66,7 @@ const planarMode = {
       },
     },
   },
-  // 'base', 'planar' and 'living': the fog (the network is latent). 'pattern': the fog with the
+  // 'base', 'mondrian' and 'living': the fog (the network is latent). 'pattern': the fog with the
   // network drawn over it. 'living' then plays the flashes over it.
   view(e, name, P) {
     const { W, H } = e.image;
@@ -91,4 +91,4 @@ const planarMode = {
     ...(name === 'living' ? [describeFlashes(P)] : [])] }),
 };
 
-export default planarMode;
+export default mondrianMode;

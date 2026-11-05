@@ -1,7 +1,7 @@
-// Tests for the Planar mode: the fog (F1–F6).
+// Tests for the Mondrian mode: the fog (F1–F6).
 
 import { test, assert } from 'folio/testing';
-import { fog, fogRGB, kmeans, sample } from '../engine/planar.js';
+import { fog, fogRGB, kmeans, sample } from '../engine/mondrian.js';
 import { DEFAULTS } from '../engine/index.js';
 import { LINEAR_BYTE, linearToOklab, oklabToOklch, hexToOklab } from '../engine/colour.js';
 

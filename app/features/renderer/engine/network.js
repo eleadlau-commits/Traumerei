@@ -1,5 +1,5 @@
-// The Planar mode's pattern, N1–N4: a latent network of horizontal and vertical lines that tiles the
-// whole frame with rectangles, like a Mondrian grid. It is never drawn in the Planar view; only the
+// The Mondrian mode's pattern, N1–N4: a latent network of horizontal and vertical lines that tiles the
+// whole frame with rectangles, like a Mondrian grid. It is never drawn in the Mondrian view; only the
 // flashes will show it. It doesn't depend on the picture, which only gives the seed.
 //   N1  grid:    m = round(ρ X) columns and n = round(ρ Y) rows, with gaps ∝ LogNormal(1, s_g) so
 //                some bands are wide and some narrow (stream ':planar:net:grid').
