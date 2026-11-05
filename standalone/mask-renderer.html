@@ -2075,6 +2075,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   background: color-mix(in srgb, var(--room-ink) 5%, transparent);
 }
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
+.room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
@@ -2201,6 +2202,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
 .room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
 .room-mode-settings-docked .room-mode-settings-note { margin: 0; }
+
+/* Ctrl+Enter: the new, empty thought is marked for a moment where it waits. */
+.room-draft.fresh { border-radius: 2px; animation: room-fresh 1.4s var(--ease) 2; }
+@keyframes room-fresh { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 40% { box-shadow: 0 0 0 6px var(--sel-fill); outline: var(--sel-line); } }
 
 </style>
 </head>
@@ -7668,6 +7673,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   var lib_exports = {};
   __export(lib_exports, {
     attention: () => attention_exports,
+    groups: () => groups_exports,
     items: () => items_exports,
     joyce: () => joyce_exports,
     look: () => look_exports,
@@ -11942,7 +11948,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return true;
   }
   var trainThoughts = members;
-  var roomTrains = (w2, roomId) => groupsIn(w2, roomId, "joyce").filter((g2) => members(w2, g2.id).length);
+  var roomTrains = (w2, roomId) => groupsIn(w2, roomId, "joyce").filter((g2) => !g2.loose && members(w2, g2.id).length);
   var roomThoughts = roomItems;
   var roomUnits = (w2, roomId) => roomItems(w2, roomId);
   function lastWritten(w2, roomId) {
@@ -12030,6 +12036,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         title: oneLine(f2.title)
       };
       if (f2.closed) out2.closed = true;
+      if (f2.loose) out2.loose = true;
       return out2;
     }
     const out = { kind, name: oneLine(f2.name) || "Untitled" };
@@ -12086,6 +12093,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       next.members = th.members;
       next.of = th.of;
       if (!next.closed) delete th.closed;
+      if (!next.loose) delete th.loose;
     }
     if (kindOf(th) === "room") {
       for (const k2 of ["desc", "tags", "locked", "archived", "page", "col", "row"]) if (!(k2 in next)) delete th[k2];
@@ -12372,6 +12380,41 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
+
+  // dist/web/features/world/groups.js
+  var groups_exports = {};
+  __export(groups_exports, {
+    foreign: () => foreign,
+    isLoose: () => isLoose,
+    kindTag: () => kindTag,
+    outermost: () => outermost,
+    place: () => place,
+    placedForeign: () => placedForeign,
+    putAt: () => putAt,
+    spot: () => spot2,
+    trayForeign: () => trayForeign
+  });
+  var outermost = (w2, roomId) => groupsIn(w2, roomId).filter((g2) => !groupsOf(w2, g2.id).length && itemsIn(w2, g2.id).length);
+  var foreign = (w2, roomId, of) => outermost(w2, roomId).filter((g2) => g2.of !== of);
+  var spot2 = (w2, roomId, of, id) => {
+    const p = own(w2, roomId, of, false)[id];
+    return p && Number.isFinite(p.x) ? p : null;
+  };
+  function putAt(w2, roomId, of, id, x, y) {
+    if (shut(w2, roomId)) return false;
+    own(w2, roomId, of)[id] = { x: Math.round(x), y: Math.round(y) };
+    return true;
+  }
+  var placedForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => spot2(w2, roomId, of, g2.id));
+  var trayForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => !spot2(w2, roomId, of, g2.id));
+  var isLoose = (g2) => isGroup(g2) && !!g2.loose;
+  function place(w2, id) {
+    const g2 = w2.things[id];
+    if (!isGroup(g2) || !g2.loose) return false;
+    delete g2.loose;
+    return true;
+  }
+  var kindTag = (th, names = {}) => isGroup(th) ? names[th.of] || "Group" : "";
 
   // dist/web/features/world/look.js
   var look_exports = {};
@@ -12748,9 +12791,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     live: true,
     // a drag moves the thought (or train) at once, so the line follows it
     // Each train's thoughts, or a closed train as one thought.
-    units: (w2, roomId) => roomTrains(w2, roomId).flatMap((t) => t.closed ? [t] : trainThoughts(w2, t.id)),
+    units: (w2, roomId) => [...roomTrains(w2, roomId).flatMap((t) => t.closed ? [t] : trainThoughts(w2, t.id)), ...placedForeign(w2, roomId, "joyce")],
     point(w2, roomId, id) {
       const th = w2.things[id];
+      if (isGroup(th) && th.of !== "joyce") return spot2(w2, roomId, "joyce", id);
       if (isGroup(th)) return { x: th.x, y: th.y };
       const t = groupOf(w2, id, "joyce");
       if (!t) return null;
@@ -12761,8 +12805,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th)) Object.assign(th, { x, y, hand: true });
-      else if (isLeaf(th) && !groupOf(w2, id, "joyce")) {
+      if (isGroup(th) && th.of !== "joyce") putAt(w2, roomId, "joyce", id, x, y);
+      else if (isGroup(th)) {
+        Object.assign(th, { x, y, hand: true });
+        place(w2, id);
+      } else if (isLeaf(th) && !groupOf(w2, id, "joyce")) {
         const t = create(w2, roomId, { kind: "group", of: "joyce", x: Math.round(x), y: Math.round(y) }, th.at);
         if (t) {
           join(w2, t.id, id);
@@ -12786,19 +12833,34 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       return n;
     },
-    // The thoughts in no train yet, oldest first.
-    tray: (w2, roomId) => roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, "joyce")),
-    placed: (w2, roomId, id) => !!groupOf(w2, id, "joyce") || isGroup(w2.things[id]),
+    // The thoughts in no train yet, trains made in the tray, and other modes' groups not placed
+    // here yet, oldest first.
+    tray: (w2, roomId) => [
+      ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, "joyce")),
+      ...groupsIn(w2, roomId, "joyce").filter((g2) => g2.loose && members(w2, g2.id).length),
+      ...trayForeign(w2, roomId, "joyce")
+    ].sort(byTime2),
+    placed(w2, roomId, id) {
+      const th = w2.things[id];
+      if (isGroup(th)) return th.of === "joyce" ? !th.loose : !!spot2(w2, roomId, "joyce", id);
+      return !!groupOf(w2, id, "joyce");
+    },
     // Clear space (clear.js): a train is one block from its start, and one more from each thought
     // dragged on its own (the thoughts after it follow it). Those dragged, or a train dragged whole,
     // were placed by hand.
-    blocks: (w2, roomId) => joyceBlocks(w2, roomId),
+    blocks: (w2, roomId) => [
+      ...joyceBlocks(w2, roomId),
+      ...placedForeign(w2, roomId, "joyce").map((g2) => ({ id: g2.id, thoughts: [], group: g2.id, hand: true, at: g2.at ?? 0 }))
+    ],
     // Each thought's height as drawn: the steps in a train follow them.
     measured: (sizes) => setHeights(sizes),
     shift(w2, roomId, id, dx, dy) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th)) {
+      if (isGroup(th) && th.of !== "joyce") {
+        const p = spot2(w2, roomId, "joyce", id);
+        if (p) putAt(w2, roomId, "joyce", id, p.x + dx, p.y + dy);
+      } else if (isGroup(th)) {
         th.x += dx;
         th.y += dy;
         for (const m2 of trainThoughts(w2, id)) if (Number.isFinite(m2.dx)) {
@@ -12869,6 +12931,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }, k2.draft ? c.draftNode() : c.thoughtNode(k2.th)));
         }
       }
+      for (const g2 of placedForeign(w2, c.roomId, "joyce")) {
+        const at2 = spot2(w2, c.roomId, "joyce", g2.id);
+        nodes.push(el15("div", {
+          class: "room-bead room-closed room-foreign" + (c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id) ? " selected" : ""),
+          "data-group": g2.id,
+          style: `left:${at2.x}px;top:${at2.y}px`
+        }, c.thoughtNode(g2)));
+      }
       if (c.draft && !c.draft.train) {
         nodes.push(el15("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
@@ -12901,11 +12971,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // each on its own
     order: 20,
     groups: null,
-    units: (w2, roomId) => roomUnits(w2, roomId),
+    units: (w2, roomId) => [...roomUnits(w2, roomId), ...placedForeign(w2, roomId, "pessoa")],
+    tray: (w2, roomId) => trayForeign(w2, roomId, "pessoa"),
+    placed: (w2, roomId, id) => !isGroup(w2.things[id]) || !!spot2(w2, roomId, "pessoa", id),
     // Where it was dragged to, or its place on the spiral.
     point(w2, roomId, id) {
       const placed = own(w2, roomId, "pessoa", false)[id];
       if (placed) return placed;
+      if (isGroup(w2.things[id])) return null;
       const units = roomUnits(w2, roomId);
       const i2 = units.findIndex((u) => u.id === id);
       return spiralPoint(i2 < 0 ? units.length : i2, id);
@@ -12919,7 +12992,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // clear keeps its new place (marked auto, so it still counts as laid out by Pessoa).
     blocks(w2, roomId) {
       const places = own(w2, roomId, "pessoa", false);
-      return roomUnits(w2, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
+      return this.units(w2, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
     },
     shift(w2, roomId, id, dx, dy) {
       if (shut(w2, roomId)) return;
@@ -13032,7 +13105,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MOST_PARENTS = 2;
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
   var LINES = ["straight", "curved"];
-  var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => members(w2, g2.id).length);
+  var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => !g2.loose && members(w2, g2.id).length);
   var isChapter = (w2, roomId, id) => {
     const g2 = w2.things[id];
     return isGroup(g2) && g2.of === ID && g2.parent === roomId;
@@ -13365,7 +13438,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     c.drawWorld();
   }
-  function editBox(c, spot3, names) {
+  function editBox(c, spot4, names) {
     const e = editing;
     const now = e.rel || names[0];
     const keys = (ev) => {
@@ -13399,8 +13472,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, ...[.../* @__PURE__ */ new Set([...names, now])].map((n) => c.el("option", { value: n, selected: n === now }, n))) : c.el("span", { class: "room-russell-rel" }, now);
     const box = c.el("div", {
-      class: `panel room-russell-edit side-${spot3.side}`,
-      style: `left:${Math.round(spot3.x)}px;top:${Math.round(spot3.y)}px`
+      class: `panel room-russell-edit side-${spot4.side}`,
+      style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
     }, pick, input);
     requestAnimationFrame(() => {
       if (!box.isConnected || box.contains(document.activeElement)) return;
@@ -13491,7 +13564,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     units: (w2, roomId) => chapters(w2, roomId).flatMap((g2) => g2.closed ? [g2] : members(w2, g2.id)),
     point(w2, roomId, id) {
       const th = w2.things[id];
-      const g2 = isGroup(th) ? th : groupOf(w2, id, ID);
+      const g2 = isGroup(th) && th.of === ID ? th : groupOf(w2, id, ID);
       if (!g2 || g2.parent !== roomId) return null;
       const at2 = layout(w2, roomId)[g2.id];
       if (!at2) return null;
@@ -13504,11 +13577,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drop(w2, roomId, id, x, y) {
       const th = w2.things[id];
       if (!th || shut(w2, id)) return;
-      if (isGroup(th)) {
-        if (th.of === ID) Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true });
+      if (isGroup(th) && th.of === ID) {
+        Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true });
+        place(w2, id);
         return;
       }
-      if (!isLeaf(th)) return;
+      if (!isLeaf(th) && !isGroup(th)) return;
       const was = groupOf(w2, id, ID);
       const onto = chapterAt(w2, roomId, x + 10, y + 10);
       if (onto && !w2.things[onto].closed) {
@@ -13536,9 +13610,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!parent || !isChapter(w2, roomId, parent)) return null;
       return addChapter(w2, roomId, { parent, x: draft.x, y: draft.y }, now);
     },
-    // The thoughts in no chapter yet, oldest first.
-    tray: (w2, roomId) => roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, ID)),
-    placed: (w2, roomId, id) => !!groupOf(w2, id, ID) || isGroup(w2.things[id]),
+    // The thoughts in no chapter yet, chapters made in the tray, and other modes' groups in no
+    // chapter yet, oldest first. Another mode's group is placed like a thought: into a chapter.
+    tray: (w2, roomId) => [
+      ...roomItems(w2, roomId).filter((th) => !groupOf(w2, th.id, ID)),
+      ...groupsIn(w2, roomId, ID).filter((g2) => g2.loose && members(w2, g2.id).length),
+      ...trayForeign(w2, roomId, ID).filter((g2) => !groupOf(w2, g2.id, ID))
+    ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+    placed(w2, roomId, id) {
+      const th = w2.things[id];
+      return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w2, id, ID);
+    },
     // Clear space (clear.js): a chapter is one block; one dragged was placed by hand. One pushed
     // aside keeps its new place until the tree changes.
     blocks: (w2, roomId) => chapters(w2, roomId).map((g2) => ({
@@ -13721,13 +13803,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (label2) {
           const prefer = parentsOf(w2, roomId, to).length > 1 ? arrow.p.x < arrow.q.x ? "left" : "right" : null;
           const fan = arrow.from === "bottom" && childrenOf(w2, roomId, from).length > 1;
-          const spot3 = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
+          const spot4 = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
           nodes.push(el15("div", {
-            class: `room-russell-label side-${spot3.side}`,
+            class: `room-russell-label side-${spot4.side}`,
             "data-group": to,
             "data-arrow": key2,
             title: `${rel || names[0]} ${label2} (double-click to edit)`,
-            style: `left:${Math.round(spot3.x)}px;top:${Math.round(spot3.y)}px`
+            style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
           }, names.length > 1 ? el15("span", { class: "room-russell-rel" }, `${rel || names[0]} `) : null, maths(label2)));
         }
       }
@@ -13829,10 +13911,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   }
-  function groupChosen(o2, w2, roomId, ids, now = Date.now()) {
+  function groupChosen(o2, w2, roomId, ids, now = Date.now(), { loose = false } = {}) {
     if (!o2?.groups) return null;
     const items = itemsOf(w2, roomId, ids);
     if (!items.length) return null;
+    if (loose) {
+      const g3 = create(w2, roomId, { kind: "group", of: o2.id, loose: true }, now);
+      if (!g3) return null;
+      for (const th of items) join(w2, g3.id, th.id);
+      return members(w2, g3.id).length ? g3 : null;
+    }
     if (o2.group) return o2.group(w2, roomId, items, now) || null;
     let at2 = null;
     try {
@@ -14027,7 +14115,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function free(w2, r, col, row, board, page = r.page || 0) {
     return inside3(r, col, row, board) && cells2({ ...r, col, row }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
   }
-  function spot2(w2, r, page, board) {
+  function spot3(w2, r, page, board) {
     for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
       if (free(w2, r, col, row, board, page)) return { col, row };
     }
@@ -14044,18 +14132,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return best;
   }
-  function place(w2, id, board, cell = null, { near = false } = {}) {
+  function place2(w2, id, board, cell = null, { near = false } = {}) {
     const r = room2(w2, id);
     if (!r || r.archived) return null;
     const from = r.page || 0;
     delete r.col;
     delete r.row;
-    let at2 = cell && free(w2, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w2, r, from, board, cell) : spot2(w2, r, from, board);
+    let at2 = cell && free(w2, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w2, r, from, board, cell) : spot3(w2, r, from, board);
     let page = from;
     if (!at2) {
       page = addPage2(w2);
       setPage(r, page);
-      at2 = spot2(w2, r, page, board) || { col: 0, row: 0 };
+      at2 = spot3(w2, r, page, board) || { col: 0, row: 0 };
     }
     r.col = at2.col;
     r.row = at2.row;
@@ -14077,7 +14165,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const spilled = [];
     for (const r of loose) {
-      const out = place(w2, r.id, board);
+      const out = place2(w2, r.id, board);
       if (out?.spilled) spilled.push({ room: r, ...out });
     }
     return spilled;
@@ -14101,7 +14189,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function toFloor(w2, id, page, board, cell = null) {
     const r = room2(w2, id);
     if (!r || id === MESSY2 || r.locked || r.archived || (r.page || 0) === page) return false;
-    const at2 = cell && free(w2, r, cell.col, cell.row, board, page) ? cell : spot2(w2, r, page, board);
+    const at2 = cell && free(w2, r, cell.col, cell.row, board, page) ? cell : spot3(w2, r, page, board);
     if (!at2) return "full";
     setPage(r, page);
     r.col = at2.col;
@@ -14146,7 +14234,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.w.world;
     }
     place(id, cell, o2 = {}) {
-      const out = place(this.world, id, this.size, cell, o2);
+      const out = place2(this.world, id, this.size, cell, o2);
       if (out?.spilled) this.say(room2(this.world, id), out);
       return out;
     }
@@ -16801,7 +16889,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.chooseRoom(r.id, true);
       }, HOLD);
       const gridOf = (page) => page === this.page ? this.grid : this.strip.floor(page)?.querySelector(".rooms-grid");
-      const spot3 = (ev) => {
+      const spot4 = (ev) => {
         const g2 = gridOf(floor);
         const at2 = g2 && this.cellAt(ev.clientX, ev.clientY, g2);
         return at2 && { col: at2.col - offset.col, row: at2.row - offset.row };
@@ -16878,7 +16966,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (over?.page === (r.page || 0)) over = null;
         if ((over?.archive || over?.page != null) && r.id === MESSY3) over = null;
         lit(over?.el);
-        target = over ? null : spot3(ev);
+        target = over ? null : spot4(ev);
         mark(target);
       };
       const finish = () => {
@@ -19188,6 +19276,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return el14(
           "div",
           { class: "room-passage closed", "data-id": th.id },
+          th.of !== this.mode ? el14("div", { class: "label room-passage-kind" }, this.groupName(th)) : null,
           th.title ? el14("div", { class: "room-passage-title" }, maths2(th.title)) : null,
           body ? el14("div", { class: "room-passage-body" }, maths2(body)) : null
         );
@@ -19195,7 +19284,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return (ITEMS3[kind] || ITEMS3.line).node(th, el14);
     }
     draftNode() {
-      this.draftEl = el14("span", { class: "room-thought room-draft" });
+      this.draftEl = el14("span", { class: "room-thought room-draft" + (this.draft?.fresh ? " fresh" : "") });
       this.paintDraft();
       return this.draftEl;
     }
@@ -19310,7 +19399,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && this.roomId) {
-        this.fresh = true;
+        this.freshStart();
         return;
       }
       if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
@@ -19318,6 +19407,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (e.key === " " && !this.draft) return;
       e.preventDefault();
       this.beginWriting(e.key);
+    }
+    // Ctrl+Enter: the next thought starts afresh (Joyce: a new train). It shows at once: an empty
+    // thought waits at its new place with the caret in it, marked for a moment, and a note says what
+    // was made. Typing goes on there; Escape lets it go.
+    freshStart() {
+      if (!this.roomId || this.locked) return;
+      this.fresh = true;
+      this.draft = { ...this.target(), fresh: true };
+      this.sel = null;
+      this.input.focus({ preventScroll: true });
+      this.drawWorld();
+      this.showDraft();
+      const joyce = this.writer.id === DEFAULT_MODE4;
+      this.toast(joyce ? "New train: type to start it." : "New thought: type to start it (it waits in the tray).");
     }
     // Starts a thought (if one isn't started), with `seed` as its first letters.
     beginWriting(seed = "") {
@@ -19396,7 +19499,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (e.key === "Enter") {
         e.preventDefault();
         this.commit();
-        if (e.ctrlKey || e.metaKey) this.fresh = true;
+        if (e.ctrlKey || e.metaKey) this.freshStart();
       } else if (e.key === "Escape") {
         e.preventDefault();
         this.stopWriting();
@@ -19465,10 +19568,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const prev = list2[at2 - 1];
       if (d.edit) {
         const t = w2.things[d.train];
-        const spot3 = { x: t.x ?? 0, y: t.y ?? 0 };
+        const spot4 = { x: t.x ?? 0, y: t.y ?? 0 };
         remove4(w2, d.edit);
         this.save();
-        this.draft = w2.things[d.train] ? { train: d.train } : { train: null, ...spot3 };
+        this.draft = w2.things[d.train] ? { train: d.train } : { train: null, ...spot4 };
       }
       if (prev && kindOf3(prev) === "line") {
         this.draft = { train: d.train, edit: prev.id };
@@ -19780,6 +19883,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if (!g2.moved) {
         if (g2.thing && this.ont.open?.(this, g2.thing.id)) return;
+        const tapped = g2.thing && this.world.things[g2.thing.id];
+        if (isGroup3(tapped) && tapped.of !== this.mode && !g2.toggle && !g2.add) {
+          this.openDocument(tapped.id);
+          return;
+        }
         const keep = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
         this.sel = keep ? this.sel : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
         const train = g2.el?.dataset.group;
@@ -19959,11 +20067,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.draft) this.stopWriting();
       const w2 = this.world;
       const cx = units.reduce((a, u) => a + u.x, 0) / units.length, cy = units.reduce((a, u) => a + u.y, 0) / units.length;
-      const spot3 = this.freeSpot();
+      const spot4 = this.freeSpot();
       let now = Date.now();
       const made = [];
       for (const u of units) {
-        const train = startTrain2(w2, this.roomId, Math.round(spot3.x + u.x - cx), Math.round(spot3.y + u.y - cy), now);
+        const train = startTrain2(w2, this.roomId, Math.round(spot4.x + u.x - cx), Math.round(spot4.y + u.y - cy), now);
         if (!train) continue;
         const items = u.items.map((f2) => create3(w2, train.id, f2, now++)).filter(Boolean);
         if (!items.length) {
@@ -20250,7 +20358,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`);
       return;
     }
-    const g2 = groupChosen2(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
+    const ids = c.sel.ids || [c.sel.id];
+    const loose = !!c.ont.placed && ids.every((id) => !c.ont.placed(c.world, c.roomId, id));
+    const g2 = groupChosen2(c.ont, c.world, c.roomId, ids, Date.now(), { loose });
     if (!g2) {
       c.toast("Nothing here to group.");
       return;
@@ -20603,14 +20713,36 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return [];
       }
     }
+    // A loose card: a group shows the kind of its outermost group ("Train", "Chapter") and its name
+    // or first words. Click opens it (a group's thoughts in the editor); Ctrl+click or Shift+click
+    // adds it to what is chosen (so Ctrl+G makes a group of them here, in the tray); drag places it.
     looseCard(th) {
-      return el14("div", {
-        class: "room-tray-item",
-        role: "listitem",
-        "data-tray": th.id,
-        title: "Drag onto the room",
-        onpointerdown: (e) => this.trayDrag(e, th.id)
-      }, el14("span", { class: "room-tray-text" }, kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th)));
+      const group2 = isGroup3(th);
+      const words = group2 ? th.title || thoughtText2(this.world, th) : kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText2(this.world, th);
+      return el14(
+        "div",
+        {
+          class: "room-tray-item" + (this.isSel(th.id) ? " st-sel" : ""),
+          role: "listitem",
+          "data-tray": th.id,
+          title: group2 ? "Click to open · drag onto the room" : "Drag onto the room",
+          onpointerdown: (e) => this.trayDrag(e, th.id)
+        },
+        group2 ? el14("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
+        el14("span", { class: "room-tray-text" }, words)
+      );
+    }
+    // A loose card clicked: Ctrl/Shift adds it to (or takes it from) what is chosen; otherwise it is
+    // chosen and opened.
+    trayClick(e, id) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
+        this.chooseMore({ id }, true);
+        return;
+      }
+      const th = this.world.things[id];
+      if (!th) return;
+      if (isGroup3(th)) this.openDocument(id);
+      else this.openProps({ kind: "thought", id });
     }
     drawTray() {
       const items = this.roomId ? this.trayItems() : [];
@@ -20688,17 +20820,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
     // canvas, the ontology places it there.
     trayDrag(e, id) {
-      if (e.button !== 0 || this.locked) return;
+      if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       const card = e.currentTarget;
       const r = card.getBoundingClientRect();
       const off = { x: e.clientX - r.left, y: e.clientY - r.top };
-      const ghost = card.cloneNode(true);
-      ghost.classList.add("panel", "room-tray-ghost");
-      Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
-      (document.getElementById("folio-root") || document.body).append(ghost);
+      const start = { x: e.clientX, y: e.clientY };
+      let ghost = null;
       const move5 = (ev) => {
+        if (!ghost) {
+          if (this.locked || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+          ghost = card.cloneNode(true);
+          ghost.classList.add("panel", "room-tray-ghost");
+          ghost.classList.remove("st-sel");
+          Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
+          (document.getElementById("folio-root") || document.body).append(ghost);
+        }
         ghost.style.left = `${ev.clientX - off.x}px`;
         ghost.style.top = `${ev.clientY - off.y}px`;
       };
@@ -20706,6 +20844,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         document.removeEventListener("pointermove", move5);
         document.removeEventListener("pointerup", up);
         document.removeEventListener("pointercancel", up);
+        if (!ghost) {
+          if (ev.type === "pointerup") this.trayClick(ev, id);
+          return;
+        }
         ghost.remove();
         const over = document.elementFromPoint(ev.clientX, ev.clientY);
         if (ev.type !== "pointerup" || !over || !this.stage.contains(over) || !this.world.things[id]) return;
@@ -20826,9 +20968,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const cur = this.current[this.roomId];
       const t = this.world.things[cur];
       if (!this.fresh && t?.parent === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
-      const spot3 = this.freeSpot();
+      const spot4 = this.freeSpot();
       this.fresh = false;
-      return { train: null, x: Math.round(spot3.x), y: Math.round(spot3.y) };
+      return { train: null, x: Math.round(spot4.x), y: Math.round(spot4.y) };
     }
     async choosePicture() {
       const file = await this.picker.pick();
@@ -20968,8 +21110,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const v2 = view5(this.world, toRoom);
       const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
       const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-      const spot3 = randomSpot2(box, taken);
-      const x = Math.round(spot3.x), y = Math.round(spot3.y);
+      const spot4 = randomSpot2(box, taken);
+      const x = Math.round(spot4.x), y = Math.round(spot4.y);
       move4(this.world, this.sel.id, toRoom, x, y);
       this.sel = null;
       this.save();
