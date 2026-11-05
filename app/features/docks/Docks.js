@@ -56,17 +56,23 @@ export default class Docks extends Feature {
   // A dock's key: hides it, or brings it back, keeping what shows in it.
   toggle(side) {
     const dock = this.docks[side];
+    if (this.tuckedAll) this.bare(false);
     this.tuckedAll = null;
     return dock.tuck(dock.visible);
   }
 
+  // Canvas only leaves no strips; anything else brings them back.
+  bare(on) { for (const s of SIDES) this.docks[s].setBare(on); }
+
   // Canvas only: every dock that shows hides; the same again brings back just those.
   canvasOnly() {
     const showing = SIDES.filter((s) => this.docks[s].visible);
-    if (showing.length) {
+    if (showing.length || (!this.tuckedAll && SIDES.some((s) => this.docks[s].stripped))) {
+      this.bare(true);
       for (const s of showing) this.docks[s].tuck(true);
       this.tuckedAll = showing;
     } else if (this.tuckedAll) {
+      this.bare(false);
       for (const s of this.tuckedAll) this.docks[s].tuck(false);
       this.tuckedAll = null;
     }

@@ -337,4 +337,4 @@
 .rooms-props .kv input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--chrome-edge); }
 .rooms-props .kv input[type="range"] { width: 100%; }
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
-.dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
+:is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
