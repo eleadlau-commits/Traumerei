@@ -260,14 +260,13 @@ export class Bars {
     this.trayEl.replaceChildren(...(row ? [row] : []), word);
   }
 
-  // The loose thoughts in the left dock: opened when there are some, and kept up to date while it
-  // shows (or is hidden). Once open it stays, empty or not, while you stay in the room, so
-  // switching mode (Tab) changes what it lists without shutting and opening it again; leaving the
-  // room shuts it.
+  // The loose thoughts in the left dock: always there in a room, empty or not ("Loose · 0"), and
+  // kept up to date while it shows (or is hidden), so switching mode (Tab) changes what it lists
+  // without shutting and opening it again; leaving the room shuts it.
   drawLoose(items) {
     const dock = this.docks.left;
     const open = this.loose && dock.isOpen('loose');
-    if (!items.length && !open) { this.loose = null; return; }
+    if (!this.roomId && !open) { this.loose = null; return; }
     const title = items.length ? `${items.length} not placed` : 'Nothing loose';
     const list = items.length ? items.map((th) => this.looseCard(th))
       : [el('p', { class: 'room-loose-hint' }, `Every thought is placed in ${this.ont.name}.`)];
