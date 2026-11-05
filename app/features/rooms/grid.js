@@ -111,7 +111,8 @@ export class RoomsGrid {
     const tiles = all.map((r) => this.tile(r, now, hits));
     const panels = [];
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
-    if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
+    if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
+    if (this.panel) this.dockRoom(chosen || null);
     if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.grid.querySelector('.rooms-name-field')?.focus();
@@ -271,14 +272,19 @@ export class RoomsGrid {
       return t;
     });
     const at = shelved.findIndex((r) => r.id === this.roomSel);
-    const panel = at < 0 ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
+    const panel = at < 0 || this.panel ? null : this.shelfOptions(shelved[at], at % cols, Math.floor(at / cols), cell, cols);
+    if (this.panel) this.dockRoom(at < 0 ? null : shelved[at], true);
     this.grid.replaceChildren(...empty, ...tiles, ...(panel ? [panel] : []));
   }
 
   shelfOptions(r, col, row, cell, cols) {
+    return el('div', this.beside({ col, row }, cell, cols), el('div', { class: 'label' }, r.name), ...this.shelfRows(r));
+  }
+
+  // What an archived room offers: Go in, Restore and Delete.
+  shelfRows(r) {
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
-    return el('div', this.beside({ col, row }, cell, cols),
-      el('div', { class: 'label' }, r.name),
+    return [
       r.desc ? el('p', { class: 'pop-note' }, r.desc) : null,
       word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
       word('Restore', () => {
@@ -295,7 +301,41 @@ export class RoomsGrid {
         this.save();
         this.drawRooms();
         this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-      }, 'pop-delete'));
+      }, 'pop-delete'),
+    ];
+  }
+
+  // A room's properties in the right dock's Editor tab (the docks feature's panel service), in place
+  // of the pop-up beside its square: opened when a room's properties are asked for (roomSel),
+  // switched when another room is chosen while they show, closed when none is. The dock's × or
+  // Escape lets the room go. shelf: an archived room (Go in, Restore, Delete).
+  dockRoom(r, shelf = false) {
+    const open = this.propsDock;
+    if (!r) {
+      if (open) { this.propsDock = null; this.panel.close('room', true); }
+      return;
+    }
+    const rows = (shelf ? this.shelfRows(r) : this.roomRows(r)).filter(Boolean);
+    const kind = shelf ? 'Archived room' : 'Room';
+    if (open && this.panel.isOpen('room')) {
+      open.id = r.id;
+      open.body.replaceChildren(...rows);
+      open.handle?.setTitle(r.name);
+      open.handle?.setKind(kind);
+      return;
+    }
+    const body = el('div', { class: 'rooms-props' }, ...rows);
+    const now = (this.propsDock = { id: r.id, body, handle: null });
+    // (open() fills the dock at once; its handle comes after)
+    this.panel.open({ key: 'room', kind, title: r.name, body,
+      onClose: () => {
+        if (this.propsDock !== now) return; // let go here, or the room was gone into
+        this.propsDock = null;
+        if (!this.roomSel) return;
+        this.roomSel = null;
+        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+      } })
+      .then((h) => { if (this.propsDock === now) { if (h) now.handle = h; else this.propsDock = null; } });
   }
 
   // ---- Arrange by, in the rail: the tag groups, their tags, and how many rooms have each ----
@@ -476,6 +516,8 @@ export class RoomsGrid {
 
   // A click on a square chooses it (an outline); the properties wait for a right-click.
   pickRoom(id) {
+    // While a room's properties show in the dock, a click on another room switches them there.
+    if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) { this.chooseRoom(id, true); return; }
     if (this.roomSel && this.roomSel !== id) this.roomSel = null;
     this.making = null;
     this.roomPick = id;
@@ -492,10 +534,13 @@ export class RoomsGrid {
     this.drawRooms();
   }
 
-  // A room's properties, beside its square: its name and description, Go in, its mode (one, or
-  // all of them for a big room), its tags, its colour, lightness and opacity (the only place its colour is
-  // set), its size, Back to the tint, Lock, Archive and Delete (not for Messy).
-  roomOptions(r, cell, cols) {
+  // A room's properties in a pop-up beside its square (without docks).
+  roomOptions(r, cell, cols) { return el('div', this.beside(r, cell, cols), ...this.roomRows(r)); }
+
+  // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
+  // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
+  // size, Back to the tint, Lock, Archive and Delete (not for Messy).
+  roomRows(r) {
     const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
     const look = this.lookOf(r);
     const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
@@ -505,7 +550,7 @@ export class RoomsGrid {
       onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
     });
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
-    const panel = el('div', this.beside(r, cell, cols),
+    return [
       nameField,
       // A line or two about the room: shown under its name inside, and in its square's peek.
       el('textarea', {
@@ -558,8 +603,8 @@ export class RoomsGrid {
           this.save();
           this.drawRooms();
           this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
-        }, 'pop-delete') : null));
-    return panel;
+        }, 'pop-delete') : null),
+    ];
   }
 
   // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
