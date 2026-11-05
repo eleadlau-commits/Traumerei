@@ -17,7 +17,7 @@
 // forever).
 
 import { Feature, ui } from 'folio';
-import { timeline, days, changed } from './days.js';
+import { timeline, days, changed, dayOf, roomBoard, roomFirst } from './days.js';
 import { snapshot, note, prune, emptyRecord, earliest, pastBoard, KEEP, KEEP_DEFAULT, DAY } from './record.js';
 import { TIME_KEYS } from './keys.js';
 
@@ -146,7 +146,7 @@ export default class Time extends Feature {
     const kind = r ? 'Timeline' : 'Days';
     const list = r ? this.roomList(p, roomId) : this.dayList(p);
     // The slider stays the same node while it shows (it may be being dragged); only the list is new.
-    const scrub = r ? null : this.scrubFor(p);
+    const scrub = this.scrubFor(p);
     if (this.shown && this.panel.isOpen(KEY)) {
       if (this.shown.scrub !== scrub) this.shown.top.replaceChildren(...(scrub ? [scrub.el] : []));
       this.shown.scrub = scrub;
@@ -184,13 +184,13 @@ export default class Time extends Feature {
   setDay(day) {
     const p = this.place();
     if (!p?.showDay || day == null) { this.toNow(); this.draw(); return; }
-    const first = earliest(this.world, this.record);
-    day = dayStart(Math.max(first, Math.min(day, Date.now())));
+    day = dayStart(Math.max(this.firstFor(p), Math.min(day, Date.now())));
     if (day >= this.today()) { this.toNow(); this.draw(); return; }
     this.writeRecord(); // (today's changes are in it before anything is read back)
     this.day = day;
     this.pastFor = p;
-    p.showDay(pastBoard(this.m, this.world, this.record, day));
+    const roomId = p.room?.();
+    p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day) : pastBoard(this.m, this.world, this.record, day));
     this.draw();
   }
 
@@ -200,6 +200,12 @@ export default class Time extends Feature {
     this.day = null;
     this.pastFor = null;
     p?.showDay?.(null);
+  }
+
+  // The first day the slider reaches: the room's first, or (on the rooms page) the first known.
+  firstFor(p) {
+    const roomId = p.room?.();
+    return roomId ? roomFirst(this.m, this.world, roomId) : earliest(this.world, this.record);
   }
 
   // A day earlier (-1) or later (+1), or a week with Shift.
@@ -214,18 +220,18 @@ export default class Time extends Feature {
     this.step((e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 7 : 1));
   }
 
-  // The slider of days, for the rooms page: oldest at the left, today at the right. Made once
-  // while the dock shows and kept up to date.
+  // The slider of days, for a place that can show a past day (the rooms page, a room): oldest at
+  // the left, today at the right. Made once while the dock shows and kept up to date.
   scrubFor(p) {
     if (!p.showDay) return null;
-    const first = earliest(this.world, this.record);
+    const first = this.firstFor(p);
     const n = Math.max(0, Math.round((this.today() - first) / DAY));
     let s = this.shown?.scrub;
     if (!s) {
       s = { el: null };
       s.label = el('div', { class: 'time-scrub-day' });
       s.slider = el('input', { type: 'range', class: 'time-scrub-slider', min: 0, step: 1, 'aria-label': 'Go back to a day',
-        oninput: () => this.setDay(earliest(this.world, this.record) + (+s.slider.value) * DAY + DAY / 2) });
+        oninput: () => { const at = this.place(); if (at) this.setDay(this.firstFor(at) + (+s.slider.value) * DAY + DAY / 2); } });
       s.from = el('span', { class: 'time-when' });
       s.now = el('button', { type: 'button', class: 'word time-scrub-now', onclick: () => this.setDay(null) }, 'Now');
       s.el = el('div', { class: 'time-scrub' }, s.label, s.slider,
@@ -241,18 +247,22 @@ export default class Time extends Feature {
     return s;
   }
 
-  // In a room: its thoughts in time, latest at the bottom.
+  // In a room: its thoughts in time, latest at the bottom. Gone back to a day, only those made by
+  // its end, those written that day lit.
   roomList(p, roomId) {
     const w = this.world, m = this.m;
-    const items = timeline(m, w, roomId);
-    if (!items.length) return el('p', { class: 'time-none' }, 'Nothing written here yet');
+    const day = this.pastFor === p ? this.day : null;
+    const end = day == null ? Infinity : day + DAY - 1;
+    const items = timeline(m, w, roomId).filter((th) => (th.at ?? 0) <= end);
+    if (!items.length) return el('p', { class: 'time-none' }, day == null ? 'Nothing written here yet' : 'Nothing written here by then');
     const ont = this.w.ontology(m.view(w, roomId).mode);
     const sel = p.chosen?.() || null;
     const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return el('ol', { class: 'time-list' }, items.map((th) => {
       const tag = ont?.tag?.(w, th.id) || null;
       return el('li', {}, el('button', {
-        type: 'button', class: 'pick time-item' + (sel && (sel === th.id || sel === tag?.id) ? ' on' : ''),
+        type: 'button', class: 'pick time-item' + (sel && (sel === th.id || sel === tag?.id) ? ' on' : '')
+          + (day != null && (dayOf(th.at) === day || dayOf(changed(th)) === day) ? ' lit' : ''),
         style: tag ? `--tag:hsl(${m.hash(tag.id) % 360} 32% 46%)` : '',
         onclick: () => p.go({ id: th.id, kind: m.kindOf(th), room: roomId }),
       },

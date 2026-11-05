@@ -360,6 +360,7 @@ export class RoomView {
   drawWorld() {
     if (!this.roomId) return;
     this.world$.replaceChildren(...this.canvasNodes());
+    this.markPast();
     this.showStatus();
     this.drawBar();
     this.drawTray();
@@ -398,7 +399,20 @@ export class RoomView {
     const s = this.sel;
     const n = !s ? 0 : s.kind === 'many' ? s.ids.length : 1;
     const what = !s ? '' : s.kind === 'many' ? `${n} chosen` : s.kind === 'train' ? `1 ${this.groupName(this.world.things[s.id]).toLowerCase()} chosen` : '1 chosen';
-    this.frame?.update(this, { selection: what, mode: this.locked ? `${this.ont.name} · locked` : this.ont.name });
+    const mode = this.locked ? `${this.ont.name} · locked` : this.ont.name;
+    this.frame?.update(this, { selection: what, mode: this.past ? `${pastWords(this.past.day)} · ${mode}` : mode });
+  }
+
+  // Gone back to a day in the Time dock (the time feature, through showDay): every thought stays
+  // where it is now, but those made after that day fade, and those written that day glow.
+  markPast() {
+    const p = this.past;
+    const later = new Set(p?.later || []), lit = new Set(p?.lit || []);
+    this.world$.classList.toggle('room-past', !!p);
+    for (const n of this.world$.querySelectorAll('[data-thought]')) {
+      n.classList.toggle('room-later', later.has(n.dataset.thought));
+      n.classList.toggle('room-lit-day', lit.has(n.dataset.thought));
+    }
   }
 
   // ---- Clear space (clear.js): after any change, what overlaps is pushed apart ----
@@ -469,3 +483,6 @@ export class RoomView {
     if (depth < 2) this.clearRoom(depth + 1);
   }
 }
+
+// What the status bar says while a past day shows.
+const pastWords = (day) => `As on ${new Date(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`;

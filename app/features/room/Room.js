@@ -56,6 +56,7 @@ export default class Room extends Feature {
     this.barFor = null;   // what the properties pop-up is open for (selKey)
     this.editor = null;   // the content editor in the side panel (editor.js), while it shows
     this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
+    this.past = null;     // a day gone back to in the Time dock: { day, later, lit }, or null
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
@@ -112,6 +113,8 @@ export default class Room extends Feature {
       chosen: () => (this.sel && this.sel.kind !== 'many' ? this.sel.id : null),
       go: (f) => { this.fromTimeline = true; try { this.goTo(f); } finally { this.fromTimeline = false; } },
       redraw: () => { if (this.roomId) this.drawRoom(); },
+      // A past day: { day, later, lit } (thought ids), or null for now (view.js markPast).
+      showDay: (past) => { this.past = past; if (this.roomId) this.drawWorld(); },
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     window.addEventListener('resize', () => { if (this.roomId) this.place(); });

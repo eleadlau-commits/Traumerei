@@ -434,3 +434,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-twin-other:hover { opacity: .8; }
 .room-twin-other .room-world { pointer-events: none; }
 .room-twin-label { position: absolute; bottom: var(--s-5, 24px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+
+/* A past day from the Time dock (view.js markPast): thoughts made after it fade; those written
+   that day glow. Everything stays where it is now. */
+.room-world.room-past .room-later { opacity: .16; transition: opacity var(--quick); }
+.room-world.room-past .room-lit-day { box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 22%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }

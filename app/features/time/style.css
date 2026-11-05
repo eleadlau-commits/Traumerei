@@ -34,3 +34,4 @@
 .time-scrub-now { font-size: 12px; }
 button.time-date { display: block; width: 100%; text-align: left; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 button.time-date.on { opacity: 1; color: var(--amber); }
+.time-item.lit .time-when { color: var(--amber); opacity: 1; }

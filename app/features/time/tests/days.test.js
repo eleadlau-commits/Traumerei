@@ -1,5 +1,5 @@
 import { test, assert } from 'folio/testing';
-import { changed, dayOf, timeline, squareOf, days } from '../days.js';
+import { changed, dayOf, timeline, squareOf, days, roomBoard, roomFirst } from '../days.js';
 
 // A little world, and the model rules days.js asks for.
 const H = 3600e3;
@@ -39,4 +39,14 @@ test('days are newest first, each with the rooms written in', () => {
   assert.deepEqual(d.map((x) => x.day), [dayOf(t0), dayOf(t0 - 24 * H)]);
   assert.deepEqual(d[0].rooms, [{ id: 'a', n: 2 }]);
   assert.deepEqual(d[1].rooms, [{ id: 'tw', n: 1 }]);
+});
+
+test('a room on a past day: later thoughts and that day\'s', () => {
+  const w = world();
+  w.things.a.at = t0 - 72 * H;
+  const b = roomBoard(m, w, 'a', dayOf(t0 - 30 * H));
+  assert.deepEqual(b.later, ['x']);
+  assert.deepEqual(b.lit, ['y']);
+  assert.deepEqual(roomBoard(m, w, 'a', dayOf(t0)).lit.sort(), ['x', 'y']);
+  assert.equal(roomFirst(m, w, 'a', t0), dayOf(t0 - 72 * H));
 });
