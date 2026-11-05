@@ -92,7 +92,6 @@ export const LOOK = {
   mask: MASK,         // the rooms page's mask: how much of it covers the picture
   square: SQUARE,     // how strong the rooms' squares are
   glow: 0.55,         // how brightly a room written in lately glows
-  cell: 120,          // a grid cell, in px
   light: LIGHT,        // a room's lightness inside, by default
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
   vivid: VIVID,       // how strongly a square shows its room's colour
