@@ -21,10 +21,10 @@ export default class Home extends Feature {
     this.page = el('div', { class: 'home' },
       el('h1', { class: 'home-title' }, TITLE),
       el('nav', { class: 'home-nav', 'aria-label': 'Home' },
-        el('button', { type: 'button', class: 'home-link home-create', onclick: () => this.create() }, 'Create'),
+        el('button', { type: 'button', class: 'word home-link home-create', onclick: () => this.create() }, 'Create'),
         el('div', { class: 'home-row' },
-          el('button', { type: 'button', class: 'home-link', onclick: () => this.settings() }, 'Settings'),
-          el('button', { type: 'button', class: 'home-link', onclick: () => this.account() }, 'Account'))));
+          el('button', { type: 'button', class: 'word home-link', onclick: () => this.settings() }, 'Settings'),
+          el('button', { type: 'button', class: 'word home-link', onclick: () => this.account() }, 'Account'))));
     (document.getElementById('folio-root') || document.body).append(this.page);
 
     // Create is also the first word in the menu (Folio adds Account, Settings and About).

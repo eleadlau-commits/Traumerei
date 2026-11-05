@@ -1,4 +1,4 @@
-.account-page .dialog-content { display: flex; flex-direction: column; gap: 12px; }
+.account-page .dialog-content { display: flex; flex-direction: column; gap: 22px; }
 .account-page p { margin: 0; }
 .account-who { display: flex; align-items: center; gap: 12px; }
 .account-who > div { display: flex; flex-direction: column; min-width: 0; }

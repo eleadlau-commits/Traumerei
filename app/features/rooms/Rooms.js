@@ -152,12 +152,12 @@ export default class Rooms extends Feature {
       if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep();
     };
     this.leaveBox.replaceChildren(
-      el('div', { class: 'rooms-sheet-kind' }, 'Add a comment for next time?'),
+      el('div', { class: 'label' }, 'Add a comment for next time?'),
       text,
-      el('div', { class: 'rooms-sheet-words' },
-        el('button', { type: 'button', class: 'rooms-word', onclick: keep }, 'Keep'),
-        el('button', { type: 'button', class: 'rooms-word', onclick: () => this.close() }, 'Skip'),
-        el('span', { class: 'rooms-keys' }, 'Enter keeps it · Ctrl+Enter a new line')));
+      el('div', { class: 'sheet-words' },
+        el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'word', onclick: () => this.close() }, 'Skip'),
+        el('span', { class: 'sheet-keys' }, 'Enter keeps it · Ctrl+Enter a new line')));
     this.leaveBox.hidden = false;
     text.focus();
   }
@@ -168,7 +168,7 @@ export default class Rooms extends Feature {
     this.noteLine.hidden = !note?.text;
     if (!note?.text) return;
     this.noteLine.replaceChildren(el('span', {}, note.text),
-      el('button', { type: 'button', class: 'rooms-word rooms-note-x', title: 'Dismiss', onclick: () => { this.storage.set('note', null); this.noteLine.hidden = true; } }, 'dismiss'));
+      el('button', { type: 'button', class: 'word rooms-note-x', title: 'Dismiss', onclick: () => { this.storage.set('note', null); this.noteLine.hidden = true; } }, 'dismiss'));
   }
 
   // Shows a floor of the rooms page.
@@ -262,7 +262,7 @@ export default class Rooms extends Feature {
     const look = this.lookOf(r);
     const a = tile.getBoundingClientRect();
     const W = window.innerWidth, H = window.innerHeight;
-    const veil = el('div', { class: 'rooms-expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
+    const veil = el('div', { class: 'expand go', style: `background:linear-gradient(${look.top}, ${look.bottom})` });
     this.shrinkVeil = veil;
     this.root.append(veil);
     veil.getBoundingClientRect();
@@ -393,9 +393,9 @@ export default class Rooms extends Feature {
       ['Arrows · Shift+arrows', 'nudge what is chosen'],
       [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
     ];
-    this.keysBox.replaceChildren(el('div', { class: 'rooms-search-panel rooms-keys-panel' },
-      el('div', { class: 'rooms-options-label' }, 'Keys'),
-      el('dl', { class: 'rooms-keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
+    this.keysBox.replaceChildren(el('div', { class: 'panel top-sheet rooms-keys-panel' },
+      el('div', { class: 'label' }, 'Keys'),
+      el('dl', { class: 'keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
     this.keysBox.hidden = false;
     this.keysBox.onpointerdown = () => this.closeKeys();
     const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeKeys(); document.removeEventListener('keydown', close, true); };
@@ -434,7 +434,7 @@ export default class Rooms extends Feature {
     this.grid = el('div', { class: 'rooms-grid' });
     // Search lights (Ctrl+K): the rooms without the words dim.
     this.lightsField = el('input', { class: 'rooms-lights-field', placeholder: 'Light the rooms that hold… (or #tag)', 'aria-label': 'Search the rooms', autocomplete: 'off', spellcheck: 'false' });
-    this.lightsBar = el('div', { class: 'rooms-lights', hidden: true }, this.lightsField,
+    this.lightsBar = el('div', { class: 'panel rooms-lights', hidden: true }, this.lightsField,
       this.lightsNote = el('span', { class: 'rooms-lights-note' }));
     this.lightsField.addEventListener('input', () => { this.lights = this.lightsField.value; this.drawRooms(); });
     this.lightsField.addEventListener('keydown', (e) => {
@@ -444,41 +444,41 @@ export default class Rooms extends Feature {
     });
     // The rail on the left, under the menu: the rooms, and the Archive. A room dragged onto Archive
     // goes there.
-    this.railRooms = el('button', { type: 'button', class: 'rooms-rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
-    this.shelfBtn = el('button', { type: 'button', class: 'rooms-rail-item rooms-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
+    this.railRooms = el('button', { type: 'button', class: 'rail-item', onclick: () => { if (this.shelf) this.toggleShelf(); } }, 'Rooms');
+    this.shelfBtn = el('button', { type: 'button', class: 'rail-item rooms-shelf-btn', 'data-drop': 'archive', onclick: () => { if (!this.shelf) this.toggleShelf(); } },
       'Archive');
     // Under a hairline, Arrange by: None, then the tag groups, each opening to its tags with how
     // many rooms have each. Picking a tag dims the rooms without it, as the search lights do
     // (nothing hides or moves); None, picking it again, or Escape, lets go. + makes groups and tags,
     // and a tag dragged onto a square is added to that room.
-    this.tagsBtn = el('button', { type: 'button', class: 'rooms-rail-item rooms-tags-btn', 'aria-expanded': 'false',
+    this.tagsBtn = el('button', { type: 'button', class: 'rail-item rooms-tags-btn', 'aria-expanded': 'false',
       onclick: () => { this.tagsOpen = !this.tagsOpen; this.makingTag = null; this.drawRooms(); } }, 'Arrange by');
     this.tagsList = el('div', { class: 'rooms-tag-list', hidden: true, role: 'list' });
     // The floors, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor. A room
     // dropped on a floor goes to that floor.
     this.pagesBar = el('nav', { class: 'rooms-pages', 'aria-label': 'Floors' });
-    this.rail = el('nav', { class: 'rooms-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
-      el('div', { class: 'rooms-rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
+    this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Rooms and the Archive' }, this.railRooms, this.pagesBar, this.shelfBtn,
+      el('div', { class: 'rail-rule', 'aria-hidden': 'true' }), this.tagsBtn, this.tagsList);
     this.shelfHead = el('div', { class: 'rooms-shelf-head', hidden: true }, 'Archive');
     this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,
       this.rail,
       el('div', { class: 'rooms-grid-wrap' }, this.shelfHead, this.grid));
 
-    this.backBtn = el('button', { type: 'button', class: 'rooms-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
+    this.backBtn = el('button', { type: 'button', class: 'back-btn rooms-back', 'aria-label': 'Back to the home page', onclick: () => this.back() },
       ui.icon('<path d="M20 12H4M10 6l-6 6 6 6"/>'));
     // Search, a bar in the middle of the top row: the search lights.
-    this.searchBtn = el('button', { type: 'button', class: 'rooms-word rooms-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
+    this.searchBtn = el('button', { type: 'button', class: 'word find-btn rooms-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => { if (this.lights != null) this.closeLights(); else this.openLights(); } },
-    el('span', {}, 'Search'), el('span', { class: 'rooms-search-key' }, KEY));
-    this.keysBox = el('div', { class: 'rooms-search', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
-    this.savedMark = el('div', { class: 'rooms-saved', 'aria-live': 'polite' });
-    this.hintLine = el('div', { class: 'rooms-hint' });
+    el('span', {}, 'Search'), el('span', { class: 'find-key' }, KEY));
+    this.keysBox = el('div', { class: 'shade', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
+    this.savedMark = el('div', { class: 'saved-note rooms-saved', 'aria-live': 'polite' });
+    this.hintLine = el('div', { class: 'foot-hint rooms-hint' });
     // A small wordmark beside the menu (☰).
-    this.wordmark = el('div', { class: 'rooms-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.wordmark = el('div', { class: 'wordmark rooms-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
     this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine,
       this.noteLine = el('div', { class: 'rooms-note', hidden: true }),
-      this.leaveBox = el('div', { class: 'rooms-sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
+      this.leaveBox = el('div', { class: 'panel sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);
     document.addEventListener('pointerdown', () => this.hintLine.classList.remove('on'));
 

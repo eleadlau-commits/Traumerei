@@ -19,7 +19,7 @@ export default class Search extends Feature {
       close: () => this.close(),    // hides it, if it shows
       get isOpen() { return !!box && !box.hidden; },
     });
-    const box = this.box = el('div', { class: 'search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
+    const box = this.box = el('div', { class: 'shade search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
     box.onpointerdown = (e) => { if (e.target === box) this.close(); };
     (document.getElementById('folio-root') || document.body).append(box);
   }
@@ -33,7 +33,7 @@ export default class Search extends Feature {
       found = search(this.w.world, field.value);
       at = Math.min(at, Math.max(0, found.length - 1));
       list.replaceChildren(...found.map((f, i) => el('button', {
-        type: 'button', class: 'search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
+        type: 'button', class: 'pick search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),
         onclick: () => this.pick(f),
       }, el('span', { class: 'search-text' }, f.text), el('span', { class: 'search-room' }, f.kind === 'room' ? 'Room' : f.roomName))),
       field.value.trim() && !found.length ? el('p', { class: 'search-none' }, 'Nothing yet with those words') : '');
@@ -46,7 +46,7 @@ export default class Search extends Feature {
       if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, at - 1); show(); }
       if (e.key === 'Enter' && found[at]) { e.preventDefault(); this.pick(found[at]); }
     });
-    this.box.replaceChildren(el('div', { class: 'search-panel' }, field, list));
+    this.box.replaceChildren(el('div', { class: 'panel top-sheet search-panel' }, field, list));
     this.box.hidden = false;
     field.focus();
   }

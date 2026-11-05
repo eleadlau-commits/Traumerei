@@ -57,20 +57,20 @@ export class Bars {
     const kind = kindOf(th);
     if (this.locked) { // read only: the words, and nothing to change
       return [
-        el('div', { class: 'room-options-label' }, 'Locked'),
+        el('div', { class: 'label' }, 'Locked'),
         kind === 'group' && inPanel ? null : el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
-        kind === 'group' && !inPanel && this.files?.canEdit ? el('button', { type: 'button', class: 'room-word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
+        kind === 'group' && !inPanel && this.files?.canEdit ? el('button', { type: 'button', class: 'word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
       ].filter(Boolean);
     }
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
-    const field = (value, label, onchange, cls = 'room-options-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
-    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'room-word ' + extra, onclick: fn }, label);
+    const field = (value, label, onchange, cls = 'pop-name') => el('input', { class: cls, value: value || '', placeholder: label, 'aria-label': label, onkeydown: stop, onchange });
+    const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
     const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const gname = kind === 'group' ? this.groupName(th) : 'Train';
     const title = kind === 'group' ? (th.folded ? `A folded ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
-    if (!inPanel) rows.push(el('div', { class: 'room-options-label' }, title));
+    if (!inPanel) rows.push(el('div', { class: 'label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
       const text = el('textarea', { class: 'room-edit-text room-edit-lines', rows: 1, placeholder: 'The thought', 'aria-label': 'The thought',
@@ -102,8 +102,8 @@ export class Bars {
     if (kind === 'group') {
       const n = trainThoughts(this.world, th.id).length;
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
-        el('div', { class: 'room-options-row' },
-          el('span', { class: 'room-options-note' }, `${n} thought${n === 1 ? '' : 's'}`),
+        el('div', { class: 'pop-row' },
+          el('span', { class: 'pop-note' }, `${n} thought${n === 1 ? '' : 's'}`),
           th.folded ? word('Unfold', () => this.unfoldTrain(th.id))
             : n > 1 || this.ont.open ? word('Fold into one', () => this.foldTrain(th.id)) : null,
           this.files?.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
@@ -115,7 +115,7 @@ export class Bars {
     // those that fit.
     try { rows.push(...(this.ont.props?.(this, th) || [])); } catch (err) { console.warn('Room: props', err); }
     const moves = (this.ont.moves || []).filter((m) => { try { return !m.when || m.when(this); } catch { return false; } });
-    if (moves.length) rows.push(el('div', { class: 'room-options-row room-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
+    if (moves.length) rows.push(el('div', { class: 'pop-row room-moves' }, ...moves.map((m) => word(m.label, () => this.runMove(m)))));
     const others = this.moveRooms();
     const pick = el('select', { class: 'room-edit-move', 'aria-label': 'Move to a room', onkeydown: (e) => e.stopPropagation(),
       onchange: (e) => {
@@ -125,8 +125,8 @@ export class Bars {
       el('option', { value: '' }, 'Move to…'),
       ...others.map((r) => el('option', { value: r.id }, r.name)),
       el('option', { value: '+' }, 'A new room'));
-    rows.push(el('div', { class: 'room-options-row' }, pick),
-      el('div', { class: 'room-options-row' },
+    rows.push(el('div', { class: 'pop-row' }, pick),
+      el('div', { class: 'pop-row' },
         kind !== 'group' && this.ont.groups && groupOf(this.world, th.id, this.mode)
           ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => { const g = groupOf(this.world, th.id, this.mode).id; this.sel = { kind: 'train', id: g }; this.openProps(this.sel); }) : null,
         word('Delete', () => {
@@ -134,7 +134,7 @@ export class Bars {
           this.sel = null;
           done();
           this.toast(`Deleted. Ctrl+Z brings it back.`);
-        }, 'room-options-delete')));
+        }, 'pop-delete')));
     return rows;
   }
 
@@ -160,10 +160,10 @@ export class Bars {
     const items = this.roomId ? this.trayItems() : [];
     if (!items.length) { this.trayEl.hidden = true; this.trayEl.replaceChildren(); return; }
     const open = !!this.trayOpen;
-    const word = el('button', { type: 'button', class: 'room-word room-tray-btn', 'aria-expanded': String(open),
+    const word = el('button', { type: 'button', class: 'word room-tray-btn', 'aria-expanded': String(open),
       title: 'Thoughts not placed in this mode yet. Drag one onto the room.',
       onclick: () => { this.trayOpen = !open; this.drawTray(); } }, `Loose · ${items.length}`);
-    const row = open ? el('div', { class: 'room-tray-row', role: 'list' }, items.map((th) => el('div', {
+    const row = open ? el('div', { class: 'panel room-tray-row', role: 'list' }, items.map((th) => el('div', {
       class: 'room-tray-item', role: 'listitem', 'data-tray': th.id, title: 'Drag onto the room',
       onpointerdown: (e) => this.trayDrag(e, th.id),
     }, el('span', { class: 'room-tray-text' }, kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th))))) : null;
@@ -181,7 +181,7 @@ export class Bars {
     const r = card.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
     const ghost = card.cloneNode(true);
-    ghost.classList.add('room-tray-ghost');
+    ghost.classList.add('panel', 'room-tray-ghost');
     Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
     this.root.append(ghost);
     const move = (ev) => { ghost.style.left = `${ev.clientX - off.x}px`; ghost.style.top = `${ev.clientY - off.y}px`; };
@@ -223,11 +223,11 @@ export class Bars {
       el('option', { value: '+' }, 'A new room'));
     this.bar.hidden = false;
     this.bar.replaceChildren(
-      el('div', { class: 'room-options-label' }, `${ids.length} chosen`),
-      el('p', { class: 'room-options-note' }, 'Drag any of them to move them together.'),
-      el('div', { class: 'room-options-row' }, pick),
-      el('div', { class: 'room-options-row' },
-        el('button', { type: 'button', class: 'room-word room-options-delete', onclick: () => {
+      el('div', { class: 'label' }, `${ids.length} chosen`),
+      el('p', { class: 'pop-note' }, 'Drag any of them to move them together.'),
+      el('div', { class: 'pop-row' }, pick),
+      el('div', { class: 'pop-row' },
+        el('button', { type: 'button', class: 'word pop-delete', onclick: () => {
           ids.forEach((id) => remove(this.world, id));
           this.sel = null;
           this.save();
@@ -291,11 +291,11 @@ export class Bars {
   keepChoice(others, keep, choose) {
     const names = others.map((o) => o.name).join(' and ');
     const pick = (label, value, note) => el('button', {
-      type: 'button', class: 'room-word', 'aria-pressed': String(keep === value), title: note,
+      type: 'button', class: 'word', 'aria-pressed': String(keep === value), title: note,
       onclick: (e) => { keep = value; choose(value); e.currentTarget.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
     }, label);
-    return el('div', { class: 'room-options-row room-keep' },
-      el('span', { class: 'room-options-note' }, `In ${names}:`),
+    return el('div', { class: 'pop-row room-keep' },
+      el('span', { class: 'pop-note' }, `In ${names}:`),
       pick('Replace', false, 'The one folded thought takes the place of its thoughts'),
       pick('Keep both', true, 'The folded thought is added beside its thoughts'));
   }
@@ -382,12 +382,12 @@ export class Bars {
       fields.push(el('img', { class: 'room-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
     this.sheet.replaceChildren(
-      el('div', { class: 'room-sheet-kind' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
+      el('div', { class: 'label' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
       ...fields,
-      el('div', { class: 'room-sheet-words' },
-        el('button', { type: 'button', class: 'room-word', onclick: keep }, 'Keep'),
-        el('button', { type: 'button', class: 'room-word', onclick: () => this.closeSheet() }, 'Cancel'),
-        el('span', { class: 'room-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
+      el('div', { class: 'sheet-words' },
+        el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
+        el('button', { type: 'button', class: 'word', onclick: () => this.closeSheet() }, 'Cancel'),
+        el('span', { class: 'sheet-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
     this.sheet.hidden = false;
     (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
   }

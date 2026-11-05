@@ -29,13 +29,13 @@ export async function openEditor(c, id) {
       gone: () => close(),
       escaped: () => body.focus?.({ preventScroll: true }),
     });
-    content.append(c.el('div', { class: 'room-options-label' }, 'Thoughts'), paras.node, ...(paras.more ? [paras.more] : []));
+    content.append(c.el('div', { class: 'label' }, 'Thoughts'), paras.node, ...(paras.more ? [paras.more] : []));
   }
   // Source: the group (or the group a thought is in, in this mode) as room Markdown.
   const sourceOf = () => (group ? id : groupOf(c.world, id, c.mode)?.id || null);
   const drawFoot = () => {
     const gid = c.files?.canEdit ? sourceOf() : null;
-    foot.replaceChildren(gid ? c.el('button', { type: 'button', class: 'room-editor-source', title: 'Edit as room Markdown', onclick: () => c.editAsMarkdown(gid) }, locked ? 'Source (read only)' : 'Source') : '');
+    foot.replaceChildren(gid ? c.el('button', { type: 'button', class: 'word room-editor-source', title: 'Edit as room Markdown', onclick: () => c.editAsMarkdown(gid) }, locked ? 'Source (read only)' : 'Source') : '');
   };
   const refresh = () => {
     const now = c.world.things[id];

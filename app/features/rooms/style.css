@@ -1,123 +1,47 @@
-/* Styles for the rooms page. Class names start with "rooms-". The page slides up over the home
-   page, leaving a strip of it at the top; it is a still gradient of the picture's colours (set
-   from Rooms.js as --rooms-top / --rooms-bottom). While a room is open the room feature draws
-   over it with its own root. The same in light and dark mode. */
-:root {
-  --rooms-strip: calc(64px + env(safe-area-inset-top));
-  --rooms-rail: 206px; /* the rail on the left: 72px and one grid column (a cell and its gap) more */
-  --rooms-ease: cubic-bezier(.22, .7, .18, 1);
-  --rooms-glow: color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .55) 45%, rgb(255 255 255 / .55));
-  /* Every pop-up and panel: the same pale, blurred white. */
-  --rooms-panel: rgb(var(--veil-rgb, 250 247 240) / .84);
-  --rooms-panel-ink: var(--ink, #2b2a28);
-  --rooms-panel-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 12px 40px rgb(var(--ink-rgb, 43 42 40) / .12);
-}
+/* Styles for the rooms page: layout only (the look, the rail, the pop-ups and the frame's pieces
+   are Folio's, folio/runtime/base.css). Class names start with "rooms-". The page slides up over
+   the home page, leaving a strip of it at the top; it is a still gradient of the picture's
+   colours (set from Rooms.js as --rooms-top / --rooms-bottom). While a room is open the room
+   feature draws over it with its own root. */
 .rooms {
   position: fixed;
   inset: 0;
   z-index: 3;
   pointer-events: none; /* the strip at the top stays the home page's */
-  color: var(--home-ink);
-  font-family: var(--home-font);
+  color: var(--ink);
+  font-family: var(--font);
 }
 .rooms > * { pointer-events: auto; }
+.rooms .panel { --room-ink: var(--ink); }
 .rooms[hidden], .rooms [hidden] { display: none !important; }
 
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .rooms-open .home { visibility: hidden; }
 
-/* A small wordmark beside the menu (☰), everywhere in Create, in the home page's typeface. */
-.rooms-wordmark {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  left: calc(var(--gutter) + 56px);
-  height: 44px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  letter-spacing: .32em;
-  text-transform: uppercase;
-  color: var(--home-ink);
-  opacity: 0;
-  pointer-events: none !important;
-  user-select: none;
-  transition: opacity .4s;
-}
+/* The wordmark beside the menu (☰), the back arrow top right (home from the rooms page) and the
+   search bar show once the page is up. */
 .rooms.up .rooms-wordmark { opacity: .72; }
 .rooms.in-room :is(.rooms-wordmark, .rooms-back, .rooms-search-btn) { visibility: hidden; } /* the room shows its own */
 
-/* On a phone the search bar takes that place. */
-@media (max-width: 560px) {
-  .rooms-wordmark { display: none; }
-}
-
-/* The back arrow, in the top-right corner (the menu keeps the top-left one, as on every page):
-   home from the rooms page, the rooms from a room. */
-.rooms-back {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  right: var(--gutter);
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--home-ink);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity .4s;
-  -webkit-tap-highlight-color: transparent;
-}
 .rooms.up .rooms-back { opacity: .8; }
-.rooms-back:is(:hover, :focus-visible) { opacity: 1; outline: none; }
-.rooms-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
-
-/* Plain words, as on the home page and in the menu: a hairline comes under them on hover. */
-.rooms-word {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  padding: 6px 2px;
-  font: inherit;
-  font-size: 13px;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: inherit;
-  opacity: .66;
-  cursor: pointer;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-repeat: no-repeat;
-  background-position: 2px 100%;
-  background-size: 0 1px;
-  transition: opacity .2s, background-size .25s;
-  -webkit-tap-highlight-color: transparent;
-}
-.rooms-word[aria-current] {
-  opacity: 1;
-  background-size: calc(100% - 4px - .22em) 1px;
-  outline: none;
-}
 
 /* ---- The rooms page ---- */
 .rooms-rooms {
   position: absolute;
-  top: var(--rooms-strip);
+  top: var(--strip);
   left: 0;
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
   /* An opacity mask over the home picture itself, which is held still underneath. */
-  background: var(--rooms-mask, rgb(var(--ink-rgb, 43 42 40) / .1));
-  box-shadow: 0 -1px 0 rgb(var(--ink-rgb, 43 42 40) / .08), 0 -18px 40px rgb(var(--ink-rgb, 43 42 40) / .08);
+  background: var(--rooms-mask, rgb(var(--ink-rgb) / .1));
+  box-shadow: 0 -1px 0 rgb(var(--ink-rgb) / .08), 0 -18px 40px rgb(var(--ink-rgb) / .08);
   transform: translateY(100%);
-  transition: transform .5s var(--rooms-ease);
+  transition: transform .5s var(--ease);
 }
 .rooms.up .rooms-rooms { transform: none; transition-duration: .6s; }
-.rooms-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rooms-rail)); position: relative; z-index: 1; }
+.rooms-grid-wrap { flex: 1; overflow: auto; padding: 32px var(--gutter) 64px calc(var(--gutter) + var(--rail)); position: relative; z-index: 1; }
 
 /* The rooms page is a grid of square cells. Rooms are opacity squares laid on it (Messy thoughts
    takes four, at the top left); an empty cell shows a faint + on hover and makes a room there. */
@@ -133,26 +57,19 @@
   position: relative;
 }
 .rooms-cell {
-  appearance: none;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035);
+  box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .035);
   transition: box-shadow .3s, background-color .3s;
   display: grid;
   place-items: center;
-  font: 300 22px/1 var(--home-font, inherit);
+  font: 300 22px/1 var(--font);
 }
 .rooms-cell::after { content: '+'; opacity: 0; transition: opacity .3s; }
-.rooms-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb, 43 42 40) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .14); }
+.rooms-cell:is(:hover, :focus-visible) { outline: none; background: rgb(var(--ink-rgb) / .03); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .14); }
 .rooms-cell:is(:hover, :focus-visible)::after { opacity: .5; }
 .rooms-grid.dragging .rooms-cell::after { content: ''; }
-.rooms-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb, 43 42 40) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .4); }
-.rooms-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .15); }
-.rooms-cell.target { background: rgb(var(--ink-rgb, 43 42 40) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .3); }
+.rooms-drop { pointer-events: none; z-index: 1; background: rgb(var(--ink-rgb) / .06); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .4); }
+.rooms-drop.taken { background: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .15); }
+.rooms-cell.target { background: rgb(var(--ink-rgb) / .05); box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .3); }
 
 /* A room: one colour at one alpha over the page (look.js squareLook). Lit, it glows. */
 .rooms-tile {
@@ -164,18 +81,18 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  transition: box-shadow .5s, transform .3s var(--rooms-ease), opacity .3s;
+  transition: box-shadow .5s, transform .3s var(--ease), opacity .3s;
 }
-.rooms-tile:focus-visible { outline: 1px solid var(--home-ink); outline-offset: 2px; }
+.rooms-tile:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
 .rooms-tile:hover { transform: translateY(-2px); }
 
 /* Lit as much as you have been in it lately (--lit, 0 to 1). */
 .rooms-tile.lit {
   box-shadow:
-    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--rooms-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
-    inset 0 0 32px color-mix(in srgb, var(--rooms-glow-in, color-mix(in srgb, rgb(var(--glow-rgb, 239 204 131) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
+    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--glow-soft) calc(min(1, var(--lit) * 1.8) * 100%), transparent),
+    inset 0 0 32px color-mix(in srgb, var(--rooms-glow-in, color-mix(in srgb, rgb(var(--glow-rgb) / .35) 30%, rgb(255 255 255 / .35))) calc(min(1, var(--lit) * 1.8) * 100%), transparent);
 }
-.rooms-tile.deep { color: var(--pale, #f1e8d2); }
+.rooms-tile.deep { color: var(--pale); }
 
 /* a deep square: pale words */
 .rooms-tile.dragging { z-index: 2; transition: none; opacity: .85; cursor: grabbing; }
@@ -206,48 +123,6 @@
 
 /* The count, alone in the bottom-right corner. */
 .rooms-tile-count { position: absolute; right: 0; bottom: 0; opacity: .5; letter-spacing: .08em; }
-.rooms-name-field {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  border-radius: 0;
-  padding: 2px 0;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: none;
-  color: inherit;
-  outline: none;
-  box-shadow: none;
-}
-
-/* ---- A room ---- */
-@keyframes rooms-in { from { opacity: 0; } }
-
-/* A room's rail, where the rooms page has Rooms and Archive: its modes, then a hairline and Timeline. */
-
-/* A mode and its ⚙, which shows only while the mode is hovered over (or tapped, on a phone). */
-.rooms-rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
-
-/* This room's settings for a mode: a card beside the rail. */
-
-/* The Timeline: down the right, a view of the room's thoughts in time (in any mode). */
-.rooms-top {
-  position: absolute;
-  top: calc(10px + env(safe-area-inset-top) + 46px); /* under the search bar */
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 40vw;
-}
-
-/* Add: one word at the bottom left, which unfolds upwards to the templates and the room's settings. */
-
-/* Its words are the rail's size (15px), and it lines up with the rail's words above it. */
-
-/* Loose · n, at the foot of the room: the rail's size too. */
-@keyframes rooms-unfold { from { opacity: 0; transform: translateY(6px); } }
-.rooms-add-note { font-size: 12.5px; letter-spacing: .04em; text-transform: none; opacity: .5; }
 
 /* A slider or colour in a pop-up. */
 .rooms-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
@@ -255,169 +130,19 @@
 .rooms-slider input[type="range"] { width: 120px; accent-color: var(--room-ink); }
 .rooms-slider input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid color-mix(in srgb, var(--room-ink) 30%, transparent); border-radius: 0; background: none; flex: none; }
 
-/* The hidden box the keys go into: in view (so a phone shows its keyboard), but unseen. */
-
-/* Thoughts. Joyce: each thought on its own, joined to the next by a line (the SVG under them):
-   taut between quick thoughts, slack after a pause. */
-
-/* The timeline: a list down the right of everything written in the room, latest at the bottom. */
-
-/* Editing what is chosen: the rooms page's pop-up, beside the thought or train. */
-.rooms-options-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
-
-/* The thought being written: its real caret and selection, drawn from the hidden box. */
-
-/* Pessoa: each thought floats on its own, centred on its place. */
-
-/* In a dark room the words glow faintly, like a lit window. */
-@media (max-width: 560px) {
-  .rooms-top { top: calc(10px + env(safe-area-inset-top) + 48px); left: calc(var(--gutter) + 12px); transform: none; max-width: calc(100% - 2 * var(--gutter) - 24px); }
-}
-
-/* Bigger thoughts. In a Joyce train they stand as blocks between the lines of words. */
-
-/* The sheet for writing a passage or captioning a picture. */
-.rooms-sheet {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  max-height: calc(100% - 160px);
-  overflow: auto;
-  box-sizing: border-box;
-  display: grid;
-  gap: 16px;
-  padding: 26px 28px 18px;
-  background: var(--rooms-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--rooms-panel-shadow);
-  color: var(--rooms-panel-ink);
-  --room-ink: var(--rooms-panel-ink);
-  animation: rooms-in .35s ease both;
-}
-.rooms-sheet-kind { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .45; }
-.rooms-sheet-body {
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--room-ink) 25%, transparent);
-  border-radius: 0;
-  padding: 8px 0;
-  font: inherit;
-  color: inherit;
-  outline: none;
-  box-shadow: none;
-  border-width: 0 0 1px;
-}
-.rooms-sheet-body { font-size: 15px; line-height: 1.6; resize: vertical; min-height: 9em; }
-.rooms-sheet-words { display: flex; align-items: baseline; gap: 22px; }
-
-/* Settings → Rooms */
+/* A comment for next time, being written. */
+.rooms-sheet-body { padding: 8px 0; font-size: 15px; line-height: 1.6; min-height: 9em; }
 
 /* The rooms page: a square shows its outline on hover; chosen, its options stand beside it. */
 .rooms-tile::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .25s; }
-.rooms-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 55%, transparent); }
-.rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--home-ink, var(--ink, #2b2a28)); }
-.rooms-options {
-  position: absolute;
-  z-index: 3;
-  display: grid;
-  gap: 10px;
-  width: 236px;
-  padding: 14px 16px;
-  background: var(--rooms-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--rooms-panel-shadow);
-  color: var(--rooms-panel-ink);
-  --room-ink: var(--rooms-panel-ink);
-  animation: rooms-unfold .2s var(--rooms-ease) both;
-}
-.rooms-options-name {
-  font: inherit;
-  font-size: 13px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .25);
-  border-radius: 0;
-  padding: 4px 0;
-  min-height: 0;
-  outline: none;
-  box-shadow: none;
-}
-.rooms-options-name:focus { border-bottom-color: currentColor; }
-.rooms-options .rooms-word { justify-self: start; }
-.rooms-options-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
-.rooms-options-label { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
-.rooms-options .rooms-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 6px; }
-.rooms-options-delete { opacity: .6; }
-.rooms-options-delete:hover { color: #8a2f22; opacity: 1; }
-.rooms-options .rooms-slider input[type="range"] { width: 110px; }
+.rooms-tile:hover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 55%, transparent); }
+.rooms-tile.chosen::after { box-shadow: inset 0 0 0 1px var(--ink); }
 
-/* Search (Ctrl+K): a quiet panel near the top. */
-.rooms-search { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb, 43 42 40) / .08); }
-.rooms-search-panel {
-  position: absolute;
-  left: 50%;
-  top: 14vh;
-  transform: translateX(-50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(var(--veil-rgb, 250 247 240) / .9);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
-  color: var(--home-ink, var(--ink, #2b2a28));
-  animation: rooms-unfold .2s var(--rooms-ease) both;
-}
-
-/* A quiet "Saved", and a line of help the first time a page is seen. */
-.rooms-saved {
-  position: fixed;
-  right: calc(var(--gutter) + 12px);
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  font-size: 11px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  opacity: 0;
-  pointer-events: none;
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
-}
-.rooms:not(.in-room) .rooms-saved { color: var(--home-ink, var(--ink, #2b2a28)); }
-.rooms-saved.on { animation: rooms-saved 2.2s ease both; }
-@keyframes rooms-saved { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
-.rooms-hint {
-  position: fixed;
-  left: 50%;
-  bottom: calc(22px + env(safe-area-inset-bottom));
-  transform: translate(-50%, 6px);
-  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
-  text-align: center;
-  font-size: 12px;
-  letter-spacing: .05em;
-  line-height: 1.5;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s, transform .6s var(--rooms-ease);
-  color: var(--room-ink, var(--home-ink, var(--ink, #2b2a28)));
-}
-.rooms:not(.in-room) .rooms-hint { color: var(--home-ink, var(--ink, #2b2a28)); }
-.rooms-hint.on { opacity: .6; transform: translate(-50%, 0); }
-@media (max-width: 560px) {
-  .rooms-hint { max-width: calc(100% - 2 * var(--gutter)); bottom: calc(64px + env(safe-area-inset-bottom)); }
-  .rooms-options { width: 200px; }
-}
+/* "Saved" and the line of help take the room's ink while a room is open. */
+.rooms.in-room :is(.rooms-saved, .rooms-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
 .rooms-keys-panel { padding: 18px 22px 20px; }
-.rooms-keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
-.rooms-keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
-.rooms-keys-list dd { margin: 0; opacity: .8; }
 
 /* ---- The rooms page, step 1: peek, the last room, a half-written thought, lock, lights, Archive ---- */
 
@@ -454,7 +179,7 @@
   position: absolute;
   inset: -3px;
   pointer-events: none;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rooms-glow) 90%, transparent), 0 0 18px 2px color-mix(in srgb, var(--rooms-glow) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow-soft) 90%, transparent), 0 0 18px 2px color-mix(in srgb, var(--glow-soft) 70%, transparent);
   animation: rooms-breathe 4.5s ease-in-out infinite;
 }
 @keyframes rooms-breathe { 50% { opacity: .55; } }
@@ -477,7 +202,7 @@
 .rooms-tile.locked { box-shadow: inset 0 3px 0 color-mix(in srgb, currentColor 55%, transparent); }
 .rooms-tile.locked.lit { box-shadow:
     inset 0 3px 0 color-mix(in srgb, currentColor 55%, transparent),
-    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--rooms-glow) calc(min(1, var(--lit) * 1.8) * 100%), transparent); }
+    0 0 calc(12px + 40px * var(--lit)) calc(2px * var(--lit)) color-mix(in srgb, var(--glow-soft) calc(min(1, var(--lit) * 1.8) * 100%), transparent); }
 
 /* Search lights: the rooms without the words dim; those with them show how many. */
 .rooms-lights {
@@ -491,14 +216,8 @@
   align-items: baseline;
   gap: 14px;
   padding: 0 16px;
-  background: var(--rooms-panel);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--rooms-panel-shadow);
-  color: var(--rooms-panel-ink);
-  animation: rooms-unfold .2s var(--rooms-ease) both;
 }
-.rooms-lights-field { flex: 1; min-width: 0; padding: 12px 0; font: inherit; font-size: 15px; color: inherit; background: none; border: 0; border-radius: 0; outline: none; box-shadow: none; min-height: 0; }
+.rooms-lights-field { flex: 1; padding: 12px 0; font-size: 15px; border: 0; }
 .rooms-lights-note { font-size: 11px; letter-spacing: .08em; opacity: .55; white-space: nowrap; }
 .rooms-grid.lights .rooms-tile.unlit { opacity: .22; }
 .rooms-grid.lights .rooms-tile.found .rooms-peek { opacity: .72; }
@@ -510,124 +229,23 @@
   padding: 1px 6px;
   font-size: 10px;
   letter-spacing: .05em;
-  background: var(--rooms-panel);
-  color: var(--rooms-panel-ink);
+  background: var(--surface);
 }
 .rooms-grid.lights .rooms-tile.found .rooms-peek { top: 28px; }
-
-/* The Archive: a page of its own, reached from the rail on the left. */
 
 /* Its empty cells make nothing. */
 .rooms-cell.inert { cursor: default; }
 .rooms-cell.inert::after { content: none; }
-.rooms-cell.inert:hover { background: transparent; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .035); }
+.rooms-cell.inert:hover { background: transparent; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .035); }
 .rooms-shelf-head { text-align: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin: 0 0 24px; }
-.rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(43 42 40 / .1)) 100%, rgb(var(--ink-rgb, 43 42 40) / .12)); }
+.rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(var(--ink-rgb) / .1)) 100%, rgb(var(--ink-rgb) / .12)); }
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
-/* A room's description: under its name inside the room, and in its pop-up. */
-.rooms-options-desc {
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.4;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .15);
-  border-radius: 0;
-  padding: 4px 0;
-  resize: none;
-  min-height: 0;
-  outline: none;
-  box-shadow: none;
-}
-.rooms-options-desc:focus { border-bottom-color: currentColor; }
+/* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
-/* Going in: the square grows to fill the screen, then fades into the room. */
-.rooms-expand {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 5;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-.rooms-expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
-.rooms-expand.done { transition: opacity .25s ease; opacity: 0; }
+.rooms.expanding .rooms-back { color: var(--ink); }
 
-/* not hidden: it must take the keys typed meanwhile */
-.rooms.expanding .rooms-back { color: var(--home-ink); }
-
-/* ---- Search: a pale bar in the middle of the top row, level with the menu ---- */
-.rooms-search-btn {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top) + 7px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 12px;
-  background: rgb(var(--veil-rgb, 250 247 240) / .55);
-  background-image: none;
-  opacity: 0;
-  transition: opacity .4s, background-color .25s;
-}
-.rooms-search-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
-.rooms.up .rooms-search-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb, 250 247 240) / .8); }
 .rooms.up .rooms-search-btn { opacity: .66; }
-.rooms.up .rooms-search-btn:is(:hover, :focus-visible) { opacity: 1; }
-.rooms-search-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
-
-/* On a phone the bar sits between the menu and the arrow, clear of both. */
-@media (max-width: 560px) {
-  .rooms-search-btn { left: calc(var(--gutter) + 56px); transform: none; width: calc(100% - 2 * var(--gutter) - 112px); }
-}
-
-/* ---- The rail on the left, under the menu: Rooms, the floors and the Archive (in a room, its modes) ---- */
-
-/* Its words are 1.5x the size they once were (10px), to fill the 206px rail; long ones wrap. */
-.rooms-rail {
-  position: absolute;
-  z-index: 2;
-  top: 32px;
-  left: var(--gutter);
-  width: calc(var(--rooms-rail) - 24px);
-  display: grid;
-  gap: 22px;
-  justify-items: start;
-}
-.rooms-rail-item {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  padding: 3px 0 3px 15px;
-  display: grid;
-  gap: 6px;
-  max-width: 100%;
-  text-align: left;
-  overflow-wrap: break-word;
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.3;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: inherit;
-  opacity: .5;
-  cursor: pointer;
-  box-shadow: inset 1px 0 0 transparent;
-  transition: opacity .2s, box-shadow .25s;
-  -webkit-tap-highlight-color: transparent;
-}
-.rooms-rail-item:is(:hover, :focus-visible) { opacity: .85; outline: none; }
-.rooms-rail-item:is([aria-current="true"], [aria-current="page"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
-.rooms-rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
 
 /* ---- The floors of the rooms page, in the rail between Rooms and Archive: Floor 1, Floor 2, + New floor ---- */
 .rooms-pages { display: grid; gap: 10px; justify-items: start; width: 100%; }
@@ -636,52 +254,19 @@
 .rooms-page-new:is(:hover, :focus-visible) { opacity: .85; }
 
 /* ---- Choosing on a grid: a click outlines a square; a right-click opens its properties ---- */
-.rooms-tile.picked { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 70%, transparent); outline-offset: 3px; }
+.rooms-tile.picked { outline: 1px solid color-mix(in srgb, var(--ink) 70%, transparent); outline-offset: 3px; }
 .rooms-tile.dragging { pointer-events: none; }
 
 /* A new room: its kinds, beside the empty cell. */
-.rooms-kind {
-  appearance: none;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 18px;
-  padding: 7px 0;
-  text-align: left;
-  font-size: 13px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  opacity: .8;
-}
-.rooms-kind:is(:hover, :focus-visible) { outline: none; opacity: 1; }
+.rooms-kind { padding: 7px 0; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
+.rooms-kind:is(:hover, :focus-visible) { opacity: 1; background: none; }
 .rooms-kind:is(:hover, :focus-visible) .rooms-kind-name { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
 
-/* Add, opened by a right-click on the canvas: there, at the pointer. */
-
-/* On a phone the rail lies along the top of the rooms page, and the keys aren't shown. */
-@media (max-width: 560px) {
-  .rooms-rail { top: 10px; width: auto; display: flex; align-items: center; gap: 18px; }
-  /* under the room's name */
-  .rooms-rail-rule { width: 1px; height: 12px; margin: 0; }
-  .rooms-rail-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 0 4px; box-shadow: inset 0 -1px 0 transparent; }
-  .rooms-rail-item[aria-current="true"] { box-shadow: inset 0 -1px 0 currentColor; }
-  .rooms-grid-wrap { padding: 48px var(--gutter) 64px; }
-  .rooms-pages { margin: 0; padding: 0; }
-}
-@media (hover: none) {
-  .rooms-search-key { display: none; }
-}
-
 /* ---- Leaving: a comment for next time, and last time's comment under the search bar ---- */
-.rooms-leave { position: fixed; z-index: 21; color: var(--rooms-panel-ink); }
+.rooms-leave { position: fixed; z-index: 21; }
 .rooms-note {
   position: fixed;
-  top: calc(10px + env(safe-area-inset-top) + 46px);
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   max-width: min(560px, calc(100% - 2 * var(--gutter)));
@@ -695,20 +280,6 @@
 }
 .rooms.in-room .rooms-note { display: none; }
 .rooms-note-x { font-size: 10px; font-style: normal; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
-@media (max-width: 560px) {
-  .rooms-note { top: calc(10px + env(safe-area-inset-top) + 48px); }
-}
-.rooms-leave .rooms-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
-
-/* Mathematics in a thought's words (maths.js, drawn by KaTeX: vendor/katex.css). It takes the
-   thought's own colour and size, like its words; a formula that doesn't parse shows its source
-   in a quiet rust. */
-
-/* The tray: thoughts the mode hasn't placed yet, along the foot of the room. A quiet word opens a
-   row of them; each is dragged onto the canvas. */
-
-/* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
-   foot of a parent down to its children, with what the child forgets beside them. */
 
 /* A room's tags, in its pop-up only (never on its square): chips, and a "+ tag" field. */
 .rooms-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -721,25 +292,17 @@
   line-height: 1;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgb(var(--ink-rgb, 43 42 40) / .22);
+  border: 1px solid rgb(var(--ink-rgb) / .22);
 }
 .rooms-chip.auto { border-style: dashed; opacity: .7; }
-.rooms-chip-x { font: inherit; font-size: 12px; line-height: 1; color: inherit; background: none; border: 0; padding: 0 0 0 2px; min-height: 0; cursor: pointer; opacity: .5; }
+.rooms-chip-x { padding: 0 0 0 2px; font-size: 12px; line-height: 1; opacity: .5; }
 .rooms-chip-x:hover { opacity: 1; }
 .rooms-tag-field {
-  font: inherit;
+  width: 72px;
+  padding: 3px 0;
   font-size: 11px;
   letter-spacing: .06em;
-  width: 72px;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  border-radius: 0;
-  padding: 3px 0;
-  min-height: 0;
-  outline: none;
-  box-shadow: none;
+  border-bottom-color: transparent;
   opacity: .6;
 }
 .rooms-tag-field:focus { border-bottom-color: currentColor; opacity: 1; width: 110px; }
@@ -748,37 +311,24 @@
 .rooms-tags-btn.on { opacity: 1; }
 .rooms-tag-list { display: grid; gap: 6px; margin-top: -10px; width: 100%; }
 .rooms-tag-list[hidden] { display: none; }
-.rooms-tag-head, .rooms-tag-pick, .rooms-tag-plus {
-  appearance: none; background: none; border: 0; border-radius: 0; margin: 0; min-height: 0;
-  display: flex; gap: 6px; align-items: baseline; justify-content: flex-start;
-  text-align: left; font: inherit; color: inherit; cursor: pointer;
-  box-shadow: inset 1px 0 0 transparent; transition: opacity .2s, box-shadow .25s;
-}
+.rooms-tag-head, .rooms-tag-pick, .rooms-tag-plus { display: flex; align-items: baseline; justify-content: flex-start; }
 
 /* None and a group's name: small capitals, like the rail's words. */
-.rooms-tag-head {
-  width: 100%; padding: 4px 0 4px 15px; font-size: 14.25px; letter-spacing: .2em; text-transform: uppercase; opacity: .5;
-}
-.rooms-tag-head:is(:hover, :focus-visible) { opacity: .85; outline: none; }
-.rooms-tag-head[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.rooms-tag-head { width: 100%; padding: 4px 0 4px 15px; font-size: 14.25px; }
 .rooms-tag-head[aria-expanded="true"] { opacity: .85; }
-.rooms-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 18px; transition: transform .25s var(--rooms-ease); }
+.rooms-tag-caret { margin-left: auto; margin-right: 8px; letter-spacing: 0; opacity: .6; font-size: 18px; transition: transform .25s var(--ease); }
 .rooms-tag-head[aria-expanded="true"] .rooms-tag-caret { transform: rotate(90deg); }
 .rooms-tag-tags { display: grid; gap: 6px; padding: 4px 0 9px 15px; }
 
 /* A tag: its name and how many rooms have it. One of your own can be dragged onto a square. */
-.rooms-tag-pick {
-  padding: 2px 0 2px 15px; font-size: 16.5px; letter-spacing: .03em; line-height: 1.25; opacity: .5;
-}
+.rooms-tag-pick { padding: 2px 0 2px 15px; font-size: 16.5px; letter-spacing: .03em; line-height: 1.25; text-transform: none; }
 .rooms-tag-pick.draggable { cursor: grab; touch-action: none; }
-.rooms-tag-pick:is(:hover, :focus-visible) { opacity: .85; outline: none; }
-.rooms-tag-pick[aria-pressed="true"] { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
 .rooms-tag-name { overflow-wrap: anywhere; }
 .rooms-tag-n { font-size: 15px; opacity: .6; font-variant-numeric: tabular-nums; }
-.rooms-tag-plus { padding: 2px 0 2px 15px; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.25; opacity: .4; }
+.rooms-tag-plus { padding: 2px 0 2px 15px; letter-spacing: .14em; line-height: 1.25; opacity: .4; }
 .rooms-tag-plus > span { font-size: 19.5px; font-weight: 300; letter-spacing: 0; }
 .rooms-tag-list > .rooms-tag-plus { margin-top: 4px; }
-.rooms-tag-plus:is(:hover, :focus-visible) { opacity: .9; outline: none; }
+.rooms-tag-plus:is(:hover, :focus-visible) { opacity: .9; }
 .rooms-group-edit { padding-left: 15px; }
 .rooms-group-field, .rooms-group-field:focus, .rooms-make-field, .rooms-make-field:focus { width: 100%; max-width: 160px; font-size: 16.5px; opacity: 1; border-bottom-color: currentColor; }
 
@@ -786,21 +336,9 @@
 .rooms-tag-ghost {
   position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none !important;
   padding: 3px 9px; font-size: 11px; letter-spacing: .03em; white-space: nowrap;
-  background: var(--rooms-panel); color: var(--rooms-panel-ink); box-shadow: var(--rooms-panel-shadow);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .rooms-grid.tag-dragging, .rooms-grid.tag-dragging .rooms-tile { cursor: copy; }
-.rooms-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--home-ink, var(--ink, #2b2a28)) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
-@media (max-width: 560px) {
-  .rooms-rail { flex-wrap: wrap; right: var(--gutter); }
-  .rooms-tag-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; width: auto; }
-  .rooms-tag-head, .rooms-tag-pick, .rooms-group-edit, .rooms-tag-tags { width: auto; padding-left: 0; }
-  .rooms-tag-tags { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0; }
-}
-
-/* Russell: a closed chapter shows only its name; a click opens it as a document. */
-
-/* A chapter open as a document (document.js): its name and its thoughts as flowing paragraphs. */
+.rooms-tile.tag-over { outline: 1px solid color-mix(in srgb, var(--ink) 80%, transparent); outline-offset: 3px; transform: translateY(-2px); }
 
 /* Import a room… among an empty cell's choices (the roomfile feature) */
 .rooms-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }

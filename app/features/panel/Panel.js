@@ -31,11 +31,11 @@ export default class Panel extends Feature {
 
   build() {
     this.titleEl = el('div', { class: 'panel-title' });
-    this.kindEl = el('div', { class: 'panel-kind' });
+    this.kindEl = el('div', { class: 'label panel-kind' });
     this.body = el('div', { class: 'panel-body' });
     this.edge = el('div', { class: 'panel-edge', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Drag to change the width',
       title: 'Drag to change the width · double-click for the usual width', onpointerdown: (e) => this.drag(e), ondblclick: () => this.setWidth(WIDTH) });
-    this.root = el('aside', { class: 'side-panel', hidden: true, 'aria-label': 'Side panel',
+    this.root = el('aside', { class: 'panel side-panel', hidden: true, 'aria-label': 'Side panel',
       onpointerdown: (e) => e.stopPropagation(),
       onkeydown: (e) => {
         e.stopPropagation(); // the room's keys stay the room's
@@ -43,7 +43,7 @@ export default class Panel extends Feature {
       } },
       el('header', { class: 'panel-head' },
         el('div', { class: 'panel-names' }, this.kindEl, this.titleEl),
-        el('button', { type: 'button', class: 'panel-close', 'aria-label': 'Close', title: 'Close (Escape)', onclick: () => this.close() }, '×')),
+        el('button', { type: 'button', class: 'close-x panel-close', 'aria-label': 'Close', title: 'Close (Escape)', onclick: () => this.close() })),
       this.body,
       this.edge);
     for (const type of ['keyup', 'paste', 'copy', 'cut', 'wheel']) this.root.addEventListener(type, (e) => e.stopPropagation());

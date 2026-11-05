@@ -156,7 +156,7 @@ export default class Account extends Feature {
   // ---- The account page ----
 
   open() {
-    if (!this.page) this.page = ui.dialog({ title: 'Account', size: 'box', className: 'account-page' });
+    if (!this.page) this.page = ui.dialog({ title: 'Account', className: 'account-page' });
     this.render();
     this.page.open();
   }

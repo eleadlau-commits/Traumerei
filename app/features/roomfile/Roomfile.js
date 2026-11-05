@@ -190,7 +190,7 @@ export default class Roomfile extends Feature {
   ask(kind, title, { made = null, report = [], sum = null, buttons = null }) {
     this.card?.close();
     return new Promise((resolve) => {
-      const box = el('div', { class: 'roomfile-card', role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() });
+      const box = el('div', { class: 'panel sheet roomfile-card', role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() });
       const close = (yes = null) => { box.remove(); if (this.card === card) this.card = null; resolve(yes); };
       const card = { close: () => close(null) };
       this.card = card;
@@ -198,16 +198,16 @@ export default class Roomfile extends Feature {
       const any = buttons || made.groups || made.thoughts;
       const choices = buttons || (any ? [[true, 'Import']] : []);
       box.append(...[
-        el('div', { class: 'roomfile-kind' }, kind),
+        el('div', { class: 'label' }, kind),
         el('div', { class: 'roomfile-title' }, title),
         el('div', { class: 'roomfile-sum' }, sum || (any ? say(made) : 'Nothing to bring in')),
         report.length ? el('ul', { class: 'roomfile-report', 'aria-label': 'What couldn\'t be read' },
           ...shown.map((r) => el('li', {}, r)),
           report.length > REPORT ? el('li', {}, `and ${report.length - REPORT} more`) : null) : null,
-        el('div', { class: 'roomfile-words' },
-          ...choices.map(([value, label], k) => el('button', { type: 'button', class: 'roomfile-word' + (k ? '' : ' roomfile-go'), onclick: () => close(value) }, label)),
-          el('button', { type: 'button', class: 'roomfile-word', onclick: () => close() }, 'Cancel'),
-          el('span', { class: 'roomfile-keys' }, choices.length ? `Enter ${buttons ? 'replaces' : 'imports'} · Escape cancels` : 'Escape cancels')),
+        el('div', { class: 'sheet-words' },
+          ...choices.map(([value, label], k) => el('button', { type: 'button', class: 'word' + (k ? '' : ' roomfile-go'), onclick: () => close(value) }, label)),
+          el('button', { type: 'button', class: 'word', onclick: () => close() }, 'Cancel'),
+          el('span', { class: 'sheet-keys' }, choices.length ? `Enter ${buttons ? 'replaces' : 'imports'} · Escape cancels` : 'Escape cancels')),
       ].filter(Boolean));
       box.onkeydown = (e) => {
         e.stopPropagation();

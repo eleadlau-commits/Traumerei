@@ -44,6 +44,7 @@
   --veil-glow: color-mix(in srgb, rgb(var(--veil-rgb) / .78) 55%, rgb(255 255 255 / .78));
   --veil-mid: rgb(var(--veil-rgb) / .55);
   --veil-far: rgb(var(--veil-rgb) / .38);
+  --veil-bg: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
 
   /* Type. --home-font is the Typeface setting (Home sets it). */
   --font: var(--home-font, "Tenor Sans", sans-serif);
@@ -89,11 +90,23 @@ code {
 
 h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
 
+/* A button with no class is bare: no box, the words around it. */
+:where(button) {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 /* ---- Shared pieces ---- */
 
 /* A plain spaced word that works as a button: no fill, no border. A hairline comes under it on
    hover or focus, and stays under the chosen one ([aria-current], [aria-selected="true"],
-   [aria-checked="true"] or .on). Folio's .btn and a .seg's choices are words too. */
+   [aria-checked="true"], [aria-pressed="true"] or .on). Folio's .btn and a .seg's choices are words too. */
 .word, .btn, .seg button {
   appearance: none;
   height: auto;
@@ -106,12 +119,12 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   background: none;
   color: inherit;
   font: inherit;
+  justify-self: start;
   font-size: var(--word-size);
   font-weight: 400;
   letter-spacing: var(--word-spacing);
   text-transform: uppercase;
   text-decoration: none;
-  white-space: nowrap;
   opacity: .66;
   cursor: pointer;
   background-image: linear-gradient(currentColor, currentColor);
@@ -122,7 +135,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   -webkit-tap-highlight-color: transparent;
 }
 :is(.word, .btn, .seg button):is(:hover, :focus-visible),
-:is(.word, .btn, .seg button):is([aria-current]:not([aria-current="false"]), [aria-selected="true"], [aria-checked="true"], .on) {
+:is(.word, .btn, .seg button):is([aria-current]:not([aria-current="false"]), [aria-selected="true"], [aria-checked="true"], [aria-pressed="true"], .on) {
   opacity: 1;
   outline: none;
   background-size: calc(100% - 4px - var(--word-spacing)) 1px;
@@ -130,8 +143,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
 :is(.word, .btn, .seg button):disabled { opacity: .3; cursor: default; background-size: 0 1px; }
 
 /* A panel or pop-up: the pale veil, blurred behind, with a hairline edge; the ink and the typeface.
-   Look only: its place, size and padding are the feature's. */
-.panel {
+   Look only: its place, size and padding are the feature's. A toast is one too. */
+.panel, .toast {
   border-radius: 0;
   background: var(--surface);
   -webkit-backdrop-filter: var(--blur);
@@ -141,34 +154,32 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   font-family: var(--font);
 }
 
-/* The veil itself, as a layer: put .veil on an element that covers the screen. */
-.veil {
-  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
+/* The veil itself, as a layer: put .veil on an element that covers the screen. The menu and full
+   pop-ups lay it under themselves. */
+.veil, dialog.menu-drawer::before, dialog.dialog-full::before {
+  background: var(--veil-bg);
   -webkit-backdrop-filter: var(--blur) saturate(.9);
   backdrop-filter: var(--blur) saturate(.9);
 }
 
-/* A thin cross that closes something (the menu, a full pop-up). Two hairlines, 20px wide, in a
-   44px square. */
+/* A thin cross that closes something (the menu, a pop-up, a panel): two hairlines in a square of
+   --x-size (44px, where the cross is 20px wide; a panel's is smaller). */
 .close-x {
   position: relative;
-  width: 44px;
-  height: 44px;
+  flex: none;
+  width: var(--x-size, 44px);
+  height: var(--x-size, 44px);
   padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text);
-  opacity: .8;
-  cursor: pointer;
+  opacity: .6;
 }
 .close-x:is(:hover, :focus-visible) { opacity: 1; outline: none; }
 .close-x svg { display: none; }
 .close-x::before, .close-x::after {
   content: "";
   position: absolute;
-  top: 21.4px;
-  left: 12px;
-  width: 20px;
+  top: calc(50% - .6px);
+  left: calc(50% - var(--x-size, 44px) * .225);
+  width: calc(var(--x-size, 44px) * .45);
   height: 1.25px;
   border-radius: 1px;
   background: currentColor;
@@ -188,7 +199,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   text-transform: uppercase;
   opacity: .6;
 }
-.sub-head::before {
+.sub-head::before, .menu-top::before {
   content: "";
   position: absolute;
   top: 0;
@@ -199,8 +210,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   opacity: .5;
 }
 
-/* A small label in spaced capitals, without the hairline. */
-.label, legend {
+/* A small label in spaced capitals, without the hairline: a pop-up's kind, a field's name. */
+.label, :where(legend) {
   display: block;
   margin-bottom: 6px;
   padding: 0;
@@ -208,7 +219,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   font-weight: 400;
   letter-spacing: .22em;
   text-transform: uppercase;
-  opacity: .6;
+  opacity: .5;
 }
 
 /* Small writing: the same face, quieter, in ordinary case. */
@@ -245,12 +256,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   height: 44px;
   display: grid;
   place-items: center;
-  border: 0;
-  border-radius: 0;
-  background: none;
   color: var(--text);
   opacity: .8;
-  cursor: pointer;
 }
 .top-btn:hover { opacity: 1; }
 .top-btn svg { width: 24px; height: 24px; }
@@ -275,30 +282,21 @@ main, .view-host { flex: 1; display: flex; flex-direction: column; }
    No panel and no dark backdrop: the page goes pale and soft-focus behind the veil, and the words
    stand on the left. Who is signed in sits small at the bottom. The three lines become a thin
    cross in the same place. Closing must finish within Menu.js's SLIDE_MS (280ms). */
-dialog.menu-drawer {
-  position: fixed;
-  inset: 0;
+dialog:is(.menu-drawer, .dialog-full) {
   width: 100%;
   max-width: none;
   height: 100%;
   max-height: none;
   margin: 0;
-  padding: 0;
-  border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--text);
-  font-family: var(--font);
-  overflow: hidden;
 }
-.menu-drawer::backdrop { background: transparent; }
+dialog:is(.menu-drawer, .dialog-full)::backdrop { background: transparent; }
+dialog.menu-drawer { position: fixed; inset: 0; overflow: hidden; }
 dialog.menu-drawer::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
-  -webkit-backdrop-filter: var(--blur) saturate(.9);
-  backdrop-filter: var(--blur) saturate(.9);
   opacity: 0;
   transition: opacity .25s ease;
 }
@@ -346,25 +344,13 @@ dialog.menu-drawer::before {
 .menu-drawer.shown .menu-panel::after { transform: rotate(-45deg); }
 
 .menu-list { display: grid; justify-items: start; gap: clamp(18px, 3.2vh, 30px); padding: 0; }
+/* Its words are Folio's .word, larger, rising into place one after another. */
 .menu-row {
   --word-spacing: .26em;
-  padding: 6px 2px;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
   font-size: clamp(20px, 2.4vw, 26px);
-  letter-spacing: var(--word-spacing);
-  text-transform: uppercase;
   text-align: left;
-  cursor: pointer;
   opacity: 0;
   transform: translateY(8px);
-  background-image: linear-gradient(currentColor, currentColor);
-  background-repeat: no-repeat;
-  background-position: 2px 100%;
-  background-size: 0 1px;
   transition: opacity .2s, transform .25s, background-size .3s;
 }
 .menu-row svg { display: none; }
@@ -378,7 +364,7 @@ dialog.menu-drawer::before {
 .menu-drawer.shown .menu-row:nth-child(3) { transition-delay: .24s, .24s, 0s; }
 .menu-drawer.shown .menu-row:nth-child(4) { transition-delay: .31s, .31s, 0s; }
 .menu-drawer.shown .menu-row:nth-child(n+5) { transition-delay: .38s, .38s, 0s; }
-.menu-row:is(:hover, :focus-visible) { opacity: 1; outline: none; background-size: calc(100% - 4px - var(--word-spacing)) 1px; }
+.menu-drawer.shown .menu-row:is(:hover, :focus-visible) { opacity: 1; }
 .menu-row.spin { opacity: .4; }
 
 /* Who is signed in: small, at the bottom left, under a short hairline. */
@@ -388,27 +374,22 @@ dialog.menu-drawer::before {
   bottom: 56px;
   display: grid;
   padding: 18px 0 4px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
   text-align: left;
-  cursor: pointer;
   opacity: 0;
   transition: opacity .25s;
 }
 .menu-drawer.shown .menu-top { opacity: .5; transition: opacity .6s .38s; }
 .menu-top:is(:hover, :focus-visible) { opacity: .8; outline: none; }
-.menu-top::before { content: ""; position: absolute; top: 0; left: 0; width: 36px; height: 1px; background: currentColor; opacity: .5; }
 .menu-avatar { display: none; }
 .menu-who { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .menu-who :is(b, small) { font-size: 11px; font-weight: 400; letter-spacing: .26em; text-transform: uppercase; color: inherit; overflow-wrap: anywhere; }
 
 /* ---- Buttons and choices ---- */
 
+.btn { align-self: flex-start; }
 .btn.primary { opacity: .9; }
 .btn.danger { color: var(--danger); }
-.btn.block { display: block; margin-top: 12px; }
+.btn.block { display: block; justify-self: stretch; margin-top: 12px; }
 .btn.small { font-size: var(--word-size); }
 
 /* A small icon on its own: no tile. */
@@ -418,12 +399,7 @@ dialog.menu-drawer::before {
   display: grid;
   place-items: center;
   padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: inherit;
   opacity: .6;
-  cursor: pointer;
 }
 .icon-btn:is(:hover, :focus-visible) { opacity: 1; outline: none; }
 .icon-btn.ghost { width: 32px; }
@@ -432,15 +408,10 @@ dialog.menu-drawer::before {
 
 .link-btn {
   padding: 4px 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
   font-size: 13px;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  cursor: pointer;
   white-space: nowrap;
 }
 
@@ -448,7 +419,7 @@ dialog.menu-drawer::before {
 .seg { display: flex; flex-wrap: wrap; gap: 8px 26px; padding: 0; background: none; }
 
 /* Folds (<details>): a spaced word with + or −, no triangle. */
-details > summary {
+:where(details) > summary {
   list-style: none;
   display: flex;
   align-items: baseline;
@@ -461,50 +432,62 @@ details > summary {
   opacity: .75;
   cursor: pointer;
 }
-details > summary::-webkit-details-marker { display: none; }
-details > summary::before { content: "+"; width: 10px; letter-spacing: 0; opacity: .7; }
-details[open] > summary::before { content: "−"; }
-details > summary:hover { opacity: 1; }
+:where(details) > summary::-webkit-details-marker { display: none; }
+:where(details) > summary::before { content: "+"; width: 10px; letter-spacing: 0; opacity: .7; }
+:where(details[open]) > summary::before { content: "−"; }
+:where(details) > summary:hover { opacity: 1; }
 .advanced .hint { margin: 8px 0 10px; }
 
 /* ---- Text and forms ---- */
 
 .field { display: flex; gap: 8px; }
-/* A line to type on: no box, a hairline under it. */
-input[type="url"], input[type="text"], input[type="search"], input[type="date"], input[type="datetime-local"], select {
-  flex: 1;
+/* A line to type on: no box, a hairline under it, in the words around it. Text boxes and choices
+   are given with :where(), so a feature's own class always wins over them. */
+:where(input:not([type]), input[type="url"], input[type="text"], input[type="search"], input[type="date"], input[type="datetime-local"], select, textarea) {
   width: 100%;
   min-width: 0;
-  padding: 8px 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 0;
   border: 0;
-  border-bottom: 1px solid var(--faint);
+  border-bottom: 1px solid rgb(var(--ink-rgb) / .25);
   border-radius: 0;
+  box-shadow: none;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 15px;
+  letter-spacing: inherit;
+  outline: none;
 }
-/* A box to write in: a faint wash with a hairline edge. */
-textarea {
-  width: 100%;
-  min-height: 84px;
-  padding: 12px 14px;
+:where(input:not([type]), input[type="url"], input[type="text"], input[type="search"], input[type="date"], input[type="datetime-local"], select, textarea):focus { border-bottom-color: currentColor; }
+:where(textarea) { line-height: 1.5; resize: vertical; }
+/* A choice: the same line, with a small chevron. */
+:where(select) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 18px;
+  cursor: pointer;
+  background: linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat,
+    linear-gradient(-45deg, transparent 50%, currentColor 50%) right 1px center / 5px 5px no-repeat;
+}
+:where(select) option { color: var(--ink); background: var(--veil); }
+/* A box of code or source: monospace on a faint wash, with a hairline edge. */
+.code-box {
+  padding: 14px;
   border: 0;
-  border-radius: 0;
   background: rgb(var(--ink-rgb) / .04);
   box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .1);
-  color: inherit;
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.5;
-  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: 0;
+  tab-size: 2;
 }
-:is(input[type="url"], input[type="text"], input[type="search"], input[type="date"], input[type="datetime-local"], select):focus { outline: none; border-bottom-color: var(--text); }
-textarea:focus { outline: none; box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .28); }
-input[type="color"] { padding: 0; border: 1px solid var(--faint); border-radius: 0; background: none; }
+.code-box:focus { box-shadow: inset 0 0 0 1px rgb(var(--ink-rgb) / .28); }
+:where(input[type="color"]) { padding: 0; border: 1px solid var(--faint); border-radius: 0; background: none; }
 
 /* A slider: a hairline with a small ink bead. */
-input[type="range"] {
+:where(input[type="range"]) {
   -webkit-appearance: none;
   appearance: none;
   height: 20px;
@@ -512,12 +495,12 @@ input[type="range"] {
   background: none;
   cursor: pointer;
 }
-input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: var(--faint); }
-input[type="range"]::-moz-range-track { height: 1px; background: var(--faint); }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; border: 0; border-radius: 50%; background: var(--text); }
-input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--text); }
-input[type="range"]:focus-visible { outline: none; }
-input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(var(--ink-rgb) / .15); }
+:where(input[type="range"])::-webkit-slider-runnable-track { height: 1px; background: var(--faint); }
+:where(input[type="range"])::-moz-range-track { height: 1px; background: var(--faint); }
+:where(input[type="range"])::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; border: 0; border-radius: 50%; background: var(--text); }
+:where(input[type="range"])::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--text); }
+:where(input[type="range"]):focus-visible { outline: none; }
+:where(input[type="range"]):focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(var(--ink-rgb) / .15); }
 
 .check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .check input { width: 14px; height: 14px; margin: 0; accent-color: var(--text); }
@@ -589,25 +572,14 @@ dialog::backdrop { background: rgb(var(--ink-rgb) / .08); }
 /* A full pop-up (Settings, About, ...) is the veil: no window. The page goes pale and soft-focus,
    and the words stand on the left. The thin cross top left closes it (as do Escape and back). */
 dialog.dialog-full {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  margin: 0;
-  background: transparent;
-  box-shadow: none;
   transition: transform 0.22s ease; /* springing back after a pull that didn't close it */
 }
 dialog.dialog-full.pulling { transition: none; }
-dialog.dialog-full::backdrop { background: transparent; }
 dialog.dialog-full::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(90% 80% at 18% 50%, var(--veil-glow), var(--veil-mid) 60%, var(--veil-far));
-  -webkit-backdrop-filter: var(--blur) saturate(.9);
-  backdrop-filter: var(--blur) saturate(.9);
   animation: veil-in .7s var(--ease) both;
 }
 /* A pale band at the top, so the words fade out as they scroll up under the cross. */
@@ -634,6 +606,7 @@ dialog.dialog-full::before {
 }
 .dialog-full :is(.dialog-content, .dialog-head h2) { animation: veil-rise .7s .1s var(--ease) both; }
 .dialog-full .dialog-content { gap: 40px; }
+.dialog-full .dialog-content :is(p, small) { font-size: 13px; line-height: 1.6; letter-spacing: .02em; color: var(--muted); }
 .dialog-full .dialog-head { position: static; margin: 0; padding: 0; }
 .dialog-full .dialog-head h2 {
   margin: 0;
@@ -644,7 +617,7 @@ dialog.dialog-full::before {
   opacity: .8;
 }
 /* Its close cross (.close-x) sits where the three lines are. */
-.dialog-full .dialog-head .close-x { position: fixed; z-index: 2; top: 10px; left: var(--gutter); }
+.dialog-full .dialog-head .close-x { position: fixed; z-index: 2; top: 10px; left: var(--gutter); opacity: .8; }
 
 /* A small box in the middle (size: 'box'): a panel over a faint shade. */
 dialog.dialog-box {
@@ -669,6 +642,204 @@ dialog.dialog-box {
 .feature-row.off .feature-text { opacity: 0.6; }
 .problems { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 
+/* ---- Create's frame: what the rooms page and a room share ----
+   The wordmark beside the menu, the search bar in the middle of the top row, the back arrow top
+   right, the rail on the left, and the quiet words at the foot. Each feature places them in its
+   own root and sets when they show (their opacity); the look is here. */
+:root {
+  --strip: 64px;  /* the strip of the home page left showing at the top */
+  --rail: 206px;  /* the rail on the left: 72px and one grid column (a cell and its gap) more */
+  --glow-soft: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
+}
+
+.wordmark {
+  position: fixed;
+  top: 10px;
+  left: calc(var(--gutter) + 56px);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  opacity: 0; /* a feature shows it */
+  pointer-events: none !important;
+  user-select: none;
+  transition: opacity .4s;
+}
+
+/* The search bar: a word on a pale strip, with its keys on the right. */
+.find-btn {
+  position: fixed;
+  top: 17px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgb(var(--veil-rgb) / .55);
+  background-image: none;
+  opacity: 0; /* a feature shows it */
+  transition: opacity .4s, background-color .25s;
+}
+.find-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb) / .8); }
+.find-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
+.find-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
+
+.back-btn {
+  position: fixed;
+  top: 10px;
+  right: var(--gutter);
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  opacity: 0; /* a feature shows it */
+  transition: opacity .4s;
+}
+.back-btn:is(:hover, :focus-visible) { opacity: 1; outline: none; }
+.back-btn svg { width: 24px; height: 24px; }
+
+/* The rail: words down the left, under the menu; the current one has a hairline at its left. */
+.rail {
+  position: absolute;
+  z-index: 2;
+  top: 32px;
+  left: var(--gutter);
+  width: calc(var(--rail) - 24px);
+  display: grid;
+  gap: 22px;
+  justify-items: start;
+}
+.rail-item {
+  margin: 0;
+  padding: 3px 0 3px 15px;
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: .2em;
+  text-align: left;
+  text-transform: uppercase;
+  overflow-wrap: break-word;
+  opacity: .5;
+  box-shadow: inset 1px 0 0 transparent;
+  transition: opacity .2s, box-shadow .25s;
+}
+.rail-item:is(:hover, :focus-visible) { opacity: .85; outline: none; }
+.rail-item:is([aria-current="true"], [aria-current="page"], [aria-pressed="true"]) { opacity: 1; box-shadow: inset 1px 0 0 currentColor; }
+.rail-item.drop-on { opacity: 1; box-shadow: inset 2px 0 0 currentColor; }
+.rail-rule { width: 33px; height: 1px; margin-left: 15px; background: currentColor; opacity: .2; }
+
+/* A quiet "Saved" at the bottom right, and a line of help at the foot, the first time a page is seen. */
+.saved-note {
+  position: fixed;
+  right: calc(var(--gutter) + 12px);
+  bottom: 20px;
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+}
+.saved-note.on { animation: saved-note 2.2s ease both; }
+@keyframes saved-note { 10%, 60% { opacity: .45; } 100% { opacity: 0; } }
+.foot-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translate(-50%, 6px);
+  max-width: min(760px, calc(100% - 2 * var(--gutter) - 200px));
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: .05em;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s, transform .6s var(--ease);
+}
+.foot-hint.on { opacity: .6; transform: translate(-50%, 0); }
+
+/* Going into a room: the square grows to fill the screen (from where Room.js puts it), then fades. */
+.expand { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 5; transform-origin: 0 0; pointer-events: none; }
+.expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
+.expand.done { transition: opacity .25s ease; opacity: 0; }
+
+/* ---- Pop-ups over a page ---- */
+
+/* A faint shade over the whole screen, under a pop-up. */
+.shade { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb) / .08); }
+
+/* A sheet: a panel in the middle, for writing or deciding (with .panel). .top-sheet sits near the
+   top instead (search, the keys). */
+.sheet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100% - 160px);
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: 26px 28px 18px;
+  animation: pop-in .35s ease both;
+}
+.top-sheet {
+  position: absolute;
+  left: 50%;
+  top: 14vh;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 2 * var(--gutter)));
+  animation: pop-unfold-top .2s var(--ease) both;
+}
+.sheet-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
+.sheet-keys { margin-left: auto; font-size: 11px; letter-spacing: .05em; opacity: .5; }
+@keyframes pop-in { from { opacity: 0; } }
+@keyframes pop-unfold { from { opacity: 0; transform: translateY(6px); } }
+@keyframes pop-unfold-top { from { opacity: 0; transform: translate(-50%, 6px); } }
+
+/* A small card of properties beside what it is about (with .panel): its name, a few rows of
+   words, a note, and Delete. */
+.pop {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 10px;
+  width: 236px;
+  padding: 14px 16px;
+  animation: pop-unfold .2s var(--ease) both;
+}
+.pop-name { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; }
+.pop-desc { font-size: 12px; line-height: 1.4; resize: none; border-bottom-color: rgb(var(--ink-rgb) / .15); }
+.pop-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.pop-note { font-size: 12px; letter-spacing: .06em; opacity: .55; }
+.pop-delete { opacity: .6; }
+.pop-delete:hover { color: var(--danger); opacity: 1; }
+
+/* A list to pick from in a panel (Add, a new room's kinds, search results): a row of words with a
+   quiet note on the right; a faint wash on the one under the pointer or keys. */
+.pick {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 10px 18px;
+  text-align: left;
+}
+.pick:is(:hover, :focus-visible, .on) { outline: none; background: rgb(var(--ink-rgb) / .06); }
+.pick-note { font-size: 12.5px; letter-spacing: .04em; text-transform: none; opacity: .5; }
+.pick-rule { height: 1px; margin: 6px 16px; background: rgb(var(--ink-rgb) / .14); }
+
+/* The list of keys (?): names in small capitals, what they do beside them. */
+.keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
+.keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+.keys-list dd { margin: 0; opacity: .8; }
+
 /* ---- Message at the bottom ---- */
 
 .toast {
@@ -678,11 +849,6 @@ dialog.dialog-box {
   z-index: 50;
   max-width: calc(100vw - 2 * var(--gutter));
   padding: 10px 18px;
-  background: var(--surface);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  box-shadow: var(--shadow);
-  color: var(--text);
   font-size: 13px;
   letter-spacing: .04em;
   opacity: 0;

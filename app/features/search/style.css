@@ -1,50 +1,10 @@
-/* Styles for Search. Class names start with "search-". A quiet panel near the top, over a faint
-   shade of the whole screen, in the palette's veil like every pop-up. */
-.search {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  pointer-events: auto;
-  background: rgb(var(--ink-rgb, 43 42 40) / .08);
-  font-family: var(--home-font);
-}
-.search[hidden] { display: none !important; }
-.search-panel {
-  position: absolute;
-  left: 50%;
-  top: 14vh;
-  transform: translateX(-50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  background: rgb(var(--veil-rgb, 250 247 240) / .9);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 0 0 1px rgb(var(--ink-rgb, 43 42 40) / .1), 0 18px 60px rgb(var(--ink-rgb, 43 42 40) / .16);
-  color: var(--home-ink, var(--ink, #2b2a28));
-  animation: search-unfold .2s cubic-bezier(.22, .7, .18, 1) both;
-}
-@keyframes search-unfold { from { opacity: 0; transform: translateY(6px); } }
-.search-field {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 18px 20px;
-  font: inherit;
-  font-size: 17px;
-  letter-spacing: .02em;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid rgb(var(--ink-rgb, 43 42 40) / .12);
-  border-radius: 0;
-  outline: none;
-  box-shadow: none;
-  min-height: 0;
-}
+/* Styles for Search: layout only. Class names start with "search-". Folio's faint shade over the
+   screen, its panel near the top, and its pick list. */
+.search { font-family: var(--font); }
+.search-field { padding: 18px 20px; font-size: 17px; letter-spacing: .02em; border-bottom-color: rgb(var(--ink-rgb) / .12); }
+.search-field:focus { border-bottom-color: rgb(var(--ink-rgb) / .12); }
 .search-list { max-height: 50vh; overflow: auto; }
-.search-item {
-  appearance: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
-  display: flex; justify-content: space-between; align-items: baseline; gap: 20px; width: 100%; padding: 11px 20px; text-align: left;
-}
-.search-item.on, .search-item:hover { background: rgb(var(--ink-rgb, 43 42 40) / .06); }
+.search-item { gap: 20px; padding: 11px 20px; }
 .search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
 .search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
