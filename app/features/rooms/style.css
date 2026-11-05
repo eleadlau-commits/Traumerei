@@ -149,7 +149,6 @@
 .rooms.in-room :is(.rooms-saved, .rooms-hint) { color: var(--room-ink, var(--ink)); }
 
 /* The list of keys (?) */
-.rooms-keys-panel { padding: 18px 22px 20px; }
 
 /* ---- The rooms page, step 1: peek, the last room, a half-written thought, lock, lights, Archive ---- */
 

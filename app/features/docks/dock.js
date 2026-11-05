@@ -21,12 +21,14 @@ export class Dock {
     this.resized = resized;
     this.width = this.fit(saved ?? this.usual);
     this.shown = null; // { key, onClose, beforeClose }
+    this.tucked = false; // hidden by its key, or Canvas only, with what shows kept
     this.build(label);
   }
 
   fit(px) { return Math.round(Math.max(LEAST, Math.min(+px || this.usual, Math.max(LEAST, window.innerWidth * MOST)))); }
 
-  get showing() { return this.shown ? this.width : 0; }
+  get showing() { return this.shown && !this.tucked ? this.width : 0; }
+  get visible() { return !!this.shown && !this.tucked; }
 
   build(label) {
     this.titleEl = el('div', { class: 'dock-title' });
@@ -60,6 +62,7 @@ export class Dock {
     this.kindEl.textContent = kind;
     this.titleEl.textContent = title;
     this.body.replaceChildren(body || '');
+    this.tucked = false;
     this.root.hidden = false;
     this.setWidth(this.width, false);
     document.documentElement.classList.add(`dock-${this.side}-open`);
@@ -82,11 +85,23 @@ export class Dock {
       if (!ok || this.shown !== shown) return false;
     }
     this.shown = null;
+    this.tucked = false;
     this.root.hidden = true;
     this.body.replaceChildren();
     document.documentElement.classList.remove(`dock-${this.side}-open`);
     this.resized(0);
     try { shown.onClose?.(); } catch (err) { console.warn(`Dock (${this.side}): onClose`, err); }
+    return true;
+  }
+
+  // Hides the dock (on) or brings it back, keeping what shows in it. False when nothing shows.
+  tuck(on) {
+    if (!this.shown) return false;
+    this.tucked = !!on;
+    this.root.hidden = this.tucked;
+    document.documentElement.classList.toggle(`dock-${this.side}-open`, !this.tucked);
+    if (this.tucked && this.root.contains(document.activeElement)) document.activeElement.blur();
+    this.resized(this.showing);
     return true;
   }
 
@@ -96,11 +111,11 @@ export class Dock {
     this.width = this.fit(px);
     if (keep) this.keep(this.width);
     this.root.style.width = `${this.width}px`;
-    if (this.shown) this.resized(this.width);
+    if (this.visible) this.resized(this.width);
   }
 
   // The window changed size: keep the width inside its bounds.
-  refit() { if (this.shown) this.setWidth(this.width, false); }
+  refit() { if (this.visible) this.setWidth(this.width, false); }
 
   // The edge dragged: the width follows the pointer, and is remembered when let go.
   drag(e) {

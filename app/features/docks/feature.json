@@ -5,5 +5,8 @@
   "main": "Docks.js",
   "styles": [
     "style.css"
+  ],
+  "uses": [
+    "keys"
   ]
 }

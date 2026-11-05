@@ -23,6 +23,7 @@ import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } f
 import { el, MAC, KEY, HINT, enterKeeps } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { Strip } from './strip.js';
+import { ROOMS_KEYS } from './keys.js';
 
 export default class Rooms extends Feature {
   start() {
@@ -69,6 +70,8 @@ export default class Rooms extends Feature {
       showRooms: () => this.showRooms(),   // back to this page, from a room
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
+    this.keyMap = this.use('keys'); // the key map: the ? list, or null
+    for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
   }
 
@@ -112,7 +115,7 @@ export default class Rooms extends Feature {
   close() {
     this.leaving = false;
     this.leaveBox.hidden = true;
-    this.closeKeys();
+    this.keyMap?.hide();
     this.closeLights();
     this.files?.cancel();
     this.room?.leave();
@@ -345,11 +348,10 @@ export default class Rooms extends Feature {
     this.openRoom(MESSY, e.key); // typing anything starts a thought in Messy thoughts
   }
 
-  // ?: the keys. On a grid, Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in;
+  // On a grid, Delete removes the chosen room (Ctrl+Z brings it back); Enter goes in;
   // the ContextMenu key (or Shift+F10) opens its properties. True when the key was used.
   shortcut(e, mod) {
     const k = e.key;
-    if (k === '?' && !mod) { e.preventDefault(); this.showKeys(); return true; }
     const id = this.roomSel || this.roomPick;
     const r = id && room(this.world, id);
     const deletes = k === 'Delete' || (MAC && e.metaKey && k === 'Backspace');
@@ -365,33 +367,6 @@ export default class Rooms extends Feature {
     if (k === 'Enter' && r) { e.preventDefault(); this.openRoom(r.id); return true; }
     if ((k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) && r) { e.preventDefault(); this.chooseRoom(r.id, true); return true; }
     return false;
-  }
-
-  // The keys, in a panel (the same list a room shows).
-  showKeys() {
-    const rows = [
-      ['Type anywhere', 'write a thought'], ['Enter', 'keep it, and go on with the train'], ['Ctrl+Enter', 'a new train'],
-      ['Alt+P · Alt+I', 'a passage · a picture'], ['Click · double-click', 'choose a thought · its whole train'], ['Triple-click', 'write in a thought, where it is'],
-      ['Right-click · Enter', 'the properties of what is chosen'], ['Right-click the canvas', 'Add, just there'],
-      ['Drag the canvas', 'a box to choose many'], ['Ctrl+drag', 'move around'], ['Ctrl+A', 'choose everything'],
-      ['Shift+click · Ctrl+click', 'add to the choice · in or out of it'], ['Ctrl+C · Ctrl+V', 'copy what is chosen · put a copy here'],
-      ['Delete', 'delete what is chosen'], ['Backspace in an empty thought', 'back into the one before'],
-      ['Arrows · Shift+arrows', 'nudge what is chosen'],
-      [KEY, 'search every room'], ['Ctrl+Z · Ctrl+Shift+Z', 'undo · redo'], ['Escape', 'let go, or go back'], ['?', 'these keys'],
-    ];
-    this.keysBox.replaceChildren(el('div', { class: 'panel top-sheet rooms-keys-panel' },
-      el('div', { class: 'label' }, 'Keys'),
-      el('dl', { class: 'keys-list' }, rows.flatMap(([a, b]) => [el('dt', {}, a), el('dd', {}, b)]))));
-    this.keysBox.hidden = false;
-    this.keysBox.onpointerdown = () => this.closeKeys();
-    const close = (ev) => { ev.stopPropagation(); ev.preventDefault(); this.closeKeys(); document.removeEventListener('keydown', close, true); };
-    document.addEventListener('keydown', close, true);
-  }
-
-  closeKeys() {
-    if (this.keysBox.hidden) return;
-    this.keysBox.hidden = true;
-    this.keysBox.replaceChildren();
   }
 
   // ---- Room Markdown: the roomfile feature does the work; this page says where ----
@@ -460,12 +435,11 @@ export default class Rooms extends Feature {
     this.searchBtn = el('button', { type: 'button', class: 'word find-btn rooms-search-btn', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => { if (this.lights != null) this.closeLights(); else this.openLights(); } },
     el('span', {}, 'Search'), el('span', { class: 'find-key' }, KEY));
-    this.keysBox = el('div', { class: 'shade', hidden: true, role: 'dialog', 'aria-label': 'Keys' });
     this.savedMark = el('div', { class: 'saved-note rooms-saved', 'aria-live': 'polite' });
     this.hintLine = el('div', { class: 'foot-hint rooms-hint' });
     // A small wordmark beside the menu (☰).
     this.wordmark = el('div', { class: 'wordmark rooms-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
-    this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage, this.wordmark, this.searchBtn, this.backBtn, this.keysBox, this.savedMark, this.hintLine,
+    this.root = el('div', { class: 'rooms', hidden: true }, this.roomsPage, this.wordmark, this.searchBtn, this.backBtn, this.savedMark, this.hintLine,
       this.noteLine = el('div', { class: 'rooms-note', hidden: true }),
       this.leaveBox = el('div', { class: 'panel sheet rooms-leave', hidden: true, role: 'dialog', 'aria-label': 'Comment for next time', onpointerdown: (e) => e.stopPropagation() }));
     (document.getElementById('folio-root') || document.body).append(this.root);

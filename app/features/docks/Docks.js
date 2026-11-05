@@ -7,6 +7,7 @@
 
 import { Feature } from 'folio';
 import { Dock } from './dock.js';
+import { DOCK_KEYS } from './keys.js';
 
 const SIDES = ['left', 'right'];
 const LABEL = { left: 'Left dock', right: 'Right dock' };
@@ -25,8 +26,12 @@ export default class Docks extends Feature {
     }
     const services = {};
     for (const side of SIDES) services[side] = this.service(this.docks[side]);
+    services.canvasOnly = () => this.canvasOnly();
     this.provide('docks', services);
     this.provide('panel', services.right); // the side panel, as editors have always opened in it
+    this.tuckedAll = null; // the docks Canvas only hid, to bring back
+    const run = { 'docks.left': () => this.toggle('left'), 'docks.right': () => this.toggle('right'), 'docks.canvas': () => this.canvasOnly() };
+    for (const k of DOCK_KEYS) this.add('keys', { ...k, zone: 'everywhere', run: run[k.id] });
     window.addEventListener('resize', () => { for (const side of SIDES) this.docks[side].refit(); });
   }
 
@@ -36,8 +41,29 @@ export default class Docks extends Feature {
       open: (o) => dock.open(o),
       close: (key = null, force = false) => dock.close(key, force),
       isOpen: (key = null) => dock.isOpen(key),
+      toggle: () => this.toggle(dock.side),
+      get shown() { return dock.visible; },
       get width() { return dock.showing; },
     };
+  }
+
+  // A dock's key: hides it, or brings it back, keeping what shows in it.
+  toggle(side) {
+    const dock = this.docks[side];
+    this.tuckedAll = null;
+    return dock.tuck(dock.visible);
+  }
+
+  // Canvas only: every dock that shows hides; the same again brings back just those.
+  canvasOnly() {
+    const showing = SIDES.filter((s) => this.docks[s].visible);
+    if (showing.length) {
+      for (const s of showing) this.docks[s].tuck(true);
+      this.tuckedAll = showing;
+    } else if (this.tuckedAll) {
+      for (const s of this.tuckedAll) this.docks[s].tuck(false);
+      this.tuckedAll = null;
+    }
   }
 
   publish(side, px) {

@@ -12,6 +12,7 @@
   ],
   "uses": [
     "renderer",
-    "roomfile"
+    "roomfile",
+    "keys"
   ]
 }
