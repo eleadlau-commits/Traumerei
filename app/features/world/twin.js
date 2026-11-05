@@ -4,7 +4,7 @@
 // a thought or group can be moved across (`across`), and then it belongs to the other side alone.
 // The sides are the only rooms inside a room (model.js: canHold, isTwin).
 
-import { addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup } from './model.js';
+import { addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
 
 export { isTwin };
 
@@ -34,6 +34,27 @@ export const twinOf = (w, id) => { const r = room(w, id); const t = r && w.thing
 export function otherSide(w, id) {
   const t = twinOf(w, id);
   return t ? sides(w, t.id).find((s) => s.id !== id) || null : null;
+}
+
+// A room's name as a place to move to: a Twin's side is "Pair · Left" / "Pair · Right", any other
+// room its own name.
+export function placeName(w, id) {
+  const r = room(w, id);
+  const t = twinOf(w, id);
+  return t ? `${t.name} · ${r.side ? 'Right' : 'Left'}` : r?.name ?? '';
+}
+
+// The rooms a thought in room `from` can be moved to, as [{ id, name }]: every room on the rooms
+// page but `from`, a Twin as its two sides (a Twin itself holds no thoughts), none locked. Inside a
+// side, the other side comes first; then Messy thoughts, then the rest by name.
+export function moveTargets(w, from) {
+  const out = [];
+  for (const r of rooms(w)) for (const x of isTwin(r) ? sides(w, r.id) : [r]) {
+    if (x.id !== from && !shut(w, x.id)) out.push({ id: x.id, name: placeName(w, x.id) });
+  }
+  const other = otherSide(w, from)?.id;
+  const rank = (x) => (x.id === other ? 0 : x.id === MESSY ? 1 : 2);
+  return out.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 
 // A thought or a whole group moved from its side to the other, at (x, y) there: it leaves every

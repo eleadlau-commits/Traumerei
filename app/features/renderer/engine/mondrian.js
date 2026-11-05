@@ -1,4 +1,4 @@
-// The Planar mode's maths. So far the base, F1–F6: the picture dissolved into a still fog of its own
+// The Mondrian mode's maths. So far the base, F1–F6: the picture dissolved into a still fog of its own
 // colours (palette fields, B2), drifted into veils by a seeded warp (B4). Nothing moves; no shape survives.
 //   F1  sample:   the picture, area-averaged in linear light onto a grid of SAMPLE_SHORT cells on the
 //                 short side, to OKLab. A picture with almost no colour takes the tint τ's a, b.

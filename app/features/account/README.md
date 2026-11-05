@@ -15,6 +15,9 @@ Sign in with Google, and your settings follow you to every device.
   - Signing in to an account that **already has settings**: the account wins, and the page reloads
     so every feature uses them. The same happens when you open the page on a device whose
     settings are older than the account's.
+  - **Reload guard.** Opening the app can save things before the account is compared, so right
+    after that reload the copies may differ again. Within a minute of an automatic reload the page
+    never reloads again: it sends this device's copy up instead, and the account page says so.
   - Each change is sent up 1.5 s after the last one (sliders save on every move), and when the page closes.
 - Signing out keeps this device's settings as they are.
 
