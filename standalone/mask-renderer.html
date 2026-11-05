@@ -14597,6 +14597,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const self = this;
       this.stack = [];
       this.narrow = !!this.storage.get("railNarrow");
+      this.moreOpen = !!this.storage.get("moreOpen");
+      this.defineSlot("rail.more", "Under ⋯ More, at the foot of the rooms page's rail and a room's: { id, label, icon (a ui.ICONS name), order, run(), on?() → shown as pressed, visible?(), title?() → its hover words }.");
       this.build();
       this.drawRail();
       this.provide("frame", {
@@ -14608,6 +14610,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         clearHint: () => this.clearHint(),
         hover: (text) => this.hover(text),
         toggleRail: () => this.toggleRail(),
+        more: () => this.more(),
         get railNarrow() {
           return self.narrow;
         }
@@ -14616,6 +14619,59 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.addEventListener("keydown", () => this.clearHint(), true);
       document.addEventListener("pointerdown", () => this.clearHint(), true);
       document.addEventListener("pointerover", (e) => this.over(e.target), true);
+    }
+    // ⋯ More, for the foot of a rail: a node the rail puts where it likes. Folded, it is one word;
+    // a click unfolds what is in the slot `rail.more` under it (remembered). Empty when nothing is
+    // there to show.
+    more() {
+      const box = el8("div", { class: "frame-more", role: "group", "aria-label": "More" });
+      const icon2 = (name5) => {
+        const s = ui_exports.icon(name5);
+        s.classList.add("rail-icon");
+        return s;
+      };
+      const word = (text) => el8("span", { class: "rail-word" }, text);
+      const draw2 = () => {
+        const items = this.slot("rail.more").items.filter((i2) => {
+          try {
+            return i2.visible ? !!i2.visible() : true;
+          } catch {
+            return false;
+          }
+        }).sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
+        if (!items.length) {
+          box.replaceChildren();
+          return;
+        }
+        box.replaceChildren(
+          el8("div", { class: "rail-rule" }),
+          el8(
+            "button",
+            {
+              type: "button",
+              class: "rail-item frame-more-btn",
+              "aria-expanded": String(this.moreOpen),
+              title: "More",
+              onclick: () => {
+                this.moreOpen = !this.moreOpen;
+                this.storage.set("moreOpen", this.moreOpen);
+                draw2();
+              }
+            },
+            icon2("dots"),
+            word("More")
+          ),
+          ...this.moreOpen ? items.map((i2) => el8("button", {
+            type: "button",
+            class: "rail-item frame-more-item",
+            "aria-pressed": String(!!i2.on?.()),
+            title: i2.title?.() || i2.label,
+            onclick: () => i2.run()
+          }, icon2(i2.icon), word(i2.label))) : []
+        );
+      };
+      draw2();
+      return box;
     }
     build() {
       this.bar = el8("div", { class: "chrome-bar frame-bar" });
@@ -16223,6 +16279,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.recordSoon();
       this.add("settings", { id: "time-history", title: "History", order: 31, render: () => this.settingsPane() });
       if (!this.panel) return;
+      this.add("rail.more", {
+        id: "time",
+        label: "Time",
+        icon: "clock",
+        order: 10,
+        run: () => this.toggle(),
+        on: () => this.isOn,
+        visible: () => !!this.place(),
+        title: () => this.keyMap ? `Time · ${this.keyMap.label("time.toggle")}` : "Time"
+      });
       for (const k2 of TIME_KEYS) this.add("keys", { ...k2, zone: "everywhere", when: () => !!this.place(), run: () => this.toggle() });
       this.on("world:saved", () => this.refreshSoon());
       this.on("world:changed", () => this.refreshSoon());
@@ -16584,6 +16650,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // slide: the strip of floors slides from the floor that showed to this one.
     drawRooms({ slide = false } = {}) {
       this.time?.refresh();
+      const more = this.frame?.more();
+      this.moreBox.replaceChildren(...more ? [more] : []);
       const now = Date.now();
       this.page = Math.min(this.page, pageCount3(this.world) - 1);
       const { cols, rows, cell } = this.gridSize();
@@ -18429,10 +18497,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.defineSlot("rooms.room", "The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there }. One item.");
       this.provide("create", { open: () => this.open() });
       this.add("time.place", {
-        live: () => !this.root.hidden && this.root.classList.contains("up") && !this.inRoom,
+        live: () => !this.root.hidden && !this.away && !this.inRoom,
         room: () => null,
         chosen: () => this.roomPick,
-        go: (f2) => this.showRoom(f2.id)
+        go: (f2) => this.showRoom(f2.id),
+        redraw: () => {
+          if (!this.inRoom) this.drawRooms();
+        }
       });
       this.provide("rooms", {
         openRoom: (id) => this.openRoom(id),
@@ -18499,6 +18570,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Opening and closing ----
     open() {
+      this.away = false;
       this.w.load();
       this.w.begin();
       this.edited = /* @__PURE__ */ new Set();
@@ -18528,6 +18600,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.backdrop?.cover?.(true);
     }
     close() {
+      this.away = true;
       this.leaving = false;
       this.leaveBox.hidden = true;
       this.keyMap?.hide();
@@ -18937,7 +19010,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.shelfBtn,
         el12("div", { class: "rail-head", "aria-hidden": "true" }, "Arrange by"),
         this.tagsBtn,
-        this.tagsList
+        this.tagsList,
+        this.moreBox = el12("div", { class: "rooms-more" })
       );
       this.roomsPage = el12(
         "section",
@@ -19828,16 +19902,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         items.push(el15("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
       items.push(...this.twinRail());
-      if (this.time) {
-        items.push(el15("div", { class: "rail-head", "aria-hidden": "true" }, "Views"));
-        items.push(el15("button", {
-          type: "button",
-          class: "rail-item room-rail-view",
-          "aria-pressed": String(this.time.on),
-          title: this.keyMap ? `Time · ${this.keyMap.label("time.toggle")}` : "Time",
-          onclick: () => this.time.toggle()
-        }, railIcon2("clock"), railWord2("Time")));
-      }
+      const more = this.frame?.more();
+      if (more) items.push(more);
       const card = !this.panel && this.settingsFor && this.roomSettingsCard();
       if (card) items.push(card);
       this.drawModeSettings();
@@ -22741,7 +22807,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
