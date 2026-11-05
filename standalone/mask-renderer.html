@@ -1667,6 +1667,11 @@ html.rail-narrow { --rail: 48px; }
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
 :is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
 
+/* Move to floor (Ctrl+M): a short list of floors near the top (verbs.js). */
+.rooms-floor-pick { z-index: 21; width: min(300px, calc(100% - 2 * var(--gutter))); padding: var(--s-3) 0; display: grid; }
+.rooms-floor-pick > .label { margin: 0 18px var(--s-2); }
+.rooms-floor-pick .pick[disabled] { opacity: var(--off); cursor: default; }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
    with "home-". The menu, Settings, Account and About take Folio's veil as they are. */
@@ -7690,6 +7695,7 @@ html.rail-narrow { --rail: 48px; }
     canHold: () => canHold,
     cells: () => cells,
     children: () => children,
+    copyRoom: () => copyRoom,
     create: () => create,
     declareGroups: () => declareGroups,
     emptyWorld: () => emptyWorld,
@@ -12182,6 +12188,41 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete r.row;
     return true;
   }
+  function renamed(v2, ids) {
+    if (typeof v2 === "string") return ids[v2] ?? v2;
+    if (Array.isArray(v2)) return v2.map((x) => renamed(x, ids));
+    if (v2 && typeof v2 === "object") {
+      const out = {};
+      for (const [k2, x] of Object.entries(v2)) out[ids[k2] ?? k2] = renamed(x, ids);
+      return out;
+    }
+    return v2;
+  }
+  function copyRoom(w2, id, now = Date.now()) {
+    const r = room(w2, id);
+    if (!r || r.archived) return null;
+    const inner = Object.values(w2.things).filter((th) => th.parent === id);
+    const ids = { [id]: uid("r") };
+    for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
+    const fresh = renamed(copy(r), ids);
+    Object.assign(fresh, { id: ids[id], parent: null, at: now, name: `${r.name || "Untitled"} copy` });
+    for (const k2 of ["locked", "archived", "col", "row", "edited"]) delete fresh[k2];
+    if (id === MESSY) {
+      fresh.size = 2;
+      delete fresh.page;
+    }
+    w2.things[fresh.id] = fresh;
+    for (const th of inner) {
+      const c = renamed(copy(th), ids);
+      c.id = ids[th.id];
+      c.parent = fresh.id;
+      w2.things[c.id] = c;
+    }
+    if (w2.views[id]) w2.views[fresh.id] = copy(w2.views[id]);
+    if (w2.own[id]) w2.own[fresh.id] = renamed(copy(w2.own[id]), ids);
+    if (w2.settings?.[id]) w2.settings[fresh.id] = copy(w2.settings[id]);
+    return fresh;
+  }
   function roomTags(w2, id, ontologies = []) {
     const r = room(w2, id);
     if (!r) return [];
@@ -13876,13 +13917,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return null;
   }
-  function place(w2, id, board, cell = null) {
+  function nearest(w2, r, page, board, cell) {
+    let best = null, far = Infinity;
+    for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
+      const d = 4 * (Math.abs(col - cell.col) + Math.abs(row - cell.row)) + (row !== cell.row ? 2 : 0) + (col < cell.col ? 1 : 0);
+      if (d < far && free(w2, r, col, row, board, page)) {
+        best = { col, row };
+        far = d;
+      }
+    }
+    return best;
+  }
+  function place(w2, id, board, cell = null, { near = false } = {}) {
     const r = room2(w2, id);
     if (!r || r.archived) return null;
     const from = r.page || 0;
     delete r.col;
     delete r.row;
-    let at2 = cell && free(w2, r, cell.col, cell.row, board, from) ? cell : spot2(w2, r, from, board);
+    let at2 = cell && free(w2, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w2, r, from, board, cell) : spot2(w2, r, from, board);
     let page = from;
     if (!at2) {
       page = addPage2(w2);
@@ -13962,7 +14014,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return board();
         },
         // { cols, rows }: every floor's size
-        place: (id, cell = null) => this.place(id, cell),
+        place: (id, cell = null, o2 = {}) => this.place(id, cell, o2),
         // its floor, else a new one (with a note)
         settle: (page) => this.settle(page),
         // places a floor's rooms that have no cell
@@ -13977,8 +14029,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     get world() {
       return this.w.world;
     }
-    place(id, cell) {
-      const out = place(this.world, id, this.size, cell);
+    place(id, cell, o2 = {}) {
+      const out = place(this.world, id, this.size, cell, o2);
       if (out?.spilled) this.say(room2(this.world, id), out);
       return out;
     }
@@ -15547,6 +15599,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var seedRoomSettings3;
   var allTags2;
   var groupNames2;
+  var copyRoom2;
   var pageLook2;
   var roomLook2;
   var rgb2;
@@ -15593,7 +15646,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       makeGroup: makeGroup2,
       seedRoomSettings: seedRoomSettings3,
       allTags: allTags2,
-      groupNames: groupNames2
+      groupNames: groupNames2,
+      copyRoom: copyRoom2
     } = lib.model);
     ({ pageLook: pageLook2, roomLook: roomLook2, rgb: rgb2, squareLook: squareLook2, toOklch: toOklch2 } = lib.look);
     ({ light: light2 } = lib.attention);
@@ -16432,6 +16486,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawRooms();
         this.toast(`${r.name} is in the Archive.`);
       } : null;
+      p.duplicate = r.archived ? null : () => this.duplicateRoom(r.id);
+      p.moveTo = r.id !== MESSY3 && !r.locked && !r.archived ? () => this.floorPicker(r) : null;
       p.export = this.files ? () => this.exportRoomFile(r.id) : null;
       p.remove = r.id !== MESSY3 && !r.locked ? () => {
         remove3(this.world, r.id);
@@ -16460,6 +16516,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { class: "pop-row" },
           word("Back to the tint", p.untint),
           word(r.locked ? "Unlock" : "Lock", p.lock),
+          word("Duplicate", p.duplicate),
+          word("Move to floor…", p.moveTo),
           word("Archive", p.archive),
           word("Export as Markdown", p.export),
           word("Delete", p.remove, "pop-delete")
@@ -16495,6 +16553,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "div",
           { class: "box-btns" },
           btn("Go in", p.go, "Enter", "rooms-options-go"),
+          btn("Duplicate", p.duplicate, this.keyMap?.label?.("rooms.duplicate") || ""),
+          btn("Move…", p.moveTo, this.keyMap?.label?.("rooms.move") || ""),
           btn(r.locked ? "Unlock" : "Lock", p.lock),
           btn("Archive", p.archive),
           btn("Export", p.export),
@@ -16589,7 +16649,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Pressing a square chooses it, twice goes in, a long press opens its properties; dragging it
     // moves it to the cell it is let go over, if that is free (a room dropped on another snaps
-    // back), or onto a page number or Archive. Held at the top or bottom edge of the canvas, the
+    // back), or onto a page number or Archive. With Alt held when it is let go, a copy goes there
+    // instead (verbs.js: beside that cell if it is taken) and the room stays. Held at the top or bottom edge of the canvas, the
     // strip slides to the floor above or below, so it can be dropped there.
     onTileDown(e, r, tile) {
       if (e.button || e.target.closest("input, textarea, select")) return;
@@ -16671,7 +16732,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
         if (!dragging && Math.hypot(dx, dy) < 5) return;
         clearTimeout(hold);
-        if (r.locked || r.archived) return;
+        if (r.archived || r.locked && !ev.altKey) return;
         if (!dragging) {
           dragging = true;
           tile.classList.add("dragging");
@@ -16714,6 +16775,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         tile.style.transform = "";
         const home = r.page || 0;
+        if (ev.altKey && !r.archived && !over?.archive) {
+          this.page = floor;
+          this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
+          return;
+        }
         if (over?.page != null) {
           const moved = this.floors.toFloor(r.id, over.page);
           if (moved === "full") this.toast(`Floor ${over.page + 1} is full.`);
@@ -16782,6 +16848,128 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         onblur: () => finish(true)
       });
       return field3;
+    }
+  };
+
+  // dist/web/features/rooms/verbs.js
+  var RoomsVerbs = class {
+    // A copy of room `id`, beside it (`cell`: where it was dropped, on floor `page`, or else its
+    // original's cell), chosen. Returns the copy, or null.
+    duplicateRoom(id, { cell = null, page = null } = {}) {
+      const r = room4(this.world, id);
+      if (!r || r.archived) return null;
+      const c = copyRoom2(this.world, id);
+      if (!c) return null;
+      let out;
+      if (page != null && page !== (c.page || 0) && this.floors.toFloor(c.id, page, cell) === true) out = { page };
+      else out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
+      this.save();
+      if (out) this.page = out.page;
+      this.shelf = false;
+      this.roomSel = this.panel && this.propsDock ? c.id : null;
+      this.roomPick = c.id;
+      this.making = null;
+      this.drawRooms();
+      this.toast(`${c.name} is on Floor ${(c.page || 0) + 1}. Ctrl+Z takes it back.`);
+      return c;
+    }
+    // Moves room `id` to floor `page` (its first free spot): one step. False when it can't go.
+    moveRoomTo(id, page) {
+      const r = room4(this.world, id);
+      if (!r) return false;
+      if (page === "new") page = addPage3(this.world);
+      const moved = this.floors.toFloor(id, page);
+      if (moved === "full") {
+        this.toast(`Floor ${page + 1} is full.`);
+        return false;
+      }
+      if (!moved) {
+        this.toast(r.locked ? `${r.name} is locked, so it keeps its place.` : `${r.name} stays where it is.`);
+        return false;
+      }
+      this.save();
+      this.page = page;
+      this.roomPick = id;
+      this.drawRooms();
+      this.toast(`${r.name} is on Floor ${page + 1}.`);
+      return true;
+    }
+    // The chosen room, for Ctrl+D and Ctrl+M (not while typing in a field).
+    chosenFor(e) {
+      if (e?.target?.matches?.("input, textarea, select, [contenteditable]")) return null;
+      if (this.root.hidden || this.inRoom) return null;
+      return room4(this.world, this.roomSel || this.roomPick);
+    }
+    duplicateChosen(e) {
+      const r = this.chosenFor(e);
+      if (r) this.duplicateRoom(r.id);
+    }
+    // Ctrl+M: a short list of the floors to move the chosen room to (its own is not one), and
+    // + New floor. A number key or a click picks; Escape or a click elsewhere lets go.
+    moveChosen(e) {
+      const r = this.chosenFor(e);
+      if (!r) return;
+      if (r.id === MESSY3) {
+        this.toast("Messy thoughts stays on Floor 1.");
+        return;
+      }
+      if (r.locked) {
+        this.toast(`${r.name} is locked, so it keeps its place.`);
+        return;
+      }
+      this.floorPicker(r);
+    }
+    floorPicker(r) {
+      this.closeFloorPicker();
+      const here = r.page || 0;
+      const pick = (page) => {
+        this.closeFloorPicker();
+        this.moveRoomTo(r.id, page);
+      };
+      const rows = Array.from({ length: pageCount3(this.world) }, (_2, i2) => el11("button", {
+        type: "button",
+        class: "pick",
+        disabled: i2 === here,
+        onclick: () => pick(i2)
+      }, `Floor ${i2 + 1}`, el11("span", { class: "pick-note" }, i2 === here ? "here" : String(i2 + 1))));
+      rows.push(el11("button", { type: "button", class: "pick", onclick: () => pick("new") }, "New floor", el11("span", { class: "pick-note" }, "N")));
+      const box = el11(
+        "div",
+        {
+          class: "panel top-sheet rooms-floor-pick",
+          role: "dialog",
+          "aria-label": `Move ${r.name} to a floor`,
+          onpointerdown: (ev) => ev.stopPropagation(),
+          onkeydown: (ev) => {
+            ev.stopPropagation();
+            if (ev.key === "Escape") {
+              ev.preventDefault();
+              this.closeFloorPicker();
+              return;
+            }
+            const n = ev.key.toLowerCase() === "n" ? "new" : /^[1-9]$/.test(ev.key) ? +ev.key - 1 : null;
+            if (n === "new" || n != null && n < pageCount3(this.world) && n !== here) {
+              ev.preventDefault();
+              pick(n);
+            }
+          }
+        },
+        el11("p", { class: "label" }, `Move ${r.name} to`),
+        ...rows
+      );
+      this.floorPick = box;
+      this.root.append(box);
+      box.querySelector("button:not([disabled])")?.focus({ preventScroll: true });
+      this.floorPickAway = (ev) => {
+        if (!box.contains(ev.target)) this.closeFloorPicker();
+      };
+      document.addEventListener("pointerdown", this.floorPickAway, true);
+    }
+    closeFloorPicker() {
+      if (!this.floorPick) return;
+      this.floorPick.remove();
+      this.floorPick = null;
+      document.removeEventListener("pointerdown", this.floorPickAway, true);
     }
   };
 
@@ -16885,6 +17073,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "rooms.properties", keys: ["ContextMenu", "Shift+F10"], shows: "Right-click", words: "the properties of a room" },
     { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen room" },
     { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
+    { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen room (or Alt+drag it)" },
+    { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen room to another floor" },
     { id: "rooms.floor", keys: ["PageUp", "PageDown"], words: "the floor above · below" },
     { id: "rooms.search", keys: ["Ctrl+K"], words: "search every room" },
     { id: "rooms.undo", keys: ["Ctrl+Z", "Ctrl+Shift+Z", "Ctrl+Y"], shows: "Ctrl+Z · Ctrl+Shift+Z", words: "undo · redo" },
@@ -16970,7 +17160,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       document.addEventListener("keydown", (e) => this.onKey(e));
       this.keyMap = this.use("keys");
-      const run2 = { "rooms.rename": (e) => this.renameChosen(e) };
+      const run2 = {
+        // the same verbs as in a room (room/verbs.js)
+        "rooms.rename": (e) => this.renameChosen(e),
+        "rooms.duplicate": (e) => this.duplicateChosen(e),
+        "rooms.move": (e) => this.moveChosen(e)
+      };
       for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       window.addEventListener("resize", () => {
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
@@ -17445,8 +17640,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
   };
-  for (const [key2, d] of Object.entries(Object.getOwnPropertyDescriptors(RoomsGrid.prototype))) {
-    if (key2 !== "constructor") Object.defineProperty(Rooms.prototype, key2, d);
+  for (const part2 of [RoomsGrid, RoomsVerbs]) {
+    for (const [key2, d] of Object.entries(Object.getOwnPropertyDescriptors(part2.prototype))) {
+      if (key2 !== "constructor") Object.defineProperty(Rooms.prototype, key2, d);
+    }
   }
 
   // dist/web/features/home/fonts/tenor-sans.js
