@@ -4498,11 +4498,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   var sigma = (x) => 1 / (1 + Math.exp(-x));
   function tone(L, [b, w2], { k: k2, gamma, dMin, dMax }) {
     const t = new Float32Array(L.length);
-    const span = w2 - b;
+    const span4 = w2 - b;
     const s02 = sigma(-k2 / 2);
     const s12 = sigma(k2 / 2);
     for (let i2 = 0; i2 < L.length; i2++) {
-      let x = span > 1e-6 ? (L[i2] - b) / span : 0.5;
+      let x = span4 > 1e-6 ? (L[i2] - b) / span4 : 0.5;
       x = x < 0 ? 0 : x > 1 ? 1 : x;
       x = (sigma(k2 * (x - 0.5)) - s02) / (s12 - s02);
       if (gamma !== 1) x = Math.pow(x, gamma);
@@ -7697,6 +7697,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     LEAVES: () => LEAVES,
     MESSY: () => MESSY,
     ONTOLOGY: () => ONTOLOGY,
+    SHAPES: () => SHAPES,
     TAG: () => TAG,
     addPage: () => addPage,
     addRoom: () => addRoom,
@@ -7766,7 +7767,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     setOrder: () => setOrder,
     setRoomSetting: () => setRoomSetting,
     setTagGroup: () => setTagGroup,
+    shapeOf: () => shapeOf,
     shut: () => shut,
+    span: () => span,
     startTrain: () => startTrain,
     tagGroup: () => tagGroup,
     tagsByGroup: () => tagsByGroup,
@@ -11868,7 +11871,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var thing = (w2, id) => w2.things[id] || null;
   var room = (w2, id) => kindOf(w2.things[id]) === "room" ? w2.things[id] : null;
   var byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-  var isBig = (th) => kindOf(th) === "room" && (th.id === MESSY || (th.size || 1) > 1);
+  var SHAPES = { one: { w: 1, h: 1 }, twin: { w: 2, h: 1 }, all: { w: 2, h: 2 } };
+  var shapeOf = (r) => r.id === MESSY || r.size === 2 ? "all" : r.size === "twin" ? "twin" : "one";
+  var span = (r) => SHAPES[shapeOf(r)];
+  var isBig = (th) => kindOf(th) === "room" && shapeOf(th) === "all";
   var children = (w2, id) => Object.values(w2.things).filter((th) => th.parent === id).sort(byTime);
   var rooms = (w2) => children(w2, null).filter((th) => kindOf(th) === "room" && !th.archived);
   var archived = (w2) => children(w2, null).filter((th) => kindOf(th) === "room" && th.archived).sort((a, b) => (+a.archived || 0) - (+b.archived || 0) || a.at - b.at);
@@ -12050,7 +12056,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       out.col = f2.col;
       out.row = f2.row;
     }
-    out.size = f2.size === 2 ? 2 : 1;
+    out.size = f2.size === 2 || f2.size === "twin" ? f2.size : 1;
     const desc = lines(f2.desc).slice(0, DESC);
     if (desc) out.desc = desc;
     const tags = tidyTags(f2.tags);
@@ -12177,7 +12183,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function cells(r) {
     const out = [];
-    for (let dc = 0; dc < (r.size || 1); dc++) for (let dr2 = 0; dr2 < (r.size || 1); dr2++) out.push([r.col + dc, r.row + dr2]);
+    const { w: w2, h } = span(r);
+    for (let dc = 0; dc < w2; dc++) for (let dr2 = 0; dr2 < h; dr2++) out.push([r.col + dc, r.row + dr2]);
     return out;
   }
   function roomAt(w2, col, row, except = null, page = 0) {
@@ -13439,9 +13446,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD));
     const kids = Object.fromEntries(all.map((g2) => [g2.id, []]));
     for (const g2 of all) if (ps[g2.id].length === 1) kids[ps[g2.id][0]].push(g2.id);
-    const span = {};
+    const span4 = {};
     const row = (ks) => ks.reduce((s, k2, i2) => s + spanOf(k2) + (i2 ? gapX(ks[i2 - 1], k2) : 0), 0);
-    const spanOf = (id) => span[id] ??= Math.max(sz[id].w, row(kids[id]));
+    const spanOf = (id) => span4[id] ??= Math.max(sz[id].w, row(kids[id]));
     const off = {};
     for (const g2 of all) {
       const ks = kids[g2.id];
@@ -14294,10 +14301,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var addPage2;
   var pageCount2;
   var archive2;
+  var span2;
+  var shapeOf2;
   var MESSY2;
   var allRooms;
   function bind(lib) {
-    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, archive: archive2, MESSY: MESSY2 } = lib.model);
+    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, archive: archive2, span: span2, shapeOf: shapeOf2, MESSY: MESSY2 } = lib.model);
     allRooms = (w2) => [...lib.model.rooms(w2), ...lib.model.archived(w2)];
   }
 
@@ -14314,7 +14323,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (page > 0) r.page = page;
     else delete r.page;
   };
-  var inside3 = (r, col, row, board) => col >= 0 && row >= 0 && col + (r.size || 1) <= board.cols && row + (r.size || 1) <= board.rows;
+  var inside3 = (r, col, row, board) => {
+    const { w: w2, h } = span2(r);
+    return col >= 0 && row >= 0 && col + w2 <= board.cols && row + h <= board.rows;
+  };
   function free(w2, r, col, row, board, page = r.page || 0) {
     return inside3(r, col, row, board) && cells2({ ...r, col, row }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
   }
@@ -14384,7 +14396,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = room2(w2, id);
     if (!r || r.locked) return false;
     const was = r.size || 1;
-    r.size = size === 2 ? 2 : 1;
+    r.size = size === 2 || size === "twin" ? size : 1;
     if (r.col == null || free(w2, r, r.col, r.row, board)) return true;
     r.size = was;
     return false;
@@ -14436,6 +14448,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       point: (w2, page, id) => {
         const r = room2(w2, id);
         return r && r.col != null ? { x: r.col, y: r.row } : null;
+      },
+      // Its rule: rooms sit on the floor's cells and never overlap, and a room's shape says how many
+      // ontologies it holds: 1 × 1 one, a Twin (2 × 1) two side by side, 2 × 2 all of them.
+      // { w, h, holds }: its cells across and down, and 1, 2 or 'all'.
+      shape: (w2, id) => {
+        const r = room2(w2, id);
+        if (!r) return null;
+        return { ...span2(r), holds: { one: 1, twin: 2, all: "all" }[shapeOf2(r)] };
       },
       // A room let go at (x, y) of floor `page` (cells): it moves there if the cells are on the board
       // and free; from another floor it comes to this one. True when it moved.
@@ -16067,6 +16087,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var allTags2;
   var groupNames2;
   var copyRoom2;
+  var span3;
   var pageLook2;
   var roomLook2;
   var rgb2;
@@ -16114,7 +16135,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       seedRoomSettings: seedRoomSettings3,
       allTags: allTags2,
       groupNames: groupNames2,
-      copyRoom: copyRoom2
+      copyRoom: copyRoom2,
+      span: span3
     } = lib.model);
     ({ pageLook: pageLook2, roomLook: roomLook2, rgb: rgb2, squareLook: squareLook2, toOklch: toOklch2 } = lib.look);
     ({ light: light2 } = lib.attention);
@@ -16253,7 +16275,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.style.setProperty("--cell", cell + "px");
       this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
       const taken = /* @__PURE__ */ new Set();
-      for (const r of all) for (let c = 0; c < (r.size || 1); c++) for (let d = 0; d < (r.size || 1); d++) taken.add(`${r.col + c},${r.row + d}`);
+      for (const r of all) for (const [c, d] of cells3(r)) taken.add(`${c},${d}`);
       const empty = [];
       for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
         if (taken.has(`${col},${row}`)) continue;
@@ -16329,7 +16351,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
     beside(c, cell, cols, extra = "") {
       const step = cell + GRID.gap;
-      const size = c.size || 1;
+      const size = c.size ? span3(c).w : 1;
       const right = c.col + size + 1 + 2 <= cols;
       return {
         class: "panel pop rooms-options" + (right ? "" : " left") + extra,
@@ -16425,7 +16447,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.renaming = null;
         this.drawRooms();
       }) : el11("span", { class: "rooms-tile-name", title: r.name }, r.name);
-      const lines2 = peek2(this.world, r.id, (r.size || 1) > 1 ? 3 : 1);
+      const { w: across, h: down } = span3(r);
+      const lines2 = peek2(this.world, r.id, down > 1 ? 3 : across > 1 ? 2 : 1);
       const found = hits?.[r.id] || 0;
       const tile = el11(
         "div",
@@ -16433,7 +16456,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           class: "rooms-tile" + (lit ? " lit" : "") + (r.id === MESSY3 ? " messy" : "") + (look.alpha > 0.4 ? " deep" : "") + (this.roomSel === r.id ? " chosen" : "") + (this.roomPick === r.id || this.picks?.includes(r.id) ? " picked" : "") + (this.lastRoom === r.id || this.leaving && this.edited?.has(r.id) ? " last" : "") + (r.locked ? " locked" : "") + (hits ? found ? " found" : " unlit" : ""),
           role: "button",
           tabindex: 0,
-          style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${r.size};grid-row:${r.row + 1} / span ${r.size}`,
+          style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${across};grid-row:${r.row + 1} / span ${down}`,
           "aria-label": `${r.name}, ${count2} thought${count2 === 1 ? "" : "s"}`,
           "aria-selected": String(this.roomPick === r.id),
           "data-room": r.id,
@@ -17170,14 +17193,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           drop.hidden = true;
           return;
         }
-        const size = r.size || 1;
-        const free2 = c.col >= 0 && c.row >= 0 && c.col + size <= this.cols && c.row + size <= this.floors.size.rows && cells3({ ...r, col: c.col, row: c.row }).every(([cc, rr2]) => !roomAt3(this.world, cc, rr2, r.id, floor));
+        const { w: across, h: down } = span3(r);
+        const free2 = c.col >= 0 && c.row >= 0 && c.col + across <= this.cols && c.row + down <= this.floors.size.rows && cells3({ ...r, col: c.col, row: c.row }).every(([cc, rr2]) => !roomAt3(this.world, cc, rr2, r.id, floor));
         const g2 = gridOf(floor);
         if (g2 && drop.parentElement !== g2) g2.append(drop);
         drop.hidden = false;
         drop.classList.toggle("taken", !free2);
-        drop.style.gridColumn = `${c.col + 1} / span ${size}`;
-        drop.style.gridRow = `${c.row + 1} / span ${size}`;
+        drop.style.gridColumn = `${c.col + 1} / span ${across}`;
+        drop.style.gridRow = `${c.row + 1} / span ${down}`;
       };
       const lit = (n) => {
         for (const x of this.root.querySelectorAll(".drop-on")) if (x !== n) x.classList.remove("drop-on");
