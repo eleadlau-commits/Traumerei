@@ -2786,10 +2786,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.listeners = /* @__PURE__ */ new Map();
     }
     on(name5, fn, owner = null) {
-      const list2 = this.listeners.get(name5) || [];
+      const list3 = this.listeners.get(name5) || [];
       const entry = { fn, owner };
-      list2.push(entry);
-      this.listeners.set(name5, list2);
+      list3.push(entry);
+      this.listeners.set(name5, list3);
       return () => {
         const current = this.listeners.get(name5) || [];
         this.listeners.set(name5, current.filter((e) => e !== entry));
@@ -2806,8 +2806,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       }
     }
     removeOwner(owner) {
-      for (const [name5, list2] of this.listeners) {
-        this.listeners.set(name5, list2.filter((e) => e.owner !== owner));
+      for (const [name5, list3] of this.listeners) {
+        this.listeners.set(name5, list3.filter((e) => e.owner !== owner));
       }
     }
   };
@@ -4007,12 +4007,12 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
     // names none ('' for a dock without tabs).
     // keyLabel(): the dock's key as the screen shows it ("Ctrl+Alt+E"), shown in its tab strip.
-    constructor({ side, saved, keep, resized, label: label2, tab = "", keyLabel = () => "" }) {
+    constructor({ side, saved, keep: keep2, resized, label: label2, tab = "", keyLabel = () => "" }) {
       this.side = side;
       this.keyLabel = keyLabel;
       this.least = LEAST[side];
       this.usual = WIDTH[side];
-      this.keep = keep;
+      this.keep = keep2;
       this.resized = resized;
       this.width = this.fit(saved ?? this.usual);
       this.firstTab = tab;
@@ -4257,9 +4257,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     isShowing(key2) {
       return this.visible && this.front?.key === key2;
     }
-    setWidth(px, keep = true) {
+    setWidth(px, keep2 = true) {
       this.width = this.fit(px);
-      if (keep) this.keep(this.width);
+      if (keep2) this.keep(this.width);
       this.root.style.width = `${this.width}px`;
       if (this.visible) this.resized(this.width);
     }
@@ -4511,15 +4511,15 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     }
     return L;
   }
-  function quantiles(values, ps, lo = 0, hi = 1, bins = 16384) {
+  function quantiles(values2, ps, lo = 0, hi = 1, bins = 16384) {
     const hist = new Uint32Array(bins);
     const scale = bins / (hi - lo);
-    for (let i2 = 0; i2 < values.length; i2++) {
-      const j = Math.floor((values[i2] - lo) * scale);
+    for (let i2 = 0; i2 < values2.length; i2++) {
+      const j = Math.floor((values2[i2] - lo) * scale);
       hist[j < 0 ? 0 : j >= bins ? bins - 1 : j]++;
     }
     return ps.map((p) => {
-      const target = p * values.length;
+      const target = p * values2.length;
       let cum = 0;
       for (let j = 0; j < bins; j++) {
         cum += hist[j];
@@ -4769,8 +4769,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     }
     return sum;
   }
-  function quantile(values, q) {
-    const sorted = Float32Array.from(values).sort();
+  function quantile(values2, q) {
+    const sorted = Float32Array.from(values2).sort();
     const pos = q * (sorted.length - 1);
     const i2 = Math.floor(pos);
     const j = Math.min(sorted.length - 1, i2 + 1);
@@ -7071,7 +7071,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   // dist/web/features/renderer/controls.js
   var { el: el5 } = ui_exports;
   var shown = (p, v2) => p.step >= 1 ? String(v2) : Number(v2).toFixed(Math.max(0, -Math.floor(Math.log10(p.step))));
-  function sliders(params, values, onChange) {
+  function sliders(params, values2, onChange) {
     const rows = [];
     const groups = /* @__PURE__ */ new Map();
     const changed2 = (key2, v2) => {
@@ -7080,7 +7080,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     };
     for (const p of params) {
       if (!groups.has(p.group)) groups.set(p.group, el5("fieldset", { class: "renderer-group" }, el5("legend", {}, p.group)));
-      const row = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values[p.key], changed2);
+      const row = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values2[p.key], changed2);
       rows.push(row);
       groups.get(p.group).append(row.node);
     }
@@ -12067,9 +12067,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var TAG = 30;
   var tidyTag = (s) => oneLine(s).replace(/^#+\s*/, "").slice(0, TAG).trim();
   var same = (a, b) => a.toLowerCase() === b.toLowerCase();
-  function tidyTags(list2) {
+  function tidyTags(list3) {
     const out = [];
-    for (const t of Array.isArray(list2) ? list2 : []) {
+    for (const t of Array.isArray(list3) ? list3 : []) {
       const tag = tidyTag(t);
       if (tag && !out.some((o2) => same(o2, tag))) out.push(tag);
     }
@@ -13459,10 +13459,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function splitList(text) {
     const s = String(text ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1");
     const out = [];
-    let now = "", quoted = false;
+    let now = "", quoted2 = false;
     for (const ch of s) {
-      if (ch === '"') quoted = !quoted;
-      else if (ch === "," && !quoted) {
+      if (ch === '"') quoted2 = !quoted2;
+      else if (ch === "," && !quoted2) {
         out.push(now);
         now = "";
       } else now += ch;
@@ -13491,8 +13491,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var relationShown = (names, rel) => !rel || names.length === 1 && names[0] === rel ? "" : rel;
   function withRelation(names, name5) {
     const t = relationName(name5);
-    const list2 = cleanRelations(names);
-    return t && !list2.some((n) => n.toLowerCase() === t.toLowerCase()) ? [...list2, t] : list2;
+    const list3 = cleanRelations(names);
+    return t && !list3.some((n) => n.toLowerCase() === t.toLowerCase()) ? [...list3, t] : list3;
   }
   var tidy2 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
   function arrowsOf({ of, isNode, nodes, word = "node", loops = false, changed: changed2 = () => {
@@ -13528,7 +13528,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const parentsOf2 = (w2, roomId, id) => arrowsInto3(w2, roomId, id).parents;
     const childrenOf2 = (w2, roomId, id) => nodes(w2, roomId).filter((g2) => parentsOf2(w2, roomId, g2.id).includes(id)).map((g2) => g2.id);
     const labelOf2 = (w2, roomId, parent, child) => arrowsInto3(w2, roomId, child).labels[parent] || "";
-    const relationOf2 = (w2, roomId, parent, child) => arrowsInto3(w2, roomId, child).rel[parent] ?? "";
+    const relationOf3 = (w2, roomId, parent, child) => arrowsInto3(w2, roomId, child).rel[parent] ?? "";
     function arrows2(w2, roomId) {
       const out = [];
       for (const g2 of nodes(w2, roomId)) {
@@ -13594,8 +13594,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       put(w2, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations2(w2, roomId)[0] } });
     }
     const traumLines = (w2, roomId, c) => arrows2(w2, roomId).filter((a) => c.ref(a.from) && c.ref(a.to)).map((a) => `arrow: ${c.writeArrow({ from: c.ref(a.from), to: c.ref(a.to), rel: a.rel, label: a.label })}`);
-    function traumArrows(w2, roomId, list2, c) {
-      for (const a of list2) {
+    function traumArrows(w2, roomId, list3, c) {
+      for (const a of list3) {
         const why = link3(w2, roomId, a.from, a.to, a.label || "", a.rel ?? "");
         if (why) c.report(a.line, `the arrow wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, "")}.`);
       }
@@ -13607,7 +13607,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       parentsOf: parentsOf2,
       childrenOf: childrenOf2,
       labelOf: labelOf2,
-      relationOf: relationOf2,
+      relationOf: relationOf3,
       arrows: arrows2,
       above: above2,
       whyNot: whyNot2,
@@ -13824,10 +13824,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     editing = { room: c.roomId, from, to, text: a.labels[from] || "", rel: a.rel[from], fresh: true };
     c.drawWorld();
   }
-  function finishEdit(c, keep) {
+  function finishEdit(c, keep2) {
     const e = editing;
     editing = null;
-    if (keep && e && e.room === c.roomId && !c.locked) {
+    if (keep2 && e && e.room === c.roomId && !c.locked) {
       setLabel(c.world, c.roomId, e.from, e.to, e.text);
       setRelation(c.world, c.roomId, e.from, e.to, e.rel);
       c.save();
@@ -13837,7 +13837,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function relationPick(c, now, pick, keys = () => {
   }) {
     const names = cleanRelations(c.setting(RELATIONS.key));
-    const list2 = names.includes(now) || !now ? names : [...names, now];
+    const list3 = names.includes(now) || !now ? names : [...names, now];
     const wrap = c.el("span", { class: "room-russell-rel-pick" });
     const select2 = c.el(
       "select",
@@ -13852,15 +13852,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             field3.focus();
             return;
           }
-          pick(v2 === "none" ? "" : list2[Number(v2)]);
+          pick(v2 === "none" ? "" : list3[Number(v2)]);
         }
       },
-      ...list2.map((n, i2) => c.el("option", { value: String(i2), selected: n === now }, n)),
+      ...list3.map((n, i2) => c.el("option", { value: String(i2), selected: n === now }, n)),
       c.el("option", { value: "none", selected: !now }, "(no relation)"),
       c.el("option", { value: "new" }, "+ New…")
     );
     const back = () => {
-      select2.value = now ? String(list2.indexOf(now)) : "none";
+      select2.value = now ? String(list3.indexOf(now)) : "none";
       wrap.replaceChildren(select2);
       select2.focus();
     };
@@ -14518,7 +14518,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         fold: () => {
           w2.lastSnap = w2.snap();
         },
-        writeSoon: (say2 = true) => w2.writeSoon(say2),
+        writeSoon: (say3 = true) => w2.writeSoon(say3),
         write: () => w2.storage.set(KEY, w2.world),
         undo: (back = true) => w2.undo(back),
         get ontologies() {
@@ -14589,11 +14589,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Written down in a moment; a later call takes the place of an earlier one. say: then sends
     // 'world:saved' (a quiet "Saved" shows).
-    writeSoon(say2) {
+    writeSoon(say3) {
       clearTimeout(this.saveTimer);
       this.saveTimer = setTimeout(() => {
         this.storage.set(KEY, this.world);
-        if (say2) this.emit("world:saved");
+        if (say3) this.emit("world:saved");
       }, 250);
     }
     // A step back (or forward). False when there is none; otherwise the world is as it was, written
@@ -15085,9 +15085,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Where you are: each step a word to press (or the owner's own node, as a room's name that can
     // be renamed in place), with a quiet › between them.
-    drawCrumbs(list2) {
+    drawCrumbs(list3) {
       const out = [];
-      list2.forEach((c, i2) => {
+      list3.forEach((c, i2) => {
         if (i2) out.push(el8("span", { class: "crumb-sep", "aria-hidden": "true" }, "›"));
         if (c.node) {
           out.push(c.node);
@@ -15191,7 +15191,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       title = "",
       text = "",
       readOnly = false,
-      fileName: fileName2 = "source.md",
+      fileName: fileName3 = "source.md",
       options = [],
       check = () => ({}),
       apply: apply3 = null,
@@ -15209,13 +15209,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const lists = el9("div", { class: "source-lists" });
         const opts = el9("div", { class: "source-options" });
         const changed2 = () => box.value !== base2;
-        const say2 = (msg) => {
+        const say3 = (msg) => {
           sum.dataset.note = msg;
           sum.classList.add("noted");
           clearTimeout(this.noteTimer);
           this.noteTimer = setTimeout(() => sum.classList.remove("noted"), 1800);
         };
-        const list2 = (label2, items, cls) => items?.length ? el9(
+        const list3 = (label2, items, cls) => items?.length ? el9(
           "section",
           { class: "source-list " + cls },
           el9("div", { class: "label" }, label2),
@@ -15230,8 +15230,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           sum.textContent = [r.summary, changed2() ? "changed" : ""].filter(Boolean).join(" · ");
           lists.replaceChildren(...[
-            list2(readOnly ? "In it" : "Apply will", r.changes, "source-changes"),
-            list2("Couldn't be read", r.report, "source-report")
+            list3(readOnly ? "In it" : "Apply will", r.changes, "source-changes"),
+            list3("Couldn't be read", r.report, "source-report")
           ].filter(Boolean));
           opts.replaceChildren(...readOnly ? [] : (r.options || options).filter((o2) => o2.show !== false).map((o2) => el9(
             "label",
@@ -15264,20 +15264,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const copy2 = async () => {
           try {
             await navigator.clipboard.writeText(box.value);
-            say2("Copied");
+            say3("Copied");
           } catch {
             box.select();
-            say2("Press Ctrl+C to copy");
+            say3("Press Ctrl+C to copy");
           }
         };
         const download = () => {
           const url = URL.createObjectURL(new Blob([full(box.value)], { type: "text/markdown;charset=utf-8" }));
-          const a = el9("a", { href: url, download: fileName2, hidden: true });
+          const a = el9("a", { href: url, download: fileName3, hidden: true });
           document.body.append(a);
           a.click();
           a.remove();
           setTimeout(() => URL.revokeObjectURL(url), 1e4);
-          say2(`Downloaded ${fileName2}`);
+          say3(`Downloaded ${fileName3}`);
         };
         const paste = async () => {
           let t;
@@ -15285,22 +15285,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             t = await navigator.clipboard.readText();
           } catch {
             box.focus();
-            say2("Press Ctrl+V to paste into the box");
+            say3("Press Ctrl+V to paste into the box");
             return;
           }
           if (!t) {
-            say2("The clipboard is empty");
+            say3("The clipboard is empty");
             return;
           }
           box.value = unfence(t);
           run2();
-          say2("Pasted");
+          say3("Pasted");
         };
         const doReset = () => {
           if (reset) base2 = reset();
           box.value = base2;
           run2();
-          say2("Back to what it holds now");
+          say3("Back to what it holds now");
         };
         const doApply = async () => {
           if (!apply3 || go.disabled) return;
@@ -15310,7 +15310,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             ok = await apply3(unfence(box.value), { ...chosen });
           } catch (err) {
             console.warn("Source: apply", err);
-            say2("That couldn't be applied");
+            say3("That couldn't be applied");
           }
           go.disabled = false;
           if (!ok) {
@@ -15357,7 +15357,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           handle = this.handle = h;
           run2();
-          if (kept) say2(kept.base === base2 ? "Your changes from last time are back" : "Your changes from last time are back · it has changed since (Reset shows it now)");
+          if (kept) say3(kept.base === base2 ? "Your changes from last time are back" : "Your changes from last time are back · it has changed since (Reset shows it now)");
           box.focus({ preventScroll: true });
           box.setSelectionRange(0, 0);
           box.scrollTop = 0;
@@ -15637,12 +15637,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     report?.push(`Line ${item.line}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
     return { kind: "line", text: `A picture couldn't be fetched${item.text ? `: ${item.text}` : ""} (${item.url || "unreadable data"})`, line: item.line };
   }
-  var plural = (n, one2, many) => `${n} ${n === 1 ? one2 : many}`;
-  var say = (n) => [
-    plural(n.groups, "group", "groups"),
-    plural(n.thoughts, "thought", "thoughts"),
-    ...n.pictures ? [plural(n.pictures, "picture", "pictures")] : []
-  ].join(", ");
   var groupsFor = (o2) => o2?.groups ? o2.id : DEFAULT_MODE2;
   var modeOf = (w2, roomId, ontologies) => {
     const id = view4(w2, roomId).mode;
@@ -15662,102 +15656,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
     return out;
   }
-  function importInto(w2, roomId, parsed, { ontologies = [], now = Date.now(), at: at2 = null } = {}) {
-    const report = [...parsed.report];
-    const made = { groups: 0, thoughts: 0, pictures: 0 };
-    if (!room3(w2, roomId) || shut2(w2, roomId)) {
-      report.push("This room is locked, so nothing was brought in.");
-      return { report, made };
-    }
-    const of = groupsFor(modeOf(w2, roomId, ontologies));
-    let t = now;
-    const add = (parent, f2) => {
-      const fields = f2.kind === "picture" && !f2.src ? unfetched(f2, report) : f2;
-      const th = create2(w2, parent, fields, t++);
-      if (th) {
-        made.thoughts++;
-        if (kindOf2(th) === "picture") made.pictures++;
-      }
-      return th;
-    };
-    for (const f2 of parsed.loose) add(roomId, f2);
-    const madeGroups = [];
-    const left = /* @__PURE__ */ new Set();
-    for (const src of parsed.groups) {
-      const name5 = src.title ? `"${src.title}"` : "An untitled heading";
-      const g2 = create2(w2, roomId, { kind: "group", of, title: src.title, closed: src.closed }, t++);
-      if (!g2) continue;
-      for (const f2 of src.items) add(g2.id, f2);
-      if (!members2(w2, g2.id).length) {
-        delete w2.things[g2.id];
-        left.add(src.title);
-        report.push(`Line ${src.line}: ${name5} has nothing under it, so it was left out.`);
-        continue;
-      }
-      made.groups++;
-      madeGroups.push({ id: g2.id, src });
-    }
-    if (of !== RUSSELL) {
-      const where = spots2(w2, madeGroups.map((m2) => m2.id), at2 || void 0);
-      for (const { id } of madeGroups) Object.assign(w2.things[id], where[id]);
-    }
-    const arrows2 = [];
-    for (const { id, src } of madeGroups) {
-      const rest = of === RUSSELL ? oldParents(src, report) : src.attrs;
-      if (of === RUSSELL) for (const a of src.arrows || []) arrows2.push({ child: id, parent: a.title, label: a.label, rel: a.rel, line: a.line, title: src.title });
-      if (rest.length) (own2(w2, roomId, of).headings ||= {})[id] = rest;
-    }
-    if (arrows2.length) {
-      const mine = new Set(madeGroups.map((m2) => m2.id));
-      const named2 = (title, fromFile) => groupsIn2(w2, roomId, RUSSELL).filter((g2) => mine.has(g2.id) === fromFile && g2.title === title && members2(w2, g2.id).length);
-      for (const a of arrows2) {
-        const child = a.title ? `"${a.title}"` : "an untitled chapter";
-        let found = named2(a.parent, true);
-        if (!found.length) found = named2(a.parent, false);
-        let why = "";
-        if (found.length > 1) why = `two chapters are called "${a.parent}"`;
-        else if (!found.length) why = left.has(a.parent) ? `"${a.parent}" was left out` : `no chapter is called "${a.parent}"`;
-        else why = link2(w2, roomId, found[0].id, a.child, a.label, a.rel).replace(/\.$/, "");
-        if (why) report.push(`Line ${a.line}: the arrow from "${a.parent}" to ${child} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1)}.`);
-      }
-    }
-    return { report, made };
-  }
   function oldParents(src, report) {
     const parents = src.attrs.filter(([k2]) => k2 === "parent");
     if (parents.length) report.push(`Line ${src.line}: parent="…" is no longer read; write each arrow as a line under the heading instead: ${parents.map(([, v2]) => `> [[${v2}]]`).join(", ")}.`);
     return src.attrs.filter(([k2]) => k2 !== "parent");
-  }
-  function frame(w2, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
-    const o2 = modeOf(w2, roomId, ontologies);
-    if (typeof o2.units !== "function" || typeof o2.point !== "function") return;
-    const ps = o2.units(w2, roomId).map((u) => o2.point(w2, roomId, u.id)).filter(Boolean);
-    if (!ps.length) return;
-    const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
-    const x0 = Math.min(...xs), x12 = Math.max(...xs) + 340, y0 = Math.min(...ys) - 40, y12 = Math.max(...ys) + 80;
-    const zoom = Math.max(0.5, Math.min(1, box.w / (x12 - x0), box.h / (y12 - y0)));
-    Object.assign(view4(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
-  }
-  function importRoom(w2, parsed, { ontologies = [], now = Date.now(), page = 0, globals = {}, name: name5 = "Untitled" } = {}) {
-    const meta = parsed.meta || {};
-    const pre = [];
-    let kind = meta.kind || DEFAULT_MODE2;
-    if (!ontologies.some((o2) => o2.id === kind)) {
-      pre.push(`There is no mode called "${kind}", so the room is a ${ontologies.find((o2) => o2.id === DEFAULT_MODE2)?.name || DEFAULT_MODE2} room.`);
-      kind = DEFAULT_MODE2;
-    }
-    const r = addRoom2(w2, meta.room || name5, now, { page }, kind);
-    if (!r) return { room: null, report: [...pre, "A room couldn't be made."], made: { groups: 0, thoughts: 0, pictures: 0 } };
-    const fields = {};
-    if (meta.description) fields.desc = meta.description;
-    if (meta.tags?.length) fields.tags = meta.tags;
-    for (const k2 of ["tint", "light", "opacity"]) if (meta[k2] != null) fields[k2] = meta[k2];
-    update2(w2, r.id, fields, now);
-    seedRoomSettings2(w2, r.id, globals);
-    for (const [of, set] of Object.entries(meta.settings || {})) for (const [k2, v2] of Object.entries(set)) setRoomSetting2(w2, r.id, of, k2, v2);
-    const out = importInto(w2, r.id, { ...parsed, report: [...pre, ...parsed.report] }, { ontologies, now: now + 1 });
-    frame(w2, r.id, ontologies);
-    return { room: r, ...out };
   }
   var fileName = (name5) => `${String(name5 || "Untitled").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled"}.md`;
   function writeItem(th, pictures) {
@@ -15828,7 +15730,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         return bySrc.get(src);
       },
-      src: (ref) => byRef.get(String(ref).trim()) || null,
+      src: (ref2) => byRef.get(String(ref2).trim()) || null,
       full: (text) => String(text).replace(/^(!\[.*\]\()(picture:\d+)(\)\s*)$/gm, (m2, a, r, b) => byRef.has(r) ? a + byRef.get(r) + b : m2)
     };
   }
@@ -15846,8 +15748,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const check = (words, line) => {
       for (const b of broken2(words)) out.push({ line: line + b.line, tex: b.tex.trim() });
     };
-    const items = (list2) => {
-      for (const f2 of list2) {
+    const items = (list3) => {
+      for (const f2 of list3) {
         if (f2.kind !== "passage") {
           check(f2.text, f2.line);
           continue;
@@ -15949,9 +15851,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!has) return [];
     const r = room3(w2, roomId);
     const out = [];
-    const say2 = (v2) => v2 == null || v2 === "" ? "nothing" : Array.isArray(v2) ? v2.length ? v2.join(", ") : "nothing" : JSON.stringify(v2);
+    const say3 = (v2) => v2 == null || v2 === "" ? "nothing" : Array.isArray(v2) ? v2.length ? v2.join(", ") : "nothing" : JSON.stringify(v2);
     const diff = (k2, label2, from, to) => {
-      if (JSON.stringify(from ?? null) !== JSON.stringify(to ?? null)) out.push({ key: k2, from, to, text: `${label2}: ${say2(from)} → ${say2(to)}` });
+      if (JSON.stringify(from ?? null) !== JSON.stringify(to ?? null)) out.push({ key: k2, from, to, text: `${label2}: ${say3(from)} → ${say3(to)}` });
     };
     if (meta.room != null) diff("name", "Name", r.name, oneLine2(meta.room) || "Untitled");
     diff("desc", "Description", r.desc || "", meta.description ? tidyLines(meta.description) : "");
@@ -15960,7 +15862,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const [ont, set] of Object.entries(meta.settings || {})) {
       for (const [k2, v2] of Object.entries(set)) {
         const now = w2.settings?.[roomId]?.[ont]?.[k2];
-        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${ont}.${k2}`, of: ont, k: k2, from: now, to: v2, text: `${ont}.${k2}: ${say2(now)} → ${say2(v2)} (Ctrl+Z doesn't take settings back)` });
+        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${ont}.${k2}`, of: ont, k: k2, from: now, to: v2, text: `${ont}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
       }
     }
     const mode = view4(w2, roomId).mode;
@@ -16009,11 +15911,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         else if (a == null && b == null) t += n;
         k2 = e;
       }
-      const keep = /* @__PURE__ */ new Set();
+      const keep2 = /* @__PURE__ */ new Set();
       const order = [];
       for (const s of seq) {
         if (s.th) {
-          keep.add(s.th.id);
+          keep2.add(s.th.id);
           order.push(s.th.id);
           counts2.kept++;
           if (s.at != null) s.th.at = s.at;
@@ -16021,13 +15923,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         const th = create2(w2, parent, s.f, s.at);
         if (th) {
-          keep.add(th.id);
+          keep2.add(th.id);
           order.push(th.id);
           counts2.made++;
           if (kindOf2(th) === "picture") counts2.pictures++;
         }
       }
-      for (const th of old) if (!keep.has(th.id) && w2.things[th.id]) drop(th, parent === roomId ? null : parent);
+      for (const th of old) if (!keep2.has(th.id) && w2.things[th.id]) drop(th, parent === roomId ? null : parent);
       if (parent !== roomId) setOrder2(w2, parent, order);
     };
     const keepAttrs = (id, attrs) => {
@@ -16121,10 +16023,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
-  function redraw(w2, roomId, list2, fromText, report) {
+  function redraw(w2, roomId, list3, fromText, report) {
     const out = [];
     const title = (id) => w2.things[id]?.title || "an untitled chapter";
-    for (const { id, src } of list2) {
+    for (const { id, src } of list3) {
       const child = src.title || "An untitled chapter";
       const want = src.arrows || [];
       oldParents(src, report);
@@ -16186,10 +16088,808 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var copyWorld = (w2) => JSON.parse(JSON.stringify(w2));
 
+  // dist/web/features/roomfile/grammar.js
+  var OBJECT = /^##\s+\^(\S+)\s+([A-Za-z][\w-]*)(?::\s?(.*?))?\s*$/;
+  var SECTION = /^#\s+(.*?)\s*$/;
+  var LOOKS2 = /^(##\s+\^|#\s)/;
+  var KEY2 = /^([A-Za-z][\w.-]*(?: [A-Za-z][\w.-]*){0,3})\s*:(?:\s+(.*?))?\s*$|^([A-Za-z][\w-]*)$/;
+  function escape2(l2) {
+    const m2 = /^(\\*)(.*)$/s.exec(l2);
+    return LOOKS2.test(m2[2]) ? "\\" + l2 : l2;
+  }
+  function unescape2(l2) {
+    const m2 = /^\\(\\*)(.*)$/s.exec(l2);
+    return m2 && LOOKS2.test(m2[2]) ? m2[1] + m2[2] : l2;
+  }
+  function keyLine(l2) {
+    const m2 = KEY2.exec(String(l2).trim());
+    if (!m2) return null;
+    if (m2[3] != null) return { key: m2[3].trim().toLowerCase(), raw: "", values: [], flag: true };
+    const raw = m2[2] ?? "";
+    return { key: m2[1].trim().toLowerCase(), raw, values: values(raw) };
+  }
+  var DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/;
+  var NUM = /^-?\d+(\.\d+)?$/;
+  function quoted(s, i2) {
+    let v2 = "";
+    for (i2++; i2 < s.length; i2++) {
+      const c = s[i2];
+      if (c === "\\" && (s[i2 + 1] === '"' || s[i2 + 1] === "\\")) {
+        v2 += s[++i2];
+        continue;
+      }
+      if (c === '"') return { v: v2, end: i2 + 1 };
+      v2 += c;
+    }
+    return { v: v2, end: s.length, open: true };
+  }
+  function values(raw, stop = "") {
+    const s = String(raw ?? "");
+    const out = [];
+    let i2 = 0;
+    const read = () => {
+      while (/\s/.test(s[i2] || "")) i2++;
+      if (i2 >= s.length || stop.includes(s[i2])) return null;
+      const c = s[i2];
+      if (c === '"') {
+        const q = quoted(s, i2);
+        i2 = q.end;
+        return { t: "text", v: q.v };
+      }
+      if (c === "[") {
+        i2++;
+        const list3 = [];
+        for (; ; ) {
+          while (/[\s,]/.test(s[i2] || "")) i2++;
+          if (i2 >= s.length) break;
+          if (s[i2] === "]") {
+            i2++;
+            break;
+          }
+          const v2 = read();
+          if (!v2) {
+            i2++;
+            continue;
+          }
+          list3.push(v2);
+        }
+        return { t: "list", v: list3 };
+      }
+      if (c === "^") {
+        const m3 = /^\^([^\s#@,\]]+)(?:#(\d+))?/.exec(s.slice(i2));
+        if (m3) {
+          i2 += m3[0].length;
+          const ref2 = { t: "ref", id: m3[1] };
+          if (m3[2]) ref2.occ = +m3[2];
+          if (s[i2] === "@" && s[i2 + 1] === '"') {
+            const q = quoted(s, i2 + 1);
+            ref2.span = q.v;
+            i2 = q.end;
+          }
+          return ref2;
+        }
+      }
+      const m2 = /^[^\s,\]]+/.exec(s.slice(i2)) || /^\S/.exec(s.slice(i2));
+      i2 += m2[0].length;
+      const w2 = m2[0];
+      if (w2 === "->" || w2 === "|") return { t: "sign", v: w2 };
+      if (NUM.test(w2)) return { t: "num", v: +w2 };
+      if (DATE.test(w2)) return { t: "date", v: w2 };
+      return { t: "word", v: w2 };
+    };
+    for (; ; ) {
+      const v2 = read();
+      if (!v2) break;
+      out.push(v2);
+    }
+    return out;
+  }
+  function writeValue(x) {
+    if (x == null) return "";
+    if (typeof x === "number") return String(Math.round(x * 1e3) / 1e3);
+    if (typeof x === "string") return plainWord(x) ? x : quote(x);
+    switch (x.t) {
+      case "ref":
+        return `^${x.id}${x.occ ? `#${x.occ}` : ""}${x.span != null ? `@${quote(x.span)}` : ""}`;
+      case "num":
+        return writeValue(x.v);
+      case "date":
+        return x.v;
+      case "text":
+        return quote(x.v);
+      case "list":
+        return `[${x.v.map(writeValue).join(", ")}]`;
+      default:
+        return String(x.v);
+    }
+  }
+  var quote = (s) => `"${String(s).replace(/\\(?=["\\]|$)/g, "\\\\").replace(/"/g, '\\"')}"`;
+  var plainWord = (s) => s !== "" && /^[^\s"[\],^]+$/.test(s) && !NUM.test(s) && !DATE.test(s) && s !== "->" && s !== "|";
+  var ref = (id) => `^${id}`;
+  function scalar2(v2) {
+    const s = String(v2).trim();
+    if (/^".*"$/s.test(s)) return quoted(s, 0).v;
+    if (s === "true" || s === "false") return s === "true";
+    if (NUM.test(s)) return +s;
+    return s;
+  }
+  function list2(s) {
+    s = String(s).trim().replace(/^\[(.*)\]$/s, "$1");
+    const out = [];
+    const re2 = /\s*("(?:\\.|[^"\\])*"|[^,]*)\s*(,|$)/g;
+    let m2;
+    while ((m2 = re2.exec(s)) && m2[0]) {
+      const t = m2[1].trim();
+      if (t) out.push(t.startsWith('"') ? scalar2(t) : t);
+      if (!m2[2]) break;
+    }
+    return out.map(String);
+  }
+  var plainScalar = (s) => s !== "" && !/^\s|\s$|^["[#]|\n|^(true|false)$|^-?\d+(\.\d+)?$/.test(s);
+  var writeScalar2 = (v2) => typeof v2 === "string" ? plainScalar(v2) ? v2 : quote(v2) : JSON.stringify(v2);
+  var writeList2 = (xs) => `[${xs.map((t) => /[,[\]"]|^\s|\s$/.test(t) ? quote(t) : t).join(", ")}]`;
+  var frontValue = (raw) => /^\s*\[/.test(raw) ? list2(raw) : scalar2(raw);
+  var writeFront = (v2) => Array.isArray(v2) ? writeList2(v2.map(String)) : writeScalar2(v2);
+  function parse3(text) {
+    const report = [];
+    const lines2 = String(text ?? "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").split("\n");
+    const front = [];
+    let i2 = 0;
+    if (lines2[0]?.trim() === "---") {
+      let end = lines2.findIndex((l2, k2) => k2 > 0 && /^(---|\.\.\.)\s*$/.test(l2));
+      let from = end + 1;
+      if (end < 0) {
+        end = lines2.findIndex((l2, k2) => k2 > 0 && !/^\s*[\w.-]+\s*:/.test(l2));
+        if (end < 0) end = lines2.length;
+        from = end;
+        report.push("Line 1: the front matter has no closing ---, so only the settings lines at the top were read.");
+      }
+      for (let k2 = 1; k2 < end; k2++) {
+        const l2 = lines2[k2];
+        if (!l2.trim() || /^\s*#/.test(l2)) continue;
+        const m2 = /^\s*([\w.-]+)\s*:\s?(.*)$/.exec(l2);
+        if (!m2) {
+          report.push(`Line ${k2 + 1}: "${l2.trim()}" isn't a setting (key: value), so it was left out.`);
+          continue;
+        }
+        front.push({ key: m2[1], raw: m2[2].trim(), line: k2 + 1 });
+      }
+      i2 = from;
+    }
+    const objects = [], sections = [];
+    let obj = null, sec = null, stray = 0;
+    const close2 = () => {
+      if (!obj) return;
+      while (obj.lines.length && !obj.lines.at(-1).trim()) obj.lines.pop();
+      while (obj.lines.length && !obj.lines[0].trim()) {
+        obj.lines.shift();
+        obj.first++;
+      }
+      obj = null;
+    };
+    for (; i2 < lines2.length; i2++) {
+      const l2 = lines2[i2];
+      const o2 = !sec && OBJECT.exec(l2);
+      if (o2) {
+        close2();
+        obj = { id: o2[1], kind: o2[2].toLowerCase(), title: o2[3] ?? null, lines: [], line: i2 + 1, first: i2 + 2 };
+        objects.push(obj);
+        continue;
+      }
+      const s = SECTION.exec(l2);
+      if (s) {
+        close2();
+        if (/^objects$/i.test(s[1])) {
+          sec = null;
+          continue;
+        }
+        sec = { name: s[1], lines: [], line: i2 + 1 };
+        sections.push(sec);
+        continue;
+      }
+      if (obj) {
+        obj.lines.push(unescape2(l2));
+        continue;
+      }
+      if (!l2.trim()) continue;
+      if (sec) {
+        sec.lines.push({ ...keyLine(l2) || { key: null }, text: l2, line: i2 + 1 });
+        continue;
+      }
+      if (!stray++) report.push(`Line ${i2 + 1}: "${l2.trim().slice(0, 40)}" is outside any object or section, so it was left out.`);
+    }
+    close2();
+    if (stray > 1) report[report.length - 1] = report.at(-1).replace(/, so it was left out\.$/, `, and so ${stray - 1 === 1 ? "is 1 more line" : `are ${stray - 1} more lines`}; they were left out.`);
+    return { front, objects, sections, report };
+  }
+  function keysOf2(obj) {
+    const keys = [], other = [];
+    obj.lines.forEach((l2, k2) => {
+      if (!l2.trim()) return;
+      const kl = keyLine(l2);
+      const line = (obj.first ?? obj.line + 1) + k2;
+      if (kl) keys.push({ ...kl, line });
+      else other.push({ text: l2, line });
+    });
+    return { keys, other };
+  }
+  function write({ front = [], objects = [], sections = [] }) {
+    const out = [];
+    if (front.length) out.push(["---", ...front.map(([k2, v2]) => `${k2}: ${v2}`), "---"].join("\n"));
+    out.push("# Objects");
+    for (const o2 of objects) {
+      const head = `## ^${o2.id} ${o2.kind}${o2.title ? `: ${o2.title}` : ""}`;
+      out.push([head, ...(o2.lines || []).map(escape2)].join("\n"));
+    }
+    for (const s of sections) out.push([`# ${s.name}`, ...s.lines].join("\n"));
+    return out.join("\n\n") + "\n";
+  }
+  function readArrow(raw) {
+    const m2 = /^\s*(\^\S+)\s*->\s*(\^\S+)\s*(?:\|(.*))?$/s.exec(String(raw ?? ""));
+    if (!m2) return null;
+    const [from] = values(m2[1]), [to] = values(m2[2]);
+    if (from?.t !== "ref" || to?.t !== "ref") return null;
+    let rest = (m2[3] ?? "").trim(), rel = "", label2 = "";
+    if (m2[3] != null) {
+      if (rest.startsWith('"')) {
+        const q = quoted(rest, 0);
+        rel = q.v;
+        rest = rest.slice(q.end).trim().replace(/^\|/, "");
+      } else {
+        const k2 = rest.indexOf("|");
+        rel = (k2 < 0 ? rest : rest.slice(0, k2)).trim();
+        rest = k2 < 0 ? "" : rest.slice(k2 + 1);
+      }
+      rest = rest.trim();
+      label2 = rest.startsWith('"') && rest.endsWith('"') && rest.length > 1 ? quoted(rest, 0).v : rest;
+    }
+    return { from, to, rel, label: label2 };
+  }
+  function writeArrow({ from, to, rel = "", label: label2 = "" }) {
+    const r = /\||^"|^\s|\s$/.test(rel) ? quote(rel) : rel;
+    const l2 = /^"|^\s|\s$/.test(label2) ? quote(label2) : label2;
+    return `${from} -> ${to}${r || l2 ? ` |${r ? ` ${r}` : ""}` : ""}${l2 ? ` | ${l2}` : ""}`;
+  }
+
+  // dist/web/features/roomfile/traum.js
+  var FORMAT = "room/2";
+  var GUIDE = "https://github.com/eleadlau-commits/traumerei/blob/main/app/features/roomfile/FORMAT.md";
+  var KEPT2 = "traum";
+  var byTime4 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
+  var plural = (n, one2, many = one2 + "s") => `${n} ${n === 1 ? one2 : many}`;
+  var NAMED = { room: "room", description: "description", desc: "description", tags: "tags", tint: "tint", light: "light", opacity: "opacity" };
+  function frontOf(parts, report = []) {
+    const meta = { settings: {}, sideSettings: [{}, {}], kept: [] };
+    for (const { key: key2, raw, line } of parts.front) {
+      const k2 = key2.toLowerCase();
+      if (k2 === "format") {
+        meta.format = String(frontValue(raw));
+        if (meta.format !== FORMAT) report.push(`Line ${line}: this file says format ${meta.format}; it was read as ${FORMAT}.`);
+      } else if (k2 === "guide") meta.guide = String(frontValue(raw));
+      else if (k2 === "modes" || k2 === "twin") meta[k2] = [].concat(frontValue(raw)).map((m2) => String(m2).trim().toLowerCase()).filter(Boolean);
+      else if (k2 === "kind") meta.modes = [String(frontValue(raw)).toLowerCase()];
+      else if (NAMED[k2] === "tags") meta.tags = [].concat(frontValue(raw)).map(String);
+      else if (NAMED[k2]) meta[NAMED[k2]] = k2 === "light" || k2 === "opacity" ? frontValue(raw) : String(frontValue(raw));
+      else if (/^(left|right)\.[^.]+\..+$/.test(k2)) {
+        const [side, mode, ...rest] = key2.split(".");
+        (meta.sideSettings[side.toLowerCase() === "left" ? 0 : 1][mode.toLowerCase()] ||= {})[rest.join(".")] = frontValue(raw);
+      } else if (key2.includes(".")) {
+        const dot = key2.indexOf(".");
+        (meta.settings[key2.slice(0, dot).toLowerCase()] ||= {})[key2.slice(dot + 1)] = frontValue(raw);
+      } else {
+        meta.kept.push(`${key2}: ${raw}`);
+        report.push(`Line ${line}: Träumerei doesn't know "${key2}"; it was kept and will be written back out.`);
+      }
+    }
+    return meta;
+  }
+  function frontLines(w2, roomId, prefix = "") {
+    const r = room3(w2, roomId);
+    const out = [];
+    if (!prefix) {
+      if (r.desc) out.push(["description", writeFront(r.desc)]);
+      if (r.tags?.length) out.push(["tags", writeFront(r.tags)]);
+      for (const k2 of ["tint", "light", "opacity"]) if (r[k2] != null) out.push([k2, writeFront(r[k2])]);
+    }
+    for (const [of, set] of Object.entries(w2.settings?.[roomId] || {})) {
+      for (const [k2, v2] of Object.entries(set || {})) if (v2 !== void 0) out.push([`${prefix}${of}.${k2}`, writeFront(v2)]);
+    }
+    return out;
+  }
+  function modesOf(w2, roomId, ontologies = []) {
+    const r = room3(w2, roomId);
+    const mine = view4(w2, roomId).mode;
+    if (r?.size === 2 || r?.id === "messy") return [mine, ...ontologies.map((o2) => o2.id).filter((id) => id !== mine)];
+    return [mine];
+  }
+  var ontology = (ontologies, id) => ontologies.find((o2) => o2.id === id) || null;
+  var groupMode = (modes, ontologies) => modes.find((m2) => ontology(ontologies, m2)?.groups) || DEFAULT_MODE2;
+  function objectOrder(w2, roomId) {
+    const items = roomItems2(w2, roomId);
+    const groups = groupsIn2(w2, roomId).filter((g2) => members2(w2, g2.id).length);
+    const keyOf = /* @__PURE__ */ new Map();
+    const depth = /* @__PURE__ */ new Map();
+    const visit2 = (g2, seen = /* @__PURE__ */ new Set()) => {
+      if (keyOf.has(g2.id)) return keyOf.get(g2.id);
+      if (seen.has(g2.id)) return g2.at;
+      seen.add(g2.id);
+      let k2 = g2.at, d = 0;
+      for (const m2 of members2(w2, g2.id)) {
+        if (isGroup2(m2)) {
+          k2 = Math.max(k2, visit2(m2, seen));
+          d = Math.max(d, depth.get(m2.id) + 1);
+        } else k2 = Math.max(k2, m2.at);
+      }
+      keyOf.set(g2.id, k2);
+      depth.set(g2.id, d);
+      return k2;
+    };
+    groups.forEach((g2) => visit2(g2));
+    return [
+      ...items.map((th) => ({ th, key: th.at, rank: -1 })),
+      ...groups.map((g2) => ({ th: g2, key: keyOf.get(g2.id), rank: depth.get(g2.id) }))
+    ].sort((a, b) => a.key - b.key || a.rank - b.rank || byTime4(a.th, b.th)).map((e) => e.th);
+  }
+  function writeObject(w2, roomId, th, ids, pictures) {
+    const id = ids.get(th.id);
+    if (isGroup2(th)) {
+      const lines2 = [`made in: ${th.of}`, `holds: ${members2(w2, th.id).map((m2) => ref(ids.get(m2.id))).join(" ")}`];
+      if (th.closed) lines2.push("closed");
+      if (th.shared) lines2.push("shared");
+      lines2.push(...own2(w2, roomId, KEPT2, false).keys?.[th.id] || []);
+      return { id, kind: "group", title: th.title || "", lines: lines2 };
+    }
+    const kind = ITEMS2[kindOf2(th)];
+    const out = kind?.traum?.write ? kind.traum.write(th) : { body: kind?.text(th) || "" };
+    let body = String(out.body ?? "");
+    if (pictures && th.src && body === th.src) body = pictures.ref(th.src);
+    return { id, kind: kind?.traum ? kindOf2(th) : "line", title: out.title || "", lines: body ? body.split("\n") : [] };
+  }
+  function fileIds(things, taken = /* @__PURE__ */ new Set()) {
+    const ids = /* @__PURE__ */ new Map();
+    let n = 0;
+    for (const th of things) {
+      do
+        n++;
+      while (taken.has(String(n)));
+      ids.set(th.id, String(n));
+    }
+    return ids;
+  }
+  function exportRoom2(w2, roomId, { ontologies = [], pictures = null, sections = placementSections } = {}) {
+    const r = room3(w2, roomId);
+    if (!r) return "";
+    const kept = own2(w2, roomId, KEPT2, false);
+    const twin = isTwin2(r) ? sides2(w2, roomId) : null;
+    const modes = twin ? twin.map((s) => view4(w2, s.id).mode) : modesOf(w2, roomId, ontologies);
+    const front = [
+      ["format", FORMAT],
+      ["guide", GUIDE],
+      ["room", writeFront(r.name || "Untitled")],
+      [twin ? "twin" : "modes", writeFront(modes)],
+      ...frontLines(w2, roomId),
+      ...twin ? twin.flatMap((s, k2) => frontLines(w2, s.id, `${SIDES2[k2].toLowerCase()}.`)) : [],
+      ...(kept.front || []).map((l2) => {
+        const i2 = l2.indexOf(":");
+        return [l2.slice(0, i2), l2.slice(i2 + 1).trim()];
+      })
+    ];
+    const rooms4 = twin || [r];
+    const things = rooms4.flatMap((x) => objectOrder(w2, x.id).map((th) => ({ th, at: x.id })));
+    const keptObjects = [...kept.objects || [], ...(twin || []).flatMap((s) => own2(w2, s.id, KEPT2, false).objects || [])];
+    const ids = fileIds(things.map((x) => x.th), new Set(keptObjects.map((o2) => o2.id)));
+    const objects = [...things.map(({ th, at: at2 }) => writeObject(w2, at2, th, ids, pictures)), ...keptObjects];
+    const placed = twin ? twin.flatMap((s, k2) => sections(w2, s.id, ids, [modes[k2]], ontologies).map((x) => ({ ...x, name: x.name.replace(/^In /, `${SIDES2[k2]}: `) }))) : sections(w2, roomId, ids, modes, ontologies);
+    return write({ front, objects, sections: [...placed, ...kept.sections || []] });
+  }
+  var SIDES2 = ["Left", "Right"];
+  function placementSections(w2, roomId, ids, modes, ontologies) {
+    const kept = own2(w2, roomId, KEPT2, false).modeLines || {};
+    const c = { ref: (id) => ids.has(id) ? ref(ids.get(id)) : null, writeArrow };
+    const out = [];
+    for (const m2 of modes) {
+      const o2 = ontology(ontologies, m2);
+      const lines2 = [...o2?.traum ? o2.traum.write(w2, roomId, c) : [], ...kept[m2] || []];
+      if (lines2.length) out.push({ name: `In ${m2}`, lines: lines2 });
+    }
+    return out;
+  }
+  function bringObjects(w2, roomId, parts, { modes = [], ontologies = [], now = Date.now(), report = [], fetched = null } = {}) {
+    const ids = /* @__PURE__ */ new Map();
+    const made = { groups: 0, thoughts: 0, pictures: 0 };
+    const kept = { objects: [], keys: {} };
+    const relations2 = [];
+    const groups = [];
+    const defaultOf = groupMode(modes, ontologies);
+    let t = now;
+    for (const obj of parts.objects) {
+      if (ids.has(obj.id)) {
+        report.push(`Line ${obj.line}: ^${obj.id} is used twice; the second one was left out.`);
+        continue;
+      }
+      if (obj.kind === "group") {
+        const { keys, other } = keysOf2(obj);
+        const fields2 = { kind: "group", of: defaultOf, title: obj.title || "" };
+        const holds2 = [];
+        const rest = [];
+        let line = obj.line;
+        for (const k2 of keys) {
+          if (k2.key === "made in") {
+            const of = String(k2.values[0]?.v ?? "").toLowerCase();
+            if (of) fields2.of = of;
+          } else if (k2.key === "holds") {
+            holds2.push(...k2.values);
+            line = k2.line;
+          } else if (k2.key === "closed" && k2.flag) fields2.closed = true;
+          else if (k2.key === "shared" && k2.flag) fields2.shared = true;
+          else {
+            rest.push(k2.flag ? k2.key : `${k2.key}: ${k2.raw}`);
+            report.push(`Line ${k2.line}: a group's "${k2.key}" isn't known; it was kept and will be written back out.`);
+          }
+        }
+        for (const o2 of other) report.push(`Line ${o2.line}: "${o2.text.trim().slice(0, 40)}" isn't a key line (key: values), so it was left out.`);
+        const g2 = create2(w2, roomId, fields2, t++);
+        if (!g2) {
+          report.push(`Line ${obj.line}: ^${obj.id} couldn't be made.`);
+          continue;
+        }
+        ids.set(obj.id, g2.id);
+        if (rest.length) kept.keys[g2.id] = rest;
+        groups.push({ g: g2, holds: holds2, line, obj });
+        continue;
+      }
+      if (obj.kind === "relation") {
+        relations2.push(obj);
+        continue;
+      }
+      const kind = ITEMS2[obj.kind];
+      if (!kind?.traum?.read) {
+        kept.objects.push({ id: obj.id, kind: obj.kind, title: obj.title || "", lines: obj.lines });
+        report.push(`Line ${obj.line}: Träumerei doesn't know the kind "${obj.kind}"; ^${obj.id} was kept and will be written back out.`);
+        continue;
+      }
+      let fields = kind.traum.read({ title: obj.title || "", body: obj.lines.join("\n") });
+      if (fields.kind === "picture" && !fields.src) fields = fetched?.(obj, fields) || unfetched2(fields, obj.line, report);
+      const th = create2(w2, roomId, fields, t++);
+      if (!th) {
+        report.push(`Line ${obj.line}: ^${obj.id} is empty, so it was left out.`);
+        continue;
+      }
+      ids.set(obj.id, th.id);
+      made.thoughts++;
+      if (kindOf2(th) === "picture") made.pictures++;
+    }
+    for (const { g: g2, holds: holds2, line, obj } of groups) {
+      const order = [];
+      for (const v2 of holds2) {
+        if (v2.t !== "ref") {
+          report.push(`Line ${line}: "${writeValue(v2)}" in ^${obj.id}'s holds isn't a ^reference, so it was left out.`);
+          continue;
+        }
+        const id = ids.get(v2.id);
+        if (!id) {
+          report.push(`Line ${line}: ^${obj.id} holds ^${v2.id}, which isn't in the file.`);
+          continue;
+        }
+        if (join2(w2, g2.id, id)) order.push(id);
+        else if (!w2.things[g2.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v2.id} (a group can't hold itself, or a group that holds it).`);
+      }
+      if (w2.things[g2.id]) setOrder2(w2, g2.id, order);
+    }
+    for (const { g: g2, obj } of groups) {
+      if (!w2.things[g2.id]) continue;
+      if (!members2(w2, g2.id).length) {
+        delete w2.things[g2.id];
+        ids.delete(obj.id);
+        delete kept.keys[g2.id];
+        report.push(`Line ${obj.line}: ${obj.title ? `"${obj.title}"` : `^${obj.id}`} holds nothing, so it was left out.`);
+      } else made.groups++;
+    }
+    return { ids, made, report, relations: relations2, kept };
+  }
+  function unfetched2(f2, line, report) {
+    const where = f2.url || "its data";
+    report?.push(`Line ${line}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
+    return { kind: "line", text: `A picture couldn't be fetched${f2.text ? `: ${f2.text}` : ""} (${f2.url || "unreadable data"})` };
+  }
+  function keep(w2, roomId, kept, meta, unread) {
+    const sections = unread?.sections;
+    kept.objects.push(...unread?.objects || []);
+    const modeLines = unread?.modeLines || {};
+    const has = kept.objects.length || Object.keys(kept.keys).length || meta?.kept?.length || sections?.length || Object.keys(modeLines).length;
+    if (!has) return;
+    const data = own2(w2, roomId, KEPT2);
+    if (meta?.kept?.length) data.front = [.../* @__PURE__ */ new Set([...data.front || [], ...meta.kept])];
+    if (kept.objects.length) data.objects = [...data.objects || [], ...kept.objects];
+    if (Object.keys(kept.keys).length) data.keys = { ...data.keys || {}, ...kept.keys };
+    if (sections?.length) data.sections = [...data.sections || [], ...sections];
+    for (const [m2, lines2] of Object.entries(modeLines)) (data.modeLines ||= {})[m2] = [...data.modeLines?.[m2] || [], ...lines2];
+  }
+  function relationOf2(obj, report) {
+    const { keys } = keysOf2(obj);
+    const out = { from: [], to: [], rel: obj.title || "", label: "", of: null, line: obj.line };
+    for (const k2 of keys) {
+      if (k2.key === "from" || k2.key === "to") out[k2.key].push(...k2.values);
+      else if (k2.key === "label") out.label = k2.values.length === 1 && k2.values[0].t === "text" ? k2.values[0].v : k2.raw;
+      else if (k2.key === "made in") out.of = String(k2.values[0]?.v ?? "").toLowerCase();
+      else report.push(`Line ${k2.line}: a relation's "${k2.key}" isn't known, so it was left out.`);
+    }
+    return out;
+  }
+  function readSections(w2, roomId, parts, { ids = /* @__PURE__ */ new Map(), relations: relations2 = [], ontologies = [], modes = [], report = [], at: at2 = null } = {}) {
+    const unread = { sections: [], objects: [], modeLines: {} };
+    const byMode = {};
+    for (const s of parts.sections) {
+      const m2 = /^(?:in|left:|right:)\s+(\S+)$/i.exec(s.name);
+      const mode = m2?.[1].toLowerCase();
+      if (!mode || !modes.includes(mode) || !ontology(ontologies, mode)?.traum) {
+        unread.sections.push({ name: s.name, lines: s.lines.map((l2) => l2.text) });
+        report.push(`Line ${s.line}: ${!mode ? `"# ${s.name}" isn't a section Träumerei knows` : !modes.includes(mode) ? `"${mode}" isn't one of this room's modes` : `${mode} doesn't read its section yet`}; it was kept and will be written back out.`);
+        continue;
+      }
+      (byMode[mode] ||= []).push(...s.lines);
+    }
+    const fresh = new Set(ids.values());
+    const helpers = (mode) => {
+      const say3 = (line, words) => report.push(`Line ${line}: ${words}`);
+      const thing2 = (v2, line) => {
+        if (v2?.t !== "ref") {
+          say3(line, `"${writeValue(v2)}" isn't a ^reference.`);
+          return null;
+        }
+        const id = ids.get(v2.id);
+        if (!id) {
+          say3(line, `^${v2.id} isn't in the file.`);
+          return null;
+        }
+        if (v2.occ || v2.span != null) say3(line, `${mode} doesn't use occurrences or spans; ${writeValue(v2)} was read as ^${v2.id}.`);
+        return id;
+      };
+      const arrow = (a, line) => {
+        const from = thing2(a.from, line), to = thing2(a.to, line);
+        return from && to ? { from, to, rel: a.rel, label: a.label, line } : null;
+      };
+      return {
+        thing: thing2,
+        report: say3,
+        fresh,
+        at: at2,
+        keep(l2) {
+          (unread.modeLines[mode] ||= []).push(l2.text ?? (l2.flag ? l2.key : `${l2.key}: ${l2.raw}`));
+          say3(l2.line, l2.key ? `${mode} doesn't know "${l2.key}"; it was kept and will be written back out.` : `"${String(l2.text).trim().slice(0, 40)}" isn't a line of the form key: values; it was kept.`);
+        },
+        arrow(l2) {
+          const a = readArrow(l2.raw);
+          if (!a) {
+            say3(l2.line, "an arrow is written ^from -> ^to | relation | label.");
+            return null;
+          }
+          return arrow(a, l2.line);
+        },
+        relations: [],
+        fromRelation: arrow
+      };
+    };
+    const cs = Object.fromEntries(modes.filter((m2) => ontology(ontologies, m2)?.traum).map((m2) => [m2, helpers(m2)]));
+    const arrowMode = modes.find((m2) => ontology(ontologies, m2)?.groups && cs[m2]);
+    for (const obj of relations2) {
+      const r = relationOf2(obj, report);
+      const mode = r.of || arrowMode;
+      if (r.from.length !== 1 || r.to.length !== 1 || !cs[mode]) {
+        unread.objects.push({ id: obj.id, kind: obj.kind, title: obj.title || "", lines: obj.lines });
+        report.push(`Line ${obj.line}: relation ^${obj.id} ${!cs[mode] ? `is for ${mode || "no mode"}, which doesn't read relations here` : "joins more than two things, which no mode here reads yet"}; it was kept and will be written back out.`);
+        continue;
+      }
+      const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label }, obj.line);
+      if (a) cs[mode].relations.push(a);
+    }
+    for (const [m2, c] of Object.entries(cs)) ontology(ontologies, m2).traum.read(w2, roomId, byMode[m2] || [], c);
+    return unread;
+  }
+  var say = (n) => [plural(n.groups, "group"), plural(n.thoughts, "thought"), ...n.pictures ? [plural(n.pictures, "picture")] : []].join(", ");
+  function importInto(w2, roomId, parts, { ontologies = [], now = Date.now(), fetched = null, at: at2 = null, read = readSections } = {}) {
+    const report = [...parts.report];
+    if (!room3(w2, roomId) || shut2(w2, roomId)) {
+      report.push("This room is locked, so nothing was brought in.");
+      return { report, made: { groups: 0, thoughts: 0, pictures: 0 } };
+    }
+    const modes = modesOf(w2, roomId, ontologies);
+    const got = bringObjects(w2, roomId, parts, { modes, ontologies, now, report, fetched });
+    const unread = read(w2, roomId, parts, { ids: got.ids, relations: got.relations, ontologies, modes, report, at: at2 });
+    keep(w2, roomId, got.kept, null, unread);
+    return { report, made: got.made, ids: got.ids };
+  }
+  function importRoom(w2, parts, { ontologies = [], now = Date.now(), page = 0, globals = {}, name: name5 = "Untitled", fetched = null, read = readSections } = {}) {
+    const report = [...parts.report];
+    const meta = frontOf(parts, report);
+    const known = (m2) => ontologies.some((o2) => o2.id === m2);
+    const unknown = (m2) => report.push(`There is no mode called "${m2}", so ${ontology(ontologies, DEFAULT_MODE2)?.name || DEFAULT_MODE2} is used instead.`);
+    const none = { groups: 0, thoughts: 0, pictures: 0 };
+    if (meta.twin) return importTwin(w2, parts, meta, report, { ontologies, now, page, globals, name: name5, fetched, read, known, unknown });
+    let modes = (meta.modes || []).filter((m2) => known(m2) || (unknown(m2), false));
+    if (!modes.length) modes = [DEFAULT_MODE2];
+    const r = addRoom2(w2, meta.room || name5, now, { page }, modes[0]);
+    if (!r) return { room: null, report: [...report, "A room couldn't be made."], made: none };
+    if (modes.length > 1) r.size = 2;
+    dress(w2, r.id, meta, now, globals);
+    const got = bringObjects(w2, r.id, parts, { modes, ontologies, now: now + 1, report, fetched });
+    const unread = read(w2, r.id, parts, { ids: got.ids, relations: got.relations, ontologies, modes, report });
+    keep(w2, r.id, got.kept, meta, unread);
+    frame(w2, r.id, ontologies);
+    return { room: r, report, made: got.made, ids: got.ids };
+  }
+  function dress(w2, roomId, meta, now, globals) {
+    const fields = {};
+    if (meta.description) fields.desc = meta.description;
+    if (meta.tags?.length) fields.tags = meta.tags;
+    for (const k2 of ["tint", "light", "opacity"]) if (meta[k2] != null) fields[k2] = meta[k2];
+    update2(w2, roomId, fields, now);
+    seedRoomSettings2(w2, roomId, globals);
+    for (const [of, set] of Object.entries(meta.settings)) for (const [k2, v2] of Object.entries(set)) setRoomSetting2(w2, roomId, of, k2, v2);
+  }
+  function importTwin(w2, parts, meta, report, { ontologies, now, page, globals, name: name5, fetched, read, known, unknown }) {
+    const modes = [0, 1].map((k2) => {
+      const m2 = meta.twin[k2] || DEFAULT_MODE2;
+      return known(m2) ? m2 : (unknown(m2), DEFAULT_MODE2);
+    });
+    const t = addTwin2(w2, meta.room || name5, now, { page }, modes);
+    const none = { groups: 0, thoughts: 0, pictures: 0 };
+    if (!t) return { room: null, report: [...report, "A room couldn't be made."], made: none };
+    dress(w2, t.id, { ...meta, settings: {} }, now, {});
+    const both = sides2(w2, t.id);
+    const sectionsOf = [[], []], other = [];
+    for (const s of parts.sections) {
+      const m2 = /^(left|right):\s*(\S+)$/i.exec(s.name);
+      if (!m2) {
+        other.push(s);
+        continue;
+      }
+      const k2 = m2[1].toLowerCase() === "left" ? 0 : 1;
+      if (m2[2].toLowerCase() !== modes[k2]) report.push(`Line ${s.line}: the ${SIDES2[k2].toLowerCase()} side is ${modes[k2]} (twin: says so), so "# ${s.name}" was read as its section.`);
+      sectionsOf[k2].push({ ...s, name: `In ${modes[k2]}` });
+    }
+    const side = /* @__PURE__ */ new Map();
+    const refsIn = (vs, out = []) => {
+      for (const v2 of vs) {
+        if (v2.t === "ref") out.push(v2.id);
+        if (v2.t === "list") refsIn(v2.v, out);
+      }
+      return out;
+    };
+    for (const k2 of [0, 1]) {
+      for (const s of sectionsOf[k2]) {
+        for (const l2 of s.lines) {
+          const ids2 = l2.key === "arrow" ? (/\^(\S+)\s*->\s*\^(\S+)/.exec(l2.raw) || []).slice(1) : refsIn(l2.values || []);
+          for (const id of ids2) {
+            if (side.has(id) && side.get(id) !== k2) report.push(`Line ${l2.line}: ^${id} is placed on both sides; it stays on the ${SIDES2[side.get(id)].toLowerCase()}.`);
+            else side.set(id, k2);
+          }
+        }
+      }
+    }
+    const holds2 = new Map(parts.objects.filter((o2) => o2.kind === "group").map((o2) => [o2.id, refsIn(keysOf2(o2).keys.filter((x) => x.key === "holds").flatMap((x) => x.values))]));
+    const links = /* @__PURE__ */ new Map();
+    const tie = (a, b) => {
+      (links.get(a) || links.set(a, []).get(a)).push(b);
+      (links.get(b) || links.set(b, []).get(b)).push(a);
+    };
+    for (const [g2, ms] of holds2) for (const m2 of ms) tie(g2, m2);
+    for (const o2 of parts.objects.filter((x) => x.kind === "relation")) for (const id of refsIn(keysOf2(o2).keys.filter((x) => x.key === "from" || x.key === "to").flatMap((x) => x.values))) tie(o2.id, id);
+    const seen = /* @__PURE__ */ new Set();
+    for (const o2 of parts.objects) {
+      if (seen.has(o2.id)) continue;
+      const group2 = [], stack = [o2.id];
+      while (stack.length) {
+        const id = stack.pop();
+        if (seen.has(id)) continue;
+        seen.add(id);
+        group2.push(id);
+        stack.push(...links.get(id) || []);
+      }
+      const k2 = group2.map((id) => side.get(id)).find((x) => x != null) ?? 0;
+      for (const id of group2) side.set(id, k2);
+    }
+    const made = { ...none };
+    const ids = /* @__PURE__ */ new Map();
+    let at2 = now + 1;
+    for (const k2 of [0, 1]) {
+      const s = both[k2];
+      seedRoomSettings2(w2, s.id, globals);
+      for (const [of, set] of Object.entries({ ...meta.settings[modes[k2]] ? { [modes[k2]]: meta.settings[modes[k2]] } : {}, ...meta.sideSettings[k2] })) {
+        for (const [key2, v2] of Object.entries(set)) setRoomSetting2(w2, s.id, of, key2, v2);
+      }
+      const mine = { ...parts, objects: parts.objects.filter((o2) => side.get(o2.id) === k2), sections: sectionsOf[k2] };
+      const got = bringObjects(w2, s.id, mine, { modes: [modes[k2]], ontologies, now: at2, report, fetched });
+      at2 += mine.objects.length + 1;
+      const unread = read(w2, s.id, mine, { ids: got.ids, relations: got.relations, ontologies, modes: [modes[k2]], report });
+      keep(w2, s.id, got.kept, null, { ...unread, sections: [] });
+      if (unread.sections.length) keep(w2, t.id, { objects: [], keys: {} }, null, { sections: unread.sections });
+      frame(w2, s.id, ontologies);
+      for (const x of Object.keys(made)) made[x] += got.made[x];
+      for (const [a, b] of got.ids) ids.set(a, b);
+    }
+    for (const s of other) report.push(`Line ${s.line}: "# ${s.name}" isn't a section a Twin knows (# Left: mode, # Right: mode); it was kept and will be written back out.`);
+    keep(w2, t.id, { objects: [], keys: {} }, meta, { sections: other.map((s) => ({ name: s.name, lines: s.lines.map((l2) => l2.text) })) });
+    return { room: t, report, made, ids };
+  }
+  function frame(w2, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
+    const o2 = ontology(ontologies, view4(w2, roomId).mode);
+    if (typeof o2?.units !== "function" || typeof o2?.point !== "function") return;
+    const ps = o2.units(w2, roomId).map((u) => o2.point(w2, roomId, u.id)).filter(Boolean);
+    if (!ps.length) return;
+    const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+    const x0 = Math.min(...xs), x12 = Math.max(...xs) + 340, y0 = Math.min(...ys) - 40, y12 = Math.max(...ys) + 80;
+    const zoom = Math.max(0.5, Math.min(1, box.w / (x12 - x0), box.h / (y12 - y0)));
+    Object.assign(view4(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
+  }
+  var fileName2 = (name5) => `${String(name5 || "Untitled").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled"}.traum`;
+
+  // dist/web/features/roomfile/plain.js
+  var HEADING2 = /^#{1,6}\s+(.*?)\s*#*\s*$/;
+  var ITEM = /^\s{0,3}[-*+]\s+(.*)$/;
+  var PICTURE = /^!\[(.*)\]\((\S+)\)\s*$/;
+  var dollars = (s) => (s.match(/\$\$/g) || []).length;
+  function plain2(text) {
+    let lines2 = String(text ?? "").replace(/^﻿/, "").replace(/\r\n?/g, "\n").split("\n");
+    const report = [];
+    if (lines2[0]?.trim() === "---") {
+      const end = lines2.findIndex((l2, k2) => k2 > 0 && /^(---|\.\.\.)\s*$/.test(l2));
+      if (end > 0) {
+        lines2 = lines2.map((l2, k2) => k2 <= end ? "" : l2);
+        report.push(`Lines 1–${end + 1}: the front matter isn't used in a plain Markdown file.`);
+      }
+    }
+    const blocks = [];
+    let cur = null;
+    lines2.forEach((l2, k2) => {
+      if (!l2.trim() && !(cur && dollars(cur.lines.join("\n")) % 2)) {
+        cur = null;
+        return;
+      }
+      if (!cur) {
+        cur = { lines: [], line: k2 + 1 };
+        blocks.push(cur);
+      }
+      cur.lines.push(l2);
+    });
+    const objects = [];
+    const add = (kind, title, body, line) => objects.push({ id: String(objects.length + 1), kind, title, lines: body ? body.split("\n") : [], line, first: line });
+    for (const b of blocks) {
+      const [first, ...rest] = b.lines;
+      const pic = b.lines.length === 1 && PICTURE.exec(first);
+      if (pic) {
+        add("picture", pic[1], pic[2], b.line);
+        continue;
+      }
+      const h = HEADING2.exec(first);
+      if (h) {
+        if (rest.length) add("passage", h[1], rest.join("\n"), b.line);
+        else add("line", null, h[1], b.line);
+        continue;
+      }
+      if (ITEM.test(first)) {
+        let item = null;
+        b.lines.forEach((l2, k2) => {
+          const m2 = ITEM.exec(l2);
+          if (m2) {
+            add("line", null, m2[1], b.line + k2);
+            item = objects.at(-1);
+          } else item.lines.push(l2.trim());
+        });
+        continue;
+      }
+      if (b.lines.length === 1) add("line", null, first, b.line);
+      else add("passage", "", b.lines.join("\n"), b.line);
+    }
+    return { front: [], objects, sections: [], report };
+  }
+
   // dist/web/features/roomfile/Roomfile.js
   var { el: el10 } = ui_exports;
-  var MD = /\.(md|markdown|txt)$/i;
-  var isRoomFile = (f2) => !!f2 && (MD.test(f2.name || "") || /markdown/.test(f2.type || ""));
+  var FILE = /\.(traum|md|markdown|txt)$/i;
+  var isRoomFile = (f2) => !!f2 && (FILE.test(f2.name || "") || /markdown|text\/plain/.test(f2.type || ""));
+  var isTraum = (name5, text) => /\.traum$/i.test(name5 || "") || /^---\s*\n(?:.*\n)*?format:\s/.test(text) || /^#\s+Objects\s*$/m.test(text);
+  var say2 = say;
   var REPORT = 8;
   var count = (n, one2) => `${n} ${one2}${n === 1 ? "" : "s"}`;
   var Roomfile = class extends Feature {
@@ -16210,11 +16910,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
     pick() {
-      this.picker ||= ui_exports.filePicker(".md,.markdown,.txt,text/markdown,text/plain");
+      this.picker ||= ui_exports.filePicker(".traum,.md,.markdown,.txt,text/markdown,text/plain");
       return this.picker.pick();
     }
-    // The file read, its pictures fetched and shrunk as pasted ones are. One that can't be fetched
-    // becomes a line saying so. Returns the parsed file (format.js), or null.
+    // The file read into parts (grammar.js; a plain Markdown file as loose thoughts, plain.js), its
+    // pictures fetched and shrunk as pasted ones are. Returns the parts, or null.
     async read(file) {
       let text;
       try {
@@ -16223,7 +16923,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.toast("That file couldn't be read.");
         return null;
       }
-      return this.fetchPictures(parse2(text));
+      return this.fetchObjectPictures(isTraum(file.name, text) ? parse3(text) : plain2(text));
+    }
+    // The parts' pictures at an address (or as data) fetched and shrunk; one that can't be fetched
+    // keeps its address, and comes in as a line saying so.
+    async fetchObjectPictures(parts) {
+      const pics = parts.objects.filter((o2) => o2.kind === "picture" && o2.lines.join("").trim() && !/^picture:\d+$/.test(o2.lines.join("").trim()));
+      if (pics.some((o2) => /^https?:/i.test(o2.lines.join("").trim()))) this.toast("Fetching pictures…");
+      for (const o2 of pics) {
+        const at2 = o2.lines.join("").trim();
+        try {
+          let blob;
+          if (at2.startsWith("data:")) blob = await (await fetch(at2)).blob();
+          else if (/^https?:\/\//i.test(at2)) {
+            const res = await fetch(at2);
+            if (!res.ok) throw new Error(res.status);
+            blob = await res.blob();
+          } else throw new Error("no address");
+          if (!blob.type.startsWith("image/")) throw new Error("not a picture");
+          o2.lines = [await keepOrShrink2(blob, at2.startsWith("data:") ? at2 : void 0)];
+        } catch {
+        }
+      }
+      return parts;
     }
     // The text read's pictures at an address (or as data) fetched and shrunk; a short reference
     // (picture:3, from the Markdown window) is left for plan() to read.
@@ -16231,9 +16953,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const lists = [parsed.loose, ...parsed.groups.map((g2) => g2.items)];
       const wanted = (x) => x.kind === "picture" && !/^picture:\d+$/.test(x.url || "");
       if (lists.some((l2) => l2.some((x) => wanted(x) && x.url))) this.toast("Fetching pictures…");
-      for (const list2 of lists) {
-        for (let k2 = 0; k2 < list2.length; k2++) {
-          const it = list2[k2];
+      for (const list3 of lists) {
+        for (let k2 = 0; k2 < list3.length; k2++) {
+          const it = list3[k2];
           if (!wanted(it)) continue;
           try {
             let blob;
@@ -16245,9 +16967,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             } else throw new Error("no address");
             if (!blob.type.startsWith("image/")) throw new Error("not a picture");
             const { url, ...rest } = it;
-            list2[k2] = { ...rest, src: await keepOrShrink2(blob, it.src) };
+            list3[k2] = { ...rest, src: await keepOrShrink2(blob, it.src) };
           } catch {
-            list2[k2] = unfetched(it, parsed.report);
+            list3[k2] = unfetched(it, parsed.report);
           }
         }
       }
@@ -16260,18 +16982,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     async importRoom({ file = null, cell = null, page = 0, ok = () => true } = {}) {
       file ||= await this.pick();
       if (!file) return null;
-      const parsed = await this.read(file);
-      if (!parsed || !ok()) return null;
+      const parts = await this.read(file);
+      if (!parts || !ok()) return null;
       const opts = () => ({
         ontologies: this.w.ontologies,
         now: Date.now(),
         page,
         globals: this.w.globals,
-        name: file.name.replace(MD, "") || "Untitled"
+        name: file.name.replace(FILE, "") || "Untitled"
       });
-      const dry = importRoom(copyWorld(this.w.world), parsed, opts());
+      const dry = importRoom(copyWorld(this.w.world), parts, opts());
       if (!await this.ask("Import a room", dry.room?.name || "A new room", dry) || !ok()) return null;
-      const out = importRoom(this.w.world, parsed, opts());
+      const out = importRoom(this.w.world, parts, opts());
       if (!out.room) {
         this.toast("A room couldn't be made.");
         return null;
@@ -16279,10 +17001,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.floors?.place(out.room.id, cell);
       return out.room;
     }
-    // A file's groups and thoughts into a room, as its own mode sees them. at(): where new trains
-    // start; ok(): whether it is still wanted; before(): called just before the world changes. When
-    // a heading matches a group already there, the card offers to replace the matching groups.
-    // Resolves true once they are in the world (the caller saves).
+    // A file's objects and placement into a room, as new thoughts and groups (its front matter is
+    // for new rooms only). at(): where new trains start; ok(): whether it is still wanted; before():
+    // called just before the world changes. Resolves true once they are in the world (the caller
+    // saves).
     async importInto(roomId, { file = null, at: at2 = () => null, ok = () => true, before = () => {
     } } = {}) {
       if (shut2(this.w.world, roomId)) {
@@ -16291,25 +17013,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       file ||= await this.pick();
       if (!file) return false;
-      const parsed = await this.read(file);
-      if (!parsed || !ok()) return false;
+      const parts = await this.read(file);
+      if (!parts || !ok()) return false;
       const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at2() });
-      const dry = importInto(copyWorld(this.w.world), roomId, parsed, opts());
-      const p = plan(this.w.world, roomId, parsed, { scope: "import", ontologies: this.w.ontologies });
+      const dry = importInto(copyWorld(this.w.world), roomId, parts, opts());
       const name5 = room3(this.w.world, roomId)?.name || "";
-      let choice2;
-      if (p.replace.length) {
-        const n = p.replace.length, word = p.word;
-        choice2 = await this.ask("Import into this room", name5, {
-          sum: `${say(dry.made)}. ${n} ${n === 1 ? `${word} has` : `${word}s have`} the name of one already here.`,
-          report: [...p.arrowChanges, ...p.report],
-          buttons: [["replace", "Replace matching groups"], ["add", "Add all as new"]]
-        });
-      } else choice2 = await this.ask("Import into this room", name5, dry) ? "add" : null;
-      if (!choice2 || !ok() || shut2(this.w.world, roomId)) return false;
+      if (!await this.ask("Import into this room", name5, dry) || !ok() || shut2(this.w.world, roomId)) return false;
       before();
-      if (choice2 === "replace") apply(this.w.world, roomId, plan(this.w.world, roomId, parsed, { scope: "import", ontologies: this.w.ontologies }));
-      else importInto(this.w.world, roomId, parsed, opts());
+      importInto(this.w.world, roomId, parts, opts());
       return true;
     }
     // ---- Editing as Markdown, in the source editor ----
@@ -16324,7 +17035,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!room3(w2(), roomId) || scope === "group" && !isGroup2(w2().things[groupId])) return false;
       const pictures = shortPictures();
       const ontologies = () => this.w.ontologies;
-      const write = () => scope === "group" ? exportGroup(w2(), roomId, groupId, { pictures }) : exportRoom(w2(), roomId, { ontologies: ontologies(), pictures });
+      const write2 = () => scope === "group" ? exportGroup(w2(), roomId, groupId, { pictures }) : exportRoom(w2(), roomId, { ontologies: ontologies(), pictures });
       const title = scope === "group" ? chapterName2(w2(), groupId) || "Untitled" : room3(w2(), roomId).name;
       const readOnly = shut2(w2(), roomId);
       const opts = { scope, groupId, ontologies: ontologies(), pictures };
@@ -16370,11 +17081,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.source.open({
         kind: scope === "group" ? "Source" : "Source · whole room",
         title,
-        text: write(),
+        text: write2(),
         readOnly,
         fileName: fileName(title),
         full: (t) => pictures.full(t),
-        reset: write,
+        reset: write2,
         options: scope === "room" ? [{ key: "remove", label: "Remove groups not in the text", value: false }] : [],
         check,
         apply: readOnly ? null : applyText,
@@ -16402,7 +17113,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         box.append(...[
           el10("div", { class: "label" }, kind),
           el10("div", { class: "roomfile-title" }, title),
-          el10("div", { class: "roomfile-sum" }, sum || (any ? say(made) : "Nothing to bring in")),
+          el10("div", { class: "roomfile-sum" }, sum || (any ? say2(made) : "Nothing to bring in")),
           report.length ? el10(
             "ul",
             { class: "roomfile-report", "aria-label": "What couldn't be read" },
@@ -16432,18 +17143,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         (box.querySelector(".roomfile-go") || box.querySelector("button"))?.focus({ preventScroll: true });
       });
     }
-    // Downloads a room as <its name>.md (a locked room too).
+    // Downloads a room as <its name>.traum (a locked room too).
     exportRoom(id) {
       const r = room3(this.w.world, id);
       if (!r) return;
-      const text = exportRoom(this.w.world, id, { ontologies: this.w.ontologies });
-      const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-      const a = el10("a", { href: url, download: fileName(r.name), hidden: true });
+      const text = exportRoom2(this.w.world, id, { ontologies: this.w.ontologies });
+      const name5 = fileName2(r.name);
+      const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+      const a = el10("a", { href: url, download: name5, hidden: true });
       document.body.append(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1e4);
-      this.toast(`Exported ${fileName(r.name)}`);
+      this.toast(`Exported ${name5}`);
     }
   };
 
@@ -16547,9 +17259,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     else delete rec.days[today];
     return rec;
   }
-  function prune(rec, keep, when = Date.now()) {
-    if (!keep) return rec;
-    const from = dayOf(when - (keep - 1) * DAY3);
+  function prune(rec, keep2, when = Date.now()) {
+    if (!keep2) return rec;
+    const from = dayOf(when - (keep2 - 1) * DAY3);
     const old = sortedDays(rec).filter((d) => d < from);
     if (!old.length) return rec;
     const rooms4 = { ...rec.base?.rooms || {} };
@@ -16593,7 +17305,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/time/Time.js
   var { el: el11 } = ui_exports;
-  var KEY2 = "time";
+  var KEY3 = "time";
   var Time = class extends Feature {
     start() {
       this.w = this.use("world");
@@ -16611,7 +17323,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // Ctrl+Alt+T: on, to the front, or off
         refresh: () => this.refreshSoon(),
         // the place changed (drawn again, left, or a choice)
-        show: () => this.panel?.show(KEY2),
+        show: () => this.panel?.show(KEY3),
         // brings its tab to the front
         now: () => {
           this.toNow();
@@ -16622,7 +17334,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return !!self.panel && self.isOn;
         },
         get showing() {
-          return !!self.panel?.isShowing(KEY2);
+          return !!self.panel?.isShowing(KEY3);
         }
       });
       this.keep = this.storage.get("keep", KEEP_DEFAULT);
@@ -16712,8 +17424,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     toggle() {
       const p = this.place();
       if (!this.panel || !p) return;
-      if (this.isOn && this.shown && !this.panel.isShowing(KEY2)) {
-        this.panel.show(KEY2);
+      if (this.isOn && this.shown && !this.panel.isShowing(KEY3)) {
+        this.panel.show(KEY3);
         return;
       }
       this.setOn(!this.isOn);
@@ -16733,7 +17445,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.toNow();
         if (this.shown) {
           this.shown = null;
-          this.panel.close(KEY2, true);
+          this.panel.close(KEY3, true);
         }
         return;
       }
@@ -16743,21 +17455,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const twin = r && this.w.lib.twin.twinOf(this.world, roomId);
       const title = r ? twin ? `${twin.name} · ${r.name}` : r.name : "Every room";
       const kind = r ? "Timeline" : "Days";
-      const list2 = r ? this.roomList(p, roomId) : this.dayList(p);
+      const list3 = r ? this.roomList(p, roomId) : this.dayList(p);
       const scrub = this.scrubFor(p);
-      if (this.shown && this.panel.isOpen(KEY2)) {
+      if (this.shown && this.panel.isOpen(KEY3)) {
         if (this.shown.scrub !== scrub) this.shown.top.replaceChildren(...scrub ? [scrub.el] : []);
         this.shown.scrub = scrub;
-        this.shown.list.replaceChildren(list2);
+        this.shown.list.replaceChildren(list3);
         this.shown.handle?.setTitle(title);
         this.shown.handle?.setKind(kind);
       } else {
         const top = el11("div", { class: "time-top" }, ...scrub ? [scrub.el] : []);
-        const box = el11("div", { class: "time-body" }, list2);
+        const box = el11("div", { class: "time-body" }, list3);
         const body = el11("div", { class: "time", onkeydown: (e) => this.onKey(e) }, top, box);
         const now = this.shown = { body, top, list: box, scrub, handle: null };
         this.panel.open({
-          key: KEY2,
+          key: KEY3,
           tab: "Time",
           kind,
           title,
@@ -16783,7 +17495,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         });
       }
-      if (r) list2.lastElementChild?.scrollIntoView?.({ block: "end" });
+      if (r) list3.lastElementChild?.scrollIntoView?.({ block: "end" });
     }
     // ---- Going back ----
     today() {
@@ -17367,7 +18079,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           },
           el12("span", { class: "rooms-kind-name" }, "Import a room…"),
-          el12("span", { class: "pick-note" }, "from a .md file, here")
+          el12("span", { class: "pick-note" }, "from a .traum or .md file, here")
         )
       );
     }
@@ -17742,9 +18454,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // one), or a new group (Enter makes it and opens it). Escape, or an empty Enter, leaves it.
     makeField(group2) {
       const forGroup = group2 == null;
-      const done = (keep, value) => {
+      const done = (keep2, value) => {
         this.makingTag = null;
-        if (keep && value.trim()) {
+        if (keep2 && value.trim()) {
           if (forGroup ? makeGroup3(this.world, value) : makeTag2(this.world, value, group2, this.ontologies)) {
             this.save();
             if (forGroup) this.openGroup = tidyTag2(value).toLowerCase();
@@ -17827,12 +18539,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.
     groupField(tag) {
-      const done = (keep, value) => {
+      const done = (keep2, value) => {
         this.regrouping = null;
-        if (keep && setTagGroup2(this.world, tag, value, this.ontologies)) this.save();
+        if (keep2 && setTagGroup2(this.world, tag, value, this.ontologies)) this.save();
         this.drawTags();
       };
-      const list2 = el12("datalist", { id: "rooms-group-list" }, ...groupNames2(this.world).slice(1).map((g2) => el12("option", { value: g2 })));
+      const list3 = el12("datalist", { id: "rooms-group-list" }, ...groupNames2(this.world).slice(1).map((g2) => el12("option", { value: g2 })));
       const field3 = el12("input", {
         class: "rooms-tag-field rooms-group-field",
         value: tagGroup2(this.world, tag, this.ontologies) || "",
@@ -17861,7 +18573,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         field3.focus({ preventScroll: true });
         field3.select();
       });
-      return el12("div", { class: "rooms-group-edit", role: "listitem" }, field3, list2);
+      return el12("div", { class: "rooms-group-edit", role: "listitem" }, field3, list3);
     }
     // ---- Search lights ----
     openLights() {
@@ -18021,7 +18733,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           word("Back to the tint", p.untint),
           word(r.locked ? "Unlock" : "Lock", p.lock),
           word("Archive", p.archive),
-          word("Export as Markdown", p.export),
+          word("Export room file", p.export),
           word("Delete", p.remove, "pop-delete")
         )
       ];
@@ -18074,7 +18786,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
         }
       };
-      const list2 = el12(
+      const list3 = el12(
         "datalist",
         { id: "rooms-tag-list" },
         ...allTags2(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el12("option", { value: t.tag }))
@@ -18116,7 +18828,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           o2.auto ? null : el12("button", { type: "button", class: "rooms-chip-x", "aria-label": `Take off ${o2.tag}`, onclick: () => after(() => removeTag2(this.world, r.id, o2.tag)) }, "×")
         )),
         field3,
-        list2
+        list3
       );
     }
     // Redraws the squares on the next frame (sliders move many times a frame).
@@ -18354,10 +19066,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // An input for a room's name: Enter or leaving it keeps the name, Escape keeps the old one.
     nameField(r, done) {
       let finished = false;
-      const finish = (keep) => {
+      const finish = (keep2) => {
         if (finished) return;
         finished = true;
-        if (keep) {
+        if (keep2) {
           name3(this.world, r.id, field3.value);
           this.save();
         }
@@ -18550,9 +19262,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.toast(this.chosenFor(e).length ? "A locked room keeps its tags." : "Choose rooms first (Shift+click, or Ctrl+A).");
         return;
       }
-      const list2 = el12("datalist", { id: "rooms-group-tags" }, ...allTags2(this.world, this.ontologies).map((t) => el12("option", { value: t.tag || t })));
+      const list3 = el12("datalist", { id: "rooms-group-tags" }, ...allTags2(this.world, this.ontologies).map((t) => el12("option", { value: t.tag || t })));
       const field3 = el12("input", { class: "field rooms-group-tag", placeholder: "A tag they share (or Group: tag)", "aria-label": "A tag for the chosen rooms", list: "rooms-group-tags", maxlength: 61, autocomplete: "off", spellcheck: "false" });
-      const keep = () => {
+      const keep2 = () => {
         const text = field3.value.trim(), tag = tidyTag2(text.split(":").pop());
         this.closeSheet();
         if (!tag) return;
@@ -18562,10 +19274,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawRooms();
         this.toast(n ? `${n} room${n === 1 ? "" : "s"} tagged ${tag}. Arrange by → Tags shows them together.` : `They all have ${tag} already.`);
       };
-      this.openSheet(`Tag ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}`, [field3, list2], (ev) => {
+      this.openSheet(`Tag ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}`, [field3, list3], (ev) => {
         if (ev.key === "Enter") {
           ev.preventDefault();
-          keep();
+          keep2();
         }
       });
       field3.focus({ preventScroll: true });
@@ -19182,7 +19894,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.leaving = true;
       this.drawRooms();
       const text = el12("textarea", { class: "rooms-sheet-body", rows: 3, placeholder: "Where you were, what to pick up next", "aria-label": "Comment for next time" });
-      const keep = () => {
+      const keep2 = () => {
         const t = text.value.trim();
         if (t) this.storage.set("note", { text: t, at: Date.now() });
         this.close();
@@ -19193,7 +19905,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           e.preventDefault();
           this.close();
         }
-        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep();
+        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep2();
       };
       this.leaveBox.replaceChildren(
         el12("div", { class: "label" }, "Add a comment for next time?"),
@@ -19201,7 +19913,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el12(
           "div",
           { class: "sheet-words" },
-          el12("button", { type: "button", class: "word", onclick: keep }, "Keep"),
+          el12("button", { type: "button", class: "word", onclick: keep2 }, "Keep"),
           el12("button", { type: "button", class: "word", onclick: () => this.close() }, "Skip"),
           el12("span", { class: "sheet-keys" }, "Enter keeps it · Ctrl+Enter a new line")
         )
@@ -19490,7 +20202,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       else this.drawRooms();
       if (at2 === page) this.toast(`${r.name} is here. Ctrl+Z takes it back.`);
     }
-    // Downloads a room as <its name>.md (a locked room too).
+    // Downloads a room as <its name>.traum (a locked room too).
     exportRoomFile(id) {
       this.files?.exportRoom(id);
     }
@@ -19587,7 +20299,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.preventDefault();
         const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
         if (!file) {
-          this.toast("Only a room Markdown file (.md) can be dropped here.");
+          this.toast("Only a room file (.traum) or a Markdown file (.md) can be dropped here.");
           return;
         }
         this.importRoomFile(file);
@@ -19740,12 +20452,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     open() {
       const { search: search4 } = this.w.lib.model;
       const field3 = el14("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
-      const list2 = el14("div", { class: "search-list", role: "listbox" });
+      const list3 = el14("div", { class: "search-list", role: "listbox" });
       let found = [], at2 = 0;
       const show = () => {
         found = search4(this.w.world, field3.value);
         at2 = Math.min(at2, Math.max(0, found.length - 1));
-        list2.replaceChildren(
+        list3.replaceChildren(
           ...found.map((f2, i2) => el14("button", {
             type: "button",
             class: "pick search-item" + (i2 === at2 ? " on" : ""),
@@ -19781,7 +20493,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.pick(found[at2]);
         }
       });
-      this.box.replaceChildren(el14("div", { class: "panel top-sheet search-panel" }, field3, list2));
+      this.box.replaceChildren(el14("div", { class: "panel top-sheet search-panel" }, field3, list3));
       this.box.hidden = false;
       field3.focus();
     }
@@ -19917,13 +20629,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return update4(w2, id, { text: words }, now);
     }
     if (!words.trim()) return null;
-    const list2 = members3(w2, chapterId);
-    const i2 = prev ? list2.findIndex((th2) => th2.id === prev) : -1;
-    const at2 = between2(list2[i2] || null, list2[i2 + 1] || null, now);
+    const list3 = members3(w2, chapterId);
+    const i2 = prev ? list3.findIndex((th2) => th2.id === prev) : -1;
+    const at2 = between2(list3[i2] || null, list3[i2 + 1] || null, now);
     const th = create3(w2, chapterId, { kind: "line", text: words }, now);
     if (!th) return null;
     th.at = at2;
-    const ids = list2.map((x) => x.id);
+    const ids = list3.map((x) => x.id);
     ids.splice(i2 + 1, 0, th.id);
     setOrder3(w2, chapterId, ids);
     return th;
@@ -19940,7 +20652,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     const thoughts = () => members3(w2(), groupId);
     const node = c.el("div", { class: "room-doc-paras" });
-    const keep = () => {
+    const keep2 = () => {
       if (!writing) return null;
       const { id, prev, box } = writing;
       writing = null;
@@ -19949,9 +20661,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       kept();
       return th;
     };
-    const write = (id, prev = null, caret = "end") => {
+    const write2 = (id, prev = null, caret = "end") => {
       if (locked) return;
-      const before = keep();
+      const before = keep2();
       if (!w2().things[groupId]) {
         gone();
         return;
@@ -19966,19 +20678,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.stopPropagation();
         if (e.key === "Escape") {
           e.preventDefault();
-          keep();
+          keep2();
           draw2();
           escaped();
           return;
         }
         if (e.key === "Backspace" && !box.value && !e.isComposing) {
-          const list2 = thoughts();
-          const here = id ? list2.findIndex((t) => t.id === id) : list2.findIndex((t) => t.id === prev) + 1;
-          const back = list2[here - 1];
+          const list3 = thoughts();
+          const here = id ? list3.findIndex((t) => t.id === id) : list3.findIndex((t) => t.id === prev) + 1;
+          const back = list3[here - 1];
           if (back && kindOf3(back) === "line") {
             e.preventDefault();
-            keep();
-            write(back.id);
+            keep2();
+            write2(back.id);
           }
           return;
         }
@@ -19990,12 +20702,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         if (!box.value.trim() && !id) {
-          keep();
+          keep2();
           draw2();
           return;
         }
-        const k2 = keep();
-        write(null, k2?.id || prev);
+        const k2 = keep2();
+        write2(null, k2?.id || prev);
       });
       draw2();
       box.focus({ preventScroll: true });
@@ -20009,18 +20721,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         gone();
         return;
       }
-      const list2 = thoughts();
+      const list3 = thoughts();
       const out = [];
       const fresh = writing && !writing.id ? writing : null;
       if (fresh && !fresh.prev) out.push(c.el("div", { class: "room-doc-para writing" }, fresh.box));
-      for (const th of list2) {
+      for (const th of list3) {
         if (writing?.id === th.id) out.push(c.el("div", { class: "room-doc-para writing" }, writing.box));
         else if (kindOf3(th) === "line") {
           out.push(c.el("div", {
             class: "room-doc-para",
             "data-id": th.id,
             title: locked ? "" : "Click to write in it",
-            onclick: () => write(th.id)
+            onclick: () => write2(th.id)
           }, maths2(th.text || "")));
         } else out.push(c.el("div", { class: "room-doc-para room-doc-item" }, c.thoughtNode(th)));
         if (fresh && fresh.prev === th.id) out.push(c.el("div", { class: "room-doc-para writing" }, fresh.box));
@@ -20033,11 +20745,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       class: "room-doc-more",
       "aria-label": "Write the next thought",
       onclick: () => {
-        const list2 = thoughts();
-        write(null, list2.at(-1)?.id || null);
+        const list3 = thoughts();
+        write2(null, list3.at(-1)?.id || null);
       }
     }, "+");
-    return { node, more, keep, draw: draw2, write, get writing() {
+    return { node, more, keep: keep2, draw: draw2, write: write2, get writing() {
       return !!writing;
     } };
   }
@@ -20076,8 +20788,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (e.key === "Enter" && !e.isComposing) {
           e.preventDefault();
           title.blur();
-          const list2 = thoughts();
-          if (!list2.length) paras.write(null);
+          const list3 = thoughts();
+          if (!list3.length) paras.write(null);
         }
       },
       onchange: () => {
@@ -20223,10 +20935,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // text(list): its own way of writing it back; note: a line under it).
     settingRow(st, value, onChange) {
       if (st.type === "list") {
-        const plain2 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
-        const words = st.clean || plain2;
-        const write = st.text || ((list2) => list2.join(", "));
-        const shown2 = () => write(words(value).length ? words(value) : st.default);
+        const plain3 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
+        const words = st.clean || plain3;
+        const write2 = st.text || ((list3) => list3.join(", "));
+        const shown2 = () => write2(words(value).length ? words(value) : st.default);
         return el15(
           "label",
           { class: "renderer-slider room-list-row" },
@@ -20253,7 +20965,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 return;
               }
               value = next;
-              e.target.value = write(next);
+              e.target.value = write2(next);
               onChange(next);
             }
           }),
@@ -20466,10 +21178,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // An input for the room's name: Enter or leaving it keeps the name, Escape keeps the old one.
     nameField(r, done) {
       let finished = false;
-      const finish = (keep) => {
+      const finish = (keep2) => {
         if (finished) return;
         finished = true;
-        if (keep) {
+        if (keep2) {
           name(this.world, r.id, field3.value);
           this.save();
         }
@@ -20614,9 +21326,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Tab / Shift+Tab: the next mode of a big room, or the one before (round the list).
     nextMode(step = 1) {
-      const list2 = this.ontologies;
-      const at2 = list2.findIndex((m2) => m2.id === this.mode);
-      const next = list2[(at2 + step + list2.length) % list2.length];
+      const list3 = this.ontologies;
+      const at2 = list3.findIndex((m2) => m2.id === this.mode);
+      const next = list3[(at2 + step + list3.length) % list3.length];
       if (next && next.id !== this.mode) this.setMode(next.id);
     }
     // Only a big room switches its mode.
@@ -21069,9 +21781,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     stepBack() {
       const d = this.draft, w2 = this.world;
       if (!d?.train || !w2.things[d.train]) return false;
-      const list2 = trainThoughts2(w2, d.train);
-      const at2 = d.edit ? list2.findIndex((th) => th.id === d.edit) : list2.length;
-      const prev = list2[at2 - 1];
+      const list3 = trainThoughts2(w2, d.train);
+      const at2 = d.edit ? list3.findIndex((th) => th.id === d.edit) : list3.length;
+      const prev = list3[at2 - 1];
       if (d.edit) {
         const t = w2.things[d.train];
         const spot4 = { x: t.x ?? 0, y: t.y ?? 0 };
@@ -21397,8 +22109,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
         }
-        const keep = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
-        this.sel = keep ? this.sel : isGroup3(tapped) ? { kind: "train", id: tapped.id } : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
+        const keep2 = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
+        this.sel = keep2 ? this.sel : isGroup3(tapped) ? { kind: "train", id: tapped.id } : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
         const train = g2.el?.dataset.group;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
@@ -21631,11 +22343,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (id && kindOf3(this.world.things[id]) !== "line") this.openSheet(null, id);
     }
     // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
-    addItem(label2, note2, fn, keep = true) {
+    addItem(label2, note2, fn, keep2 = true) {
       return el15(
         "button",
         { type: "button", class: "pick room-add-item", role: "menuitem", onclick: () => {
-          this.closeAdd(keep);
+          this.closeAdd(keep2);
           fn();
         } },
         el15("span", {}, label2),
@@ -21653,8 +22365,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (open) this.addMenu.querySelector("button")?.focus();
     }
     // Closes Add; what was asked for at a point (keep) still goes there.
-    closeAdd(keep = false) {
-      if (!keep) this.addAt = null;
+    closeAdd(keep2 = false) {
+      if (!keep2) this.addAt = null;
       if (!this.addMenu || this.addMenu.hidden) return;
       this.addMenu.hidden = true;
       this.addMenu.classList.remove("at");
@@ -22356,16 +23068,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const title = items.length ? `${items.length} not placed` : "Nothing loose";
       const shown2 = this.looseFilter(items);
-      const list2 = shown2.length ? shown2.map((th) => this.looseCard(th)) : [el15("p", { class: "room-loose-hint" }, items.length ? "Nothing loose has those words." : `Every thought is placed in ${this.ont.name}.`)];
+      const list3 = shown2.length ? shown2.map((th) => this.looseCard(th)) : [el15("p", { class: "room-loose-hint" }, items.length ? "Nothing loose has those words." : `Every thought is placed in ${this.ont.name}.`)];
       if (open) {
-        this.loose.list.replaceChildren(...list2);
+        this.loose.list.replaceChildren(...list3);
         this.loose.handle?.setTitle(title);
         this.loose.handle?.setLabel(`Loose · ${items.length}`);
         this.loose.add.hidden = this.locked;
         return;
       }
       this.looseQuery = "";
-      const listEl = el15("div", { class: "room-loose-list", role: "list" }, list2);
+      const listEl = el15("div", { class: "room-loose-list", role: "list" }, list3);
       const search4 = el15("input", {
         type: "search",
         class: "room-loose-search",
@@ -22677,10 +23389,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const th = id ? this.world.things[id] : null;
       kind = th ? kindOf3(th) : kind;
       this.editing = { kind, id, src: src || th?.src || null };
-      const keep = () => this.keepSheet();
+      const keep2 = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
-        if (e.key === "Enter" && !e.isComposing && enterKeeps2(e)) keep();
+        if (e.key === "Enter" && !e.isComposing && enterKeeps2(e)) keep2();
         if (e.key === "Escape") {
           e.preventDefault();
           this.closeSheet();
@@ -22703,7 +23415,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const words = el15(
         "div",
         { class: "sheet-words" },
-        el15("button", { type: "button", class: "word", onclick: keep }, "Keep"),
+        el15("button", { type: "button", class: "word", onclick: keep2 }, "Keep"),
         el15("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
         el15("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
@@ -22834,14 +23546,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // drawing, or its units where they sit), with nothing chosen and nothing being written. The
     // nodes are only to look at.
     sideNodes(id) {
-      const keep = { roomId: this.roomId, sel: this.sel, draft: this.draft, found: this.found, draftEl: this.draftEl };
+      const keep2 = { roomId: this.roomId, sel: this.sel, draft: this.draft, found: this.found, draftEl: this.draftEl };
       Object.assign(this, { roomId: id, sel: null, draft: null, found: null });
       try {
         return this.canvasNodes();
       } catch {
         return [];
       } finally {
-        Object.assign(this, keep);
+        Object.assign(this, keep2);
       }
     }
     // In the rail, under Sides: each side with its mode; the one you work in is current, a click on
@@ -23021,7 +23733,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             visible: live,
             run: () => this.exportRoomFile(),
             icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>',
-            title: () => "Export this room as a file"
+            title: () => "Export this room as a .traum file"
           });
           this.add("rail.more", {
             id: "room-text",
@@ -23294,7 +24006,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             ...this.files ? [
               el15("div", { class: "pick-rule" }),
-              this.addItem("Import into this room…", "or drop a .md file", () => this.importIntoRoom(), false)
+              this.addItem("Import into this room…", "or drop a .traum or .md file", () => this.importIntoRoom(), false)
             ] : []
           ),
           this.addBtn = el15(
@@ -23407,7 +24119,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.preventDefault();
         const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
         if (!file) {
-          this.toast("Only a room Markdown file (.md) can be dropped here.");
+          this.toast("Only a room file (.traum) or a Markdown file (.md) can be dropped here.");
           return;
         }
         if (this.roomId) this.importIntoRoom(file);
@@ -23431,7 +24143,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawRoom();
       this.toast("Imported. Ctrl+Z takes it back.");
     }
-    // Downloads a room as <its name>.md (a locked room too).
+    // Downloads a room as <its name>.traum (a locked room too).
     exportRoomFile(id = this.roomId) {
       this.files?.exportRoom(id);
     }
