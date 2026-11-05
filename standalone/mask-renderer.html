@@ -1152,6 +1152,28 @@ html.rail-narrow { --rail: 48px; }
 .dock-edge:hover::after, .dock-dragging .dock-edge::after { opacity: .25; }
 .dock-dragging, .dock-dragging * { cursor: col-resize !important; user-select: none !important; }
 
+/* The strip a hidden dock leaves at its edge (28px): the name of each thing it holds, written
+   sideways (Folio's .tab), reading upwards on the left and downwards on the right. */
+.dock-tuck {
+  position: fixed;
+  z-index: 40;
+  top: var(--bar, 0px);
+  bottom: var(--status, 0px);
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-1);
+  padding: var(--s-2) 0;
+  background: var(--chrome);
+}
+.dock-tuck[hidden] { display: none; }
+.dock-tuck-left { left: 0; box-shadow: 1px 0 0 var(--chrome-edge); }
+.dock-tuck-right { right: 0; box-shadow: -1px 0 0 var(--chrome-edge); }
+.dock-tuck-tab { writing-mode: vertical-rl; justify-content: center; padding: var(--s-3) 0; max-height: 50%; overflow: hidden; text-overflow: ellipsis; }
+.dock-tuck-left .dock-tuck-tab { transform: rotate(180deg); }
+.dock-tuck-tab:is(:hover, :focus-visible) { background-color: var(--hover-wash); }
+
 /* ---- feature: renderer (style.css) ---- */
 /* Styles for Renderer. Class names start with "renderer-". Colours come from app/theme.css. */
 
@@ -1643,7 +1665,7 @@ html.rail-narrow { --rail: 48px; }
 .rooms-props .kv input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--chrome-edge); }
 .rooms-props .kv input[type="range"] { width: 100%; }
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
-.dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
+:is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
@@ -1725,7 +1747,7 @@ html.rail-narrow { --rail: 48px; }
 .room .panel { --room-ink: var(--ink); } /* inside a pop-up, words take the pop-up's ink */
 /* While a dock (the docks feature) shows, the room moves over beside it: their widths are
    --dock-left / --dock-right, and the transform makes the room's fixed parts sit in the room. */
-:is(.dock-left-open, .dock-right-open) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
+:is(.dock-left-open, .dock-right-open, .dock-left-strip, .dock-right-strip) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
 /* (The menu's lines sit on the top bar's veil, so they keep the ink even in a dark room.) */
@@ -3929,6 +3951,7 @@ html.rail-narrow { --rail: 48px; }
   var WIDTH = { left: 280, right: 340 };
   var LEAST = { left: 220, right: 280 };
   var MOST = 560;
+  var STRIP = 28;
   var Dock = class {
     // side: 'left' or 'right'. saved: its remembered width, or undefined. keep(px): remember a width.
     // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
@@ -3946,6 +3969,7 @@ html.rail-narrow { --rail: 48px; }
       this.held = [];
       this.front = null;
       this.tucked = false;
+      this.bare = false;
       this.build(label2);
     }
     fit(px) {
@@ -3957,6 +3981,13 @@ html.rail-narrow { --rail: 48px; }
     get visible() {
       return this.held.length > 0 && !this.tucked;
     }
+    get stripped() {
+      return this.held.length > 0 && this.tucked && !this.bare;
+    }
+    get taken() {
+      return this.visible ? this.width : this.stripped ? STRIP : 0;
+    }
+    // px of the screen's side it takes
     build(label2) {
       this.tabsEl = el4("div", { class: "dock-tabs", role: "tablist" });
       this.keyEl = el4("span", { class: "key dock-key" });
@@ -4007,19 +4038,25 @@ html.rail-narrow { --rail: 48px; }
         this.edge
       );
       for (const type of ["keyup", "paste", "copy", "cut", "wheel"]) this.root.addEventListener(type, (e) => e.stopPropagation());
-      (document.getElementById("folio-root") || document.body).append(this.root);
+      this.stripEl = el4("nav", {
+        class: `dock-tuck dock-tuck-${this.side}`,
+        hidden: true,
+        "aria-label": `${label2} (hidden)`,
+        onpointerdown: (e) => e.stopPropagation()
+      });
+      (document.getElementById("folio-root") || document.body).append(this.root, this.stripEl);
     }
     // Shows `body` (a node) in tab `tab` (the dock's first tab when none is named), in front, in
     // place of whatever that tab held (which is asked first, and closed); the other tabs keep theirs.
     // kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of true) when
     // it may close. onClose(): it closed. Resolves with { close, setTitle, setKind, open } or null
     // when what the tab held would not close.
-    async open({ key: key2 = this.side, tab = this.firstTab, kind = "", title = "", body, beforeClose = null, onClose = null } = {}) {
+    async open({ key: key2 = this.side, tab = this.firstTab, kind = "", title = "", label: label2 = "", body, beforeClose = null, onClose = null } = {}) {
       const there = this.held.find((x) => x.tab === tab);
       if (there && !await this.closeOne(there)) return null;
       if (this.held.some((x) => x.tab === tab)) return null;
       const page = el4("div", { class: "dock-page" }, body || "");
-      const shown2 = { key: key2, tab, kind, title, page, beforeClose, onClose };
+      const shown2 = { key: key2, tab, kind, title, label: label2, page, beforeClose, onClose };
       this.held.push(shown2);
       this.body.append(page);
       this.front = shown2;
@@ -4038,6 +4075,10 @@ html.rail-narrow { --rail: 48px; }
         setKind: (t) => {
           shown2.kind = t;
           if (this.front === shown2) this.draw();
+        },
+        setLabel: (t) => {
+          shown2.label = t;
+          this.draw();
         },
         get open() {
           return dock.held.includes(shown2);
@@ -4060,6 +4101,29 @@ html.rail-narrow { --rail: 48px; }
         onclick: () => this.bring(x)
       }, x.tab || x.kind || "Untitled")));
       this.keyEl.textContent = this.keyLabel() || "";
+      this.drawStrip();
+    }
+    // Its name for one thing it holds: the strip's label, else its tab, else its kind.
+    nameOf(x) {
+      return x.label || x.tab || x.kind || "Untitled";
+    }
+    // The strip it leaves while hidden, and the room it takes: <html> has dock-left-strip (or
+    // -right) while it shows, and --dock-left is its width.
+    drawStrip() {
+      const on = this.stripped;
+      this.stripEl.hidden = !on;
+      document.documentElement.classList.toggle(`dock-${this.side}-strip`, on);
+      if (!on) {
+        this.stripEl.replaceChildren();
+        return;
+      }
+      const key2 = this.keyLabel();
+      this.stripEl.replaceChildren(...this.held.map((x) => el4("button", {
+        type: "button",
+        class: "tab dock-tuck-tab",
+        title: `Show ${this.nameOf(x)}${key2 ? ` · ${key2}` : ""}`,
+        onclick: () => this.bring(x)
+      }, this.nameOf(x))));
     }
     bring(x) {
       if (!this.held.includes(x)) return false;
@@ -4106,6 +4170,7 @@ html.rail-narrow { --rail: 48px; }
         this.tucked = false;
         this.root.hidden = true;
         document.documentElement.classList.remove(`dock-${this.side}-open`);
+        this.drawStrip();
         this.resized(0);
       }
       this.draw();
@@ -4123,8 +4188,16 @@ html.rail-narrow { --rail: 48px; }
       this.root.hidden = this.tucked;
       document.documentElement.classList.toggle(`dock-${this.side}-open`, !this.tucked);
       if (this.tucked && this.root.contains(document.activeElement)) document.activeElement.blur();
-      this.resized(this.showing);
+      this.drawStrip();
+      this.resized(this.taken);
       return true;
+    }
+    // Canvas only (on): hidden, it leaves no strip either.
+    setBare(on) {
+      if (this.bare === !!on) return;
+      this.bare = !!on;
+      this.drawStrip();
+      this.resized(this.taken);
     }
     // Whether it holds `key` (anything, when none is given), in front or not.
     isOpen(key2 = null) {
@@ -4222,16 +4295,23 @@ html.rail-narrow { --rail: 48px; }
     // A dock's key: hides it, or brings it back, keeping what shows in it.
     toggle(side) {
       const dock = this.docks[side];
+      if (this.tuckedAll) this.bare(false);
       this.tuckedAll = null;
       return dock.tuck(dock.visible);
+    }
+    // Canvas only leaves no strips; anything else brings them back.
+    bare(on) {
+      for (const s of SIDES) this.docks[s].setBare(on);
     }
     // Canvas only: every dock that shows hides; the same again brings back just those.
     canvasOnly() {
       const showing = SIDES.filter((s) => this.docks[s].visible);
-      if (showing.length) {
+      if (showing.length || !this.tuckedAll && SIDES.some((s) => this.docks[s].stripped)) {
+        this.bare(true);
         for (const s of showing) this.docks[s].tuck(true);
         this.tuckedAll = showing;
       } else if (this.tuckedAll) {
+        this.bare(false);
         for (const s of this.tuckedAll) this.docks[s].tuck(false);
         this.tuckedAll = null;
       }
@@ -19975,7 +20055,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // ---- Loose thoughts: those the ontology hasn't placed yet, in the left dock ----
     // They fill the left dock (the docks feature) as a list, which shows whenever the room has any;
     // one dragged onto the canvas goes where it is let go (the ontology's drop()). × or Ctrl+Alt+L
-    // only hides the dock, and Ctrl+Alt+L brings it back. Without the docks feature they are a tray
+    // only hides the dock, leaving its strip ("Loose · 3"), and the strip or Ctrl+Alt+L brings it back. Without the docks feature they are a tray
     // at the foot of the room instead: a quiet word ("Loose · 3") opens a row of them. Only an
     // ontology with a tray has loose thoughts.
     trayItems() {
@@ -20034,6 +20114,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.loose && dock.isOpen("loose")) {
         this.loose.list.replaceChildren(...list2);
         this.loose.handle?.setTitle(title);
+        this.loose.handle?.setLabel(`Loose · ${items.length}`);
         return;
       }
       const listEl = el14("div", { class: "room-loose-list", role: "list" }, list2);
@@ -20048,6 +20129,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         key: "loose",
         kind: "Loose",
         title,
+        label: `Loose · ${items.length}`,
         body,
         beforeClose: () => {
           dock.toggle();
