@@ -174,6 +174,9 @@ export class Dock {
     this.held = this.held.filter((x) => x !== shown);
     shown.page.remove();
     if (this.front === shown) this.front = this.held[this.held.length - 1] || null;
+    // Its owner hears that it closed before anyone hears the width change: a feature that redraws on
+    // the width (the rooms page) would otherwise open it again while its owner still thinks it shows.
+    try { shown.onClose?.(); } catch (err) { console.warn(`Dock (${this.side}): onClose`, err); }
     if (!this.held.length) {
       this.tucked = false;
       this.root.hidden = true;
@@ -182,7 +185,6 @@ export class Dock {
       this.resized(0);
     }
     this.draw();
-    try { shown.onClose?.(); } catch (err) { console.warn(`Dock (${this.side}): onClose`, err); }
     return true;
   }
 
