@@ -77,6 +77,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-russell-edit.side-left-up { transform: translate(-100%, -100%); }
 .room-russell-edit.side-left-down { transform: translateX(-100%); }
 .room-russell-edit input { width: 200px; }
+.room-russell-edit .room-russell-new, .room-russell-forgets .room-russell-new { width: 140px; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }

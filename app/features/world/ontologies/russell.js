@@ -15,12 +15,12 @@
 // (relations.js).
 // Thoughts stay shared with every other mode.
 
-import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder } from '../model.js';
+import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, setRoomSetting } from '../model.js';
 import { trayForeign, place } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
-import { arrowsOf, cleanRelations, relationShown, RELATIONS } from './relations.js';
+import { arrowsOf, cleanRelations, relationShown, withRelation, relationName, RELATIONS } from './relations.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -306,7 +306,7 @@ const arrowKey = (from, to) => `${from}>${to}`;
 function startEdit(c, from, to) {
   const a = arrowsInto(c.world, c.roomId, to);
   if (!a.parents.includes(from)) return;
-  editing = { room: c.roomId, from, to, text: a.labels[from] || '', rel: a.rel[from] || '', fresh: true };
+  editing = { room: c.roomId, from, to, text: a.labels[from] || '', rel: a.rel[from], fresh: true };
   c.drawWorld();
 }
 
@@ -321,10 +321,47 @@ function finishEdit(c, keep) {
   c.drawWorld();
 }
 
-// The box an arrow is edited in: its relation (when the room has several) and its label.
-function editBox(c, spot, names) {
+// A relation picker: the room's relations (and the arrow's own, if the list no longer has it), no
+// relation, and "+ New…", which turns the picker into a field: Enter adds the name to the room's
+// list and picks it, Esc goes back. pick(name) hears the choice ('' for none); keys(ev) hears the
+// picker's other keys (the edit box's Enter and Esc).
+function relationPick(c, now, pick, keys = () => {}) {
+  const names = cleanRelations(c.setting(RELATIONS.key));
+  const list = names.includes(now) || !now ? names : [...names, now];
+  const wrap = c.el('span', { class: 'room-russell-rel-pick' });
+  const select = c.el('select', {
+    class: 'room-russell-pick-rel', 'aria-label': 'The arrow\'s relation', onkeydown: keys,
+    onchange: (ev) => {
+      const v = ev.target.value;
+      if (v === 'new') { wrap.replaceChildren(field); field.focus(); return; }
+      pick(v === 'none' ? '' : list[Number(v)]);
+    },
+  },
+  ...list.map((n, i) => c.el('option', { value: String(i), selected: n === now }, n)),
+  c.el('option', { value: 'none', selected: !now }, '(no relation)'),
+  c.el('option', { value: 'new' }, '+ New…'));
+  const back = () => { select.value = now ? String(list.indexOf(now)) : 'none'; wrap.replaceChildren(select); select.focus(); };
+  const field = c.el('input', {
+    class: 'room-edit-text room-russell-new', placeholder: 'is a case of', spellcheck: 'false', 'aria-label': 'A new relation',
+    onkeydown: (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Escape') { ev.preventDefault(); back(); return; }
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      const name = relationName(field.value);
+      if (!name) { if (name === null) c.toast('A relation can\'t hold [[ or ]].'); back(); return; }
+      const next = withRelation(names, name);
+      if (!c.locked && next.length !== names.length) { setRoomSetting(c.world, c.roomId, ID, RELATIONS.key, next); c.save(); }
+      pick(next.find((n) => n.toLowerCase() === name.toLowerCase()));
+    },
+  });
+  wrap.append(select);
+  return wrap;
+}
+
+// The box an arrow is edited in: its relation and its label.
+function editBox(c, spot) {
   const e = editing;
-  const now = e.rel || names[0];
   const keys = (ev) => {
     ev.stopPropagation();
     if (ev.key === 'Enter') { ev.preventDefault(); finishEdit(c, true); }
@@ -334,12 +371,7 @@ function editBox(c, spot, names) {
     class: 'room-edit-text', value: e.text, placeholder: 'the coordinates', spellcheck: 'false',
     'aria-label': 'The arrow\'s label', oninput: (ev) => { e.text = ev.target.value; }, onkeydown: keys,
   });
-  const pick = names.length > 1 || !names.includes(now)
-    ? c.el('select', {
-      class: 'room-russell-pick-rel', 'aria-label': 'The arrow\'s relation', onkeydown: keys,
-      onchange: (ev) => { e.rel = ev.target.value === names[0] ? '' : ev.target.value; input.focus(); },
-    }, ...[...new Set([...names, now])].map((n) => c.el('option', { value: n, selected: n === now }, n)))
-    : c.el('span', { class: 'room-russell-rel' }, now);
+  const pick = relationPick(c, e.rel, (name) => { e.rel = name; input.focus(); }, keys);
   const box = c.el('div', {
     class: `panel room-russell-edit side-${spot.side}`, style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
   }, pick, input);
@@ -586,23 +618,18 @@ export default {
     },
   ],
 
-  // In a chapter's pop-up: each arrow into it, its relation (when the room has several) and label.
+  // In a chapter's pop-up: each arrow into it, its relation (any of the room's, none, or a new one)
+  // and its label.
   props(c, th) {
     if (!isGroup(th) || th.of !== ID) return [];
     const { parents, labels, rel } = arrowsInto(c.world, c.roomId, th.id);
-    const names = cleanRelations(c.setting(RELATIONS.key));
     return parents.map((p) => {
-      const now = rel[p] || names[0];
-      const pick = names.length > 1 || !names.includes(now)
-        ? c.el('select', {
-          class: 'room-russell-pick-rel', 'aria-label': `How it stands to ${chapterName(c.world, p)}`,
-          onchange: (e) => { setRelation(c.world, c.roomId, p, th.id, e.target.value === names[0] ? '' : e.target.value); c.save(); c.drawWorld(); },
-        }, ...[...new Set([...names, now])].map((n) => c.el('option', { value: n, selected: n === now }, n)))
-        : null;
+      const name = chapterName(c.world, p);
+      const pick = relationPick(c, rel[p], (r) => { setRelation(c.world, c.roomId, p, th.id, r); c.save(); c.drawWorld(); });
       return c.el('label', { class: 'room-russell-forgets' },
-      c.el('span', { class: 'pop-note' }, `From ${chapterName(c.world, p)}, it ${pick ? '' : now}`, pick),
+      c.el('span', { class: 'pop-note' }, `From ${name}: `, pick),
       c.el('input', {
-        class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `What it ${now} about ${chapterName(c.world, p)}`,
+        class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `The label of the arrow from ${name}`,
         onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
         onchange: (e) => { setLabel(c.world, c.roomId, p, th.id, e.target.value); c.save(); c.drawWorld(); },
       }));
@@ -636,17 +663,19 @@ export default {
       layer.append(hit);
       const mid = labelSpot(arrow, line);
       if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
-        nodes.push(editBox(c, mid, names));
+        nodes.push(editBox(c, mid));
         continue;
       }
-      if (!label && !c.locked) {
-        // An arrow with no label: a faint hint of its relation when the pointer is on it.
-        const hint = el('div', { class: `room-russell-label room-russell-hint side-${mid.side}`, 'data-arrow': key, title: 'Double-click to write this arrow\'s label', style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel || names[0]}…`);
+      // The relation shows beside the label when it tells arrows apart (relationShown).
+      const shown = relationShown(names, rel);
+      if (!label && !shown && !c.locked) {
+        // An arrow with nothing to show: a faint hint of its relation when the pointer is on it.
+        const hint = el('div', { class: `room-russell-label room-russell-hint side-${mid.side}`, 'data-arrow': key, title: 'Double-click to write this arrow\'s label', style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ''}…`);
         hit.addEventListener('pointerenter', () => hint.classList.add('show'));
         hit.addEventListener('pointerleave', () => hint.classList.remove('show'));
         nodes.push(hint);
       }
-      if (label) {
+      if (label || shown) {
         // A junction's two arrows lean towards each other, so each label goes on the side its
         // parent is on, away from the other arrow. Arrows fanning out of one foot are close
         // together at their middles, so their labels sit further down, where they have spread.
@@ -654,9 +683,9 @@ export default {
         const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
         const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
         nodes.push(el('div', {
-          class: `room-russell-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${rel || names[0]} ${label} (double-click to edit)`,
+          class: `room-russell-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${[rel, label].filter(Boolean).join(' ')} (double-click to edit)`,
           style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
-        }, names.length > 1 ? el('span', { class: 'room-russell-rel' }, `${rel || names[0]} `) : null, maths(label)));
+        }, shown ? el('span', { class: 'room-russell-rel' }, label ? `${shown} ` : shown) : null, label ? maths(label) : null));
       }
     }
     for (const g of chapters(w, roomId)) {
