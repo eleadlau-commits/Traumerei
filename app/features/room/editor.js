@@ -49,7 +49,7 @@ export async function openEditor(c, id) {
   const words = (x) => { const t = thoughtText(c.world, x).replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.slice(0, 57) + '…' : t || c.kindName(x); };
   const title = (x) => (isGroup(x) ? x.title || `An untitled ${c.groupName(x).toLowerCase()}` : words(x));
   const close = () => { handle?.close(true); };
-  const editor = { id, refresh, keep: () => paras?.keep() };
+  const editor = { id, body, refresh, keep: () => paras?.keep() };
   const handle = await c.panel.open({
     key: 'content', kind: group ? c.groupName(th) : c.kindName(th), title: title(th), body,
     beforeClose: () => { paras?.keep(); return true; },

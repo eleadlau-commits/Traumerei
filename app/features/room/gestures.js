@@ -314,10 +314,13 @@ export class Gestures {
   }
 
   // Puts copies of the copied thoughts in the open room, around a free spot, as they sat, and chooses them.
-  pasteThoughts() {
+  pasteThoughts() { this.pasteUnits(this.clip.units); }
+
+  // Puts copies of `units` (copyOf) in the open room, around a free spot, and chooses them.
+  pasteUnits(units) {
     if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.stopWriting();
-    const w = this.world, units = this.clip.units;
+    const w = this.world;
     const cx = units.reduce((a, u) => a + u.x, 0) / units.length, cy = units.reduce((a, u) => a + u.y, 0) / units.length;
     const spot = this.freeSpot();
     let now = Date.now();
