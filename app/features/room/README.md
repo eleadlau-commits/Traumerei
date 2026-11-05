@@ -32,7 +32,8 @@ It offers no service of its own.
 - **Ontological modes**, in a rail on the left of a room, where *Rooms* and *Archive* sit on the
   rooms page; the current one is marked. A small room (1 × 1) keeps the one mode it was made with,
   and the rail only names it. A big room (Messy thoughts, or any 2 × 2 room) lists them all and
-  switches with a click; a big room made small again keeps the mode it has then. Hovering over a
+  switches with a click, or with **Tab** (the next mode) and **Shift+Tab** (the one before) while
+  nothing is being written and no field or word has the focus; a big room made small again keeps the mode it has then. Hovering over a
   mode shows a small ⚙ beside it (on a phone, tap the current mode): it opens this room's settings
   for that mode in the right dock's Editor tab (without docks, a card beside the rail), with
   *Reset to global*; the ⚙ again, ×, or Escape closes them, and switching mode switches them. Each room keeps its own; a new

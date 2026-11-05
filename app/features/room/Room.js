@@ -58,13 +58,18 @@ export default class Room extends Feature {
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
     const run = {
       'room.timeline': () => this.toggleTimeline(),
+      'room.mode': (e) => this.nextMode(e.shiftKey ? -1 : 1),
       // The same verbs as on the rooms page (verbs.js).
       'room.rename': (e) => verbs.rename(this, e),
       'room.duplicate': (e) => verbs.duplicate(this, e),
       'room.fold': (e) => verbs.fold(this, e),
       'room.move': (e) => verbs.moveTo(this, e),
     };
-    for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: () => !this.root.hidden && !!this.roomId, ...(run[k.id] ? { run: run[k.id] } : {}) });
+    const live = () => !this.root.hidden && !!this.roomId;
+    // Tab swaps modes only in a big room, and only while nothing (a field, a word in a dock) has
+    // the focus but the room's canvas; elsewhere Tab keeps its usual job.
+    const when = { 'room.mode': () => live() && this.tabSwaps() };
+    for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
     this.on('docks:resized', () => { if (this.roomId) this.place(); }); // the room moved over (style.css)
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed

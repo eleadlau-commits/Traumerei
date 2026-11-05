@@ -309,6 +309,22 @@ export class RoomView {
       ...this.modeSettingsRows(o, () => this.drawRoom()));
   }
 
+  // Whether Tab swaps modes now: a big room, nothing being written or edited, and the focus on
+  // nothing (or on the canvas).
+  tabSwaps() {
+    if (this.draft || this.editing || !isBig(room(this.world, this.roomId))) return false;
+    const a = document.activeElement;
+    return !a || a === document.body || (this.stage.contains(a) && a !== this.input);
+  }
+
+  // Tab / Shift+Tab: the next mode of a big room, or the one before (round the list).
+  nextMode(step = 1) {
+    const list = this.ontologies;
+    const at = list.findIndex((m) => m.id === this.mode);
+    const next = list[(at + step + list.length) % list.length];
+    if (next && next.id !== this.mode) this.setMode(next.id);
+  }
+
   // Only a big room switches its mode.
   setMode(id) {
     if (!isBig(room(this.world, this.roomId))) return;
