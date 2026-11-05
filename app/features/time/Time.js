@@ -8,10 +8,16 @@
 // rooms page each add one item to the slot `time.place` (README.md). Whether Time is on is one
 // choice for everywhere, saved here: leaving a room keeps it on, and the rooms page shows its own.
 //
-// Saved data: 'open' (whether Time is on).
+// It also keeps a daily record of the rooms page (record.js): at the end of each day, where each
+// room sat and what it was called, and which rooms were written in. Settings → History says how
+// long it is kept (1 month, 1 year, or forever).
+//
+// Saved data: 'open' (whether Time is on), 'record' (the daily record), 'keep' (days kept, 0 for
+// forever).
 
 import { Feature, ui } from 'folio';
 import { timeline, days, changed } from './days.js';
+import { snapshot, note, prune, emptyRecord, KEEP, KEEP_DEFAULT } from './record.js';
 import { TIME_KEYS } from './keys.js';
 
 const { el } = ui;
@@ -34,6 +40,15 @@ export default class Time extends Feature {
       get on() { return !!self.panel && self.isOn; },
       get showing() { return !!self.panel?.isShowing(KEY); },
     });
+    // The daily record: written a moment after anything is saved, and when Create starts.
+    this.keep = this.storage.get('keep', KEEP_DEFAULT);
+    this.record = this.storage.get('record', null) || emptyRecord();
+    this.written = new Set(); // rooms written in since the record was last written
+    this.on('world:saved', () => this.recordSoon());
+    this.on('world:changed', () => this.recordSoon());
+    this.on('room:changed', (id) => { this.written.add(this.squareId(id)); this.recordSoon(); });
+    this.recordSoon();
+    this.add('settings', { id: 'time-history', title: 'History', order: 31, render: () => this.settingsPane() });
     if (!this.panel) return;
     for (const k of TIME_KEYS) this.add('keys', { ...k, zone: 'everywhere', when: () => !!this.place(), run: () => this.toggle() });
     this.on('world:saved', () => this.refreshSoon());
@@ -43,6 +58,43 @@ export default class Time extends Feature {
 
   get world() { return this.w.world; }
   get m() { return this.w.lib.model; }
+
+  // ---- The daily record ----
+
+  // The square on the rooms page a room is: itself, or its Twin (a side's).
+  squareId(id) {
+    const r = this.m.room(this.world, id);
+    return r?.parent && this.m.room(this.world, r.parent) ? r.parent : id;
+  }
+
+  recordSoon() {
+    clearTimeout(this.recordTimer);
+    this.recordTimer = setTimeout(() => this.writeRecord(), 1500);
+  }
+
+  // Today, as it is now, into the record; days older than the history kept are folded away.
+  writeRecord() {
+    clearTimeout(this.recordTimer);
+    note(this.record, snapshot(this.world), [...this.written]);
+    this.written.clear();
+    prune(this.record, this.keep);
+    this.storage.set('record', this.record);
+  }
+
+  // Settings → History: how long the record is kept.
+  settingsPane() {
+    return el('div', { class: 'stack' },
+      el('label', { class: 'row' }, el('span', {}, 'Keep the history'),
+        el('select', { 'aria-label': 'Keep the rooms\' history', onchange: (e) => this.setKeep(+e.target.value) },
+          ...KEEP.map((k) => el('option', { value: k.days, ...(k.days === this.keep ? { selected: '' } : {}) }, k.words)))),
+      ui.hint('A day by day record of the rooms page, for going back in Time. A shorter history forgets the older days.', { small: true }));
+  }
+
+  setKeep(days) {
+    this.keep = days;
+    this.storage.set('keep', days);
+    this.writeRecord();
+  }
 
   // The place that shows now, or null (the home page).
   place() { return this.slot('time.place').first((p) => (p.live() ? p : null)) || null; }
