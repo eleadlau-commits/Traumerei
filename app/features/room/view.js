@@ -184,8 +184,9 @@ export class RoomView {
       title: this.keyMap ? `Timeline (${this.keyMap.label('room.timeline')})` : 'Timeline',
       onclick: () => this.toggleTimeline(),
     }, 'Timeline'));
-    const card = this.settingsFor && this.roomSettingsCard();
+    const card = !this.panel && this.settingsFor && this.roomSettingsCard();
     if (card) items.push(card);
+    this.drawModeSettings();
     this.modes.setAttribute('role', 'group');
     this.modes.replaceChildren(...items);
     this.root.dataset.mode = this.mode;
@@ -238,22 +239,21 @@ export class RoomView {
     this.drawRoom();
   }
 
+  // The ⚙ beside a mode: this room's settings for it, in the right dock's Editor tab (without
+  // docks, a card beside the rail). The same ⚙ again closes them (or brings them to the front).
   openRoomSettings(id) {
+    if (this.panel && this.settingsFor === id && this.modeSettings && !this.panel.isShowing('mode-settings')) {
+      this.panel.show('mode-settings');
+      return;
+    }
     this.settingsFor = this.settingsFor === id ? null : id;
     this.gearFor = null;
     this.drawRoom();
   }
 
-  // This room's settings for one ontology, in a card beside the rail, with Reset to global.
-  roomSettingsCard() {
-    const o = this.ontologies.find((x) => x.id === this.settingsFor);
-    if (!o) return null;
-    const close = () => { this.settingsFor = null; this.drawRoom(); };
-    return el('div', { class: 'panel pop room-options room-mode-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
-      onpointerdown: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } } },
-      el('div', { class: 'room-mode-settings-head' },
-        el('span', {}, o.name),
-        el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close', onclick: close })),
+  // This room's settings for one ontology, and Reset to global (redraw(): after a reset).
+  modeSettingsRows(o, redraw) {
+    return [
       el('p', { class: 'room-mode-settings-note' }, 'For this room only'),
       ...this.settingsOf(o).map((st) => this.settingRow(st, this.setting(st.key, o), (v) => {
         const before = this.setting(st.key, o);
@@ -265,8 +265,48 @@ export class RoomView {
       el('button', { type: 'button', class: 'word room-mode-settings-reset', onclick: () => {
         resetRoomSettings(this.world, this.roomId, o.id);
         this.w.write();
-        this.drawRoom();
-      } }, 'Reset to global'));
+        redraw();
+      } }, 'Reset to global'),
+    ];
+  }
+
+  // The settings in the Editor tab: opened while settingsFor names a mode, switched when it
+  // changes, closed when it is cleared; the dock's × or Escape clears it.
+  drawModeSettings() {
+    if (!this.panel) return;
+    const open = this.modeSettings;
+    if (!this.settingsFor) {
+      if (open) { this.modeSettings = null; this.panel.close('mode-settings', true); }
+      return;
+    }
+    if (open && open.id === this.settingsFor && this.panel.isOpen('mode-settings')) return;
+    const o = this.ontologies.find((x) => x.id === this.settingsFor);
+    if (!o) { this.settingsFor = null; return; }
+    const body = el('div', { class: 'room-mode-settings room-mode-settings-docked' });
+    const fill = () => { body.replaceChildren(...this.modeSettingsRows(o, () => { fill(); this.drawWorld(); })); };
+    fill();
+    const now = (this.modeSettings = { id: o.id });
+    this.panel.open({ key: 'mode-settings', kind: 'Settings for this room', title: o.name, body,
+      onClose: () => {
+        if (this.modeSettings !== now) return; // switched to another mode, or the room was left
+        this.modeSettings = null;
+        this.settingsFor = null;
+        if (this.roomId) this.drawRoom();
+      } })
+      .then((h) => { if (this.modeSettings === now && !h) { this.modeSettings = null; this.settingsFor = null; } });
+  }
+
+  // This room's settings for one ontology, in a card beside the rail (without docks).
+  roomSettingsCard() {
+    const o = this.ontologies.find((x) => x.id === this.settingsFor);
+    if (!o) return null;
+    const close = () => { this.settingsFor = null; this.drawRoom(); };
+    return el('div', { class: 'panel pop room-options room-mode-settings', role: 'dialog', 'aria-label': `${o.name} settings for this room`,
+      onpointerdown: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } } },
+      el('div', { class: 'room-mode-settings-head' },
+        el('span', {}, o.name),
+        el('button', { type: 'button', class: 'close-x room-history-close', 'aria-label': 'Close', onclick: close })),
+      ...this.modeSettingsRows(o, () => this.drawRoom()));
   }
 
   // Only a big room switches its mode.

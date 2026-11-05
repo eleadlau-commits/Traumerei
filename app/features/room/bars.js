@@ -388,8 +388,9 @@ export class Bars {
     }
   }
 
-  // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
-  // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
+  // The sheet: to write a passage, caption a picture or name a folded group, new (kind) or an
+  // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
+  // room). Keep (Enter) saves it; Escape or Cancel leaves it.
   openSheet(kind, id = null, src = null, ask = []) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
@@ -417,15 +418,32 @@ export class Bars {
       this.sheetCaption = el('input', { class: 'room-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
       fields.push(el('img', { class: 'room-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
     }
-    this.sheet.replaceChildren(
-      el('div', { class: 'label' }, { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
-      ...fields,
-      el('div', { class: 'sheet-words' },
-        el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
-        el('button', { type: 'button', class: 'word', onclick: () => this.closeSheet() }, 'Cancel'),
-        el('span', { class: 'sheet-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line' : 'Enter keeps it')));
+    const label = { passage: 'Passage', picture: 'Picture', group: `A folded ${this.groupName(th).toLowerCase()}` }[kind];
+    const words = el('div', { class: 'sheet-words' },
+      el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
+      el('button', { type: 'button', class: 'word', onclick: () => this.closeSheet() }, 'Cancel'),
+      el('span', { class: 'sheet-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line · Esc cancels' : 'Enter keeps it · Esc cancels'));
+    const first = () => (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle);
+    if (this.panel) { this.dockSheet(label, th, [...fields, words], first); return; }
+    this.sheet.replaceChildren(el('div', { class: 'label' }, label), ...fields, words);
     this.sheet.hidden = false;
-    (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle).focus();
+    first().focus();
+  }
+
+  // The sheet in the right dock's Editor tab (in place of the content editor, if it showed). The
+  // dock's × or Escape is Cancel.
+  dockSheet(label, th, parts, first) {
+    const ed = this.editing;
+    const title = th ? (th.title || th.text || label) : `A new ${label.toLowerCase()}`;
+    const body = el('div', { class: 'room-sheet room-sheet-docked' }, ...parts);
+    ed.docked = true;
+    this.panel.open({ key: 'sheet', kind: label, title, body,
+      onClose: () => { if (this.editing === ed) { this.editing = null; this.addAt = null; } } })
+      .then((h) => {
+        if (this.editing !== ed) return;
+        if (!h) { this.editing = null; return; }
+        first().focus();
+      });
   }
 
   keepSheet() {
@@ -450,10 +468,12 @@ export class Bars {
   }
 
   closeSheet() {
+    const ed = this.editing;
     this.addAt = null;
     this.editing = null;
     this.sheet.hidden = true;
     this.sheet.replaceChildren();
+    if (ed?.docked) this.panel?.close('sheet', true);
   }
 
   moveTo(toRoom) {
