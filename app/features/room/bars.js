@@ -59,7 +59,7 @@ export class Bars {
   kindName(th) { return ITEMS[kindOf(th)]?.name || 'Thought'; }
 
   // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
-  // group's name), folding, the ontology's own rows and moves, Move to and Delete. inPanel: for the
+  // group's name), the ontology's own rows and moves, Move to and Delete. inPanel: for the
   // content editor, which shows a group's thoughts itself and has Source at its foot.
   propRows(th, inPanel = false) {
     const kind = kindOf(th);
@@ -114,8 +114,6 @@ export class Bars {
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
         el('div', { class: 'pop-row' },
           el('span', { class: 'pop-note' }, `${n} thought${n === 1 ? '' : 's'}`),
-          th.closed ? word('Open', () => this.openTrain(th.id))
-            : n > 1 || this.ont.open ? word('Close', () => this.closeTrain(th.id)) : null,
           this.files?.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
     }
     // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
@@ -187,14 +185,8 @@ export class Bars {
       out.push(sec(this.ont.name || 'Mode', ...own,
         moves.length ? el('div', { class: 'box-btns room-moves' }, ...moves.map((m) => btn(m.label, () => this.runMove(m)))) : null));
     }
-    // Actions: the same verbs as the keys (verbs.js), each naming its key.
-    const foldable = kind === 'group' ? (th.closed || n > 1 || this.ont.open) : !!g;
-    const closed = kind === 'group' ? th.closed : g?.closed;
+    // Actions: only Delete. Duplicate, Move, Open/Close and Fold are keys alone (the ? list).
     out.push(sec('Actions', el('div', { class: 'box-btns' },
-      btn('Duplicate', () => verbs.duplicate(this), 'room.duplicate'),
-      btn('Move', () => verbs.moveTo(this), 'room.move'),
-      foldable ? btn(closed ? 'Open' : 'Close', () => verbs.close(this), 'room.close') : null,
-      kind === 'group' && n > 1 ? btn('Fold into one', () => verbs.fold(this), 'room.fold') : null,
       btn('Delete', () => {
         remove(this.world, th.id);
         this.sel = null;
@@ -339,7 +331,7 @@ export class Bars {
     document.addEventListener('pointercancel', up);
   }
 
-  // Many things chosen with the box: move them to a room together, or delete them.
+  // Many things chosen with the box: move them to a room together, group them, or delete them.
   drawManyBar() {
     if (this.locked) { this.bar.hidden = true; return; }
     const ids = this.sel.ids.filter((id) => this.world.things[id]);
@@ -366,8 +358,6 @@ export class Bars {
       el('div', { class: 'pop-row' },
         this.ont.groups ? el('button', { type: 'button', class: 'word', title: this.keyMap ? `Group · ${this.keyMap.label('room.group')}` : 'Group',
           onclick: () => verbs.group(this) }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
-        el('button', { type: 'button', class: 'word', title: this.keyMap ? `Fold into one thought · ${this.keyMap.label('room.fold')}` : 'Fold into one thought',
-          onclick: () => verbs.fold(this) }, 'Fold into one'),
         el('button', { type: 'button', class: 'word pop-delete', onclick: () => {
           ids.forEach((id) => remove(this.world, id));
           this.sel = null;

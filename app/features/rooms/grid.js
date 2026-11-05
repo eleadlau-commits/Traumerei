@@ -276,7 +276,7 @@ export class RoomsGrid {
   }
 
   // The archived rooms, on a grid like the rooms page's, in the order they were archived. Its empty
-  // cells make nothing. A click chooses a room; a right-click shows Go in, Restore and Delete; a
+  // cells make nothing. A click chooses a room; a right-click shows Restore and Delete; a
   // double click goes in.
   drawShelf(shelved, cols, cell, hits) {
     this.cols = cols;
@@ -306,12 +306,11 @@ export class RoomsGrid {
     return el('div', this.beside({ col, row }, cell, cols), el('div', { class: 'label' }, r.name), ...this.shelfRows(r));
   }
 
-  // What an archived room offers: Go in, Restore and Delete.
+  // What an archived room offers: Restore and Delete (Enter goes in).
   shelfRows(r) {
     const word = (label, fn, extra = '') => el('button', { type: 'button', class: 'word ' + extra, onclick: fn }, label);
     return [
       r.desc ? el('p', { class: 'pop-note' }, r.desc) : null,
-      word('Go in', () => this.openRoom(r.id), 'rooms-options-go'),
       word('Restore', () => {
         restore(this.world, r.id);
         const out = this.floors.place(r.id); // its old floor, else a new one
@@ -333,7 +332,7 @@ export class RoomsGrid {
   // A room's properties in the right dock's Editor tab (the docks feature's panel service), in place
   // of the pop-up beside its square: opened when a room's properties are asked for (roomSel),
   // switched when another room is chosen while they show, closed when none is. The dock's × or
-  // Escape lets the room go. shelf: an archived room (Go in, Restore, Delete).
+  // Escape lets the room go. shelf: an archived room (Restore, Delete).
   dockRoom(r, shelf = false) {
     const open = this.propsDock;
     if (!r) {
@@ -566,7 +565,7 @@ export class RoomsGrid {
   // A room's properties in a pop-up beside its square (without docks).
   roomOptions(r, cell, cols) { return el('div', this.beside(r, cell, cols), ...this.roomRows(r)); }
 
-  // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
+  // A room's properties: its name and description, its mode (one, or all of them for a big
   // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
   // size, Back to the tint, Lock, Archive and Delete (not for Messy).
   // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
@@ -587,7 +586,6 @@ export class RoomsGrid {
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
       onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
     }, r.desc || '');
-    p.go = () => this.openRoom(r.id);
     // Its kind: a small room keeps its one mode; a big one switches inside (its tags name the modes).
     p.kind = isBig(r) ? 'Every mode · switched inside' : 'One mode';
     p.tags = this.tagsRow(r);
@@ -616,8 +614,6 @@ export class RoomsGrid {
       this.drawRooms();
       this.toast(`${r.name} is in the Archive.`);
     } : null;
-    p.duplicate = r.archived ? null : () => this.duplicateRoom(r.id);
-    p.moveTo = r.id !== MESSY && !r.locked && !r.archived ? () => this.floorPicker(r) : null;
     // Taken out as room Markdown (the roomfile feature); a locked room too.
     p.export = this.files ? () => this.exportRoomFile(r.id) : null;
     p.remove = r.id !== MESSY && !r.locked ? () => {
@@ -636,7 +632,6 @@ export class RoomsGrid {
     return [
       p.name,
       p.desc,
-      word('Go in', p.go, 'rooms-options-go'),
       el('p', { class: 'pop-note' }, p.kind),
       p.tags,
       el('label', { class: 'rooms-slider' }, el('span', {}, 'Colour'), p.colour),
@@ -646,8 +641,6 @@ export class RoomsGrid {
       el('div', { class: 'pop-row' },
         word('Back to the tint', p.untint),
         word(r.locked ? 'Unlock' : 'Lock', p.lock),
-        word('Duplicate', p.duplicate),
-        word('Move to floor…', p.moveTo),
         word('Archive', p.archive),
         word('Export as Markdown', p.export),
         word('Delete', p.remove, 'pop-delete')),
@@ -676,9 +669,6 @@ export class RoomsGrid {
         p.sizes ? kv('Size', el('div', { class: 'seg' }, ...p.sizes)) : null,
         p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
       sec('Actions', el('div', { class: 'box-btns' },
-        btn('Go in', p.go, 'Enter', 'rooms-options-go'),
-        btn('Duplicate', p.duplicate, this.keyMap?.label?.('rooms.duplicate') || ''),
-        btn('Move…', p.moveTo, this.keyMap?.label?.('rooms.move') || ''),
         btn(r.locked ? 'Unlock' : 'Lock', p.lock),
         btn('Archive', p.archive),
         btn('Export', p.export),
