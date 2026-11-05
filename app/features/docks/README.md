@@ -4,8 +4,8 @@ A dock on the left and a dock on the right of the screen, that other features op
 the room's content editor and the source editor open in the right one's **Editor** tab, and the
 room's Timeline in its **Timeline** tab. The two behave the same, mirrored. A dock holds one thing
 per tab: opening into a tab asks what that tab held first (it may have changes) and then takes its
-place; opening into another tab keeps the first and comes to the front. While a dock holds two or
-more things, their tabs show along its top, and a click brings one to the front. Escape or ×
+place; opening into another tab keeps the first and comes to the front. Its tabs show along its top,
+and a click brings one to the front. Escape or ×
 closes the one in front; the dock shuts when it holds nothing. The right dock's first tab is
 Editor; a thing in the left dock is named by its tab, or else its kind.
 
