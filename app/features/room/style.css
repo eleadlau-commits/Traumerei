@@ -15,7 +15,7 @@
 .room .panel { --room-ink: var(--ink); } /* inside a pop-up, words take the pop-up's ink */
 /* While a dock (the docks feature) shows, the room moves over beside it: their widths are
    --dock-left / --dock-right, and the transform makes the room's fixed parts sit in the room. */
-:is(.dock-left-open, .dock-right-open) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
+:is(.dock-left-open, .dock-right-open, .dock-left-strip, .dock-right-strip) .room { left: var(--dock-left, 0px); right: var(--dock-right, 0px); transform: translateZ(0); }
 .room[hidden], .room [hidden] { display: none !important; }
 /* In a dark room the menu's lines turn pale. */
 /* (The menu's lines sit on the top bar's veil, so they keep the ink even in a dark room.) */

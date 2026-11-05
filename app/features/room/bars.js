@@ -220,7 +220,7 @@ export class Bars {
   // ---- Loose thoughts: those the ontology hasn't placed yet, in the left dock ----
   // They fill the left dock (the docks feature) as a list, which shows whenever the room has any;
   // one dragged onto the canvas goes where it is let go (the ontology's drop()). × or Ctrl+Alt+L
-  // only hides the dock, and Ctrl+Alt+L brings it back. Without the docks feature they are a tray
+  // only hides the dock, leaving its strip ("Loose · 3"), and the strip or Ctrl+Alt+L brings it back. Without the docks feature they are a tray
   // at the foot of the room instead: a quiet word ("Loose · 3") opens a row of them. Only an
   // ontology with a tray has loose thoughts.
 
@@ -258,6 +258,7 @@ export class Bars {
     if (this.loose && dock.isOpen('loose')) { // (open() fills the dock at once; its handle comes after)
       this.loose.list.replaceChildren(...list);
       this.loose.handle?.setTitle(title);
+      this.loose.handle?.setLabel(`Loose · ${items.length}`);
       return;
     }
     const listEl = el('div', { class: 'room-loose-list', role: 'list' }, list);
@@ -266,7 +267,7 @@ export class Bars {
       listEl);
     const loose = (this.loose = { list: listEl, handle: null });
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
-    dock.open({ key: 'loose', kind: 'Loose', title, body, beforeClose: () => { dock.toggle(); return false; },
+    dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, beforeClose: () => { dock.toggle(); return false; },
       onClose: () => { if (this.loose === loose) this.loose = null; } })
       .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
   }

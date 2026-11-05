@@ -9,6 +9,13 @@ and a click brings one to the front. Escape or ×
 closes the one in front; the dock shuts when it holds nothing. The right dock's first tab is
 Editor; a thing in the left dock is named by its tab, or else its kind.
 
+A dock hidden while it holds something (by its key, or × on something that only hides) leaves a
+**28 px strip** at its edge, the name of each thing it holds written sideways: its `label` ("Loose ·
+3"), else its tab, else its kind. A click on a name brings the dock back with that in front; the
+dock's key does too. Canvas only hides the strips as well. While a strip shows, `<html>` has the
+class `dock-left-strip` or `dock-right-strip` and `--dock-left` / `--dock-right` is 28 px, so what
+sits beside it moves over as it does for the dock.
+
 Every dock wears the same frame: a 32 px strip of tabs (one for each thing it holds, the one in
 front underlined in amber) with the dock's key and × on the right; under it, the front one's quiet
 kind and title (left out when both are empty); then its body. A dock's inner edge is dragged to
@@ -26,7 +33,7 @@ of width is sent as `docks:resized`.
 
 | Member | What it does |
 |---|---|
-| `open({ key, tab, kind, title, body, beforeClose, onClose })` | Shows `body` (a node) in front, in tab `tab` (the dock's first tab when left out), under a quiet `kind` word and a `title`, in place of whatever that tab held (which is asked first). `beforeClose()` returns true, or a promise of true, when it may close; `onClose()` runs once it has. Resolves with a handle `{ close(force), setTitle(text), setKind(text), open }`, or `null` when what the tab held would not close. |
+| `open({ key, tab, kind, title, label, body, beforeClose, onClose })` | Shows `body` (a node) in front, in tab `tab` (the dock's first tab when left out), under a quiet `kind` word and a `title`, in place of whatever that tab held (which is asked first). `label` is its name on the strip while the dock is hidden. `beforeClose()` returns true, or a promise of true, when it may close; `onClose()` runs once it has. Resolves with a handle `{ close(force), setTitle(text), setKind(text), setLabel(text), open }`, or `null` when what the tab held would not close. |
 | `close(key, force)` | Closes what holds `key`, or the one in front when no key is given, asking its `beforeClose` first unless `force`. Resolves true once it has closed. |
 | `closeAll(force)` | Closes everything the dock holds. Resolves true once the dock is shut. |
 | `show(key)` | Brings what holds `key` to the front (and the dock back, if hidden). False when nothing holds it. |
@@ -49,7 +56,7 @@ Added to the key map (the keys feature), working while typing too (`keys.js`):
 `this.use('panel')` is the right dock, the same members as above: the name editors have always
 used for the side panel.
 
-**Event:** `docks:resized` `{ side, width }`, when a dock opens, closes or is dragged (0 when shut).
+**Event:** `docks:resized` `{ side, width }`, when a dock opens, closes, hides or is dragged: the px it takes at its side (28 for its strip, 0 when shut).
 
 Keys pressed in a dock stay in it (the room doesn't see them). It has no slots and saves only the
 two widths ('left', 'right').
