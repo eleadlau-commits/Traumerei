@@ -16234,7 +16234,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!shown2.has(this.roomPick)) this.roomPick = null;
       if (!shown2.has(this.roomSel)) this.roomSel = null;
       this.picks = (this.picks || []).filter((id) => shown2.has(id));
-      if (this.picks.length < 2) this.picks = [];
+      if (this.picks.length < 2) {
+        this.picks = [];
+        this.manyShown = false;
+      }
       if (!this.inRoom) {
         const chosen2 = room4(this.world, this.roomSel || this.roomPick);
         const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : "";
@@ -16302,7 +16305,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
       if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
       if (this.panel) {
-        if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel);
+        if (this.manyShown) this.dockMany(this.picks);
+        else if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel);
         else this.dockRoom(chosen || null);
       }
       if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
@@ -16445,7 +16449,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
             if (e.key === "ContextMenu" || e.key === "F10" && e.shiftKey) {
               e.preventDefault();
-              this.chooseRoom(r.id, true);
+              this.askRoom(r.id);
             }
           },
           onfocus: () => {
@@ -16461,7 +16465,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           oncontextmenu: (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (this.held !== r.id) this.chooseRoom(r.id, true);
+            if (this.held !== r.id) this.askRoom(r.id);
             this.held = null;
           }
         },
@@ -16517,7 +16521,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       const at2 = shelved.findIndex((r) => r.id === this.roomSel);
       const panel = at2 < 0 || this.panel ? null : this.shelfOptions(shelved[at2], at2 % cols, Math.floor(at2 / cols), cell, cols);
-      if (this.panel) this.dockRoom(at2 < 0 ? null : shelved[at2], true);
+      if (this.panel) {
+        if (this.manyShown) this.dockMany(this.picks, true);
+        else this.dockRoom(at2 < 0 ? null : shelved[at2], true);
+      }
       this.grid.replaceChildren(...empty, ...tiles2, ...panel ? [panel] : []);
     }
     shelfOptions(r, col, row, cell, cols) {
@@ -16552,15 +16559,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const rows = (shelf ? [el11("div", { class: "title-field" }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
-      const kind = shelf ? "Archived room" : "Room";
+      this.fillDock(r.id, shelf ? "Archived room" : "Room", rows, () => {
+        if (!this.roomSel) return;
+        this.roomSel = null;
+        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+      });
+    }
+    // The dock's Editor tab, showing `rows` for `id` (a room, or 'many'): filled in place while it is
+    // open, else opened. letGo: the dock's × or Escape closed it.
+    fillDock(id, kind, rows, letGo) {
+      const open = this.propsDock;
       if (open && this.panel.isOpen("room")) {
-        open.id = r.id;
+        open.id = id;
+        open.letGo = letGo;
         open.body.replaceChildren(...rows);
         open.handle?.setKind(kind);
         return;
       }
       const body = el11("div", { class: "rooms-props" }, ...rows);
-      const now = this.propsDock = { id: r.id, body, handle: null };
+      const now = this.propsDock = { id, body, handle: null, letGo };
       this.panel.open({
         key: "room",
         kind,
@@ -16569,9 +16586,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         onClose: () => {
           if (this.propsDock !== now) return;
           this.propsDock = null;
-          if (!this.roomSel) return;
-          this.roomSel = null;
-          if (!this.inRoom && !this.root.hidden) this.drawRooms();
+          now.letGo?.();
         }
       }).then((h) => {
         if (this.propsDock === now) {
@@ -16848,7 +16863,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       this.picks = [];
       this.floorSel = null;
-      if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) {
+      if (this.panel && this.propsDock && (this.manyShown || this.roomSel && this.roomSel !== id)) {
         this.chooseRoom(id, true);
         return;
       }
@@ -17578,6 +17593,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (i2 >= 0) now.splice(i2, 1);
       else now.push(id);
       this.picks = now.length > 1 ? now : [];
+      if (this.propsDock && this.picks.length) this.manyShown = true;
       this.roomPick = now.includes(id) ? id : now[now.length - 1] || null;
       this.roomSel = null;
       this.making = null;
@@ -17588,6 +17604,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ids = [...this.grid.querySelectorAll(".rooms-tile[data-room]")].map((t) => t.dataset.room);
       if (!ids.length) return;
       this.picks = ids.length > 1 ? ids : [];
+      if (this.propsDock && this.picks.length) this.manyShown = true;
       this.roomPick = ids[ids.length - 1];
       this.roomSel = null;
       this.making = null;
@@ -17596,8 +17613,45 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     clearPicks() {
       if (!this.picks?.length) return false;
       this.picks = [];
+      this.manyShown = false;
       this.drawRooms();
       return true;
+    }
+    // A right-click (or the ContextMenu key) on a room: with it among many chosen, the Editor shows
+    // them all; otherwise its own properties.
+    askRoom(id) {
+      if (this.panel && this.picks?.length > 1 && this.picks.includes(id)) {
+        this.manyShown = true;
+        this.roomSel = null;
+        this.making = null;
+        this.drawRooms();
+        return;
+      }
+      this.chooseRoom(id, true);
+    }
+    // The Editor tab for many rooms: "N rooms", then what can be done to them all. shelf: archived.
+    dockMany(ids, shelf = false) {
+      const rs = ids.map((id) => room4(this.world, id)).filter(Boolean);
+      const key2 = (id) => el11("span", { class: "key" }, this.keyMap?.label?.(id) || "");
+      const btn = (label2, fn, id = null, extra = "") => el11("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label2, id ? key2(id) : "");
+      const all = () => rs.map((r) => r.id);
+      const locked = rs.every((r) => r.locked);
+      const rows = [
+        el11("div", { class: "title-field" }, `${rs.length} rooms`),
+        el11("p", { class: "pop-note" }, rs.map((r) => r.name).join(", ")),
+        el11("details", { class: "sec", open: "" }, el11("summary", {}, "Actions"), el11("div", { class: "sec-body" }, el11(
+          "div",
+          { class: "box-btns" },
+          shelf ? btn("Restore", () => this.restoreRooms(all()), "rooms.archive") : btn(locked ? "Unlock" : "Lock", () => this.lockRooms(all()), "rooms.lock"),
+          shelf ? null : btn("Archive", () => this.archiveRooms(all()), "rooms.archive"),
+          btn("Delete", () => this.deleteMany(), "rooms.delete", "danger pop-delete")
+        )))
+      ].filter(Boolean);
+      this.fillDock("many", shelf ? "Archived rooms" : "Rooms", rows, () => {
+        if (!this.manyShown) return;
+        this.manyShown = false;
+        if (!this.inRoom && !this.root.hidden) this.drawRooms();
+      });
     }
     // Delete with many chosen: every one that can go (not Messy thoughts, not a locked room), one step.
     deleteMany() {
@@ -17879,6 +17933,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.regrouping = null;
       this.tagsOpen = false;
       this.picks = [];
+      this.manyShown = false;
       this.openGroup = null;
       this.makingTag = null;
       this.edited = /* @__PURE__ */ new Set();
@@ -18315,7 +18370,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if ((k2 === "ContextMenu" || k2 === "F10" && e.shiftKey) && r) {
         e.preventDefault();
-        this.chooseRoom(r.id, true);
+        this.askRoom(r.id);
         return true;
       }
       return false;
