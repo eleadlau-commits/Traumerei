@@ -84,7 +84,10 @@ It offers no service of its own.
 - **The tray.** A mode can leave thoughts unplaced: Joyce, those in no train (written in Russell,
   say); Russell, those in no chapter. They fill the **left dock** (the docks feature) whenever the
   room has any, as a list, newest first (by `looseAt` when it came loose, else `at`); a search
-  box at its top keeps only the cards with every word typed, and Escape clears it. × or Ctrl+Alt+L hides the dock and Ctrl+Alt+L brings it back. (Without
+  box at its top keeps only the cards with every word typed, and Escape clears it. The **add bar**
+  at its foot is always ready for a new thought: Enter keeps it as a loose thought of the room (in
+  no group, so it waits in the tray; Pessoa places it on its spiral at once), Ctrl+Enter starts a
+  new line. It is hidden in a locked room. × or Ctrl+Alt+L hides the dock and Ctrl+Alt+L brings it back. (Without
   the docks feature, *Loose · n* at the foot of the room opens them in a row.) Drag one onto the
   room to place it (Joyce: a train of its own; Russell: into the chapter it is
   let go on, or a new chapter of its own on the empty canvas).
