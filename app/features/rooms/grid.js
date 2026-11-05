@@ -135,9 +135,11 @@ export class RoomsGrid {
         style: `grid-column:${col + 1};grid-row:${row + 1}`,
         'data-col': col, 'data-row': row,
         onclick: () => this.onCell(col, row),
-        // A right-click shows the kinds of room too (right-click on empty space adds, as in a room).
+        // A right-click offers a room from a file here instead (without the roomfile feature, the
+        // kinds of room, as a left click).
         oncontextmenu: (e) => {
-          e.preventDefault(); this.roomSel = this.roomPick = this.floorSel = null; this.making = { col, row }; this.drawRooms();
+          e.preventDefault(); this.roomSel = this.roomPick = this.floorSel = null;
+          this.making = this.files ? { col, row, import: true } : { col, row }; this.drawRooms();
           this.grid.querySelector('.rooms-kinds button')?.focus({ preventScroll: true });
         },
       }));
@@ -181,7 +183,7 @@ export class RoomsGrid {
   // of room to make there. With the menu open, another empty cell moves it there in one click;
   // the same cell again closes it.
   onCell(col, row) {
-    if (this.making && (this.making.col !== col || this.making.row !== row)) this.making = null;
+    if (this.making && (this.making.col !== col || this.making.row !== row || this.making.import)) this.making = null;
     else if (this.roomSel || this.making || this.floorSel != null) { this.roomSel = this.making = this.floorSel = null; this.drawRooms(); return; }
     this.roomPick = null;
     this.making = { col, row };
@@ -218,9 +220,10 @@ export class RoomsGrid {
 
   // The kinds of room a new one can be, beside the empty cell clicked (or right-clicked): one room
   // of each ontology (1 × 1), then All ontology, a 2 × 2 room that holds them all (Borges's rule:
-  // a room's shape says how many ontologies it holds). A room from a file is the top bar's Import.
+  // a room's shape says how many ontologies it holds). A room from a file: right-click the cell.
   kindOptions(c, cell, cols) {
     if (c.twin) return this.twinOptions(c, cell, cols);
+    if (c.import) return this.importOptions(c, cell, cols);
     return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
       el('div', { class: 'label' }, 'A new room'),
       ...this.ontologies.map((k) => el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.newRoom(c, k.id) },
@@ -229,6 +232,14 @@ export class RoomsGrid {
         el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')),
       el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.pickTwin(c) },
         el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')));
+  }
+
+  // A right-click on an empty cell: a room from a room Markdown file, put in that cell.
+  importOptions(c, cell, cols) {
+    return el('div', { ...this.beside(c, cell, cols, ' rooms-kinds'), role: 'menu' },
+      el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem',
+        onclick: () => { this.making = null; this.drawRooms(); this.importRoomFile(null, { col: c.col, row: c.row }); } },
+      el('span', { class: 'rooms-kind-name' }, 'Import a room…'), el('span', { class: 'pick-note' }, 'from a .md file, here')));
   }
 
   // Twin…: the menu asks for the mode of each side (the same or not), then makes it.
