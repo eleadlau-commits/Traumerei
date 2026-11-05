@@ -170,7 +170,8 @@ export class Writing {
   }
 
   // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
-  // group drawn as one (a folded train, or a thought being written in a train).
+  // group drawn as one (a folded train, or a thought being written in a train). A node marked
+  // data-measure is keyed by that id, so an ontology hears its size (Russell: a chapter's name).
   drawnRects() {
     const out = new Map();
     const origin = this.world$.getBoundingClientRect(), zoom = view(this.world, this.roomId).zoom || 1;
@@ -178,7 +179,7 @@ export class Writing {
     for (const n of this.world$.querySelectorAll('[data-thought], div[data-group]')) {
       const r = n.getBoundingClientRect();
       if (!r.width && !r.height) continue;
-      out.set(n.dataset.thought || `g${k++}`, { x: (r.left - origin.left) / zoom, y: (r.top - origin.top) / zoom, w: r.width / zoom, h: r.height / zoom });
+      out.set(n.dataset.thought || n.dataset.measure || `g${k++}`, { x: (r.left - origin.left) / zoom, y: (r.top - origin.top) / zoom, w: r.width / zoom, h: r.height / zoom });
     }
     return out;
   }

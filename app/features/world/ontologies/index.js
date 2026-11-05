@@ -25,11 +25,13 @@
 //                         found, draft, prefs, setting(key), el, thoughtNode(th), draftNode(). A node marked
 //                         data-thought is one thought; one marked data-group (with no
 //                         data-thought, or for a folded group) is the whole group, which a
-//                         double-click chooses
+//                         double-click chooses; one marked data-measure="id" has its size
+//                         passed to measured() under that id (Russell: a chapter's name)
 //   tag(w, id)            (optional) a thought's tag in the room's Timeline ({ id, name }, or
 //                         null): Joyce, its train
-//   settings              (optional) its settings: sliders { key, label, min, max, step, default }
-//                         or switches { key, label, type: 'switch', default }. Each room keeps its
+//   settings              (optional) its settings: sliders { key, label, min, max, step, default },
+//                         switches { key, label, type: 'switch', default }, or choices
+//                         { key, label, type: 'choice', options: [[value, word]], default }. Each room keeps its
 //                         own (the ⚙ beside the mode's name in the rail); the global ones are under
 //                         Settings → Rooms → Inside a room. Read in the room with c.setting(key)
 //   moves                 (optional) [{ id, label, run(c), when?(c) }], its own actions. They

@@ -15,12 +15,18 @@
 import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, own } from '../model.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
+import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
 export const ID = 'russell';
 export const MOST_PARENTS = 2;
-export const LAYOUT = { width: 380, least: 240, gapX: 80, gapY: 150, head: 0 }; // world units; least: room for an arrow's label
+// World units. width: the widest a chapter's thoughts go; title: room for an open chapter's name
+// over its thoughts; closed: a closed chapter's height; rhythm: every gap is a whole number of
+// these, so rows and columns line up; gapX, rootGap, gapY: the least gaps (they grow for labels);
+// fan: the most a level is pushed down so arrows fanning out to wide siblings don't lie flat.
+export const LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
+export const LINES = ['straight', 'curved'];
 
 // ---- Reading the tree ----
 
@@ -128,7 +134,8 @@ function settle(w, roomId) {
 // ---- Layout ----
 
 // Each thought's width as drawn (world units), measured after each drawing; a chapter is as wide
-// as its widest thought. The heights are Joyce's (stepAfter), measured the same way.
+// as its widest thought, or its name. A chapter's name (a closed chapter's, or an open one's title)
+// is measured under the chapter's own id. The heights are Joyce's (stepAfter), measured the same way.
 const WIDTHS = new Map();
 export function setWidths(sizes) {
   let changed = false;
@@ -140,15 +147,31 @@ export function setWidths(sizes) {
   return changed;
 }
 export const clearWidths = () => WIDTHS.clear();
-const widest = (w, id) => Math.max(0, WIDTHS.get(id) || 0, ...members(w, id).map((th) => WIDTHS.get(th.id) || 0));
+const widest = (w, id) => Math.max(0, ...members(w, id).map((th) => WIDTHS.get(th.id) || 0));
 
+// Room over an open chapter's thoughts for its title (none without one).
+const headOf = (g) => (g?.title && !g.folded ? LAYOUT.title : 0);
+
+// A chapter's box as drawn: a closed one is only its name; an open one its title and thoughts.
+// Until they are measured, names and thoughts are guessed from their length.
 export function chapterSize(w, id) {
   const g = w.things[id];
-  if (g?.folded) return { w: Math.max(LAYOUT.least, widest(w, id) || LAYOUT.width), h: STEP.line }; // closed: only its name
+  if (g?.folded) return { w: Math.round(WIDTHS.get(id) || chapterName(w, id).length * 12.6 + 4), h: LAYOUT.closed };
   const ths = members(w, id);
-  const h = LAYOUT.head + ths.reduce((s, th, i) => s + (i < ths.length - 1 ? stepAfter(th) : Math.max(STEP.line, stepAfter(th) - 29)), 0);
-  return { w: Math.max(LAYOUT.least, Math.min(LAYOUT.width, widest(w, id) || LAYOUT.width)), h: Math.max(STEP.line, h) };
+  const body = ths.reduce((s, th, i) => s + (i < ths.length - 1 ? stepAfter(th) : Math.max(STEP.line, stepAfter(th) - 29)), 0);
+  const title = g?.title ? (WIDTHS.get(id) || g.title.length * 9) : 0;
+  return { w: Math.round(Math.max(Math.min(LAYOUT.width, widest(w, id) || LAYOUT.width), title)), h: headOf(g) + Math.max(STEP.line, body) };
 }
+
+// How big an arrow's label is drawn, guessed from its length (13px italic, up to 200 wide).
+export function labelSize(text) {
+  const n = String(text || '').length;
+  if (!n) return { w: 0, h: 0 };
+  return { w: Math.min(200, Math.round(n * 6.4 + 4)), h: 19 * Math.ceil((n * 6.4 + 4) / 200) };
+}
+
+// A gap made a whole number of rhythm steps.
+export const snap = (v) => Math.ceil(v / LAYOUT.rhythm - 1e-9) * LAYOUT.rhythm;
 
 // How deep each chapter sits: a root at 0, and every chapter one below its deepest parent, so a
 // junction sits under both its parents.
@@ -169,49 +192,64 @@ export function levels(w, roomId) {
 // Where each chapter's top left sits ({ id: { x, y } }, world units). A chapter with one parent
 // hangs under it, among its siblings, each subtree as wide as it needs; a junction is centred
 // under its parents; roots stand side by side. A chapter placed by hand stays where it is, and its
-// children hang under it. Then each level is swept left to right so no two overlap.
+// children hang under it. Then each level is swept left to right so no two overlap. The gaps adapt:
+// a level sits lower, and siblings further apart, when their arrows' labels need the room, and
+// every gap is a whole number of rhythm steps.
 export function layout(w, roomId, size = (id) => chapterSize(w, id)) {
   const all = chapters(w, roomId);
   const lv = levels(w, roomId);
   const sz = Object.fromEntries(all.map((g) => [g.id, size(g.id)]));
   const ps = Object.fromEntries(all.map((g) => [g.id, parentsOf(w, roomId, g.id).filter((p) => sz[p])]));
+  // The biggest label on an arrow into each chapter.
+  const lab = Object.fromEntries(all.map((g) => {
+    const ls = Object.values(arrowsInto(w, roomId, g.id).labels).map(labelSize);
+    return [g.id, { w: Math.max(0, ...ls.map((l) => l.w)), h: Math.max(0, ...ls.map((l) => l.h)) }];
+  }));
+  const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD));
   // The tree children: those with a single parent.
   const kids = Object.fromEntries(all.map((g) => [g.id, []]));
   for (const g of all) if (ps[g.id].length === 1) kids[ps[g.id][0]].push(g.id);
   const span = {};
-  const spanOf = (id) => span[id] ??= Math.max(sz[id].w, kids[id].reduce((s, k, i) => s + spanOf(k) + (i ? LAYOUT.gapX : 0), 0));
+  const row = (ks) => ks.reduce((s, k, i) => s + spanOf(k) + (i ? gapX(ks[i - 1], k) : 0), 0);
+  const spanOf = (id) => span[id] ??= Math.max(sz[id].w, row(kids[id]));
   // Each tree child's centre, relative to its parent's.
   const off = {};
   for (const g of all) {
     const ks = kids[g.id];
-    let x = -(ks.reduce((s, k, i) => s + spanOf(k) + (i ? LAYOUT.gapX : 0), 0)) / 2;
-    for (const k of ks) { off[k] = x + spanOf(k) / 2; x += spanOf(k) + LAYOUT.gapX; }
+    let x = -row(ks) / 2;
+    ks.forEach((k, i) => { if (i) x += gapX(ks[i - 1], k); off[k] = x + spanOf(k) / 2; x += spanOf(k); });
   }
-  // How far down each level starts.
+  // How far down each level starts: under the tallest chapter above, far enough for the labels
+  // on the arrows into the level (beside the arrow, between its foot and its head), and for
+  // siblings fanning out wide, far enough that their arrows don't lie flat.
   const deepest = Math.max(-1, ...Object.values(lv));
   const top = [0];
   for (let l = 0; l < deepest; l++) {
     const h = Math.max(0, ...all.filter((g) => lv[g.id] === l).map((g) => sz[g.id].h));
-    top.push(top[l] + h + LAYOUT.gapY);
+    const next = all.filter((g) => lv[g.id] === l + 1).map((g) => g.id);
+    const label = Math.max(0, ...next.map((id) => lab[id].h));
+    const fan = Math.min(LAYOUT.fan, Math.max(0, ...next.map((id) => Math.abs(off[id] || 0) * 0.6)));
+    top.push(top[l] + h + snap(Math.max(LAYOUT.gapY, FOOT + PAD * 2 + label + 2 * PAD, fan)));
   }
   const centre = {};
   const out = {};
   let rootX = 0;
   for (let l = 0; l <= deepest; l++) {
-    const row = all.filter((g) => lv[g.id] === l).map((g) => {
+    const rowOf = all.filter((g) => lv[g.id] === l).map((g) => {
       const id = g.id, p = ps[id];
       let want;
-      if (!p.length) { want = rootX + spanOf(id) / 2; rootX += spanOf(id) + LAYOUT.gapX; }
+      if (!p.length) { want = rootX + spanOf(id) / 2; rootX += spanOf(id) + LAYOUT.rootGap; }
       else if (p.length === 1) want = centre[p[0]] + off[id];
       else want = p.reduce((s, q) => s + centre[q], 0) / p.length;
       return { id, want };
     }).sort((a, b) => a.want - b.want || (a.id < b.id ? -1 : 1));
-    let edge = -Infinity;
-    for (const r of row) {
+    let edge = -Infinity, last = null;
+    for (const r of rowOf) {
       const g = w.things[r.id], half = sz[r.id].w / 2;
       if (g.hand) { centre[r.id] = g.x + half; out[r.id] = { x: g.x, y: g.y }; continue; }
-      const c = Math.max(r.want, edge + LAYOUT.gapX + half);
+      const c = Math.max(r.want, edge + (last ? gapX(last, r.id) : 0) + half);
       edge = c + half;
+      last = r.id;
       centre[r.id] = c;
       out[r.id] = { x: Math.round(c - half), y: top[l] };
     }
@@ -222,7 +260,7 @@ export function layout(w, roomId, size = (id) => chapterSize(w, id)) {
 // Where each thought of a chapter sits ({ id: { x, y } }), top to bottom from its corner.
 export function chapterSpots(w, id, at) {
   const out = {};
-  let y = at.y + LAYOUT.head;
+  let y = at.y + headOf(w.things[id]);
   for (const th of members(w, id)) { out[th.id] = { x: at.x, y }; y += stepAfter(th); }
   return out;
 }
@@ -268,15 +306,18 @@ const svg = (name, attrs = {}) => {
   for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
   return n;
 };
-const r1 = (v) => Math.round(v * 10) / 10;
-// An arrow from a chapter's foot (p) down to a child's head (q): a soft S.
-export function arrowPath(p, q) {
-  const dy = Math.max(40, (q.y - p.y) / 2);
-  return `M${r1(p.x)} ${r1(p.y)}C${r1(p.x)} ${r1(p.y + dy)} ${r1(q.x)} ${r1(q.y - dy)} ${r1(q.x)} ${r1(q.y)}`;
-}
 const FOOT = 16; // how far under a chapter its foot sits
-const foot = (at, size) => ({ x: at.x + size.w / 2, y: at.y + size.h + FOOT });
-const head = (at, size) => ({ x: at.x + size.w / 2, y: at.y - 40 }); // above the chapter's name
+const RULE = 14; // how far left of an open chapter's thoughts its hairline runs
+
+// A chapter's box for arrows: what is drawn (an open chapter's hairline is kept clear by its pad).
+const arrowBox = ({ at, size }) => ({ x: at.x, y: at.y, w: size.w, h: size.h });
+const foot = (box) => sidePoint(box, 'bottom', FOOT);
+// How far off each side an arrow starts (below a chapter's foot circle; past an open chapter's
+// hairline on its left) and ends (a little further, so the arrowhead shows).
+const pads = (w, from, to) => {
+  const off = (id, side, more) => (side === 'left' && !w.things[id]?.folded ? RULE : 0) + PAD + more;
+  return { from: (side) => (side === 'bottom' ? FOOT + 7 : off(from, side, 0)), to: (side) => off(to, side, 2) };
+};
 
 // Each chapter's corner and size, as drawn now.
 function boxes(w, roomId) {
@@ -300,15 +341,16 @@ function dragArrow(c, e, from) {
   const layer = c.world$?.querySelector('.room-russell-arrows');
   const b = boxes(c.world, c.roomId)[from];
   if (!layer || !b) return;
-  const p = foot(b.at, b.size);
-  const line = svg('path', { class: 'room-russell-arrow room-russell-drawing', 'marker-end': 'url(#russell-head)' });
-  layer.append(line);
-  const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); line.setAttribute('d', arrowPath(p, q)); };
+  const p = foot(arrowBox(b));
+  const line = c.setting('line') || 'straight';
+  const drawn = svg('path', { class: 'room-russell-arrow room-russell-drawing', 'marker-end': 'url(#russell-head)' });
+  layer.append(drawn);
+  const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); drawn.setAttribute('d', arrowLine({ p, q, from: 'bottom', to: 'top' }, line)); };
   const up = (ev) => {
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
-    line.remove();
+    drawn.remove();
     if (ev.type !== 'pointerup') return;
     const to = chapterUnder(c, ev);
     if (!to || to === from) { c.drawWorld(); return; }
@@ -331,6 +373,7 @@ export default {
   note: 'chapters in a tree',
   order: 30,
   groups: { form: 'chapter', name: 'Chapter', membership: 'one' },
+  settings: [{ key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' }],
 
   // Each chapter's thoughts, or a folded chapter as one thought.
   units: (w, roomId) => chapters(w, roomId).flatMap((g) => (g.folded ? [g] : members(w, g.id))),
@@ -474,20 +517,24 @@ export default {
     layer.append(defs);
     const nodes = [];
     const picking = pending && pending.room === roomId;
+    const line = c.setting('line') || 'straight';
     for (const { from, to, label } of arrows(w, roomId)) {
       const a = all[from], b = all[to];
       if (!a || !b) continue;
-      const p = foot(a.at, a.size), q = head(b.at, b.size);
-      layer.append(svg('path', { class: 'room-russell-arrow', d: arrowPath(p, q), 'marker-end': 'url(#russell-head)' }));
+      // From the side of the parent that faces the child to the child's facing side; the label
+      // at the arrow's middle.
+      const arrow = between(arrowBox(a), arrowBox(b), pads(w, from, to));
+      layer.append(svg('path', { class: 'room-russell-arrow', d: arrowLine(arrow, line), 'marker-end': 'url(#russell-head)' }));
       if (label) {
-        // Beside the arrow just above the child; a junction's two arrows meet there, so each of
-        // its labels sits by its parent's foot instead, on the side the arrow leaves to.
-        const two = parentsOf(w, roomId, to).length > 1;
-        const left = two && q.x < p.x;
-        const x = two ? p.x : q.x, y = two ? p.y + 10 : q.y - 52;
+        // A junction's two arrows lean towards each other, so each label goes on the side its
+        // parent is on, away from the other arrow. Arrows fanning out of one foot are close
+        // together at their middles, so their labels sit further down, where they have spread.
+        const prefer = parentsOf(w, roomId, to).length > 1 ? (arrow.p.x < arrow.q.x ? 'left' : 'right') : null;
+        const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
+        const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
         nodes.push(el('div', {
-          class: 'room-russell-label' + (left ? ' left' : ''), 'data-group': to, title: 'What the child forgets',
-          style: `left:${Math.round(x + (left ? -12 : 12))}px;top:${Math.round(y)}px`,
+          class: `room-russell-label side-${spot.side}`, 'data-group': to, title: 'What the child forgets',
+          style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
         }, maths(label)));
       }
     }
@@ -500,7 +547,7 @@ export default {
       if (g.folded) {
         // A closed chapter: only its name. A click opens it as a document (open, below).
         nodes.push(el('div', {
-          class: cls + ' room-folded room-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id,
+          class: cls + ' room-folded room-russell-closed' + (chosen ? ' selected' : ''), 'data-group': g.id, 'data-measure': g.id,
           title: 'Click to open', style: `left:${at.x}px;top:${at.y}px`,
         }, el('span', { class: 'room-thought', 'data-id': g.id }, maths(chapterName(w, g.id)))));
       } else {
@@ -519,10 +566,11 @@ export default {
         }
       }
       // The chapter's hairline, down its left, and its name over it.
-      if (!g.folded) layer.append(svg('path', { class: 'room-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - 14} ${at.y + 6}L${at.x - 14} ${at.y + size.h - 4}` }));
-      if (g.title && !g.folded) nodes.push(el('div', { class: 'room-russell-title', 'data-group': g.id, style: `left:${at.x}px;top:${at.y - 30}px` }, g.title));
+      const top = at.y + headOf(g);
+      if (!g.folded) layer.append(svg('path', { class: 'room-russell-rule' + (chosen ? ' selected' : ''), d: `M${at.x - RULE} ${top + 6}L${at.x - RULE} ${at.y + size.h - 4}` }));
+      if (headOf(g)) nodes.push(el('div', { class: 'room-russell-title', 'data-group': g.id, 'data-measure': g.id, style: `left:${at.x}px;top:${at.y}px` }, g.title));
       if (!c.locked) {
-        const f = foot(at, size);
+        const f = foot(arrowBox(box));
         nodes.push(el('div', { class: 'room-russell-foot', 'data-foot': g.id, title: 'Drag onto another chapter to make it a child', style: `left:${f.x}px;top:${f.y}px` }));
       }
     }

@@ -4,7 +4,7 @@ import { test, assert } from 'folio/testing';
 import { emptyWorld, create, remove, MESSY, groupOf } from '../model.js';
 import russell, {
   addChapter, link, unlink, setLabel, labelOf, parentsOf, childrenOf, arrows, whyNot, levels, layout,
-  chapterSize, chapters, chapterName,
+  chapterSize, chapters, chapterName, LAYOUT, labelSize,
 } from '../ontologies/russell.js';
 
 // A chapter with one thought in it (a chapter with no thoughts goes).
@@ -123,6 +123,24 @@ test('layout: wide subtrees push their neighbours aside; a chapter placed by han
   const moved = layout(w, MESSY, () => ({ w: 300, h: 60 }));
   assert.deepEqual(moved[b], { x: 2000, y: 40 });
   assert.equal(moved[bk].x, 2000); // its child hangs under it
+});
+
+test('layout: gaps snap to the rhythm and grow for a long label', () => {
+  const w = emptyWorld(1);
+  const r = chapter(w, 'root'), a = chapter(w, 'a'), b = chapter(w, 'b');
+  link(w, MESSY, r, a);
+  const size = () => ({ w: 200, h: 50 });
+  const plain = layout(w, MESSY, size);
+  const gap = plain[a].y - 50;
+  assert.equal(gap % LAYOUT.rhythm, 0);
+  assert.ok(gap >= LAYOUT.gapY);
+  link(w, MESSY, a, b, 'the order of the rows, and which of them were the equations at the start');
+  assert.ok(labelSize(labelOf(w, MESSY, a, b)).h > 19, 'a label over two lines');
+  const labelled = layout(w, MESSY, size);
+  const gap2 = labelled[b].y - labelled[a].y - 50;
+  assert.equal(gap2 % LAYOUT.rhythm, 0);
+  assert.ok(gap2 > gap, 'the labelled level sits lower');
+  assert.equal(labelled[a].y - 50, gap, 'the level above keeps its gap');
 });
 
 test('writing: a move asks for a child chapter; with none asked, a thought waits in the tray', () => {

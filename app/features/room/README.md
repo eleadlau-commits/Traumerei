@@ -46,7 +46,12 @@ It offers no service of its own.
     its thoughts in order, read top to bottom like a train. Arrows go from a parent chapter down to
     its children: any number of children, usually one parent, at most two (a *junction*). An
     arrow that would make a loop is refused. The tree lays itself out: the roots at the top, each
-    generation a level lower, siblings side by side, a junction under both its parents. A chapter
+    generation a level lower, siblings side by side, a junction under both its parents. Each
+    chapter's box is what is drawn (its name, or its title and thoughts), and the gaps grow when a
+    label needs the room, always by whole steps of one rhythm so rows line up. An arrow runs from
+    the middle of the parent's side that faces the child to the middle of the child's facing side
+    (each arrow of a junction on its own), with its label at its middle; the room's Russell
+    settings choose straight or curved arrows. A chapter
     dragged somewhere stays there, and its children still hang under it. Drag from the small
     circle at a chapter's foot onto another chapter to draw an arrow. A chapter's pop-up has *New
     child chapter* (the chapter and its arrow are made when its first thought is kept), *Add second
