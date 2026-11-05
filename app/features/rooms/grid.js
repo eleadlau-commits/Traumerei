@@ -170,13 +170,29 @@ export class RoomsGrid {
   }
 
   // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
-  // of room to make there.
+  // of room to make there. With the menu open, another empty cell moves it there in one click;
+  // the same cell again closes it.
   onCell(col, row) {
-    if (this.roomSel || this.making || this.floorSel != null) { this.roomSel = this.making = this.floorSel = null; this.drawRooms(); return; }
+    if (this.making && (this.making.col !== col || this.making.row !== row)) this.making = null;
+    else if (this.roomSel || this.making || this.floorSel != null) { this.roomSel = this.making = this.floorSel = null; this.drawRooms(); return; }
     this.roomPick = null;
     this.making = { col, row };
     this.drawRooms();
     this.grid.querySelector('.rooms-kinds button')?.focus({ preventScroll: true });
+  }
+
+  // A press anywhere outside the new-room menu closes it: on the rail, the top bar, a square, the
+  // margin round the floor. (Empty cells are left to onCell, which moves the menu or closes it.)
+  // Only the menu goes, without drawing the floor again, so a press on a square still works on it.
+  makingAway(e) {
+    if (!this.making || this.inRoom || this.root.hidden) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t?.closest('.rooms-kinds')) return;
+    const cell = t?.closest('.rooms-cell');
+    if (cell && this.grid.contains(cell)) return;
+    this.making = null;
+    this.grid.querySelector('.rooms-kinds')?.remove();
+    this.grid.querySelector('.rooms-cell.target')?.classList.remove('target');
   }
 
   // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
