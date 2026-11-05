@@ -961,6 +961,13 @@ dialog.dialog-box {
 .dock-close { --x-size: 32px; }
 
 .dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px 16px; }
+.dock-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dock-page[hidden] { display: none; }
+
+/* The tabs, along the top while a dock holds two or more things: Folio's words (.word). */
+.dock-tabs { flex: none; display: flex; gap: 20px; padding: 14px 18px 0 24px; }
+.dock-tabs[hidden] { display: none; }
+.dock-tabs:not([hidden]) + .dock-head { padding-top: 10px; }
 
 /* The inner edge: drag it to change the width. */
 .dock-edge {
@@ -1089,8 +1096,6 @@ dialog.dialog-box {
 .source-option { display: flex; align-items: center; gap: 6px; font-size: 13px; opacity: .8; cursor: pointer; }
 
 .source-words { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
-.source-ask { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: 13px; padding-top: 4px; border-top: 1px solid var(--line); }
-.source-ask[hidden] { display: none; }
 
 .source-go { opacity: .9; }
 
@@ -1456,6 +1461,13 @@ dialog.dialog-box {
 /* Import a room… among an empty cell's choices (the roomfile feature) */
 .rooms-kind-import { margin-top: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
 .rooms-cell-menu .rooms-kind-import { margin-top: 0; padding-top: 7px; border-top: 0; }
+
+/* A room's properties in the right dock's Editor tab (grid.js dockRoom): the pop-up's rows, down
+   the dock. The page moves over beside the dock. */
+.rooms-props { display: grid; gap: 14px; align-content: start; }
+.rooms-props .pop-name { font-size: 18px; }
+.dock-right-open .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
+.dock-right-open .rooms:not(.in-room) .rooms-back { right: calc(var(--gutter) + var(--dock-right, 0px)); }
 
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
@@ -1997,6 +2009,16 @@ dialog.dialog-box {
 .room-editor .room-doc-paras { font-size: 15.5px; line-height: 1.65; }
 .room-editor-foot { display: flex; justify-content: flex-end; }
 .room-editor-source { --word-spacing: .22em; font-size: 11px; opacity: .45; }
+
+/* The Timeline as a tab of the right dock (view.js): its list runs to the dock's edges. */
+.room-timeline { --room-ink: var(--ink); margin: 0 -24px; }
+.room-timeline .room-history-list { overflow: visible; }
+
+/* The sheet and a mode's settings, in the right dock's Editor tab. */
+.room-sheet-docked { display: grid; gap: 16px; align-content: start; }
+.room-sheet-docked .room-sheet-body { min-height: 14em; resize: vertical; }
+.room-mode-settings-docked { display: grid; gap: 14px; align-content: start; }
+.room-mode-settings-docked .room-mode-settings-note { margin: 0; }
 
 </style>
 </head>
@@ -2843,10 +2865,10 @@ dialog.dialog-box {
         );
       });
       const off = features2.filter((f2) => f2.status !== "active").length;
-      const fold4 = el(
+      const fold5 = el(
         "details",
         { class: "advanced features-fold", open: this.featuresOpen, ontoggle: () => {
-          this.featuresOpen = fold4.open;
+          this.featuresOpen = fold5.open;
         } },
         el("summary", {}, "Features", el("small", {}, off ? `${features2.length - off} on, ${off} off` : `All ${features2.length} on`)),
         hint("Switch off anything you don't use. Features that need a switched-off feature are switched off too.", { small: true }),
@@ -2855,7 +2877,7 @@ dialog.dialog-box {
       return el(
         "section",
         { class: "settings-section" },
-        fold4,
+        fold5,
         this.restartNeeded && el("button", { type: "button", class: "btn primary", onclick: () => location.reload() }, "Restart the app to apply")
       );
     }
@@ -3755,14 +3777,17 @@ dialog.dialog-box {
   var MOST = 0.7;
   var Dock = class {
     // side: 'left' or 'right'. saved: its remembered width, or undefined. keep(px): remember a width.
-    // resized(px): its showing width changed (0 when shut).
-    constructor({ side, saved, keep, resized, label: label2 }) {
+    // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
+    // names none ('' for a dock without tabs).
+    constructor({ side, saved, keep, resized, label: label2, tab = "" }) {
       this.side = side;
       this.usual = WIDTH[side];
       this.keep = keep;
       this.resized = resized;
       this.width = this.fit(saved ?? this.usual);
-      this.shown = null;
+      this.firstTab = tab;
+      this.held = [];
+      this.front = null;
       this.tucked = false;
       this.build(label2);
     }
@@ -3770,12 +3795,13 @@ dialog.dialog-box {
       return Math.round(Math.max(LEAST, Math.min(+px || this.usual, Math.max(LEAST, window.innerWidth * MOST))));
     }
     get showing() {
-      return this.shown && !this.tucked ? this.width : 0;
+      return this.held.length && !this.tucked ? this.width : 0;
     }
     get visible() {
-      return !!this.shown && !this.tucked;
+      return this.held.length > 0 && !this.tucked;
     }
     build(label2) {
+      this.tabsEl = el4("div", { class: "dock-tabs", role: "tablist", hidden: true });
       this.titleEl = el4("div", { class: "dock-title" });
       this.kindEl = el4("div", { class: "label dock-kind" });
       this.body = el4("div", { class: "dock-body" });
@@ -3803,6 +3829,7 @@ dialog.dialog-box {
             }
           }
         },
+        this.tabsEl,
         el4(
           "header",
           { class: "dock-head" },
@@ -3815,39 +3842,85 @@ dialog.dialog-box {
       for (const type of ["keyup", "paste", "copy", "cut", "wheel"]) this.root.addEventListener(type, (e) => e.stopPropagation());
       (document.getElementById("folio-root") || document.body).append(this.root);
     }
-    // Shows `body` (a node) in the dock, in place of whatever showed there (which is asked first, and
-    // closed). kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of
-    // true) when it may close. onClose(): it closed. Resolves with { close, setTitle, setKind, open }
-    // or null when what showed would not close.
-    async open({ key: key2 = this.side, kind = "", title = "", body, beforeClose = null, onClose = null } = {}) {
-      if (this.shown && !await this.close()) return null;
-      const shown2 = this.shown = { key: key2, beforeClose, onClose };
-      const dock = this;
-      this.kindEl.textContent = kind;
-      this.titleEl.textContent = title;
-      this.body.replaceChildren(body || "");
+    // Shows `body` (a node) in tab `tab` (the dock's first tab when none is named), in front, in
+    // place of whatever that tab held (which is asked first, and closed); the other tabs keep theirs.
+    // kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of true) when
+    // it may close. onClose(): it closed. Resolves with { close, setTitle, setKind, open } or null
+    // when what the tab held would not close.
+    async open({ key: key2 = this.side, tab = this.firstTab, kind = "", title = "", body, beforeClose = null, onClose = null } = {}) {
+      const there = this.held.find((x) => x.tab === tab);
+      if (there && !await this.closeOne(there)) return null;
+      if (this.held.some((x) => x.tab === tab)) return null;
+      const page = el4("div", { class: "dock-page" }, body || "");
+      const shown2 = { key: key2, tab, kind, title, page, beforeClose, onClose };
+      this.held.push(shown2);
+      this.body.append(page);
+      this.front = shown2;
       this.tucked = false;
       this.root.hidden = false;
-      this.setWidth(this.width, false);
+      this.draw();
       document.documentElement.classList.add(`dock-${this.side}-open`);
+      this.setWidth(this.width, false);
+      const dock = this;
       return {
-        close: (force = false) => this.shown === shown2 ? this.close(null, force) : Promise.resolve(true),
+        close: (force = false) => this.held.includes(shown2) ? this.closeOne(shown2, force) : Promise.resolve(true),
         setTitle: (t) => {
-          if (this.shown === shown2) this.titleEl.textContent = t;
+          shown2.title = t;
+          if (this.front === shown2) this.titleEl.textContent = t;
         },
         setKind: (t) => {
-          if (this.shown === shown2) this.kindEl.textContent = t;
+          shown2.kind = t;
+          if (this.front === shown2) this.kindEl.textContent = t;
         },
         get open() {
-          return dock.shown === shown2;
+          return dock.held.includes(shown2);
         }
       };
     }
-    // Closes what shows (only if it is `key`, given). Resolves true when the dock is shut.
+    // The tabs, the names over the front one, and only its page showing.
+    draw() {
+      const f2 = this.front;
+      this.kindEl.textContent = f2?.kind || "";
+      this.titleEl.textContent = f2?.title || "";
+      for (const x of this.held) x.page.hidden = x !== f2;
+      const tabs = this.held.length > 1 ? [...this.held].sort((a, b) => (b.tab === this.firstTab) - (a.tab === this.firstTab)) : [];
+      this.tabsEl.hidden = !tabs.length;
+      this.tabsEl.replaceChildren(...tabs.map((x) => el4("button", {
+        type: "button",
+        class: "word dock-tab",
+        role: "tab",
+        "aria-selected": String(x === f2),
+        onclick: () => this.bring(x)
+      }, x.tab || x.kind || "Untitled")));
+    }
+    bring(x) {
+      if (!this.held.includes(x)) return false;
+      this.front = x;
+      if (this.tucked) this.tuck(false);
+      this.draw();
+      return true;
+    }
+    find(key2) {
+      return key2 == null ? this.front : this.held.find((x) => x.key === key2) || null;
+    }
+    // Brings what holds `key` to the front (and the dock back, if hidden). False when it holds none.
+    show(key2) {
+      const x = this.find(key2);
+      return x ? this.bring(x) : false;
+    }
+    // Closes what holds `key`, or the one in front when none is given. Resolves true when it closed
+    // (or there was nothing to close).
     async close(key2 = null, force = false) {
-      const shown2 = this.shown;
-      if (!shown2) return true;
-      if (key2 != null && shown2.key !== key2) return true;
+      const x = this.find(key2);
+      return x ? this.closeOne(x, force) : true;
+    }
+    // Closes everything it holds, each asked first unless `force`. Resolves true when the dock is shut.
+    async closeAll(force = false) {
+      for (const x of this.held.slice()) await this.closeOne(x, force);
+      return !this.held.length;
+    }
+    async closeOne(shown2, force = false) {
+      if (!this.held.includes(shown2)) return true;
       if (!force && shown2.beforeClose) {
         let ok = false;
         try {
@@ -3855,14 +3928,19 @@ dialog.dialog-box {
         } catch {
           ok = true;
         }
-        if (!ok || this.shown !== shown2) return false;
+        if (!ok) return false;
+        if (!this.held.includes(shown2)) return true;
       }
-      this.shown = null;
-      this.tucked = false;
-      this.root.hidden = true;
-      this.body.replaceChildren();
-      document.documentElement.classList.remove(`dock-${this.side}-open`);
-      this.resized(0);
+      this.held = this.held.filter((x) => x !== shown2);
+      shown2.page.remove();
+      if (this.front === shown2) this.front = this.held[this.held.length - 1] || null;
+      if (!this.held.length) {
+        this.tucked = false;
+        this.root.hidden = true;
+        document.documentElement.classList.remove(`dock-${this.side}-open`);
+        this.resized(0);
+      }
+      this.draw();
       try {
         shown2.onClose?.();
       } catch (err) {
@@ -3870,9 +3948,9 @@ dialog.dialog-box {
       }
       return true;
     }
-    // Hides the dock (on) or brings it back, keeping what shows in it. False when nothing shows.
+    // Hides the dock (on) or brings it back, keeping what it holds. False when it holds nothing.
     tuck(on) {
-      if (!this.shown) return false;
+      if (!this.held.length) return false;
       this.tucked = !!on;
       this.root.hidden = this.tucked;
       document.documentElement.classList.toggle(`dock-${this.side}-open`, !this.tucked);
@@ -3880,8 +3958,13 @@ dialog.dialog-box {
       this.resized(this.showing);
       return true;
     }
+    // Whether it holds `key` (anything, when none is given), in front or not.
     isOpen(key2 = null) {
-      return !!this.shown && (key2 == null || this.shown.key === key2);
+      return key2 == null ? this.held.length > 0 : !!this.find(key2);
+    }
+    // Whether `key` is in front and the dock shows.
+    isShowing(key2) {
+      return this.visible && this.front?.key === key2;
     }
     setWidth(px, keep = true) {
       this.width = this.fit(px);
@@ -3923,6 +4006,7 @@ dialog.dialog-box {
   // dist/web/features/docks/Docks.js
   var SIDES = ["left", "right"];
   var LABEL = { left: "Left dock", right: "Right dock" };
+  var TAB = { left: "", right: "Editor" };
   var Docks = class extends Feature {
     start() {
       this.docks = {};
@@ -3930,6 +4014,7 @@ dialog.dialog-box {
         this.docks[side] = new Dock({
           side,
           label: LABEL[side],
+          tab: TAB[side],
           saved: this.storage.get(side),
           keep: (px) => this.storage.set(side, px),
           resized: (px) => this.publish(side, px)
@@ -3952,7 +4037,10 @@ dialog.dialog-box {
       return {
         open: (o2) => dock.open(o2),
         close: (key2 = null, force = false) => dock.close(key2, force),
+        closeAll: (force = false) => dock.closeAll(force),
+        show: (key2) => dock.show(key2),
         isOpen: (key2 = null) => dock.isOpen(key2),
+        isShowing: (key2) => dock.isShowing(key2),
         toggle: () => this.toggle(dock.side),
         get shown() {
           return dock.visible;
@@ -5760,7 +5848,7 @@ dialog.dialog-box {
     return `Spontaneity: about ${rate.toFixed(2)} marks a second (μ / (1 − n)), in clusters of ${cluster.toFixed(1)} on average (1 / (1 − n)), so about ${visible.toFixed(1)} on the page at once (rate × mean life). Streams :spont:time :spont:place :spont:marks.`;
   }
   function describePattern({ counts: counts2, ms }) {
-    const n = (k2, one, many) => `${k2} ${k2 === 1 ? one : many}`;
+    const n = (k2, one2, many) => `${k2} ${k2 === 1 ? one2 : many}`;
     return `Pattern: ${n(counts2.fibres, "fibre", "fibres")}, ${n(counts2.web, "web strand", "web strands")}, ${n(counts2.specks, "speck", "specks")} and ${n(counts2.flakes, "flake", "flakes")} (streams :pattern:fibres :pattern:web :pattern:specks :pattern:flakes :pattern:grain :pattern:cloud), made in ${Math.round(ms)} ms.`;
   }
   function describePlain(hue2, base2, field3, P) {
@@ -6941,13 +7029,13 @@ dialog.dialog-box {
       this.seedLine = el6("p", { class: "renderer-seed" });
       this.report = el6("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key2, value) => this.change(key2, value));
-      const fold4 = (title, ...kids) => el6(
+      const fold5 = (title, ...kids) => el6(
         "details",
         { class: "advanced renderer-fold" },
         el6("summary", {}, title),
         el6("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold4(
+      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold5(
         title,
         el6("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g2) => this.controls.groups.get(g2)))
       ))]));
@@ -6955,7 +7043,7 @@ dialog.dialog-box {
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
-        fold4(
+        fold5(
           "Picture",
           el6(
             "div",
@@ -6966,7 +7054,7 @@ dialog.dialog-box {
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
         ),
-        fold4(
+        fold5(
           "View",
           ...this.tabs.values(),
           el6(
@@ -6977,7 +7065,7 @@ dialog.dialog-box {
           )
         ),
         ...[...this.folds.values()].flat(),
-        fold4("Report", this.report),
+        fold5("Report", this.report),
         el6("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.marksRow = this.panel.querySelector(".renderer-marks");
@@ -13703,7 +13791,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         unfence
       });
     }
+    // The drafts kept: { [name]: { text, base } } (base: the text it held when the draft was made).
+    drafts() {
+      return this.storage.get("drafts", {}) || {};
+    }
+    keepDraft(name5, d) {
+      const all = this.drafts();
+      if (d) all[name5] = d;
+      else if (name5 in all) delete all[name5];
+      else return;
+      this.storage.set("drafts", all);
+    }
     // Opens the editor in the panel. Resolves once it closes: true when Apply was used, else false.
+    // draft: a name for what is edited ("room:<id>"): closed with changes not applied, the text is
+    // kept under it, with no question, and comes back the next time it opens.
     open({
       kind = "Source",
       title = "",
@@ -13714,13 +13815,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       check = () => ({}),
       apply: apply2 = null,
       full = (t) => t,
-      reset = null
+      reset = null,
+      draft = null
     } = {}) {
       return new Promise((resolve) => {
-        let applied = false, base2 = text, timer = 0, asking = null;
+        let applied = false, base2 = text, timer = 0;
+        const kept = draft && !readOnly ? this.drafts()[draft] : null;
         const chosen = Object.fromEntries(options.map((o2) => [o2.key, !!o2.value]));
         const box = el8("textarea", { class: "code-box source-text", spellcheck: "false", autocomplete: "off", wrap: "off", "aria-label": title || "Source", readonly: readOnly ? "" : null });
-        box.value = text;
+        box.value = kept ? kept.text : text;
         const sum = el8("div", { class: "source-sum", "aria-live": "polite" });
         const lists = el8("div", { class: "source-lists" });
         const opts = el8("div", { class: "source-options" });
@@ -13837,40 +13940,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           handle?.close(true);
         };
         const go = readOnly || !apply2 ? null : word("Apply", doApply, "source-go");
-        const ask = el8("div", { class: "source-ask", hidden: true });
         const beforeClose = () => {
-          if (applied || readOnly || !changed()) return true;
-          if (asking) return false;
-          return new Promise((res) => {
-            asking = res;
-            const done = (yes) => {
-              ask.hidden = true;
-              asking = null;
-              res(yes);
-              if (!yes) box.focus();
-            };
-            ask.replaceChildren(
-              el8("span", {}, "Close without applying your changes?"),
-              word("Close", () => done(true), "source-go"),
-              word("Keep editing", () => done(false))
-            );
-            ask.hidden = false;
-            ask.querySelector("button").focus();
-          });
+          if (draft && !readOnly) this.keepDraft(draft, !applied && changed() ? { text: box.value, base: base2 } : null);
+          return true;
         };
         const body = el8(
           "div",
-          { class: "source", onkeydown: (e) => {
-            if (e.key === "Escape" && asking) {
-              e.preventDefault();
-              e.stopPropagation();
-              ask.hidden = true;
-              const r = asking;
-              asking = null;
-              r(false);
-              box.focus();
-            }
-          } },
+          { class: "source" },
           sum,
           lists,
           box,
@@ -13884,10 +13960,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               word("Paste", paste),
               word("Reset", doReset),
               go,
-              el8("span", { class: "sheet-keys" }, "Ctrl+Enter applies · Escape closes")
+              el8("span", { class: "sheet-keys" }, "Ctrl+Enter applies · Escape keeps your changes for next time")
             ]
-          ),
-          ask
+          )
         );
         let handle = null;
         this.panel.open({ key: "source", kind, title, body, beforeClose, onClose: () => {
@@ -13901,6 +13976,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           handle = this.handle = h;
           run2();
+          if (kept) say2(kept.base === base2 ? "Your changes from last time are back" : "Your changes from last time are back · it has changed since (Reset shows it now)");
           box.focus({ preventScroll: true });
           box.setSelectionRange(0, 0);
           box.scrollTop = 0;
@@ -14167,7 +14243,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     report?.push(`Line ${item.line}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
     return { kind: "line", text: `A picture couldn't be fetched${item.text ? `: ${item.text}` : ""} (${item.url || "unreadable data"})`, line: item.line };
   }
-  var plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  var plural = (n, one2, many) => `${n} ${n === 1 ? one2 : many}`;
   var say = (n) => [
     plural(n.groups, "group", "groups"),
     plural(n.thoughts, "thought", "thoughts"),
@@ -14711,7 +14787,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MD = /\.(md|markdown|txt)$/i;
   var isRoomFile = (f2) => !!f2 && (MD.test(f2.name || "") || /markdown/.test(f2.type || ""));
   var REPORT = 8;
-  var count = (n, one) => `${n} ${one}${n === 1 ? "" : "s"}`;
+  var count = (n, one2) => `${n} ${one2}${n === 1 ? "" : "s"}`;
   var Roomfile = class extends Feature {
     start() {
       this.w = this.use("world");
@@ -14897,7 +14973,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         reset: write,
         options: scope === "room" ? [{ key: "remove", label: "Remove groups not in the text", value: false }] : [],
         check,
-        apply: readOnly ? null : applyText
+        apply: readOnly ? null : applyText,
+        draft: scope === "group" ? `group:${groupId}` : `room:${roomId}`
+        // changes closed unapplied come back next time
       });
     }
     // The quiet card: what will arrive ("12 groups, 85 thoughts, 2 pictures") and what couldn't be
@@ -15181,7 +15259,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const tiles2 = all.map((r) => this.tile(r, now, hits));
       const panels = [];
       const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
-      if (chosen) panels.push(this.roomOptions(chosen, cell, cols));
+      if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
+      if (this.panel) this.dockRoom(chosen || null);
       if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
       this.grid.replaceChildren(...empty, ...tiles2, ...panels);
       this.grid.querySelector(".rooms-name-field")?.focus();
@@ -15409,15 +15488,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return t;
       });
       const at2 = shelved.findIndex((r) => r.id === this.roomSel);
-      const panel = at2 < 0 ? null : this.shelfOptions(shelved[at2], at2 % cols, Math.floor(at2 / cols), cell, cols);
+      const panel = at2 < 0 || this.panel ? null : this.shelfOptions(shelved[at2], at2 % cols, Math.floor(at2 / cols), cell, cols);
+      if (this.panel) this.dockRoom(at2 < 0 ? null : shelved[at2], true);
       this.grid.replaceChildren(...empty, ...tiles2, ...panel ? [panel] : []);
     }
     shelfOptions(r, col, row, cell, cols) {
+      return el10("div", this.beside({ col, row }, cell, cols), el10("div", { class: "label" }, r.name), ...this.shelfRows(r));
+    }
+    // What an archived room offers: Go in, Restore and Delete.
+    shelfRows(r) {
       const word = (label2, fn, extra = "") => el10("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
-      return el10(
-        "div",
-        this.beside({ col, row }, cell, cols),
-        el10("div", { class: "label" }, r.name),
+      return [
         r.desc ? el10("p", { class: "pop-note" }, r.desc) : null,
         word("Go in", () => this.openRoom(r.id), "rooms-options-go"),
         word("Restore", () => {
@@ -15435,7 +15516,50 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawRooms();
           this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
         }, "pop-delete")
-      );
+      ];
+    }
+    // A room's properties in the right dock's Editor tab (the docks feature's panel service), in place
+    // of the pop-up beside its square: opened when a room's properties are asked for (roomSel),
+    // switched when another room is chosen while they show, closed when none is. The dock's × or
+    // Escape lets the room go. shelf: an archived room (Go in, Restore, Delete).
+    dockRoom(r, shelf = false) {
+      const open = this.propsDock;
+      if (!r) {
+        if (open) {
+          this.propsDock = null;
+          this.panel.close("room", true);
+        }
+        return;
+      }
+      const rows = (shelf ? this.shelfRows(r) : this.roomRows(r)).filter(Boolean);
+      const kind = shelf ? "Archived room" : "Room";
+      if (open && this.panel.isOpen("room")) {
+        open.id = r.id;
+        open.body.replaceChildren(...rows);
+        open.handle?.setTitle(r.name);
+        open.handle?.setKind(kind);
+        return;
+      }
+      const body = el10("div", { class: "rooms-props" }, ...rows);
+      const now = this.propsDock = { id: r.id, body, handle: null };
+      this.panel.open({
+        key: "room",
+        kind,
+        title: r.name,
+        body,
+        onClose: () => {
+          if (this.propsDock !== now) return;
+          this.propsDock = null;
+          if (!this.roomSel) return;
+          this.roomSel = null;
+          if (!this.inRoom && !this.root.hidden) this.drawRooms();
+        }
+      }).then((h) => {
+        if (this.propsDock === now) {
+          if (h) now.handle = h;
+          else this.propsDock = null;
+        }
+      });
     }
     // ---- Arrange by, in the rail: the tag groups, their tags, and how many rooms have each ----
     // None first (every room bright), then each group (Ontology first, Other last, for the tags in
@@ -15699,6 +15823,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // A click on a square chooses it (an outline); the properties wait for a right-click.
     pickRoom(id) {
+      if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) {
+        this.chooseRoom(id, true);
+        return;
+      }
       if (this.roomSel && this.roomSel !== id) this.roomSel = null;
       this.making = null;
       this.roomPick = id;
@@ -15713,10 +15841,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.renaming = null;
       this.drawRooms();
     }
-    // A room's properties, beside its square: its name and description, Go in, its mode (one, or
-    // all of them for a big room), its tags, its colour, lightness and opacity (the only place its colour is
-    // set), its size, Back to the tint, Lock, Archive and Delete (not for Messy).
+    // A room's properties in a pop-up beside its square (without docks).
     roomOptions(r, cell, cols) {
+      return el10("div", this.beside(r, cell, cols), ...this.roomRows(r));
+    }
+    // A room's properties: its name and description, Go in, its mode (one, or all of them for a big
+    // room), its tags, its colour, lightness and opacity (the only place its colour is set), its
+    // size, Back to the tint, Lock, Archive and Delete (not for Messy).
+    roomRows(r) {
       const set = (fields) => {
         update3(this.world, r.id, fields);
         this.save();
@@ -15740,9 +15872,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       });
       const word = (label2, fn, extra = "") => el10("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
-      const panel = el10(
-        "div",
-        this.beside(r, cell, cols),
+      return [
         nameField,
         // A line or two about the room: shown under its name inside, and in its square's peek.
         el10("textarea", {
@@ -15836,8 +15966,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.toast(`Deleted ${r.name}. Ctrl+Z brings it back.`);
           }, "pop-delete") : null
         )
-      );
-      return panel;
+      ];
     }
     // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
     // a ×), and a "+ tag" field that suggests the tags other rooms have. Enter adds what is typed.
@@ -16220,6 +16349,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "rooms.open", keys: ["Enter"], shows: "Double-click · Enter", words: "go into the chosen room" },
     { id: "rooms.properties", keys: ["ContextMenu", "Shift+F10"], shows: "Right-click", words: "the properties of a room" },
     { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen room" },
+    { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
     { id: "rooms.floor", keys: ["PageUp", "PageDown"], words: "the floor above · below" },
     { id: "rooms.search", keys: ["Ctrl+K"], words: "search every room" },
     { id: "rooms.undo", keys: ["Ctrl+Z", "Ctrl+Shift+Z", "Ctrl+Y"], shows: "Ctrl+Z · Ctrl+Shift+Z", words: "undo · redo" },
@@ -16249,6 +16379,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.backdrop = this.use("backdrop");
       this.files = this.use("roomfile");
       this.floors = this.use("floors");
+      this.panel = this.use("panel");
+      this.propsDock = null;
+      this.on("docks:resized", ({ side }) => {
+        if (side === "right" && !this.inRoom && !this.root.hidden) this.drawRooms();
+      });
       this.build();
       this.on("world:palette", () => this.repaint());
       this.on("world:look", () => this.repaint());
@@ -16286,7 +16421,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       document.addEventListener("keydown", (e) => this.onKey(e));
       this.keyMap = this.use("keys");
-      for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom });
+      const run2 = { "rooms.rename": (e) => this.renameChosen(e) };
+      for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       window.addEventListener("resize", () => {
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
       });
@@ -16448,6 +16584,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.storage.set("lastRoom", id);
       const tile = !this.inRoom && !this.roomsPage.hidden && this.grid.querySelector(`.rooms-tile[data-room="${id}"]`);
       const from = tile ? tile.getBoundingClientRect() : null;
+      if (this.propsDock) {
+        this.propsDock = null;
+        this.roomSel = null;
+        this.panel.close("room", true);
+      }
       this.inRoom = id;
       this.root.classList.add("in-room");
       this.emit("room:open", { id, from, seed });
@@ -16612,6 +16753,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return true;
       }
       return false;
+    }
+    // Ctrl+R: the chosen room's properties open with its name chosen to type over. In a field the
+    // key does nothing (it is still taken, so the page doesn't reload).
+    renameChosen(e) {
+      if (e?.target?.matches?.("input, textarea, select, [contenteditable]")) return;
+      const id = this.roomSel || this.roomPick;
+      if (!id || !room4(this.world, id)) return;
+      this.chooseRoom(id, true);
+      const field3 = (this.propsDock?.body || this.grid).querySelector(".pop-name");
+      field3?.focus({ preventScroll: true });
+      field3?.select();
     }
     // ---- Room Markdown: the roomfile feature does the work; this page says where ----
     // On the rooms page: a new room from a file, in `cell` (or the first free one).
@@ -17463,7 +17615,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows) => el13(
+      const fold5 = (title, ...rows) => el13(
         "details",
         { class: "advanced renderer-fold" },
         el13("summary", {}, title),
@@ -17472,7 +17624,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return el13(
         "div",
         { class: "room-settings" },
-        fold4(
+        fold5(
           "The rooms page",
           slider2("Mask opacity", "mask", 0, 0.6),
           slider2("Square strength", "square", 0, 1.5),
@@ -17492,7 +17644,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             )
           )
         ),
-        fold4(
+        fold5(
           "Inside a room",
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
@@ -17571,10 +17723,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         type: "button",
         class: "rail-item room-rail-view",
         "aria-pressed": String(this.historyOpen),
-        onclick: () => this.togglePanel()
+        title: this.keyMap ? `Timeline (${this.keyMap.label("room.timeline")})` : "Timeline",
+        onclick: () => this.toggleTimeline()
       }, "Timeline"));
-      const card = this.settingsFor && this.roomSettingsCard();
+      const card = !this.panel && this.settingsFor && this.roomSettingsCard();
       if (card) items.push(card);
+      this.drawModeSettings();
       this.modes.setAttribute("role", "group");
       this.modes.replaceChildren(...items);
       this.root.dataset.mode = this.mode;
@@ -17629,12 +17783,81 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.gearFor = this.gearFor === id ? null : id;
       this.drawRoom();
     }
+    // The ⚙ beside a mode: this room's settings for it, in the right dock's Editor tab (without
+    // docks, a card beside the rail). The same ⚙ again closes them (or brings them to the front).
     openRoomSettings(id) {
+      if (this.panel && this.settingsFor === id && this.modeSettings && !this.panel.isShowing("mode-settings")) {
+        this.panel.show("mode-settings");
+        return;
+      }
       this.settingsFor = this.settingsFor === id ? null : id;
       this.gearFor = null;
       this.drawRoom();
     }
-    // This room's settings for one ontology, in a card beside the rail, with Reset to global.
+    // This room's settings for one ontology, and Reset to global (redraw(): after a reset).
+    modeSettingsRows(o2, redraw2) {
+      return [
+        el13("p", { class: "room-mode-settings-note" }, "For this room only"),
+        ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
+          const before = this.setting(st.key, o2);
+          setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
+          o2.settingChanged?.(this.world, this.roomId, st.key, before, v2);
+          this.w.write();
+          this.drawWorld();
+        })),
+        el13("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
+          resetRoomSettings2(this.world, this.roomId, o2.id);
+          this.w.write();
+          redraw2();
+        } }, "Reset to global")
+      ];
+    }
+    // The settings in the Editor tab: opened while settingsFor names a mode, switched when it
+    // changes, closed when it is cleared; the dock's × or Escape clears it.
+    drawModeSettings() {
+      if (!this.panel) return;
+      const open = this.modeSettings;
+      if (!this.settingsFor) {
+        if (open) {
+          this.modeSettings = null;
+          this.panel.close("mode-settings", true);
+        }
+        return;
+      }
+      if (open && open.id === this.settingsFor && this.panel.isOpen("mode-settings")) return;
+      const o2 = this.ontologies.find((x) => x.id === this.settingsFor);
+      if (!o2) {
+        this.settingsFor = null;
+        return;
+      }
+      const body = el13("div", { class: "room-mode-settings room-mode-settings-docked" });
+      const fill = () => {
+        body.replaceChildren(...this.modeSettingsRows(o2, () => {
+          fill();
+          this.drawWorld();
+        }));
+      };
+      fill();
+      const now = this.modeSettings = { id: o2.id };
+      this.panel.open({
+        key: "mode-settings",
+        kind: "Settings for this room",
+        title: o2.name,
+        body,
+        onClose: () => {
+          if (this.modeSettings !== now) return;
+          this.modeSettings = null;
+          this.settingsFor = null;
+          if (this.roomId) this.drawRoom();
+        }
+      }).then((h) => {
+        if (this.modeSettings === now && !h) {
+          this.modeSettings = null;
+          this.settingsFor = null;
+        }
+      });
+    }
+    // This room's settings for one ontology, in a card beside the rail (without docks).
     roomSettingsCard() {
       const o2 = this.ontologies.find((x) => x.id === this.settingsFor);
       if (!o2) return null;
@@ -17662,20 +17885,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           el13("span", {}, o2.name),
           el13("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close", onclick: close })
         ),
-        el13("p", { class: "room-mode-settings-note" }, "For this room only"),
-        ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
-          const before = this.setting(st.key, o2);
-          setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
-          o2.settingChanged?.(this.world, this.roomId, st.key, before, v2);
-          this.w.write();
-          this.drawWorld();
-        })),
-        el13("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
-          resetRoomSettings2(this.world, this.roomId, o2.id);
-          this.w.write();
-          this.drawRoom();
-        } }, "Reset to global")
+        ...this.modeSettingsRows(o2, () => this.drawRoom())
       );
+    }
+    // Whether Tab swaps modes now: a big room, nothing being written or edited, and the focus on
+    // nothing (or on the canvas).
+    tabSwaps() {
+      if (this.draft || this.editing || !isBig3(room5(this.world, this.roomId))) return false;
+      const a = document.activeElement;
+      return !a || a === document.body || this.stage.contains(a) && a !== this.input;
+    }
+    // Tab / Shift+Tab: the next mode of a big room, or the one before (round the list).
+    nextMode(step = 1) {
+      const list2 = this.ontologies;
+      const at2 = list2.findIndex((m2) => m2.id === this.mode);
+      const next = list2[(at2 + step + list2.length) % list2.length];
+      if (next && next.id !== this.mode) this.setMode(next.id);
     }
     // Only a big room switches its mode.
     setMode(id) {
@@ -17799,19 +18024,40 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.clearFrame = 0;
       if (depth < 2) this.clearRoom(depth + 1);
     }
-    // The Timeline down the right: everything written in the room, in the order it was last changed
-    // (latest at the bottom), each with its time and, where the mode groups thoughts, its group as a
-    // tag (Joyce: its train). A click takes the view to it.
+    // The Timeline: everything written in the room, in the order it was last changed (latest at the
+    // bottom), each with its time and, where the mode groups thoughts, its group as a tag (Joyce: its
+    // train). A click takes the view to it. It is a tab of the right dock (the docks feature), beside
+    // the Editor; without docks, a list down the right of the room.
     drawHistory() {
+      if (this.docks) {
+        this.dockTimeline();
+        return;
+      }
       if (!this.historyOpen) {
         this.history.hidden = true;
         return;
       }
+      const list2 = this.timelineList();
+      this.history.hidden = false;
+      this.history.replaceChildren(
+        el13(
+          "div",
+          { class: "room-history-head" },
+          el13("span", {}, "Timeline"),
+          el13("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() })
+        ),
+        list2
+      );
+      list2.lastElementChild?.scrollIntoView?.({ block: "end" });
+    }
+    // The Timeline's list (or a line saying there is nothing yet).
+    timelineList() {
       const w2 = this.world, ont = this.ont;
       const changed = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
       const items = roomThoughts3(w2, this.roomId).slice().sort((a, b) => changed(a) - changed(b) || a.at - b.at);
+      if (!items.length) return el13("p", { class: "room-history-none" }, "Nothing written here yet");
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const list2 = items.length ? el13("ol", { class: "room-history-list" }, items.map((th) => {
+      return el13("ol", { class: "room-history-list" }, items.map((th) => {
         const tag = ont.tag?.(w2, th.id) || null;
         return el13("li", {}, el13(
           "button",
@@ -17819,7 +18065,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             type: "button",
             class: "pick room-history-item" + (this.sel?.id === th.id || tag && this.sel?.id === tag.id ? " on" : ""),
             style: tag ? `--tag:hsl(${hash2(tag.id) % 360} 32% 46%)` : "",
-            onclick: () => this.goTo({ id: th.id, kind: kindOf3(th), room: this.roomId })
+            onclick: () => {
+              this.fromTimeline = true;
+              try {
+                this.goTo({ id: th.id, kind: kindOf3(th), room: this.roomId });
+              } finally {
+                this.fromTimeline = false;
+              }
+            }
           },
           el13(
             "span",
@@ -17829,18 +18082,59 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ),
           el13("span", { class: "room-history-text" }, thoughtText2(w2, th))
         ));
-      })) : null;
-      this.history.hidden = false;
-      this.history.replaceChildren(
-        el13(
-          "div",
-          { class: "room-history-head" },
-          el13("span", {}, "Timeline"),
-          el13("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close Timeline", onclick: () => this.togglePanel() })
-        ),
-        list2 || el13("p", { class: "room-history-none" }, "Nothing written here yet")
-      );
-      list2?.lastElementChild?.scrollIntoView?.({ block: "end" });
+      }));
+    }
+    // The Timeline tab of the right dock: opened while the room's Timeline is on, kept up to date,
+    // and closed with the dock's × (which turns it off for this room).
+    dockTimeline() {
+      const dock = this.docks.right;
+      const tl = this.timeline;
+      if (!this.historyOpen) {
+        if (tl) {
+          this.timeline = null;
+          dock.close("timeline", true);
+        }
+        return;
+      }
+      const r = room5(this.world, this.roomId);
+      const list2 = this.timelineList();
+      if (tl && dock.isOpen("timeline")) {
+        tl.body.replaceChildren(list2);
+        tl.handle?.setTitle(r.name);
+      } else {
+        const body = el13("div", { class: "room-timeline" }, list2);
+        const now = this.timeline = { body, handle: null };
+        dock.open({
+          key: "timeline",
+          tab: "Timeline",
+          kind: "Timeline",
+          title: r.name,
+          body,
+          onClose: () => {
+            if (this.timeline !== now) return;
+            this.timeline = null;
+            if (!this.roomId) return;
+            view5(this.world, this.roomId).timeline = false;
+            this.save();
+            this.drawRoom();
+          }
+        }).then((h) => {
+          if (this.timeline === now) {
+            if (h) now.handle = h;
+            else this.timeline = null;
+          }
+        });
+      }
+      list2.lastElementChild?.scrollIntoView?.({ block: "end" });
+    }
+    // Ctrl+Alt+T, or Timeline in the rail: turns the Timeline on, brings its tab to the front when
+    // it is behind the Editor, or turns it off.
+    toggleTimeline() {
+      if (this.docks && this.historyOpen && this.timeline && !this.docks.right.isShowing("timeline")) {
+        this.docks.right.show("timeline");
+        return;
+      }
+      this.togglePanel();
     }
   };
 
@@ -18605,12 +18899,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Puts copies of the copied thoughts in the open room, around a free spot, as they sat, and chooses them.
     pasteThoughts() {
+      this.pasteUnits(this.clip.units);
+    }
+    // Puts copies of `units` (copyOf) in the open room, around a free spot, and chooses them.
+    pasteUnits(units) {
       if (this.locked) {
         this.toast("This room is locked.");
         return;
       }
       if (this.draft) this.stopWriting();
-      const w2 = this.world, units = this.clip.units;
+      const w2 = this.world;
       const cx = units.reduce((a, u) => a + u.x, 0) / units.length, cy = units.reduce((a, u) => a + u.y, 0) / units.length;
       const spot3 = this.freeSpot();
       let now = Date.now();
@@ -18806,7 +19104,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const close = () => {
       handle?.close(true);
     };
-    const editor = { id, refresh, keep: () => paras?.keep() };
+    const editor = { id, body, refresh, keep: () => paras?.keep() };
     const handle = await c.panel.open({
       key: "content",
       kind: group ? c.groupName(th) : c.kindName(th),
@@ -18831,6 +19129,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/room/bars.js
   var Bars = class {
     // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
+    // (Resolves once they show.)
     // panel's content editor (editor.js) when there is a panel, else in the pop-up beside it. Many
     // things chosen together always get the pop-up.
     openProps(sel) {
@@ -18838,12 +19137,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.draft) this.stopWriting();
       if (this.panel && sel?.kind !== "many") {
         this.barFor = null;
-        openEditor(this, sel.id).then(() => this.drawWorld());
-        return;
+        return openEditor(this, sel.id).then(() => this.drawWorld());
       }
       this.barFor = this.selKey(sel);
       this.drawWorld();
       this.bar.querySelector("textarea, input")?.focus({ preventScroll: true });
+      return Promise.resolve();
     }
     // While the content editor shows, it follows what is chosen: a click on another thought, group
     // or train switches it there. Then it shows what changed.
@@ -18853,7 +19152,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const id = this.sel && this.sel.kind !== "many" ? this.sel.id : null;
       if (id && id !== ed.id && this.world.things[id]) {
         ed.keep();
-        openEditor(this, id);
+        const behind = this.fromTimeline && this.panel.isShowing("timeline");
+        openEditor(this, id).then(() => {
+          if (behind) this.panel.show("timeline");
+        });
         return;
       }
       ed.refresh();
@@ -19337,8 +19639,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.toast("That file couldn't be read as a picture.");
       }
     }
-    // The sheet: a quiet panel over the room to write a passage or caption a picture, new (kind) or
-    // an existing thought (id). Keep (Enter) saves it; Escape or Cancel leaves it.
+    // The sheet: to write a passage, caption a picture or name a folded group, new (kind) or an
+    // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
+    // room). Keep (Enter) saves it; Escape or Cancel leaves it.
     openSheet(kind, id = null, src = null, ask = []) {
       if (!this.roomId) return;
       if (this.locked) {
@@ -19375,19 +19678,49 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.sheetCaption = el13("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
         fields.push(el13("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
-      this.sheet.replaceChildren(
-        el13("div", { class: "label" }, { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind]),
-        ...fields,
-        el13(
-          "div",
-          { class: "sheet-words" },
-          el13("button", { type: "button", class: "word", onclick: keep }, "Keep"),
-          el13("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
-          el13("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line" : "Enter keeps it")
-        )
+      const label2 = { passage: "Passage", picture: "Picture", group: `A folded ${this.groupName(th).toLowerCase()}` }[kind];
+      const words = el13(
+        "div",
+        { class: "sheet-words" },
+        el13("button", { type: "button", class: "word", onclick: keep }, "Keep"),
+        el13("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
+        el13("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
+      const first = () => kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle;
+      if (this.panel) {
+        this.dockSheet(label2, th, [...fields, words], first);
+        return;
+      }
+      this.sheet.replaceChildren(el13("div", { class: "label" }, label2), ...fields, words);
       this.sheet.hidden = false;
-      (kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle).focus();
+      first().focus();
+    }
+    // The sheet in the right dock's Editor tab (in place of the content editor, if it showed). The
+    // dock's × or Escape is Cancel.
+    dockSheet(label2, th, parts, first) {
+      const ed = this.editing;
+      const title = th ? th.title || th.text || label2 : `A new ${label2.toLowerCase()}`;
+      const body = el13("div", { class: "room-sheet room-sheet-docked" }, ...parts);
+      ed.docked = true;
+      this.panel.open({
+        key: "sheet",
+        kind: label2,
+        title,
+        body,
+        onClose: () => {
+          if (this.editing === ed) {
+            this.editing = null;
+            this.addAt = null;
+          }
+        }
+      }).then((h) => {
+        if (this.editing !== ed) return;
+        if (!h) {
+          this.editing = null;
+          return;
+        }
+        first().focus();
+      });
     }
     keepSheet() {
       const ed = this.editing;
@@ -19407,10 +19740,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawWorld();
     }
     closeSheet() {
+      const ed = this.editing;
       this.addAt = null;
       this.editing = null;
       this.sheet.hidden = true;
       this.sheet.replaceChildren();
+      if (ed?.docked) this.panel?.close("sheet", true);
     }
     moveTo(toRoom) {
       const v2 = view5(this.world, toRoom);
@@ -19442,12 +19777,89 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.more", shows: "Shift+click · Ctrl+click", words: "add to the choice · in or out of it" },
     { id: "room.copy", keys: ["Ctrl+C", "Ctrl+V"], words: "copy what is chosen · put a copy here" },
     { id: "room.delete", keys: ["Delete"], words: "delete what is chosen" },
+    { id: "room.rename", keys: ["Ctrl+R"], words: "rename what is chosen (a thought: write in it)", typing: true },
+    { id: "room.duplicate", keys: ["Ctrl+D"], words: "duplicate what is chosen", typing: true },
+    { id: "room.fold", keys: ["Ctrl+F"], words: "fold or unfold its group", typing: true },
+    { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room", typing: true },
     { id: "room.back-into", shows: "Backspace in an empty thought", words: "back into the one before" },
     { id: "room.nudge", keys: ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight", "Shift+ArrowUp", "Shift+ArrowDown"], shows: "Arrows · Shift+arrows", words: "nudge what is chosen" },
     { id: "room.search", keys: ["Ctrl+K"], words: "search every room" },
+    { id: "room.mode", keys: ["Tab", "Shift+Tab"], shows: "Tab · Shift+Tab", words: "the next mode · the one before (a big room)" },
+    { id: "room.timeline", keys: ["Ctrl+Alt+T"], words: "the Timeline: show it, bring it to the front, or hide it", typing: true },
     { id: "room.undo", keys: ["Ctrl+Z", "Ctrl+Shift+Z", "Ctrl+Y"], shows: "Ctrl+Z · Ctrl+Shift+Z", words: "undo · redo" },
     { id: "room.escape", keys: ["Escape"], words: "let go, or go back" }
   ].map((k2, i2) => ({ order: 10 + i2, ...k2 }));
+
+  // dist/web/features/room/verbs.js
+  var FIELD2 = "input, textarea, select, [contenteditable]";
+  var typing = (e) => !!e?.target?.matches?.(FIELD2);
+  var one = (c) => c.sel && c.sel.kind !== "many" && c.world.things[c.sel.id] ? c.world.things[c.sel.id] : null;
+  var props = (c) => c.editor?.body || (c.bar.hidden ? null : c.bar);
+  async function rename(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    if (kindOf3(th) === "line" && c.editThought(th.id)) return;
+    await c.openProps(c.sel);
+    const field3 = props(c)?.querySelector(".pop-name, input, textarea");
+    field3?.focus({ preventScroll: true });
+    field3?.select?.();
+  }
+  function duplicate(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const units = c.copyOf(c.sel.ids || [c.sel.id]);
+    if (!units.length) {
+      c.toast("That can't be duplicated here yet.");
+      return;
+    }
+    c.pasteUnits(units);
+  }
+  function fold4(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const g2 = isGroup3(th) ? th : groupOf2(c.world, th.id, c.mode);
+    if (!g2) {
+      c.toast("It is in no group to fold.");
+      return;
+    }
+    if (g2.folded) {
+      c.unfoldTrain(g2.id);
+      return;
+    }
+    if (trainThoughts2(c.world, g2.id).length < 2 && !c.ont.open) {
+      c.toast("One thought: nothing to fold.");
+      return;
+    }
+    c.foldTrain(g2.id);
+  }
+  async function moveTo(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    await c.openProps(c.sel);
+    const pick = props(c)?.querySelector(".room-edit-move");
+    if (!pick) return;
+    pick.focus({ preventScroll: true });
+    try {
+      pick.showPicker?.();
+    } catch {
+    }
+  }
 
   // dist/web/features/room/Room.js
   var Room = class extends Feature {
@@ -19464,6 +19876,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.renaming = null;
       this.barFor = null;
       this.editor = null;
+      this.timeline = null;
       this.editing = null;
       this.picker = ui_exports.filePicker("image/*");
       this.drafts = this.storage.get("drafts", {}) || {};
@@ -19472,7 +19885,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.panel = this.use("panel");
       this.docks = this.use("docks");
       this.keyMap = this.use("keys");
-      for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: () => !this.root.hidden && !!this.roomId });
+      const run2 = {
+        "room.timeline": () => this.toggleTimeline(),
+        "room.mode": (e) => this.nextMode(e.shiftKey ? -1 : 1),
+        // The same verbs as on the rooms page (verbs.js).
+        "room.rename": (e) => rename(this, e),
+        "room.duplicate": (e) => duplicate(this, e),
+        "room.fold": (e) => fold4(this, e),
+        "room.move": (e) => moveTo(this, e)
+      };
+      const live = () => !this.root.hidden && !!this.roomId;
+      const when = { "room.mode": () => live() && this.tabSwaps() };
+      for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: when[k2.id] || live, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       this.on("docks:resized", () => {
         if (this.roomId) this.place();
       });
@@ -19557,7 +19981,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const from = this.root.hidden ? null : this.roomId;
       this.closeSheet();
       this.closeSearch();
-      this.panel?.close(null, true);
+      this.timeline = null;
+      this.modeSettings = null;
+      this.panel?.closeAll(true);
       this.docks?.left.close("loose", true);
       this.shelveDraft();
       this.stopWriting();
@@ -19789,10 +20215,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.ontologies.find((o2) => o2.id === g2?.of)?.groups?.name || "Train";
     }
     // Train, Chapter
+    // A folded group opened (Russell's closed chapter): in the content editor, in the right dock's
+    // Editor tab, with its thoughts as paragraphs to write in; without docks, as a document pop-up
+    // (document.js).
     openDocument(id) {
-      openDocument(this, id);
+      if (!this.panel) {
+        openDocument(this, id);
+        return;
+      }
+      if (this.draft) this.commit();
+      this.sel = { kind: "train", id };
+      this.openProps(this.sel);
     }
-    // a group as a document (document.js)
     // ---- Room Markdown: the roomfile feature does the work; this feature says where ----
     // A room Markdown file dropped on a room: its groups and thoughts join it.
     listenForFiles() {
@@ -19901,7 +20335,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.2.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.1.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
