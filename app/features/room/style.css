@@ -298,6 +298,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
 .room-loose { display: grid; gap: 14px; }
+.room-loose-search { width: 100%; box-sizing: border-box; }
 .room-loose-hint { margin: 0; font-size: 13px; line-height: 1.5; opacity: .7; }
 .room-loose-list { display: grid; gap: 8px; }
 .room-loose .room-tray-item { width: auto; background: color-mix(in srgb, currentColor 5%, transparent); }
