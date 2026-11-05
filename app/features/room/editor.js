@@ -2,7 +2,7 @@
 // the right (the panel feature), in place of the old pop-up beside the thing. At the top, what the
 // pop-up had: the name, folding, the ontology's own rows (Russell's arrows), moves, Move to and
 // Delete. Under it, the content: a group's thoughts as paragraphs to write in (document.js), or a
-// thought's own words. At the foot, a small "Source" opens the group as room Markdown in the source
+// thought's own words. At the foot, a small "Source" opens the group as .traum text in the source
 // editor, in the same panel (the roomfile feature).
 //
 // While it shows, a click on another thought, group or train switches it there (followEditor, from
@@ -31,11 +31,11 @@ export async function openEditor(c, id) {
     });
     content.append(c.el('div', { class: 'label' }, 'Thoughts'), paras.node, ...(paras.more ? [paras.more] : []));
   }
-  // Source: the group (or the group a thought is in, in this mode) as room Markdown.
+  // Source: the group (or the group a thought is in, in this mode) as .traum text.
   const sourceOf = () => (group ? id : groupOf(c.world, id, c.mode)?.id || null);
   const drawFoot = () => {
     const gid = c.files?.canEdit ? sourceOf() : null;
-    foot.replaceChildren(gid ? c.el('button', { type: 'button', class: 'word room-editor-source', title: 'Edit as room Markdown', onclick: () => c.editAsMarkdown(gid) }, locked ? 'Source (read only)' : 'Source') : '');
+    foot.replaceChildren(gid ? c.el('button', { type: 'button', class: 'word room-editor-source', title: 'Edit as .traum text', onclick: () => c.editAsMarkdown(gid) }, locked ? 'Source (read only)' : 'Source') : '');
   };
   const refresh = () => {
     const now = c.world.things[id];

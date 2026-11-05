@@ -52,7 +52,10 @@ const traum = {
         placed.add(id);
         own(w, roomId, 'pessoa')[id] = { x: Math.round(x), y: Math.round(y), ...(l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : {}) };
       } else if (l.key === 'on canvas' || l.key === 'tray') {
-        for (const v of l.values) c.thing(v, l.line);
+        for (const v of l.values) {
+          const id = c.thing(v, l.line);
+          if (id && l.key === 'on canvas' && !placed.has(id)) delete own(w, roomId, 'pessoa')[id]; // back on the spiral
+        }
       } else c.keep(l);
     }
   },

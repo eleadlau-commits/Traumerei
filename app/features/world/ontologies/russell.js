@@ -443,7 +443,7 @@ const traum = {
         for (const v of l.values) {
           const g = own(c.thing(v, l.line));
           if (!g) continue;
-          if (l.key === 'tray') g.loose = true; else delete g.loose;
+          if (l.key === 'tray') g.loose = true; else { delete g.loose; if (g.hand === true) delete g.hand; }
         }
       } else if (l.key === 'at') {
         const g = own(c.thing(l.values[0], l.line));
@@ -461,6 +461,8 @@ const traum = {
     }
     net.traumArrows(w, roomId, arrowsRead, c);
   },
+  // (c.scope, when editing: the things the text holds. Arrows touching them are made to read as
+  // the text does: ones not in it are taken away, ones changed are changed. c.change(words) says so.)
 };
 
 const russell = {
