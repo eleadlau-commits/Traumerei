@@ -72,7 +72,7 @@
   --field: 26px;     /* a field or a button's box */
   /* One accent, one meaning: amber (from the palette's glow) is selected, focused, the tab in front
      and where a drop will land. Ink stays for words and lines; red only on Delete. */
-  --amber: color-mix(in oklab, var(--glow) 72%, #8a5410);
+  --amber: color-mix(in oklab, var(--glow) 50%, #9a6414);
   --amber-soft: rgb(var(--glow-rgb) / .35);
   /* Two surfaces: the canvas is paper (and the washi, if the picture has it); all chrome (top bar,
      rail, docks, status bar) is the flat veil with a hairline edge. */
