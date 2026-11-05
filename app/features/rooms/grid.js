@@ -139,7 +139,7 @@ export class RoomsGrid {
     const panels = [];
     const chosen = this.roomSel && all.find((r) => r.id === this.roomSel);
     if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
-    if (this.panel) this.dockRoom(chosen || null);
+    if (this.panel) { if (!chosen && this.floorSel != null) this.dockFloor(this.floorSel); else this.dockRoom(chosen || null); }
     if (this.making) panels.push(this.making.menu ? this.cellMenu(this.making, cell, cols) : this.kindOptions(this.making, cell, cols));
     this.grid.replaceChildren(...empty, ...tiles, ...panels);
     this.keepInView(scrolled);
@@ -168,7 +168,7 @@ export class RoomsGrid {
   // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
   // of room to make there.
   onCell(col, row) {
-    if (this.roomSel || this.making) { this.roomSel = this.making = null; this.drawRooms(); return; }
+    if (this.roomSel || this.making || this.floorSel != null) { this.roomSel = this.making = this.floorSel = null; this.drawRooms(); return; }
     this.roomPick = null;
     this.making = { col, row };
     this.drawRooms();
@@ -215,7 +215,11 @@ export class RoomsGrid {
       ...Array.from({ length: n }, (_, i) => el('button', {
         type: 'button', class: 'rail-item rooms-page', 'data-page': i, title: `Floor ${i + 1}`,
         ...(i === this.page && !this.shelf ? { 'aria-current': 'page' } : {}),
-        onclick: () => go(i),
+        ...(i === this.floorSel && !this.shelf ? { class: 'rail-item rooms-page chosen' } : {}),
+        // A click goes there (and, while a floor's properties show, switches them to this one);
+        // a right-click chooses it and shows its properties (floor.js).
+        onclick: () => (this.floorSel != null && this.propsDock?.id === 'floor' ? this.chooseFloor(i) : go(i)),
+        oncontextmenu: (e) => { e.preventDefault(); this.chooseFloor(i); },
       }, railNum(i + 1), railWord(`Floor ${i + 1}`))),
       el('button', { type: 'button', class: 'rail-item rooms-page rooms-page-new', title: 'New floor', onclick: () => {
         const i = addPage(this.world);
@@ -273,7 +277,7 @@ export class RoomsGrid {
 
   toggleShelf() {
     this.shelf = !this.shelf;
-    this.roomSel = this.roomPick = this.making = null;
+    this.roomSel = this.roomPick = this.making = this.floorSel = null;
     this.drawRooms();
     this.grid.parentElement?.scrollTo?.(0, 0);
   }
@@ -545,6 +549,7 @@ export class RoomsGrid {
   pickRoom(id, e = null) {
     if (e && (e.shiftKey || e.metaKey || (e.ctrlKey && !MAC))) { this.addPick(id); return; } // many.js
     this.picks = [];
+    this.floorSel = null;
     // While a room's properties show in the dock, a click on another room switches them there.
     if (this.panel && this.roomSel && this.propsDock && this.roomSel !== id) { this.chooseRoom(id, true); return; }
     if (this.roomSel && this.roomSel !== id) this.roomSel = null;
@@ -557,6 +562,7 @@ export class RoomsGrid {
   // Opens (or, with open false, toggles) a room's properties beside its square.
   chooseRoom(id, open = false) {
     this.picks = []; // its properties are for one room
+    this.floorSel = null;
     this.roomSel = open || this.roomSel !== id ? id : null;
     this.roomPick = id;
     this.making = null;

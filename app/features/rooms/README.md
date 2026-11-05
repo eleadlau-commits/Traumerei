@@ -70,7 +70,13 @@ written there. With nothing in it, the rooms page works on its own.
   (a jump with reduced motion): the scroll wheel or trackpad (one gesture, one floor), Page Up and
   Page Down, or a floor in the rail. *+ New floor* adds one at the end and slides down to it.
   Holding a dragged square at the top or bottom edge of the canvas slides to the floor above or
-  below, to drop it on a cell there. The floor that shows is drawn in full; the others are still
+  below, to drop it on a cell there.
+- **Deleting a floor** (`floor.js`), like a room: a right-click on a floor in the rail chooses it
+  and shows its properties in the right dock's Editor tab (Floor n, how many rooms, *Delete
+  floor*); while they show, a click on another floor switches them. *Delete floor* (or **Delete**)
+  first warns in the dock what will happen, with *Delete floor* (Enter) and *Cancel* (Escape).
+  Then its rooms go to the Archive, the floors below move up one, and Ctrl+Z brings it all back. Floor 1 stays (Messy thoughts lives there); a floor with a locked
+  room says so and stays (the floors feature's `removeFloor`). The floor that shows is drawn in full; the others are still
   copies until the strip rests on them.
 ## Choosing and editing rooms
 

@@ -10,7 +10,7 @@ export const ROOMS_KEYS = [
   { id: 'rooms.all', keys: ['Ctrl+A'], words: 'choose every room shown' },
   { id: 'rooms.open', keys: ['Enter'], shows: 'Double-click · Enter', words: 'go into the chosen room' },
   { id: 'rooms.properties', keys: ['ContextMenu', 'Shift+F10'], shows: 'Right-click', words: 'the properties of a room' },
-  { id: 'rooms.delete', keys: ['Delete'], words: 'delete the chosen rooms' },
+  { id: 'rooms.delete', keys: ['Delete'], words: 'delete the chosen rooms (or the floor chosen in the rail)' },
   { id: 'rooms.rename', keys: ['Ctrl+R'], words: 'rename the chosen room', typing: true },
   { id: 'rooms.duplicate', keys: ['Ctrl+D'], words: 'duplicate the chosen rooms (or Alt+drag one)' },
   { id: 'rooms.move', keys: ['Ctrl+M'], words: 'move the chosen rooms to another floor' },

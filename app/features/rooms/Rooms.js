@@ -24,6 +24,7 @@ import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { RoomsVerbs } from './verbs.js';
 import { RoomsMany } from './many.js';
+import { RoomsFloor } from './floor.js';
 import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
 
@@ -35,6 +36,8 @@ export default class Rooms extends Feature {
     this.renaming = null; // a room id whose name is being edited on its square
     this.roomPick = null; // the room chosen (outlined) on a grid
     this.roomSel = null;  // the room whose properties show beside it
+    this.floorSel = null; // the floor chosen in the rail (its properties show), or null (floor.js)
+    this.floorAsk = null; // the floor whose Delete is being warned about, or null (floor.js)
     this.making = null;   // an empty cell clicked: { col, row }, where the new room's kinds show
     this.page = 0;        // the floor that shows
     this.lastRoom = this.storage.get('lastRoom') || null; // the room last gone into: its square glows
@@ -212,6 +215,7 @@ export default class Rooms extends Feature {
     this.page = page;
     this.shelf = false;
     this.roomPick = this.roomSel = this.making = null;
+    this.floorSel = this.floorAsk = null;
     this.renaming = null;
     this.drawRooms({ slide });
   }
@@ -349,8 +353,9 @@ export default class Rooms extends Feature {
       return;
     }
     if (e.key === 'Escape') {
+      if (this.floorAsk != null) { this.cancelFloor(); return; }
       if (this.clearPicks()) return;
-      if (this.roomSel || this.making) { this.roomSel = this.making = null; this.drawRooms(); }
+      if (this.roomSel || this.making || this.floorSel != null) { this.roomSel = this.making = this.floorSel = null; this.drawRooms(); }
       else if (this.roomPick) { this.roomPick = null; this.drawRooms(); }
       else if (this.lights != null) this.closeLights();
       else this.back();
@@ -378,6 +383,9 @@ export default class Rooms extends Feature {
     const id = this.roomSel || this.roomPick;
     const r = id && room(this.world, id);
     const deletes = k === 'Delete' || (MAC && e.metaKey && k === 'Backspace');
+    // A floor chosen in the rail: Delete warns first (floor.js); Enter then deletes, Escape cancels.
+    if (this.floorAsk != null && k === 'Enter') { e.preventDefault(); this.deleteFloor(this.floorAsk); return true; }
+    if (deletes && this.floorSel != null && !r && !this.picks.length) { e.preventDefault(); this.askFloor(this.floorSel); return true; }
     if (deletes && this.picks.length > 1) { e.preventDefault(); this.deleteMany(); return true; }
     if (deletes && r && r.id !== MESSY && !shut(this.world, r.id)) {
       e.preventDefault();
@@ -487,9 +495,9 @@ export default class Rooms extends Feature {
   }
 }
 
-// The grid (grid.js), the verbs (verbs.js) and choosing many (many.js) are written as classes of their own, whose methods
+// The grid (grid.js), the verbs (verbs.js), choosing many (many.js) and a floor's properties (floor.js) are written as classes of their own, whose methods
 // are copied onto Rooms here, so `this` there is this feature.
-for (const part of [RoomsGrid, RoomsVerbs, RoomsMany]) {
+for (const part of [RoomsGrid, RoomsVerbs, RoomsMany, RoomsFloor]) {
   for (const [key, d] of Object.entries(Object.getOwnPropertyDescriptors(part.prototype))) {
     if (key !== 'constructor') Object.defineProperty(Rooms.prototype, key, d);
   }

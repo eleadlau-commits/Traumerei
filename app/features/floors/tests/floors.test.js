@@ -5,7 +5,7 @@ import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { emptyWorld, loadWorld, addRoom, addPage, pageCount, roomAt, lock, archive, restore, MESSY } from '../../world/model.js';
-import { PRESETS, preset, place, settle, move, resize, toFloor, outside, spot } from '../rule.js';
+import { PRESETS, preset, place, settle, move, resize, toFloor, outside, spot, removeFloor } from '../rule.js';
 
 bind(lib); // the world's rules, as floors gets them from the world service
 
@@ -143,4 +143,41 @@ test('near: a room placed near a cell takes the free spot nearest it, else spill
   const z = addRoom(w2, 'Z', 1, { page: 1 });
   const out = place(w2, z.id, S2, { col: 0, row: 0 }, { near: true });
   assert.ok(out.spilled, 'a full floor spills to a new one');
+});
+
+test('deleting a floor archives its rooms and moves the floors below up one', () => {
+  const w = emptyWorld();
+  addPage(w); addPage(w); addPage(w); // floors 0..3
+  const a = made(w, 'A', 1);
+  const b = made(w, 'B', 2);
+  const c = made(w, 'C', 3);
+  const gone = made(w, 'Gone', 1); archive(w, gone.id);
+  const out = removeFloor(w, 1, 5);
+  assert.deepEqual(out.archived.map((r) => r.name), ['A']);
+  assert.equal(a.archived, 5);
+  assert.equal(a.page || 0, 0);        // restored, it goes to the floor above
+  assert.equal(gone.page || 0, 0);
+  assert.equal(b.page, 1);
+  assert.equal(c.page, 2);
+  assert.equal(pageCount(w), 3);
+  assert.equal(w.pages, 3);
+});
+
+test('Floor 1, a missing floor and a floor with a locked room stay', () => {
+  const w = emptyWorld();
+  addPage(w);
+  const r = made(w, 'Shut', 1);
+  lock(w, r.id);
+  assert.equal(removeFloor(w, 0).error, 'first');
+  assert.equal(removeFloor(w, 5).error, 'none');
+  assert.equal(removeFloor(w, 1).error, 'locked');
+  assert.equal(r.page, 1);
+  assert.equal(pageCount(w), 2);
+});
+
+test('an empty last floor just goes', () => {
+  const w = emptyWorld();
+  addPage(w);
+  assert.deepEqual(removeFloor(w, 1).archived, []);
+  assert.equal(pageCount(w), 1);
 });
