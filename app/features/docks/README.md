@@ -14,8 +14,8 @@ front underlined in amber) with the dock's key and × on the right; under it, th
 kind and title (left out when both are empty); then its body. A dock's inner edge is dragged to
 set its width (the right one 280 to 560 px, the left one 220 to 560 px, never more than 70% of the
 window), which is remembered; a double-click on the edge sets it back to the usual width (left
-280 px, right 340 px). The right dock runs the full height; the left one starts under the strip at the
-top, so the menu stays put. Whatever sits beside a dock moves over rather than being covered:
+280 px, right 340 px). Both docks start under the top bar (`--bar`), so the menu, Search and the
+back arrow stay put. Whatever sits beside a dock moves over rather than being covered:
 while it shows, its width is the CSS variable `--dock-left` or `--dock-right` on `<html>` (`0px`
 when it is shut), `<html>` has the class `dock-left-open` or `dock-right-open`, and every change
 of width is sent as `docks:resized`.

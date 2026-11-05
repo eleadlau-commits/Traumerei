@@ -288,7 +288,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.2; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px var(--gutter) 6px;
+  height: var(--bar);
+  padding: 0 var(--gutter);
   background: transparent;
   color: var(--text);
   pointer-events: none;
@@ -362,7 +363,7 @@ dialog.menu-drawer::before {
 .menu-panel::before, .menu-panel::after {
   content: "";
   position: absolute;
-  top: 31.4px;
+  top: calc(var(--bar) / 2 - .6px);
   left: calc(var(--gutter) + 12px);
   width: 20px;
   height: 1.25px;
@@ -660,7 +661,7 @@ dialog.dialog-full::before {
   opacity: .8;
 }
 /* Its close cross (.close-x) sits where the three lines are. */
-.dialog-full .dialog-head .close-x { position: fixed; z-index: 2; top: 10px; left: var(--gutter); opacity: .8; }
+.dialog-full .dialog-head .close-x { position: fixed; z-index: 2; top: 0; left: var(--gutter); opacity: .8; }
 
 /* A small box in the middle (size: 'box'): a panel over a faint shade. */
 dialog.dialog-box {
@@ -686,20 +687,34 @@ dialog.dialog-box {
 .problems { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 
 /* ---- Create's frame: what the rooms page and a room share ----
+   The top bar is the same on every page: a 44px band of flat veil (.frame-bar) with ☰ and the
+   wordmark, then where you are (.crumbs: Rooms › Floor 1 › Messy thoughts, each step a word to
+   press), then Search, always at the right, then ←.
    The wordmark beside the menu, the search bar in the middle of the top row, the back arrow top
    right, the rail on the left, and the quiet words at the foot. Each feature places them in its
    own root and sets when they show (their opacity); the look is here. */
 :root {
-  --strip: 64px;  /* the strip of the home page left showing at the top */
+  --bar: 44px;    /* the top bar */
+  --strip: var(--bar);  /* the strip of the home page left showing at the top: the top bar */
   --rail: 206px;  /* the rail on the left: 72px and one grid column (a cell and its gap) more */
   --glow-soft: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
 }
 
+.chrome-bar { position: fixed; top: 0; left: 0; right: 0; height: var(--bar); background: var(--chrome); box-shadow: 0 1px 0 var(--chrome-edge); }
+.crumbs { position: fixed; top: 0; height: var(--bar); display: flex; align-items: center; gap: var(--s-2); min-width: 0; font-size: var(--t-work); letter-spacing: .02em; white-space: nowrap; }
+.crumbs > * { flex: none; }
+.crumbs > :last-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.crumb { padding: 2px 0; color: var(--muted); background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 100%; background-size: 0 1px; transition: background-size .25s, color var(--quick); }
+button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
+.crumb[aria-current="page"] { color: var(--ink); }
+.crumb-sep { color: var(--faint); }
+.crumb-note { color: var(--muted); font-style: italic; font-size: var(--t-label); overflow: hidden; text-overflow: ellipsis; }
+
 .wordmark {
   position: fixed;
-  top: 10px;
+  top: 0;
   left: calc(var(--gutter) + 56px);
-  height: 44px;
+  height: var(--bar);
   display: flex;
   align-items: center;
   font-size: 13px;
@@ -714,27 +729,31 @@ dialog.dialog-box {
 /* The search bar: a word on a pale strip, with its keys on the right. */
 .find-btn {
   position: fixed;
-  top: 17px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: calc((var(--bar) - var(--field)) / 2);
+  right: calc(var(--gutter) + 52px);
   width: min(260px, calc(100% - 2 * var(--gutter) - 120px));
+  height: var(--field);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 12px;
-  background: rgb(var(--veil-rgb) / .55);
+  padding: 0 10px;
+  border: 1px solid var(--chrome-edge);
+  background: var(--paper);
   background-image: none;
+  font-size: var(--t-label);
+  letter-spacing: .02em;
+  text-transform: none;
   opacity: 0; /* a feature shows it */
   transition: opacity .4s, background-color .25s;
 }
-.find-btn:is(:hover, :focus-visible) { background-color: rgb(var(--veil-rgb) / .8); }
+.find-btn:is(:hover, :focus-visible) { background-color: var(--chrome); }
 .find-btn > span:first-child::before { content: "⌕ "; opacity: .7; }
-.find-key { font-size: 10px; letter-spacing: .08em; text-transform: none; opacity: .6; }
+.find-key { font: 10.5px var(--font-mono); letter-spacing: 0; text-transform: none; opacity: .55; }
 
 .back-btn {
   position: fixed;
-  top: 10px;
+  top: 0;
   right: var(--gutter);
   width: 44px;
   height: 44px;

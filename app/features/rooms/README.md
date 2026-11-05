@@ -13,6 +13,8 @@ room hands it to the **room** feature (`app/features/room`), which shows it and 
 |---|---|
 | `openRoom(id)` | Goes into room `id` (its square grows to fill the screen). |
 | `showRooms()` | Back to the rooms page from the open room (it shrinks into its square). |
+| `showFloor(i)` | Back to the rooms page, on floor `i` (from 0). |
+| `showArchive()` | Back to the rooms page, on the Archive. |
 
 It sends `room:open` `{ id, from, seed }` when a room is gone into (`from`: the square's
 rectangle; `seed`: a first key typed on the rooms page, for Messy thoughts). It listens to
