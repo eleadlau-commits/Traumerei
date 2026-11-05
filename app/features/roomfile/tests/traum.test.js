@@ -268,3 +268,54 @@ test('Joyce places a thing once: a second at: is reported', () => {
   assert.match(report.join('\n'), /places a thing once/);
   assert.match(report.join('\n'), /doesn't use occurrences/);
 });
+
+// ---- Big rooms and Twins ----
+
+test('a big room writes every mode\'s section, and another mode\'s group placed there comes back placed', () => {
+  const text = ['---', 'modes: [russell, joyce, pessoa]', '---', '# Objects', '## ^1 line', 'one', '## ^2 line', 'two',
+    '## ^c group: Chapter', 'made in: russell', 'holds: ^1', 'shared',
+    '# In russell', 'on canvas: ^c', 'tray: ^2', '# In joyce', 'at: ^c 300 200', 'tray: ^2', '# In pessoa', 'at: ^c 5 5', 'on canvas: ^1 ^2'].join('\n');
+  const { w, room: r, report } = fresh(text);
+  assert.deepEqual(report, []);
+  assert.equal(r.size, 2);
+  const c = named(w, r.id, 'Chapter');
+  assert.deepEqual(own(w, r.id, 'joyce')[c.id], { x: 300, y: 200 });
+  assert.deepEqual(own(w, r.id, 'pessoa')[c.id], { x: 5, y: 5 });
+  const out = exportRoom(w, r.id, { ontologies });
+  assert.match(out, /modes: \[russell, joyce, pessoa\]/);
+  assert.match(out, /# In joyce\nat: \^3 300 200\ntray: \^2\n/);
+  assert.equal(again(out), out);
+});
+
+const TWIN = ['---', 'room: Pair', 'twin: [joyce, russell]', 'left.joyce.tension: 0.3', '---', '# Objects',
+  '## ^1 line', 'left one', '## ^2 line', 'right one', '## ^3 line', 'in no section', '## ^t group: Train', 'made in: joyce', 'holds: ^1',
+  '## ^c group: Chapter', 'made in: russell', 'holds: ^2',
+  '# Left: joyce', 'at: ^t 10 20', '# Right: russell', 'on canvas: ^c'].join('\n');
+
+test('a Twin: each object on the side whose section places it, the rest on the left; and back out the same', () => {
+  const { w, room: t, report, made } = fresh(TWIN);
+  assert.deepEqual(report, []);
+  assert.equal(t.size, 'twin');
+  const [l, r] = lib.twin.sides(w, t.id);
+  assert.deepEqual([view(w, l.id).mode, view(w, r.id).mode], ['joyce', 'russell']);
+  assert.deepEqual(roomItems(w, l.id).map((th) => th.text), ['left one', 'in no section']);
+  assert.deepEqual(roomItems(w, r.id).map((th) => th.text), ['right one']);
+  assert.equal(named(w, r.id, 'Chapter').of, 'russell');
+  assert.deepEqual([named(w, l.id, 'Train').x, named(w, l.id, 'Train').y], [10, 20]);
+  assert.equal(w.settings[l.id].joyce.tension, 0.3);
+  assert.deepEqual(made, { groups: 2, thoughts: 3, pictures: 0 });
+  const out = exportRoom(w, t.id, { ontologies });
+  assert.match(out, /twin: \[joyce, russell\]/);
+  assert.match(out, /left\.joyce\.tension: 0\.3/);
+  assert.match(out, /# Left: joyce\nat: \^\d 10 20\ntray: \^\d\n\n# Right: russell\non canvas: \^\d\n$/);
+  assert.equal(again(out), out);
+});
+
+test('a Twin\'s side section brought into an ordinary room is read as that mode\'s', () => {
+  const w = emptyWorld(1);
+  const r = addRoom(w, 'Here', 2, {}, 'joyce');
+  const { report } = importInto(w, r.id, parse(TWIN), { ontologies, now: NOW });
+  assert.match(report.join('\n'), /"russell" isn't one of this room's modes/);
+  const train = groupsIn(w, r.id, 'joyce').find((g) => g.title === 'Train');
+  assert.deepEqual([train.x, train.y], [10, 20]);
+});
