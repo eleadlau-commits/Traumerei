@@ -72,8 +72,8 @@ test('groups of groups: a group holds other groups, and each comes after what it
     '## ^outer group: Outer', 'made in: joyce', 'holds: ^inner ^b'].join('\n');
   const { w, room: r } = fresh(text);
   const outer = named(w, r.id, 'Outer'), inner = named(w, r.id, 'Inner');
-  assert.deepEqual(members(w, outer.id).map((th) => th.title ?? th.text), ['two', 'Inner']); // Joyce reads by time
-  assert.deepEqual(objectOrder(w, r.id).map((th) => th.title || th.text), ['one', 'two', 'Inner', 'Outer']);
+  assert.deepEqual(members(w, outer.id).map((th) => th.title ?? th.text), ['Inner', 'two']); // a group held sits where holds: puts it
+  assert.deepEqual(objectOrder(w, r.id).map((th) => th.title || th.text), ['one', 'Inner', 'two', 'Outer']);
   assert.ok(members(w, inner.id).length === 1);
 });
 
@@ -85,6 +85,23 @@ test('a thought can sit in groups of several modes', () => {
   const th = roomItems(w, r.id)[0];
   assert.ok(members(w, named(w, r.id, 'Chapter').id).includes(th));
   assert.ok(members(w, named(w, r.id, 'Train').id).includes(th));
+});
+
+test('a train of trains keeps the order holds: gives its trains, and its thoughts among them', () => {
+  // ^c was written on after ^ab was made, so the file lists it after ^ab; the outer train still
+  // holds it first.
+  const text = ['# Objects', '## ^a line', 'a', '## ^b line', 'b', '## ^ab group: AB', 'made in: joyce', 'holds: ^a ^b',
+    '## ^c line', 'c', '## ^ct group: C', 'made in: joyce', 'holds: ^c', '## ^x line', 'x',
+    '## ^out group: Out', 'made in: joyce', 'holds: ^ct ^ab', '## ^mix group: Mix', 'made in: joyce', 'holds: ^x ^out'].join('\n');
+  const { w, room: r, report } = fresh(text);
+  assert.deepEqual(report, []);
+  const title = (th) => th.title || th.text;
+  assert.deepEqual(members(w, named(w, r.id, 'Out').id).map(title), ['C', 'AB']);
+  assert.deepEqual(members(w, named(w, r.id, 'Mix').id).map(title), ['x', 'Out']);
+  const out = exportRoom(w, r.id, { ontologies });
+  const back = fresh(out);
+  assert.deepEqual(members(back.w, named(back.w, back.room.id, 'Out').id).map(title), ['C', 'AB']);
+  assert.equal(exportRoom(back.w, back.room.id, { ontologies }), out);
 });
 
 test('a kept order: a Russell chapter holds its thoughts in the order holds: lists', () => {
