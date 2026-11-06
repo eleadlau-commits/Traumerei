@@ -13555,7 +13555,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var tidy2 = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
   function arrowsOf({ of, isNode: isNode2, nodes: nodes2, word = "node", loops = false, changed: changed2 = () => {
-  }, store = of, setting = RELATIONS, words = {} }) {
+  }, store = of, setting = RELATIONS, words = {}, noun = "arrow" }) {
     const put = (w2, roomId, child, { parents, labels, rel }) => {
       own(w2, roomId, store)[child] = { parents, labels, rel };
     };
@@ -13605,7 +13605,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     function whyNot2(w2, roomId, parent, child) {
       if (parent === child) return words.self || `A ${word} can't be its own parent.`;
       if (!isNode2(w2, roomId, parent) || !isNode2(w2, roomId, child)) return words.join || `Arrows join two ${word}s.`;
-      if (parentsOf2(w2, roomId, child).includes(parent)) return "That arrow is already there.";
+      if (parentsOf2(w2, roomId, child).includes(parent)) return `That ${noun} is already there.`;
       if (!loops && above2(w2, roomId, child, parent)) return "That arrow would make a loop.";
       return "";
     }
@@ -13663,7 +13663,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const x = want.get(`${a.from}>${a.to}`);
           if (!x) {
             unlink2(w2, roomId, a.from, a.to);
-            c.change?.(`The arrow from ${name5(a.from)} to ${name5(a.to)} is taken away`);
+            c.change?.(`The ${noun} from ${name5(a.from)} to ${name5(a.to)} is taken away`);
             continue;
           }
           want.delete(`${a.from}>${a.to}`);
@@ -13674,8 +13674,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       for (const a of fresh) {
         const why = link2(w2, roomId, a.from, a.to, a.label || "", a.rel ?? "");
-        if (why) c.report(a.line, `the arrow wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, "")}.`);
-        else if (c.scope) c.change?.(`A new arrow from ${c.name?.(a.from) || a.from} to ${c.name?.(a.to) || a.to}`);
+        if (why) c.report(a.line, `the ${noun} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, "")}.`);
+        else if (c.scope) c.change?.(`A new ${noun} from ${c.name?.(a.from) || a.from} to ${c.name?.(a.to) || a.to}`);
       }
     }
     return {
@@ -15801,13 +15801,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const s of sections) out.push([`# ${s.name}`, ...s.lines].join("\n"));
     return out.join("\n\n") + "\n";
   }
-  function readArrow(raw) {
-    const m2 = /^\s*(\^\S+)\s*->\s*(\^\S+)\s*(?:\|(.*))?$/s.exec(String(raw ?? ""));
-    if (!m2) return null;
-    const [from] = values(m2[1]), [to] = values(m2[2]);
-    if (from?.t !== "ref" || to?.t !== "ref") return null;
-    let rest = (m2[3] ?? "").trim(), rel = "", label2 = "";
-    if (m2[3] != null) {
+  function relAndLabel(tail) {
+    let rest = (tail ?? "").trim(), rel = "", label2 = "";
+    if (tail != null) {
       if (rest.startsWith('"')) {
         const q = quoted(rest, 0);
         rel = q.v;
@@ -15820,7 +15816,28 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       rest = rest.trim();
       label2 = rest.startsWith('"') && rest.endsWith('"') && rest.length > 1 ? quoted(rest, 0).v : rest;
     }
-    return { from, to, rel, label: label2 };
+    return { rel, label: label2 };
+  }
+  function readArrow(raw) {
+    const m2 = /^\s*(\^\S+)\s*->\s*(\^\S+)\s*(?:\|(.*))?$/s.exec(String(raw ?? ""));
+    if (!m2) return null;
+    const [from] = values(m2[1]), [to] = values(m2[2]);
+    if (from?.t !== "ref" || to?.t !== "ref") return null;
+    return { from, to, ...relAndLabel(m2[3]) };
+  }
+  var LINK_ENDS = { "--": "none", "->": "arrow", "<->": "both" };
+  var LINK_MARK = { none: "--", arrow: "->", both: "<->" };
+  function readLink(raw) {
+    const s = String(raw ?? "");
+    const m2 = /^\s*(\^\S+)\s+(\S+)\s+(\^\S+)\s*(?:\|(.*))?$/s.exec(s) || /^\s*(\^[^\s<>=-]+)(<->|->|--)(\^\S+)\s*(?:\|(.*))?$/s.exec(s);
+    if (!m2) return null;
+    const [from] = values(m2[1]), [to] = values(m2[3]);
+    if (from?.t !== "ref" || to?.t !== "ref") return null;
+    if (!LINK_ENDS[m2[2]]) return { bad: m2[2] };
+    return { from, to, ends: LINK_ENDS[m2[2]], ...relAndLabel(m2[4]) };
+  }
+  function writeLink({ from, to, ends = "none", rel = "", label: label2 = "" }) {
+    return writeArrow({ from, to, rel, label: label2 }).replace(" -> ", ` ${LINK_MARK[ends] || "--"} `);
   }
   function writeArrow({ from, to, rel = "", label: label2 = "" }) {
     const r = /\||^"|^\s|\s$/.test(rel) ? quote(rel) : rel;
@@ -15965,7 +15982,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var SIDES2 = ["Left", "Right"];
   function placementSections(w2, roomId, ids, modes, ontologies) {
     const kept = own2(w2, roomId, KEPT2, false).modeLines || {};
-    const c = { ref: (id) => ids.has(id) ? ref(ids.get(id)) : null, writeArrow };
+    const c = { ref: (id) => ids.has(id) ? ref(ids.get(id)) : null, writeArrow, writeLink };
     const out = [];
     for (const m2 of modes) {
       const o2 = ontology(ontologies, m2);
@@ -16115,14 +16132,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (sections?.length) data.sections = [...data.sections || [], ...sections];
     for (const [m2, lines3] of Object.entries(modeLines)) (data.modeLines ||= {})[m2] = [...data.modeLines?.[m2] || [], ...lines3];
   }
+  var ENDS_WORD = { none: "none", arrow: "arrow", both: "both", ...LINK_ENDS };
   function relationOf2(obj, report) {
     const { keys } = keysOf2(obj);
-    const out = { from: [], to: [], rel: obj.title || "", label: "", of: null, line: obj.line };
+    const out = { from: [], to: [], rel: obj.title || "", label: "", of: null, ends: null, line: obj.line };
     for (const k2 of keys) {
       if (k2.key === "from" || k2.key === "to") out[k2.key].push(...k2.values);
       else if (k2.key === "label") out.label = k2.values.length === 1 && k2.values[0].t === "text" ? k2.values[0].v : k2.raw;
       else if (k2.key === "made in") out.of = String(k2.values[0]?.v ?? "").toLowerCase();
-      else report.push(`Line ${k2.line}: a relation's "${k2.key}" isn't known, so it was left out.`);
+      else if (k2.key === "ends") {
+        const e = ENDS_WORD[String(k2.raw).trim().toLowerCase()];
+        if (e) out.ends = e;
+        else report.push(`Line ${k2.line}: a relation's ends are none, arrow or both (or --, -> or <->); "${String(k2.raw).trim()}" was left out.`);
+      } else report.push(`Line ${k2.line}: a relation's "${k2.key}" isn't known, so it was left out.`);
     }
     return out;
   }
@@ -16157,7 +16179,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const arrow = (a, line2) => {
         const from = thing2(a.from, line2), to = thing2(a.to, line2);
-        return from && to ? { from, to, rel: a.rel, label: a.label, line: line2 } : null;
+        return from && to ? { from, to, rel: a.rel, label: a.label, line: line2, ...a.ends ? { ends: a.ends } : {} } : null;
       };
       return {
         thing: thing2,
@@ -16179,6 +16201,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           return arrow(a, l2.line);
         },
+        // A link: line, { from, to, ends, rel, label, line } (from and to as ids), or null (said why).
+        link(l2) {
+          const a = readLink(l2.raw);
+          if (a?.bad) {
+            say3(l2.line, `a link's ends are --, -> or <->, not "${a.bad}"; it was left out.`);
+            return null;
+          }
+          if (!a) {
+            say3(l2.line, "a link is written ^a -- ^b | relation | label (or -> or <-> between them).");
+            return null;
+          }
+          return arrow(a, l2.line);
+        },
         relations: [],
         fromRelation: arrow
       };
@@ -16193,7 +16228,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         report.push(`Line ${obj.line}: relation ^${obj.id} ${!cs[mode] ? `is for ${mode || "no mode"}, which doesn't read relations here` : "joins more than two things, which no mode here reads yet"}; it was kept and will be written back out.`);
         continue;
       }
-      const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label }, obj.line);
+      const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label, ends: r.ends }, obj.line);
       if (a) cs[mode].relations.push(a);
     }
     for (const [m2, c] of Object.entries(cs)) ontology(ontologies, m2).traum.read(w2, roomId, byMode[m2] || [], c);
@@ -16283,7 +16318,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const k2 of [0, 1]) {
       for (const s of sectionsOf[k2]) {
         for (const l2 of s.lines) {
-          const ids2 = l2.key === "arrow" ? (/\^(\S+)\s*->\s*\^(\S+)/.exec(l2.raw) || []).slice(1) : refsIn(l2.values || []);
+          const ids2 = l2.key === "arrow" || l2.key === "link" ? (/\^(\S+?)\s*(?:<->|->|--)\s*\^(\S+)/.exec(l2.raw) || []).slice(1) : refsIn(l2.values || []);
           for (const id of ids2) {
             if (side.has(id) && side.get(id) !== k2) report.push(`Line ${l2.line}: ^${id} is placed on both sides; it stays on the ${SIDES2[side.get(id)].toLowerCase()}.`);
             else side.set(id, k2);
@@ -16376,9 +16411,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function forScope(line2, inScope) {
     const kl = keyLine(line2);
     if (!kl) return null;
-    if (kl.key === "arrow") {
-      const a = readArrow(kl.raw);
-      return a && (inScope(a.from.id) || inScope(a.to.id)) ? line2 : null;
+    if (kl.key === "arrow" || kl.key === "link") {
+      const a = kl.key === "arrow" ? readArrow(kl.raw) : readLink(kl.raw);
+      return a?.from && (inScope(a.from.id) || inScope(a.to.id)) ? line2 : null;
     }
     const refs = kl.values.filter((v2) => v2.t === "ref");
     if (!refs.length) return null;
@@ -20226,6 +20261,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var own3;
   var shut4;
   var hash2;
+  var roomSetting2;
+  var setRoomSetting3;
   var isGroup3;
   var isLeaf3;
   var create3;
@@ -20245,6 +20282,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var unplace2;
   var arrowsOf2;
   var cleanRelationList2;
+  var relationEntry2;
   var relationEnds2;
   var listText2;
   var lines2;
@@ -20252,9 +20290,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var maths2;
   var spiralPoint2;
   function bind4(lib) {
-    ({ own: own3, shut: shut4, hash: hash2, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2 } = lib.model);
+    ({ own: own3, shut: shut4, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting3, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2 } = lib.model);
     ({ placedForeign: placedForeign2, trayForeign: trayForeign2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
-    ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEnds: relationEnds2, listText: listText2 } = lib.relations);
+    ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEntry: relationEntry2, relationEnds: relationEnds2, listText: listText2 } = lib.relations);
     ({ arrowView: arrowView2 } = lib.arrowview);
     ({ maths: maths2 } = lib.maths);
     ({ spiralPoint: spiralPoint2 } = lib.pessoa);
@@ -20316,6 +20354,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     isNode,
     nodes,
     word: "thought",
+    noun: "link",
     loops: true,
     words: { self: "A thought can't be linked to itself.", join: "Links join two things on the canvas." }
   });
@@ -20419,6 +20458,101 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const spot5 = tries.find((t) => clear(t.x, t.y)) || start;
     return { x: Math.round(spot5.x), y: Math.round(spot5.y) };
   }
+  var roomList = (w2, roomId) => cleanRelationList2(roomSetting2(w2, roomId, ID2, RELATIONS2), DEFAULT_RELATIONS);
+  var ENDS_SAID = { none: "a plain line", arrow: "an arrow", both: "an arrow both ways" };
+  var MARK = { none: "--", arrow: "->", both: "<->" };
+  function settleEnds(w2, roomId, list2, c) {
+    let names = roomList(w2, roomId);
+    for (const a of list2) {
+      if (!a.ends) continue;
+      const rel = a.rel ?? "";
+      if (!rel) {
+        if (a.ends !== "none") c.report(a.line, `a link with no relation is a plain line, so its ${MARK[a.ends]} was read as --.`);
+        continue;
+      }
+      const had = names.find((n) => relationEntry2(n).name.toLowerCase() === rel.toLowerCase());
+      if (!had) {
+        names = [...names, a.ends === "none" ? rel : `${rel} ${MARK[a.ends]}`];
+        if (!shut4(w2, roomId)) setRoomSetting3(w2, roomId, ID2, RELATIONS2.key, names);
+        continue;
+      }
+      const ends = relationEntry2(had).ends || "none";
+      if (ends !== a.ends) c.report(a.line, `"${relationEntry2(had).name}" is ${ENDS_SAID[ends]} in this room's relations, so this link is drawn as one (the line said ${MARK[a.ends]}).`);
+    }
+  }
+  var traum4 = {
+    write(w2, roomId, c) {
+      const places = own3(w2, roomId, ID2, false);
+      const out = [], spiral = [];
+      for (const th of roomItems3(w2, roomId)) {
+        if (!c.ref(th.id)) continue;
+        const p = places[th.id];
+        if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
+        else spiral.push(c.ref(th.id));
+      }
+      for (const g2 of placedForeign2(w2, roomId, ID2)) {
+        const p = spot4(w2, roomId, ID2, g2.id);
+        if (c.ref(g2.id)) out.push(`at: ${c.ref(g2.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
+      }
+      if (spiral.length) out.push(`on canvas: ${spiral.join(" ")}`);
+      const tray = proust.tray(w2, roomId).map((th) => c.ref(th.id)).filter(Boolean);
+      if (tray.length) out.push(`tray: ${tray.join(" ")}`);
+      const list2 = roomList(w2, roomId);
+      for (const a of links().arrows(w2, roomId)) {
+        if (!c.ref(a.from) || !c.ref(a.to)) continue;
+        out.push(`link: ${c.writeLink({ from: c.ref(a.from), to: c.ref(a.to), ends: endsOf(list2, a.rel), rel: a.rel, label: a.label })}`);
+      }
+      return out;
+    },
+    read(w2, roomId, lines3, c) {
+      const read = [...c.relations || []];
+      const placed = /* @__PURE__ */ new Set(), wholes = [];
+      const num = (v2) => v2?.t === "num" ? v2.v : null;
+      for (const l2 of lines3) {
+        if (l2.key === "at") {
+          const id = c.thing(l2.values[0], l2.line);
+          const x = num(l2.values[1]), y = num(l2.values[2]);
+          if (!id) continue;
+          if (x == null || y == null) {
+            c.report(l2.line, "at: needs a ^reference and two numbers.");
+            continue;
+          }
+          if (placed.has(id)) {
+            c.report(l2.line, "Proust places a thing once; this second at: was left out.");
+            continue;
+          }
+          placed.add(id);
+          const th = w2.things[id];
+          if (isLeaf3(th)) own3(w2, roomId, ID2)[id] = { x: Math.round(x), y: Math.round(y), ...l2.values.slice(3).some((v2) => v2.v === "auto") ? { auto: true } : {} };
+          else if (isGroup3(th) && th.of === ID2) wholes.push([id, x, y]);
+          else moveTo(w2, roomId, id, x, y);
+        } else if (l2.key === "on canvas" || l2.key === "tray") {
+          for (const v2 of l2.values) {
+            const id = c.thing(v2, l2.line);
+            const th = id && w2.things[id];
+            if (!th) continue;
+            if (l2.key === "on canvas") {
+              if (isLeaf3(th) && !placed.has(id)) delete own3(w2, roomId, ID2)[id];
+              else if (isGroup3(th) && th.of === ID2) place3(w2, id);
+            } else if (isGroup3(th) && th.of === ID2) th.loose = true;
+            else if (isGroup3(th) && !placed.has(id)) delete own3(w2, roomId, ID2)[id];
+            else c.report(l2.line, "Proust places every thought on the canvas, so only a cluster or another mode's group waits in the tray.");
+          }
+        } else if (l2.key === "link") {
+          const a = c.link(l2);
+          if (a) read.push(a);
+        } else if (l2.key === "arrow") {
+          const a = c.arrow(l2);
+          if (a) read.push({ ...a, ends: "arrow" });
+        } else c.keep(l2);
+      }
+      for (const [id, x, y] of wholes) moveTo(w2, roomId, id, x, y);
+      settleEnds(w2, roomId, read, c);
+      links().traumArrows(w2, roomId, read, c);
+    }
+    // (c.scope, when editing: the things the text holds. Links touching them are made to read as the
+    // text does: ones not in it are taken away, ones changed are changed. c.change(words) says so.)
+  };
   var proust = {
     id: ID2,
     name: "Proust",
@@ -20438,6 +20572,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingChanged(w2, roomId, key, before, after) {
       if (key === RELATIONS2.key) links().renameRelations(w2, roomId, before, after);
     },
+    traum: traum4,
     // Every thought not in a closed or waiting cluster, each closed cluster, and other modes' groups
     // placed here.
     units(w2, roomId) {
@@ -20762,8 +20897,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var addRoom4;
   var roomThoughts3;
   var peek3;
-  var roomSetting2;
-  var setRoomSetting3;
+  var roomSetting3;
+  var setRoomSetting4;
   var resetRoomSettings2;
   var seedRoomSettings4;
   var applySettingsToAll2;
@@ -20816,8 +20951,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       addRoom: addRoom4,
       roomThoughts: roomThoughts3,
       peek: peek3,
-      roomSetting: roomSetting2,
-      setRoomSetting: setRoomSetting3,
+      roomSetting: roomSetting3,
+      setRoomSetting: setRoomSetting4,
       resetRoomSettings: resetRoomSettings2,
       seedRoomSettings: seedRoomSettings4,
       applySettingsToAll: applySettingsToAll2,
@@ -21153,7 +21288,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The open room's value of one of its ontology's settings (an ontology reads it as c.setting(key)).
     setting(key, ont = this.ont) {
       const st = this.settingsOf(ont).find((x) => x.key === key);
-      return st ? roomSetting2(this.world, this.roomId, ont.id, st, this.ontPrefs) : void 0;
+      return st ? roomSetting3(this.world, this.roomId, ont.id, st, this.ontPrefs) : void 0;
     }
     // One setting as a row: a slider, an on/off switch (type: 'switch'), a row of words to pick
     // one from (type: 'choice', options [[value, word]]), or a list of words written with commas
@@ -21455,7 +21590,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         note2 ? el15("p", { class: "room-mode-settings-note" }, "For this room only") : null,
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           const before = this.setting(st.key, o2);
-          setRoomSetting3(this.world, this.roomId, o2.id, st.key, v2);
+          setRoomSetting4(this.world, this.roomId, o2.id, st.key, v2);
           o2.settingChanged?.(this.world, this.roomId, st.key, before, v2);
           this.w.write();
           this.drawWorld();
