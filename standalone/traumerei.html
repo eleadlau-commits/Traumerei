@@ -22655,6 +22655,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
     return order.reduce((best, p) => far(p) > far(best) ? p : best, order[0]);
   }
+  function nearSpot(at2, rects, size, { gap = GAP2, step: step2 = 40, rings = 30 } = {}) {
+    const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
+    if (!hits(at2)) return { x: at2.x, y: at2.y };
+    for (let k2 = 1; k2 <= rings; k2++) {
+      const n = 8 * k2, d = k2 * step2;
+      const ring = [];
+      for (let i2 = 0; i2 < n; i2++) {
+        const a = i2 / n * 2 * Math.PI;
+        const p = { x: at2.x + Math.cos(a) * d * 1.6, y: at2.y + Math.sin(a) * d };
+        if (!hits(p)) ring.push(p);
+      }
+      if (ring.length) return ring.reduce((best, p) => Math.hypot(p.x - at2.x, p.y - at2.y) < Math.hypot(best.x - at2.x, best.y - at2.y) ? p : best);
+    }
+    return { x: at2.x, y: at2.y };
+  }
   var OVERLAP = { key: "overlap", label: "Hand-placed can be overlapped", type: "switch", default: true };
 
   // dist/web/features/room/view.js
@@ -23423,13 +23438,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (seed) this.typeIn(seed);
       this.showDraft();
     }
-    // Where a new train starts: a clear space on the screen, away from everything already drawn
-    // (measured as drawn, so a long train counts all the way down).
-    freeSpot() {
-      const rects = [...this.drawnRects().values()];
-      const NEW = { w: 340, h: 64 };
-      const p = clearSpot(this.visibleBox(), rects.map((r) => ({ ...r, x: r.x + 20 })), NEW);
+    // Where a new train starts: at the mouse, while the pointer is on the canvas, or the nearest clear
+    // spot around it when thoughts are already there; with the pointer off the canvas, a clear space
+    // on the screen, away from everything already drawn (measured as drawn, so a long train counts
+    // all the way down). size: the room it needs ({ w, h }), a new thought's first line or two.
+    freeSpot(size = { w: 340, h: 64 }) {
+      const rects = [...this.drawnRects().values()].map((r) => ({ ...r, x: r.x + 20 }));
+      const at2 = this.mouseSpot();
+      const p = at2 ? nearSpot(at2, rects, size) : clearSpot(this.visibleBox(), rects, size);
       return { x: Math.round(p.x + 20), y: Math.round(p.y) };
+    }
+    // The pointer's place on the canvas in world units (the words start just left of and a little
+    // above it, so they sit under the pointer), or null when it is off the canvas.
+    mouseSpot() {
+      const m2 = this.mouse;
+      if (!m2 || !this.stage) return null;
+      const b = this.stage.getBoundingClientRect();
+      if (m2.x < b.left || m2.x > b.right || m2.y < b.top || m2.y > b.bottom) return null;
+      const p = this.toWorld(m2.x, m2.y);
+      return { x: p.x - 20, y: p.y - 16 };
     }
     // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
     // group drawn as one (a closed train, or a thought being written in a train). A node marked
@@ -26077,7 +26104,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const t = e.target.closest?.("[data-thought]");
         this.frame?.hover(t ? OVER.thought : e.target.closest?.("[data-train], .room-strand") ? OVER.group : null);
       });
-      this.stage.addEventListener("pointerleave", () => this.frame?.hover(null));
+      this.stage.addEventListener("pointerleave", () => {
+        this.frame?.hover(null);
+        this.mouse = null;
+      });
+      this.stage.addEventListener("pointermove", (e) => {
+        this.mouse = { x: e.clientX, y: e.clientY };
+      });
       this.listenForFiles();
     }
     // ---- A room ----
