@@ -298,9 +298,12 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
 .room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
+.room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; max-width: 260px; }
+/* The tray lit while something is held over it (st-drop): drawn just inside, so the dock doesn't
+   clip it (the loose list keeps a little room round it for that). */
+.room-loose.st-drop, .room-tray-row.st-drop { outline-offset: -2px; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
-.room-loose { display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+.room-loose { display: flex; flex-direction: column; gap: 14px; min-height: calc(100% + 12px); margin: -6px; padding: 6px; }
 .room-loose-list { flex: 1; align-content: start; }
 .room-loose > :not(.room-loose-list) { flex-shrink: 0; }
 .room-loose-add { position: sticky; bottom: calc(-1 * var(--s-4)); margin: 0 calc(-1 * var(--s-4)); padding: 10px var(--s-4) var(--s-4); border-top: 1px solid var(--chrome-edge); background: var(--chrome); }
