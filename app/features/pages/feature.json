@@ -1,0 +1,12 @@
+{
+  "name": "Pages",
+  "description": "Settings as a page in the frame: a rail of its sections beside label and value rows, in place of the veil window.",
+  "version": "0.1.0",
+  "main": "Pages.js",
+  "styles": [
+    "style.css"
+  ],
+  "uses": [
+    "frame"
+  ]
+}

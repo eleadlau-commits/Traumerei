@@ -46,3 +46,6 @@
 
 /* Settings → Typeface: each choice in its own face, in ordinary case. */
 .home-fonts button { --word-spacing: .14em; font-size: 15px; text-transform: none; }
+
+/* Under a page in the frame (Settings), the home page's words step aside. */
+.page-open .home { visibility: hidden; }
