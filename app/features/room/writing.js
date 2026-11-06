@@ -4,7 +4,7 @@
 
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
-  groupOf, thoughtText, trainThoughts, ITEMS, maths,
+  groupOf, thoughtText, trainThoughts, ITEMS, maths, resize,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -223,6 +223,12 @@ export class Writing {
   // the keys feature): Enter, Ctrl+Enter, Escape, and Backspace / Ctrl+Z at its very start.
   onInputKey(e) {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    // Ctrl+Shift+. / Ctrl+Shift+, : the chosen words bigger or smaller (Varied sizes within a thought).
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'Period' || e.code === 'Comma')) {
+      e.preventDefault();
+      this.resizeWords(e.code === 'Period' ? 1 : -1);
+      return;
+    }
     // Ctrl+Z undoes typing inside the thought; once it is empty, it undoes whole steps again.
     if (mod && !e.altKey && (k === 'z' || k === 'y') && !this.input.value) {
       e.preventDefault();
@@ -246,6 +252,19 @@ export class Writing {
       e.preventDefault();
       this.stopWriting();
     }
+  }
+
+  // The words chosen in the thought being written, a step bigger (dir 1) or smaller (-1): kept in
+  // its words as [words]{size=big} (the world's maths.js resize), shown at their size once kept.
+  resizeWords(dir) {
+    if (!this.prefs.sizes) { this.toast('Turn on Varied sizes within a thought in Settings → Rooms.'); return; }
+    const box = this.input;
+    const r = resize(box.value, box.selectionStart ?? 0, box.selectionEnd ?? 0, dir);
+    if (!r) { this.toast('Choose some words on one line first.'); return; }
+    box.value = r.text;
+    box.setSelectionRange(r.select[0], r.select[1]);
+    this.paintDraft();
+    this.showDraft();
   }
 
   commit() {

@@ -1,7 +1,7 @@
 // Tests for mathematics in a thought's words (maths.js).
 
 import { test, assert } from 'folio/testing';
-import { split, maths, broken } from '../maths.js';
+import { split, maths, broken, resize, sizeMarks } from '../maths.js';
 
 const T = (value) => ({ type: 'text', value });
 const I = (value) => ({ type: 'inline', value });
@@ -78,4 +78,22 @@ test('broken: the formulas KaTeX can\'t draw, with the line they start on', () =
     { tex: '\\frac{1', display: false, line: 1 },
     { tex: '\n\\badcommand\n', display: true, line: 2 },
   ]);
+});
+
+test('sizes within a thought: a mark is put on chosen words, stepped, and taken off', () => {
+  let r = resize('one two three', 4, 7, 1);
+  assert.equal(r.text, 'one [two]{size=big} three');
+  assert.deepEqual(r.select, [5, 8]);
+  r = resize(r.text, 5, 8, 1);
+  assert.equal(r.text, 'one [two]{size=biggest} three');
+  assert.equal(resize(r.text, 5, 8, 1).text, r.text); // the biggest already
+  r = resize(r.text, 6, 6, -1); // the caret inside the mark
+  assert.equal(r.text, 'one [two]{size=big} three');
+  r = resize(r.text, 5, 8, -1); // back to the usual size: the mark goes
+  assert.equal(r.text, 'one two three');
+  assert.deepEqual(r.select, [4, 7]);
+  assert.equal(resize('one two', 2, 2, 1), null);       // nothing chosen
+  assert.equal(resize('a\nb', 0, 3, 1), null);          // a line break inside
+  assert.equal(resize('small words', 0, 5, -1).text, '[small]{size=small} words');
+  assert.deepEqual(sizeMarks('x [a b]{size=smallest} y').map((m) => m.size), ['smallest']);
 });

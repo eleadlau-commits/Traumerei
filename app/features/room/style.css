@@ -478,3 +478,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-arrow-legend svg { overflow: visible; }
 /* The × that takes an arrow or link away, beside its name in the Editor. */
 .room-arrow-x { --x-size: 18px; vertical-align: middle; margin-left: 2px; }
+
+/* Varied sizes within a thought ([words]{size=big}, the world's maths.js): five steps, in em, so
+   they follow Thought size. */
+.room-size-smallest { font-size: .7em; }
+.room-size-small { font-size: .85em; }
+.room-size-big { font-size: 1.3em; }
+.room-size-biggest { font-size: 1.7em; }
