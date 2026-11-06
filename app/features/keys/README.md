@@ -13,7 +13,7 @@ change them in Settings later is a small step.
 
 ## The keys slot
 
-`{ id, keys, shows?, words, zone, order, when?(), run?(e), typing? }`
+`{ id, keys, shows?, words, zone, order, when?(), run?(e) }`
 
 | Field | What it is |
 |---|---|
@@ -24,7 +24,13 @@ change them in Settings later is a small step.
 | `zone` | Where it lives: `everywhere`, `rooms`, `room`, … Two entries clash when they share a key in the same zone, or either is `everywhere` |
 | `when()` | True while it is live (default: always) |
 | `run(e)` | Called when its key is pressed; the key is then taken. Without it, the map only lists the key |
-| `typing` | True to run even while a field has focus |
+
+**While typing, no key runs.** When a field has focus (a thought being written, search, the
+tray's fields, the Editor) the map does nothing: the field keeps Enter (keep), Ctrl+Enter (new
+line), Escape and its own text keys (arrows, Backspace, Ctrl+Z/C/X/V/A). Chrome's Ctrl+R, Ctrl+D,
+Ctrl+L and Ctrl+F are swallowed there, so the page can't reload or leave mid-thought. Elsewhere a
+key is matched first and only the matching entries' `when()` is asked, so `when()` costs nothing
+on ordinary keys.
 
 `?` itself is the map's own entry (`keys.list`), live wherever any other key is.
 
