@@ -5,11 +5,24 @@
 // other goes across (twin.js: across), to where it was let go, and belongs to that side alone.
 // The two sides share one loose tray: the left dock lists both sides' loose thoughts, and one
 // dragged onto either canvas goes to that side. Its methods join the Room class (mixIn in
-// Room.js), so `this` is the feature; it keeps only `this.otherEl` (the other side's panel) and
-// `this.otherWorld` (what is drawn there).
+// Room.js), so `this` is the feature; it keeps only `this.otherEl` (the other side's panel),
+// `this.otherWorld` (what is drawn there) and `this.dividerEl` (the line between the halves).
+// The divider drags left and right; where it sits is kept per Twin as the left half's share of
+// the width, on this device only (a way of looking, never part of the world or a .traum file).
+// Double-click it for half and half again.
 
 import { el } from './shared.js';
 import { room, view, twinOf, otherSide, across } from './world.js';
+
+export const SIDE_MIN = 280; // each half is at least this wide, in pixels
+
+// The left half's share of the width when the divider is at `x`, over an area from `left`, `width`
+// wide: each half keeps at least SIDE_MIN (an area too narrow for both: half and half).
+export function splitAt(x, left, width, min = SIDE_MIN) {
+  if (!(width > 2 * min)) return 0.5;
+  const f = (x - left) / width;
+  return Math.min(1 - min / width, Math.max(min / width, Number.isFinite(f) ? f : 0.5));
+}
 
 export class Twin {
   // The other side of the Twin this room is a side of, or null.
@@ -22,7 +35,55 @@ export class Twin {
       onclick: () => { const o = this.otherSide; if (o) this.switchSide(o.id); } },
     this.otherWorld,
     this.otherLabel = el('div', { class: 'label room-twin-label' }));
+    this.dividerEl = el('div', { class: 'room-twin-divider', hidden: true, role: 'separator', 'aria-orientation': 'vertical',
+      title: 'Drag to resize the halves · double-click for half and half',
+      onpointerdown: (e) => this.dragSplit(e),
+      ondblclick: (e) => { e.stopPropagation(); this.setSplit(0.5, true); } });
     return this.otherEl;
+  }
+
+  // Where the divider of the open Twin sits: the left half's share (0.5 when never moved).
+  get twinSplit() {
+    const t = this.roomId && twinOf(this.world, this.roomId);
+    const f = t && this.storage.get('twinSplits', {})?.[t.id];
+    return typeof f === 'number' && f > 0 && f < 1 ? f : 0.5;
+  }
+
+  // Puts the divider at share `f` (style.css lays both halves out from --twin-split); `keep`
+  // writes it down for this Twin.
+  setSplit(f, keep = false) {
+    this.roomPage.style.setProperty('--twin-split', String(f));
+    this.place();
+    if (!keep) return;
+    const t = this.roomId && twinOf(this.world, this.roomId);
+    if (!t) return;
+    const all = { ...(this.storage.get('twinSplits', {}) || {}) };
+    if (f === 0.5) delete all[t.id]; else all[t.id] = f;
+    this.storage.set('twinSplits', all);
+  }
+
+  // Dragging the divider: both halves follow the pointer, and where it is let go is kept.
+  dragSplit(e) {
+    if (e.button !== 0 || !this.otherSide) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const a = this.stage.getBoundingClientRect(), b = this.otherEl.getBoundingClientRect();
+    const left = Math.min(a.left, b.left), width = Math.max(a.right, b.right) - left;
+    const bar = this.dividerEl;
+    let f = this.twinSplit;
+    bar.setPointerCapture?.(e.pointerId);
+    bar.classList.add('dragging');
+    const move = (m) => { f = splitAt(m.clientX, left, width); this.setSplit(f); };
+    const up = () => {
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', up);
+      bar.removeEventListener('pointercancel', up);
+      bar.classList.remove('dragging');
+      this.setSplit(f, true);
+    };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', up);
   }
 
   // Lays the room out as one side of a Twin (or as a room of its own), and draws the other side.
@@ -31,8 +92,9 @@ export class Twin {
     const me = this.roomId && room(this.world, this.roomId);
     this.roomPage.classList.toggle('twin', !!other);
     this.roomPage.classList.toggle('twin-right', !!other && me?.side === 1);
-    this.otherEl.hidden = !other;
-    if (!other) { this.otherWorld.replaceChildren(); return; }
+    this.otherEl.hidden = this.dividerEl.hidden = !other;
+    if (!other) { this.otherWorld.replaceChildren(); this.roomPage.style.removeProperty('--twin-split'); return; }
+    this.roomPage.style.setProperty('--twin-split', String(this.twinSplit));
     const o = this.ontology(view(this.world, other.id).mode);
     this.otherLabel.textContent = `${other.name} · ${o.name} · click to work here`;
     this.otherWorld.replaceChildren(...this.sideNodes(other.id));
