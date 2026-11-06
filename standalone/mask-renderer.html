@@ -12406,7 +12406,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     placedForeign: () => placedForeign,
     putAt: () => putAt,
     spot: () => spot2,
-    trayForeign: () => trayForeign
+    trayForeign: () => trayForeign,
+    unplace: () => unplace
   });
   var isShared = (g2) => isGroup(g2) && !!g2.shared;
   function outermost(w2, roomId) {
@@ -12435,6 +12436,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const g2 = w2.things[id];
     if (!isGroup(g2) || !g2.loose) return false;
     delete g2.loose;
+    return true;
+  }
+  function unplace(w2, roomId, of, id, { leaves = true } = {}) {
+    const th = w2.things[id];
+    if (!th || th.parent !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
+    if (inForeign(w2, roomId, of)(id)) return false;
+    const mine = isGroup(th) && th.of === of;
+    const theirs = isGroup(th) && !mine;
+    if (!mine && !theirs && !leaves) return false;
+    const holders = groupsOf(w2, id, of);
+    const spotted = theirs && !!spot2(w2, roomId, of, id);
+    if (!holders.length && !spotted && !(mine && !th.loose)) return false;
+    for (const g2 of holders) leave(w2, g2.id, id);
+    if (theirs) delete own(w2, roomId, of)[id];
+    if (mine) th.loose = true;
     return true;
   }
   var kindTag = (th, names = {}) => isGroup(th) ? names[th.of] || "Group" : "";
@@ -12790,6 +12806,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     gather: () => gather,
     groupChosen: () => groupChosen,
     missing: () => missing2,
+    throwBack: () => throwBack,
     ungroupChosen: () => ungroupChosen
   });
 
@@ -13076,6 +13093,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...trayForeign(w2, roomId, "joyce")
       ].filter((th) => !inside4(th.id)).sort(byTime2);
     },
+    // Thrown back: a thought leaves its train, a train waits in the tray, another mode's group loses its spot.
+    unplace: (w2, roomId, id) => unplace(w2, roomId, "joyce", id),
     placed(w2, roomId, id) {
       const th = w2.things[id];
       if (isGroup(th)) return th.of === "joyce" ? !th.loose : !!spot2(w2, roomId, "joyce", id);
@@ -13263,6 +13282,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     units: (w2, roomId) => [...roomUnits(w2, roomId), ...placedForeign(w2, roomId, "pessoa")],
     tray: (w2, roomId) => trayForeign(w2, roomId, "pessoa"),
     placed: (w2, roomId, id) => !isGroup(w2.things[id]) || !!spot2(w2, roomId, "pessoa", id),
+    // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
+    // plain thought can't go.
+    unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { leaves: false }),
     // Where it was dragged to, or its place on the spiral.
     point(w2, roomId, id) {
       const placed = own(w2, roomId, "pessoa", false)[id];
@@ -14096,6 +14118,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...trayForeign(w2, roomId, ID).filter((g2) => !groupOf(w2, g2.id, ID))
       ].filter((th) => !inside4(th.id)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     },
+    // Thrown back: a thought or another mode's group leaves its chapters; a chapter waits in the
+    // tray with its thoughts (its arrows are kept, and come back when it is dragged out again).
+    unplace: (w2, roomId, id) => unplace(w2, roomId, ID, id),
     placed(w2, roomId, id) {
       const th = w2.things[id];
       return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w2, id, ID);
@@ -14350,7 +14375,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var BUILT_IN = [joyce_default, pessoa_default, russell_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { group: "function", ungroup: "function", draftPoint: "function", tray: "function", draw: "function", placed: "function", tag: "function", blocks: "function", shift: "function", measured: "function", begin: "function", press: "function", props: "function", settingChanged: "function" };
+  var MAY = { group: "function", ungroup: "function", draftPoint: "function", tray: "function", draw: "function", placed: "function", unplace: "function", tag: "function", blocks: "function", shift: "function", measured: "function", begin: "function", press: "function", props: "function", settingChanged: "function" };
   function missing2(o2) {
     if (!o2 || typeof o2 !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k2, t]) => typeof o2[k2] !== t || t === "string" && !o2[k2]).map(([k2]) => k2);
@@ -14381,6 +14406,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var forRooms = (all) => all.filter((o2) => !o2.roomsPage);
   var forPage = (all) => all.find((o2) => o2.roomsPage) || null;
+  function throwBack(o2, w2, roomId, ids, now = Date.now()) {
+    if (!o2?.unplace || shut(w2, roomId)) return 0;
+    const chosen = [...new Set(ids)].filter((id) => w2.things[id]);
+    let n = 0;
+    for (const id of chosen) {
+      if (chosen.some((other) => other !== id && holds(w2, other, id))) continue;
+      if (o2.unplace(w2, roomId, id)) {
+        w2.things[id].looseAt = now;
+        n++;
+      }
+    }
+    return n;
+  }
   function itemsOf(w2, roomId, ids) {
     const out = /* @__PURE__ */ new Map();
     for (const id of ids) {
@@ -20149,6 +20187,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var shrinkPicture2;
   var groupChosen2;
   var ungroupChosen2;
+  var throwBack2;
   var setOrder3;
   var foldInto;
   var foldPlan2;
@@ -20203,7 +20242,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ roomLook: roomLook3 } = lib.look);
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
-    ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2 } = lib.ontologies);
+    ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
     ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
   }
@@ -21502,6 +21541,173 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
+  // dist/web/features/room/verbs.js
+  var FIELD2 = "input, textarea, select, [contenteditable]";
+  var typing = (e) => !!e?.target?.matches?.(FIELD2);
+  var one = (c) => c.sel && c.sel.kind !== "many" && c.world.things[c.sel.id] ? c.world.things[c.sel.id] : null;
+  var props = (c) => c.editor?.body || (c.bar.hidden ? null : c.bar);
+  async function rename(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    if (kindOf3(th) === "line" && c.editThought(th.id)) return;
+    await c.openProps(c.sel);
+    const field3 = props(c)?.querySelector(".pop-name, input, textarea");
+    field3?.focus({ preventScroll: true });
+    field3?.select?.();
+  }
+  function duplicate(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const units = c.copyOf(c.sel.ids || [c.sel.id]);
+    if (!units.length) {
+      c.toast("That can't be duplicated here yet.");
+      return;
+    }
+    c.pasteUnits(units);
+  }
+  function fold3(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const ids = c.sel.ids || [c.sel.id];
+    const n = ids.length;
+    const th = foldInto(c.world, c.roomId, ids);
+    if (!th || th.why) {
+      c.toast(th?.why || "Nothing here to fold.");
+      return;
+    }
+    c.sel = { kind: "thought", id: th.id };
+    c.save();
+    c.drawWorld();
+    c.toast(`Folded into one ${kindOf3(th) === "passage" ? "passage" : "thought"}. Ctrl+Z brings ${n > 1 ? "them" : "it"} back.`);
+  }
+  function close(c, e) {
+    if (typing(e) || c.editing) return;
+    const th = one(c);
+    if (!th) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    const g2 = isGroup3(th) ? th : groupOf2(c.world, th.id, c.mode);
+    if (!g2) {
+      c.toast("It is in no group to close.");
+      return;
+    }
+    if (g2.closed) {
+      c.openTrain(g2.id);
+      return;
+    }
+    if (trainThoughts2(c.world, g2.id).length < 2 && !c.ont.open) {
+      c.toast("One thought: nothing to close.");
+      return;
+    }
+    c.closeTrain(g2.id);
+  }
+  async function moveTo(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    await c.openProps(c.sel);
+    const pick = props(c)?.querySelector(".room-edit-move");
+    if (!pick) return;
+    pick.focus({ preventScroll: true });
+    try {
+      pick.showPicker?.();
+    } catch {
+    }
+  }
+  function throwBack3(c, e, ids = null) {
+    if (typing(e) || c.editing) return 0;
+    ids ??= c.sel ? c.sel.ids || [c.sel.id] : [];
+    if (!ids.length) return 0;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return 0;
+    }
+    if (!c.ont.tray) {
+      c.toast(`${c.ont.name} has no loose tray.`);
+      return 0;
+    }
+    const n = throwBack2(c.ont, c.world, c.roomId, ids);
+    if (!n) {
+      c.toast(c.ont.groups ? "Already loose, or it can't go alone." : `${c.ont.name} places every thought itself: only another mode's group can go back.`);
+      return 0;
+    }
+    c.sel = null;
+    c.save();
+    c.drawWorld();
+    c.toast(`${n === 1 ? "Back" : `${n} back`} in the loose tray. Ctrl+Z undoes.`);
+    return n;
+  }
+  function group(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    if (!c.ont.groups) {
+      c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`);
+      return;
+    }
+    const ids = c.sel.ids || [c.sel.id];
+    const loose = !!c.ont.placed && ids.every((id) => !c.ont.placed(c.world, c.roomId, id));
+    const g2 = groupChosen2(c.ont, c.world, c.roomId, ids, Date.now(), { loose });
+    if (!g2) {
+      c.toast("Nothing here to group.");
+      return;
+    }
+    c.sel = { kind: "train", id: g2.id };
+    c.save();
+    c.drawWorld();
+    c.toast(`One ${c.ont.groups.name.toLowerCase()} of ${trainThoughts2(c.world, g2.id).length}.`);
+  }
+  function ungroup(c, e) {
+    if (typing(e) || c.editing || !c.sel) return;
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    if (!c.ont.groups) {
+      c.toast(`${c.ont.name} has no groups.`);
+      return;
+    }
+    const n = ungroupChosen2(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
+    if (!n) {
+      c.toast(`Not in a ${c.ont.groups.name.toLowerCase()} with others.`);
+      return;
+    }
+    c.sel = null;
+    c.save();
+    c.drawWorld();
+    c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
+  }
+  function lock4(c, e) {
+    if (typing(e) || c.editing || !c.roomId) return;
+    const r = room5(c.world, c.roomId);
+    if (!r) return;
+    const on = !r.locked;
+    lock3(c.world, r.id, on);
+    c.save();
+    c.drawRoom();
+    c.drawWorld();
+    if (c.sel && props(c)) c.openProps(c.sel);
+    const key = c.keyMap?.label?.("room.lock");
+    c.toast(`${on ? "Locked" : "Unlocked"}.${key ? ` ${key} ${on ? "unlocks" : "locks"} it.` : ""}`);
+  }
+
   // dist/web/features/room/gestures.js
   var Gestures = class {
     onDown(e) {
@@ -21693,6 +21899,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawWorld();
           return;
         }
+        if (g2.last && this.overTray(g2.last.x, g2.last.y) && throwBack3(this, null, Object.keys(g2.from))) return;
         this.drawWorld();
         this.save();
         return;
@@ -21718,6 +21925,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawWorld();
         return;
       }
+      if (g2.thing && g2.last && this.overTray(g2.last.x, g2.last.y) && throwBack3(this, null, [g2.thing.id])) return;
       if (g2.thing && g2.last && this.dropAcross(g2.thing.id, g2.last.x, g2.last.y)) return;
       if (g2.thing?.live) {
         this.drawWorld();
@@ -21731,6 +21939,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawWorld();
       this.save();
     }
+    // Whether a point on the screen is over the loose tray (the left dock's list, or the row at the
+    // foot of the room).
+    overTray(x, y) {
+      const at2 = document.elementFromPoint(x, y);
+      return !!at2?.closest?.(".room-loose, .room-tray-row, .room-tray-btn");
+    }
     // What a drag moves on the screen, with where each piece started: the one thought, or every piece
     // drawn for a group (its thoughts, its name, its foot) when the group is dragged.
     dragEls(g2) {
@@ -21742,7 +21956,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
     // A plain Backspace never does: it is for letters.
     deletes(e) {
-      return e.key === "Delete" || MAC4 && e.metaKey && e.key === "Backspace";
+      return e.key === "Delete" || MAC4 && e.metaKey && !e.shiftKey && e.key === "Backspace";
     }
     // Returns true when the key was one of these, and was used.
     shortcut(e, mod) {
@@ -22090,150 +22304,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     refresh();
   }
 
-  // dist/web/features/room/verbs.js
-  var FIELD2 = "input, textarea, select, [contenteditable]";
-  var typing = (e) => !!e?.target?.matches?.(FIELD2);
-  var one = (c) => c.sel && c.sel.kind !== "many" && c.world.things[c.sel.id] ? c.world.things[c.sel.id] : null;
-  var props = (c) => c.editor?.body || (c.bar.hidden ? null : c.bar);
-  async function rename(c, e) {
-    if (typing(e) || c.editing) return;
-    const th = one(c);
-    if (!th) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    if (kindOf3(th) === "line" && c.editThought(th.id)) return;
-    await c.openProps(c.sel);
-    const field3 = props(c)?.querySelector(".pop-name, input, textarea");
-    field3?.focus({ preventScroll: true });
-    field3?.select?.();
-  }
-  function duplicate(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    const units = c.copyOf(c.sel.ids || [c.sel.id]);
-    if (!units.length) {
-      c.toast("That can't be duplicated here yet.");
-      return;
-    }
-    c.pasteUnits(units);
-  }
-  function fold3(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    const ids = c.sel.ids || [c.sel.id];
-    const n = ids.length;
-    const th = foldInto(c.world, c.roomId, ids);
-    if (!th || th.why) {
-      c.toast(th?.why || "Nothing here to fold.");
-      return;
-    }
-    c.sel = { kind: "thought", id: th.id };
-    c.save();
-    c.drawWorld();
-    c.toast(`Folded into one ${kindOf3(th) === "passage" ? "passage" : "thought"}. Ctrl+Z brings ${n > 1 ? "them" : "it"} back.`);
-  }
-  function close(c, e) {
-    if (typing(e) || c.editing) return;
-    const th = one(c);
-    if (!th) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    const g2 = isGroup3(th) ? th : groupOf2(c.world, th.id, c.mode);
-    if (!g2) {
-      c.toast("It is in no group to close.");
-      return;
-    }
-    if (g2.closed) {
-      c.openTrain(g2.id);
-      return;
-    }
-    if (trainThoughts2(c.world, g2.id).length < 2 && !c.ont.open) {
-      c.toast("One thought: nothing to close.");
-      return;
-    }
-    c.closeTrain(g2.id);
-  }
-  async function moveTo(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    await c.openProps(c.sel);
-    const pick = props(c)?.querySelector(".room-edit-move");
-    if (!pick) return;
-    pick.focus({ preventScroll: true });
-    try {
-      pick.showPicker?.();
-    } catch {
-    }
-  }
-  function group(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    if (!c.ont.groups) {
-      c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`);
-      return;
-    }
-    const ids = c.sel.ids || [c.sel.id];
-    const loose = !!c.ont.placed && ids.every((id) => !c.ont.placed(c.world, c.roomId, id));
-    const g2 = groupChosen2(c.ont, c.world, c.roomId, ids, Date.now(), { loose });
-    if (!g2) {
-      c.toast("Nothing here to group.");
-      return;
-    }
-    c.sel = { kind: "train", id: g2.id };
-    c.save();
-    c.drawWorld();
-    c.toast(`One ${c.ont.groups.name.toLowerCase()} of ${trainThoughts2(c.world, g2.id).length}.`);
-  }
-  function ungroup(c, e) {
-    if (typing(e) || c.editing || !c.sel) return;
-    if (c.locked) {
-      c.toast("This room is locked.");
-      return;
-    }
-    if (!c.ont.groups) {
-      c.toast(`${c.ont.name} has no groups.`);
-      return;
-    }
-    const n = ungroupChosen2(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
-    if (!n) {
-      c.toast(`Not in a ${c.ont.groups.name.toLowerCase()} with others.`);
-      return;
-    }
-    c.sel = null;
-    c.save();
-    c.drawWorld();
-    c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
-  }
-  function lock4(c, e) {
-    if (typing(e) || c.editing || !c.roomId) return;
-    const r = room5(c.world, c.roomId);
-    if (!r) return;
-    const on = !r.locked;
-    lock3(c.world, r.id, on);
-    c.save();
-    c.drawRoom();
-    c.drawWorld();
-    if (c.sel && props(c)) c.openProps(c.sel);
-    const key = c.keyMap?.label?.("room.lock");
-    c.toast(`${on ? "Locked" : "Unlocked"}.${key ? ` ${key} ${on ? "unlocks" : "locks"} it.` : ""}`);
-  }
-
   // dist/web/features/room/bars.js
   var Bars = class {
     // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
@@ -22517,9 +22587,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           moves.length ? el15("div", { class: "box-btns room-moves" }, ...moves.map((m2) => btn(m2.label, () => this.runMove(m2)))) : null
         ));
       }
+      let canThrow = false;
+      try {
+        canThrow = !!this.ont.unplace && !!this.ont.tray && (!this.ont.placed || this.ont.placed(this.world, this.roomId, th.id));
+      } catch {
+        canThrow = false;
+      }
       out.push(sec("Actions", el15(
         "div",
         { class: "box-btns" },
+        canThrow ? btn("Throw back", () => {
+          if (throwBack3(this, null, [th.id])) done();
+        }, "room.throw-back") : null,
         btn("Delete", () => {
           remove4(this.world, th.id);
           this.sel = null;
@@ -23312,6 +23391,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.close", keys: ["Ctrl+Shift+F"], words: "close or open its group (only how it shows)", typing: true },
     { id: "room.group", keys: ["Ctrl+G"], words: "make what is chosen one group of this mode (a train, a chapter)", typing: true },
     { id: "room.ungroup", keys: ["Ctrl+Shift+G"], words: "take what is chosen out of its group", typing: true },
+    { id: "room.throw-back", keys: ["Ctrl+Shift+Backspace"], shows: "Ctrl+Shift+Backspace · drag onto the tray", words: "throw what is chosen back into the loose tray", typing: true },
     { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room", typing: true },
     { id: "room.lock", keys: ["Ctrl+L"], words: "lock or unlock this room", typing: true },
     { id: "room.back-into", shows: "Backspace in an empty thought", words: "back into the one before" },
@@ -23363,6 +23443,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "room.group": (e) => group(this, e),
         "room.ungroup": (e) => ungroup(this, e),
         "room.move": (e) => moveTo(this, e),
+        "room.throw-back": (e) => throwBack3(this, e),
         "room.lock": (e) => lock4(this, e)
       };
       const live = () => !this.root.hidden && !!this.roomId;
