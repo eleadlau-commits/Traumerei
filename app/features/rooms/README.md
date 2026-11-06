@@ -29,7 +29,8 @@ written there. With nothing in it, the rooms page works on its own.
 ## What it does
 
 - **The rooms page** slides up from the bottom, leaving a strip of the home page at the top with a
-  back arrow home in the top-right corner (the menu ☰ keeps the top-left one). It is a light opacity mask (`look.js`) over the home picture
+  back arrow home in the top-right corner (the menu ☰ keeps the top-left one). The wordmark beside ☰
+  goes home too, from a room or the rooms page (`frame:home`, answered by `home()`). It is a light opacity mask (`look.js`) over the home picture
   itself, which is held still underneath: its spontaneity layer is off while the rooms page
   shows (the Renderer's `backdrop` service). The page is a grid of square cells. Each room
   is an opacity square on it: a deeper version of the room's own colour inside, (L_r − 0.35,

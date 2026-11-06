@@ -40,6 +40,9 @@ nothing there is visible. An item is `{ id, label, icon, order, run(), on?(), vi
 `icon` a `ui.ICONS` name, `on()` shows it pressed, `visible()` false leaves it out, `title()` its
 hover words. Each rail draws `more()` again when it redraws, so an item's state follows.
 
+**The wordmark** beside ☰ is a button: a click sends **`frame:home`**, and the rooms page
+answers it by leaving any open room and closing, as Back from the rooms page does (so Home shows).
+
 It has one slot, `rail.more`. While it shows, `<html>` has `--status` (the status
 bar's height, else `0px`): the docks start under its top bar and end above its status bar. An
 element says what it is in the status bar with `data-hint` (or its `title`).

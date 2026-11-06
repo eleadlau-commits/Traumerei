@@ -737,6 +737,9 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
   user-select: none;
   transition: opacity .4s;
 }
+/* A wordmark that is a button (it goes home): no box, the same words. */
+button.wordmark { pointer-events: auto !important; cursor: pointer; padding: 0; border: 0; background: none; color: inherit; font-family: inherit; }
+button.wordmark:hover { opacity: 1 !important; }
 
 /* The search bar: a word on a pale strip, with its keys on the right. */
 .find-btn {

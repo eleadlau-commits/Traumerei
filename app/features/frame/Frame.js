@@ -12,7 +12,8 @@
 // Folio's .rail): Ctrl+Alt+B, or the rail button at the left of the status bar, narrows it to its
 // icons (48px) and back. At the foot of both rails it draws ⋯ More, which unfolds what other
 // features put in the slot `rail.more` (Time). It saves how wide the rail is and whether More is
-// open. Its service is the only way in (README.md).
+// open. The wordmark is a button that sends frame:home (the rooms page closes and Home shows).
+// Its service is the only way in (README.md).
 
 import { Feature, ui } from 'folio';
 
@@ -78,7 +79,9 @@ export default class Frame extends Feature {
 
   build() {
     this.bar = el('div', { class: 'chrome-bar frame-bar' });
-    this.wordmark = el('div', { class: 'wordmark frame-wordmark', 'aria-hidden': 'true' }, 'Träumerei');
+    // The wordmark goes home: it sends frame:home, and the rooms page (and a room in it) closes.
+    this.wordmark = el('button', { type: 'button', class: 'wordmark frame-wordmark', title: 'Home', 'aria-label': 'Home',
+      'data-hint': 'Back to the home page', onclick: () => this.emit('frame:home') }, 'Träumerei');
     this.crumbs = el('nav', { class: 'crumbs frame-crumbs', 'aria-label': 'Where you are' });
     this.searchBtn = el('button', { type: 'button', class: 'word find-btn frame-search', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.top()?.o.search?.() },
