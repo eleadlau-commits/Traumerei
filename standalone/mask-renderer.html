@@ -90,6 +90,13 @@
      and where a drop will land. Ink stays for words and lines; red only on Delete. */
   --amber: color-mix(in oklab, var(--glow) 50%, #9a6414);
   --amber-soft: rgb(var(--glow-rgb) / .35);
+  /* Lines joining things may have a colour of their own (a relation's look): a few quiet inks that
+     sit on paper beside the words. The relations editor shows them as swatches. */
+  --rel-amber: var(--amber);
+  --rel-rust: color-mix(in oklab, var(--ink) 30%, #b0502a);
+  --rel-moss: color-mix(in oklab, var(--ink) 30%, #5d8a3a);
+  --rel-slate: color-mix(in oklab, var(--ink) 30%, #4a78a8);
+  --rel-plum: color-mix(in oklab, var(--ink) 30%, #94508a);
   /* Two surfaces: the canvas is paper (and the washi, if the picture has it); all chrome (top bar,
      rail, docks, status bar) is the flat veil with a hairline edge. */
   --chrome: var(--veil);
@@ -1038,6 +1045,20 @@ html.rail-narrow { --rail: 48px; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* A relation's look, for any line joining things (stroke follows the colour): its line and its
+   colour, and the swatch that picks the colour (.rel-swatch, aria-checked="true" when chosen). */
+.rel-line-dashed { stroke-dasharray: 6 4; }
+.rel-line-dotted { stroke-dasharray: 1 3.5; stroke-linecap: round; }
+.rel-colour-ink { color: var(--ink); }
+.rel-colour-amber { color: var(--rel-amber); }
+.rel-colour-rust { color: var(--rel-rust); }
+.rel-colour-moss { color: var(--rel-moss); }
+.rel-colour-slate { color: var(--rel-slate); }
+.rel-colour-plum { color: var(--rel-plum); }
+.rel-swatch { width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; background: currentColor; cursor: pointer; opacity: .85; }
+.rel-swatch:hover { opacity: 1; }
+.rel-swatch[aria-checked="true"] { outline: var(--sel-line); outline-offset: 2px; opacity: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   .icon-btn.spin svg { animation: none; }
   .word, .btn, .seg button { transition: none; }
@@ -1928,7 +1949,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .room-line { fill: none; stroke: currentColor; stroke-width: 1; }
 .room-line-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
-.room-line-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
+.room-line-head { fill: none; stroke: currentColor; stroke: context-stroke; stroke-width: 1.4; opacity: .6; } /* a coloured line's head takes its colour */
 .room-knot { fill: currentColor; opacity: .45; }
 /* Joyce's strands. */
 .room-strand-line { opacity: .32; transition: opacity .3s; }
@@ -2252,6 +2273,30 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
    that day glow. Everything stays where it is now. */
 .room-world.room-past .room-later { opacity: .16; transition: opacity var(--quick); }
 .room-world.room-past .room-lit-day { box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 22%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+
+/* The relations editor (the world's relationsview.js) in a mode's ⚙: a row for each relation. */
+.room-rel-editor { grid-template-columns: 1fr; align-items: start; }
+.room-rel-list { display: grid; gap: 2px; }
+.room-rel-row { display: grid; grid-template-columns: 14px 36px minmax(0, 1fr) 18px; grid-template-areas: "grip sample name del" ". . look look"; align-items: center; gap: 2px 8px; padding: 4px; border-radius: 4px; }
+.room-rel-grip { grid-area: grip; }
+.room-rel-sample { grid-area: sample; }
+.room-rel-editor .room-rel-row input.room-rel-name { grid-area: name; min-width: 0; width: 100%; } /* not a settings row's full-width input */
+.room-rel-delete { grid-area: del; }
+.room-rel-look { grid-area: look; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.room-rel-look select { width: auto; min-width: 92px; }
+.room-rel-row:focus-visible { outline: var(--focus-ring); }
+.room-rel-row.room-rel-dragging { opacity: .4; }
+.room-rel-editor .room-rel-asking { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.room-rel-grip { cursor: grab; opacity: .35; font-size: 10px; letter-spacing: -2px; }
+.room-rel-sample { overflow: visible; }
+.room-rel-swatches { display: flex; gap: 5px; }
+.room-rel-delete { padding: 0 4px; opacity: .5; }
+.room-rel-delete:hover { opacity: 1; }
+.room-rel-add { margin-top: 4px; }
+/* A legend over a web of named lines: each relation's line beside its name. */
+.room-arrow-legend { position: absolute; transform: translateY(-100%); display: grid; gap: 3px; padding: 6px 10px; white-space: nowrap; }
+.room-arrow-legend-row { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); }
+.room-arrow-legend svg { overflow: visible; }
 
 </style>
 </head>
@@ -7746,6 +7791,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     pessoa: () => pessoa_exports,
     picture: () => picture_exports,
     relations: () => relations_exports,
+    relationsview: () => relationsview_exports,
     russell: () => russell_exports,
     twin: () => twin_exports
   });
@@ -13449,7 +13495,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   __export(russell_exports, {
     ID: () => ID,
     LAYOUT: () => LAYOUT,
-    LINES: () => LINES,
+    LINES: () => LINES2,
     RELATIONS: () => RELATIONS,
     above: () => above,
     addChapter: () => addChapter,
@@ -13478,12 +13524,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     relationShown: () => relationShown,
     relations: () => relations,
     renameRelations: () => renameRelations,
+    retag: () => retag,
     setLabel: () => setLabel,
     setRelation: () => setRelation,
     setWidths: () => setWidths,
     snap: () => snap,
     splitList: () => splitList,
     unlink: () => unlink,
+    uses: () => uses,
     whyNot: () => whyNot,
     withRelation: () => withRelation
   });
@@ -13491,14 +13539,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/ontologies/relations.js
   var relations_exports = {};
   __export(relations_exports, {
+    COLOURS: () => COLOURS,
     ENDS_MARK: () => ENDS_MARK,
+    LINES: () => LINES,
     RELATIONS: () => RELATIONS,
     arrowsOf: () => arrowsOf,
     cleanRelationList: () => cleanRelationList,
     cleanRelations: () => cleanRelations,
+    entryText: () => entryText,
     listText: () => listText,
     relationEnds: () => relationEnds,
     relationEntry: () => relationEntry,
+    relationLooks: () => relationLooks,
     relationName: () => relationName,
     relationShown: () => relationShown,
     splitList: () => splitList,
@@ -13506,7 +13558,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   });
   function relationName(x) {
     const t = String(x ?? "").replace(/\s+/g, " ").trim();
-    return /\[\[|\]\]/.test(t) ? null : t;
+    return /\[\[|\]\]|\|/.test(t) ? null : t;
   }
   function splitList(text) {
     const s = String(text ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1");
@@ -13526,18 +13578,28 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MARKS = { "--": "none", "->": "arrow", "<->": "both" };
   var ENDS_MARK = { none: "--", arrow: "->", both: "<->" };
   var MARKED = /\s*(<->|->|--)\s*$/;
+  var LINES = ["solid", "dashed", "dotted"];
+  var COLOURS = ["ink", "amber", "rust", "moss", "slate", "plum"];
   function relationEntry(x) {
     const s = String(x ?? "");
-    const m2 = s.match(MARKED);
-    return { name: relationName(m2 ? s.slice(0, m2.index) : s), ends: m2 ? MARKS[m2[1]] : null };
+    const bar = s.indexOf("|");
+    const head = bar < 0 ? s : s.slice(0, bar), look = bar < 0 ? [] : s.slice(bar + 1).trim().toLowerCase().split(/\s+/);
+    const m2 = head.match(MARKED);
+    const line2 = look.find((x2) => LINES.includes(x2) && x2 !== "solid") || null;
+    const colour2 = look.find((x2) => COLOURS.includes(x2) && x2 !== "ink") || null;
+    return { name: relationName(m2 ? head.slice(0, m2.index) : head), ends: m2 ? MARKS[m2[1]] : null, line: line2, colour: colour2 };
   }
-  function cleanRelationList(v2, fallback = RELATIONS.default) {
+  function entryText({ name: name5, ends = null, line: line2 = null, colour: colour2 = null }, withEnds = true) {
+    const look = [line2 !== "solid" ? line2 : null, colour2 !== "ink" ? colour2 : null].filter(Boolean);
+    return `${name5}${withEnds && ends ? ` ${ENDS_MARK[ends]}` : ""}${look.length ? ` | ${look.join(" ")}` : ""}`;
+  }
+  function cleanRelationList(v2, fallback = RELATIONS.default, withEnds = true) {
     const out = [], seen = /* @__PURE__ */ new Set();
     for (const x of Array.isArray(v2) ? v2 : splitList(v2)) {
-      const { name: name5, ends } = relationEntry(x);
-      if (!name5 || seen.has(name5.toLowerCase())) continue;
-      seen.add(name5.toLowerCase());
-      out.push(ends ? `${name5} ${ENDS_MARK[ends]}` : name5);
+      const e = relationEntry(x);
+      if (!e.name || seen.has(e.name.toLowerCase())) continue;
+      seen.add(e.name.toLowerCase());
+      out.push(entryText(e, withEnds));
     }
     return out.length ? out : [...fallback];
   }
@@ -13552,12 +13614,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
+  function relationLooks(v2) {
+    const out = {};
+    for (const x of cleanRelationList(v2)) {
+      const { name: name5, line: line2, colour: colour2 } = relationEntry(x);
+      out[name5] = { line: line2, colour: colour2 };
+    }
+    return out;
+  }
   var RELATIONS = {
     key: "relations",
     label: "Relations",
-    type: "list",
+    type: "relations",
     default: ["forgets"],
-    clean: cleanRelations,
+    ends: false,
+    clean: (v2) => cleanRelationList(v2, ["forgets"], false),
     text: listText,
     note: "Any words or signs. A new arrow gets the first."
   };
@@ -13577,17 +13648,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     function renameRelations2(w2, roomId, before, after) {
       const a = cleanRelations(before, setting.default), b = cleanRelations(after, setting.default);
       if (a.length !== b.length) return 0;
-      const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y));
-      if (!map.size) return 0;
+      const low = (list2) => new Set(list2.map((x) => x.toLowerCase()));
+      const had = low(a), has = low(b);
+      const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y && !has.has(x.toLowerCase()) && !had.has(y.toLowerCase())));
+      let n = 0;
+      for (const [from, to] of map) n += retag2(w2, roomId, from, to);
+      return n;
+    }
+    function retag2(w2, roomId, from, to) {
       let n = 0;
       for (const data of Object.values(own(w2, roomId, store, false))) {
-        for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) {
-          data.rel[p] = map.get(r);
+        for (const [p, r] of Object.entries(data?.rel || {})) if (r === from) {
+          data.rel[p] = to;
           n++;
         }
       }
       return n;
     }
+    const uses2 = (w2, roomId, name5) => Object.values(own(w2, roomId, store, false)).reduce((n, d) => n + Object.values(d?.rel || {}).filter((r) => r === name5).length, 0);
     function arrowsInto2(w2, roomId, id) {
       const a = own(w2, roomId, store, false)[id];
       const parents = (a?.parents || []).filter((p) => p !== id && isNode2(w2, roomId, p));
@@ -13695,6 +13773,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return {
       relations: relations2,
       renameRelations: renameRelations2,
+      retag: retag2,
+      uses: uses2,
       arrowsInto: arrowsInto2,
       parentsOf: parentsOf2,
       childrenOf: childrenOf2,
@@ -13719,6 +13799,262 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     arrowKey: () => arrowKey,
     arrowView: () => arrowView
   });
+
+  // dist/web/features/world/ontologies/relationsview.js
+  var relationsview_exports = {};
+  __export(relationsview_exports, {
+    lookClass: () => lookClass,
+    relationsRow: () => relationsRow
+  });
+  var ENDS2 = [["none", "Plain"], ["arrow", "Arrow"], ["both", "Both ways"]];
+  var WORD = { solid: "Solid", dashed: "Dashed", dotted: "Dotted" };
+  var lookClass = ({ line: line2, colour: colour2 } = {}) => [line2 && line2 !== "solid" ? `rel-line-${line2}` : "", colour2 && colour2 !== "ink" ? `rel-colour-${colour2}` : ""].filter(Boolean).join(" ");
+  function relationsRow(st, { el: el16, value, onChange, c = null, toast: toast2 = () => {
+  } }) {
+    const withEnds = !!st.ends;
+    const none = st.none || "arrow";
+    let list2 = cleanRelationList(value, st.default, withEnds).map(relationEntry);
+    let focus = null;
+    let asking = null;
+    let dragged = null;
+    const box = el16("div", { class: "room-rel-list", role: "list", "aria-label": st.label });
+    const root = el16(
+      "div",
+      { class: "renderer-slider room-rel-editor" },
+      el16("span", {}, st.label),
+      box,
+      st.note ? el16("span", { class: "room-list-note" }, st.note) : null
+    );
+    function commit(next, at2) {
+      list2 = next;
+      focus = at2;
+      onChange(list2.map((e) => entryText(e, withEnds)));
+      c?.save?.();
+      draw3();
+    }
+    const taken = (name5, except) => list2.some((e, j) => j !== except && e.name.toLowerCase() === name5.toLowerCase());
+    const move5 = (i2, d) => {
+      const j = i2 + d;
+      if (j < 0 || j >= list2.length) return;
+      const next = [...list2];
+      [next[i2], next[j]] = [next[j], next[i2]];
+      commit(next, { i: j });
+    };
+    function remove5(i2) {
+      if (list2.length === 1) {
+        toast2("A room keeps at least one relation.");
+        return;
+      }
+      const n = c && st.uses ? st.uses(c, list2[i2].name) : 0;
+      if (n && !asking) {
+        asking = { i: i2, n };
+        focus = { i: i2, part: "into" };
+        draw3();
+        return;
+      }
+      asking = null;
+      commit(list2.filter((_2, j) => j !== i2), { i: Math.min(i2, list2.length - 2) });
+    }
+    function sample2(e) {
+      const svg3 = svg("svg", { class: "room-rel-sample", width: 34, height: 12, viewBox: "0 0 34 12", "aria-hidden": "true" });
+      const [ln] = line("M3 6 L31 6", { ends: withEnds ? e.ends || none : "arrow", cls: `room-line ${lookClass(e)}` });
+      svg3.append(ln);
+      return svg3;
+    }
+    function row(e, i2) {
+      if (asking?.i === i2) {
+        const others = list2.filter((_2, j) => j !== i2);
+        const into = el16(
+          "select",
+          { class: "room-rel-into", "aria-label": "What its links become", onkeydown: (ev) => {
+            ev.stopPropagation();
+            if (ev.key === "Escape") {
+              asking = null;
+              focus = { i: i2 };
+              draw3();
+            }
+          } },
+          ...others.map((o2, j) => el16("option", { value: String(j) }, o2.name)),
+          el16("option", { value: "none" }, "(no relation)")
+        );
+        return el16(
+          "div",
+          { class: "room-rel-row room-rel-asking", role: "listitem", "data-i": i2 },
+          el16("span", { class: "pop-note" }, `${asking.n} link${asking.n === 1 ? "" : "s"} ${asking.n === 1 ? "is" : "are"} “${e.name}”. ${asking.n === 1 ? "It becomes" : "They become"}`),
+          into,
+          el16("button", { type: "button", class: "word danger", onclick: () => {
+            const v2 = into.value;
+            st.retag?.(c, e.name, v2 === "none" ? "" : others[Number(v2)].name);
+            remove5(i2);
+          } }, "Delete"),
+          el16("button", { type: "button", class: "word", onclick: () => {
+            asking = null;
+            focus = { i: i2 };
+            draw3();
+          } }, "Cancel")
+        );
+      }
+      const name5 = el16("input", {
+        class: "room-edit-text room-rel-name",
+        value: e.name,
+        spellcheck: "false",
+        "aria-label": `Relation ${i2 + 1}'s name`,
+        onkeydown: (ev) => {
+          ev.stopPropagation();
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            ev.target.blur();
+            r.focus();
+          }
+          if (ev.key === "Escape") {
+            ev.preventDefault();
+            ev.target.value = e.name;
+            r.focus();
+          }
+        },
+        onchange: (ev) => {
+          const n = relationName(ev.target.value);
+          if (!n || taken(n, i2)) {
+            toast2(n === null ? "A relation can't hold [[, ]] or |." : n ? `There is a “${n}” already.` : "A relation needs a name.");
+            ev.target.value = e.name;
+            return;
+          }
+          if (n === e.name) return;
+          commit(list2.map((x, j) => j === i2 ? { ...x, name: n } : x), { i: i2 });
+        }
+      });
+      const set = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
+      const select2 = (k2, options, now, label2) => el16("select", {
+        class: `room-rel-${k2}`,
+        "aria-label": `${e.name}: ${label2}`,
+        "data-part": k2,
+        onkeydown: (ev) => ev.stopPropagation(),
+        onchange: (ev) => set(k2, ev.target.value)
+      }, ...options.map(([v2, w2]) => el16("option", { value: v2, selected: v2 === now }, w2)));
+      const swatches = el16(
+        "span",
+        { class: "room-rel-swatches", role: "radiogroup", "aria-label": `${e.name}: colour` },
+        ...COLOURS.map((k2) => el16("button", {
+          type: "button",
+          role: "radio",
+          class: `room-rel-swatch rel-swatch rel-colour-${k2}`,
+          title: k2[0].toUpperCase() + k2.slice(1),
+          "aria-checked": String((e.colour || "ink") === k2),
+          "aria-label": k2,
+          "data-part": k2 === (e.colour || "ink") ? "colour" : null,
+          onclick: () => set("colour", k2 === "ink" ? null : k2)
+        }))
+      );
+      const r = el16(
+        "div",
+        {
+          class: "room-rel-row",
+          role: "listitem",
+          tabindex: "0",
+          draggable: "true",
+          "data-i": i2,
+          title: i2 === 0 ? "A new link gets this one. Drag to put another first." : "Drag to put it elsewhere",
+          onkeydown: (ev) => {
+            if (ev.target !== r) return;
+            ev.stopPropagation();
+            const rows = [...box.querySelectorAll(".room-rel-row")];
+            if (ev.key === "ArrowUp" || ev.key === "ArrowDown") {
+              ev.preventDefault();
+              if (ev.altKey) move5(i2, ev.key === "ArrowUp" ? -1 : 1);
+              else rows[i2 + (ev.key === "ArrowUp" ? -1 : 1)]?.focus();
+            } else if (ev.key === "Enter") {
+              ev.preventDefault();
+              name5.focus();
+              name5.select();
+            } else if (ev.key === "Delete" || ev.key === "Backspace") {
+              ev.preventDefault();
+              remove5(i2);
+            }
+          },
+          ondragstart: (ev) => {
+            dragged = i2;
+            ev.dataTransfer?.setData("text/plain", String(i2));
+            r.classList.add("room-rel-dragging");
+          },
+          ondragend: () => {
+            dragged = null;
+            r.classList.remove("room-rel-dragging");
+          },
+          ondragover: (ev) => {
+            if (dragged != null) ev.preventDefault();
+          },
+          ondrop: (ev) => {
+            ev.preventDefault();
+            if (dragged == null || dragged === i2) return;
+            const next = [...list2];
+            const [x] = next.splice(dragged, 1);
+            next.splice(i2, 0, x);
+            dragged = null;
+            commit(next, { i: i2 });
+          }
+        },
+        el16("span", { class: "room-rel-grip", "aria-hidden": "true" }, "⋮⋮"),
+        sample2(e),
+        name5,
+        el16(
+          "span",
+          { class: "room-rel-look" },
+          withEnds ? select2("ends", ENDS2, e.ends || none, "ends") : null,
+          select2("line", LINES.map((k2) => [k2, WORD[k2]]), e.line || "solid", "line"),
+          swatches
+        ),
+        el16("button", { type: "button", class: "word room-rel-delete", title: `Delete “${e.name}”`, "aria-label": `Delete ${e.name}`, onclick: () => remove5(i2) }, "×")
+      );
+      return r;
+    }
+    function adder() {
+      return el16("input", {
+        class: "room-edit-text room-rel-add",
+        placeholder: "+ A new relation",
+        spellcheck: "false",
+        "aria-label": "Add a relation",
+        onkeydown: (ev) => {
+          ev.stopPropagation();
+          if (ev.key === "Escape") {
+            ev.target.value = "";
+            ev.target.blur();
+            return;
+          }
+          if (ev.key !== "Enter") return;
+          ev.preventDefault();
+          const n = relationName(ev.target.value);
+          if (!n) {
+            if (n === null) toast2("A relation can't hold [[, ]] or |.");
+            return;
+          }
+          if (taken(n, -1)) {
+            toast2(`There is a “${n}” already.`);
+            return;
+          }
+          commit([...list2, { name: n, ends: null, line: null, colour: null }], { add: true });
+        }
+      });
+    }
+    function draw3() {
+      box.replaceChildren(...list2.map(row), adder());
+      const f2 = focus;
+      focus = null;
+      if (!f2) return;
+      requestAnimationFrame(() => {
+        if (f2.add) {
+          box.querySelector(".room-rel-add")?.focus();
+          return;
+        }
+        const r = box.querySelector(`[data-i="${f2.i}"]`);
+        const part2 = f2.part === "into" ? r?.querySelector(".room-rel-into") : f2.part ? r?.querySelector(`[data-part="${f2.part}"]`) : null;
+        (part2 || r)?.focus?.();
+      });
+    }
+    draw3();
+    return root;
+  }
+
+  // dist/web/features/world/ontologies/arrowview.js
   var arrowKey = (from, to) => `${from}>${to}`;
   function arrowView({ of, net: net3, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
     const { arrows: arrows3, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, setLabel: setLabel2, setRelation: setRelation2 } = net3;
@@ -13787,7 +14123,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ev.preventDefault();
           const n = relationName(field3.value);
           if (!n) {
-            if (n === null) c.toast("A relation can't hold [[ or ]].");
+            if (n === null) c.toast("A relation can't hold [[, ]] or |.");
             back();
             return;
           }
@@ -13884,6 +14220,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.addEventListener("pointerup", up);
       document.addEventListener("pointercancel", up);
     }
+    function legend(c, all, names, looks) {
+      const bs = Object.values(all);
+      if (!bs.length) return null;
+      const x = Math.min(...bs.map((b) => b.at.x)), y = Math.min(...bs.map((b) => b.at.y)) - 30;
+      const rows = names.map((n) => {
+        const svg3 = svg("svg", { width: 30, height: 10, viewBox: "0 0 30 10", "aria-hidden": "true" });
+        svg3.append(line("M2 5 L28 5", { ends: ends(n, c), cls: `room-arrow ${lookClass(looks[n])}` })[0]);
+        return c.el("div", { class: "room-arrow-legend-row" }, svg3, c.el("span", {}, n));
+      });
+      return c.el("div", { class: "panel room-arrow-legend", style: `left:${Math.round(x)}px;top:${Math.round(y)}px` }, ...rows);
+    }
     return {
       pick,
       drag,
@@ -13921,6 +14268,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const nodes2 = [];
         const line2 = c.setting("line") || "straight";
         const names = cleanRelations(c.setting(setting.key), setting.default);
+        const looks = relationLooks(c.setting(setting.key));
         for (const { from, to, label: label2, rel } of arrows3(w2, roomId)) {
           const a = all[from], b = all[to];
           if (!a || !b) continue;
@@ -13928,7 +14276,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const routed = route2 ? route2(c, a, b, from, to) : null;
           if (route2 && !routed) continue;
           const d = routed ? routed.d : path(arrow, line2), key = arrowKey(from, to);
-          const [drawn, hit] = line(d, { ends: ends(rel, c), cls: "room-arrow", hit: { cls: "room-arrow-hit", "data-arrow": key } });
+          const look = lookClass(looks[rel]);
+          const [drawn, hit] = line(d, { ends: ends(rel, c), cls: `room-arrow${look ? ` ${look}` : ""}`, hit: { cls: "room-arrow-hit", "data-arrow": key } });
           layer2.append(drawn, hit);
           const mid = routed ? routed.spot : labelSpot(arrow, line2);
           if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
@@ -13950,13 +14299,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               spot5 = labelSpot(arrow, line2, { prefer, t: fan ? 0.7 : 0.5 });
             }
             nodes2.push(el16("div", {
-              class: `room-arrow-label side-${spot5.side}`,
+              class: `room-arrow-label side-${spot5.side}${look.includes("rel-colour") ? ` ${look}` : ""}`,
               "data-group": to,
               "data-arrow": key,
               title: `${[rel, label2].filter(Boolean).join(" ")} (double-click to edit)`,
               style: `left:${Math.round(spot5.x)}px;top:${Math.round(spot5.y)}px`
             }, shown2 ? el16("span", { class: "room-arrow-rel" }, label2 ? `${shown2} ` : shown2) : null, label2 ? maths(label2) : null));
           }
+        }
+        if (c.setting("legend")) {
+          const l2 = legend(c, all, names, looks);
+          if (l2) nodes2.push(l2);
         }
         return nodes2;
       },
@@ -13999,7 +14352,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/ontologies/russell.js
   var ID = "russell";
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
-  var LINES = ["straight", "curved"];
+  var LINES2 = ["straight", "curved"];
   var chapters = (w2, roomId) => groupsIn(w2, roomId, ID).filter((g2) => !g2.loose && members(w2, g2.id).length && !groupOf(w2, g2.id, ID));
   var isChapter = (w2, roomId, id) => {
     const g2 = w2.things[id];
@@ -14009,6 +14362,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var {
     relations,
     renameRelations,
+    retag,
+    uses,
     arrowsInto,
     parentsOf,
     childrenOf,
@@ -14278,7 +14633,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     groups: { form: "chapter", name: "Chapter", membership: "one", order: "kept" },
     settings: [
       { key: "line", label: "Arrows", type: "choice", options: [["straight", "Straight"], ["curved", "Curved"]], default: "straight" },
-      RELATIONS
+      { ...RELATIONS, uses: (c, name5) => uses(c.world, c.roomId, name5), retag: (c, from, to) => retag(c.world, c.roomId, from, to) },
+      { key: "legend", label: "Legend on the canvas", type: "switch", default: false }
     ],
     // A relation renamed in the room's list is renamed on its arrows.
     settingChanged(w2, roomId, key, before, after) {
@@ -20326,11 +20682,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var RELATIONS2 = {
     key: "relations",
     label: "Relations",
-    type: "list",
+    type: "relations",
     default: DEFAULT_RELATIONS,
+    ends: true,
+    none: "none",
     clean: (v2) => cleanRelationList2(v2, DEFAULT_RELATIONS),
     text: (v2) => listText2(v2),
-    note: "Any words or signs. End one with -> for an arrow, <-> for both ways, or -- (or nothing) for a plain line. A new link gets the first."
+    note: "A new link gets the first. Ends: a plain line, an arrow, or both ways.",
+    uses: (c, name5) => links().uses(c.world, c.roomId, name5),
+    retag: (c, from, to) => links().retag(c.world, c.roomId, from, to)
   };
   var endsOf = (list2, rel) => relationEnds2(list2, "none")[rel] || "none";
   var ownGroup = (w2, id) => {
@@ -20617,6 +20977,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settings: [
       RELATIONS2,
       { key: "tension", label: "Line tension", min: 0, max: 1, default: 0.5 },
+      { key: "legend", label: "Legend on the canvas", type: "switch", default: false },
       {
         key: "reach",
         label: "Centre shows",
@@ -21306,6 +21667,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var across2;
   var placeName2;
   var moveTargets2;
+  var relationsRow2;
   function bind5(lib) {
     ({
       room: room5,
@@ -21353,6 +21715,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
     ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
+    ({ relationsRow: relationsRow2 } = lib.relationsview);
   }
 
   // dist/web/features/room/document.js
@@ -21674,11 +22037,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const st = this.settingsOf(ont).find((x) => x.key === key);
       return st ? roomSetting3(this.world, this.roomId, ont.id, st, this.ontPrefs) : void 0;
     }
-    // One setting as a row: a slider, an on/off switch (type: 'switch'), a row of words to pick
+    // One setting as a row: the relations editor (type: 'relations'), a slider, an on/off switch (type: 'switch'), a row of words to pick
     // one from (type: 'choice', options [[value, word]]), or a list of words written with commas
     // (type: 'list'; word: what each must match, or clean(v): its own reading of what was written, and
     // text(list): its own way of writing it back; note: a line under it).
     settingRow(st, value, onChange) {
+      if (st.type === "relations") return relationsRow2(st, { el: el15, value, onChange, c: this.roomId ? this : null, toast: (t) => this.toast(t) });
       if (st.type === "list") {
         const plain2 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
         const words = st.clean || plain2;
