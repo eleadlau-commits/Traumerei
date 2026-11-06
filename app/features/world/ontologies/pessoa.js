@@ -67,7 +67,7 @@ const traum = {
         for (const v of l.values) {
           const id = c.thing(v, l.line);
           if (id && l.key === 'on canvas' && !placed.has(id)) delete own(w, roomId, 'pessoa')[id]; // back on the spiral
-          else if (id && l.key === 'tray' && !isGroup(w.things[id]) && !placed.has(id)) { delete own(w, roomId, 'pessoa')[id]; wait(w, roomId, id); }
+          else if (id && l.key === 'tray' && !isGroup(w.things[id]) && !placed.has(id)) { delete own(w, roomId, 'pessoa')[id]; wait(w, roomId, id, 'pessoa'); }
         }
       } else c.keep(l);
     }
@@ -87,9 +87,9 @@ export default {
   // New thoughts added away from the canvas, and other modes' groups not placed yet.
   tray: (w, roomId) => [...waitingThoughts(w, roomId), ...trayForeign(w, roomId, 'pessoa')].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
   placed: (w, roomId, id) => (isGroup(w.things[id]) ? !!spot(w, roomId, 'pessoa', id) : !waiting(w, roomId, 'pessoa', id)),
-  // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
-  // plain thought can't go.
-  unplace: (w, roomId, id) => unplace(w, roomId, 'pessoa', id, { leaves: false }),
+  // Thrown back: another mode's group loses its spot; a thought loses its place and waits in the
+  // tray until it is dragged out again.
+  unplace: (w, roomId, id) => unplace(w, roomId, 'pessoa', id, { lays: true }),
 
   // Where it was dragged to, or its place on the spiral.
   point(w, roomId, id) {

@@ -31,9 +31,9 @@ seen through Proust is then seen through Pessoa.
   link). Enter keeps it, and the next thought goes just below it (or the nearest clear place),
   linked on from it. **Ctrl+Enter** starts a new cluster; the thoughts written on with Enter join
   it, each linked to the one before.
-- **Throw back** (Ctrl+Shift+Backspace) sends a cluster, or another mode's group, back to the
-  tray, and every link touching it (or anything in it) goes; Ctrl+Z brings them back. A thought
-  can't go back: Proust places every thought itself.
+- **Throw back** (Ctrl+Shift+Backspace) sends a cluster, another mode's group, or a single
+  thought back to the tray, and every link touching it (or anything in it) goes; Ctrl+Z brings
+  them back. A thought leaves its cluster and waits in the tray until it is dragged out again.
 - Links are Proust's own: no other mode shows them. Proust sees the same objects as Pessoa:
   every thought not in another mode's group, and each such group once.
 
