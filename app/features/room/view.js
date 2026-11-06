@@ -99,7 +99,11 @@ export class RoomView {
 
   // Shows a change straight away, in the open room.
   repaint() {
-    if (this.roomId) this.paintRoom();
+    if (!this.roomId) return;
+    const was = this.roomPage.style.getPropertyValue('--t-read');
+    this.paintRoom();
+    // Thought size changed: draw again and measure, so every layout stays tidy.
+    if (this.roomPage.style.getPropertyValue('--t-read') !== was) { this.drawWorld(); this.clearSoon(); }
   }
 
   // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
@@ -126,6 +130,7 @@ export class RoomView {
             el('option', { value: 0, ...(p.peek < 0.5 ? { selected: '' } : {}) }, 'When hovered over'),
             el('option', { value: 1, ...(p.peek >= 0.5 ? { selected: '' } : {}) }, 'Always')))),
       fold('Inside a room',
+        slider('Thought size', 'size', 14, 28, 1),
         slider('Lightness', 'light', 0.05, 0.98),
         slider('Messy lightness', 'lightMessy', 0.05, 0.98),
         // Each ontology's own settings (Joyce: its line's tension): the global ones, which a new
@@ -152,6 +157,9 @@ export class RoomView {
     }
     this.roomPage.classList.toggle('dark', look.dark);
     document.documentElement.classList.toggle('room-dark', look.dark);
+    // Settings → Rooms → Thought size: every thought's text (base.css's --t-read, 19px by default).
+    const size = Math.min(32, Math.max(12, +this.prefs.size || 19));
+    this.roomPage.style.setProperty('--t-read', `${size}px`);
     this.frame?.update(this, { ink: look.ink }); // the frame's words take the room's ink
     return look;
   }
