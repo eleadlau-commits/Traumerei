@@ -61,6 +61,7 @@ export default class Rooms extends Feature {
     this.time = this.use('time');         // the Time dock (the time feature), or null: grid.js tells it when the page is drawn
     this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
     // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
+    this.on('frame:home', () => this.home()); // the wordmark beside ☰: home, from a room or the rooms page
     this.on('frame:rail', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); }); // the rail narrowed or widened
     this.on('docks:resized', ({ side }) => { if (side === 'right' && !this.inRoom && !this.root.hidden) this.drawRooms(); });
     this.build();
@@ -149,6 +150,16 @@ export default class Rooms extends Feature {
     this.frame?.show(this, { search: () => { if (this.lights != null) this.closeLights(); else this.openLights(); },
       back: () => this.back(), backLabel: 'Back to the home page' });
     this.backdrop?.cover?.(true);
+  }
+
+  // Home (the frame's wordmark): out of a room, then as Back from the rooms page would (with the
+  // comment for next time, if rooms changed).
+  home() {
+    if (this.root.hidden || this.away) return;
+    if (this.inRoom) this.showRooms();
+    this.tagLight = null;
+    if (this.edited?.size && !this.leaving) { if (this.shelf) this.toggleShelf(); this.askNote(); }
+    else this.close();
   }
 
   close() {
