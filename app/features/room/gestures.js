@@ -7,6 +7,7 @@ import {
   trainThoughts, rooms,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
+import * as verbs from './verbs.js';
 
 export class Gestures {
   onDown(e) {
@@ -152,6 +153,7 @@ export class Gestures {
     if (g.kind === 'box') { this.endBox(g); return; }
     if (g.kind === 'group') {
       if (!g.moved) { this.sel = null; this.drawWorld(); return; }
+      if (g.last && this.overTray(g.last.x, g.last.y) && verbs.throwBack(this, null, Object.keys(g.from))) return;
       this.drawWorld();
       this.save();
       return;
@@ -183,6 +185,8 @@ export class Gestures {
       this.drawWorld();
       return;
     }
+    // Let go over the loose tray: it is thrown back (verbs.js).
+    if (g.thing && g.last && this.overTray(g.last.x, g.last.y) && verbs.throwBack(this, null, [g.thing.id])) return;
     // Let go over a Twin's other side: it goes across (twin.js).
     if (g.thing && g.last && this.dropAcross(g.thing.id, g.last.x, g.last.y)) return;
     if (g.thing?.live) { this.drawWorld(); this.save(); return; }
@@ -192,6 +196,13 @@ export class Gestures {
     }
     this.drawWorld(); // where the ontology put it (or back where it was, when it took nothing)
     this.save();
+  }
+
+  // Whether a point on the screen is over the loose tray (the left dock's list, or the row at the
+  // foot of the room).
+  overTray(x, y) {
+    const at = document.elementFromPoint(x, y);
+    return !!at?.closest?.('.room-loose, .room-tray-row, .room-tray-btn');
   }
 
   // What a drag moves on the screen, with where each piece started: the one thought, or every piece
@@ -206,7 +217,7 @@ export class Gestures {
 
   // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
   // A plain Backspace never does: it is for letters.
-  deletes(e) { return e.key === 'Delete' || (MAC && e.metaKey && e.key === 'Backspace'); }
+  deletes(e) { return e.key === 'Delete' || (MAC && e.metaKey && !e.shiftKey && e.key === 'Backspace'); }
 
   // Returns true when the key was one of these, and was used.
   shortcut(e, mod) {

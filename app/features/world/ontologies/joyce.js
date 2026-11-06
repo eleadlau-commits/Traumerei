@@ -12,7 +12,7 @@
 // where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
 import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
-import { placedForeign, trayForeign, spot, putAt, place, inForeign } from '../groups.js';
+import { placedForeign, trayForeign, spot, putAt, place, inForeign, unplace } from '../groups.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
@@ -291,6 +291,8 @@ const joyce = {
       ...trayForeign(w, roomId, 'joyce'),
     ].filter((th) => !inside(th.id)).sort(byTime);
   },
+  // Thrown back: a thought leaves its train, a train waits in the tray, another mode's group loses its spot.
+  unplace: (w, roomId, id) => unplace(w, roomId, 'joyce', id),
   placed(w, roomId, id) {
     const th = w.things[id];
     if (isGroup(th)) return th.of === 'joyce' ? !th.loose : !!spot(w, roomId, 'joyce', id);

@@ -17,6 +17,9 @@
 //                         dragged out of it onto the canvas goes to drop()
 //   placed(w, room, id)   (optional) whether it has laid a thought out yet; without it, every
 //                         thought counts as laid out
+//   unplace(w, room, id)  (optional) throw back (Ctrl+Shift+Backspace): takes a thing it placed
+//                         back into its tray; true when it went (groups.js: unplace does it for
+//                         most). Without it, nothing can be thrown back
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
@@ -92,7 +95,7 @@ export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -127,6 +130,22 @@ export function gather(extra = [], warn = () => {}) {
 export const forRooms = (all) => all.filter((o) => !o.roomsPage);
 // The rooms page's own ontology (Borges), or null when there is none.
 export const forPage = (all) => all.find((o) => o.roomsPage) || null;
+
+// ---- Ctrl+Shift+Backspace: throwing things back into the tray ----
+
+// Ontology `o` takes the chosen things back into its tray (its unplace()), leaving out what a
+// chosen group already holds. Each one that went is stamped `looseAt = now`, so the tray (newest
+// first) shows it at the top. Returns how many went.
+export function throwBack(o, w, roomId, ids, now = Date.now()) {
+  if (!o?.unplace || shut(w, roomId)) return 0;
+  const chosen = [...new Set(ids)].filter((id) => w.things[id]);
+  let n = 0;
+  for (const id of chosen) {
+    if (chosen.some((other) => other !== id && holds(w, other, id))) continue;
+    if (o.unplace(w, roomId, id)) { w.things[id].looseAt = now; n++; }
+  }
+  return n;
+}
 
 // ---- Ctrl+G and Ctrl+Shift+G: grouping what is chosen, each ontology by its own rule ----
 

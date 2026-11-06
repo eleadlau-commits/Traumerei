@@ -3,7 +3,7 @@
 // train, a chapter) is one thought here, in the tray until it is dragged onto the canvas. Its own data: where each thought was dragged to.
 
 import { roomUnits, own, shut, hash, isGroup } from '../model.js';
-import { placedForeign, trayForeign, spot } from '../groups.js';
+import { placedForeign, trayForeign, spot, unplace } from '../groups.js';
 
 // The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
 // length, nudged a little by its id so it doesn't look ruled.
@@ -72,6 +72,9 @@ export default {
   units: (w, roomId) => [...roomUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
   tray: (w, roomId) => trayForeign(w, roomId, 'pessoa'),
   placed: (w, roomId, id) => !isGroup(w.things[id]) || !!spot(w, roomId, 'pessoa', id),
+  // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
+  // plain thought can't go.
+  unplace: (w, roomId, id) => unplace(w, roomId, 'pessoa', id, { leaves: false }),
 
   // Where it was dragged to, or its place on the spiral.
   point(w, roomId, id) {

@@ -16,7 +16,7 @@
 // Thoughts stay shared with every other mode.
 
 import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, setRoomSetting } from '../model.js';
-import { trayForeign, place, inForeign } from '../groups.js';
+import { trayForeign, place, inForeign, unplace } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
@@ -534,6 +534,9 @@ const russell = {
       ...trayForeign(w, roomId, ID).filter((g) => !groupOf(w, g.id, ID)),
     ].filter((th) => !inside(th.id)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   },
+  // Thrown back: a thought or another mode's group leaves its chapters; a chapter waits in the
+  // tray with its thoughts (its arrows are kept, and come back when it is dragged out again).
+  unplace: (w, roomId, id) => unplace(w, roomId, ID, id),
   placed(w, roomId, id) {
     const th = w.things[id];
     return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w, id, ID);

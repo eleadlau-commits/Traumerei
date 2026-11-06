@@ -185,8 +185,12 @@ export class Bars {
       out.push(sec(this.ont.name || 'Mode', ...own,
         moves.length ? el('div', { class: 'box-btns room-moves' }, ...moves.map((m) => btn(m.label, () => this.runMove(m)))) : null));
     }
-    // Actions: only Delete. Duplicate, Move, Open/Close and Fold are keys alone (the ? list).
+    // Actions: Throw back (when this mode has placed it) and Delete. Duplicate, Move, Open/Close and
+    // Fold are keys alone (the ? list).
+    let canThrow = false;
+    try { canThrow = !!this.ont.unplace && !!this.ont.tray && (!this.ont.placed || this.ont.placed(this.world, this.roomId, th.id)); } catch { canThrow = false; }
     out.push(sec('Actions', el('div', { class: 'box-btns' },
+      canThrow ? btn('Throw back', () => { if (verbs.throwBack(this, null, [th.id])) done(); }, 'room.throw-back') : null,
       btn('Delete', () => {
         remove(this.world, th.id);
         this.sel = null;
