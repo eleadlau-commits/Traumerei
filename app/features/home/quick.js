@@ -1,21 +1,22 @@
-// Part of the home feature: the quick-thought line under Create. Faint words, "A quick thought…",
+// Part of the home feature: the quick-thought line under Create. Faint words, "Note down a messy
+// thought…",
 // and nothing else: no box, no buttons. It is a plain text field underneath, so every ordinary
 // text key works (arrows, selection, Backspace, Ctrl+Z, copy and paste).
 //
 // - Typing anywhere on Home (no field chosen, no pop-up open) starts writing here.
 // - Enter drops the thought (`drop(text)`, true when it went): the words fade, and the line is
 //   empty and ready again. Ctrl+Enter (Cmd+Enter) puts a new line in; the line grows to hold it.
-// - Escape lets go of the line, keeping its words. Ctrl+K still searches.
+// - Escape lets go of the line, keeping its words.
 //
-// quickLine({ drop(text) → bool, search?(), live() → whether Home shows }) → { el, focus() }
+// quickLine({ drop(text) → bool, live() → whether Home shows }) → { el, focus() }
 
 import { ui } from 'folio';
 
 const { el } = ui;
 const FADE_MS = 420;
 
-export function quickLine({ drop, search, live }) {
-  const field = el('textarea', { class: 'home-quick', rows: 1, spellcheck: 'true', placeholder: 'A quick thought…',
+export function quickLine({ drop, live }) {
+  const field = el('textarea', { class: 'home-quick', rows: 1, spellcheck: 'true', placeholder: 'Note down a messy thought…',
     'aria-label': 'A quick thought, dropped in Messy thoughts', 'data-hint': 'Enter drops it in Messy thoughts · Ctrl+Enter new line' });
 
   const fit = () => { field.style.height = 'auto'; field.style.height = `${field.scrollHeight}px`; };
@@ -32,8 +33,7 @@ export function quickLine({ drop, search, live }) {
       setTimeout(() => { field.value = ''; fit(); field.classList.remove('dropping'); }, FADE_MS);
       return;
     }
-    if (e.key === 'Escape') { e.preventDefault(); field.blur(); return; }
-    if (mod && !e.altKey && e.key.toLowerCase() === 'k' && search) { e.preventDefault(); field.blur(); search(); }
+    if (e.key === 'Escape') { e.preventDefault(); field.blur(); }
   });
 
   // A letter typed anywhere on Home lands here: the line takes the focus before the key does.

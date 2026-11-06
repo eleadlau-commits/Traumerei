@@ -1,6 +1,6 @@
 {
   "name": "Home",
-  "description": "The home page over the picture, in the frame: a rail with Start and Recent rooms, the name in the middle, then Create. Its typeface is a setting.",
+  "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.",
   "version": "1.0.0",
   "main": "Home.js",
   "styles": [
@@ -9,8 +9,6 @@
   "uses": [
     "rooms",
     "world",
-    "frame",
-    "search",
-    "keys"
+    "frame"
   ]
 }

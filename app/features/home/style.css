@@ -1,8 +1,8 @@
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
    with "home-". The menu, Settings, Account and About take Folio's veil as they are. */
 
-/* The page over the picture, in the frame: the rail on the left (Folio's .rail), and the name in
-   the middle of what it leaves, a little above centre. Only the words and the rail take clicks, so
+/* The page over the picture, in the frame, with no rail: the name in the middle, a little above
+   centre. Only the words take clicks, so
    the picture underneath still can (e.g. moving the anchor). */
 .home {
   position: fixed;
@@ -10,12 +10,11 @@
   z-index: 2;
   pointer-events: none;
 }
-.home-rail { pointer-events: auto; }
 .home-centre {
   position: absolute;
   top: var(--bar);
   bottom: var(--status, 0px);
-  left: var(--rail);
+  left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
