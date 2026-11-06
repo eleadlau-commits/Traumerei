@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Makes standalone/mask-renderer.html: the whole page in one file that opens with a double-click
+"""Makes standalone/traumerei.html: the whole page in one file that opens with a double-click
 (from file://, no server). Run `python standalone.py` after changing anything in app/.
 
 It compiles the app with Folio (python build.py), then bundles the framework and the feature into
@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / 'dist' / 'web'
-OUT = ROOT / 'standalone' / 'mask-renderer.html'
+OUT = ROOT / 'standalone' / 'traumerei.html'
 
 
 def main():

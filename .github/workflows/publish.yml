@@ -1,4 +1,4 @@
-# Rebuilds the live copy (standalone/mask-renderer.html) after every merge to main and commits it,
+# Rebuilds the live copy (standalone/traumerei.html) after every merge to main and commits it,
 # so GitHub Pages (served from main) shows the new version a minute later.
 # Pull requests never need to touch that file.
 name: Publish live copy
@@ -35,7 +35,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898599+github-actions[bot]@users.noreply.github.com"
-          git add standalone/mask-renderer.html
+          git add standalone/traumerei.html
           if git diff --cached --quiet; then
             echo "The live copy is already up to date."
             exit 0
