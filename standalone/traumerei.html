@@ -12744,12 +12744,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var placedForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => spot2(w2, roomId, of, g2.id));
   var trayForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => !spot2(w2, roomId, of, g2.id));
   var WAITS = "tray";
-  function wait(w2, roomId, id) {
+  function wait(w2, roomId, id, of = null) {
     if (shut(w2, roomId) || w2.things[id]?.parent !== roomId) return false;
-    own(w2, roomId, WAITS)[id] = true;
+    const marks = own(w2, roomId, WAITS);
+    if (!of) marks[id] = true;
+    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of]: true };
     return true;
   }
-  var waiting = (w2, roomId, of, id) => !!own(w2, roomId, WAITS, false)[id] && !spot2(w2, roomId, of, id);
+  var waiting = (w2, roomId, of, id) => {
+    const m2 = own(w2, roomId, WAITS, false)[id];
+    return !!(m2 === true || m2?.[of]) && !spot2(w2, roomId, of, id);
+  };
   var isLoose = (g2) => isGroup(g2) && !!g2.loose;
   function place(w2, id) {
     const g2 = w2.things[id];
@@ -12757,14 +12762,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete g2.loose;
     return true;
   }
-  function unplace(w2, roomId, of, id, { leaves = true } = {}) {
+  function unplace(w2, roomId, of, id, { lays = false } = {}) {
     const th = w2.things[id];
     if (!th || th.parent !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
     if (inForeign(w2, roomId, of)(id)) return false;
     const mine = isGroup(th) && th.of === of;
     const theirs = isGroup(th) && !mine;
-    if (!mine && !theirs && !leaves) return false;
     const holders2 = groupsOf(w2, id, of);
+    if (!mine && !theirs && lays) {
+      if (waiting(w2, roomId, of, id)) return false;
+      for (const g2 of holders2) leave(w2, g2.id, id);
+      delete own(w2, roomId, of)[id];
+      return wait(w2, roomId, id, of);
+    }
     const spotted = theirs && !!spot2(w2, roomId, of, id);
     if (!holders2.length && !spotted && !(mine && !th.loose)) return false;
     for (const g2 of holders2) leave(w2, g2.id, id);
@@ -13696,7 +13706,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (id && l2.key === "on canvas" && !placed.has(id)) delete own(w2, roomId, "pessoa")[id];
             else if (id && l2.key === "tray" && !isGroup(w2.things[id]) && !placed.has(id)) {
               delete own(w2, roomId, "pessoa")[id];
-              wait(w2, roomId, id);
+              wait(w2, roomId, id, "pessoa");
             }
           }
         } else c.keep(l2);
@@ -13717,9 +13727,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // New thoughts added away from the canvas, and other modes' groups not placed yet.
     tray: (w2, roomId) => [...waitingThoughts(w2, roomId), ...trayForeign(w2, roomId, "pessoa")].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
     placed: (w2, roomId, id) => isGroup(w2.things[id]) ? !!spot2(w2, roomId, "pessoa", id) : !waiting(w2, roomId, "pessoa", id),
-    // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
-    // plain thought can't go.
-    unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { leaves: false }),
+    // Thrown back: another mode's group loses its spot; a thought loses its place and waits in the
+    // tray until it is dragged out again.
+    unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { lays: true }),
     // Where it was dragged to, or its place on the spiral.
     point(w2, roomId, id) {
       const placed = own(w2, roomId, "pessoa", false)[id];
@@ -21546,7 +21556,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             else if (isGroup3(th) && !placed.has(id)) delete own3(w2, roomId, ID2)[id];
             else if (isLeaf3(th) && !placed.has(id)) {
               delete own3(w2, roomId, ID2)[id];
-              wait2(w2, roomId, id);
+              wait2(w2, roomId, id, ID2);
             }
           }
         } else if (l2.key === "link") {
@@ -21618,13 +21628,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (isGroup3(th) && th.of !== ID2) return !!spot4(w2, roomId, ID2, id);
       return shownAs(w2, id) !== "tray";
     },
-    // Thrown back: a cluster waits in the tray, another mode's group loses its spot, and every link
-    // touching it (or anything in it) goes; Ctrl+Z brings them back. A thought can't go: Proust
-    // places every thought itself.
+    // Thrown back: a cluster waits in the tray, another mode's group loses its spot, a thought leaves
+    // its cluster and waits in the tray (until dragged out again), and every link touching it (or
+    // anything in it) goes; Ctrl+Z brings them back.
     unplace(w2, roomId, id) {
       const th = w2.things[id];
-      if (!isGroup3(th) || !unplace2(w2, roomId, ID2, id, { leaves: false })) return false;
-      cut(w2, roomId, [id, ...within3(w2, id).map((m2) => m2.id)]);
+      if (!(isGroup3(th) || isLeaf3(th)) || !unplace2(w2, roomId, ID2, id, { lays: true })) return false;
+      cut(w2, roomId, [id, ...isGroup3(th) ? within3(w2, id).map((m2) => m2.id) : []]);
       return true;
     },
     point,
@@ -23753,8 +23763,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const n = throwBack2(c.ont, c.world, c.roomId, ids);
     if (!n) {
-      const one2 = c.ont.groups?.name.toLowerCase();
-      c.toast(!c.ont.lays ? "Already loose, or it can't go alone." : `${c.ont.name} places every thought itself: only ${one2 ? `a ${one2} or ` : ""}another mode's group can go back.`);
+      c.toast("Already in the loose tray, or it can't go alone (another mode's group stands for it).");
       return 0;
     }
     c.sel = null;
