@@ -342,7 +342,7 @@ const traum = {
             else if (isGroup(th) && th.of === ID) place(w, id);
           } else if (isGroup(th) && th.of === ID) th.loose = true;
           else if (isGroup(th) && !placed.has(id)) delete own(w, roomId, ID)[id];
-          else if (isLeaf(th) && !placed.has(id)) { delete own(w, roomId, ID)[id]; wait(w, roomId, id); }
+          else if (isLeaf(th) && !placed.has(id)) { delete own(w, roomId, ID)[id]; wait(w, roomId, id, ID); }
         }
       } else if (l.key === 'link') {
         const a = c.link(l);
@@ -410,13 +410,13 @@ export const proust = {
     if (isGroup(th) && th.of !== ID) return !!spot(w, roomId, ID, id);
     return shownAs(w, id) !== 'tray';
   },
-  // Thrown back: a cluster waits in the tray, another mode's group loses its spot, and every link
-  // touching it (or anything in it) goes; Ctrl+Z brings them back. A thought can't go: Proust
-  // places every thought itself.
+  // Thrown back: a cluster waits in the tray, another mode's group loses its spot, a thought leaves
+  // its cluster and waits in the tray (until dragged out again), and every link touching it (or
+  // anything in it) goes; Ctrl+Z brings them back.
   unplace(w, roomId, id) {
     const th = w.things[id];
-    if (!isGroup(th) || !unplace(w, roomId, ID, id, { leaves: false })) return false;
-    cut(w, roomId, [id, ...within(w, id).map((m) => m.id)]);
+    if (!(isGroup(th) || isLeaf(th)) || !unplace(w, roomId, ID, id, { lays: true })) return false;
+    cut(w, roomId, [id, ...(isGroup(th) ? within(w, id).map((m) => m.id) : [])]);
     return true;
   },
 
