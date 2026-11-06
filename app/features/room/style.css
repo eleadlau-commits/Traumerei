@@ -299,6 +299,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; max-width: 260px; }
+.room-tray-ghost-count { position: absolute; top: -8px; right: -8px; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 9px; background: var(--ink); color: var(--paper, #fff); }
 /* The tray lit while something is held over it (st-drop): drawn just inside, so the dock doesn't
    clip it (the loose list keeps a little room round it for that). */
 .room-loose.st-drop, .room-tray-row.st-drop { outline-offset: -2px; }

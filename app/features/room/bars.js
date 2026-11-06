@@ -8,6 +8,7 @@ import {
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
+import { nearSpot } from './clear.js';
 import * as verbs from './verbs.js';
 
 export class Bars {
@@ -393,8 +394,44 @@ export class Bars {
     return th;
   }
 
+  // The tray cards chosen together with `id` (Ctrl+click or Shift+click), when it is one of
+  // several chosen there; else just `id`.
+  trayGroup(id) {
+    const ids = this.sel?.kind === 'many' ? this.sel.ids || [] : [];
+    if (!ids.includes(id)) return [id];
+    const inTray = new Set(this.trayItems().map((th) => th.id));
+    const out = ids.filter((x) => inTray.has(x));
+    return out.length > 1 ? out : [id];
+  }
+
+  // Several tray cards let go over the canvas at once: each placed as its own thought or group,
+  // centred around the pointer (at: world units) and nudged clear of what is there and of each
+  // other (clear.js nearSpot), in the order they were chosen. One step.
+  placeMany(ids, at) {
+    const SIZE = { w: 300, h: 60 }, GAP_X = 30, GAP_Y = 24;
+    const cols = Math.ceil(Math.sqrt(ids.length));
+    const rows = Math.ceil(ids.length / cols);
+    const left = at.x - (cols * SIZE.w + (cols - 1) * GAP_X) / 2;
+    const top = at.y - (rows * SIZE.h + (rows - 1) * GAP_Y) / 2;
+    const taken = [...this.drawnRects().values()];
+    let n = 0;
+    ids.forEach((id, i) => {
+      if (!this.world.things[id] || !this.fromOtherSide(id)) return;
+      const want = { x: left + (i % cols) * (SIZE.w + GAP_X), y: top + Math.floor(i / cols) * (SIZE.h + GAP_Y) };
+      const p = nearSpot(want, taken, SIZE, { gap: 12 });
+      taken.push({ ...p, ...SIZE });
+      this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
+      n++;
+    });
+    this.sel = null;
+    this.save();
+    this.drawWorld();
+    if (n > 1) this.toast(`Placed ${n} from the tray. Ctrl+Z undoes.`);
+  }
+
   // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
-  // canvas, the ontology places it there.
+  // canvas, the ontology places it there. When several cards are chosen in the tray and this is
+  // one of them, they all go, around the pointer (placeMany).
   trayDrag(e, id) {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -410,6 +447,8 @@ export class Bars {
         ghost = card.cloneNode(true);
         ghost.classList.add('panel', 'room-tray-ghost');
         ghost.classList.remove('st-sel');
+        const many = this.trayGroup(id).length;
+        if (many > 1) ghost.append(el('span', { class: 'room-tray-ghost-count' }, `+${many - 1}`));
         Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
         (document.getElementById('folio-root') || document.body).append(ghost); // fixed to the window, wherever the room sits
       }
@@ -432,6 +471,8 @@ export class Bars {
         return;
       }
       if (there) { this.dropAcross(id, ev.clientX - off.x, ev.clientY - off.y); return; }
+      const all = this.trayGroup(id);
+      if (all.length > 1 && this.stage.contains(over)) { this.placeMany(all, this.toWorld(ev.clientX, ev.clientY)); return; }
       if (!this.stage.contains(over) || !this.fromOtherSide(id)) return;
       const p = this.toWorld(ev.clientX - off.x, ev.clientY - off.y);
       this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));

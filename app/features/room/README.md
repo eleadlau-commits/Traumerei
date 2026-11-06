@@ -110,7 +110,9 @@ It offers no service of its own.
   let go; Russell: into a chapter, like a thought). On the canvas a click chooses it and a right-click opens it
   (without docks, a tap opens it).
   Ctrl+click or Shift+click cards to choose several; Ctrl+G then makes a group of them that stays
-  in the tray until it is dragged out.
+  in the tray until it is dragged out. Dragging one of several chosen cards takes them all (the
+  card shows +N): let go over the canvas, each is placed as its own thought or group, centred
+  around the pointer and nudged clear of what is there and of each other (`placeMany`, one step).
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
   *A new room* (Ctrl+M). It lands in that room's loose tray in every mode (the world's
   `groups.moveLoose`), to be dragged out where it belongs. A thought moved on its own leaves its
