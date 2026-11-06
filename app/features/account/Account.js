@@ -1,4 +1,4 @@
-// Account: sign in with Google, and your settings follow you to every device.
+// Account: sign in with Google, and your rooms and settings follow you to every device.
 //
 // Fills the framework's 'account' slot, so the account button and the menu's Account row open
 // a small page to sign in or out. Signed in, every saved setting (every feature's, except the
@@ -180,7 +180,7 @@ export default class Account extends Feature {
     }
     if (!this.user) {
       this.page.setContent(
-        el('p', {}, 'Sign in to keep your settings on every device.'),
+        el('p', {}, 'Sign in to keep your rooms and settings on every device.'),
         this.state === 'error' && el('p', { class: 'account-error' }, "Couldn't sign in. Please try again."),
         el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signIn() },
           busy ? 'Signing in…' : 'Sign in with Google'));
@@ -188,8 +188,8 @@ export default class Account extends Feature {
     }
     const status = {
       busy: 'Saving…',
-      saved: 'Your settings are saved to your account.',
-      error: "Couldn't reach your account. Your settings are still saved on this device.",
+      saved: 'Your rooms and settings are saved to your account.',
+      error: "Couldn't reach your account. Your rooms and settings are still saved on this device.",
       idle: '',
     }[this.state];
     this.page.setContent(
@@ -198,7 +198,7 @@ export default class Account extends Feature {
         el('div', {}, el('b', {}, this.name()), this.user.email && el('small', {}, this.user.email))),
       status && el('p', { class: this.state === 'error' ? 'account-error' : 'hint' }, status),
       this.guarded && el('p', { class: 'hint' },
-        "The page had just reloaded with your account's settings, so instead of reloading again it sent this device's copy up."),
+        "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."),
       this.state === 'error' && el('button', { type: 'button', class: 'btn', onclick: () => (this.synced ? this.push() : this.pull()) }, 'Try again'),
       el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, 'Sign out'));
   }

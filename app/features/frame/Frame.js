@@ -78,7 +78,7 @@ export default class Frame extends Feature {
 
   build() {
     this.bar = el('div', { class: 'chrome-bar frame-bar' });
-    this.wordmark = el('div', { class: 'wordmark frame-wordmark', 'aria-hidden': 'true' }, 'Traumerei');
+    this.wordmark = el('div', { class: 'wordmark frame-wordmark', 'aria-hidden': 'true' }, 'Träumerei');
     this.crumbs = el('nav', { class: 'crumbs frame-crumbs', 'aria-label': 'Where you are' });
     this.searchBtn = el('button', { type: 'button', class: 'word find-btn frame-search', 'aria-keyshortcuts': MAC ? 'Meta+K' : 'Control+K',
       onclick: () => this.top()?.o.search?.() },

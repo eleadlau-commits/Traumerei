@@ -1,7 +1,7 @@
 {
   "id": "mask-renderer",
   "name": "Träumerei",
-  "description": "A faint monochrome of a picture, cut by a seeded opacity mask.",
+  "description": "Rooms for thinking: write your thoughts, arrange them in different ways, and finish what you start.",
   "version": "1.0.0",
   "lang": "en",
   "appearance": "light",
