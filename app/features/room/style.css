@@ -476,3 +476,5 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-arrow-legend { position: absolute; transform: translateY(-100%); display: grid; gap: 3px; padding: 6px 10px; white-space: nowrap; }
 .room-arrow-legend-row { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); }
 .room-arrow-legend svg { overflow: visible; }
+/* The × that takes an arrow or link away, beside its name in the Editor. */
+.room-arrow-x { --x-size: 18px; vertical-align: middle; margin-left: 2px; }

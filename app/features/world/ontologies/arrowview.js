@@ -24,9 +24,10 @@
 //                       never named beside its links, only the others are
 //
 // and returns { draw(c, layer), press(c, e), drag(c, e, from, p, shape?), props(c, th),
-// pick(c, now, pick, keys), edit(c, from, to), editing(c) }. drag's shape(q), when given, is the
+// pick(c, now, pick, keys), edit(c, from, to), remove(c, from, to), editing(c) }. drag's shape(q), when given, is the
 // line drawn while dragging, to the pointer at q (an SVG path); left out, it leaves p downwards.
-// edit(c, from, to) opens an arrow's edit box where it is, as a double-click does. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
+// edit(c, from, to) opens an arrow's edit box where it is, as a double-click does; remove(c, from,
+// to) takes an arrow away (one undo step), as the edit box's Remove and Delete and a pop-up row's × do. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
 
 import { setRoomSetting } from '../model.js';
 import { maths } from '../maths.js';
@@ -38,7 +39,7 @@ import { lookClass } from './relationsview.js';
 export const arrowKey = (from, to) => `${from}>${to}`;
 
 export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow', route = null, onNode = null, setting = RELATIONS, word = 'arrow', quiet = false }) {
-  const { arrows, arrowsInto, parentsOf, childrenOf, link, setLabel, setRelation } = net;
+  const { arrows, arrowsInto, parentsOf, childrenOf, link, unlink, setLabel, setRelation } = net;
   const box = ({ at, size }) => ({ x: at.x, y: at.y, w: size.w, h: size.h });
 
   // An arrow being edited where it is: { room, from, to, text, rel, fresh }. Drawn by draw(), so
@@ -62,6 +63,16 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
       c.save();
     }
     c.drawWorld();
+  }
+
+  // Takes an arrow away (Ctrl+Z brings it back: the save is one undo step).
+  function remove(c, from, to) {
+    if (editing && editing.room === c.roomId && editing.from === from && editing.to === to) editing = null;
+    if (c.locked || !unlink(c.world, c.roomId, from, to)) { c.drawWorld(); return false; }
+    c.save();
+    c.drawWorld();
+    c.toast(`${word[0].toUpperCase()}${word.slice(1)} removed. Ctrl+Z brings it back.`);
+    return true;
   }
 
   // A relation picker: the room's relations (and the arrow's own, if the list no longer has it),
@@ -102,13 +113,19 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     return wrap;
   }
 
-  // The box an arrow is edited in: its relation and its label.
+  // The box an arrow is edited in: its relation, its label and Remove. Delete takes the arrow
+  // away when it has nothing else to do: on the picker, or in the label with the caret at its end.
   function editBox(c, spot) {
     const e = editing;
     const keys = (ev) => {
       ev.stopPropagation();
       if (ev.key === 'Enter') { ev.preventDefault(); finishEdit(c, true); }
       else if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(c, false); }
+      else if (ev.key === 'Delete' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey) {
+        const t = ev.target;
+        const atEnd = t.tagName !== 'INPUT' || (t.selectionStart === t.selectionEnd && t.selectionEnd === t.value.length);
+        if (atEnd) { ev.preventDefault(); remove(c, e.from, e.to); }
+      }
     };
     const input = c.el('input', {
       class: 'room-edit-text', value: e.text, placeholder: 'the coordinates', spellcheck: 'false',
@@ -117,7 +134,9 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     const picker = pick(c, e.rel, (n) => { e.rel = n; input.focus(); }, keys);
     const out = c.el('div', {
       class: `panel room-arrow-edit side-${spot.side}`, style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
-    }, picker, input);
+    }, picker, input,
+    // Pressed through press() (the canvas holds the pointer).
+    c.el('button', { type: 'button', class: 'word room-arrow-remove', 'data-arrow-remove': '', title: `Take this ${word} away (Delete)` }, 'Remove'));
     requestAnimationFrame(() => {
       if (!out.isConnected || out.contains(document.activeElement)) return;
       input.focus();
@@ -190,6 +209,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     drag,
     nodeUnder,
     edit: startEdit,
+    remove,
 
     // Whether an arrow is being edited in this room.
     editing: (c) => !!editing && editing.room === c.roomId,
@@ -198,6 +218,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     // double-click on an arrow or its label edits it. True when the press was the arrows'.
     press(c, e) {
       if (editing && editing.room === c.roomId) {
+        if (e.target.closest?.('[data-arrow-remove]')) { e.preventDefault(); remove(c, editing.from, editing.to); return true; }
         if (e.target.closest?.('.room-arrow-edit')) return true;
         finishEdit(c, true);
       }
@@ -277,7 +298,10 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
         const from = name(c.world, p);
         const picker = pick(c, rel[p], (r) => { setRelation(c.world, c.roomId, p, th.id, r); c.save(); c.drawWorld(); });
         return c.el('label', { class: 'room-arrow-row' },
-          c.el('span', { class: 'pop-note' }, `From ${from}: `, picker),
+          c.el('span', { class: 'pop-note' }, `From ${from}: `, picker, c.locked ? null : c.el('button', {
+            type: 'button', class: 'close-x room-arrow-x', 'aria-label': `Remove the ${word} from ${from}`, title: `Remove this ${word} (Ctrl+Z brings it back)`,
+            onclick: (e) => { e.preventDefault(); e.currentTarget.blur(); remove(c, p, th.id); },
+          })),
           c.el('input', {
             class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `The label of the arrow from ${from}`,
             onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
