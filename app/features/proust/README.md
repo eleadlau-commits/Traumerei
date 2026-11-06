@@ -76,6 +76,13 @@ room has keeps its own ends, and a line that says otherwise is reported. Tests:
   *Pointed to by* (arrows in) and *Linked with* (plain lines and both ways, once a pair). Each name
   goes to that node and chooses it.
 
+**Relations** live in the room's ⚙, in the world's relations editor (`relationsview.js`), the same
+one Russell's arrows use: a row for each relation with its name, its ends (a plain line, an arrow,
+or both ways), its line (solid, dashed, dotted) and its colour; add, reorder (the first is what a
+new link gets) and delete (it asks what that relation's links become). *Legend on the canvas* shows
+each relation's line beside its name, over the web. In a .traum file each relation's look rides in
+`proust.relations` (`"calls up -> | dashed amber"`).
+
 **Centre** (Ctrl+Shift+C; `centre.js` is the layout, `draw.js` runs it; tests:
 `tests/centre.test.js`). What is chosen goes to the middle and every other node into rings round
 it by how many links away it is, counting links both ways, from the nearest chosen node (so

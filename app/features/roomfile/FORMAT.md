@@ -316,6 +316,13 @@ A chapter has any number of parents. A loop is refused and reported, and the oth
 still drawn. The room's list of relations is the setting `russell.relations`. The `arrow:` line
 belongs to the shared arrows part (`relations.js`); Proust reads it too.
 
+**A relation's look.** In the list, a relation may end with its look after a `|`: its line
+(`solid`, `dashed` or `dotted`) and its colour (`ink`, `amber`, `rust`, `moss`, `slate` or `plum`),
+in either order: `russell.relations: [forgets | rust, is a case of | dashed slate]`. Solid ink is
+the plain look and is left out. Proust's relations take a look the same way, after their ends:
+`calls up -> | dashed amber`. A word Träumerei doesn't know there is left out. That is why a
+relation's name can't hold a `|`.
+
 ### Ontology: proust
 
 Every thought free on the canvas, joined by named links that may run in loops, and gathered into
@@ -338,7 +345,8 @@ or `--`, is a plain line). Without the setting a room has `[related to, "leads t
 to <->"]`. A `link:` line writes its relation's ends too, so the file reads on its own: a relation
 the room doesn't have yet joins its list with the ends the line gives; one it has keeps its own
 ends, and a line that says otherwise is drawn the relation's way and reported. A link with no
-relation is a plain line.
+relation is a plain line. After its ends a relation may carry its look, as Russell's do:
+`"calls up -> | dashed amber"`.
 
 ```
 ---

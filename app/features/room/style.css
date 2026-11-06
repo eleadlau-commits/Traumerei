@@ -125,7 +125,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .room-line { fill: none; stroke: currentColor; stroke-width: 1; }
 .room-line-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
-.room-line-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
+.room-line-head { fill: none; stroke: currentColor; stroke: context-stroke; stroke-width: 1.4; opacity: .6; } /* a coloured line's head takes its colour */
 .room-knot { fill: currentColor; opacity: .45; }
 /* Joyce's strands. */
 .room-strand-line { opacity: .32; transition: opacity .3s; }
@@ -449,3 +449,27 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
    that day glow. Everything stays where it is now. */
 .room-world.room-past .room-later { opacity: .16; transition: opacity var(--quick); }
 .room-world.room-past .room-lit-day { box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 22%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+
+/* The relations editor (the world's relationsview.js) in a mode's ⚙: a row for each relation. */
+.room-rel-editor { grid-template-columns: 1fr; align-items: start; }
+.room-rel-list { display: grid; gap: 2px; }
+.room-rel-row { display: grid; grid-template-columns: 14px 36px minmax(0, 1fr) 18px; grid-template-areas: "grip sample name del" ". . look look"; align-items: center; gap: 2px 8px; padding: 4px; border-radius: 4px; }
+.room-rel-grip { grid-area: grip; }
+.room-rel-sample { grid-area: sample; }
+.room-rel-editor .room-rel-row input.room-rel-name { grid-area: name; min-width: 0; width: 100%; } /* not a settings row's full-width input */
+.room-rel-delete { grid-area: del; }
+.room-rel-look { grid-area: look; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.room-rel-look select { width: auto; min-width: 92px; }
+.room-rel-row:focus-visible { outline: var(--focus-ring); }
+.room-rel-row.room-rel-dragging { opacity: .4; }
+.room-rel-editor .room-rel-asking { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.room-rel-grip { cursor: grab; opacity: .35; font-size: 10px; letter-spacing: -2px; }
+.room-rel-sample { overflow: visible; }
+.room-rel-swatches { display: flex; gap: 5px; }
+.room-rel-delete { padding: 0 4px; opacity: .5; }
+.room-rel-delete:hover { opacity: 1; }
+.room-rel-add { margin-top: 4px; }
+/* A legend over a web of named lines: each relation's line beside its name. */
+.room-arrow-legend { position: absolute; transform: translateY(-100%); display: grid; gap: 3px; padding: 6px 10px; white-space: nowrap; }
+.room-arrow-legend-row { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); }
+.room-arrow-legend svg { overflow: visible; }

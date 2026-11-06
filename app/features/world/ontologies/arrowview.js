@@ -32,7 +32,8 @@ import { setRoomSetting } from '../model.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot } from './arrows.js';
 import * as lines from './lines.js';
-import { cleanRelations, relationShown, withRelation, relationName, RELATIONS } from './relations.js';
+import { cleanRelations, relationShown, withRelation, relationName, relationLooks, RELATIONS } from './relations.js';
+import { lookClass } from './relationsview.js';
 
 export const arrowKey = (from, to) => `${from}>${to}`;
 
@@ -91,7 +92,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
         if (ev.key !== 'Enter') return;
         ev.preventDefault();
         const n = relationName(field.value);
-        if (!n) { if (n === null) c.toast('A relation can\'t hold [[ or ]].'); back(); return; }
+        if (!n) { if (n === null) c.toast('A relation can\'t hold [[, ]] or |.'); back(); return; }
         const next = withRelation(c.setting(setting.key), n, setting.default);
         if (!c.locked && next.length !== names.length) { setRoomSetting(c.world, c.roomId, of, setting.key, next); c.save(); }
         chosen(cleanRelations(next, setting.default).find((x) => x.toLowerCase() === n.toLowerCase()));
@@ -170,6 +171,20 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     document.addEventListener('pointercancel', up);
   }
 
+  // The legend (the room's ⚙ Legend): each relation's line beside its name, over the top left
+  // of what is drawn, so it stays with the web.
+  function legend(c, all, names, looks) {
+    const bs = Object.values(all);
+    if (!bs.length) return null;
+    const x = Math.min(...bs.map((b) => b.at.x)), y = Math.min(...bs.map((b) => b.at.y)) - 30;
+    const rows = names.map((n) => {
+      const svg = lines.svg('svg', { width: 30, height: 10, viewBox: '0 0 30 10', 'aria-hidden': 'true' });
+      svg.append(lines.line('M2 5 L28 5', { ends: ends(n, c), cls: `room-arrow ${lookClass(looks[n])}` })[0]);
+      return c.el('div', { class: 'room-arrow-legend-row' }, svg, c.el('span', {}, n));
+    });
+    return c.el('div', { class: 'panel room-arrow-legend', style: `left:${Math.round(x)}px;top:${Math.round(y)}px` }, ...rows);
+  }
+
   return {
     pick,
     drag,
@@ -208,6 +223,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
       const nodes = [];
       const line = c.setting('line') || 'straight';
       const names = cleanRelations(c.setting(setting.key), setting.default);
+      const looks = relationLooks(c.setting(setting.key));
       for (const { from, to, label, rel } of arrows(w, roomId)) {
         const a = all[from], b = all[to];
         if (!a || !b) continue;
@@ -215,7 +231,8 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
         const routed = route ? route(c, a, b, from, to) : null;
         if (route && !routed) continue;
         const d = routed ? routed.d : arrowLine(arrow, line), key = arrowKey(from, to);
-        const [drawn, hit] = lines.line(d, { ends: ends(rel, c), cls: 'room-arrow', hit: { cls: 'room-arrow-hit', 'data-arrow': key } });
+        const look = lookClass(looks[rel]);
+        const [drawn, hit] = lines.line(d, { ends: ends(rel, c), cls: `room-arrow${look ? ` ${look}` : ''}`, hit: { cls: 'room-arrow-hit', 'data-arrow': key } });
         layer.append(drawn, hit);
         const mid = routed ? routed.spot : labelSpot(arrow, line);
         if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
@@ -243,11 +260,12 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
             spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
           }
           nodes.push(el('div', {
-            class: `room-arrow-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${[rel, label].filter(Boolean).join(' ')} (double-click to edit)`,
+            class: `room-arrow-label side-${spot.side}${look.includes('rel-colour') ? ` ${look}` : ''}`, 'data-group': to, 'data-arrow': key, title: `${[rel, label].filter(Boolean).join(' ')} (double-click to edit)`,
             style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
           }, shown ? el('span', { class: 'room-arrow-rel' }, label ? `${shown} ` : shown) : null, label ? maths(label) : null));
         }
       }
+      if (c.setting('legend')) { const l = legend(c, all, names, looks); if (l) nodes.push(l); }
       return nodes;
     },
 

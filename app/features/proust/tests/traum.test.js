@@ -221,3 +221,16 @@ test('the same text through the source editor changes nothing', () => {
     assert.equal(JSON.stringify(w), before);
   }
 });
+
+test('each relation\'s look rides in the front matter and comes back the same, for Proust and Russell', () => {
+  const text = [...head('[proust, russell]', [
+    'proust.relations: [related to, "calls up -> | dashed amber", "is the same as <-> | dotted"]',
+    'russell.relations: ["forgets | rust", "is a case of | dashed slate"]',
+  ]), '# Objects', '', '## ^1 line: the madeleine', '## ^2 line: Combray', '',
+  '# In proust', 'link: ^1 -> ^2 | calls up'].join('\n');
+  const { w, room: r, first, b } = roundTrip(text);
+  assert.deepEqual(w.settings[r.id].proust.relations, ['related to', 'calls up -> | dashed amber', 'is the same as <-> | dotted']);
+  assert.deepEqual(w.settings[r.id].russell.relations, ['forgets | rust', 'is a case of | dashed slate']);
+  assert.ok(first.includes('calls up -> | dashed amber') && first.includes('is a case of | dashed slate'), first);
+  assert.deepEqual(b.w.settings[b.room.id].proust.relations, w.settings[r.id].proust.relations);
+});

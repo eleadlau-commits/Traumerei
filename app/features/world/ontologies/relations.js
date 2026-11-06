@@ -32,10 +32,11 @@ import { own, roomSetting, shut } from '../model.js';
 // ---- Names ----
 
 // A relation's name: any words or signs on one line, spaces made single ('' for an unnamed arrow).
-// null if refused (it has [[ or ]] in it).
+// null if refused (it has [[ or ]] in it, which room Markdown uses, or |, which parts a .traum line
+// and a relation's look).
 export function relationName(x) {
   const t = String(x ?? '').replace(/\s+/g, ' ').trim();
-  return /\[\[|\]\]/.test(t) ? null : t;
+  return /\[\[|\]\]|\|/.test(t) ? null : t;
 }
 
 // A list written with commas ("forgets, is a case of, ⊂", or in [ ]), split into its names. A name
@@ -65,29 +66,49 @@ const MARKS = { '--': 'none', '->': 'arrow', '<->': 'both' };
 export const ENDS_MARK = { none: '--', arrow: '->', both: '<->' };
 const MARKED = /\s*(<->|->|--)\s*$/;
 
-// One entry of a list: { name, ends } (ends null when it has no mark).
+// ---- A relation's look ----
+// After its ends, an entry may say how its links are drawn, after a |: its line (solid, dashed or
+// dotted) and its colour, one of a few swatches whose colours live in Folio's base.css
+// (.rel-line-*, .rel-colour-*): "calls up -> | dashed amber". Solid and ink are the plain look, and
+// are left out.
+export const LINES = ['solid', 'dashed', 'dotted'];
+export const COLOURS = ['ink', 'amber', 'rust', 'moss', 'slate', 'plum'];
+
+// One entry of a list: { name, ends, line, colour } (ends null when it has no mark; line and colour
+// null when plain).
 export function relationEntry(x) {
   const s = String(x ?? '');
-  const m = s.match(MARKED);
-  return { name: relationName(m ? s.slice(0, m.index) : s), ends: m ? MARKS[m[1]] : null };
+  const bar = s.indexOf('|');
+  const head = bar < 0 ? s : s.slice(0, bar), look = bar < 0 ? [] : s.slice(bar + 1).trim().toLowerCase().split(/\s+/);
+  const m = head.match(MARKED);
+  const line = look.find((x) => LINES.includes(x) && x !== 'solid') || null;
+  const colour = look.find((x) => COLOURS.includes(x) && x !== 'ink') || null;
+  return { name: relationName(m ? head.slice(0, m.index) : head), ends: m ? MARKS[m[1]] : null, line, colour };
 }
 
-// A list of relations made tidy, each with its ends mark kept when it had one: "leads to ->".
-// Each name once (whatever its case), none empty. Never empty: `fallback` when nothing is left.
-export function cleanRelationList(v, fallback = RELATIONS.default) {
+// An entry written back: its name, its ends mark (when it has one, and `ends` is true), its look.
+export function entryText({ name, ends = null, line = null, colour = null }, withEnds = true) {
+  const look = [line !== 'solid' ? line : null, colour !== 'ink' ? colour : null].filter(Boolean);
+  return `${name}${withEnds && ends ? ` ${ENDS_MARK[ends]}` : ''}${look.length ? ` | ${look.join(' ')}` : ''}`;
+}
+
+// A list of relations made tidy, each with its ends mark and look kept when it had them ("leads
+// to -> | dashed"); withEnds false leaves the marks off (Russell's arrows are always arrows). Each
+// name once (whatever its case), none empty. Never empty: `fallback` when nothing is left.
+export function cleanRelationList(v, fallback = RELATIONS.default, withEnds = true) {
   const out = [], seen = new Set();
   for (const x of Array.isArray(v) ? v : splitList(v)) {
-    const { name, ends } = relationEntry(x);
-    if (!name || seen.has(name.toLowerCase())) continue;
-    seen.add(name.toLowerCase());
-    out.push(ends ? `${name} ${ENDS_MARK[ends]}` : name);
+    const e = relationEntry(x);
+    if (!e.name || seen.has(e.name.toLowerCase())) continue;
+    seen.add(e.name.toLowerCase());
+    out.push(entryText(e, withEnds));
   }
   return out.length ? out : [...fallback];
 }
 
 // A list of relations made tidy: from a list, or names with commas (splitList); each once
-// (whatever its case), none empty, ends marks left off. Never empty: "forgets" (or `fallback`)
-// when nothing is left.
+// (whatever its case), none empty, ends marks and looks left off. Never empty: "forgets" (or
+// `fallback`) when nothing is left.
 export function cleanRelations(v, fallback = RELATIONS.default) {
   return cleanRelationList(v, fallback).map((x) => relationEntry(x).name);
 }
@@ -100,10 +121,20 @@ export function relationEnds(v, none = 'arrow') {
   return out;
 }
 
+// Each relation's look in a room's list: { [name]: { line, colour } } (null for the plain one).
+export function relationLooks(v) {
+  const out = {};
+  for (const x of cleanRelationList(v)) { const { name, line, colour } = relationEntry(x); out[name] = { line, colour }; }
+  return out;
+}
+
 // The setting that holds a room's relations. clean: how a written list is read; text: how it is
 // written back (the room's ⚙ uses both).
+// type 'relations': the room's ⚙ shows it in the relations editor (relationsview.js), a row for
+// each with its name, its look and (ends: true) its ends.
 export const RELATIONS = {
-  key: 'relations', label: 'Relations', type: 'list', default: ['forgets'], clean: cleanRelations, text: listText,
+  key: 'relations', label: 'Relations', type: 'relations', default: ['forgets'], ends: false,
+  clean: (v) => cleanRelationList(v, ['forgets'], false), text: listText,
   note: 'Any words or signs. A new arrow gets the first.',
 };
 
@@ -135,14 +166,27 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   function renameRelations(w, roomId, before, after) {
     const a = cleanRelations(before, setting.default), b = cleanRelations(after, setting.default);
     if (a.length !== b.length) return 0;
-    const map = new Map(a.map((x, i) => [x, b[i]]).filter(([x, y]) => x !== y));
-    if (!map.size) return 0;
+    // Only a name that went, where a new one came, in the same place: a list put in another order
+    // renames nothing.
+    const low = (list) => new Set(list.map((x) => x.toLowerCase()));
+    const had = low(a), has = low(b);
+    const map = new Map(a.map((x, i) => [x, b[i]]).filter(([x, y]) => x !== y && !has.has(x.toLowerCase()) && !had.has(y.toLowerCase())));
+    let n = 0;
+    for (const [from, to] of map) n += retag(w, roomId, from, to);
+    return n;
+  }
+
+  // Every arrow with relation `from` takes `to` instead ('' for unnamed). Returns how many.
+  function retag(w, roomId, from, to) {
     let n = 0;
     for (const data of Object.values(own(w, roomId, store, false))) {
-      for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) { data.rel[p] = map.get(r); n++; }
+      for (const [p, r] of Object.entries(data?.rel || {})) if (r === from) { data.rel[p] = to; n++; }
     }
     return n;
   }
+
+  // How many arrows have relation `name`.
+  const uses = (w, roomId, name) => Object.values(own(w, roomId, store, false)).reduce((n, d) => n + Object.values(d?.rel || {}).filter((r) => r === name).length, 0);
 
   // The arrows into a node: { parents, labels, rel }, only from nodes still there. rel has every
   // parent ('' for an unnamed arrow); labels only those with one.
@@ -275,7 +319,7 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   }
 
   return {
-    relations, renameRelations, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
+    relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
     link, unlink, setLabel, setRelation, adopt, traumLines, traumArrows,
   };
 }
