@@ -96,6 +96,7 @@ export const LOOK = {
   lightMessy: LIGHT_MESSY,  // Messy thoughts' lightness inside
   vivid: VIVID,       // how strongly a square shows its room's colour
   peek: 0,            // a square's last thoughts: 0 when hovered over, 1 always
+  size: 19,           // thoughts' text inside a room, in px (--t-read), one size for the whole app
 };
 
 // Saved settings, checked and filled in with the defaults.

@@ -158,6 +158,9 @@ only says where (its `roomfile` service), and leaves those choices out when it i
 - **Spacing that fits the text:** in a Joyce train, each thought sits below the one before by that
   thought's real height as drawn (and a gap), so one that wraps onto several lines never runs
   into the next. A new train starts in clear space on the screen, away from everything drawn.
+- **Thought size:** Settings → Rooms → Inside a room → *Thought size* (14 to 28 px, 19 by default,
+  the world's look `size`): every thought's text in every room (`--t-read` on the room page). The
+  room draws again and measures, so Joyce's spacing, clear space and the trees stay tidy.
 - **Clear space** (`clear.js`): after any change (writing, deleting, editing, folding, a drag),
   the room measures the real size of what is on its canvas and pushes apart anything that
   overlaps, in every mode. Joyce's blocks are its trains (and each run started by a thought
