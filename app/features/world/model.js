@@ -154,6 +154,31 @@ export function roomOf(w, id) {
 
 // ---- Groups ----
 
+// Reading a big room fast: drawing it asks, for every thought, which groups hold it, and each
+// answer used to look through the whole world. Inside reading(w, fn), the first such question
+// lists who holds what once, and every later one reads that list, until something joins or leaves
+// a group (the list is made again when next asked). Outside it, nothing is kept.
+let held = null; // { w, by: Map of id → the groups holding it, in time order (or null: not made yet) }
+export function reading(w, fn) {
+  if (held) return fn();
+  held = { w, by: null };
+  try { return fn(); } finally { held = null; }
+}
+// (Who holds what changed: join, leave, create and remove say so, and anything that sets a group's
+// members itself must too.)
+export const changed = () => { if (held) held.by = null; };
+function holders(w) {
+  if (!held || held.w !== w) return null;
+  if (!held.by) {
+    const by = new Map();
+    for (const g of Object.values(w.things).filter(isGroup).sort(byTime)) {
+      for (const m of new Set(g.members)) { if (!by.has(m)) by.set(m, []); by.get(m).push(g); }
+    }
+    held.by = by;
+  }
+  return held.by;
+}
+
 // What a group holds (items, and groups), in the order they were written (or as they were put in,
 // for an ontology that keeps its order: declareOrder).
 export function members(w, groupId) {
@@ -195,8 +220,12 @@ export function holds(w, a, id, seen = new Set()) {
 // The groups in a room (of one ontology, or of all).
 export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
 // The groups an item is in (of one ontology, or of all); and the first of them.
-export const groupsOf = (w, id, of = null) => Object.values(w.things)
-  .filter((g) => isGroup(g) && g.members.includes(id) && (of == null || g.of === of)).sort(byTime);
+export function groupsOf(w, id, of = null) {
+  const by = holders(w);
+  if (!by) return Object.values(w.things).filter((g) => isGroup(g) && g.members.includes(id) && (of == null || g.of === of)).sort(byTime);
+  // (Each is checked again, so a group gone or left since the list was made is never given.)
+  return (by.get(id) || []).filter((g) => w.things[g.id] === g && g.members.includes(id) && (of == null || g.of === of));
+}
 export const groupOf = (w, id, of = DEFAULT_MODE) => groupsOf(w, id, of)[0] || null;
 // The items in a room, in the order they were written.
 export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
@@ -213,6 +242,7 @@ export function join(w, groupId, id) {
   // thought written between two goes between them); one written last goes at the end.
   const i = KEPT.has(g.of) ? g.members.findIndex((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : -1;
   if (i < 0) g.members.push(id); else g.members.splice(i, 0, id);
+  changed();
   return true;
 }
 
@@ -231,6 +261,7 @@ export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
   g.members = g.members.filter((m) => m !== id);
+  changed();
   if (!g.members.length) { delete w.things[groupId]; forget(w, groupId); }
   return true;
 }
@@ -406,6 +437,7 @@ export function create(w, parent, fields, now = Date.now()) {
   if (isGroup(th)) th.members = [];
   Object.assign(th, { id: uid(th.kind[0]), parent: at ?? null, at: now });
   w.things[th.id] = th;
+  changed();
   if (group) join(w, group.id, th.id);
   return th;
 }
@@ -435,6 +467,7 @@ export function remove(w, id) {
   const th = w.things[id];
   if (!th || id === MESSY || shut(w, id)) return;
   delete w.things[id];
+  changed();
   for (const c of children(w, id)) remove(w, c.id);
   if (isGroup(th) && membership(th.of) === 'one') for (const m of th.members) remove(w, m);
   for (const g of groupsOf(w, id)) leave(w, g.id, id);
@@ -662,6 +695,7 @@ export function copyRoom(w, id, now = Date.now()) {
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
   if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);
   if (w.settings?.[id]) w.settings[fresh.id] = copy(w.settings[id]);
+  changed();
   return fresh;
 }
 

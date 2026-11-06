@@ -5,7 +5,7 @@
 import {
   room, addRoom, view, create, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  light, twinOf, relationsRow,
+  light, twinOf, relationsRow, reading,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
@@ -360,14 +360,18 @@ export class RoomView {
     return { x: v.x - w / 2 + w * margin, y: v.y - h / 2 + h * margin, w: w * (1 - 2 * margin) * 0.75, h: h * (1 - 2 * margin) };
   }
 
+  // (Inside reading(), the world lists who holds what once for the whole drawing, not once per
+  // thought: a big room draws fast.)
   drawWorld() {
     if (!this.roomId) return;
-    this.world$.replaceChildren(...this.canvasNodes());
-    this.markPast();
-    this.showStatus();
-    this.drawBar();
-    this.drawTray();
-    this.drawTwin(); // a Twin's other side, beside (twin.js)
+    reading(this.world, () => {
+      this.world$.replaceChildren(...this.canvasNodes());
+      this.markPast();
+      this.showStatus();
+      this.drawBar();
+      this.drawTray();
+      this.drawTwin(); // a Twin's other side, beside (twin.js)
+    });
     this.clearSoon();
   }
 
@@ -428,7 +432,8 @@ export class RoomView {
   // Measures each block on the canvas (world units) and moves the ones that overlap. What was
   // placed by hand is left out (it can be overlapped) or stays put while the rest moves around it,
   // as the room's 'overlap' setting says. The thought being written stays where it is.
-  clearRoom(depth = 0) {
+  clearRoom(depth = 0) { reading(this.world, () => this.clearNow(depth)); }
+  clearNow(depth) {
     if (!this.roomId || this.root.hidden || this.locked || this.gesture?.moved || this.roomPage.hidden) return;
     const w = this.world, ont = this.ont, roomId = this.roomId;
     // The ontology hears each thought's real size first (Joyce steps its trains by them).
