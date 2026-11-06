@@ -3874,7 +3874,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.timer = null;
       this.synced = false;
       this.guarded = false;
-      this.add("account", { name: () => this.name(), open: () => this.open() });
+      this.add("account", { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
       this.app.storage.watch(() => this.changed());
       window.addEventListener("pagehide", () => this.flush());
       if (firebaseConfig && this.storage.get("signedIn", false)) this.connect().catch((e) => this.fail(e));
@@ -3990,6 +3990,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     setState(state) {
       this.state = state;
       if (this.page?.isOpen) this.render();
+      this.emit("account:changed");
     }
     // ---- The account page ----
     open() {
@@ -3997,23 +3998,26 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.render();
       this.page.open();
     }
-    render() {
+    // The page in two sections, each { id, title, icon, body (nodes) }: Sign in (who, and the
+    // button to sign in or out) and Saving (where the rooms and settings are kept, and how it went).
+    sections() {
       const busy = this.state === "busy";
-      if (!firebaseConfig) {
-        this.page.setContent(el2("p", {}, "Accounts aren't set up yet."));
-        return;
-      }
+      const kv = (label2, value) => el2("div", { class: "kv" }, el2("span", {}, label2), el2("span", {}, value));
+      if (!firebaseConfig) return [{ id: "account-sign-in", title: "Sign in", icon: "account", body: [el2("p", {}, "Accounts aren't set up yet.")] }];
       if (!this.user) {
-        this.page.setContent(
-          el2("p", {}, "Sign in to keep your rooms and settings on every device."),
-          this.state === "error" && el2("p", { class: "account-error" }, "Couldn't sign in. Please try again."),
-          el2(
-            "button",
-            { type: "button", class: "btn", disabled: busy, onclick: () => this.signIn() },
-            busy ? "Signing in…" : "Sign in with Google"
-          )
-        );
-        return;
+        return [
+          { id: "account-sign-in", title: "Sign in", icon: "account", body: [
+            kv("Signed in", "No"),
+            el2("p", { class: "hint" }, "Sign in to keep your rooms and settings on every device."),
+            this.state === "error" && el2("p", { class: "account-error" }, "Couldn't sign in. Please try again."),
+            el2("div", {}, el2(
+              "button",
+              { type: "button", class: "btn", disabled: busy, onclick: () => this.signIn() },
+              busy ? "Signing in…" : "Sign in with Google"
+            ))
+          ].filter(Boolean) },
+          { id: "account-saving", title: "Saving", icon: "refresh", body: [kv("Saved on", "This device only")] }
+        ];
       }
       const status = {
         busy: "Saving…",
@@ -4021,22 +4025,32 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         error: "Couldn't reach your account. Your rooms and settings are still saved on this device.",
         idle: ""
       }[this.state];
-      this.page.setContent(
-        el2(
-          "div",
-          { class: "account-who" },
-          this.user.photoURL && el2("img", { class: "account-photo", src: this.user.photoURL, alt: "", referrerpolicy: "no-referrer" }),
-          el2("div", {}, el2("b", {}, this.name()), this.user.email && el2("small", {}, this.user.email))
-        ),
-        status && el2("p", { class: this.state === "error" ? "account-error" : "hint" }, status),
-        this.guarded && el2(
-          "p",
-          { class: "hint" },
-          "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."
-        ),
-        this.state === "error" && el2("button", { type: "button", class: "btn", onclick: () => this.synced ? this.push() : this.pull() }, "Try again"),
-        el2("button", { type: "button", class: "btn", disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, "Sign out")
-      );
+      return [
+        { id: "account-sign-in", title: "Signed in", icon: "account", body: [
+          el2(
+            "div",
+            { class: "account-who" },
+            this.user.photoURL && el2("img", { class: "account-photo", src: this.user.photoURL, alt: "", referrerpolicy: "no-referrer" }),
+            el2("div", {}, el2("b", {}, this.name()), this.user.email && el2("small", {}, this.user.email))
+          ),
+          el2("div", {}, el2("button", { type: "button", class: "btn", disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, "Sign out"))
+        ] },
+        { id: "account-saving", title: "Saving", icon: "refresh", body: [
+          kv("Saved on", "Your account and this device"),
+          status && el2("p", { class: this.state === "error" ? "account-error" : "hint" }, status),
+          this.guarded && el2(
+            "p",
+            { class: "hint" },
+            "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."
+          ),
+          this.state === "error" && el2("div", {}, el2("button", { type: "button", class: "btn", onclick: () => this.synced ? this.push() : this.pull() }, "Try again"))
+        ].filter(Boolean) }
+      ];
+    }
+    // The small page (Folio's window), when no page in the frame shows it: the sections one under
+    // another.
+    render() {
+      this.page.setContent(...this.sections().flatMap((s) => s.body));
     }
   };
 
@@ -21168,12 +21182,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.build();
       const shell = this.app.shell;
       if (shell) {
-        shell.openSettings = () => this.open();
+        const openAccount = shell.openAccount.bind(shell);
+        shell.openSettings = () => this.open("settings");
         shell.refreshSettings = () => {
-          if (this.isOpen) this.draw();
+          if (this.kind === "settings") this.draw();
         };
-        shell.closeSettings = () => this.close();
+        shell.closeSettings = () => {
+          if (this.kind === "settings") this.close();
+        };
+        shell.openAccount = () => this.account()?.sections ? this.open("account") : openAccount();
       }
+      this.on("account:changed", () => {
+        if (this.kind === "account") this.draw();
+      });
       document.addEventListener("keydown", (e) => {
         if (!this.isOpen || e.key !== "Escape" || e.defaultPrevented) return;
         if (e.target?.matches?.("input, textarea, select") || document.querySelector("dialog[open]:not(.pages)")) return;
@@ -21184,40 +21205,75 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     get isOpen() {
       return this.root.open;
     }
+    // The account feature's item in Folio's 'account' slot, or null.
+    account() {
+      return this.slot("account").items[0] || null;
+    }
+    // What each page is: its name, the rail's head, its quiet line, and its sections
+    // ({ id, title, icon, body }).
+    page(kind) {
+      if (kind === "account") {
+        const a = this.account();
+        return {
+          title: "Account",
+          idle: a?.name?.() ? "Signed in" : "Sign in to keep your rooms and settings on every device",
+          sections: () => {
+            try {
+              return a?.sections?.() || [];
+            } catch (err) {
+              console.warn("Account", err);
+              return [];
+            }
+          }
+        };
+      }
+      return {
+        title: "Settings",
+        idle: "Changes save as you make them",
+        sections: () => settingsSections(this.slot("settings"), this.app.shell?.settings)
+      };
+    }
     build() {
-      this.rail = el16("nav", { class: "rail pages-rail", "aria-label": "Settings sections" });
+      this.rail = el16("nav", { class: "rail pages-rail" });
       this.panel = el16("div", { class: "page-panel pages-panel" });
       this.canvas = el16("div", { class: "page-canvas pages-canvas" }, this.panel);
       this.canvas.addEventListener("scroll", () => this.markCurrent(), { passive: true });
-      this.root = el16("dialog", { class: "pages", "aria-label": "Settings" }, this.rail, this.canvas);
+      this.root = el16("dialog", { class: "pages" }, this.rail, this.canvas);
     }
-    open() {
+    open(kind = "settings") {
       this.app.shell?.closeMenu?.();
+      const fresh = kind !== this.kind || !this.root.open;
+      this.kind = kind;
+      const p = this.page(kind);
+      this.root.setAttribute("aria-label", p.title);
       (document.getElementById("folio-root") || document.body).append(this.root);
       if (!this.root.open) this.root.show();
       document.documentElement.classList.add("page-open");
+      if (fresh) this.canvas.scrollTop = 0;
       this.draw();
-      this.canvas.scrollTop = 0;
-      this.markCurrent();
       this.frame?.show(this, {
-        crumbs: [{ label: "Home", title: "Back to the home page", onClick: () => this.close() }, { label: "Settings", current: true }],
+        crumbs: [{ label: "Home", title: "Back to the home page", onClick: () => this.close() }, { label: p.title, current: true }],
         back: () => this.close(),
         backLabel: "Back",
-        idle: "Changes save as you make them"
+        idle: p.idle
       });
     }
     close() {
       if (!this.root.open) return;
       this.root.close();
+      this.kind = null;
       document.documentElement.classList.remove("page-open");
       this.frame?.hide(this);
     }
     // Draws the rail and the rows again (a section's data changed), keeping where the page is.
     draw() {
+      if (!this.kind) return;
       const top = this.canvas.scrollTop;
-      this.sections = settingsSections(this.slot("settings"), this.app.shell?.settings);
+      const p = this.page(this.kind);
+      this.sections = p.sections();
+      this.rail.setAttribute("aria-label", `${p.title} sections`);
       this.rail.replaceChildren(
-        el16("div", { class: "rail-head", "aria-hidden": "true" }, "Settings"),
+        el16("div", { class: "rail-head", "aria-hidden": "true" }, p.title),
         ...this.sections.map((s) => {
           const icon2 = ui_exports.icon(s.icon);
           icon2.classList.add("rail-icon");
@@ -21237,6 +21293,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       )));
       this.canvas.scrollTop = top;
       this.markCurrent();
+      if (this.root.open) this.frame?.update(this, { idle: p.idle });
     }
     goTo(id) {
       const row = this.panel.querySelector(`.pages-row[data-sec="${id}"]`);
@@ -26150,7 +26207,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame: a rail with Start and Recent rooms, the name in the middle, then Create. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms", "world", "frame", "search", "keys"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "pages", "name": "Pages", "description": "Settings as a page in the frame: a rail of its sections beside label and value rows, in place of the veil window.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame: a rail with Start and Recent rooms, the name in the middle, then Create. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms", "world", "frame", "search", "keys"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
