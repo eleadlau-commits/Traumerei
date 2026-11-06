@@ -704,6 +704,10 @@ dialog.dialog-box {
   --bar: 44px;    /* the top bar */
   --strip: var(--bar);  /* the strip of the home page left showing at the top: the top bar */
   --rail: 206px;  /* the rail on the left: 72px and one grid column (a cell and its gap) more */
+  /* The canvas: what the rail and the docks leave free, as their widths at each side. Pop-ups
+     (.sheet, .top-sheet) sit in its middle. The docks and the pages set them; 0 on a bare page. */
+  --canvas-left: 0px;
+  --canvas-right: 0px;
   --glow-soft: color-mix(in srgb, rgb(var(--glow-rgb) / .55) 45%, rgb(255 255 255 / .55));
 }
 
@@ -873,14 +877,14 @@ html.rail-narrow { --rail: 48px; }
 /* A faint shade over the whole screen, under a pop-up. */
 .shade { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgb(var(--ink-rgb) / .08); }
 
-/* A sheet: a panel in the middle, for writing or deciding (with .panel). .top-sheet sits near the
-   top instead (search, the keys). */
+/* A sheet: a panel in the middle of the canvas (between the rail and the docks), for writing or
+   deciding (with .panel). .top-sheet sits near the top instead (search, the keys). */
 .sheet {
   position: absolute;
-  left: 50%;
+  left: calc(var(--canvas-left) + (100% - var(--canvas-left) - var(--canvas-right)) / 2);
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
+  width: min(560px, calc(100% - var(--canvas-left) - var(--canvas-right) - 2 * var(--gutter)));
   max-height: calc(100% - 160px);
   overflow: auto;
   display: grid;
@@ -890,10 +894,10 @@ html.rail-narrow { --rail: 48px; }
 }
 .top-sheet {
   position: absolute;
-  left: 50%;
+  left: calc(var(--canvas-left) + (100% - var(--canvas-left) - var(--canvas-right)) / 2);
   top: 14vh;
   transform: translateX(-50%);
-  width: min(560px, calc(100% - 2 * var(--gutter)));
+  width: min(560px, calc(100% - var(--canvas-left) - var(--canvas-right) - 2 * var(--gutter)));
   animation: pop-unfold-top .2s var(--ease) both;
 }
 .sheet-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
@@ -937,8 +941,8 @@ html.rail-narrow { --rail: 48px; }
 .pick-rule { height: 1px; margin: 6px 16px; background: rgb(var(--ink-rgb) / .14); }
 
 /* The list of keys (?): names in small capitals, what they do beside them. */
-.keys-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
-.keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+.keys-list { display: grid; grid-template-columns: fit-content(45%) 1fr; gap: 8px 22px; margin: 12px 0 0; font-size: 13px; }
+.keys-list dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
 .keys-list dd { margin: 0; opacity: .8; }
 
 /* ---- Panel chrome: every dock wears the same frame ----
@@ -980,7 +984,7 @@ html.rail-narrow { --rail: 48px; }
 .sec > summary::after { content: "+"; letter-spacing: 0; opacity: .7; }
 .sec[open] > summary::after { content: "−"; }
 .sec[open] > summary { margin-bottom: var(--s-2); }
-.sec-body { display: grid; gap: var(--s-1); }
+.sec-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); } /* never wider than its dock */
 
 .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: var(--s-2); min-height: var(--row); font-size: var(--t-work); }
 .kv > :first-child { font-size: var(--t-label); color: var(--muted); }
@@ -988,11 +992,12 @@ html.rail-narrow { --rail: 48px; }
 
 .box-btns { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .box-btn {
-  height: var(--field);
+  min-height: var(--field);
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  padding: 0 10px;
+  padding: 3px 10px;
   border: 1px solid var(--chrome-edge);
   background: var(--chrome);
   font-size: var(--t-label);
@@ -1000,6 +1005,8 @@ html.rail-narrow { --rail: 48px; }
   white-space: nowrap;
   transition: background-color var(--quick);
 }
+/* A long key note wraps inside the button rather than pushing it past its dock. */
+.box-btn .key { white-space: normal; line-height: 1.3; text-align: left; }
 .box-btn:hover { background: var(--hover-wash); }
 .box-btn:disabled { opacity: var(--off); cursor: default; }
 .box-btn.danger { color: var(--danger); }
