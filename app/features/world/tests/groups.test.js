@@ -3,7 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import { emptyWorld, MESSY, startTrain, addThought, create, members } from '../model.js';
-import { outermost, foreign, trayForeign, placedForeign, kindTag } from '../groups.js';
+import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
 import joyce from '../ontologies/joyce.js';
 import pessoa from '../ontologies/pessoa.js';
@@ -205,4 +205,22 @@ test('throw back: a Russell chapter waits in the tray, its thoughts with it', ()
   assert.ok(!chapters(w, MESSY).some((g) => g.id === sub.id));
   assert.ok(ids(russell.tray(w, MESSY)).includes(sub.id));
   assert.ok(!ids(russell.tray(w, MESSY)).includes(a.id)); // it went with its chapter
+});
+
+test('a thought added away from the canvas waits in the tray, even in Pessoa, until it is dragged out', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const n = create(w, MESSY, { kind: 'line', text: 'new' }, 2);
+  assert.ok(wait(w, MESSY, n.id));
+  assert.ok(waiting(w, MESSY, 'pessoa', n.id));
+  assert.deepEqual(ids(pessoa.units(w, MESSY)), [a.id]);
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [n.id]);
+  assert.ok(!pessoa.placed(w, MESSY, n.id));
+  assert.equal(pessoa.point(w, MESSY, n.id), null);
+  assert.ok(ids(joyce.tray(w, MESSY)).includes(n.id)); // in no train: in Joyce's tray anyway
+  pessoa.drop(w, MESSY, n.id, 70, 80);
+  assert.ok(!waiting(w, MESSY, 'pessoa', n.id));
+  assert.deepEqual(ids(pessoa.units(w, MESSY)), [a.id, n.id]);
+  assert.deepEqual(pessoa.tray(w, MESSY), []);
+  assert.deepEqual(pessoa.point(w, MESSY, n.id), { x: 70, y: 80 });
 });

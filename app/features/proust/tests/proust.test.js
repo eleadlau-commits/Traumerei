@@ -6,7 +6,7 @@ import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY, own, members, setRoomSetting, closeGroup } from '../../world/model.js';
 import { gather, missing, groupChosen, throwBack } from '../../world/ontologies/index.js';
-import { trayForeign } from '../../world/groups.js';
+import { trayForeign, wait } from '../../world/groups.js';
 import joyce from '../../world/ontologies/joyce.js';
 import pessoa from '../../world/ontologies/pessoa.js';
 import { proust, links, endsOf, point, shownAs, clusterOf, RELATIONS, LINKS } from '../rules.js';
@@ -243,4 +243,20 @@ test('another mode\'s group is one card: its thoughts are not nodes on their own
   proust.drop(w, MESSY, t.id, 100, 100);
   assert.deepEqual(ids(proust.units(w, MESSY)), [c.id, t.id]);
   assert.equal(L().link(w, MESSY, a.id, c.id), 'Links join two things on the canvas.'); // the train stands for it
+});
+
+test('a thought added away from the canvas waits in the tray until it is dragged out; then it is a node', () => {
+  const w = emptyWorld(1);
+  const a = line(w, 'a'), n = line(w, 'new');
+  wait(w, MESSY, n.id);
+  assert.deepEqual(ids(proust.units(w, MESSY)), [a.id]);
+  assert.deepEqual(ids(proust.tray(w, MESSY)), [n.id]);
+  assert.equal(shownAs(w, n.id), 'tray');
+  assert.equal(L().link(w, MESSY, a.id, n.id), 'Links join two things on the canvas.');
+  proust.drop(w, MESSY, n.id, 10, 20);
+  assert.deepEqual(ids(proust.units(w, MESSY)), [a.id, n.id]);
+  assert.deepEqual(proust.tray(w, MESSY), []);
+  assert.equal(L().link(w, MESSY, a.id, n.id), '');
+  // The same in Pessoa, which keeps its own place: still waiting there.
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [n.id]);
 });

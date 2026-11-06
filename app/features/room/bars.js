@@ -4,7 +4,7 @@
 
 import {
   room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, roomTrains, randomSpot, isBig, shrinkPicture, ITEMS, placeName, moveTargets,
+  thoughtText, trainThoughts, roomTrains, randomSpot, isBig, shrinkPicture, ITEMS, placeName, moveTargets, wait,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -379,12 +379,15 @@ export class Bars {
     l.plus.setAttribute('aria-expanded', 'false');
   }
 
-  // Keeps text as a new loose thought of this room, as one step. Returns it, or null.
+  // Keeps text as a new loose thought of this room, as one step. Returns it, or null. Added away
+  // from the canvas, it waits in the tray in every mode, even one that places every thought
+  // itself (Pessoa, Proust: the world's wait), until it is dragged out.
   keepLoose(text) {
     if (!this.roomId || this.locked || !text.trim()) return null;
     if (this.draft) this.stopWriting();
     const th = create(this.world, this.roomId, { kind: 'line', text: text.trim() });
     if (!th) return null;
+    wait(this.world, this.roomId, th.id);
     this.save();
     this.drawWorld();
     return th;
@@ -641,7 +644,7 @@ export class Bars {
         ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
         : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
       if (ed.id) update(this.world, ed.id, fields);
-      else if (ed.loose) create(this.world, this.roomId, fields);
+      else if (ed.loose) { const th = create(this.world, this.roomId, fields); if (th) wait(this.world, this.roomId, th.id); } // waits in the tray, as keepLoose
       else this.keepNew(this.target(), fields);
     }
     this.save();
