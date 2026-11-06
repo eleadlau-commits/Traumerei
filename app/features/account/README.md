@@ -5,7 +5,10 @@ Sign in with Google, and your settings follow you to every device.
 ## What it adds
 
 - The **account page**, opened by the account button in the top bar and the menu's Account row
-  (the framework's `account` slot). Signed out: **Sign in with Google**. Signed in: your name,
+  (the framework's `account` slot). Its slot item also gives the page as two sections,
+  `sections()` (*Sign in* and *Saving*, each `{ id, title, icon, body }`), which the pages feature
+  shows as a page in the frame; it sends `account:changed` when the page should be drawn again.
+  Signed out: **Sign in with Google**. Signed in: your name,
   email and photo, whether your settings are saved, and **Sign out**. The menu shows who is signed in.
 - **Settings sync.** Signed in, everything the app saves (every feature's area except `account` and
   `folio`, and never the `once` records) is kept in Firestore at `users/{uid}` as one packed text
