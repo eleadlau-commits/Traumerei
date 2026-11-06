@@ -56,15 +56,22 @@ export const trayForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) 
 // A thought added away from the canvas (the tray's box, its +) waits in the tray: an ontology that
 // places every thought itself (Pessoa, Proust) keeps it there until it is dragged out, that is,
 // until it has a spot of its own there. (The others keep a thought in no group in their tray
-// anyway.) Kept as own(w, room, 'tray')[id] = true.
+// anyway.) Kept as own(w, room, 'tray')[id]: true (it waits in every such ontology), or
+// { [of]: true } (thrown back in ontology `of`, or read from its tray in a .traum file: it waits
+// only there).
 export const WAITS = 'tray';
-export function wait(w, roomId, id) {
+export function wait(w, roomId, id, of = null) {
   if (shut(w, roomId) || w.things[id]?.parent !== roomId) return false;
-  own(w, roomId, WAITS)[id] = true;
+  const marks = own(w, roomId, WAITS);
+  if (!of) marks[id] = true;
+  else if (marks[id] !== true) marks[id] = { ...(marks[id] && typeof marks[id] === 'object' ? marks[id] : {}), [of]: true };
   return true;
 }
 // Whether thought `id` still waits in ontology `of`'s tray.
-export const waiting = (w, roomId, of, id) => !!own(w, roomId, WAITS, false)[id] && !spot(w, roomId, of, id);
+export const waiting = (w, roomId, of, id) => {
+  const m = own(w, roomId, WAITS, false)[id];
+  return !!(m === true || m?.[of]) && !spot(w, roomId, of, id);
+};
 
 // Moves a thought or a group to another room (Move to…, Ctrl+M) so that it lands in that room's
 // loose tray in every mode: a thought goes with no train; a group keeps what it holds and waits in
@@ -90,16 +97,22 @@ export function place(w, id) {
 // Throw back (Ctrl+Shift+Backspace): ontology `of` takes a thing it placed back into its tray. It
 // leaves every group of `of` that holds it (a train, a chapter; one left empty goes); a group of
 // `of`'s own then waits in the tray (loose), and another mode's group loses its spot. A thought
-// inside another mode's shared group can't go alone (the group stands for it). True when it went;
-// `leaves` false: a plain thought can't (Pessoa places every thought itself).
-export function unplace(w, roomId, of, id, { leaves = true } = {}) {
+// inside another mode's shared group can't go alone (the group stands for it). True when it went.
+// `lays` (Pessoa, Proust: they place every thought themselves): a plain thought loses its spot
+// there and waits in `of`'s tray (wait), as one added from the tray does, until dragged out.
+export function unplace(w, roomId, of, id, { lays = false } = {}) {
   const th = w.things[id];
   if (!th || th.parent !== roomId || shut(w, roomId) || !(isLeaf(th) || isGroup(th))) return false;
   if (inForeign(w, roomId, of)(id)) return false;
   const mine = isGroup(th) && th.of === of;
   const theirs = isGroup(th) && !mine;
-  if (!mine && !theirs && !leaves) return false;
   const holders = groupsOf(w, id, of);
+  if (!mine && !theirs && lays) {
+    if (waiting(w, roomId, of, id)) return false; // in the tray already
+    for (const g of holders) leave(w, g.id, id);
+    delete own(w, roomId, of)[id];
+    return wait(w, roomId, id, of);
+  }
   const spotted = theirs && !!spot(w, roomId, of, id);
   if (!holders.length && !spotted && !(mine && !th.loose)) return false; // in the tray already
   for (const g of holders) leave(w, g.id, id);

@@ -88,9 +88,14 @@ export default class Room extends Feature {
     // the focus but the room's canvas; elsewhere Tab keeps its usual job.
     const when = { 'room.mode': () => live() && this.tabSwaps(), 'room.join': () => live() && !!this.ont?.join };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
-    // Export, Edit as text and Keys under ⋯ More, at the foot of the room's rail (the frame
-    // feature's slot rail.more), shown only inside a room.
+    // Editor, Export, Edit as text and Keys under ⋯ More, at the foot of the room's rail (the
+    // frame feature's slot rail.more), shown only inside a room.
     if (this.frame) {
+      if (this.panel) {
+        this.add('rail.more', { id: 'room-editor', label: 'Editor', order: 5, visible: live, run: () => this.toggleEditor(),
+          on: () => this.editorShowing(), icon: '<rect x="4" y="5" width="16" height="14"/><path d="M14 5v14"/>',
+          title: () => 'Show or hide the Editor: what is chosen, or this room\'s settings' });
+      }
       if (this.files) {
         this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: live, run: () => this.exportRoomFile(),
           icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a .traum file' });
@@ -176,6 +181,21 @@ export default class Room extends Feature {
   }
 
   // Leaves the room (the rooms page shows again). Returns the room's id, if it showed.
+  // ⋯ More → Editor: whether the right dock shows the Editor (what is chosen, or this room's
+  // settings), and showing or hiding it. With nothing chosen it shows this room's settings for
+  // the mode it is in.
+  editorShowing() {
+    return !!this.panel && (this.panel.isShowing('content') || this.panel.isShowing('mode-settings'));
+  }
+
+  toggleEditor() {
+    if (!this.panel || !this.roomId) return;
+    if (this.panel.isShowing('content')) this.panel.close('content');
+    else if (this.panel.isShowing('mode-settings')) { this.settingsFor = null; this.drawRoom(); }
+    else if (this.sel && this.sel.kind !== 'many' && this.world.things[this.sel.id]) this.openProps(this.sel);
+    else this.openRoomSettings(this.mode); // draws the room, and the settings with it
+  }
+
   leave() {
     if (!this.roomId) return null;
     const from = this.root.hidden ? null : twinOf(this.world, this.roomId)?.id || this.roomId; // a side: its Twin's square

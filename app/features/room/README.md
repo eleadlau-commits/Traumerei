@@ -43,7 +43,9 @@ It offers no service of its own.
   room starts from the global ones. A setting of type `relations` (Russell's and Proust's
   relations) is drawn by the world's relations editor (`lib.relationsview`, view.js's `settingRow`);
   each change there is one step Ctrl+Z takes back. At the foot of the rail, ⋯ More holds *Time* (the time feature), which opens the list of its
-  thoughts by time in the right dock, in any mode, and the room's own *Export* and *Edit as text*
+  thoughts by time in the right dock, in any mode, and the room's own *Editor* (shows or hides the
+  right dock's Editor: what is chosen, or with nothing chosen this room's settings for its mode),
+  *Export* and *Edit as text*
   (with the roomfile feature) and *Keys* (with the keys feature), through the frame's `rail.more` slot.
   - **Joyce** (the default). Thoughts are joined by time into *trains*, each read like a
     paragraph. Enter goes on with the same train; **Ctrl+Enter** starts a new train at a random

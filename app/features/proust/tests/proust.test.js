@@ -138,8 +138,14 @@ test('throw back: a cluster waits in the tray and its links go; Ctrl+Z would bri
   assert.deepEqual(ids(proust.units(w, MESSY)), [c.id]);
   assert.equal(L().arrows(w, MESSY).length, 0);
   assert.equal(own(w, MESSY, LINKS)[b.id], undefined);
-  // A plain thought can't go: Proust places every thought itself.
+  // A plain thought goes too: it waits in the tray until it is dragged out, and once there it
+  // can't go again.
+  assert.equal(throwBack(proust, w, MESSY, [c.id], clock++), 1);
+  assert.deepEqual(ids(proust.tray(w, MESSY)).sort(), [g.id, c.id].sort());
+  assert.ok(!proust.placed(w, MESSY, c.id));
   assert.equal(throwBack(proust, w, MESSY, [c.id], clock++), 0);
+  proust.drop(w, MESSY, c.id, 40, 40);
+  assert.ok(proust.placed(w, MESSY, c.id));
   // Dragged out again, it is back on the canvas (its links stay gone).
   proust.drop(w, MESSY, g.id, 0, 0);
   assert.ok(!g.loose);

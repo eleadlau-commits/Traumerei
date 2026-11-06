@@ -176,13 +176,13 @@ test('throw back: each mode takes what it placed back into its tray, at the top'
   assert.deepEqual(ids(joyce.tray(w, MESSY)).sort(), [b.id, t.id].sort());
 });
 
-test('throw back: another mode\'s group loses its place; Pessoa\'s own thoughts can\'t go', () => {
+test('throw back: another mode\'s group loses its place; a thought inside it can\'t go alone', () => {
   const w = emptyWorld();
   const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
   const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
   const g = groupChosen(joyce, w, MESSY, [a.id, b.id], 3);
   pessoa.drop(w, MESSY, g.id, 40, 50);
-  assert.equal(throwBack(pessoa, w, MESSY, [a.id], 4), 0);   // a plain thought: Pessoa places it itself
+  assert.equal(throwBack(pessoa, w, MESSY, [a.id], 4), 0);   // inside another mode's group: the card stands for it
   assert.equal(throwBack(pessoa, w, MESSY, [g.id], 5), 1);
   assert.deepEqual(ids(pessoa.tray(w, MESSY)), [g.id]);
   // Russell: placed into a chapter, thrown back out of it; a thought inside the group can't go alone.
@@ -223,6 +223,20 @@ test('a thought added away from the canvas waits in the tray, even in Pessoa, un
   assert.deepEqual(ids(pessoa.units(w, MESSY)), [a.id, n.id]);
   assert.deepEqual(pessoa.tray(w, MESSY), []);
   assert.deepEqual(pessoa.point(w, MESSY, n.id), { x: 70, y: 80 });
+});
+
+test('throw back in Pessoa: a single thought waits in its tray, only there, until dragged out', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  pessoa.drop(w, MESSY, a.id, 40, 50);
+  assert.equal(throwBack(pessoa, w, MESSY, [a.id], 2), 1);
+  assert.ok(!pessoa.placed(w, MESSY, a.id));
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [a.id]);
+  assert.ok(waiting(w, MESSY, 'pessoa', a.id));
+  assert.ok(!waiting(w, MESSY, 'proust', a.id)); // thrown back in Pessoa: other modes keep it
+  assert.equal(throwBack(pessoa, w, MESSY, [a.id], 3), 0); // in the tray already
+  pessoa.drop(w, MESSY, a.id, 10, 10);
+  assert.ok(pessoa.placed(w, MESSY, a.id));
 });
 
 test('moved to another room (Move to…): it lands in that room\'s loose tray in every mode', () => {

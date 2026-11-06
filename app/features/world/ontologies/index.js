@@ -21,7 +21,8 @@
 //                         back into its tray; true when it went (groups.js: unplace does it for
 //                         most). Without it, nothing can be thrown back
 //   lays                  (optional) true: it places every thought itself (Pessoa, Proust), so a
-//                         plain thought can't be thrown back; only groups can
+//                         plain thought thrown back waits in its tray (groups.js: wait) until
+//                         it is dragged out again
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit

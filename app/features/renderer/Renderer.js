@@ -13,7 +13,7 @@
 // sliders, draws its still picture, and plays its animation. A 'pixels' animation patches the picture;
 // a 'layer' animation is drawn on its own canvas (Plain's glow, a quarter of the screen, screen-blended).
 //
-// Saved data: 'theme'  → a mode's id: 'washi' | 'plain'
+// Saved data: 'theme'  → a mode's id: 'washi' | 'plain' | 'mondrian' (Mondrian at first)
 //             'plainView' → 'base' | 'pattern' | 'plain' | 'living' (each mode saves its view under its viewKey)
 //             'params' → { key: value } for every slider
 //             'anchor' → { x, y } as fractions of the width and height (default 0.5, 0.5)
@@ -37,7 +37,7 @@ export default class Renderer extends Feature {
     this.engine = new Engine();
     this.P = { ...DEFAULTS, ...this.storage.get('params', {}) };
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
-    this.mode = modeById(this.storage.get('theme', 'washi'));
+    this.mode = modeById(this.storage.get('theme', 'mondrian'));
     this.views = Object.fromEntries(MODES.map((m) => [m.id, this.storage.get(m.viewKey, m.startView)]));
     this.marks = this.storage.get('marks', false);
     this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
