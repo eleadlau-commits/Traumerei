@@ -1848,7 +1848,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
 .room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
-.room-russell-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.room-russell-hit { cursor: pointer; }
 .room-russell-hint { opacity: 0; transition: opacity .2s; }
 .room-russell-hint.show, .room-russell-hint:hover { opacity: .35; }
 .room-russell-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
@@ -1901,10 +1901,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
    taut between quick thoughts, slack after a pause. */
 .room-box { position: absolute; pointer-events: none; z-index: 2; background: var(--sel-fill); outline: 1px solid var(--amber); }
 .room-stage:has(.room-box) { cursor: crosshair; }
+/* Lines, shared by every mode that joins things (the world's ontologies/lines.js): what shows,
+   the wide unseen line that catches the pointer, the arrowhead at an end, and a knot. Each mode's
+   own class says how strong its lines are. */
 .room-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
-.room-strand-line { fill: none; stroke: currentColor; stroke-width: 1; opacity: .32; transition: opacity .3s; }
-.room-strand-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: grab; }
+.room-line { fill: none; stroke: currentColor; stroke-width: 1; }
+.room-line-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.room-line-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
 .room-knot { fill: currentColor; opacity: .45; }
+/* Joyce's strands. */
+.room-strand-line { opacity: .32; transition: opacity .3s; }
+.room-strand-hit { cursor: grab; }
 .room-strand.selected .room-strand-line { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
 .room-strand.selected .room-knot { opacity: 1; fill: var(--amber); }
 .room-strand:hover .room-strand-line { opacity: .55; }
@@ -2092,9 +2099,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
    side of a parent facing a child to the child's facing side, with their label at the middle. */
-.room-russell-arrow { fill: none; stroke: currentColor; stroke-width: 1; opacity: .4; }
+.room-russell-arrow { opacity: .4; }
 .room-russell-drawing { opacity: .7; stroke-dasharray: 4 4; }
-.room-russell-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
 .room-russell-rule { stroke: currentColor; stroke-width: 1; opacity: .22; }
 .room-russell-rule.selected { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
 .room-russell-title {
@@ -2305,11 +2311,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     qr: '<rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><path d="M14.5 14.5h2.5v2.5M20.5 14.5v6h-3M14.5 18.5v2"/>'
   };
   function icon(nameOrDrawing) {
-    const svg2 = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg2.setAttribute("viewBox", "0 0 24 24");
-    svg2.setAttribute("aria-hidden", "true");
-    svg2.innerHTML = ICONS[nameOrDrawing] ?? nameOrDrawing;
-    return svg2;
+    const svg3 = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg3.setAttribute("viewBox", "0 0 24 24");
+    svg3.setAttribute("aria-hidden", "true");
+    svg3.innerHTML = ICONS[nameOrDrawing] ?? nameOrDrawing;
+    return svg3;
   }
   var toastTimer;
   function toast(message) {
@@ -4893,14 +4899,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       const j02 = Math.min(gh - 2, Math.floor(gy));
       const fy = gy - j02;
       const r0 = j02 * gw;
-      const r13 = r0 + gw;
+      const r14 = r0 + gw;
       for (let px = 0; px < W2; px++, p++) {
         let gx = (px + 0.5) * gw / W2 - 0.5;
         gx = gx < 0 ? 0 : gx > gw - 1 ? gw - 1 : gx;
         const i02 = Math.min(gw - 2, Math.floor(gx));
         const fx = gx - i02;
         const top = v2[r0 + i02] + (v2[r0 + i02 + 1] - v2[r0 + i02]) * fx;
-        const bot = v2[r13 + i02] + (v2[r13 + i02 + 1] - v2[r13 + i02]) * fx;
+        const bot = v2[r14 + i02] + (v2[r14 + i02 + 1] - v2[r14 + i02]) * fx;
         out[p] = f2(top + (bot - top) * fy);
       }
     }
@@ -7546,9 +7552,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
             el6("span", { class: `renderer-tag ${a.pass ? "pass" : "fail"}` }, a.pass ? "passes" : "fails"),
             a.kept && el6("span", { class: "renderer-tag kept" }, "shown")
           ),
-          el6("ul", {}, a.lines.map((line) => el6("li", {}, line)))
+          el6("ul", {}, a.lines.map((line2) => el6("li", {}, line2)))
         )),
-        ...r.lines.map((line) => el6("p", {}, line))
+        ...r.lines.map((line2) => el6("p", {}, line2))
       );
     }
     // The Living view: the mode's animation at this.clock, every frame. A frame's step is capped at
@@ -7710,6 +7716,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     groups: () => groups_exports,
     items: () => items_exports,
     joyce: () => joyce_exports,
+    lines: () => lines_exports,
     look: () => look_exports,
     maths: () => maths_exports,
     model: () => model_exports,
@@ -12078,13 +12085,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const th = tidy(fields);
     if (!th) return null;
     const p = parent == null ? null : w2.things[parent];
-    const group2 = isLeaf(th) && isGroup(p) ? p : null;
-    const at2 = group2 ? group2.parent : parent;
+    const group3 = isLeaf(th) && isGroup(p) ? p : null;
+    const at2 = group3 ? group3.parent : parent;
     if (!canHold(w2, at2, th.kind) || at2 != null && shut(w2, at2)) return null;
     if (isGroup(th)) th.members = [];
     Object.assign(th, { id: uid(th.kind[0]), parent: at2 ?? null, at: now });
     w2.things[th.id] = th;
-    if (group2) join(w2, group2.id, th.id);
+    if (group3) join(w2, group3.id, th.id);
     return th;
   }
   function update(w2, id, fields, now = Date.now()) {
@@ -12340,8 +12347,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (isMode(t, ontologies)) return ONTOLOGY;
     return w2.tagGroups?.[t.toLowerCase()] || null;
   }
-  function setTagGroup(w2, tag, group2, ontologies = []) {
-    const t = tidyTag(tag), g2 = tidyTag(group2);
+  function setTagGroup(w2, tag, group3, ontologies = []) {
+    const t = tidyTag(tag), g2 = tidyTag(group3);
     if (!t || isMode(t, ontologies) || g2 && same(g2, ONTOLOGY)) return false;
     const groups = w2.tagGroups ||= {};
     const name5 = [...Object.values(groups), ...w2.groupsMade || []].find((x) => g2 && same(x, g2)) || g2;
@@ -12365,13 +12372,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return [...out.values()].sort((a, b) => rank(a) - rank(b) || (a.group || "").localeCompare(b.group || ""));
   }
   var hasTag = (w2, id, tag, ontologies = []) => roomTags(w2, id, ontologies).some((o2) => same(o2.tag, tidyTag(tag)));
-  function makeTag(w2, text, group2 = "", ontologies = []) {
+  function makeTag(w2, text, group3 = "", ontologies = []) {
     const tag = tidyTag(text);
     if (!tag || isMode(tag, ontologies)) return false;
     const made = w2.tagsMade ||= [];
     const had = allTags(w2, ontologies, true).some((t) => same(t.tag, tag));
     if (!had) made.push(tag);
-    return setTagGroup(w2, tag, group2, ontologies) || !had;
+    return setTagGroup(w2, tag, group3, ontologies) || !had;
   }
   function makeGroup(w2, text) {
     const g2 = tidyTag(text);
@@ -12813,7 +12820,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/ontologies/joyce.js
   var joyce_exports = {};
   __export(joyce_exports, {
-    PAUSE: () => PAUSE,
+    PAUSE: () => PAUSE2,
     STEP: () => STEP2,
     clearHeights: () => clearHeights,
     default: () => joyce_default,
@@ -12822,14 +12829,141 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     nextSpot: () => nextSpot,
     nudge: () => nudge,
     setHeights: () => setHeights,
-    slack: () => slack,
+    slack: () => slack2,
     stepAfter: () => stepAfter,
-    strand: () => strand,
+    strand: () => strand2,
     tagName: () => tagName,
     timeline: () => timeline,
     trainSpots: () => trainSpots
   });
+
+  // dist/web/features/world/ontologies/lines.js
+  var lines_exports = {};
+  __export(lines_exports, {
+    ENDS: () => ENDS,
+    ENDS_WORDS: () => ENDS_WORDS,
+    HEAD: () => HEAD,
+    PAD: () => PAD,
+    PAUSE: () => PAUSE,
+    between: () => between,
+    cleanEnds: () => cleanEnds,
+    facing: () => facing,
+    group: () => group,
+    knot: () => knot,
+    labelSpot: () => labelSpot,
+    layer: () => layer,
+    line: () => line,
+    middle: () => middle,
+    path: () => path,
+    sidePoint: () => sidePoint,
+    slack: () => slack,
+    strand: () => strand,
+    svg: () => svg
+  });
+
+  // dist/web/features/world/ontologies/arrows.js
+  var PAD = 12;
+  var NORMAL = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
+  var r12 = (v2) => Math.round(v2 * 10) / 10;
+  var centre = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
+  function facing(a, b) {
+    const gapX = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w));
+    const gapY = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+    const ca2 = centre(a), cb = centre(b);
+    const upDown = gapX <= 0 && gapY <= 0 ? Math.abs(cb.y - ca2.y) >= Math.abs(cb.x - ca2.x) : gapY >= gapX;
+    if (upDown) return cb.y >= ca2.y ? { from: "bottom", to: "top" } : { from: "top", to: "bottom" };
+    return cb.x >= ca2.x ? { from: "right", to: "left" } : { from: "left", to: "right" };
+  }
+  function sidePoint(b, side, pad = 0) {
+    if (side === "top") return { x: b.x + b.w / 2, y: b.y - pad };
+    if (side === "bottom") return { x: b.x + b.w / 2, y: b.y + b.h + pad };
+    if (side === "left") return { x: b.x - pad, y: b.y + b.h / 2 };
+    return { x: b.x + b.w + pad, y: b.y + b.h / 2 };
+  }
+  function between(a, b, pads2 = {}) {
+    const { from, to } = facing(a, b);
+    const pad = (f2, side) => typeof f2 === "function" ? f2(side) : f2 ?? PAD;
+    return { p: sidePoint(a, from, pad(pads2.from, from)), q: sidePoint(b, to, pad(pads2.to, to)), from, to };
+  }
+  function controls(p, q, from, to) {
+    const d = Math.max(24, Math.hypot(q.x - p.x, q.y - p.y) * 0.4);
+    const [ax, ay] = NORMAL[from], [bx, by] = NORMAL[to];
+    return [{ x: p.x + ax * d, y: p.y + ay * d }, { x: q.x + bx * d, y: q.y + by * d }];
+  }
+  function path({ p, q, from, to }, line2 = "straight") {
+    if (line2 !== "curved") return `M${r12(p.x)} ${r12(p.y)}L${r12(q.x)} ${r12(q.y)}`;
+    const [c12, c2] = controls(p, q, from, to);
+    return `M${r12(p.x)} ${r12(p.y)}C${r12(c12.x)} ${r12(c12.y)} ${r12(c2.x)} ${r12(c2.y)} ${r12(q.x)} ${r12(q.y)}`;
+  }
+  function middle({ p, q, from, to }, line2 = "straight", t = 0.5) {
+    if (line2 !== "curved") return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+    const [c12, c2] = controls(p, q, from, to);
+    const u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    return { x: a * p.x + b * c12.x + c * c2.x + d * q.x, y: a * p.y + b * c12.y + c * c2.y + d * q.y };
+  }
+  function labelSpot(arrow, line2 = "straight", { gap = 12, prefer = null, t = 0.5 } = {}) {
+    const m2 = middle(arrow, line2, t);
+    const { from, p, q } = arrow;
+    if (from !== "top" && from !== "bottom") return { x: m2.x, y: m2.y - gap / 2, side: "above" };
+    const dx = q.x - p.x, dy = q.y - p.y;
+    const side = prefer || (dx < -24 ? "left" : "right");
+    if (Math.abs(dx) < Math.abs(dy) * 0.3) return { x: m2.x + (side === "left" ? -gap : gap), y: m2.y, side };
+    const leansRight = dx > 0 === dy > 0;
+    const up = side === "right" === leansRight;
+    return { x: m2.x + (side === "left" ? -gap / 2 : gap / 2), y: m2.y + (up ? -gap / 3 : gap / 3), side: `${side}-${up ? "up" : "down"}` };
+  }
+
+  // dist/web/features/world/ontologies/lines.js
   var SVG = "http://www.w3.org/2000/svg";
+  var r13 = (v2) => Math.round(v2 * 10) / 10;
+  var ENDS = ["none", "arrow", "both"];
+  var ENDS_WORDS = { none: "Plain line", arrow: "Arrow", both: "Arrow both ways" };
+  var cleanEnds = (v2, fallback = "arrow") => ENDS.includes(v2) ? v2 : fallback;
+  var PAUSE = { quick: 20, long: 3600 };
+  function slack(a, b, dist = 0, tension = 0.5, rest = 58) {
+    const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1e3);
+    const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
+    const pulled = Math.max(0, Math.min(1, 1 - (dist - rest) / 520));
+    return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
+  }
+  function strand(p, q, k2) {
+    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+    const bow = k2 * Math.max(26, d * 0.42);
+    const cx = mx + -dy / d * bow, cy = my + dx / d * bow;
+    return k2 < 0.02 ? `M${r13(p.x)} ${r13(p.y)}L${r13(q.x)} ${r13(q.y)}` : `M${r13(p.x)} ${r13(p.y)}Q${r13(cx)} ${r13(cy)} ${r13(q.x)} ${r13(q.y)}`;
+  }
+  var HEAD = "room-line-head";
+  function svg(name5, attrs = {}) {
+    const n = document.createElementNS(SVG, name5);
+    for (const [k2, v2] of Object.entries(attrs)) if (v2 != null) n.setAttribute(k2, v2);
+    return n;
+  }
+  function layer(cls = "") {
+    const out = svg("svg", { class: `room-strands room-lines${cls ? ` ${cls}` : ""}` });
+    const defs = svg("defs");
+    const mark = svg("marker", { id: HEAD, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+    mark.append(svg("path", { d: "M0 1L9 5L0 9", class: "room-line-head" }));
+    defs.append(mark);
+    out.append(defs);
+    return out;
+  }
+  var group = (attrs = {}) => svg("g", attrs);
+  function line(d, { ends = "none", cls = "", hit = false } = {}) {
+    const e = cleanEnds(ends, "none");
+    const shown2 = svg("path", {
+      d,
+      class: `room-line${cls ? ` ${cls}` : ""}`,
+      "marker-end": e !== "none" ? `url(#${HEAD})` : null,
+      "marker-start": e === "both" ? `url(#${HEAD})` : null
+    });
+    if (!hit) return [shown2];
+    const { cls: hitCls = "", ...attrs } = hit;
+    return [shown2, svg("path", { d, class: `room-line-hit${hitCls ? ` ${hitCls}` : ""}`, ...attrs })];
+  }
+  var knot = (p, cls = "", r = 2.6) => svg("circle", { cx: p.x, cy: p.y, r, class: `room-knot${cls ? ` ${cls}` : ""}` });
+
+  // dist/web/features/world/ontologies/joyce.js
   var byTime2 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
   var STEP2 = { line: 58, passage: 190, picture: 270, group: 190 };
   var LINE = 29;
@@ -12886,21 +13020,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     th.edited = now;
     return true;
   }
-  var PAUSE = { quick: 20, long: 3600 };
-  function slack(a, b, dist = 0, tension = 0.5) {
-    const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1e3);
-    const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
-    const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP2.line) / 520));
-    return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
-  }
-  function strand(p, q, k2) {
-    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-    const bow = k2 * Math.max(26, d * 0.42);
-    const cx = mx + -dy / d * bow, cy = my + dx / d * bow;
-    const r = (v2) => Math.round(v2 * 10) / 10;
-    return k2 < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
-  }
+  var { PAUSE: PAUSE2, strand: strand2 } = lines_exports;
+  var slack2 = (a, b, dist = 0, tension = 0.5) => slack(a, b, dist, tension, STEP2.line);
   var lastChanged = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
   function timeline(w2, roomId) {
     return roomTrains(w2, roomId).flatMap((t) => trainThoughts(w2, t.id).map((th) => ({ th, train: t }))).sort((a, b) => lastChanged(a.th) - lastChanged(b.th) || byTime2(a.th, b.th));
@@ -13143,8 +13264,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     draw(c) {
       const w2 = c.world, el16 = c.el;
       const nodes = [];
-      const svg2 = document.createElementNS(SVG, "svg");
-      svg2.setAttribute("class", "room-strands");
+      const svg3 = layer();
       const tension = c.setting("tension");
       for (const t of roomTrains(w2, c.roomId)) {
         const chosen = c.sel?.kind === "train" && c.sel.id === t.id || c.isSel(t.id);
@@ -13159,29 +13279,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const spots2 = trainSpots(w2, t.id);
         const knots = trainThoughts(w2, t.id).map((th) => ({ th, ...spots2[th.id] }));
         if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w2, t.id), draft: true });
-        const g2 = document.createElementNS(SVG, "g");
-        g2.setAttribute("data-group", t.id);
-        g2.setAttribute("class", "room-strand" + (chosen ? " selected" : ""));
+        const g2 = group({ "data-group": t.id, class: "room-strand" + (chosen ? " selected" : "") });
         for (let k2 = 1; k2 < knots.length; k2++) {
           const a = knots[k2 - 1], b = knots[k2];
           const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
-          const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
-          for (const cls of ["room-strand-hit", "room-strand-line"]) {
-            const path2 = document.createElementNS(SVG, "path");
-            path2.setAttribute("d", d);
-            path2.setAttribute("class", cls);
-            g2.append(path2);
-          }
+          const d = strand2(p, q, slack2(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
+          g2.append(...line(d, { cls: "room-strand-line", hit: { cls: "room-strand-hit" } }));
         }
-        for (const k2 of knots) {
-          const dot = document.createElementNS(SVG, "circle");
-          dot.setAttribute("cx", k2.x - 14);
-          dot.setAttribute("cy", k2.y + 15);
-          dot.setAttribute("r", 2.6);
-          dot.setAttribute("class", "room-knot");
-          g2.append(dot);
-        }
-        svg2.append(g2);
+        for (const k2 of knots) g2.append(knot({ x: k2.x - 14, y: k2.y + 15 }));
+        svg3.append(g2);
         for (const k2 of knots) {
           nodes.push(el16("div", {
             class: "room-bead" + (chosen || c.isSel(k2.th.id) ? " selected" : "") + (c.found === k2.th.id ? " found" : ""),
@@ -13202,7 +13308,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (c.draft && !c.draft.train) {
         nodes.push(el16("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
-      return [svg2, ...nodes];
+      return [svg3, ...nodes];
     },
     traum
   };
@@ -13359,58 +13465,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     whyNot: () => whyNot,
     withRelation: () => withRelation
   });
-
-  // dist/web/features/world/ontologies/arrows.js
-  var PAD = 12;
-  var NORMAL = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
-  var r12 = (v2) => Math.round(v2 * 10) / 10;
-  var centre = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
-  function facing(a, b) {
-    const gapX = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w));
-    const gapY = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
-    const ca2 = centre(a), cb = centre(b);
-    const upDown = gapX <= 0 && gapY <= 0 ? Math.abs(cb.y - ca2.y) >= Math.abs(cb.x - ca2.x) : gapY >= gapX;
-    if (upDown) return cb.y >= ca2.y ? { from: "bottom", to: "top" } : { from: "top", to: "bottom" };
-    return cb.x >= ca2.x ? { from: "right", to: "left" } : { from: "left", to: "right" };
-  }
-  function sidePoint(b, side, pad = 0) {
-    if (side === "top") return { x: b.x + b.w / 2, y: b.y - pad };
-    if (side === "bottom") return { x: b.x + b.w / 2, y: b.y + b.h + pad };
-    if (side === "left") return { x: b.x - pad, y: b.y + b.h / 2 };
-    return { x: b.x + b.w + pad, y: b.y + b.h / 2 };
-  }
-  function between(a, b, pads2 = {}) {
-    const { from, to } = facing(a, b);
-    const pad = (f2, side) => typeof f2 === "function" ? f2(side) : f2 ?? PAD;
-    return { p: sidePoint(a, from, pad(pads2.from, from)), q: sidePoint(b, to, pad(pads2.to, to)), from, to };
-  }
-  function controls(p, q, from, to) {
-    const d = Math.max(24, Math.hypot(q.x - p.x, q.y - p.y) * 0.4);
-    const [ax, ay] = NORMAL[from], [bx, by] = NORMAL[to];
-    return [{ x: p.x + ax * d, y: p.y + ay * d }, { x: q.x + bx * d, y: q.y + by * d }];
-  }
-  function path({ p, q, from, to }, line = "straight") {
-    if (line !== "curved") return `M${r12(p.x)} ${r12(p.y)}L${r12(q.x)} ${r12(q.y)}`;
-    const [c12, c2] = controls(p, q, from, to);
-    return `M${r12(p.x)} ${r12(p.y)}C${r12(c12.x)} ${r12(c12.y)} ${r12(c2.x)} ${r12(c2.y)} ${r12(q.x)} ${r12(q.y)}`;
-  }
-  function middle({ p, q, from, to }, line = "straight", t = 0.5) {
-    if (line !== "curved") return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
-    const [c12, c2] = controls(p, q, from, to);
-    const u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
-    return { x: a * p.x + b * c12.x + c * c2.x + d * q.x, y: a * p.y + b * c12.y + c * c2.y + d * q.y };
-  }
-  function labelSpot(arrow, line = "straight", { gap = 12, prefer = null, t = 0.5 } = {}) {
-    const m2 = middle(arrow, line, t);
-    const { from, p, q } = arrow;
-    if (from !== "top" && from !== "bottom") return { x: m2.x, y: m2.y - gap / 2, side: "above" };
-    const dx = q.x - p.x, dy = q.y - p.y;
-    const side = prefer || (dx < -24 ? "left" : "right");
-    if (Math.abs(dx) < Math.abs(dy) * 0.3) return { x: m2.x + (side === "left" ? -gap : gap), y: m2.y, side };
-    const leansRight = dx > 0 === dy > 0;
-    const up = side === "right" === leansRight;
-    return { x: m2.x + (side === "left" ? -gap / 2 : gap / 2), y: m2.y + (up ? -gap / 3 : gap / 3), side: `${side}-${up ? "up" : "down"}` };
-  }
 
   // dist/web/features/world/ontologies/relations.js
   var relations_exports = {};
@@ -13613,7 +13667,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/world/ontologies/russell.js
-  var SVG2 = "http://www.w3.org/2000/svg";
   var ID = "russell";
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
   var LINES = ["straight", "curved"];
@@ -13927,11 +13980,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return box;
   }
   var pending = null;
-  var svg = (name5, attrs = {}) => {
-    const n = document.createElementNS(SVG2, name5);
-    for (const [k2, v2] of Object.entries(attrs)) n.setAttribute(k2, v2);
-    return n;
-  };
+  var svg2 = svg;
   var FOOT = 16;
   var RULE = 14;
   var arrowBox = ({ at: at2, size }) => ({ x: at2.x, y: at2.y, w: size.w, h: size.h });
@@ -13954,16 +14003,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return chapterAt(c.world, c.roomId, p.x, p.y);
   }
   function dragArrow(c, e, from) {
-    const layer = c.world$?.querySelector(".room-russell-arrows");
+    const layer2 = c.world$?.querySelector(".room-russell-arrows");
     const b = boxes(c.world, c.roomId)[from];
-    if (!layer || !b) return;
+    if (!layer2 || !b) return;
     const p = foot(arrowBox(b));
-    const line = c.setting("line") || "straight";
-    const drawn = svg("path", { class: "room-russell-arrow room-russell-drawing", "marker-end": "url(#russell-head)" });
-    layer.append(drawn);
+    const line2 = c.setting("line") || "straight";
+    const [drawn] = line("", { ends: "arrow", cls: "room-russell-arrow room-russell-drawing" });
+    layer2.append(drawn);
     const move5 = (ev) => {
       const q = c.toWorld(ev.clientX, ev.clientY);
-      drawn.setAttribute("d", path({ p, q, from: "bottom", to: "top" }, line));
+      drawn.setAttribute("d", path({ p, q, from: "bottom", to: "top" }, line2));
     };
     const up = (ev) => {
       document.removeEventListener("pointermove", move5);
@@ -14268,25 +14317,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     draw(c) {
       const w2 = c.world, el16 = c.el, roomId = c.roomId;
       const all = boxes(w2, roomId);
-      const layer = svg("svg", { class: "room-strands room-russell-arrows" });
-      const defs = svg("defs");
-      const mark = svg("marker", { id: "russell-head", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
-      mark.append(svg("path", { d: "M0 1L9 5L0 9", class: "room-russell-head" }));
-      defs.append(mark);
-      layer.append(defs);
+      const layer2 = layer("room-russell-arrows");
       const nodes = [];
       const picking = pending && pending.room === roomId;
-      const line = c.setting("line") || "straight";
+      const line2 = c.setting("line") || "straight";
       const names = cleanRelations(c.setting(RELATIONS.key));
       for (const { from, to, label: label2, rel } of arrows(w2, roomId)) {
         const a = all[from], b = all[to];
         if (!a || !b) continue;
         const arrow = between(arrowBox(a), arrowBox(b), pads(w2, from, to));
-        const d = path(arrow, line), key = arrowKey(from, to);
-        layer.append(svg("path", { class: "room-russell-arrow", d, "marker-end": "url(#russell-head)" }));
-        const hit = svg("path", { class: "room-russell-hit", d, "data-arrow": key });
-        layer.append(hit);
-        const mid = labelSpot(arrow, line);
+        const d = path(arrow, line2), key = arrowKey(from, to);
+        const [drawn, hit] = line(d, { ends: "arrow", cls: "room-russell-arrow", hit: { cls: "room-russell-hit", "data-arrow": key } });
+        layer2.append(drawn, hit);
+        const mid = labelSpot(arrow, line2);
         if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
           nodes.push(editBox(c, mid));
           continue;
@@ -14301,7 +14344,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (label2 || shown2) {
           const prefer = parentsOf(w2, roomId, to).length > 1 ? arrow.p.x < arrow.q.x ? "left" : "right" : null;
           const fan = arrow.from === "bottom" && childrenOf(w2, roomId, from).length > 1;
-          const spot4 = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
+          const spot4 = labelSpot(arrow, line2, { prefer, t: fan ? 0.7 : 0.5 });
           nodes.push(el16("div", {
             class: `room-russell-label side-${spot4.side}`,
             "data-group": to,
@@ -14343,7 +14386,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }
         const top = at2.y + headOf(g2);
-        if (!g2.closed) layer.append(svg("path", { class: "room-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - RULE} ${top + 6}L${at2.x - RULE} ${at2.y + size.h - 4}` }));
+        if (!g2.closed) layer2.append(svg2("path", { class: "room-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - RULE} ${top + 6}L${at2.x - RULE} ${at2.y + size.h - 4}` }));
         if (headOf(g2)) nodes.push(el16("div", { class: "room-russell-title", "data-group": g2.id, "data-measure": g2.id, style: `left:${at2.x}px;top:${at2.y}px` }, g2.title));
         if (!c.locked) {
           const f2 = foot(arrowBox(box));
@@ -14353,7 +14396,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (c.draft && !c.draft.train && !c.draft.edit) {
         nodes.push(el16("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
-      return [layer, ...nodes];
+      return [layer2, ...nodes];
     },
     // A tap on a closed (closed) chapter opens it as a document (document.js).
     open(c, id) {
@@ -15657,9 +15700,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     obj.lines.forEach((l2, k2) => {
       if (!l2.trim()) return;
       const kl = keyLine(l2);
-      const line = (obj.first ?? obj.line + 1) + k2;
-      if (kl) keys.push({ ...kl, line });
-      else other.push({ text: l2, line });
+      const line2 = (obj.first ?? obj.line + 1) + k2;
+      if (kl) keys.push({ ...kl, line: line2 });
+      else other.push({ text: l2, line: line2 });
     });
     return { keys, other };
   }
@@ -15710,11 +15753,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var NAMED = { room: "room", description: "description", desc: "description", tags: "tags", tint: "tint", light: "light", opacity: "opacity" };
   function frontOf(parts, report = []) {
     const meta = { settings: {}, sideSettings: [{}, {}], kept: [] };
-    for (const { key, raw, line } of parts.front) {
+    for (const { key, raw, line: line2 } of parts.front) {
       const k2 = key.toLowerCase();
       if (k2 === "format") {
         meta.format = String(frontValue(raw));
-        if (meta.format !== FORMAT) report.push(`Line ${line}: this file says format ${meta.format}; it was read as ${FORMAT}.`);
+        if (meta.format !== FORMAT) report.push(`Line ${line2}: this file says format ${meta.format}; it was read as ${FORMAT}.`);
       } else if (k2 === "guide") meta.guide = String(frontValue(raw));
       else if (k2 === "modes" || k2 === "twin") meta[k2] = [].concat(frontValue(raw)).map((m2) => String(m2).trim().toLowerCase()).filter(Boolean);
       else if (k2 === "kind") meta.modes = [String(frontValue(raw)).toLowerCase()];
@@ -15728,7 +15771,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         (meta.settings[key.slice(0, dot).toLowerCase()] ||= {})[key.slice(dot + 1)] = frontValue(raw);
       } else {
         meta.kept.push(`${key}: ${raw}`);
-        report.push(`Line ${line}: Träumerei doesn't know "${key}"; it was kept and will be written back out.`);
+        report.push(`Line ${line2}: Träumerei doesn't know "${key}"; it was kept and will be written back out.`);
       }
     }
     return meta;
@@ -15892,14 +15935,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const fields2 = { kind: "group", of: defaultOf, title: obj.title || "" };
         const holds2 = [];
         const rest = [];
-        let line = obj.line;
+        let line2 = obj.line;
         for (const k2 of keys) {
           if (k2.key === "made in") {
             const of = String(k2.values[0]?.v ?? "").toLowerCase();
             if (of) fields2.of = of;
           } else if (k2.key === "holds") {
             holds2.push(...k2.values);
-            line = k2.line;
+            line2 = k2.line;
           } else if (k2.key === "closed" && k2.flag) fields2.closed = true;
           else if (k2.key === "shared" && k2.flag) fields2.shared = true;
           else {
@@ -15915,7 +15958,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         ids.set(obj.id, g2.id);
         if (rest.length) kept.keys[g2.id] = rest;
-        groups.push({ g: g2, holds: holds2, line, obj });
+        groups.push({ g: g2, holds: holds2, line: line2, obj });
         continue;
       }
       if (obj.kind === "relation") {
@@ -15939,20 +15982,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       made.thoughts++;
       if (kindOf2(th) === "picture") made.pictures++;
     }
-    for (const { g: g2, holds: holds2, line, obj } of groups) {
+    for (const { g: g2, holds: holds2, line: line2, obj } of groups) {
       const order = [];
       for (const v2 of holds2) {
         if (v2.t !== "ref") {
-          report.push(`Line ${line}: "${writeValue(v2)}" in ^${obj.id}'s holds isn't a ^reference, so it was left out.`);
+          report.push(`Line ${line2}: "${writeValue(v2)}" in ^${obj.id}'s holds isn't a ^reference, so it was left out.`);
           continue;
         }
         const id = ids.get(v2.id);
         if (!id) {
-          report.push(`Line ${line}: ^${obj.id} holds ^${v2.id}, which isn't in the file.`);
+          report.push(`Line ${line2}: ^${obj.id} holds ^${v2.id}, which isn't in the file.`);
           continue;
         }
         if (join2(w2, g2.id, id)) order.push(id);
-        else if (!w2.things[g2.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v2.id} (a group can't hold itself, or a group that holds it).`);
+        else if (!w2.things[g2.id]?.members.includes(id)) report.push(`Line ${line2}: ^${obj.id} can't hold ^${v2.id} (a group can't hold itself, or a group that holds it).`);
       }
       if (w2.things[g2.id]) {
         setOrder2(w2, g2.id, order);
@@ -15970,9 +16013,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return { ids, made, report, relations: relations2, kept };
   }
-  function unfetched(f2, line, report) {
+  function unfetched(f2, line2, report) {
     const where = f2.url || "its data";
-    report?.push(`Line ${line}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
+    report?.push(`Line ${line2}: the picture at ${where.length > 60 ? where.slice(0, 57) + "…" : where} couldn't be fetched, so a line says so.`);
     return { kind: "line", text: `A picture couldn't be fetched${f2.text ? `: ${f2.text}` : ""} (${f2.url || "unreadable data"})` };
   }
   function keep(w2, roomId, kept, meta, unread) {
@@ -16014,23 +16057,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const fresh = freshIds || new Set(ids.values());
     const helpers = (mode) => {
-      const say3 = (line, words) => report.push(`Line ${line}: ${words}`);
-      const thing2 = (v2, line) => {
+      const say3 = (line2, words) => report.push(`Line ${line2}: ${words}`);
+      const thing2 = (v2, line2) => {
         if (v2?.t !== "ref") {
-          say3(line, `"${writeValue(v2)}" isn't a ^reference.`);
+          say3(line2, `"${writeValue(v2)}" isn't a ^reference.`);
           return null;
         }
         const id = ids.get(v2.id);
         if (!id) {
-          say3(line, `^${v2.id} isn't in the file.`);
+          say3(line2, `^${v2.id} isn't in the file.`);
           return null;
         }
-        if (v2.occ || v2.span != null) say3(line, `${mode} doesn't use occurrences or spans; ${writeValue(v2)} was read as ^${v2.id}.`);
+        if (v2.occ || v2.span != null) say3(line2, `${mode} doesn't use occurrences or spans; ${writeValue(v2)} was read as ^${v2.id}.`);
         return id;
       };
-      const arrow = (a, line) => {
-        const from = thing2(a.from, line), to = thing2(a.to, line);
-        return from && to ? { from, to, rel: a.rel, label: a.label, line } : null;
+      const arrow = (a, line2) => {
+        const from = thing2(a.from, line2), to = thing2(a.to, line2);
+        return from && to ? { from, to, rel: a.rel, label: a.label, line: line2 } : null;
       };
       return {
         thing: thing2,
@@ -16175,16 +16218,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const seen = /* @__PURE__ */ new Set();
     for (const o2 of parts.objects) {
       if (seen.has(o2.id)) continue;
-      const group2 = [], stack = [o2.id];
+      const group3 = [], stack = [o2.id];
       while (stack.length) {
         const id = stack.pop();
         if (seen.has(id)) continue;
         seen.add(id);
-        group2.push(id);
+        group3.push(id);
         stack.push(...links.get(id) || []);
       }
-      const k2 = group2.map((id) => side.get(id)).find((x) => x != null) ?? 0;
-      for (const id of group2) side.set(id, k2);
+      const k2 = group3.map((id) => side.get(id)).find((x) => x != null) ?? 0;
+      for (const id of group3) side.set(id, k2);
     }
     const made = { ...none };
     const ids = /* @__PURE__ */ new Map();
@@ -16246,12 +16289,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
   }
   var scopeOf = (w2, groupId) => /* @__PURE__ */ new Set([groupId, ...within2(w2, groupId).map((th) => th.id)]);
-  function forScope(line, inScope) {
-    const kl = keyLine(line);
+  function forScope(line2, inScope) {
+    const kl = keyLine(line2);
     if (!kl) return null;
     if (kl.key === "arrow") {
       const a = readArrow(kl.raw);
-      return a && (inScope(a.from.id) || inScope(a.to.id)) ? line : null;
+      return a && (inScope(a.from.id) || inScope(a.to.id)) ? line2 : null;
     }
     const refs = kl.values.filter((v2) => v2.t === "ref");
     if (!refs.length) return null;
@@ -16259,7 +16302,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const mine = refs.filter((v2) => inScope(v2.id));
       return mine.length ? `${kl.key}: ${mine.map((v2) => `^${v2.id}${v2.occ ? `#${v2.occ}` : ""}`).join(" ")}` : null;
     }
-    return inScope(refs[0].id) ? line : null;
+    return inScope(refs[0].id) ? line2 : null;
   }
   function open(w2, roomId, { scope = "room", groupId = null, ontologies = [], pictures = null } = {}) {
     const whole = roomText(w2, roomId, { ontologies, pictures });
@@ -16556,7 +16599,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       cur.lines.push(l2);
     });
     const objects = [];
-    const add = (kind, title, body, line) => objects.push({ id: String(objects.length + 1), kind, title, lines: body ? body.split("\n") : [], line, first: line });
+    const add = (kind, title, body, line2) => objects.push({ id: String(objects.length + 1), kind, title, lines: body ? body.split("\n") : [], line: line2, first: line2 });
     for (const b of blocks) {
       const [first, ...rest] = b.lines;
       const pic = b.lines.length === 1 && PICTURE.exec(first);
@@ -18058,16 +18101,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onpointerleave: () => clearTimeout(timer)
         }, el12("span", { class: "rooms-tag-name" }, t.tag), el12("span", { class: "rooms-tag-n" }, String(t.n)));
       };
-      const plus = (group2, label2) => this.makingTag && this.makingTag.group === group2 ? this.makeField(group2) : el12("button", {
+      const plus = (group3, label2) => this.makingTag && this.makingTag.group === group3 ? this.makeField(group3) : el12("button", {
         type: "button",
         class: "rail-item rooms-tag-plus",
         title: label2,
         "aria-label": label2,
         onclick: () => {
-          this.makingTag = { group: group2 };
+          this.makingTag = { group: group3 };
           this.drawTags();
         }
-      }, el12("span", { "aria-hidden": "true" }, "+"), group2 == null ? "group" : "tag");
+      }, el12("span", { "aria-hidden": "true" }, "+"), group3 == null ? "group" : "tag");
       const none = !this.tagLight;
       this.tagsList.replaceChildren(
         el12("button", {
@@ -18118,12 +18161,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The + field: a new tag in a group (Enter makes it; it shows with 0 rooms until dragged onto
     // one), or a new group (Enter makes it and opens it). Escape, or an empty Enter, leaves it.
-    makeField(group2) {
-      const forGroup = group2 == null;
+    makeField(group3) {
+      const forGroup = group3 == null;
       const done = (keep2, value) => {
         this.makingTag = null;
         if (keep2 && value.trim()) {
-          if (forGroup ? makeGroup3(this.world, value) : makeTag2(this.world, value, group2, this.ontologies)) {
+          if (forGroup ? makeGroup3(this.world, value) : makeTag2(this.world, value, group3, this.ontologies)) {
             this.save();
             if (forGroup) this.openGroup = tidyTag2(value).toLowerCase();
           }
@@ -21217,9 +21260,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const gap = (r) => y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
       const near = boxes2.reduce((m2, b) => gap(b.r) < gap(m2.r) ? b : m2);
       const mid = (near.r.top + near.r.bottom) / 2, half = (near.r.bottom - near.r.top) / 2 || 8;
-      const line = boxes2.filter((b) => Math.abs((b.r.top + b.r.bottom) / 2 - mid) < half);
-      for (const b of line) if (b.end || b.nl || x < (b.r.left + b.r.right) / 2) return b.i;
-      return line[line.length - 1].i + 1;
+      const line2 = boxes2.filter((b) => Math.abs((b.r.top + b.r.bottom) / 2 - mid) < half);
+      for (const b of line2) if (b.end || b.nl || x < (b.r.left + b.r.right) / 2) return b.i;
+      return line2[line2.length - 1].i + 1;
     }
     // Chooses letters in the thought being written: from `anchor` to `focus` (the caret's end).
     selectText(anchor, focus = anchor) {
@@ -21682,7 +21725,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     c.toast(`${n === 1 ? "Back" : `${n} back`} in the loose tray. Ctrl+Z undoes.`);
     return n;
   }
-  function group(c, e) {
+  function group2(c, e) {
     if (typing(e) || c.editing || !c.sel) return;
     if (c.locked) {
       c.toast("This room is locked.");
@@ -22274,14 +22317,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   async function openEditor(c, id) {
     const th = c.world.things[id];
     if (!th || !c.panel) return;
-    const group2 = isGroup3(th);
+    const group3 = isGroup3(th);
     const locked = !!shut4(c.world, id);
     const top = c.el("div", { class: "room-editor-top" });
     const content = c.el("div", { class: "room-editor-content" });
     const foot2 = c.el("div", { class: "room-editor-foot" });
     const body = c.el("div", { class: "room-editor", tabindex: "-1" }, top, content, foot2);
     let paras = null;
-    if (group2) {
+    if (group3) {
       paras = paragraphs(c, id, {
         locked,
         kept: () => {
@@ -22292,7 +22335,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       content.append(c.el("div", { class: "label" }, "Thoughts"), paras.node, ...paras.more ? [paras.more] : []);
     }
-    const sourceOf = () => group2 ? id : groupOf2(c.world, id, c.mode)?.id || null;
+    const sourceOf = () => group3 ? id : groupOf2(c.world, id, c.mode)?.id || null;
     const drawFoot = () => {
       const gid = c.files?.canEdit ? sourceOf() : null;
       foot2.replaceChildren(gid ? c.el("button", { type: "button", class: "word room-editor-source", title: "Edit as .traum text", onclick: () => c.editAsMarkdown(gid) }, locked ? "Source (read only)" : "Source") : "");
@@ -22680,7 +22723,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // or first words. Click opens it (a group's thoughts in the editor); Ctrl+click or Shift+click
     // adds it to what is chosen (so Ctrl+G makes a group of them here, in the tray); drag places it.
     looseCard(th) {
-      const group2 = isGroup3(th);
+      const group3 = isGroup3(th);
       const words = this.looseWords(th);
       return el15(
         "div",
@@ -22695,7 +22738,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.trayOpenCard(th.id);
           }
         },
-        group2 ? el15("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
+        group3 ? el15("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
         el15("span", { class: "room-tray-text" }, words)
       );
     }
@@ -23025,7 +23068,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             type: "button",
             class: "word",
             title: this.keyMap ? `Group · ${this.keyMap.label("room.group")}` : "Group",
-            onclick: () => group(this)
+            onclick: () => group2(this)
           }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
           el15("button", { type: "button", class: "word pop-delete", onclick: () => {
             ids.forEach((id) => remove4(this.world, id));
@@ -23470,7 +23513,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "room.duplicate": (e) => duplicate(this, e),
         "room.fold": (e) => fold3(this, e),
         "room.close": (e) => close(this, e),
-        "room.group": (e) => group(this, e),
+        "room.group": (e) => group2(this, e),
         "room.ungroup": (e) => ungroup(this, e),
         "room.move": (e) => moveTo(this, e),
         "room.throw-back": (e) => throwBack3(this, e),
