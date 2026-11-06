@@ -12436,7 +12436,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     forget(w2, th.id, from);
     th.parent = to;
   }
-  function move(w2, id, into, x = 0, y = 0) {
+  function move(w2, id, into, x = 0, y = 0, { loose = false } = {}) {
     const th = w2.things[id], to = w2.things[into];
     if (!th || !to || th.parent === into && !isLeaf(th) || inside2(w2, into, id) || shut(w2, id) || shut(w2, into)) return false;
     if (isTwin(to)) return false;
@@ -12460,6 +12460,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return join(w2, into, id);
     }
     if (kindOf(to) !== "room") return false;
+    if (loose) {
+      rehome(w2, th, into);
+      return true;
+    }
     const train = create(w2, into, { kind: "group", of: "joyce", x, y }, th.at);
     if (!train) return false;
     rehome(w2, th, into);
@@ -12711,6 +12715,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     isLoose: () => isLoose,
     isShared: () => isShared,
     kindTag: () => kindTag,
+    moveLoose: () => moveLoose,
     outermost: () => outermost,
     place: () => place,
     placedForeign: () => placedForeign,
@@ -12744,12 +12749,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var placedForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => spot2(w2, roomId, of, g2.id));
   var trayForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => !spot2(w2, roomId, of, g2.id));
   var WAITS = "tray";
-  function wait(w2, roomId, id) {
+  function wait(w2, roomId, id, of = null) {
     if (shut(w2, roomId) || w2.things[id]?.parent !== roomId) return false;
-    own(w2, roomId, WAITS)[id] = true;
+    const marks = own(w2, roomId, WAITS);
+    if (!of) marks[id] = true;
+    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of]: true };
     return true;
   }
-  var waiting = (w2, roomId, of, id) => !!own(w2, roomId, WAITS, false)[id] && !spot2(w2, roomId, of, id);
+  var waiting = (w2, roomId, of, id) => {
+    const m2 = own(w2, roomId, WAITS, false)[id];
+    return !!(m2 === true || m2?.[of]) && !spot2(w2, roomId, of, id);
+  };
+  function moveLoose(w2, id, into) {
+    const th = w2.things[id];
+    if (!th || kindOf(w2.things[into]) !== "room" || !move(w2, id, into, 0, 0, { loose: true })) return false;
+    if (isGroup(th)) th.loose = true;
+    for (const m2 of [th, ...isGroup(th) ? within(w2, id) : []]) if (isLeaf(m2)) wait(w2, into, m2.id);
+    return true;
+  }
   var isLoose = (g2) => isGroup(g2) && !!g2.loose;
   function place(w2, id) {
     const g2 = w2.things[id];
@@ -12757,14 +12774,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete g2.loose;
     return true;
   }
-  function unplace(w2, roomId, of, id, { leaves = true } = {}) {
+  function unplace(w2, roomId, of, id, { lays = false } = {}) {
     const th = w2.things[id];
     if (!th || th.parent !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
     if (inForeign(w2, roomId, of)(id)) return false;
     const mine = isGroup(th) && th.of === of;
     const theirs = isGroup(th) && !mine;
-    if (!mine && !theirs && !leaves) return false;
     const holders2 = groupsOf(w2, id, of);
+    if (!mine && !theirs && lays) {
+      if (waiting(w2, roomId, of, id)) return false;
+      for (const g2 of holders2) leave(w2, g2.id, id);
+      delete own(w2, roomId, of)[id];
+      return wait(w2, roomId, id, of);
+    }
     const spotted = theirs && !!spot2(w2, roomId, of, id);
     if (!holders2.length && !spotted && !(mine && !th.loose)) return false;
     for (const g2 of holders2) leave(w2, g2.id, id);
@@ -13696,7 +13718,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (id && l2.key === "on canvas" && !placed.has(id)) delete own(w2, roomId, "pessoa")[id];
             else if (id && l2.key === "tray" && !isGroup(w2.things[id]) && !placed.has(id)) {
               delete own(w2, roomId, "pessoa")[id];
-              wait(w2, roomId, id);
+              wait(w2, roomId, id, "pessoa");
             }
           }
         } else c.keep(l2);
@@ -13717,9 +13739,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // New thoughts added away from the canvas, and other modes' groups not placed yet.
     tray: (w2, roomId) => [...waitingThoughts(w2, roomId), ...trayForeign(w2, roomId, "pessoa")].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
     placed: (w2, roomId, id) => isGroup(w2.things[id]) ? !!spot2(w2, roomId, "pessoa", id) : !waiting(w2, roomId, "pessoa", id),
-    // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
-    // plain thought can't go.
-    unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { leaves: false }),
+    // Thrown back: another mode's group loses its spot; a thought loses its place and waits in the
+    // tray until it is dragged out again.
+    unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { lays: true }),
     // Where it was dragged to, or its place on the spiral.
     point(w2, roomId, id) {
       const placed = own(w2, roomId, "pessoa", false)[id];
@@ -21546,7 +21568,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             else if (isGroup3(th) && !placed.has(id)) delete own3(w2, roomId, ID2)[id];
             else if (isLeaf3(th) && !placed.has(id)) {
               delete own3(w2, roomId, ID2)[id];
-              wait2(w2, roomId, id);
+              wait2(w2, roomId, id, ID2);
             }
           }
         } else if (l2.key === "link") {
@@ -21618,13 +21640,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (isGroup3(th) && th.of !== ID2) return !!spot4(w2, roomId, ID2, id);
       return shownAs(w2, id) !== "tray";
     },
-    // Thrown back: a cluster waits in the tray, another mode's group loses its spot, and every link
-    // touching it (or anything in it) goes; Ctrl+Z brings them back. A thought can't go: Proust
-    // places every thought itself.
+    // Thrown back: a cluster waits in the tray, another mode's group loses its spot, a thought leaves
+    // its cluster and waits in the tray (until dragged out again), and every link touching it (or
+    // anything in it) goes; Ctrl+Z brings them back.
     unplace(w2, roomId, id) {
       const th = w2.things[id];
-      if (!isGroup3(th) || !unplace2(w2, roomId, ID2, id, { leaves: false })) return false;
-      cut(w2, roomId, [id, ...within3(w2, id).map((m2) => m2.id)]);
+      if (!(isGroup3(th) || isLeaf3(th)) || !unplace2(w2, roomId, ID2, id, { lays: true })) return false;
+      cut(w2, roomId, [id, ...isGroup3(th) ? within3(w2, id).map((m2) => m2.id) : []]);
       return true;
     },
     point,
@@ -22294,6 +22316,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var relationsRow2;
   var reading2;
   var wait3;
+  var moveLoose2;
   function bind5(lib) {
     ({
       room: room5,
@@ -22340,7 +22363,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
-    ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3 } = lib.groups);
+    ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3, moveLoose: moveLoose2 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
     ({ relationsRow: relationsRow2 } = lib.relationsview);
   }
@@ -22631,6 +22654,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (free2) return free2;
     const far = (p) => rects.length ? Math.min(...rects.map((r) => Math.hypot(r.x + r.w / 2 - p.x - size.w / 2, r.y + r.h / 2 - p.y - size.h / 2))) : 0;
     return order.reduce((best, p) => far(p) > far(best) ? p : best, order[0]);
+  }
+  function nearSpot(at2, rects, size, { gap = GAP2, step: step2 = 40, rings = 30 } = {}) {
+    const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
+    if (!hits(at2)) return { x: at2.x, y: at2.y };
+    for (let k2 = 1; k2 <= rings; k2++) {
+      const n = 8 * k2, d = k2 * step2;
+      const ring = [];
+      for (let i2 = 0; i2 < n; i2++) {
+        const a = i2 / n * 2 * Math.PI;
+        const p = { x: at2.x + Math.cos(a) * d * 1.6, y: at2.y + Math.sin(a) * d };
+        if (!hits(p)) ring.push(p);
+      }
+      if (ring.length) return ring.reduce((best, p) => Math.hypot(p.x - at2.x, p.y - at2.y) < Math.hypot(best.x - at2.x, best.y - at2.y) ? p : best);
+    }
+    return { x: at2.x, y: at2.y };
   }
   var OVERLAP = { key: "overlap", label: "Hand-placed can be overlapped", type: "switch", default: true };
 
@@ -23400,13 +23438,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (seed) this.typeIn(seed);
       this.showDraft();
     }
-    // Where a new train starts: a clear space on the screen, away from everything already drawn
-    // (measured as drawn, so a long train counts all the way down).
-    freeSpot() {
-      const rects = [...this.drawnRects().values()];
-      const NEW = { w: 340, h: 64 };
-      const p = clearSpot(this.visibleBox(), rects.map((r) => ({ ...r, x: r.x + 20 })), NEW);
+    // Where a new train starts: at the mouse, while the pointer is on the canvas, or the nearest clear
+    // spot around it when thoughts are already there; with the pointer off the canvas, a clear space
+    // on the screen, away from everything already drawn (measured as drawn, so a long train counts
+    // all the way down). size: the room it needs ({ w, h }), a new thought's first line or two.
+    freeSpot(size = { w: 340, h: 64 }) {
+      const rects = [...this.drawnRects().values()].map((r) => ({ ...r, x: r.x + 20 }));
+      const at2 = this.mouseSpot();
+      const p = at2 ? nearSpot(at2, rects, size) : clearSpot(this.visibleBox(), rects, size);
       return { x: Math.round(p.x + 20), y: Math.round(p.y) };
+    }
+    // The pointer's place on the canvas in world units (the words start just left of and a little
+    // above it, so they sit under the pointer), or null when it is off the canvas.
+    mouseSpot() {
+      const m2 = this.mouse;
+      if (!m2 || !this.stage) return null;
+      const b = this.stage.getBoundingClientRect();
+      if (m2.x < b.left || m2.x > b.right || m2.y < b.top || m2.y > b.bottom) return null;
+      const p = this.toWorld(m2.x, m2.y);
+      return { x: p.x - 20, y: p.y - 16 };
     }
     // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
     // group drawn as one (a closed train, or a thought being written in a train). A node marked
@@ -23753,8 +23803,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const n = throwBack2(c.ont, c.world, c.roomId, ids);
     if (!n) {
-      const one2 = c.ont.groups?.name.toLowerCase();
-      c.toast(!c.ont.lays ? "Already loose, or it can't go alone." : `${c.ont.name} places every thought itself: only ${one2 ? `a ${one2} or ` : ""}another mode's group can go back.`);
+      c.toast("Already in the loose tray, or it can't go alone (another mode's group stands for it).");
       return 0;
     }
     c.sel = null;
@@ -25205,12 +25254,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onchange: (e) => {
             const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
             if (!to) return;
-            const v2 = view8(this.world, to);
-            ids.forEach((id, i2) => move4(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
+            ids.forEach((id) => moveLoose2(this.world, id, to));
             this.sel = null;
             this.save();
             this.drawWorld();
-            this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}`);
+            this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}'s loose tray`);
           }
         },
         el17("option", { value: "" }, "Move to…"),
@@ -25443,17 +25491,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.sheet.replaceChildren();
       if (ed?.docked) this.panel?.close("sheet", true);
     }
+    // Move to… (Ctrl+M): what is chosen goes to that room's loose tray, in every mode (the world's
+    // moveLoose).
     moveTo(toRoom) {
-      const v2 = view8(this.world, toRoom);
-      const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
-      const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-      const spot5 = randomSpot2(box, taken);
-      const x = Math.round(spot5.x), y = Math.round(spot5.y);
-      move4(this.world, this.sel.id, toRoom, x, y);
+      moveLoose2(this.world, this.sel.id, toRoom);
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.toast(`Moved to ${placeName2(this.world, toRoom)}`);
+      this.toast(`Moved to ${placeName2(this.world, toRoom)}'s loose tray`);
     }
   };
 
@@ -26059,7 +26104,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const t = e.target.closest?.("[data-thought]");
         this.frame?.hover(t ? OVER.thought : e.target.closest?.("[data-train], .room-strand") ? OVER.group : null);
       });
-      this.stage.addEventListener("pointerleave", () => this.frame?.hover(null));
+      this.stage.addEventListener("pointerleave", () => {
+        this.frame?.hover(null);
+        this.mouse = null;
+      });
+      this.stage.addEventListener("pointermove", (e) => {
+        this.mouse = { x: e.clientX, y: e.clientY };
+      });
       this.listenForFiles();
     }
     // ---- A room ----

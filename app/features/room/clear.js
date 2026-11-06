@@ -63,6 +63,26 @@ export function clearSpot(box, rects, size, random = Math.random, { gap = GAP, t
   return order.reduce((best, p) => (far(p) > far(best) ? p : best), order[0]);
 }
 
+// The spot nearest `at` ({ x, y }, a top-left) for something new (size: { w, h }) that overlaps
+// none of rects, with a gap: `at` itself when it is clear, else the first clear one on rings
+// further and further out (8 directions, then more as the rings widen). Failing all, `at`.
+export function nearSpot(at, rects, size, { gap = GAP, step = 40, rings = 30 } = {}) {
+  const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
+  if (!hits(at)) return { x: at.x, y: at.y };
+  for (let k = 1; k <= rings; k++) {
+    const n = 8 * k, d = k * step;
+    const ring = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI;
+      // Text runs down: rings are wider than they are tall, so it goes beside or below sooner.
+      const p = { x: at.x + Math.cos(a) * d * 1.6, y: at.y + Math.sin(a) * d };
+      if (!hits(p)) ring.push(p);
+    }
+    if (ring.length) return ring.reduce((best, p) => (Math.hypot(p.x - at.x, p.y - at.y) < Math.hypot(best.x - at.x, best.y - at.y) ? p : best));
+  }
+  return { x: at.x, y: at.y };
+}
+
 // The setting every ontology has: whether thoughts placed by hand may be overlapped (and are left
 // out of the pass), or stay clear (and the others move around them).
 export const OVERLAP = { key: 'overlap', label: 'Hand-placed can be overlapped', type: 'switch', default: true };
