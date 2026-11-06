@@ -15847,6 +15847,33 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out;
   }
+  function keepHeldOrder(w2, groupId, order) {
+    const held = order.map((id) => w2.things[id]).filter(Boolean);
+    if (members2(w2, groupId).every((th, k2) => th === held[k2])) return;
+    for (let i2 = 0; i2 < held.length; ) {
+      if (!isGroup2(held[i2])) {
+        i2++;
+        continue;
+      }
+      let j = i2;
+      while (j < held.length && isGroup2(held[j])) j++;
+      const run = held.slice(i2, j);
+      let lo = i2 > 0 ? held[i2 - 1].at : null, hi = j < held.length ? held[j].at : null;
+      if (lo == null && hi == null) {
+        const ats = run.map((g2) => g2.at).sort((a, b) => a - b);
+        run.forEach((g2, k2) => {
+          g2.at = ats[k2];
+        });
+      } else {
+        if (lo == null) lo = hi - 1;
+        if (hi == null || hi <= lo) hi = lo + 1;
+        run.forEach((g2, k2) => {
+          g2.at = lo + (hi - lo) * (k2 + 1) / (run.length + 1);
+        });
+      }
+      i2 = j;
+    }
+  }
   function bringObjects(w2, roomId, parts, { modes = [], ontologies = [], now = Date.now(), report = [], fetched = null } = {}) {
     const ids = /* @__PURE__ */ new Map();
     const made = { groups: 0, thoughts: 0, pictures: 0 };
@@ -15927,7 +15954,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (join2(w2, g2.id, id)) order.push(id);
         else if (!w2.things[g2.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v2.id} (a group can't hold itself, or a group that holds it).`);
       }
-      if (w2.things[g2.id]) setOrder2(w2, g2.id, order);
+      if (w2.things[g2.id]) {
+        setOrder2(w2, g2.id, order);
+        keepHeldOrder(w2, g2.id, order);
+      }
     }
     for (const { g: g2, obj } of groups) {
       if (!w2.things[g2.id]) continue;
