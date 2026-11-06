@@ -67,8 +67,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
 .room-arrow-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
 .room-arrow-hit { cursor: pointer; }
-.room-arrow-hint { opacity: 0; transition: opacity .2s; }
-.room-arrow-hint.show, .room-arrow-hint:hover { opacity: .35; }
+.room-arrow-label.room-arrow-hint { opacity: 0; transition: opacity .2s; }
+.room-arrow-label.room-arrow-hint.show, .room-arrow-label.room-arrow-hint:hover { opacity: .35; }
 .room-arrow-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
 .room-arrow-edit.side-right { transform: translateY(-50%); }
 .room-arrow-edit.side-left { transform: translate(-100%, -50%); }

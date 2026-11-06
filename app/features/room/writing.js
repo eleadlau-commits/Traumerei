@@ -158,7 +158,7 @@ export class Writing {
     this.drawWorld();
     this.showDraft();
     const joyce = this.writer.id === DEFAULT_MODE;
-    this.toast(joyce ? 'New train: type to start it.' : 'New thought: type to start it (it waits in the tray).');
+    this.toast(this.writer.fresh || (joyce ? 'New train: type to start it.' : 'New thought: type to start it (it waits in the tray).'));
   }
 
   // Starts a thought (if one isn't started), with `seed` as its first letters.
@@ -246,7 +246,8 @@ export class Writing {
       const th = this.world.things[d.edit];
       if (th && !text.trim()) remove(this.world, d.edit);
       else if (th && text !== th.text) update(this.world, d.edit, { text });
-      if (this.world.things[d.train]) this.current[this.roomId] = d.train;
+      if (this.writer.goOn && this.world.things[d.edit]) this.current[this.roomId] = d.edit;
+      else if (this.world.things[d.train]) this.current[this.roomId] = d.train;
       this.save();
       this.drawWorld();
       return;
@@ -268,10 +269,13 @@ export class Writing {
     const w = this.world, wr = this.writer;
     let g = d.train && w.things[d.train];
     const made = !g;
-    if (!g) g = wr.begin ? wr.begin(w, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null }, now) : startTrain(w, this.roomId, d.x ?? 0, d.y ?? 0, now);
+    if (!g) g = wr.begin ? wr.begin(w, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null, fresh: !!d.fresh }, now) : startTrain(w, this.roomId, d.x ?? 0, d.y ?? 0, now);
     const th = create(w, g ? g.id : this.roomId, fields, now);
     if (!th && made && g && w.things[g.id]) remove(w, g.id);
-    if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
+    if (th && wr.kept) wr.kept(w, this.roomId, th, d);
+    // An ontology that goes on from a thought (goOn) remembers the thought; the others its group.
+    if (th && wr.goOn) this.current[this.roomId] = th.id;
+    else if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
     else if (th) delete this.current[this.roomId];
     return th;
   }

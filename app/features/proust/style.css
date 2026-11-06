@@ -1,0 +1,5 @@
+/* Proust: the layout of its canvas. The look of lines and labels is the room's (.room-line,
+   .room-arrow-*) and Folio's (.label); here only how strong a cluster's box is and where its title sits. */
+.room-proust-cluster { fill: none; opacity: .22; stroke-dasharray: 2 5; }
+.room-proust-cluster.selected { opacity: 1; stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: none; }
+.room-proust-title { position: absolute; margin: 0; padding: 0 6px; white-space: nowrap; cursor: grab; }

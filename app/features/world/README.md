@@ -75,7 +75,17 @@ next). `arrowView({ of, net, boxes, pads, nodeAt, name, ends })` draws each arro
 lines part with its relation and label beside it, edits an arrow where it is (a double-click: its
 relation and its label), draws a new one dragged from a point onto another node, and gives a
 node's pop-up rows (each arrow into it). `ends(rel)` gives a relation's ends (Russell: always an
-arrow). Its look is the room's `.room-arrow-*` classes.
+arrow). An ontology may route the line itself (`route`: Proust's strands), keep its relations in
+its own setting (`setting`), and leave its first relation unnamed beside its links (`quiet`). Its
+look is the room's `.room-arrow-*` classes.
+
+**Relations and their ends** (`relations.js`): `arrowsOf` may keep an ontology's arrows apart from
+its other data (`store`: Proust keeps its places under its id, its links under `proust-links`),
+read its relations from its own setting (`setting`, with its own default) and say why an arrow is
+refused in its words (`words`). In a room's list a relation may end with a mark for its ends:
+`leads to ->` (an arrow), `is equivalent to <->` (both ways), `related to --` (a plain line).
+`cleanRelations` gives the names without their marks, `cleanRelationList` the tidy list with them,
+`relationEnds` each name's ends.
 
 **Groups are shared objects** (`groups.js`, `lib.groups`): every other ontology of the room sees
 a group as one thought, in its tray until it places it (`foreign`, `trayForeign`, `placedForeign`;

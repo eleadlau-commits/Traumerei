@@ -12,7 +12,14 @@
 //   pads(w, from, to)   how far off each side an arrow starts and ends (arrows.js's between)
 //   nodeAt(w, room, x, y)   the node at a world point, or null (when the pointer is over no node)
 //   name(w, id)         a node in words, for its pop-up rows ("From Arrays: ")
-//   ends(rel)           (optional) a relation's ends: 'none', 'arrow' (default) or 'both'
+//   ends(rel, c)        (optional) a relation's ends: 'none', 'arrow' (default) or 'both'
+//   route(c, a, b, from, to)   (optional) the line itself, from box a to box b ({ at, size }):
+//                       { d, spot } (its SVG path, and where its label goes: labelSpot's
+//                       { x, y, side }). Left out: between the boxes' facing sides (arrows.js)
+//   setting             (optional) the room setting holding its relations (RELATIONS)
+//   word                (optional) what a link is called in its words ('arrow')
+//   quiet               (optional) true: the room's first relation (the one a new link gets) is
+//                       never named beside its links, only the others are
 //
 // and returns { draw(c, layer), press(c, e), drag(c, e, from, p), props(c, th), pick(c, now, pick, keys),
 // editing(c) }. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
@@ -25,7 +32,7 @@ import { cleanRelations, relationShown, withRelation, relationName, RELATIONS } 
 
 export const arrowKey = (from, to) => `${from}>${to}`;
 
-export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow' }) {
+export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow', route = null, setting = RELATIONS, word = 'arrow', quiet = false }) {
   const { arrows, arrowsInto, parentsOf, childrenOf, link, setLabel, setRelation } = net;
   const box = ({ at, size }) => ({ x: at.x, y: at.y, w: size.w, h: size.h });
 
@@ -57,11 +64,11 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
   // room's list and picks it, Esc goes back. pick(name) hears the choice ('' for none); keys(ev)
   // hears the picker's other keys (the edit box's Enter and Esc).
   function pick(c, now, chosen, keys = () => {}) {
-    const names = cleanRelations(c.setting(RELATIONS.key));
+    const names = cleanRelations(c.setting(setting.key), setting.default);
     const list = names.includes(now) || !now ? names : [...names, now];
     const wrap = c.el('span', { class: 'room-arrow-rel-pick' });
     const select = c.el('select', {
-      class: 'room-arrow-pick-rel', 'aria-label': 'The arrow\'s relation', onkeydown: keys,
+      class: 'room-arrow-pick-rel', 'aria-label': `The ${word}'s relation`, onkeydown: keys,
       onchange: (ev) => {
         const v = ev.target.value;
         if (v === 'new') { wrap.replaceChildren(field); field.focus(); return; }
@@ -81,9 +88,9 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
         ev.preventDefault();
         const n = relationName(field.value);
         if (!n) { if (n === null) c.toast('A relation can\'t hold [[ or ]].'); back(); return; }
-        const next = withRelation(names, n);
-        if (!c.locked && next.length !== names.length) { setRoomSetting(c.world, c.roomId, of, RELATIONS.key, next); c.save(); }
-        chosen(next.find((x) => x.toLowerCase() === n.toLowerCase()));
+        const next = withRelation(c.setting(setting.key), n, setting.default);
+        if (!c.locked && next.length !== names.length) { setRoomSetting(c.world, c.roomId, of, setting.key, next); c.save(); }
+        chosen(cleanRelations(next, setting.default).find((x) => x.toLowerCase() === n.toLowerCase()));
       },
     });
     wrap.append(select);
@@ -100,7 +107,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     };
     const input = c.el('input', {
       class: 'room-edit-text', value: e.text, placeholder: 'the coordinates', spellcheck: 'false',
-      'aria-label': 'The arrow\'s label', oninput: (ev) => { e.text = ev.target.value; }, onkeydown: keys,
+      'aria-label': `The ${word}'s label`, oninput: (ev) => { e.text = ev.target.value; }, onkeydown: keys,
     });
     const picker = pick(c, e.rel, (n) => { e.rel = n; input.focus(); }, keys);
     const out = c.el('div', {
@@ -188,24 +195,26 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
       const w = c.world, roomId = c.roomId, el = c.el;
       const nodes = [];
       const line = c.setting('line') || 'straight';
-      const names = cleanRelations(c.setting(RELATIONS.key));
+      const names = cleanRelations(c.setting(setting.key), setting.default);
       for (const { from, to, label, rel } of arrows(w, roomId)) {
         const a = all[from], b = all[to];
         if (!a || !b) continue;
-        const arrow = between(box(a), box(b), pads(w, from, to));
-        const d = arrowLine(arrow, line), key = arrowKey(from, to);
-        const [drawn, hit] = lines.line(d, { ends: ends(rel), cls: 'room-arrow', hit: { cls: 'room-arrow-hit', 'data-arrow': key } });
+        const arrow = route ? null : between(box(a), box(b), pads(w, from, to));
+        const routed = route ? route(c, a, b, from, to) : null;
+        if (route && !routed) continue;
+        const d = routed ? routed.d : arrowLine(arrow, line), key = arrowKey(from, to);
+        const [drawn, hit] = lines.line(d, { ends: ends(rel, c), cls: 'room-arrow', hit: { cls: 'room-arrow-hit', 'data-arrow': key } });
         layer.append(drawn, hit);
-        const mid = labelSpot(arrow, line);
+        const mid = routed ? routed.spot : labelSpot(arrow, line);
         if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
           nodes.push(editBox(c, mid));
           continue;
         }
         // The relation shows beside the label when it tells arrows apart (relationShown).
-        const shown = relationShown(names, rel);
+        const shown = quiet && rel === names[0] ? '' : relationShown(names, rel);
         if (!label && !shown && !c.locked) {
           // An arrow with nothing to show: a faint hint of its relation when the pointer is on it.
-          const hint = el('div', { class: `room-arrow-label room-arrow-hint side-${mid.side}`, 'data-arrow': key, title: 'Double-click to write this arrow\'s label', style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ''}…`);
+          const hint = el('div', { class: `room-arrow-label room-arrow-hint side-${mid.side}`, 'data-arrow': key, title: `Double-click to write this ${word}'s label`, style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ''}…`);
           hit.addEventListener('pointerenter', () => hint.classList.add('show'));
           hit.addEventListener('pointerleave', () => hint.classList.remove('show'));
           nodes.push(hint);
@@ -214,9 +223,13 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
           // A junction's two arrows lean towards each other, so each label goes on the side its
           // parent is on, away from the other arrow. Arrows fanning out of one foot are close
           // together at their middles, so their labels sit further down, where they have spread.
-          const prefer = parentsOf(w, roomId, to).length > 1 ? (arrow.p.x < arrow.q.x ? 'left' : 'right') : null;
-          const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
-          const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
+          // (A line routed by its ontology puts its label where the route says.)
+          let spot = mid;
+          if (!routed) {
+            const prefer = parentsOf(w, roomId, to).length > 1 ? (arrow.p.x < arrow.q.x ? 'left' : 'right') : null;
+            const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
+            spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
+          }
           nodes.push(el('div', {
             class: `room-arrow-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${[rel, label].filter(Boolean).join(' ')} (double-click to edit)`,
             style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
