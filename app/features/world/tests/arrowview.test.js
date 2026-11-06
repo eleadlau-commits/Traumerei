@@ -3,7 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import { emptyWorld, create, MESSY } from '../model.js';
-import { addChapter, link, labelOf, arrows, arrowsInto, parentsOf, childrenOf, setLabel, setRelation, chapterName } from '../ontologies/russell.js';
+import { addChapter, link, unlink, labelOf, arrows, arrowsInto, parentsOf, childrenOf, setLabel, setRelation, chapterName } from '../ontologies/russell.js';
 import { arrowView, arrowKey } from '../ontologies/arrowview.js';
 import { layer } from '../ontologies/lines.js';
 
@@ -35,7 +35,7 @@ function setup(ends) {
   const spots = { [a]: { at: { x: 0, y: 0 }, size: { w: 200, h: 60 } }, [b]: { at: { x: -150, y: 200 }, size: { w: 200, h: 60 } }, [c]: { at: { x: 150, y: 200 }, size: { w: 200, h: 60 } } };
   const view = arrowView({
     of: 'russell',
-    net: { arrows, arrowsInto, parentsOf, childrenOf, link, setLabel, setRelation },
+    net: { arrows, arrowsInto, parentsOf, childrenOf, link, unlink, setLabel, setRelation },
     boxes: () => spots, pads: () => ({}), nodeAt: () => null, name: chapterName, ...(ends ? { ends } : {}),
   });
   const room = { world: w, roomId: MESSY, el, locked: false, saved: 0, drawn: 0, setting: (k) => (k === 'line' ? 'straight' : undefined), save() { this.saved++; }, drawWorld() { this.drawn++; }, toast() {} };
@@ -87,4 +87,41 @@ test('a chapter\'s pop-up has a row for each arrow into it', () => {
   assert.equal(rows.length, 1);
   assert.ok(rows[0].textContent.includes('From Arrays'));
   assert.equal(rows[0].querySelector('input').value, 'the shape');
+});
+
+test('the edit box\'s Remove, and Delete at the end of its label, take the arrow away', () => {
+  const { w, a, b, c, view, room } = setup();
+  view.edit(room, a, b);
+  let box = view.draw(room, layer()).find((n) => n.classList.contains('room-arrow-edit'));
+  const remove = box.querySelector('[data-arrow-remove]');
+  assert.ok(remove);
+  // Pressed on the canvas (it holds the pointer), so press() hears it.
+  assert.equal(view.press(room, { target: remove, preventDefault() {} }), true);
+  assert.deepEqual(parentsOf(w, MESSY, b), []);
+  assert.equal(view.editing(room), false);
+  assert.equal(room.saved, 1);
+  // Delete in the label: nothing after the caret, so the arrow goes.
+  view.edit(room, a, c);
+  box = view.draw(room, layer()).find((n) => n.classList.contains('room-arrow-edit'));
+  const input = box.querySelector('input');
+  document.body.append(box);
+  input.value = 'abc';
+  input.setSelectionRange(1, 1);
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+  assert.deepEqual(parentsOf(w, MESSY, c), [a], 'Delete with letters after the caret only deletes a letter');
+  input.setSelectionRange(3, 3);
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+  assert.deepEqual(parentsOf(w, MESSY, c), []);
+  box.remove();
+});
+
+test('a pop-up row\'s × takes its arrow away; a locked room shows none', () => {
+  const { w, a, b, view, room } = setup();
+  const [row] = view.props(room, w.things[b]);
+  row.querySelector('.room-arrow-x').click();
+  assert.deepEqual(parentsOf(w, MESSY, b), []);
+  assert.equal(room.saved, 1);
+  link(w, MESSY, a, b);
+  room.locked = true;
+  assert.equal(view.props(room, w.things[b])[0].querySelector('.room-arrow-x'), null);
 });
