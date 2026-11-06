@@ -1,0 +1,49 @@
+/* The pages feature: layout only (the look is Folio's, folio/runtime/base.css: the rail, the
+   panel's veil and hairlines). Class names start with "pages-". The page is a <dialog> shown open
+   over Home, the rooms page or a room (and the docks, z-index 40), between the frame's top bar and
+   status bar. */
+dialog.pages {
+  position: fixed;
+  inset: var(--bar) 0 var(--status, 0px);
+  z-index: 45;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  color: var(--ink);
+  pointer-events: none;
+}
+dialog.pages:not([open]) { display: none; }
+.pages > * { pointer-events: auto; }
+
+/* The canvas: what the rail leaves, between the top bar and the status bar. The panel sits near
+   its top left and the canvas scrolls. */
+.pages-canvas {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--rail);
+  right: 0;
+  overflow: auto;
+  padding: var(--s-6) var(--s-6) var(--s-8, 48px);
+  scrollbar-width: thin;
+}
+/* Over Home the picture shows through; over the rooms page or a room, the canvas covers them. */
+html:not(.rooms-open) .pages-canvas { background: none; }
+.pages-panel { width: min(760px, 100%); }
+
+/* A row: the section's name on the left, what it draws on the right. */
+.pages-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+  padding: var(--s-4);
+}
+.pages-label { margin: 0; padding-top: 6px; }
+.pages-value { display: grid; gap: var(--s-3); min-width: 0; }
