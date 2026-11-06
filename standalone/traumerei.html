@@ -12436,7 +12436,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     forget(w2, th.id, from);
     th.parent = to;
   }
-  function move(w2, id, into, x = 0, y = 0) {
+  function move(w2, id, into, x = 0, y = 0, { loose = false } = {}) {
     const th = w2.things[id], to = w2.things[into];
     if (!th || !to || th.parent === into && !isLeaf(th) || inside2(w2, into, id) || shut(w2, id) || shut(w2, into)) return false;
     if (isTwin(to)) return false;
@@ -12460,6 +12460,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return join(w2, into, id);
     }
     if (kindOf(to) !== "room") return false;
+    if (loose) {
+      rehome(w2, th, into);
+      return true;
+    }
     const train = create(w2, into, { kind: "group", of: "joyce", x, y }, th.at);
     if (!train) return false;
     rehome(w2, th, into);
@@ -12711,6 +12715,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     isLoose: () => isLoose,
     isShared: () => isShared,
     kindTag: () => kindTag,
+    moveLoose: () => moveLoose,
     outermost: () => outermost,
     place: () => place,
     placedForeign: () => placedForeign,
@@ -12755,6 +12760,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const m2 = own(w2, roomId, WAITS, false)[id];
     return !!(m2 === true || m2?.[of]) && !spot2(w2, roomId, of, id);
   };
+  function moveLoose(w2, id, into) {
+    const th = w2.things[id];
+    if (!th || kindOf(w2.things[into]) !== "room" || !move(w2, id, into, 0, 0, { loose: true })) return false;
+    if (isGroup(th)) th.loose = true;
+    for (const m2 of [th, ...isGroup(th) ? within(w2, id) : []]) if (isLeaf(m2)) wait(w2, into, m2.id);
+    return true;
+  }
   var isLoose = (g2) => isGroup(g2) && !!g2.loose;
   function place(w2, id) {
     const g2 = w2.things[id];
@@ -22304,6 +22316,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var relationsRow2;
   var reading2;
   var wait3;
+  var moveLoose2;
   function bind5(lib) {
     ({
       room: room5,
@@ -22350,7 +22363,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
-    ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3 } = lib.groups);
+    ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3, moveLoose: moveLoose2 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
     ({ relationsRow: relationsRow2 } = lib.relationsview);
   }
@@ -25214,12 +25227,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onchange: (e) => {
             const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
             if (!to) return;
-            const v2 = view8(this.world, to);
-            ids.forEach((id, i2) => move4(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
+            ids.forEach((id) => moveLoose2(this.world, id, to));
             this.sel = null;
             this.save();
             this.drawWorld();
-            this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}`);
+            this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}'s loose tray`);
           }
         },
         el17("option", { value: "" }, "Move to…"),
@@ -25452,17 +25464,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.sheet.replaceChildren();
       if (ed?.docked) this.panel?.close("sheet", true);
     }
+    // Move to… (Ctrl+M): what is chosen goes to that room's loose tray, in every mode (the world's
+    // moveLoose).
     moveTo(toRoom) {
-      const v2 = view8(this.world, toRoom);
-      const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
-      const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-      const spot5 = randomSpot2(box, taken);
-      const x = Math.round(spot5.x), y = Math.round(spot5.y);
-      move4(this.world, this.sel.id, toRoom, x, y);
+      moveLoose2(this.world, this.sel.id, toRoom);
       this.sel = null;
       this.save();
       this.drawWorld();
-      this.toast(`Moved to ${placeName2(this.world, toRoom)}`);
+      this.toast(`Moved to ${placeName2(this.world, toRoom)}'s loose tray`);
     }
   };
 
