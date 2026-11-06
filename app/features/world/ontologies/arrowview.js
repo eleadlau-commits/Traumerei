@@ -16,13 +16,17 @@
 //   route(c, a, b, from, to)   (optional) the line itself, from box a to box b ({ at, size }):
 //                       { d, spot } (its SVG path, and where its label goes: labelSpot's
 //                       { x, y, side }). Left out: between the boxes' facing sides (arrows.js)
+//   onNode(c, el)       (optional) the node a drawn element stands for, or null (left out: the
+//                       group of this ontology it is in, or the node at that point)
 //   setting             (optional) the room setting holding its relations (RELATIONS)
 //   word                (optional) what a link is called in its words ('arrow')
 //   quiet               (optional) true: the room's first relation (the one a new link gets) is
 //                       never named beside its links, only the others are
 //
-// and returns { draw(c, layer), press(c, e), drag(c, e, from, p), props(c, th), pick(c, now, pick, keys),
-// editing(c) }. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
+// and returns { draw(c, layer), press(c, e), drag(c, e, from, p, shape?), props(c, th),
+// pick(c, now, pick, keys), edit(c, from, to), editing(c) }. drag's shape(q), when given, is the
+// line drawn while dragging, to the pointer at q (an SVG path); left out, it leaves p downwards.
+// edit(c, from, to) opens an arrow's edit box where it is, as a double-click does. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
 
 import { setRoomSetting } from '../model.js';
 import { maths } from '../maths.js';
@@ -32,7 +36,7 @@ import { cleanRelations, relationShown, withRelation, relationName, RELATIONS } 
 
 export const arrowKey = (from, to) => `${from}>${to}`;
 
-export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow', route = null, setting = RELATIONS, word = 'arrow', quiet = false }) {
+export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow', route = null, onNode = null, setting = RELATIONS, word = 'arrow', quiet = false }) {
   const { arrows, arrowsInto, parentsOf, childrenOf, link, setLabel, setRelation } = net;
   const box = ({ at, size }) => ({ x: at.x, y: at.y, w: size.w, h: size.h });
 
@@ -124,7 +128,10 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
 
   // The node under a pointer: the drawn node it is over, or the one at that point.
   function nodeUnder(c, ev) {
-    const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-group]');
+    const at = document.elementFromPoint(ev.clientX, ev.clientY);
+    const own = at && onNode ? onNode(c, at) : null;
+    if (own) return own;
+    const n = at?.closest?.('[data-group]');
     const g = n && c.world.things[n.dataset.group];
     if (g && g.of === of) return g.id;
     const p = c.toWorld(ev.clientX, ev.clientY);
@@ -133,13 +140,17 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
 
   // Draws a new arrow by dragging from point p (world units, leaving downwards) of node `from`
   // onto another node; the layer is the canvas's .room-lines layer.
-  function drag(c, e, from, p) {
+  function drag(c, e, from, p, shape = null) {
     const layer = c.world$?.querySelector('.room-lines');
     if (!layer) return;
     const line = c.setting('line') || 'straight';
-    const [drawn] = lines.line('', { ends: 'arrow', cls: 'room-arrow room-arrow-drawing' });
+    const first = cleanRelations(c.setting(setting.key), setting.default)[0] || '';
+    const [drawn] = lines.line('', { ends: ends(first, c), cls: 'room-arrow room-arrow-drawing' });
     layer.append(drawn);
-    const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); drawn.setAttribute('d', arrowLine({ p, q, from: 'bottom', to: 'top' }, line)); };
+    const move = (ev) => {
+      const q = c.toWorld(ev.clientX, ev.clientY);
+      drawn.setAttribute('d', shape ? shape(q) : arrowLine({ p, q, from: 'bottom', to: 'top' }, line));
+    };
     const up = (ev) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
@@ -163,6 +174,7 @@ export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'ar
     pick,
     drag,
     nodeUnder,
+    edit: startEdit,
 
     // Whether an arrow is being edited in this room.
     editing: (c) => !!editing && editing.room === c.roomId,

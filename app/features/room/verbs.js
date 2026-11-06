@@ -1,6 +1,6 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
 // page): rename (Ctrl+R), duplicate (Ctrl+D), fold into one (Ctrl+F), close or open (Ctrl+Shift+F), move to another room
-// (Ctrl+M), throw back into the tray (Ctrl+Shift+Backspace), group (Ctrl+G), ungroup (Ctrl+Shift+G) and lock the room (Ctrl+L); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
+// (Ctrl+M), throw back into the tray (Ctrl+Shift+Backspace), group (Ctrl+G), ungroup (Ctrl+Shift+G), join (Ctrl+J, the mode's own) and lock the room (Ctrl+L); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
@@ -52,6 +52,13 @@ export function fold(c, e) {
   c.save();
   c.drawWorld();
   c.toast(`Folded into one ${kindOf(th) === 'passage' ? 'passage' : 'thought'}. Ctrl+Z brings ${n > 1 ? 'them' : 'it'} back.`);
+}
+
+// Join: the mode's own way to join what is chosen (ontologies/index.js: join; Proust links the two
+// chosen). The key is live only in a mode that has it.
+export function join(c, e) {
+  if (typing(e) || c.editing || !c.ont?.join) return;
+  c.ont.join(c);
 }
 
 // Close or open: a group, or the group the chosen thought is in (in this mode).

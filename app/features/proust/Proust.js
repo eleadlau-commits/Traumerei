@@ -5,11 +5,11 @@
 import { Feature } from 'folio';
 import { bind } from './world.js';
 import { proust } from './rules.js';
-import { draw, press } from './draw.js';
+import { draw, press, join, props } from './draw.js';
 
 export default class Proust extends Feature {
   start() {
     bind(this.use('world').lib);
-    this.add('world.ontologies', { ...proust, draw, press });
+    this.add('world.ontologies', { ...proust, draw, press, join, props });
   }
 }

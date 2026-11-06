@@ -78,6 +78,7 @@ export default class Room extends Feature {
       'room.close': (e) => verbs.close(this, e),
       'room.group': (e) => verbs.group(this, e),
       'room.ungroup': (e) => verbs.ungroup(this, e),
+      'room.join': (e) => verbs.join(this, e),
       'room.move': (e) => verbs.moveTo(this, e),
       'room.throw-back': (e) => verbs.throwBack(this, e),
       'room.lock': (e) => verbs.lock(this, e),
@@ -85,7 +86,7 @@ export default class Room extends Feature {
     const live = () => !this.root.hidden && !!this.roomId;
     // Tab swaps modes only in a big room, and only while nothing (a field, a word in a dock) has
     // the focus but the room's canvas; elsewhere Tab keeps its usual job.
-    const when = { 'room.mode': () => live() && this.tabSwaps() };
+    const when = { 'room.mode': () => live() && this.tabSwaps(), 'room.join': () => live() && !!this.ont?.join };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
     // Export, Edit as text and Keys under ⋯ More, at the foot of the room's rail (the frame
     // feature's slot rail.more), shown only inside a room.
