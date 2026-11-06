@@ -20,6 +20,8 @@
 //   unplace(w, room, id)  (optional) throw back (Ctrl+Shift+Backspace): takes a thing it placed
 //                         back into its tray; true when it went (groups.js: unplace does it for
 //                         most). Without it, nothing can be thrown back
+//   lays                  (optional) true: it places every thought itself (Pessoa, Proust), so a
+//                         plain thought can't be thrown back; only groups can
 //   live                  (optional) true: a drag calls drop() as it goes and redraws (Joyce's
 //                         line follows); otherwise the thought moves and drop() comes at the end
 //   draw(c)               (optional) its own canvas: DOM nodes to show. Without it, each unit
@@ -117,6 +119,7 @@ export function missing(o) {
   if (o.groups != null && !['one', 'many'].includes(o.groups.membership)) out.push('groups');
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
   if (o.roomsPage != null && typeof o.roomsPage !== 'boolean') out.push('roomsPage');
+  if (o.lays != null && typeof o.lays !== 'boolean') out.push('lays');
   if (o.traum != null && (typeof o.traum.write !== 'function' || typeof o.traum.read !== 'function')) out.push('traum');
   if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
