@@ -46,7 +46,7 @@ test('links run in loops; a link to itself, or the same link twice, is refused; 
   assert.equal(L().link(w, MESSY, b, c), '');
   assert.equal(L().link(w, MESSY, c, a), ''); // a loop
   assert.equal(L().link(w, MESSY, a, a), 'A thought can\'t be linked to itself.');
-  assert.equal(L().link(w, MESSY, a, b), 'That arrow is already there.');
+  assert.equal(L().link(w, MESSY, a, b), 'That link is already there.');
   assert.equal(L().link(w, MESSY, b, a), ''); // back the other way
   assert.equal(L().arrows(w, MESSY).length, 4);
   // Kept apart from Proust's places, so groups.js's spots stay its own.

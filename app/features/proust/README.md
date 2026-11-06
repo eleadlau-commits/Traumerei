@@ -54,5 +54,13 @@ each node was placed (`{ x, y }`, the shape `groups.js` keeps for other modes' g
 
 **Uses:** the `world` service only. It offers no service of its own.
 
-Not yet: its `.traum` section (a file's `# In proust` section is kept as written), drawing a link
-by dragging, Ctrl+J, writing on from a chosen node, the Editor's link rows, and Centre.
+**In a .traum file** (the roomfile feature's FORMAT.md, *Ontology: proust*) its `# In proust`
+section has `at:`, `on canvas:`, `tray:` and a `link:` line for each link, its ends between its two
+ends: `link: ^a -> ^b | leads to | the proof` (`--` a plain line, `<->` both ways). It reads
+Russell's `arrow:` lines as links with an arrow, and relation objects (with an optional `ends:`).
+A relation a file brings that the room lacks joins the room's list with the line's ends; one the
+room has keeps its own ends, and a line that says otherwise is reported. Tests:
+`tests/traum.test.js`.
+
+Not yet: drawing a link by dragging, Ctrl+J, writing on from a chosen node, the Editor's link rows,
+and Centre.

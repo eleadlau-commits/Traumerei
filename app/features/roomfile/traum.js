@@ -14,7 +14,7 @@
 // keeps one (a Russell chapter); a mode that reads by time (a Joyce train) orders its thoughts by
 // when they were written, and the groups it holds where holds: puts them (keepHeldOrder).
 
-import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow } from './grammar.js';
+import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow, readLink, writeLink, LINK_ENDS } from './grammar.js';
 import {
   room, view, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, isGroup,
   addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, join, setOrder, isTwin, addTwin, sides,
@@ -177,7 +177,7 @@ const SIDES = ['Left', 'Right'];
 // file that it didn't understand.
 export function placementSections(w, roomId, ids, modes, ontologies) {
   const kept = own(w, roomId, KEPT, false).modeLines || {};
-  const c = { ref: (id) => (ids.has(id) ? ref(ids.get(id)) : null), writeArrow };
+  const c = { ref: (id) => (ids.has(id) ? ref(ids.get(id)) : null), writeArrow, writeLink };
   const out = [];
   for (const m of modes) {
     const o = ontology(ontologies, m);
@@ -309,15 +309,21 @@ export function keep(w, roomId, kept, meta, unread) {
   for (const [m, lines] of Object.entries(modeLines)) (data.modeLines ||= {})[m] = [...(data.modeLines?.[m] || []), ...lines];
 }
 
-// A relation object read: { from: [values], to: [values], rel, label, of }, from its keys
-// (from:, to:, label:, made in:) and its title (the relation's name).
+// A relation object read: { from: [values], to: [values], rel, label, of, ends }, from its keys
+// (from:, to:, label:, made in:, ends:) and its title (the relation's name). ends: is written
+// none, arrow or both (or --, -> or <->); null when it has none.
+const ENDS_WORD = { none: 'none', arrow: 'arrow', both: 'both', ...LINK_ENDS };
 function relationOf(obj, report) {
   const { keys } = keysOf(obj);
-  const out = { from: [], to: [], rel: obj.title || '', label: '', of: null, line: obj.line };
+  const out = { from: [], to: [], rel: obj.title || '', label: '', of: null, ends: null, line: obj.line };
   for (const k of keys) {
     if (k.key === 'from' || k.key === 'to') out[k.key].push(...k.values);
     else if (k.key === 'label') out.label = k.values.length === 1 && k.values[0].t === 'text' ? k.values[0].v : k.raw;
     else if (k.key === 'made in') out.of = String(k.values[0]?.v ?? '').toLowerCase();
+    else if (k.key === 'ends') {
+      const e = ENDS_WORD[String(k.raw).trim().toLowerCase()];
+      if (e) out.ends = e; else report.push(`Line ${k.line}: a relation's ends are none, arrow or both (or --, -> or <->); "${String(k.raw).trim()}" was left out.`);
+    }
     else report.push(`Line ${k.line}: a relation's "${k.key}" isn't known, so it was left out.`);
   }
   return out;
@@ -352,7 +358,7 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
     };
     const arrow = (a, line) => {
       const from = thing(a.from, line), to = thing(a.to, line);
-      return from && to ? { from, to, rel: a.rel, label: a.label, line } : null;
+      return from && to ? { from, to, rel: a.rel, label: a.label, line, ...(a.ends ? { ends: a.ends } : {}) } : null;
     };
     return {
       thing, report: say, fresh, at, scope, change, name,
@@ -363,6 +369,13 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
       arrow(l) {
         const a = readArrow(l.raw);
         if (!a) { say(l.line, 'an arrow is written ^from -> ^to | relation | label.'); return null; }
+        return arrow(a, l.line);
+      },
+      // A link: line, { from, to, ends, rel, label, line } (from and to as ids), or null (said why).
+      link(l) {
+        const a = readLink(l.raw);
+        if (a?.bad) { say(l.line, `a link's ends are --, -> or <->, not "${a.bad}"; it was left out.`); return null; }
+        if (!a) { say(l.line, 'a link is written ^a -- ^b | relation | label (or -> or <-> between them).'); return null; }
         return arrow(a, l.line);
       },
       relations: [],
@@ -380,7 +393,7 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
       report.push(`Line ${obj.line}: relation ^${obj.id} ${!cs[mode] ? `is for ${mode || 'no mode'}, which doesn't read relations here` : 'joins more than two things, which no mode here reads yet'}; it was kept and will be written back out.`);
       continue;
     }
-    const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label }, obj.line);
+    const a = cs[mode].fromRelation({ from: r.from[0], to: r.to[0], rel: r.rel, label: r.label, ends: r.ends }, obj.line);
     if (a) cs[mode].relations.push(a);
   }
   for (const [m, c] of Object.entries(cs)) ontology(ontologies, m).traum.read(w, roomId, byMode[m] || [], c);
@@ -471,7 +484,7 @@ function importTwin(w, parts, meta, report, { ontologies, now, page, globals, na
   for (const k of [0, 1]) {
     for (const s of sectionsOf[k]) {
       for (const l of s.lines) {
-        const ids = l.key === 'arrow' ? (/\^(\S+)\s*->\s*\^(\S+)/.exec(l.raw) || []).slice(1) : refsIn(l.values || []);
+        const ids = l.key === 'arrow' || l.key === 'link' ? (/\^(\S+?)\s*(?:<->|->|--)\s*\^(\S+)/.exec(l.raw) || []).slice(1) : refsIn(l.values || []);
         for (const id of ids) {
           if (side.has(id) && side.get(id) !== k) report.push(`Line ${l.line}: ^${id} is placed on both sides; it stays on the ${SIDES[side.get(id)].toLowerCase()}.`);
           else side.set(id, k);

@@ -9,7 +9,7 @@
 // section lines are read with the things the text holds as their scope, so an arrow taken out of
 // the text is taken away. Apply is one step for the caller to save.
 
-import { keysOf, keyLine, readArrow } from './grammar.js';
+import { keysOf, keyLine, readArrow, readLink } from './grammar.js';
 import {
   roomText, objectOrder, writeObject, placementSections, frontOf, readSections, keep, unfetched,
   modesOf, groupMode, ontology, KEPT,
@@ -56,9 +56,9 @@ const scopeOf = (w, groupId) => new Set([groupId, ...within(w, groupId).map((th)
 function forScope(line, inScope) {
   const kl = keyLine(line);
   if (!kl) return null;
-  if (kl.key === 'arrow') {
-    const a = readArrow(kl.raw);
-    return a && (inScope(a.from.id) || inScope(a.to.id)) ? line : null;
+  if (kl.key === 'arrow' || kl.key === 'link') {
+    const a = kl.key === 'arrow' ? readArrow(kl.raw) : readLink(kl.raw);
+    return a?.from && (inScope(a.from.id) || inScope(a.to.id)) ? line : null;
   }
   const refs = kl.values.filter((v) => v.t === 'ref');
   if (!refs.length) return null;

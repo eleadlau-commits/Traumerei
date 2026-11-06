@@ -275,6 +275,19 @@ export function write({ front = [], objects = [], sections = [] }) {
 
 // ---- Arrows ----
 
+// After an arrow's or link's ends: `| relation | label` (either may be left out or empty, either
+// may be in "quotes"), as { rel, label }.
+function relAndLabel(tail) {
+  let rest = (tail ?? '').trim(), rel = '', label = '';
+  if (tail != null) {
+    if (rest.startsWith('"')) { const q = quoted(rest, 0); rel = q.v; rest = rest.slice(q.end).trim().replace(/^\|/, ''); }
+    else { const k = rest.indexOf('|'); rel = (k < 0 ? rest : rest.slice(0, k)).trim(); rest = k < 0 ? '' : rest.slice(k + 1); }
+    rest = rest.trim();
+    label = rest.startsWith('"') && rest.endsWith('"') && rest.length > 1 ? quoted(rest, 0).v : rest;
+  }
+  return { rel, label };
+}
+
 // An arrow: line's words read: `^from -> ^to | relation | label` (relation and label may be left
 // out or empty; either may be in "quotes"). Returns { from, to, rel, label } (from and to as ref
 // values), or null.
@@ -283,14 +296,29 @@ export function readArrow(raw) {
   if (!m) return null;
   const [from] = values(m[1]), [to] = values(m[2]);
   if (from?.t !== 'ref' || to?.t !== 'ref') return null;
-  let rest = (m[3] ?? '').trim(), rel = '', label = '';
-  if (m[3] != null) {
-    if (rest.startsWith('"')) { const q = quoted(rest, 0); rel = q.v; rest = rest.slice(q.end).trim().replace(/^\|/, ''); }
-    else { const k = rest.indexOf('|'); rel = (k < 0 ? rest : rest.slice(0, k)).trim(); rest = k < 0 ? '' : rest.slice(k + 1); }
-    rest = rest.trim();
-    label = rest.startsWith('"') && rest.endsWith('"') && rest.length > 1 ? quoted(rest, 0).v : rest;
-  }
-  return { from, to, rel, label };
+  return { from, to, ...relAndLabel(m[3]) };
+}
+
+// A link's ends, as written between its two ends: -- a plain line, -> an arrow, <-> both ways.
+export const LINK_ENDS = { '--': 'none', '->': 'arrow', '<->': 'both' };
+export const LINK_MARK = { none: '--', arrow: '->', both: '<->' };
+
+// A link: line's words read: `^a -- ^b | relation | label` (or -> or <-> between them). Returns
+// { from, to, ends, rel, label } (from and to as ref values; ends 'none', 'arrow' or 'both'), or
+// null; { bad } when its ends are something else (`^a => ^b`), naming what was written.
+export function readLink(raw) {
+  const s = String(raw ?? '');
+  const m = /^\s*(\^\S+)\s+(\S+)\s+(\^\S+)\s*(?:\|(.*))?$/s.exec(s) || /^\s*(\^[^\s<>=-]+)(<->|->|--)(\^\S+)\s*(?:\|(.*))?$/s.exec(s);
+  if (!m) return null;
+  const [from] = values(m[1]), [to] = values(m[3]);
+  if (from?.t !== 'ref' || to?.t !== 'ref') return null;
+  if (!LINK_ENDS[m[2]]) return { bad: m[2] };
+  return { from, to, ends: LINK_ENDS[m[2]], ...relAndLabel(m[4]) };
+}
+
+// A link written as readLink reads it: { from, to } as '^a' words, ends, rel, label.
+export function writeLink({ from, to, ends = 'none', rel = '', label = '' }) {
+  return writeArrow({ from, to, rel, label }).replace(' -> ', ` ${LINK_MARK[ends] || '--'} `);
 }
 
 // An arrow written as readArrow reads it: { from, to } as '^a' words, rel, label.

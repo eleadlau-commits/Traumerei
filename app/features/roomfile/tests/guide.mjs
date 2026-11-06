@@ -11,10 +11,13 @@ import { gather } from '../../world/ontologies/index.js';
 import { emptyWorld } from '../../world/model.js';
 import { parse } from '../grammar.js';
 import { importRoom, exportRoom } from '../traum.js';
+import { bind as bindProust } from '../../proust/world.js';
+import { proust } from '../../proust/rules.js';
 
 bind(lib);
+bindProust(lib); // Proust is its own feature's, added to the world's slot
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
-const ontologies = gather();
+const ontologies = gather([proust]);
 const wrong = [];
 
 for (const kind of [...Object.keys(ITEMS), 'group', 'relation']) {
