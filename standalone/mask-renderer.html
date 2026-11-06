@@ -888,6 +888,17 @@ html.rail-narrow { --rail: 48px; }
 .expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
 .expand.done { transition: opacity .25s ease; opacity: 0; }
 
+/* ---- A page in the frame (Settings, Account) ----
+   A panel of flat veil on the canvas, with a hairline edge (.page-panel); its rows (.page-row) are
+   a quiet label (.page-label, the section's name, small spaced capitals) beside its value, with a
+   hairline between rows, on the page's canvas (.page-canvas, plain paper). Each feature lays out
+   the columns. */
+.page-canvas { background: var(--paper); } /* covers what is under the page */
+.page-panel { background: var(--chrome); box-shadow: 0 0 0 1px var(--chrome-edge); }
+.page-row + .page-row { border-top: 1px solid var(--chrome-edge); }
+.page-label { font-family: var(--font); font-weight: 400; font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+.page-row :is(p, small, .hint) { font-size: var(--t-label); line-height: 1.5; letter-spacing: .01em; color: var(--muted); }
+
 /* ---- Pop-ups over a page ---- */
 
 /* A faint shade over the whole screen, under a pop-up. */
@@ -1755,23 +1766,44 @@ button.time-date.on { opacity: 1; color: var(--amber); }
    after it, or after the left dock when that reaches further. */
 html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var(--dock-left))); }
 
+/* ---- feature: search (style.css) ---- */
+/* Styles for Search: layout only. Class names start with "search-". Folio's faint shade over the
+   screen, its panel near the top, and its pick list. */
+.search { font-family: var(--font); }
+.search-field { padding: 18px 20px; font-size: 17px; letter-spacing: .02em; border-bottom-color: rgb(var(--ink-rgb) / .12); }
+.search-field:focus { border-bottom-color: rgb(var(--ink-rgb) / .12); }
+.search-list { max-height: 50vh; overflow: auto; }
+.search-item { gap: 20px; padding: 11px 20px; }
+.search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
+.search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
+
 /* ---- feature: home (style.css) ---- */
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
    with "home-". The menu, Settings, Account and About take Folio's veil as they are. */
 
-/* The page over the picture: the name in the middle, a little above centre. Only the words
-   take clicks, so the picture underneath still can (e.g. moving the anchor). */
+/* The page over the picture, in the frame: the rail on the left (Folio's .rail), and the name in
+   the middle of what it leaves, a little above centre. Only the words and the rail take clicks, so
+   the picture underneath still can (e.g. moving the anchor). */
 .home {
   position: fixed;
   inset: 0;
   z-index: 2;
+  pointer-events: none;
+}
+.home-rail { pointer-events: auto; }
+.home-centre {
+  position: absolute;
+  top: var(--bar);
+  bottom: var(--status, 0px);
+  left: var(--rail);
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: clamp(28px, 5vh, 56px);
   padding: 0 24px 6vh;
-  pointer-events: none;
   color: var(--ink);
   font-family: var(--font);
   text-align: center;
@@ -1782,7 +1814,7 @@ html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var
   margin: 0;
   font-family: inherit;
   font-weight: 400;
-  font-size: clamp(36px, 8vw, 104px);
+  font-size: clamp(36px, 6.4vw, 104px);
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -1792,18 +1824,71 @@ html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var
 }
 
 .home-nav { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.home-row { display: flex; gap: clamp(28px, 4vw, 48px); }
 
-/* Its words are Folio's .word, larger; Create larger still. The spacing after the last letter is
-   taken back, so each word is truly centred. */
-.home-link { pointer-events: auto; font-size: 15px; margin-right: calc(-1 * var(--word-spacing)); }
+/* Create is Folio's .word, larger. The spacing after the last letter is taken back, so it is
+   truly centred. */
+.home-link { pointer-events: auto; margin-right: calc(-1 * var(--word-spacing)); }
 .home-link.home-create { font-size: 25px; opacity: .8; }
 
-/* The top bar: only the menu button. */
+/* The top bar: the menu button, then the frame's. */
 .topbar .top-right { display: none; }
 
 /* Settings → Typeface: each choice in its own face, in ordinary case. */
 .home-fonts button { --word-spacing: .14em; font-size: 15px; text-transform: none; }
+
+/* Under a page in the frame (Settings), the home page's words step aside. */
+.page-open .home { visibility: hidden; }
+
+/* ---- feature: pages (style.css) ---- */
+/* The pages feature: layout only (the look is Folio's, folio/runtime/base.css: the rail, the
+   panel's veil and hairlines). Class names start with "pages-". The page is a <dialog> shown open
+   over Home, the rooms page or a room (and the docks, z-index 40), between the frame's top bar and
+   status bar. */
+dialog.pages {
+  position: fixed;
+  inset: var(--bar) 0 var(--status, 0px);
+  z-index: 45;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+  color: var(--ink);
+  pointer-events: none;
+}
+dialog.pages:not([open]) { display: none; }
+.pages > * { pointer-events: auto; }
+
+/* The canvas: what the rail leaves, between the top bar and the status bar. The panel sits near
+   its top left and the canvas scrolls. */
+.pages-canvas {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--rail);
+  right: 0;
+  overflow: auto;
+  padding: var(--s-6) var(--s-6) var(--s-8, 48px);
+  scrollbar-width: thin;
+}
+/* Over Home the picture shows through; over the rooms page or a room, the canvas covers them. */
+html:not(.rooms-open) .pages-canvas { background: none; }
+.pages-panel { width: min(760px, 100%); }
+
+/* A row: the section's name on the left, what it draws on the right. */
+.pages-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+  padding: var(--s-4);
+}
+.pages-label { margin: 0; padding-top: 6px; }
+.pages-value { display: grid; gap: var(--s-3); min-width: 0; }
 
 /* ---- feature: proust (style.css) ---- */
 /* Proust: the layout of its canvas. The look of lines and labels is the room's (.room-line,
@@ -1822,21 +1907,10 @@ html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var
 .room-proust-dot.room-proust-hull-dot { opacity: .2; margin: -5px 0 0 -5px; }
 .room-proust-dot:hover, .room-bead:hover > .room-proust-dot:hover { opacity: .9; transform: scale(1.3); }
 .room-proust-names { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.room-proust-name { display: inline-flex; align-items: center; }
 /* Centre: a node further out than the room's reach shows faint; the bar over a centred layout. */
 .room-proust-far { opacity: .28; }
 .room-proust-centre-bar { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 14px; padding: 4px 12px; white-space: nowrap; }
-
-/* ---- feature: search (style.css) ---- */
-/* Styles for Search: layout only. Class names start with "search-". Folio's faint shade over the
-   screen, its panel near the top, and its pick list. */
-.search { font-family: var(--font); }
-.search-field { padding: 18px 20px; font-size: 17px; letter-spacing: .02em; border-bottom-color: rgb(var(--ink-rgb) / .12); }
-.search-field:focus { border-bottom-color: rgb(var(--ink-rgb) / .12); }
-.search-list { max-height: 50vh; overflow: auto; }
-.search-item { gap: 20px; padding: 11px 20px; }
-.search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-.search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
-.search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
 
 /* ---- feature: room (style.css) ---- */
 /* Styles for an open room: layout only (the look, the rail, the pop-ups and the frame's pieces are
@@ -2317,6 +2391,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-arrow-legend { position: absolute; transform: translateY(-100%); display: grid; gap: 3px; padding: 6px 10px; white-space: nowrap; }
 .room-arrow-legend-row { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); }
 .room-arrow-legend svg { overflow: visible; }
+/* The × that takes an arrow or link away, beside its name in the Editor. */
+.room-arrow-x { --x-size: 18px; vertical-align: middle; margin-left: 2px; }
 
 </style>
 </head>
@@ -11861,7 +11937,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       read: ({ title, body }) => ({ kind: "line", text: [title, body].filter(Boolean).join("\n") }),
       write: (th) => ({ body: th.text })
     },
-    node: (th, el16) => el16("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
+    node: (th, el17) => el17("span", { class: "room-thought", "data-id": th.id }, maths(th.text))
   };
 
   // dist/web/features/world/items/passage.js
@@ -11878,11 +11954,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       read: ({ title, body }) => ({ kind: "passage", title: title || "", body }),
       write: (th) => ({ title: th.title || "", body: th.body || "" })
     },
-    node: (th, el16) => el16(
+    node: (th, el17) => el17(
       "div",
       { class: "room-passage", "data-id": th.id },
-      th.title ? el16("div", { class: "room-passage-title" }, maths(th.title)) : null,
-      th.body ? el16("div", { class: "room-passage-body" }, maths(th.body)) : null
+      th.title ? el17("div", { class: "room-passage-title" }, maths(th.title)) : null,
+      th.body ? el17("div", { class: "room-passage-body" }, maths(th.body)) : null
     )
   };
 
@@ -11904,11 +11980,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       write: (th) => ({ title: th.text || "", body: th.src })
     },
-    node: (th, el16) => el16(
+    node: (th, el17) => el17(
       "figure",
       { class: "room-picture", "data-id": th.id },
-      el16("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
-      th.text ? el16("figcaption", {}, maths(th.text)) : null
+      el17("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
+      th.text ? el17("figcaption", {}, maths(th.text)) : null
     )
   };
 
@@ -13413,14 +13489,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each train's line (an SVG path from thought to thought, with a knot at each), its
     // thoughts, a closed train as one block, and the thought being written.
     draw(c) {
-      const w2 = c.world, el16 = c.el;
+      const w2 = c.world, el17 = c.el;
       const nodes2 = [];
       const svg3 = layer();
       const tension = c.setting("tension");
       for (const t of roomTrains(w2, c.roomId)) {
         const chosen = c.sel?.kind === "train" && c.sel.id === t.id || c.isSel(t.id);
         if (t.closed) {
-          nodes2.push(el16("div", {
+          nodes2.push(el17("div", {
             class: "room-bead room-closed" + (chosen ? " selected" : ""),
             "data-group": t.id,
             style: `left:${t.x}px;top:${t.y}px`
@@ -13440,7 +13516,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         for (const k2 of knots) g2.append(knot({ x: k2.x - 14, y: k2.y + 15 }));
         svg3.append(g2);
         for (const k2 of knots) {
-          nodes2.push(el16("div", {
+          nodes2.push(el17("div", {
             class: "room-bead" + (chosen || c.isSel(k2.th.id) ? " selected" : "") + (c.found === k2.th.id ? " found" : ""),
             "data-group": t.id,
             ...k2.draft ? {} : { "data-thought": k2.th.id },
@@ -13450,14 +13526,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       for (const g2 of placedForeign(w2, c.roomId, "joyce")) {
         const at2 = spot2(w2, c.roomId, "joyce", g2.id);
-        nodes2.push(el16("div", {
+        nodes2.push(el17("div", {
           class: "room-bead room-closed room-foreign" + (c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id) ? " selected" : ""),
           "data-group": g2.id,
           style: `left:${at2.x}px;top:${at2.y}px`
         }, c.thoughtNode(g2)));
       }
       if (c.draft && !c.draft.train) {
-        nodes2.push(el16("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes2.push(el17("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [svg3, ...nodes2];
     },
@@ -13906,7 +13982,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var ENDS2 = [["none", "Plain"], ["arrow", "Arrow"], ["both", "Both ways"]];
   var WORD = { solid: "Solid", dashed: "Dashed", dotted: "Dotted" };
   var lookClass = ({ line: line2, colour: colour2 } = {}) => [line2 && line2 !== "solid" ? `rel-line-${line2}` : "", colour2 && colour2 !== "ink" ? `rel-colour-${colour2}` : ""].filter(Boolean).join(" ");
-  function relationsRow(st, { el: el16, value, onChange, c = null, toast: toast2 = () => {
+  function relationsRow(st, { el: el17, value, onChange, c = null, toast: toast2 = () => {
   } }) {
     const withEnds = !!st.ends;
     const none = st.none || "arrow";
@@ -13914,13 +13990,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     let focus = null;
     let asking = null;
     let dragged = null;
-    const box = el16("div", { class: "room-rel-list", role: "list", "aria-label": st.label });
-    const root = el16(
+    const box = el17("div", { class: "room-rel-list", role: "list", "aria-label": st.label });
+    const root = el17(
       "div",
       { class: "renderer-slider room-rel-editor" },
-      el16("span", {}, st.label),
+      el17("span", {}, st.label),
       box,
-      st.note ? el16("span", { class: "room-list-note" }, st.note) : null
+      st.note ? el17("span", { class: "room-list-note" }, st.note) : null
     );
     function commit(next, at2) {
       list2 = next;
@@ -13961,7 +14037,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     function row(e, i2) {
       if (asking?.i === i2) {
         const others = list2.filter((_2, j) => j !== i2);
-        const into = el16(
+        const into = el17(
           "select",
           { class: "room-rel-into", "aria-label": "What its links become", onkeydown: (ev) => {
             ev.stopPropagation();
@@ -13971,27 +14047,27 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               draw3();
             }
           } },
-          ...others.map((o2, j) => el16("option", { value: String(j) }, o2.name)),
-          el16("option", { value: "none" }, "(no relation)")
+          ...others.map((o2, j) => el17("option", { value: String(j) }, o2.name)),
+          el17("option", { value: "none" }, "(no relation)")
         );
-        return el16(
+        return el17(
           "div",
           { class: "room-rel-row room-rel-asking", role: "listitem", "data-i": i2 },
-          el16("span", { class: "pop-note" }, `${asking.n} link${asking.n === 1 ? "" : "s"} ${asking.n === 1 ? "is" : "are"} “${e.name}”. ${asking.n === 1 ? "It becomes" : "They become"}`),
+          el17("span", { class: "pop-note" }, `${asking.n} link${asking.n === 1 ? "" : "s"} ${asking.n === 1 ? "is" : "are"} “${e.name}”. ${asking.n === 1 ? "It becomes" : "They become"}`),
           into,
-          el16("button", { type: "button", class: "word danger", onclick: () => {
+          el17("button", { type: "button", class: "word danger", onclick: () => {
             const v2 = into.value;
             st.retag?.(c, e.name, v2 === "none" ? "" : others[Number(v2)].name);
             remove5(i2);
           } }, "Delete"),
-          el16("button", { type: "button", class: "word", onclick: () => {
+          el17("button", { type: "button", class: "word", onclick: () => {
             asking = null;
             focus = { i: i2 };
             draw3();
           } }, "Cancel")
         );
       }
-      const name5 = el16("input", {
+      const name5 = el17("input", {
         class: "room-edit-text room-rel-name",
         value: e.name,
         spellcheck: "false",
@@ -14021,17 +14097,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       });
       const set = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
-      const select2 = (k2, options, now, label2) => el16("select", {
+      const select2 = (k2, options, now, label2) => el17("select", {
         class: `room-rel-${k2}`,
         "aria-label": `${e.name}: ${label2}`,
         "data-part": k2,
         onkeydown: (ev) => ev.stopPropagation(),
         onchange: (ev) => set(k2, ev.target.value)
-      }, ...options.map(([v2, w2]) => el16("option", { value: v2, selected: v2 === now }, w2)));
-      const swatches = el16(
+      }, ...options.map(([v2, w2]) => el17("option", { value: v2, selected: v2 === now }, w2)));
+      const swatches = el17(
         "span",
         { class: "room-rel-swatches", role: "radiogroup", "aria-label": `${e.name}: colour` },
-        ...COLOURS.map((k2) => el16("button", {
+        ...COLOURS.map((k2) => el17("button", {
           type: "button",
           role: "radio",
           class: `room-rel-swatch rel-swatch rel-colour-${k2}`,
@@ -14042,7 +14118,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onclick: () => set("colour", k2 === "ink" ? null : k2)
         }))
       );
-      const r = el16(
+      const r = el17(
         "div",
         {
           class: "room-rel-row",
@@ -14090,22 +14166,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             commit(next, { i: i2 });
           }
         },
-        el16("span", { class: "room-rel-grip", "aria-hidden": "true" }, "⋮⋮"),
+        el17("span", { class: "room-rel-grip", "aria-hidden": "true" }, "⋮⋮"),
         sample2(e),
         name5,
-        el16(
+        el17(
           "span",
           { class: "room-rel-look" },
           withEnds ? select2("ends", ENDS2, e.ends || none, "ends") : null,
           select2("line", LINES.map((k2) => [k2, WORD[k2]]), e.line || "solid", "line"),
           swatches
         ),
-        el16("button", { type: "button", class: "word room-rel-delete", title: `Delete “${e.name}”`, "aria-label": `Delete ${e.name}`, onclick: () => remove5(i2) }, "×")
+        el17("button", { type: "button", class: "word room-rel-delete", title: `Delete “${e.name}”`, "aria-label": `Delete ${e.name}`, onclick: () => remove5(i2) }, "×")
       );
       return r;
     }
     function adder() {
-      return el16("input", {
+      return el17("input", {
         class: "room-edit-text room-rel-add",
         placeholder: "+ A new relation",
         spellcheck: "false",
@@ -14154,7 +14230,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/ontologies/arrowview.js
   var arrowKey = (from, to) => `${from}>${to}`;
   function arrowView({ of, net: net3, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
-    const { arrows: arrows3, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, setLabel: setLabel2, setRelation: setRelation2 } = net3;
+    const { arrows: arrows3, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, unlink: unlink2, setLabel: setLabel2, setRelation: setRelation2 } = net3;
     const box = ({ at: at2, size }) => ({ x: at2.x, y: at2.y, w: size.w, h: size.h });
     let editing = null;
     let lastArrow = null;
@@ -14173,6 +14249,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         c.save();
       }
       c.drawWorld();
+    }
+    function remove5(c, from, to) {
+      if (editing && editing.room === c.roomId && editing.from === from && editing.to === to) editing = null;
+      if (c.locked || !unlink2(c.world, c.roomId, from, to)) {
+        c.drawWorld();
+        return false;
+      }
+      c.save();
+      c.drawWorld();
+      c.toast(`${word[0].toUpperCase()}${word.slice(1)} removed. Ctrl+Z brings it back.`);
+      return true;
     }
     function pick(c, now, chosen, keys = () => {
     }) {
@@ -14245,6 +14332,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         } else if (ev.key === "Escape") {
           ev.preventDefault();
           finishEdit(c, false);
+        } else if (ev.key === "Delete" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey) {
+          const t = ev.target;
+          const atEnd = t.tagName !== "INPUT" || t.selectionStart === t.selectionEnd && t.selectionEnd === t.value.length;
+          if (atEnd) {
+            ev.preventDefault();
+            remove5(c, e.from, e.to);
+          }
         }
       };
       const input = c.el("input", {
@@ -14262,10 +14356,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.rel = n;
         input.focus();
       }, keys);
-      const out = c.el("div", {
-        class: `panel room-arrow-edit side-${spot5.side}`,
-        style: `left:${Math.round(spot5.x)}px;top:${Math.round(spot5.y)}px`
-      }, picker, input);
+      const out = c.el(
+        "div",
+        {
+          class: `panel room-arrow-edit side-${spot5.side}`,
+          style: `left:${Math.round(spot5.x)}px;top:${Math.round(spot5.y)}px`
+        },
+        picker,
+        input,
+        // Pressed through press() (the canvas holds the pointer).
+        c.el("button", { type: "button", class: "word room-arrow-remove", "data-arrow-remove": "", title: `Take this ${word} away (Delete)` }, "Remove")
+      );
       requestAnimationFrame(() => {
         if (!out.isConnected || out.contains(document.activeElement)) return;
         input.focus();
@@ -14333,12 +14434,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       drag,
       nodeUnder,
       edit: startEdit,
+      remove: remove5,
       // Whether an arrow is being edited in this room.
       editing: (c) => !!editing && editing.room === c.roomId,
       // A press on the canvas: one in the edit box is its own, anywhere else keeps the edit; a
       // double-click on an arrow or its label edits it. True when the press was the arrows'.
       press(c, e) {
         if (editing && editing.room === c.roomId) {
+          if (e.target.closest?.("[data-arrow-remove]")) {
+            e.preventDefault();
+            remove5(c, editing.from, editing.to);
+            return true;
+          }
           if (e.target.closest?.(".room-arrow-edit")) return true;
           finishEdit(c, true);
         }
@@ -14361,7 +14468,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       // Each arrow on the canvas, into `layer` (lines.layer): from the side of the parent that faces
       // the child to the child's facing side, its label at its middle. Returns the label nodes.
       draw(c, layer2, all = boxes3(c.world, c.roomId)) {
-        const w2 = c.world, roomId = c.roomId, el16 = c.el;
+        const w2 = c.world, roomId = c.roomId, el17 = c.el;
         const nodes2 = [];
         const line2 = c.setting("line") || "straight";
         const names = cleanRelations(c.setting(setting.key), setting.default);
@@ -14383,7 +14490,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           const shown2 = quiet && rel === names[0] ? "" : relationShown(names, rel);
           if (!label2 && !shown2 && !c.locked) {
-            const hint2 = el16("div", { class: `room-arrow-label room-arrow-hint side-${mid.side}`, "data-arrow": key, title: `Double-click to write this ${word}'s label`, style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ""}…`);
+            const hint2 = el17("div", { class: `room-arrow-label room-arrow-hint side-${mid.side}`, "data-arrow": key, title: `Double-click to write this ${word}'s label`, style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ""}…`);
             hit.addEventListener("pointerenter", () => hint2.classList.add("show"));
             hit.addEventListener("pointerleave", () => hint2.classList.remove("show"));
             nodes2.push(hint2);
@@ -14395,13 +14502,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               const fan = arrow.from === "bottom" && childrenOf2(w2, roomId, from).length > 1;
               spot5 = labelSpot(arrow, line2, { prefer, t: fan ? 0.7 : 0.5 });
             }
-            nodes2.push(el16("div", {
+            nodes2.push(el17("div", {
               class: `room-arrow-label side-${spot5.side}${look.includes("rel-colour") ? ` ${look}` : ""}`,
               "data-group": to,
               "data-arrow": key,
               title: `${[rel, label2].filter(Boolean).join(" ")} (double-click to edit)`,
               style: `left:${Math.round(spot5.x)}px;top:${Math.round(spot5.y)}px`
-            }, shown2 ? el16("span", { class: "room-arrow-rel" }, label2 ? `${shown2} ` : shown2) : null, label2 ? maths(label2) : null));
+            }, shown2 ? el17("span", { class: "room-arrow-rel" }, label2 ? `${shown2} ` : shown2) : null, label2 ? maths(label2) : null));
           }
         }
         if (c.setting("legend")) {
@@ -14424,7 +14531,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return c.el(
             "label",
             { class: "room-arrow-row" },
-            c.el("span", { class: "pop-note" }, `From ${from}: `, picker),
+            c.el("span", { class: "pop-note" }, `From ${from}: `, picker, c.locked ? null : c.el("button", {
+              type: "button",
+              class: "close-x room-arrow-x",
+              "aria-label": `Remove the ${word} from ${from}`,
+              title: `Remove this ${word} (Ctrl+Z brings it back)`,
+              onclick: (e) => {
+                e.preventDefault();
+                e.currentTarget.blur();
+                remove5(c, p, th.id);
+              }
+            })),
             c.el("input", {
               class: "room-edit-text",
               value: labels[p] || "",
@@ -14904,7 +15021,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
     // arrows down to its children with their labels, and the thought being written.
     draw(c) {
-      const w2 = c.world, el16 = c.el, roomId = c.roomId;
+      const w2 = c.world, el17 = c.el, roomId = c.roomId;
       const all = boxes(w2, roomId);
       const layer2 = layer("room-russell-arrows");
       const nodes2 = [];
@@ -14917,18 +15034,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const chosen = c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id);
         const cls = "room-bead" + (picking ? " room-russell-pick" : "");
         if (g2.closed) {
-          nodes2.push(el16("div", {
+          nodes2.push(el17("div", {
             class: cls + " room-closed room-russell-closed" + (chosen ? " selected" : ""),
             "data-group": g2.id,
             "data-measure": g2.id,
             title: "Click to open",
             style: `left:${at2.x}px;top:${at2.y}px`
-          }, el16("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
+          }, el17("span", { class: "room-thought", "data-id": g2.id }, maths(chapterName(w2, g2.id)))));
         } else {
           const spots2 = chapterSpots(w2, g2.id, at2);
           for (const th of members(w2, g2.id)) {
             const sp = spots2[th.id];
-            nodes2.push(el16("div", {
+            nodes2.push(el17("div", {
               class: cls + (chosen || c.isSel(th.id) ? " selected" : "") + (c.found === th.id ? " found" : ""),
               "data-group": g2.id,
               "data-thought": th.id,
@@ -14938,19 +15055,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (c.draft?.train === g2.id && !c.draft.edit) {
             const last = members(w2, g2.id).at(-1);
             const y = last ? spots2[last.id].y + stepAfter(last) : at2.y;
-            nodes2.push(el16("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
+            nodes2.push(el17("div", { class: "room-bead", "data-group": g2.id, style: `left:${at2.x}px;top:${y}px` }, c.draftNode()));
           }
         }
         const top = at2.y + headOf(g2);
         if (!g2.closed) layer2.append(svg2("path", { class: "room-russell-rule" + (chosen ? " selected" : ""), d: `M${at2.x - RULE} ${top + 6}L${at2.x - RULE} ${at2.y + size.h - 4}` }));
-        if (headOf(g2)) nodes2.push(el16("div", { class: "room-russell-title", "data-group": g2.id, "data-measure": g2.id, style: `left:${at2.x}px;top:${at2.y}px` }, g2.title));
+        if (headOf(g2)) nodes2.push(el17("div", { class: "room-russell-title", "data-group": g2.id, "data-measure": g2.id, style: `left:${at2.x}px;top:${at2.y}px` }, g2.title));
         if (!c.locked) {
           const f2 = foot(arrowBox(box));
-          nodes2.push(el16("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
+          nodes2.push(el17("div", { class: "room-russell-foot", "data-foot": g2.id, title: "Drag onto another chapter to make it a child", style: `left:${f2.x}px;top:${f2.y}px` }));
         }
       }
       if (c.draft && !c.draft.train && !c.draft.edit) {
-        nodes2.push(el16("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
+        nodes2.push(el17("div", { class: "room-bead", style: `left:${c.draft.x}px;top:${c.draft.y}px` }, c.draftNode()));
       }
       return [layer2, ...nodes2];
     },
@@ -15685,6 +15802,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const wasHidden = this.root.hidden;
       this.root.hidden = false;
       this.searchBtn.hidden = !o2.search;
+      this.backBtn.hidden = !o2.back;
       this.backBtn.setAttribute("aria-label", o2.backLabel || "Back");
       this.drawCrumbs(o2.crumbs || []);
       this.selEl.textContent = o2.selection || "";
@@ -20613,6 +20731,86 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
 
+  // dist/web/features/search/Search.js
+  var { el: el13 } = ui_exports;
+  var Search = class extends Feature {
+    start() {
+      this.w = this.use("world");
+      this.provide("search", {
+        open: () => this.open(),
+        // shows the panel, the field ready for typing
+        close: () => this.close(),
+        // hides it, if it shows
+        get isOpen() {
+          return !!box && !box.hidden;
+        }
+      });
+      const box = this.box = el13("div", { class: "shade search", hidden: true, role: "dialog", "aria-label": "Search" });
+      box.onpointerdown = (e) => {
+        if (e.target === box) this.close();
+      };
+      (document.getElementById("folio-root") || document.body).append(box);
+    }
+    open() {
+      const { search: search4 } = this.w.lib.model;
+      const field3 = el13("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
+      const list2 = el13("div", { class: "search-list", role: "listbox" });
+      let found = [], at2 = 0;
+      const show = () => {
+        found = search4(this.w.world, field3.value);
+        at2 = Math.min(at2, Math.max(0, found.length - 1));
+        list2.replaceChildren(
+          ...found.map((f2, i2) => el13("button", {
+            type: "button",
+            class: "pick search-item" + (i2 === at2 ? " on" : ""),
+            role: "option",
+            "aria-selected": String(i2 === at2),
+            onclick: () => this.pick(f2)
+          }, el13("span", { class: "search-text" }, f2.text), el13("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
+          field3.value.trim() && !found.length ? el13("p", { class: "search-none" }, "Nothing yet with those words") : ""
+        );
+      };
+      field3.addEventListener("input", () => {
+        at2 = 0;
+        show();
+      });
+      field3.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          this.close();
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          at2 = Math.min(found.length - 1, at2 + 1);
+          show();
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          at2 = Math.max(0, at2 - 1);
+          show();
+        }
+        if (e.key === "Enter" && found[at2]) {
+          e.preventDefault();
+          this.pick(found[at2]);
+        }
+      });
+      this.box.replaceChildren(el13("div", { class: "panel top-sheet search-panel" }, field3, list2));
+      this.box.hidden = false;
+      field3.focus();
+    }
+    close() {
+      if (this.box.hidden) return;
+      this.box.hidden = true;
+      this.box.replaceChildren();
+    }
+    // A find is opened: the panel closes, and whoever shows rooms goes there.
+    pick(f2) {
+      this.close();
+      this.emit("search:found", f2);
+    }
+  };
+
   // dist/web/features/home/fonts/tenor-sans.js
   var tenor_sans_default = "data:font/woff2;base64,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";
 
@@ -20672,37 +20870,59 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/home/Home.js
-  var { el: el13 } = ui_exports;
+  var { el: el14 } = ui_exports;
   var TITLE = "Träumerei";
+  var RECENT = 5;
+  var ROOM_ICON = '<rect x="5" y="5" width="14" height="14"/>';
   var Home = class extends Feature {
     start() {
       this.font = findFont(this.storage.get("font", DEFAULT_FONT));
       this.applyFont();
       loadFont(READING);
-      this.page = el13(
+      this.w = this.use("world");
+      this.frame = this.use("frame");
+      this.rail = el14("nav", { class: "rail home-rail", "aria-label": "Start and recent rooms" });
+      this.page = el14(
         "div",
         { class: "home" },
-        el13("h1", { class: "home-title" }, TITLE),
-        el13(
-          "nav",
-          { class: "home-nav", "aria-label": "Home" },
-          el13("button", { type: "button", class: "word home-link home-create", onclick: () => this.create() }, "Create"),
-          el13(
-            "div",
-            { class: "home-row" },
-            el13("button", { type: "button", class: "word home-link", onclick: () => this.settings() }, "Settings"),
-            el13("button", { type: "button", class: "word home-link", onclick: () => this.account() }, "Account")
+        this.rail,
+        el14(
+          "div",
+          { class: "home-centre" },
+          el14("h1", { class: "home-title" }, TITLE),
+          el14(
+            "nav",
+            { class: "home-nav", "aria-label": "Home" },
+            el14("button", { type: "button", class: "word home-link home-create", onclick: () => this.create() }, "Create")
           )
         )
       );
       (document.getElementById("folio-root") || document.body).append(this.page);
+      this.drawRail();
+      this.on("room:open", () => this.drawRail());
+      this.on("search:found", (f2) => this.found(f2));
+      const search4 = this.use("search");
+      this.frame?.show(this, {
+        crumbs: [{ label: "Home", current: true }],
+        search: search4 ? () => search4.open() : null,
+        idle: "Create opens the rooms"
+      });
+      if (search4) this.add("keys", {
+        id: "home.search",
+        keys: ["Ctrl+K"],
+        words: "search every room",
+        zone: "home",
+        order: 10,
+        when: () => this.showing(),
+        run: () => search4.open()
+      });
       this.add("header.buttons", { id: "home-create", label: "Create", icon: "plus", order: 5, onClick: () => this.create() });
       document.addEventListener("click", (e) => {
         if (e.target.matches?.("dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list")) this.app.shell?.closeMenu?.();
       });
       this.add("settings", { id: "home-typeface", title: "Typeface", order: 20, render: () => this.typeface() });
     }
-    // ---- The three words ----
+    // ---- Create, Settings, Account ----
     create() {
       this.use("create")?.open();
     }
@@ -20711,6 +20931,65 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     account() {
       this.app.shell?.openAccount?.();
+    }
+    about() {
+      this.app.shell?.openAbout?.();
+    }
+    // Whether Home is what shows: no rooms page over it.
+    showing() {
+      return !document.documentElement.classList.contains("rooms-open");
+    }
+    // Goes into a room: the rooms page opens, then the room.
+    goIn(id) {
+      this.create();
+      this.use("rooms")?.openRoom(id);
+    }
+    // A find opened in Search while Home shows: its room opens, then the room is told again where
+    // to go (the room feature goes to finds in an open room).
+    found(f2) {
+      if (!this.showing() || !f2?.room) return;
+      this.goIn(f2.room);
+      if (!this.showing()) this.emit("search:found", f2);
+    }
+    // ---- The rail ----
+    // The rooms gone into lately, latest first: rooms still on the floors (a Twin's side counts as
+    // the Twin).
+    recent() {
+      const world = this.w?.world;
+      if (!world) return [];
+      const { model } = this.w.lib;
+      const last = /* @__PURE__ */ new Map();
+      for (const [id, times] of Object.entries(this.w.attention || {})) {
+        const r = model.topRoom(world, id);
+        if (!r || r.archived || !times.length) continue;
+        last.set(r.id, Math.max(last.get(r.id) || 0, times[times.length - 1]));
+      }
+      return [...last].sort((a, b) => b[1] - a[1]).slice(0, RECENT).map(([id]) => world.things[id]);
+    }
+    drawRail() {
+      const icon2 = (name5) => {
+        const s = ui_exports.icon(name5);
+        s.classList.add("rail-icon");
+        return s;
+      };
+      const item = (label2, name5, run2, title = label2) => el14(
+        "button",
+        { type: "button", class: "rail-item", title, onclick: run2 },
+        icon2(name5),
+        el14("span", { class: "rail-word" }, label2)
+      );
+      const rooms4 = this.recent();
+      this.rail.replaceChildren(
+        el14("div", { class: "rail-head", "aria-hidden": "true" }, "Start"),
+        item("Create", "plus", () => this.create(), "Create: the rooms"),
+        item("Settings", "gear", () => this.settings()),
+        item("Account", "account", () => this.account()),
+        item("About", "info", () => this.about()),
+        ...rooms4.length ? [
+          el14("div", { class: "rail-head", "aria-hidden": "true" }, "Recent rooms"),
+          ...rooms4.map((r) => item(r.name || "Untitled", ROOM_ICON, () => this.goIn(r.id), `Go into ${r.name || "Untitled"}`))
+        ] : []
+      );
     }
     // ---- Typeface ----
     applyFont() {
@@ -20727,10 +21006,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Settings → Typeface: one button per font, each written in its own face.
     typeface() {
       for (const f2 of FONTS) loadFont(f2);
-      return el13(
+      return el14(
         "div",
         { class: "seg home-fonts", role: "radiogroup", "aria-label": "Typeface", style: `--tabs:${FONTS.length}` },
-        FONTS.map((f2) => el13("button", {
+        FONTS.map((f2) => el14("button", {
           type: "button",
           role: "radio",
           "aria-checked": String(f2.id === this.font.id),
@@ -20739,6 +21018,134 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onclick: () => this.chooseFont(f2.id)
         }, f2.name))
       );
+    }
+  };
+
+  // dist/web/features/pages/settings.js
+  var ICONS2 = {
+    // the rail's icon for each section, by its id; anything else gets ⋯
+    "renderer-colour": "palette",
+    "renderer-theme": "note",
+    "home-typeface": "book",
+    "room-look": "home",
+    "floors-size": "floor",
+    "time-history": "clock",
+    "renderer-advanced": "gear"
+  };
+  function settingsSections(slot, folio) {
+    const out = [];
+    for (const s of slot.items) {
+      let body = null;
+      try {
+        body = s.render();
+      } catch (err) {
+        console.warn(`Settings: ${s.id}`, err);
+      }
+      if (body) out.push({ id: s.id, title: s.title || "Settings", icon: ICONS2[s.id] || "dots", body });
+    }
+    if (folio?.featuresSection) out.push({ id: "folio-features", title: "Features", icon: "dots", body: folio.featuresSection() });
+    if (folio?.aboutParts) out.push({ id: "folio-about", title: "About", icon: "info", body: folio.aboutParts().filter(Boolean) });
+    return out;
+  }
+
+  // dist/web/features/pages/Pages.js
+  var { el: el15 } = ui_exports;
+  var Pages = class extends Feature {
+    start() {
+      this.frame = this.use("frame");
+      this.build();
+      const shell = this.app.shell;
+      if (shell) {
+        shell.openSettings = () => this.open();
+        shell.refreshSettings = () => {
+          if (this.isOpen) this.draw();
+        };
+        shell.closeSettings = () => this.close();
+      }
+      document.addEventListener("keydown", (e) => {
+        if (!this.isOpen || e.key !== "Escape" || e.defaultPrevented) return;
+        if (e.target?.matches?.("input, textarea, select") || document.querySelector("dialog[open]:not(.pages)")) return;
+        e.preventDefault();
+        this.close();
+      });
+    }
+    get isOpen() {
+      return this.root.open;
+    }
+    build() {
+      this.rail = el15("nav", { class: "rail pages-rail", "aria-label": "Settings sections" });
+      this.panel = el15("div", { class: "page-panel pages-panel" });
+      this.canvas = el15("div", { class: "page-canvas pages-canvas" }, this.panel);
+      this.canvas.addEventListener("scroll", () => this.markCurrent(), { passive: true });
+      this.root = el15("dialog", { class: "pages", "aria-label": "Settings" }, this.rail, this.canvas);
+    }
+    open() {
+      this.app.shell?.closeMenu?.();
+      (document.getElementById("folio-root") || document.body).append(this.root);
+      if (!this.root.open) this.root.show();
+      document.documentElement.classList.add("page-open");
+      this.draw();
+      this.canvas.scrollTop = 0;
+      this.markCurrent();
+      this.frame?.show(this, {
+        crumbs: [{ label: "Home", title: "Back to the home page", onClick: () => this.close() }, { label: "Settings", current: true }],
+        back: () => this.close(),
+        backLabel: "Back",
+        idle: "Changes save as you make them"
+      });
+    }
+    close() {
+      if (!this.root.open) return;
+      this.root.close();
+      document.documentElement.classList.remove("page-open");
+      this.frame?.hide(this);
+    }
+    // Draws the rail and the rows again (a section's data changed), keeping where the page is.
+    draw() {
+      const top = this.canvas.scrollTop;
+      this.sections = settingsSections(this.slot("settings"), this.app.shell?.settings);
+      this.rail.replaceChildren(
+        el15("div", { class: "rail-head", "aria-hidden": "true" }, "Settings"),
+        ...this.sections.map((s) => {
+          const icon2 = ui_exports.icon(s.icon);
+          icon2.classList.add("rail-icon");
+          return el15(
+            "button",
+            { type: "button", class: "rail-item", title: s.title, "data-sec": s.id, onclick: () => this.goTo(s.id) },
+            icon2,
+            el15("span", { class: "rail-word" }, s.title)
+          );
+        })
+      );
+      this.panel.replaceChildren(...this.sections.map((s) => el15(
+        "section",
+        { class: "page-row pages-row", "data-sec": s.id, "aria-label": s.title },
+        el15("h3", { class: "page-label pages-label" }, s.title),
+        el15("div", { class: "pages-value" }, s.body)
+      )));
+      this.canvas.scrollTop = top;
+      this.markCurrent();
+    }
+    goTo(id) {
+      const row = this.panel.querySelector(`.pages-row[data-sec="${id}"]`);
+      if (!row) return;
+      this.canvas.scrollTo({ top: row.offsetTop - this.panel.offsetTop, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      this.current = id;
+      this.picked = Date.now();
+      this.markRail();
+    }
+    // The section at the top of the canvas is the one marked in the rail (the last, at the foot).
+    markCurrent() {
+      const rows = [...this.panel.children];
+      if (!rows.length || Date.now() - (this.picked || 0) < 900) return;
+      const atFoot = this.canvas.scrollTop + this.canvas.clientHeight >= this.canvas.scrollHeight - 2;
+      let id = rows[0].dataset.sec;
+      for (const r of rows) if (r.offsetTop - this.panel.offsetTop <= this.canvas.scrollTop + 24) id = r.dataset.sec;
+      this.current = atFoot && this.canvas.scrollTop > 0 ? rows[rows.length - 1].dataset.sec : id;
+      this.markRail();
+    }
+    markRail() {
+      for (const b of this.rail.querySelectorAll(".rail-item")) b.setAttribute("aria-current", String(b.dataset.sec === this.current));
     }
   };
 
@@ -21575,9 +21982,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (a.from !== th.id && a.to !== th.id) continue;
       const other = a.from === th.id ? a.to : a.from;
       const ends = endsOf(list2, a.rel);
-      const entry = { id: other, rel: a.rel, label: a.label };
+      const entry = { id: other, rel: a.rel, label: a.label, links: [[a.from, a.to]] };
+      const same3 = ends === "arrow" ? null : with_.find((x) => x.id === other);
       if (ends === "arrow") (a.from === th.id ? out : into).push(entry);
-      else if (!with_.some((x) => x.id === other)) with_.push(entry);
+      else if (same3) same3.links.push([a.from, a.to]);
+      else with_.push(entry);
     }
     const go = (x) => c.el("button", {
       type: "button",
@@ -21589,18 +21998,32 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (c.sel) c.openProps?.(c.sel);
       }
     }, nodeName(w2, x.id) || "Untitled");
-    const row = (label2, xs) => xs.length ? c.el("div", { class: "kv room-proust-links" }, c.el("span", {}, label2), c.el("span", { class: "room-proust-names" }, ...xs.map(go))) : null;
+    const cut2 = (x) => c.locked ? null : c.el("button", {
+      type: "button",
+      class: "close-x room-arrow-x",
+      "aria-label": `Remove the link with ${nodeName(w2, x.id) || "Untitled"}`,
+      title: "Remove this link (Ctrl+Z brings it back)",
+      onclick: (e) => {
+        e.currentTarget.blur();
+        for (const [from, to] of x.links) net3.unlink(w2, roomId, from, to);
+        c.save();
+        c.drawWorld();
+        c.toast(`Link${x.links.length > 1 ? "s" : ""} removed. Ctrl+Z brings ${x.links.length > 1 ? "them" : "it"} back.`);
+      }
+    });
+    const name5 = (x) => c.el("span", { class: "room-proust-name" }, go(x), cut2(x));
+    const row = (label2, xs) => xs.length ? c.el("div", { class: "kv room-proust-links" }, c.el("span", {}, label2), c.el("span", { class: "room-proust-names" }, ...xs.map(name5))) : null;
     return [row("Points to", out), row("Pointed to by", into), row("Linked with", with_)].filter(Boolean);
   }
   function draw2(c) {
-    const w2 = c.world, el16 = c.el, roomId = c.roomId;
+    const w2 = c.world, el17 = c.el, roomId = c.roomId;
     const all = boxes2(w2, roomId);
     const layer2 = lines2.layer("room-proust-links");
     const nodes2 = [];
     const chosenGroup = (id) => c.sel?.kind === "train" && c.sel.id === id || c.isSel(id);
     const view9 = centred(roomId);
     const far = (id) => view9?.dim.has(id) ? " room-proust-far" : "";
-    const dot = (id, style) => c.locked ? null : el16("span", { class: "room-proust-dot", "data-dot": id, title: "Drag onto another thing to link them", ...style ? { style } : {} });
+    const dot = (id, style) => c.locked ? null : el17("span", { class: "room-proust-dot", "data-dot": id, title: "Drag onto another thing to link them", ...style ? { style } : {} });
     for (const g2 of clusters(w2, roomId)) {
       if (g2.closed || shownAs(w2, g2.id) !== g2.id) continue;
       const h = hull(w2, roomId, g2.id, all);
@@ -21613,7 +22036,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         rx: 10,
         class: "room-line room-proust-cluster" + (chosenGroup(g2.id) ? " selected" : "")
       }));
-      if (g2.title) nodes2.push(el16("div", { class: "label room-proust-title", "data-group": g2.id, style: `left:${h.at.x + 10}px;top:${h.at.y - 9}px` }, g2.title));
+      if (g2.title) nodes2.push(el17("div", { class: "label room-proust-title", "data-group": g2.id, style: `left:${h.at.x + 10}px;top:${h.at.y - 9}px` }, g2.title));
       const d = dot(g2.id, `left:${h.at.x + h.size.w}px;top:${h.at.y + h.size.h / 2}px`);
       if (d) {
         d.classList.add("room-proust-hull-dot");
@@ -21626,7 +22049,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!b) continue;
       const style = `left:${b.at.x}px;top:${b.at.y}px`;
       if (isGroup3(u)) {
-        nodes2.push(el16("div", {
+        nodes2.push(el17("div", {
           class: "room-bead room-closed" + (u.of !== ID2 ? " room-foreign" : "") + (chosenGroup(u.id) ? " selected" : "") + far(u.id),
           "data-group": u.id,
           "data-measure": u.id,
@@ -21635,7 +22058,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         continue;
       }
       const g2 = clusterOf(w2, u.id);
-      nodes2.push(el16("div", {
+      nodes2.push(el17("div", {
         class: "room-bead" + (g2 && chosenGroup(g2.id) || c.isSel(u.id) ? " selected" : "") + (c.found === u.id ? " found" : "") + far(u.id),
         ...g2 ? { "data-group": g2.id } : {},
         "data-thought": u.id,
@@ -21654,7 +22077,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const [ln] = lines2.line(lines2.strand(edge(from, centre2(box)), edge(box, centre2(from)), 0), { cls: "room-arrow room-arrow-drawing" });
         layer2.append(ln);
       }
-      nodes2.push(el16("div", { class: "room-bead", ...c.draft.train ? { "data-group": c.draft.train } : {}, style: `left:${at2.x}px;top:${at2.y}px` }, c.draftNode()));
+      nodes2.push(el17("div", { class: "room-bead", ...c.draft.train ? { "data-group": c.draft.train } : {}, style: `left:${at2.x}px;top:${at2.y}px` }, c.draftNode()));
     }
     return [layer2, ...nodes2];
   }
@@ -21664,86 +22087,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       bind4(this.use("world").lib);
       this.add("world.ontologies", { ...proust, draw: draw2, press, join: join4, props, centre: centreWeb, escape: escape2 });
-    }
-  };
-
-  // dist/web/features/search/Search.js
-  var { el: el14 } = ui_exports;
-  var Search = class extends Feature {
-    start() {
-      this.w = this.use("world");
-      this.provide("search", {
-        open: () => this.open(),
-        // shows the panel, the field ready for typing
-        close: () => this.close(),
-        // hides it, if it shows
-        get isOpen() {
-          return !!box && !box.hidden;
-        }
-      });
-      const box = this.box = el14("div", { class: "shade search", hidden: true, role: "dialog", "aria-label": "Search" });
-      box.onpointerdown = (e) => {
-        if (e.target === box) this.close();
-      };
-      (document.getElementById("folio-root") || document.body).append(box);
-    }
-    open() {
-      const { search: search4 } = this.w.lib.model;
-      const field3 = el14("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
-      const list2 = el14("div", { class: "search-list", role: "listbox" });
-      let found = [], at2 = 0;
-      const show = () => {
-        found = search4(this.w.world, field3.value);
-        at2 = Math.min(at2, Math.max(0, found.length - 1));
-        list2.replaceChildren(
-          ...found.map((f2, i2) => el14("button", {
-            type: "button",
-            class: "pick search-item" + (i2 === at2 ? " on" : ""),
-            role: "option",
-            "aria-selected": String(i2 === at2),
-            onclick: () => this.pick(f2)
-          }, el14("span", { class: "search-text" }, f2.text), el14("span", { class: "search-room" }, f2.kind === "room" ? "Room" : f2.roomName))),
-          field3.value.trim() && !found.length ? el14("p", { class: "search-none" }, "Nothing yet with those words") : ""
-        );
-      };
-      field3.addEventListener("input", () => {
-        at2 = 0;
-        show();
-      });
-      field3.addEventListener("keydown", (e) => {
-        e.stopPropagation();
-        if (e.key === "Escape") {
-          e.preventDefault();
-          this.close();
-        }
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          at2 = Math.min(found.length - 1, at2 + 1);
-          show();
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          at2 = Math.max(0, at2 - 1);
-          show();
-        }
-        if (e.key === "Enter" && found[at2]) {
-          e.preventDefault();
-          this.pick(found[at2]);
-        }
-      });
-      this.box.replaceChildren(el14("div", { class: "panel top-sheet search-panel" }, field3, list2));
-      this.box.hidden = false;
-      field3.focus();
-    }
-    close() {
-      if (this.box.hidden) return;
-      this.box.hidden = true;
-      this.box.replaceChildren();
-    }
-    // A find is opened: the panel closes, and whoever shows rooms goes there.
-    pick(f2) {
-      this.close();
-      this.emit("search:found", f2);
     }
   };
 
@@ -22075,13 +22418,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/room/shared.js
-  var { el: el15 } = ui_exports;
+  var { el: el16 } = ui_exports;
   var railIcon2 = (drawing) => {
     const s = ui_exports.icon(drawing);
     s.classList.add("rail-icon");
     return s;
   };
-  var railWord2 = (text) => el15("span", { class: "rail-word" }, text);
+  var railWord2 = (text) => el16("span", { class: "rail-word" }, text);
   var ZOOM = { min: 0.25, max: 4 };
   var MAC4 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var HOLD2 = 520;
@@ -22178,18 +22521,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // (type: 'list'; word: what each must match, or clean(v): its own reading of what was written, and
     // text(list): its own way of writing it back; note: a line under it).
     settingRow(st, value, onChange) {
-      if (st.type === "relations") return relationsRow2(st, { el: el15, value, onChange, c: this.roomId ? this : null, toast: (t) => this.toast(t) });
+      if (st.type === "relations") return relationsRow2(st, { el: el16, value, onChange, c: this.roomId ? this : null, toast: (t) => this.toast(t) });
       if (st.type === "list") {
         const plain2 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
         const words = st.clean || plain2;
         const write2 = st.text || ((list2) => list2.join(", "));
         const shown2 = () => write2(words(value).length ? words(value) : st.default);
-        return el15(
+        return el16(
           "label",
           { class: "renderer-slider room-list-row" },
-          el15("span", {}, st.label),
-          el15("span"),
-          el15("input", {
+          el16("span", {}, st.label),
+          el16("span"),
+          el16("input", {
             type: "text",
             class: "room-edit-text",
             value: shown2(),
@@ -22214,11 +22557,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               onChange(next);
             }
           }),
-          st.note ? el15("span", { class: "room-list-note" }, st.note) : null
+          st.note ? el16("span", { class: "room-list-note" }, st.note) : null
         );
       }
       if (st.type === "choice") {
-        const words = st.options.map(([v2, word]) => el15("button", {
+        const words = st.options.map(([v2, word]) => el16("button", {
           type: "button",
           role: "radio",
           "aria-checked": String(v2 === value),
@@ -22227,29 +22570,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             onChange(v2);
           }
         }, word));
-        return el15(
+        return el16(
           "div",
           { class: "renderer-slider room-choice-row" },
-          el15("span", {}, st.label),
-          el15("div", { class: "seg", role: "radiogroup", "aria-label": st.label }, ...words)
+          el16("span", {}, st.label),
+          el16("div", { class: "seg", role: "radiogroup", "aria-label": st.label }, ...words)
         );
       }
       if (st.type === "switch") {
-        return el15(
+        return el16(
           "label",
           { class: "renderer-slider room-switch-row" },
-          el15("span", {}, st.label),
-          el15("span"),
+          el16("span", {}, st.label),
+          el16("span"),
           ui_exports.toggle({ checked: !!value, label: st.label, onChange })
         );
       }
-      const out = el15("output", { class: "renderer-value" }, String(value));
-      return el15(
+      const out = el16("output", { class: "renderer-value" }, String(value));
+      return el16(
         "label",
         { class: "renderer-slider" },
-        el15("span", {}, st.label),
+        el16("span", {}, st.label),
         out,
-        el15("input", {
+        el16("input", {
           type: "range",
           min: st.min,
           max: st.max,
@@ -22279,13 +22622,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingsPane() {
       const p = this.prefs;
       const slider2 = (label2, key, min, max, step2 = 0.01) => {
-        const out = el15("output", { class: "renderer-value" }, String(p[key]));
-        return el15(
+        const out = el16("output", { class: "renderer-value" }, String(p[key]));
+        return el16(
           "label",
           { class: "renderer-slider" },
-          el15("span", {}, label2),
+          el16("span", {}, label2),
           out,
-          el15("input", {
+          el16("input", {
             type: "range",
             min,
             max,
@@ -22299,13 +22642,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows) => el15(
+      const fold4 = (title, ...rows) => el16(
         "details",
         { class: "advanced renderer-fold" },
-        el15("summary", {}, title),
-        el15("div", { class: "renderer-fold-body" }, el15("div", { class: "renderer-sliders" }, ...rows))
+        el16("summary", {}, title),
+        el16("div", { class: "renderer-fold-body" }, el16("div", { class: "renderer-sliders" }, ...rows))
       );
-      return el15(
+      return el16(
         "div",
         { class: "room-settings" },
         fold4(
@@ -22315,16 +22658,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Colour strength", "vivid", 0.5, 3),
           slider2("Glow", "glow", 0, 1),
           // A square's last thoughts: shown when it is hovered over, or always.
-          el15(
+          el16(
             "label",
             { class: "renderer-slider" },
-            el15("span", {}, "Peek"),
-            el15("span"),
-            el15(
+            el16("span", {}, "Peek"),
+            el16("span"),
+            el16(
               "select",
               { "aria-label": "Peek", onchange: (e) => this.setPref("peek", +e.target.value) },
-              el15("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
-              el15("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
+              el16("option", { value: 0, ...p.peek < 0.5 ? { selected: "" } : {} }, "When hovered over"),
+              el16("option", { value: 1, ...p.peek >= 0.5 ? { selected: "" } : {} }, "Always")
             )
           )
         ),
@@ -22333,13 +22676,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           ...this.ontologies.flatMap((o2) => [
-            el15("p", { class: "room-settings-ont" }, o2.name),
+            el16("p", { class: "room-settings-ont" }, o2.name),
             ...this.settingsOf(o2).map((st) => this.settingRow(st, this.globalSetting(o2.id, st), (v2) => this.setOntPref(o2.id, st.key, v2)))
           ]),
-          el15("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
+          el16("button", { type: "button", class: "btn small", onclick: () => this.applyToAllRooms() }, "Apply to all rooms")
         ),
         ui_exports.hint("A room's own colour is in its pop-up on the rooms page: click its square.", { small: true }),
-        el15("button", { type: "button", class: "btn small", onclick: () => {
+        el16("button", { type: "button", class: "btn small", onclick: () => {
           this.w.resetLook();
           this.w.resetGlobals();
           this.repaint();
@@ -22375,12 +22718,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.roomPage.classList.toggle("locked", !!this.locked);
       const v2 = view8(this.world, this.roomId);
       const big = isBig3(r);
-      const items = [el15("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
-      const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el15("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
+      const items = [el16("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
+      const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el16("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
       const gearOrSettings = (id) => this.frame?.railNarrow ? this.openRoomSettings(id) : this.toggleGear(id);
       for (const m2 of big ? this.ontologies : [this.ont]) {
         const on = m2.id === this.mode;
-        const word = big ? el15("button", {
+        const word = big ? el16("button", {
           type: "button",
           class: "rail-item",
           role: "radio",
@@ -22391,13 +22734,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (on) gearOrSettings(m2.id);
             else this.setMode(m2.id);
           }
-        }, mark(m2), railWord2(m2.name)) : el15("span", {
+        }, mark(m2), railWord2(m2.name)) : el16("span", {
           class: "rail-item room-rail-fixed",
           "aria-current": "true",
           title: `${m2.name}: a small room keeps one mode. Make it 2 × 2 to switch.`,
           onclick: () => gearOrSettings(m2.id)
         }, mark(m2), railWord2(m2.name));
-        const gear = this.settingsOf(m2).length ? el15("button", {
+        const gear = this.settingsOf(m2).length ? el16("button", {
           type: "button",
           class: "room-gear rail-wide",
           "aria-label": `${m2.name} settings for this room`,
@@ -22405,7 +22748,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-expanded": String(this.settingsFor === m2.id),
           onclick: () => this.openRoomSettings(m2.id)
         }, "⚙") : null;
-        items.push(el15("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
+        items.push(el16("div", { class: "room-rail-row" + (this.gearFor === m2.id || this.settingsFor === m2.id ? " show" : "") }, word, gear));
       }
       items.push(...this.twinRail());
       const more = this.frame?.more();
@@ -22432,7 +22775,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         done();
       };
-      const field3 = el15("input", {
+      const field3 = el16("input", {
         class: "room-name-field",
         value: r.name,
         "aria-label": "Room name",
@@ -22471,7 +22814,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The docked tab's head already says "Settings for this room", so only the card adds the note.
     modeSettingsRows(o2, redraw, { note: note2 = true } = {}) {
       return [
-        note2 ? el15("p", { class: "room-mode-settings-note" }, "For this room only") : null,
+        note2 ? el16("p", { class: "room-mode-settings-note" }, "For this room only") : null,
         ...this.settingsOf(o2).map((st) => this.settingRow(st, this.setting(st.key, o2), (v2) => {
           const before = this.setting(st.key, o2);
           setRoomSetting4(this.world, this.roomId, o2.id, st.key, v2);
@@ -22479,7 +22822,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.w.write();
           this.drawWorld();
         })),
-        el15("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
+        el16("button", { type: "button", class: "word room-mode-settings-reset", onclick: () => {
           resetRoomSettings2(this.world, this.roomId, o2.id);
           this.w.write();
           redraw();
@@ -22504,7 +22847,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.settingsFor = null;
         return;
       }
-      const body = el15("div", { class: "room-mode-settings-docked" });
+      const body = el16("div", { class: "room-mode-settings-docked" });
       const fill = () => {
         body.replaceChildren(...this.modeSettingsRows(o2, () => {
           fill();
@@ -22539,7 +22882,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.settingsFor = null;
         this.drawRoom();
       };
-      return el15(
+      return el16(
         "div",
         {
           class: "panel pop room-options room-mode-settings",
@@ -22553,11 +22896,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           }
         },
-        el15(
+        el16(
           "div",
           { class: "room-mode-settings-head" },
-          el15("span", {}, o2.name),
-          el15("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close", onclick: close2 })
+          el16("span", {}, o2.name),
+          el16("button", { type: "button", class: "close-x room-history-close", "aria-label": "Close", onclick: close2 })
         ),
         ...this.modeSettingsRows(o2, () => this.drawRoom())
       );
@@ -22631,7 +22974,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const ont = this.ont;
         for (const th of ont.units(w2, this.roomId)) {
           const p = ont.point(w2, this.roomId, th.id) || { x: 0, y: 0 };
-          nodes2.push(el15("div", {
+          nodes2.push(el16("div", {
             class: "room-float" + (this.isSel(th.id) ? " selected" : "") + (this.found === th.id ? " found" : ""),
             "data-thought": th.id,
             style: `left:${p.x}px;top:${p.y}px`
@@ -22639,7 +22982,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         if (this.draft && !this.draft.edit) {
           const p = ont.draftPoint?.(w2, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
-          nodes2.push(el15("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+          nodes2.push(el16("div", { class: "room-float", style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
         }
       }
       return nodes2;
@@ -22743,18 +23086,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const kind = kindOf3(th);
       if (kind === "group") {
         const body = thoughtText3(this.world, th);
-        return el15(
+        return el16(
           "div",
           { class: "room-passage closed", "data-id": th.id },
-          th.of !== this.mode ? el15("div", { class: "label room-passage-kind" }, this.groupName(th)) : null,
-          th.title ? el15("div", { class: "room-passage-title" }, maths3(th.title)) : null,
-          body ? el15("div", { class: "room-passage-body" }, maths3(body)) : null
+          th.of !== this.mode ? el16("div", { class: "label room-passage-kind" }, this.groupName(th)) : null,
+          th.title ? el16("div", { class: "room-passage-title" }, maths3(th.title)) : null,
+          body ? el16("div", { class: "room-passage-body" }, maths3(body)) : null
         );
       }
-      return (ITEMS3[kind] || ITEMS3.line).node(th, el15);
+      return (ITEMS3[kind] || ITEMS3.line).node(th, el16);
     }
     draftNode() {
-      this.draftEl = el15("span", { class: "room-thought room-draft" + (this.draft?.fresh ? " fresh" : "") });
+      this.draftEl = el16("span", { class: "room-thought room-draft" + (this.draft?.fresh ? " fresh" : "") });
       this.paintDraft();
       return this.draftEl;
     }
@@ -22766,9 +23109,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const v2 = this.input.value;
       const a = this.input.selectionStart ?? v2.length, b = this.input.selectionEnd ?? v2.length;
       const back = this.input.selectionDirection === "backward";
-      const caret = document.activeElement === this.input || !d.isConnected ? el15("span", { class: "room-caret", "aria-hidden": "true" }) : null;
-      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el15("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
-      if (!v2 || v2.endsWith("\n")) parts.push(el15("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
+      const caret = document.activeElement === this.input || !d.isConnected ? el16("span", { class: "room-caret", "aria-hidden": "true" }) : null;
+      const parts = a === b ? [v2.slice(0, a), caret, v2.slice(a)] : [v2.slice(0, a), back ? caret : null, el16("span", { class: "room-chosen" }, v2.slice(a, b)), back ? null : caret, v2.slice(b)];
+      if (!v2 || v2.endsWith("\n")) parts.push(el16("span", { class: "room-pad", "aria-hidden": "true" }, "​"));
       d.replaceChildren(...parts.filter((p) => p != null && p !== "").map((p) => p instanceof Node ? p : document.createTextNode(p)));
     }
     // Where each letter of the thought being written is on the screen (measured, not guessed).
@@ -23556,9 +23899,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } else {
         const x = g2.thing.x + dx / v2.zoom, y = g2.thing.y + dy / v2.zoom;
         g2.els ??= this.dragEls(g2);
-        for (const { el: el16, left, top } of g2.els) {
-          el16.style.left = `${left + dx / v2.zoom}px`;
-          el16.style.top = `${top + dy / v2.zoom}px`;
+        for (const { el: el17, left, top } of g2.els) {
+          el17.style.left = `${left + dx / v2.zoom}px`;
+          el17.style.top = `${top + dy / v2.zoom}px`;
         }
         g2.to = { x: Math.round(x), y: Math.round(y) };
       }
@@ -23656,7 +23999,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!g2.ghost) {
         const ids = g2.kind === "group" ? Object.keys(g2.from) : [g2.thing?.id];
         const th = ids.length === 1 && this.world.things[ids[0]];
-        g2.ghost = th ? this.looseCard(th) : el15("div", { class: "room-tray-item" }, el15("span", { class: "room-tray-text" }, `${ids.length} thoughts`));
+        g2.ghost = th ? this.looseCard(th) : el16("div", { class: "room-tray-item" }, el16("span", { class: "room-tray-text" }, `${ids.length} thoughts`));
         g2.ghost.classList.remove("st-sel");
         g2.ghost.classList.add("panel", "room-tray-ghost", "st-drag");
         (document.getElementById("folio-root") || document.body).append(g2.ghost);
@@ -23679,7 +24022,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     dragEls(g2) {
       const id = g2.thing.kind === "train" && g2.el?.dataset.group;
       const els = id ? [...this.stage.querySelectorAll(`[data-group="${CSS.escape(id)}"], [data-foot="${CSS.escape(id)}"]`)].filter((n) => !n.dataset.arrow) : [g2.el];
-      return els.filter(Boolean).map((el16) => ({ el: el16, left: parseFloat(el16.style.left) || 0, top: parseFloat(el16.style.top) || 0 }));
+      return els.filter(Boolean).map((el17) => ({ el: el17, left: parseFloat(el17.style.left) || 0, top: parseFloat(el17.style.top) || 0 }));
     }
     // ---- Keys: delete, choose all, nudge (the key map lists them: keys.js) ----
     // The key that deletes what is chosen: Delete (on a Mac, which has none, Cmd+Backspace too).
@@ -23753,7 +24096,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     drawBox(g2, e) {
       const b = this.stage.getBoundingClientRect();
       if (!this.box) {
-        this.box = el15("div", { class: "room-box" });
+        this.box = el16("div", { class: "room-box" });
         this.stage.append(this.box);
       }
       const x = Math.min(g2.x0, e.clientX) - b.left, y = Math.min(g2.y0, e.clientY) - b.top;
@@ -23894,14 +24237,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Add: the menu a right-click on the empty canvas opens there, with the templates ----
     addItem(label2, note2, fn, keep3 = true) {
-      return el15(
+      return el16(
         "button",
         { type: "button", class: "pick room-add-item", role: "menuitem", onclick: () => {
           this.closeAdd(keep3);
           fn();
         } },
-        el15("span", {}, label2),
-        el15("span", { class: "pick-note" }, note2)
+        el16("span", {}, label2),
+        el16("span", { class: "pick-note" }, note2)
       );
     }
     // Closes Add; what was asked for at a point (keep) still goes there.
@@ -24111,17 +24454,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const kind = kindOf3(th);
       if (this.locked) {
         return [
-          el15("div", { class: "label" }, "Locked"),
-          kind === "group" && inPanel ? null : el15("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText3(this.world, th)),
-          kind === "group" && !inPanel && this.files?.canEdit ? el15("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
+          el16("div", { class: "label" }, "Locked"),
+          kind === "group" && inPanel ? null : el16("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText3(this.world, th)),
+          kind === "group" && !inPanel && this.files?.canEdit ? el16("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
         ].filter(Boolean);
       }
       const stop2 = (e) => {
         e.stopPropagation();
         if (e.key === "Escape" || e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur();
       };
-      const field3 = (value, label2, onchange, cls = "pop-name") => el15("input", { class: cls, value: value || "", placeholder: label2, "aria-label": label2, onkeydown: stop2, onchange });
-      const word = (label2, fn, extra = "") => el15("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
+      const field3 = (value, label2, onchange, cls = "pop-name") => el16("input", { class: cls, value: value || "", placeholder: label2, "aria-label": label2, onkeydown: stop2, onchange });
+      const word = (label2, fn, extra = "") => el16("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
       const grow = (t) => {
         t.style.height = "auto";
         t.style.height = t.scrollHeight + "px";
@@ -24133,9 +24476,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const rows = [];
       const gname = kind === "group" ? this.groupName(th) : "Train";
       const title = kind === "group" ? th.closed ? `A closed ${gname.toLowerCase()}` : gname : ITEMS3[kind]?.name || "Thought";
-      if (!inPanel) rows.push(el15("div", { class: "label" }, title));
+      if (!inPanel) rows.push(el16("div", { class: "label" }, title));
       if (kind === "line") {
-        const text = el15("textarea", {
+        const text = el16("textarea", {
           class: `room-edit-text room-edit-lines${inPanel ? " title-field" : ""}`,
           rows: 1,
           placeholder: "The thought",
@@ -24169,7 +24512,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           update4(this.world, th.id, { title: e.target.value });
           done();
         }, inPanel ? "pop-name title-field" : "pop-name"));
-        const body = el15("textarea", {
+        const body = el16("textarea", {
           class: "room-edit-body",
           rows: 5,
           "aria-label": "Passage",
@@ -24198,10 +24541,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             name4(this.world, th.id, e.target.value);
             done();
           }),
-          el15(
+          el16(
             "div",
             { class: "pop-row" },
-            el15("span", { class: "pop-note" }, `${n} thought${n === 1 ? "" : "s"}`),
+            el16("span", { class: "pop-note" }, `${n} thought${n === 1 ? "" : "s"}`),
             this.files?.canEdit && !inPanel ? word("Edit as Markdown", () => this.editAsMarkdown(th.id)) : null
           )
         );
@@ -24218,9 +24561,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return false;
         }
       });
-      if (moves.length) rows.push(el15("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
+      if (moves.length) rows.push(el16("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
       const others = this.moveRooms();
-      const pick = el15(
+      const pick = el16(
         "select",
         {
           class: "room-edit-move",
@@ -24231,13 +24574,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (to) this.moveTo(to);
           }
         },
-        el15("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el15("option", { value: r.id }, r.name)),
-        el15("option", { value: "+" }, "A new room")
+        el16("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el16("option", { value: r.id }, r.name)),
+        el16("option", { value: "+" }, "A new room")
       );
       rows.push(
-        el15("div", { class: "pop-row" }, pick),
-        el15(
+        el16("div", { class: "pop-row" }, pick),
+        el16(
           "div",
           { class: "pop-row" },
           kind !== "group" && this.ont.groups && groupOf3(this.world, th.id, this.mode) ? word(`The whole ${this.ont.groups.name.toLowerCase()}`, () => {
@@ -24258,14 +24601,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // What is chosen, in the dock (the content editor): under its one title, folding sections of
     // label/value rows (Folio's .sec and .kv) and real buttons that name their keys (.box-btn).
     dockSections(th, kind, gname, done) {
-      const key = (id) => el15("span", { class: "key" }, this.keyMap?.label?.(id) || "");
-      const btn = (label2, fn, id = null, extra = "") => el15("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label2, id ? key(id) : "");
-      const kv = (label2, value) => el15("div", { class: "kv" }, el15("span", {}, label2), value);
-      const sec = (title, ...body) => el15("details", { class: "sec", open: "" }, el15("summary", {}, title), el15("div", { class: "sec-body" }, ...body.filter(Boolean)));
+      const key = (id) => el16("span", { class: "key" }, this.keyMap?.label?.(id) || "");
+      const btn = (label2, fn, id = null, extra = "") => el16("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label2, id ? key(id) : "");
+      const kv = (label2, value) => el16("div", { class: "kv" }, el16("span", {}, label2), value);
+      const sec = (title, ...body) => el16("details", { class: "sec", open: "" }, el16("summary", {}, title), el16("div", { class: "sec-body" }, ...body.filter(Boolean)));
       const out = [];
       const others = this.moveRooms();
       const here = room5(this.world, this.roomId);
-      const pick = el15(
+      const pick = el16(
         "select",
         {
           class: "room-edit-move",
@@ -24276,9 +24619,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (to && to !== this.roomId) this.moveTo(to);
           }
         },
-        el15("option", { value: this.roomId }, here && placeName2(this.world, here.id) || "This room"),
-        ...others.map((r) => el15("option", { value: r.id }, r.name)),
-        el15("option", { value: "+" }, "A new room")
+        el16("option", { value: this.roomId }, here && placeName2(this.world, here.id) || "This room"),
+        ...others.map((r) => el16("option", { value: r.id }, r.name)),
+        el16("option", { value: "+" }, "A new room")
       );
       const g2 = kind !== "group" && this.ont.groups ? groupOf3(this.world, th.id, this.mode) : null;
       const gn = this.ont.groups?.name || "Group";
@@ -24286,7 +24629,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (g2) {
         const all = trainThoughts2(this.world, g2.id);
         const at2 = all.findIndex((x) => x.id === th.id);
-        inGroup = el15(
+        inGroup = el16(
           "button",
           {
             type: "button",
@@ -24305,7 +24648,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "Place",
         kv("Room", pick),
         inGroup ? kv(gn, inGroup) : null,
-        kind === "group" ? kv("Thoughts", el15("span", {}, String(n))) : null
+        kind === "group" ? kv("Thoughts", el16("span", {}, String(n))) : null
       ));
       let own4 = [];
       try {
@@ -24324,7 +24667,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         out.push(sec(
           this.ont.name || "Mode",
           ...own4,
-          moves.length ? el15("div", { class: "box-btns room-moves" }, ...moves.map((m2) => btn(m2.label, () => this.runMove(m2)))) : null
+          moves.length ? el16("div", { class: "box-btns room-moves" }, ...moves.map((m2) => btn(m2.label, () => this.runMove(m2)))) : null
         ));
       }
       let canThrow = false;
@@ -24333,7 +24676,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch {
         canThrow = false;
       }
-      out.push(sec("Actions", el15(
+      out.push(sec("Actions", el16(
         "div",
         { class: "box-btns" },
         canThrow ? btn("Throw back", () => {
@@ -24392,7 +24735,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     looseCard(th) {
       const group3 = isGroup4(th);
       const words = this.looseWords(th);
-      return el15(
+      return el16(
         "div",
         {
           class: "room-tray-item" + (this.isSel(th.id) ? " st-sel" : ""),
@@ -24405,8 +24748,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.trayOpenCard(th.id);
           }
         },
-        group3 ? el15("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
-        el15("span", { class: "room-tray-text" }, words)
+        group3 ? el16("span", { class: "label room-tray-kind" }, this.groupName(th)) : null,
+        el16("span", { class: "room-tray-text" }, words)
       );
     }
     // A loose card clicked: Ctrl/Shift adds it to (or takes it from) what is chosen; otherwise it is
@@ -24445,7 +24788,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const open2 = !!this.trayOpen;
-      const word = el15("button", {
+      const word = el16("button", {
         type: "button",
         class: "word room-tray-btn",
         "aria-expanded": String(open2),
@@ -24455,7 +24798,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawTray();
         }
       }, `Loose · ${items.length}`);
-      const row = open2 ? el15("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => this.looseCard(th))) : null;
+      const row = open2 ? el16("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => this.looseCard(th))) : null;
       this.trayEl.hidden = false;
       this.trayEl.replaceChildren(...row ? [row] : [], word);
     }
@@ -24472,7 +24815,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const title = items.length ? `${items.length} not placed` : "Nothing loose";
       const shown2 = this.looseFilter(items);
-      const list2 = shown2.length ? shown2.map((th) => this.looseCard(th)) : [el15("p", { class: "room-loose-hint" }, items.length ? "Nothing loose has those words." : `Every thought is placed in ${this.ont.name}.`)];
+      const list2 = shown2.length ? shown2.map((th) => this.looseCard(th)) : [el16("p", { class: "room-loose-hint" }, items.length ? "Nothing loose has those words." : `Every thought is placed in ${this.ont.name}.`)];
       if (open2) {
         this.loose.list.replaceChildren(...list2);
         this.loose.handle?.setTitle(title);
@@ -24482,8 +24825,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       this.looseQuery = "";
-      const listEl = el15("div", { class: "room-loose-list", role: "list" }, list2);
-      const search4 = el15("input", {
+      const listEl = el16("div", { class: "room-loose-list", role: "list" }, list2);
+      const search4 = el16("input", {
         type: "search",
         class: "room-loose-search",
         placeholder: "Search loose thoughts",
@@ -24505,11 +24848,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       });
       const add = this.looseAddBar();
-      const body = el15(
+      const body = el16(
         "div",
         { class: "room-loose" },
         search4,
-        el15("p", { class: "room-loose-hint" }, "Thoughts not placed in this mode yet, newest first. Drag one onto the room."),
+        el16("p", { class: "room-loose-hint" }, "Thoughts not placed in this mode yet, newest first. Drag one onto the room."),
         listEl,
         add
       );
@@ -24545,7 +24888,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         t.style.height = "auto";
         t.style.height = `${t.scrollHeight}px`;
       };
-      const box = el15("textarea", {
+      const box = el16("textarea", {
         class: "room-loose-new",
         rows: 1,
         placeholder: "A new thought",
@@ -24570,7 +24913,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }
       });
-      const menu = el15(
+      const menu = el16(
         "div",
         {
           class: "panel room-loose-menu",
@@ -24589,7 +24932,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.looseItem("Picture", "a file, with a caption", () => this.choosePicture(true)),
         ...this.files ? [this.looseItem("Import…", "objects from a file", () => this.importIntoRoom())] : []
       );
-      const plus = el15("button", {
+      const plus = el16("button", {
         type: "button",
         class: "word room-loose-plus",
         "aria-label": "Add something else",
@@ -24598,17 +24941,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "aria-expanded": "false",
         onclick: () => this.toggleLooseMenu()
       }, "+");
-      return el15("div", { class: "room-loose-add", hidden: this.locked }, menu, el15("div", { class: "room-loose-bar" }, box, plus));
+      return el16("div", { class: "room-loose-add", hidden: this.locked }, menu, el16("div", { class: "room-loose-bar" }, box, plus));
     }
     looseItem(label2, note2, fn) {
-      return el15(
+      return el16(
         "button",
         { type: "button", class: "pick", role: "menuitem", onclick: () => {
           this.closeLooseMenu();
           fn();
         } },
-        el15("span", {}, label2),
-        el15("span", { class: "pick-note" }, note2)
+        el16("span", {}, label2),
+        el16("span", { class: "pick-note" }, note2)
       );
     }
     // The + beside the add bar: its menu unfolds above it.
@@ -24705,7 +25048,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const ids = this.sel.ids.filter((id) => this.world.things[id]);
       const others = this.moveRooms();
-      const pick = el15(
+      const pick = el16(
         "select",
         {
           class: "room-edit-move",
@@ -24722,25 +25065,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             this.toast(`Moved ${ids.length} to ${placeName2(this.world, to)}`);
           }
         },
-        el15("option", { value: "" }, "Move to…"),
-        ...others.map((r) => el15("option", { value: r.id }, r.name)),
-        el15("option", { value: "+" }, "A new room")
+        el16("option", { value: "" }, "Move to…"),
+        ...others.map((r) => el16("option", { value: r.id }, r.name)),
+        el16("option", { value: "+" }, "A new room")
       );
       this.bar.hidden = false;
       this.bar.replaceChildren(
-        el15("div", { class: "label" }, `${ids.length} chosen`),
-        el15("p", { class: "pop-note" }, "Drag any of them to move them together."),
-        el15("div", { class: "pop-row" }, pick),
-        el15(
+        el16("div", { class: "label" }, `${ids.length} chosen`),
+        el16("p", { class: "pop-note" }, "Drag any of them to move them together."),
+        el16("div", { class: "pop-row" }, pick),
+        el16(
           "div",
           { class: "pop-row" },
-          this.ont.groups ? el15("button", {
+          this.ont.groups ? el16("button", {
             type: "button",
             class: "word",
             title: this.keyMap ? `Group · ${this.keyMap.label("room.group")}` : "Group",
             onclick: () => group2(this)
           }, `One ${this.ont.groups.name.toLowerCase()}`) : null,
-          el15("button", { type: "button", class: "word pop-delete", onclick: () => {
+          el16("button", { type: "button", class: "word pop-delete", onclick: () => {
             ids.forEach((id) => remove4(this.world, id));
             this.sel = null;
             this.save();
@@ -24873,31 +25216,31 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const fields = [];
       if (kind === "group") {
-        this.sheetTitle = el15("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
-        fields.push(this.sheetTitle, el15("div", { class: "room-sheet-preview" }, thoughtText3(this.world, th)));
+        this.sheetTitle = el16("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
+        fields.push(this.sheetTitle, el16("div", { class: "room-sheet-preview" }, thoughtText3(this.world, th)));
       } else if (kind === "passage") {
-        this.sheetTitle = el15("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
-        this.sheetBody = el15("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
+        this.sheetTitle = el16("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
+        this.sheetBody = el16("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
         this.sheetBody.value = th?.body || "";
         fields.push(this.sheetTitle, this.sheetBody);
       } else {
-        this.sheetCaption = el15("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
-        fields.push(el15("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
+        this.sheetCaption = el16("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
+        fields.push(el16("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
       }
       const label2 = { passage: "Passage", picture: "Picture", group: `A closed ${this.groupName(th).toLowerCase()}` }[kind];
-      const words = el15(
+      const words = el16(
         "div",
         { class: "sheet-words" },
-        el15("button", { type: "button", class: "word", onclick: keep3 }, "Keep"),
-        el15("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
-        el15("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
+        el16("button", { type: "button", class: "word", onclick: keep3 }, "Keep"),
+        el16("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
+        el16("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
       const first = () => kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle;
       if (this.panel) {
         this.dockSheet(label2, th, [...fields, words], first);
         return;
       }
-      this.sheet.replaceChildren(el15("div", { class: "label" }, label2), ...fields, words);
+      this.sheet.replaceChildren(el16("div", { class: "label" }, label2), ...fields, words);
       this.sheet.hidden = false;
       first().focus();
     }
@@ -24906,7 +25249,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     dockSheet(label2, th, parts, first) {
       const ed = this.editing;
       const title = th ? th.title || th.text || label2 : `A new ${label2.toLowerCase()}`;
-      const body = el15("div", { class: "room-sheet room-sheet-docked" }, ...parts);
+      const body = el16("div", { class: "room-sheet room-sheet-docked" }, ...parts);
       ed.docked = true;
       this.panel.open({
         key: "sheet",
@@ -24974,8 +25317,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The other side's panel, made once (build()); a click on it works there.
     twinPanel() {
-      this.otherWorld = el15("div", { class: "room-world" });
-      this.otherEl = el15(
+      this.otherWorld = el16("div", { class: "room-world" });
+      this.otherEl = el16(
         "div",
         {
           class: "room-twin-other",
@@ -24988,7 +25331,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         },
         this.otherWorld,
-        this.otherLabel = el15("div", { class: "label room-twin-label" })
+        this.otherLabel = el16("div", { class: "label room-twin-label" })
       );
       return this.otherEl;
     }
@@ -25037,11 +25380,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!t) return [];
       const all = [this.roomId, this.otherSide?.id].map((id) => room5(this.world, id)).filter(Boolean).sort((a, b) => (a.side || 0) - (b.side || 0));
       return [
-        el15("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
+        el16("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
         ...all.map((s) => {
           const on = s.id === this.roomId;
           const o2 = this.ontology(view8(this.world, s.id).mode);
-          return el15(
+          return el16(
             "button",
             {
               type: "button",
@@ -25052,8 +25395,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 if (!on) this.switchSide(s.id);
               }
             },
-            el15("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, s.side ? "R" : "L"),
-            el15("span", { class: "rail-word" }, `${s.name} · ${o2.name}`)
+            el16("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, s.side ? "R" : "L"),
+            el16("span", { class: "rail-word" }, `${s.name} · ${o2.name}`)
           );
         })
       ];
@@ -25396,7 +25739,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       const look = this.lookOf(room5(this.world, this.roomId));
       const W2 = window.innerWidth, H2 = window.innerHeight;
-      const veil = el15("div", { class: "expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H2})` });
+      const veil = el16("div", { class: "expand", style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W2}, ${a.height / H2})` });
       this.expandVeil = veil;
       this.root.classList.add("expanding");
       this.root.append(veil);
@@ -25459,44 +25802,44 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Building the pages ----
     build() {
-      this.crumbName = el15("button", { type: "button", class: "crumb room-crumb-name", "aria-current": "page", title: "Rename", onclick: () => this.renameOpenRoom() });
-      this.crumbDesc = el15("span", { class: "crumb-note room-crumb-desc" });
-      this.crumb = el15("span", { class: "room-crumb" }, this.crumbName, this.crumbDesc);
-      this.modes = el15("nav", { class: "rail room-rail room-modes", "aria-label": "Ontological mode" });
-      this.world$ = el15("div", { class: "room-world" });
-      this.stage = el15("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
+      this.crumbName = el16("button", { type: "button", class: "crumb room-crumb-name", "aria-current": "page", title: "Rename", onclick: () => this.renameOpenRoom() });
+      this.crumbDesc = el16("span", { class: "crumb-note room-crumb-desc" });
+      this.crumb = el16("span", { class: "room-crumb" }, this.crumbName, this.crumbDesc);
+      this.modes = el16("nav", { class: "rail room-rail room-modes", "aria-label": "Ontological mode" });
+      this.world$ = el16("div", { class: "room-world" });
+      this.stage = el16("div", { class: "room-stage", "data-own-swipe": "" }, this.world$);
       const otherSide3 = this.twinPanel();
-      this.input = el15("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
-      this.bar = el15("div", { class: "panel pop room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.trayEl = el15("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
-      this.roomPage = el15(
+      this.input = el16("textarea", { class: "room-input", "aria-label": "Write a thought", rows: 1, wrap: "off", autocomplete: "off", spellcheck: "false" });
+      this.bar = el16("div", { class: "panel pop room-options room-edit", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.trayEl = el16("div", { class: "room-tray", hidden: true, onpointerdown: (e) => e.stopPropagation() });
+      this.roomPage = el16(
         "section",
         { class: "room-page", "aria-label": "Room" },
         this.stage,
         otherSide3,
         this.modes,
-        el15(
+        el16(
           "div",
           { class: "room-add" },
-          this.addMenu = el15(
+          this.addMenu = el16(
             "div",
             { class: "panel room-add-menu", hidden: true, role: "menu" },
             this.addItem("Thought", "Just type", () => this.beginWriting()),
             this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
             this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
             ...this.files ? [
-              el15("div", { class: "pick-rule" }),
+              el16("div", { class: "pick-rule" }),
               this.addItem("Import into this room…", "or drop a .traum or .md file", () => this.importIntoRoom(), false)
             ] : []
           )
         ),
         this.trayEl,
         this.bar,
-        this.sheet = el15("div", { class: "panel sheet room-sheet", hidden: true }),
-        this.docEl = el15("div", { class: "room-doc-veil", hidden: true }),
+        this.sheet = el16("div", { class: "panel sheet room-sheet", hidden: true }),
+        this.docEl = el16("div", { class: "room-doc-veil", hidden: true }),
         this.input
       );
-      this.root = el15("div", { class: "room up in-room", hidden: true }, this.roomPage);
+      this.root = el16("div", { class: "room up in-room", hidden: true }, this.roomPage);
       (document.getElementById("folio-root") || document.body).append(this.root);
       this.input.addEventListener("input", () => this.onInput());
       this.input.addEventListener("keydown", (e) => {
@@ -25560,7 +25903,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.ontology(this.mode);
     }
     get el() {
-      return el15;
+      return el16;
     }
     // for an ontology drawing its canvas (ontologies/index.js)
     groupName(g2) {
@@ -25675,14 +26018,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var url9 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature9;"], { type: "text/javascript" }));
   globalThis.__folioFeature10 = Rooms;
   var url10 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature10;"], { type: "text/javascript" }));
-  globalThis.__folioFeature11 = Home;
+  globalThis.__folioFeature11 = Search;
   var url11 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature11;"], { type: "text/javascript" }));
-  globalThis.__folioFeature12 = Proust;
+  globalThis.__folioFeature12 = Home;
   var url12 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature12;"], { type: "text/javascript" }));
-  globalThis.__folioFeature13 = Search;
+  globalThis.__folioFeature13 = Pages;
   var url13 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature13;"], { type: "text/javascript" }));
-  globalThis.__folioFeature14 = Room;
+  globalThis.__folioFeature14 = Proust;
   var url14 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature14;"], { type: "text/javascript" }));
+  globalThis.__folioFeature15 = Room;
+  var url15 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature15;"], { type: "text/javascript" }));
   var config = {
     "id": "mask-renderer",
     "name": "Träumerei",
@@ -25693,8 +26038,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "appearance": "light",
     "test": false
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
-  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }]).start();
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js" }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js" }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["world"], "uses": ["source", "floors"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js" }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["world"], "uses": ["docks", "keys", "frame"], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js" }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame: a rail with Start and Recent rooms, the name in the middle, then Create. Its typeface is a setting.", "version": "1.0.0", "requires": [], "uses": ["rooms", "world", "frame", "search", "keys"], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js" }, { "id": "pages", "name": "Pages", "description": "Settings as a page in the frame: a rail of its sections beside label and value rows, in place of the veil window.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js" }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }];
+  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
 </script>
