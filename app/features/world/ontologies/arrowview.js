@@ -1,0 +1,246 @@
+// The arrows between one ontology's nodes, on the screen: drawing each arrow (through the shared
+// lines part, lines.js) with its relation and label beside it, editing an arrow where it is (a
+// double-click on it or its label: its relation and its label; Enter keeps, Esc lets go), drawing a
+// new arrow by dragging from a point onto another node, and a node's rows in its pop-up (each arrow
+// into it). Russell's tree uses it now; a network that allows loops later. What an arrow is, and
+// the rules for drawing one, are relations.js (`net`); where it runs between two boxes is arrows.js.
+//
+// arrowView({ of, net, boxes, pads, nodeAt, name, ends }) gives the functions for one ontology:
+//   of                  the ontology's id (its relations are its room setting RELATIONS.key)
+//   net                 relations.js's arrowsOf(...) for it: arrows, arrowsInto, link, ...
+//   boxes(w, room)      each node's corner and size as drawn: { [id]: { at, size } }
+//   pads(w, from, to)   how far off each side an arrow starts and ends (arrows.js's between)
+//   nodeAt(w, room, x, y)   the node at a world point, or null (when the pointer is over no node)
+//   name(w, id)         a node in words, for its pop-up rows ("From Arrays: ")
+//   ends(rel)           (optional) a relation's ends: 'none', 'arrow' (default) or 'both'
+//
+// and returns { draw(c, layer), press(c, e), drag(c, e, from, p), props(c, th), pick(c, now, pick, keys),
+// editing(c) }. Its look is the room's .room-arrow-* classes (with .room-line from lines.js).
+
+import { setRoomSetting } from '../model.js';
+import { maths } from '../maths.js';
+import { between, path as arrowLine, labelSpot } from './arrows.js';
+import * as lines from './lines.js';
+import { cleanRelations, relationShown, withRelation, relationName, RELATIONS } from './relations.js';
+
+export const arrowKey = (from, to) => `${from}>${to}`;
+
+export function arrowView({ of, net, boxes, pads, nodeAt, name, ends = () => 'arrow' }) {
+  const { arrows, arrowsInto, parentsOf, childrenOf, link, setLabel, setRelation } = net;
+  const box = ({ at, size }) => ({ x: at.x, y: at.y, w: size.w, h: size.h });
+
+  // An arrow being edited where it is: { room, from, to, text, rel, fresh }. Drawn by draw(), so
+  // a redraw keeps it open with what was typed.
+  let editing = null;
+  let lastArrow = null; // the arrow pressed last, { key, at }, to hear a double-click
+
+  function startEdit(c, from, to) {
+    const a = arrowsInto(c.world, c.roomId, to);
+    if (!a.parents.includes(from)) return;
+    editing = { room: c.roomId, from, to, text: a.labels[from] || '', rel: a.rel[from], fresh: true };
+    c.drawWorld();
+  }
+
+  function finishEdit(c, keep) {
+    const e = editing;
+    editing = null;
+    if (keep && e && e.room === c.roomId && !c.locked) {
+      setLabel(c.world, c.roomId, e.from, e.to, e.text);
+      setRelation(c.world, c.roomId, e.from, e.to, e.rel);
+      c.save();
+    }
+    c.drawWorld();
+  }
+
+  // A relation picker: the room's relations (and the arrow's own, if the list no longer has it),
+  // no relation, and "+ New…", which turns the picker into a field: Enter adds the name to the
+  // room's list and picks it, Esc goes back. pick(name) hears the choice ('' for none); keys(ev)
+  // hears the picker's other keys (the edit box's Enter and Esc).
+  function pick(c, now, chosen, keys = () => {}) {
+    const names = cleanRelations(c.setting(RELATIONS.key));
+    const list = names.includes(now) || !now ? names : [...names, now];
+    const wrap = c.el('span', { class: 'room-arrow-rel-pick' });
+    const select = c.el('select', {
+      class: 'room-arrow-pick-rel', 'aria-label': 'The arrow\'s relation', onkeydown: keys,
+      onchange: (ev) => {
+        const v = ev.target.value;
+        if (v === 'new') { wrap.replaceChildren(field); field.focus(); return; }
+        chosen(v === 'none' ? '' : list[Number(v)]);
+      },
+    },
+    ...list.map((n, i) => c.el('option', { value: String(i), selected: n === now }, n)),
+    c.el('option', { value: 'none', selected: !now }, '(no relation)'),
+    c.el('option', { value: 'new' }, '+ New…'));
+    const back = () => { select.value = now ? String(list.indexOf(now)) : 'none'; wrap.replaceChildren(select); select.focus(); };
+    const field = c.el('input', {
+      class: 'room-edit-text room-arrow-new', placeholder: 'is a case of', spellcheck: 'false', 'aria-label': 'A new relation',
+      onkeydown: (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Escape') { ev.preventDefault(); back(); return; }
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        const n = relationName(field.value);
+        if (!n) { if (n === null) c.toast('A relation can\'t hold [[ or ]].'); back(); return; }
+        const next = withRelation(names, n);
+        if (!c.locked && next.length !== names.length) { setRoomSetting(c.world, c.roomId, of, RELATIONS.key, next); c.save(); }
+        chosen(next.find((x) => x.toLowerCase() === n.toLowerCase()));
+      },
+    });
+    wrap.append(select);
+    return wrap;
+  }
+
+  // The box an arrow is edited in: its relation and its label.
+  function editBox(c, spot) {
+    const e = editing;
+    const keys = (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') { ev.preventDefault(); finishEdit(c, true); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(c, false); }
+    };
+    const input = c.el('input', {
+      class: 'room-edit-text', value: e.text, placeholder: 'the coordinates', spellcheck: 'false',
+      'aria-label': 'The arrow\'s label', oninput: (ev) => { e.text = ev.target.value; }, onkeydown: keys,
+    });
+    const picker = pick(c, e.rel, (n) => { e.rel = n; input.focus(); }, keys);
+    const out = c.el('div', {
+      class: `panel room-arrow-edit side-${spot.side}`, style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
+    }, picker, input);
+    requestAnimationFrame(() => {
+      if (!out.isConnected || out.contains(document.activeElement)) return;
+      input.focus();
+      if (e.fresh) input.select(); else input.setSelectionRange(input.value.length, input.value.length);
+      e.fresh = false;
+    });
+    return out;
+  }
+
+  // The node under a pointer: the drawn node it is over, or the one at that point.
+  function nodeUnder(c, ev) {
+    const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-group]');
+    const g = n && c.world.things[n.dataset.group];
+    if (g && g.of === of) return g.id;
+    const p = c.toWorld(ev.clientX, ev.clientY);
+    return nodeAt(c.world, c.roomId, p.x, p.y);
+  }
+
+  // Draws a new arrow by dragging from point p (world units, leaving downwards) of node `from`
+  // onto another node; the layer is the canvas's .room-lines layer.
+  function drag(c, e, from, p) {
+    const layer = c.world$?.querySelector('.room-lines');
+    if (!layer) return;
+    const line = c.setting('line') || 'straight';
+    const [drawn] = lines.line('', { ends: 'arrow', cls: 'room-arrow room-arrow-drawing' });
+    layer.append(drawn);
+    const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); drawn.setAttribute('d', arrowLine({ p, q, from: 'bottom', to: 'top' }, line)); };
+    const up = (ev) => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      drawn.remove();
+      if (ev.type !== 'pointerup') return;
+      const to = nodeUnder(c, ev);
+      if (!to || to === from) { c.drawWorld(); return; }
+      const why = link(c.world, c.roomId, from, to);
+      if (why) c.toast(why);
+      c.save();
+      c.drawWorld();
+    };
+    move(e);
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  }
+
+  return {
+    pick,
+    drag,
+    nodeUnder,
+
+    // Whether an arrow is being edited in this room.
+    editing: (c) => !!editing && editing.room === c.roomId,
+
+    // A press on the canvas: one in the edit box is its own, anywhere else keeps the edit; a
+    // double-click on an arrow or its label edits it. True when the press was the arrows'.
+    press(c, e) {
+      if (editing && editing.room === c.roomId) {
+        if (e.target.closest?.('.room-arrow-edit')) return true;
+        finishEdit(c, true);
+      }
+      // The canvas is redrawn between the two presses, so the arrow is heard by its key, not its node.
+      const hit = e.target.closest?.('[data-arrow]');
+      if (!hit) { lastArrow = null; return false; }
+      const key = hit.dataset.arrow, now = Date.now();
+      if (lastArrow?.key === key && now - lastArrow.at < 400) {
+        lastArrow = null;
+        e.preventDefault();
+        const [from, to] = key.split('>');
+        startEdit(c, from, to);
+        return true;
+      }
+      lastArrow = { key, at: now };
+      return false;
+    },
+
+    // Each arrow on the canvas, into `layer` (lines.layer): from the side of the parent that faces
+    // the child to the child's facing side, its label at its middle. Returns the label nodes.
+    draw(c, layer, all = boxes(c.world, c.roomId)) {
+      const w = c.world, roomId = c.roomId, el = c.el;
+      const nodes = [];
+      const line = c.setting('line') || 'straight';
+      const names = cleanRelations(c.setting(RELATIONS.key));
+      for (const { from, to, label, rel } of arrows(w, roomId)) {
+        const a = all[from], b = all[to];
+        if (!a || !b) continue;
+        const arrow = between(box(a), box(b), pads(w, from, to));
+        const d = arrowLine(arrow, line), key = arrowKey(from, to);
+        const [drawn, hit] = lines.line(d, { ends: ends(rel), cls: 'room-arrow', hit: { cls: 'room-arrow-hit', 'data-arrow': key } });
+        layer.append(drawn, hit);
+        const mid = labelSpot(arrow, line);
+        if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
+          nodes.push(editBox(c, mid));
+          continue;
+        }
+        // The relation shows beside the label when it tells arrows apart (relationShown).
+        const shown = relationShown(names, rel);
+        if (!label && !shown && !c.locked) {
+          // An arrow with nothing to show: a faint hint of its relation when the pointer is on it.
+          const hint = el('div', { class: `room-arrow-label room-arrow-hint side-${mid.side}`, 'data-arrow': key, title: 'Double-click to write this arrow\'s label', style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ''}…`);
+          hit.addEventListener('pointerenter', () => hint.classList.add('show'));
+          hit.addEventListener('pointerleave', () => hint.classList.remove('show'));
+          nodes.push(hint);
+        }
+        if (label || shown) {
+          // A junction's two arrows lean towards each other, so each label goes on the side its
+          // parent is on, away from the other arrow. Arrows fanning out of one foot are close
+          // together at their middles, so their labels sit further down, where they have spread.
+          const prefer = parentsOf(w, roomId, to).length > 1 ? (arrow.p.x < arrow.q.x ? 'left' : 'right') : null;
+          const fan = arrow.from === 'bottom' && childrenOf(w, roomId, from).length > 1;
+          const spot = labelSpot(arrow, line, { prefer, t: fan ? 0.7 : 0.5 });
+          nodes.push(el('div', {
+            class: `room-arrow-label side-${spot.side}`, 'data-group': to, 'data-arrow': key, title: `${[rel, label].filter(Boolean).join(' ')} (double-click to edit)`,
+            style: `left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px`,
+          }, shown ? el('span', { class: 'room-arrow-rel' }, label ? `${shown} ` : shown) : null, label ? maths(label) : null));
+        }
+      }
+      return nodes;
+    },
+
+    // In a node's pop-up: each arrow into it, its relation (any of the room's, none, or a new one)
+    // and its label.
+    props(c, th) {
+      const { parents, labels, rel } = arrowsInto(c.world, c.roomId, th.id);
+      return parents.map((p) => {
+        const from = name(c.world, p);
+        const picker = pick(c, rel[p], (r) => { setRelation(c.world, c.roomId, p, th.id, r); c.save(); c.drawWorld(); });
+        return c.el('label', { class: 'room-arrow-row' },
+          c.el('span', { class: 'pop-note' }, `From ${from}: `, picker),
+          c.el('input', {
+            class: 'room-edit-text', value: labels[p] || '', placeholder: 'the coordinates', 'aria-label': `The label of the arrow from ${from}`,
+            onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
+            onchange: (e) => { setLabel(c.world, c.roomId, p, th.id, e.target.value); c.save(); c.drawWorld(); },
+          }));
+      });
+    },
+  };
+}

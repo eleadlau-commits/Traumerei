@@ -12,7 +12,7 @@ list is everything it offers:
 
 | Member | What it is |
 |---|---|
-| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below). Plain functions of a world; none touches the screen. |
+| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |
@@ -68,6 +68,14 @@ two thoughts: `slack`, `strand`) and draws it (`layer`, `line`, `knot`) with its
 plain line), an arrowhead where it ends, or one at both (`ENDS`). Where a line between two boxes
 starts and ends is `arrows.js`. Its look is the room's `.room-line` classes; each mode adds its own
 class for how strong its lines are.
+
+**Arrows on the screen** (`ontologies/arrowview.js`, `lib.arrowview`) are the screen half of
+`relations.js`, for any ontology that joins its groups with named arrows (Russell now; Proust
+next). `arrowView({ of, net, boxes, pads, nodeAt, name, ends })` draws each arrow through the
+lines part with its relation and label beside it, edits an arrow where it is (a double-click: its
+relation and its label), draws a new one dragged from a point onto another node, and gives a
+node's pop-up rows (each arrow into it). `ends(rel)` gives a relation's ends (Russell: always an
+arrow). Its look is the room's `.room-arrow-*` classes.
 
 **Groups are shared objects** (`groups.js`, `lib.groups`): every other ontology of the room sees
 a group as one thought, in its tray until it places it (`foreign`, `trayForeign`, `placedForeign`;
