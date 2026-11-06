@@ -13,8 +13,8 @@
 
 import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
 import { placedForeign, trayForeign, spot, putAt, place, inForeign, unplace } from '../groups.js';
+import * as lines from './lines.js';
 
-const SVG = 'http://www.w3.org/2000/svg';
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
 // ---- Where each thought of a train sits ----
@@ -86,25 +86,10 @@ export function nudge(w, id, x, y, now = Date.now()) {
   return true;
 }
 
-// How slack the line between two thoughts is (0 taut … 1 loose): thoughts written close together
-// are joined taut; a longer pause leaves slack. Pulled far apart, the line goes straight again.
-export const PAUSE = { quick: 20, long: 3600 }; // seconds
-export function slack(a, b, dist = 0, tension = 0.5) {
-  const gap = Math.max(0, ((b.at ?? 0) - (a.at ?? 0)) / 1000);
-  const fromTime = Math.min(1, Math.log1p(gap / PAUSE.quick) / Math.log1p(PAUSE.long / PAUSE.quick));
-  const pulled = Math.max(0, Math.min(1, 1 - (dist - STEP.line) / 520));
-  return Math.max(0, Math.min(1, fromTime * pulled * (1 - tension) * 2));
-}
-
-// The line from p to q with that slack, as an SVG path: straight when taut, a soft curve when loose.
-export function strand(p, q, k) {
-  const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-  const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-  const bow = k * Math.max(26, d * 0.42);
-  const cx = mx + (-dy / d) * bow, cy = my + (dx / d) * bow;
-  const r = (v) => Math.round(v * 10) / 10;
-  return k < 0.02 ? `M${r(p.x)} ${r(p.y)}L${r(q.x)} ${r(q.y)}` : `M${r(p.x)} ${r(p.y)}Q${r(cx)} ${r(cy)} ${r(q.x)} ${r(q.y)}`;
-}
+// How slack the line between two thoughts is (0 taut … 1 loose), and the line itself: the shared
+// lines part's strand (lines.js), resting at Joyce's step between two lines.
+export const { PAUSE, strand } = lines;
+export const slack = (a, b, dist = 0, tension = 0.5) => lines.slack(a, b, dist, tension, STEP.line);
 
 // ---- The timeline: a room's thoughts on one line, in the order they were last changed ----
 
@@ -335,8 +320,7 @@ const joyce = {
   draw(c) {
     const w = c.world, el = c.el;
     const nodes = [];
-    const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('class', 'room-strands');
+    const svg = lines.layer();
     const tension = c.setting('tension');
     for (const t of roomTrains(w, c.roomId)) {
       const chosen = (c.sel?.kind === 'train' && c.sel.id === t.id) || c.isSel(t.id);
@@ -350,28 +334,15 @@ const joyce = {
       const spots = trainSpots(w, t.id);
       const knots = trainThoughts(w, t.id).map((th) => ({ th, ...spots[th.id] }));
       if (c.draft?.train === t.id && !c.draft.edit) knots.push({ th: { at: Date.now() }, ...nextSpot(w, t.id), draft: true });
-      const g = document.createElementNS(SVG, 'g');
-      g.setAttribute('data-group', t.id);
-      g.setAttribute('class', 'room-strand' + (chosen ? ' selected' : ''));
+      const g = lines.group({ 'data-group': t.id, class: 'room-strand' + (chosen ? ' selected' : '') });
+      // Thought to thought, each strand sagging by the pause between them (lines.js).
       for (let k = 1; k < knots.length; k++) {
         const a = knots[k - 1], b = knots[k];
         const p = { x: a.x - 14, y: a.y + 15 }, q = { x: b.x - 14, y: b.y + 15 };
         const d = strand(p, q, slack(a.th, b.th, Math.hypot(q.x - p.x, q.y - p.y), tension));
-        for (const cls of ['room-strand-hit', 'room-strand-line']) {
-          const path = document.createElementNS(SVG, 'path');
-          path.setAttribute('d', d);
-          path.setAttribute('class', cls);
-          g.append(path);
-        }
+        g.append(...lines.line(d, { cls: 'room-strand-line', hit: { cls: 'room-strand-hit' } }));
       }
-      for (const k of knots) {
-        const dot = document.createElementNS(SVG, 'circle');
-        dot.setAttribute('cx', k.x - 14);
-        dot.setAttribute('cy', k.y + 15);
-        dot.setAttribute('r', 2.6);
-        dot.setAttribute('class', 'room-knot');
-        g.append(dot);
-      }
+      for (const k of knots) g.append(lines.knot({ x: k.x - 14, y: k.y + 15 }));
       svg.append(g);
       for (const k of knots) {
         nodes.push(el('div', {

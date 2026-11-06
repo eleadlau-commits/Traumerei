@@ -20,9 +20,8 @@ import { trayForeign, place, inForeign, unplace } from '../groups.js';
 import { stepAfter, setHeights, STEP } from './joyce.js';
 import { maths } from '../maths.js';
 import { between, path as arrowLine, labelSpot, sidePoint, PAD } from './arrows.js';
+import * as lines from './lines.js';
 import { arrowsOf, cleanRelations, relationShown, withRelation, relationName, RELATIONS } from './relations.js';
-
-const SVG = 'http://www.w3.org/2000/svg';
 
 export const ID = 'russell';
 // World units. width: the widest a chapter's thoughts go; title: room for an open chapter's name
@@ -345,11 +344,7 @@ function editBox(c, spot) {
 // parent: click the parent; Remove arrow, from a junction: click the parent to cut it from).
 let pending = null;
 
-const svg = (name, attrs = {}) => {
-  const n = document.createElementNS(SVG, name);
-  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-  return n;
-};
+const svg = lines.svg;
 const FOOT = 16; // how far under a chapter its foot sits
 const RULE = 14; // how far left of an open chapter's thoughts its hairline runs
 
@@ -387,7 +382,7 @@ function dragArrow(c, e, from) {
   if (!layer || !b) return;
   const p = foot(arrowBox(b));
   const line = c.setting('line') || 'straight';
-  const drawn = svg('path', { class: 'room-russell-arrow room-russell-drawing', 'marker-end': 'url(#russell-head)' });
+  const [drawn] = lines.line('', { ends: 'arrow', cls: 'room-russell-arrow room-russell-drawing' });
   layer.append(drawn);
   const move = (ev) => { const q = c.toWorld(ev.clientX, ev.clientY); drawn.setAttribute('d', arrowLine({ p, q, from: 'bottom', to: 'top' }, line)); };
   const up = (ev) => {
@@ -659,12 +654,7 @@ const russell = {
   draw(c) {
     const w = c.world, el = c.el, roomId = c.roomId;
     const all = boxes(w, roomId);
-    const layer = svg('svg', { class: 'room-strands room-russell-arrows' });
-    const defs = svg('defs');
-    const mark = svg('marker', { id: 'russell-head', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
-    mark.append(svg('path', { d: 'M0 1L9 5L0 9', class: 'room-russell-head' }));
-    defs.append(mark);
-    layer.append(defs);
+    const layer = lines.layer('room-russell-arrows'); // the shared lines part (lines.js), with its arrowheads
     const nodes = [];
     const picking = pending && pending.room === roomId;
     const line = c.setting('line') || 'straight';
@@ -676,9 +666,8 @@ const russell = {
       // at the arrow's middle.
       const arrow = between(arrowBox(a), arrowBox(b), pads(w, from, to));
       const d = arrowLine(arrow, line), key = arrowKey(from, to);
-      layer.append(svg('path', { class: 'room-russell-arrow', d, 'marker-end': 'url(#russell-head)' }));
-      const hit = svg('path', { class: 'room-russell-hit', d, 'data-arrow': key });
-      layer.append(hit);
+      const [drawn, hit] = lines.line(d, { ends: 'arrow', cls: 'room-russell-arrow', hit: { cls: 'room-russell-hit', 'data-arrow': key } });
+      layer.append(drawn, hit);
       const mid = labelSpot(arrow, line);
       if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
         nodes.push(editBox(c, mid));

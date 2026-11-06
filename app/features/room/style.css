@@ -66,7 +66,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
 .room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
-.room-russell-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.room-russell-hit { cursor: pointer; }
 .room-russell-hint { opacity: 0; transition: opacity .2s; }
 .room-russell-hint.show, .room-russell-hint:hover { opacity: .35; }
 .room-russell-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
@@ -119,10 +119,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
    taut between quick thoughts, slack after a pause. */
 .room-box { position: absolute; pointer-events: none; z-index: 2; background: var(--sel-fill); outline: 1px solid var(--amber); }
 .room-stage:has(.room-box) { cursor: crosshair; }
+/* Lines, shared by every mode that joins things (the world's ontologies/lines.js): what shows,
+   the wide unseen line that catches the pointer, the arrowhead at an end, and a knot. Each mode's
+   own class says how strong its lines are. */
 .room-strands { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
-.room-strand-line { fill: none; stroke: currentColor; stroke-width: 1; opacity: .32; transition: opacity .3s; }
-.room-strand-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: grab; }
+.room-line { fill: none; stroke: currentColor; stroke-width: 1; }
+.room-line-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.room-line-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
 .room-knot { fill: currentColor; opacity: .45; }
+/* Joyce's strands. */
+.room-strand-line { opacity: .32; transition: opacity .3s; }
+.room-strand-hit { cursor: grab; }
 .room-strand.selected .room-strand-line { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
 .room-strand.selected .room-knot { opacity: 1; fill: var(--amber); }
 .room-strand:hover .room-strand-line { opacity: .55; }
@@ -310,9 +317,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
    side of a parent facing a child to the child's facing side, with their label at the middle. */
-.room-russell-arrow { fill: none; stroke: currentColor; stroke-width: 1; opacity: .4; }
+.room-russell-arrow { opacity: .4; }
 .room-russell-drawing { opacity: .7; stroke-dasharray: 4 4; }
-.room-russell-head { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
 .room-russell-rule { stroke: currentColor; stroke-width: 1; opacity: .22; }
 .room-russell-rule.selected { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
 .room-russell-title {
