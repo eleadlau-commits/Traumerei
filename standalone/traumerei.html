@@ -2474,6 +2474,13 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 /* The × that takes an arrow or link away, beside its name in the Editor. */
 .room-arrow-x { --x-size: 18px; vertical-align: middle; margin-left: 2px; }
 
+/* Varied sizes within a thought ([words]{size=big}, the world's maths.js): five steps, in em, so
+   they follow Thought size. */
+.room-size-smallest { font-size: .7em; }
+.room-size-small { font-size: .85em; }
+.room-size-big { font-size: 1.3em; }
+.room-size-biggest { font-size: 1.7em; }
+
 </style>
 </head>
 <body>
@@ -8106,8 +8113,13 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   // dist/web/features/world/maths.js
   var maths_exports = {};
   __export(maths_exports, {
+    SIZES: () => SIZES,
     broken: () => broken,
     maths: () => maths,
+    resize: () => resize,
+    showSizes: () => showSizes,
+    sizeMarks: () => sizeMarks,
+    sizesOn: () => sizesOn,
     split: () => split
   });
 
@@ -12003,7 +12015,58 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     } else node.innerHTML = html;
     return node;
   }
+  var SIZES = ["smallest", "small", null, "big", "biggest"];
+  var SIZE_MARK = /\[([^\[\]\n]+)\]\{size=(smallest|small|big|biggest)\}/g;
+  var sizesShown = false;
+  function showSizes(on) {
+    const was = sizesShown;
+    sizesShown = !!on;
+    return was !== sizesShown;
+  }
+  var sizesOn = () => sizesShown;
+  function sizeMarks(text) {
+    const s = String(text ?? "");
+    const out = [];
+    for (const m2 of s.matchAll(SIZE_MARK)) out.push({ start: m2.index, end: m2.index + m2[0].length, inner: [m2.index + 1, m2.index + 1 + m2[1].length], size: m2[2] });
+    return out;
+  }
+  function resize(text, a, b, dir) {
+    const s = String(text ?? "");
+    const mark = sizeMarks(s).find((m2) => a >= m2.start && b <= m2.end && (a === b ? a > m2.start && a < m2.end : true));
+    if (mark) {
+      const words2 = s.slice(mark.inner[0], mark.inner[1]);
+      const next = SIZES[Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(mark.size) + dir))];
+      if (next === mark.size) return { text: s, select: mark.inner };
+      const put = next ? `[${words2}]{size=${next}}` : words2;
+      const from = mark.start + (next ? 1 : 0);
+      return { text: s.slice(0, mark.start) + put + s.slice(mark.end), select: [from, from + words2.length] };
+    }
+    if (a === b) return null;
+    const words = s.slice(a, b);
+    if (/[\n\[\]]/.test(words) || !words.trim()) return null;
+    const size = SIZES[2 + dir];
+    return { text: `${s.slice(0, a)}[${words}]{size=${size}}${s.slice(b)}`, select: [a + 1, a + 1 + words.length] };
+  }
   function maths(text) {
+    const s = String(text ?? "");
+    if (!s.includes("{size=")) return mathsOnly(s);
+    const out = [];
+    let from = 0;
+    for (const m2 of sizeMarks(s)) {
+      if (m2.start > from) out.push(...[].concat(mathsOnly(s.slice(from, m2.start))));
+      const words = s.slice(m2.inner[0], m2.inner[1]);
+      if (sizesShown) {
+        const span4 = document.createElement("span");
+        span4.className = `room-size room-size-${m2.size}`;
+        span4.append(...[].concat(mathsOnly(words)));
+        out.push(span4);
+      } else out.push(...[].concat(mathsOnly(words)));
+      from = m2.end;
+    }
+    if (from < s.length) out.push(...[].concat(mathsOnly(s.slice(from))));
+    return out.filter((p) => p !== "");
+  }
+  function mathsOnly(text) {
     const s = String(text ?? "");
     if (!s.includes("$")) return s;
     const parts = split(s);
@@ -13032,8 +13095,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // how strongly a square shows its room's colour
     peek: 0,
     // a square's last thoughts: 0 when hovered over, 1 always
-    size: 19
+    size: 19,
     // thoughts' text inside a room, in px (--t-read), one size for the whole app
+    sizes: 0
+    // varied sizes within a thought ([words]{size=big}): 0 off, 1 on
   };
   function lookPrefs(saved) {
     const out = { ...LOOK };
@@ -15576,7 +15641,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     r.row = row;
     return true;
   }
-  function resize(w2, id, size, board) {
+  function resize2(w2, id, size, board) {
     const r = room2(w2, id);
     if (!r || r.locked) return false;
     const was = r.size || 1;
@@ -15672,7 +15737,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         settle: (page) => this.settle(page),
         // places a floor's rooms that have no cell
         move: (id, col, row) => move2(this.world, id, col, row, board()),
-        resize: (id, size) => resize(this.world, id, size, board()),
+        resize: (id, size) => resize2(this.world, id, size, board()),
         toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
         fits: (size) => !outside(this.world, size).length,
         // whether every room fits floors of `size`
@@ -21418,21 +21483,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return n;
   }
-  var SIZES = /* @__PURE__ */ new Map();
+  var SIZES2 = /* @__PURE__ */ new Map();
   function setSizes(sizes) {
     let changed3 = false;
     for (const [id, { w: wd, h }] of sizes) {
       if (!(wd > 0) || !(h > 0)) continue;
-      const was = SIZES.get(id);
+      const was = SIZES2.get(id);
       if (!was || Math.abs(was.w - wd) > 2 || Math.abs(was.h - h) > 2) {
-        SIZES.set(id, { w: wd, h });
+        SIZES2.set(id, { w: wd, h });
         changed3 = true;
       }
     }
     return changed3;
   }
   function sizeOf(w2, id) {
-    const s = SIZES.get(id);
+    const s = SIZES2.get(id);
     if (s) return s;
     const th = w2.things[id];
     const text = !th ? "" : isGroup3(th) ? nodeName(w2, id) : thoughtText2(w2, th);
@@ -22356,6 +22421,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var reading2;
   var wait3;
   var moveLoose2;
+  var showSizes2;
+  var resize3;
   function bind5(lib) {
     ({
       room: room5,
@@ -22397,7 +22464,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       reading: reading2
     } = lib.model);
     ({ ITEMS: ITEMS3 } = lib.items);
-    ({ maths: maths3 } = lib.maths);
+    ({ maths: maths3, showSizes: showSizes2, resize: resize3 } = lib.maths);
     ({ roomLook: roomLook3 } = lib.look);
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
@@ -22840,10 +22907,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Shows a change straight away, in the open room.
     repaint() {
+      const sized = showSizes2(!!this.prefs.sizes);
       if (!this.roomId) return;
       const was = this.roomPage.style.getPropertyValue("--t-read");
       this.paintRoom();
-      if (this.roomPage.style.getPropertyValue("--t-read") !== was) {
+      if (sized || this.roomPage.style.getPropertyValue("--t-read") !== was) {
         this.drawWorld();
         this.clearSoon();
       }
@@ -22905,6 +22973,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         fold4(
           "Inside a room",
           slider2("Thought size", "size", 14, 28, 1),
+          // Some words in a thought bigger or smaller: chosen while writing, Ctrl+Shift+. or Ctrl+Shift+,.
+          el17(
+            "label",
+            { class: "renderer-slider" },
+            el17("span", {}, "Varied sizes within a thought"),
+            el17("span"),
+            el17(
+              "select",
+              { "aria-label": "Varied sizes within a thought", onchange: (e) => this.setPref("sizes", +e.target.value) },
+              el17("option", { value: 0, ...p.sizes < 0.5 ? { selected: "" } : {} }, "Off"),
+              el17("option", { value: 1, ...p.sizes >= 0.5 ? { selected: "" } : {} }, "On (Ctrl+Shift+. and ,)")
+            )
+          ),
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           ...this.ontologies.flatMap((o2) => [
@@ -23532,6 +23613,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // the keys feature): Enter, Ctrl+Enter, Escape, and Backspace / Ctrl+Z at its very start.
     onInputKey(e) {
       const mod = e.ctrlKey || e.metaKey, k2 = e.key.toLowerCase();
+      if (mod && e.shiftKey && !e.altKey && (e.code === "Period" || e.code === "Comma")) {
+        e.preventDefault();
+        this.resizeWords(e.code === "Period" ? 1 : -1);
+        return;
+      }
       if (mod && !e.altKey && (k2 === "z" || k2 === "y") && !this.input.value) {
         e.preventDefault();
         if (this.draft?.edit) {
@@ -23560,6 +23646,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.preventDefault();
         this.stopWriting();
       }
+    }
+    // The words chosen in the thought being written, a step bigger (dir 1) or smaller (-1): kept in
+    // its words as [words]{size=big} (the world's maths.js resize), shown at their size once kept.
+    resizeWords(dir) {
+      if (!this.prefs.sizes) {
+        this.toast("Turn on Varied sizes within a thought in Settings → Rooms.");
+        return;
+      }
+      const box = this.input;
+      const r = resize3(box.value, box.selectionStart ?? 0, box.selectionEnd ?? 0, dir);
+      if (!r) {
+        this.toast("Choose some words on one line first.");
+        return;
+      }
+      box.value = r.text;
+      box.setSelectionRange(r.select[0], r.select[1]);
+      this.paintDraft();
+      this.showDraft();
     }
     commit() {
       const text = this.input.value;
@@ -25791,6 +25895,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       this.w = this.use("world");
       bind5(this.w.lib);
+      showSizes2(!!this.w.prefs?.sizes);
       this.rooms = this.use("rooms");
       this.floors = this.use("floors");
       this.roomId = null;
