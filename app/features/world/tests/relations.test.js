@@ -1,9 +1,10 @@
 // Tests for relations.js: arrows and their relations, shared by any ontology that joins its groups.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, create, MESSY, groupsIn, members, isGroup, setRoomSetting } from '../model.js';
+import { emptyWorld, create, MESSY, groupsIn, members, isGroup, setRoomSetting, own } from '../model.js';
 import {
   arrowsOf, relationName, splitList, listText, cleanRelations, relationShown, withRelation,
+  relationEntry, cleanRelationList, relationEnds, RELATIONS,
 } from '../ontologies/relations.js';
 
 test('relation names: any words or signs, or none; [[ ]] refused', () => {
@@ -72,4 +73,31 @@ test('a new arrow gets the room\'s first relation, or the one it is given', () =
   // Renamed in place in the room's list: its arrows follow.
   assert.equal(net.renameRelations(w, MESSY, ['⊂', 'is a case of'], ['⊆', 'is a case of']), 1);
   assert.equal(net.relationOf(w, MESSY, a, b), '⊆');
+});
+
+test('a relation may carry its ends as a mark after its name', () => {
+  assert.deepEqual(relationEntry('leads to ->'), { name: 'leads to', ends: 'arrow' });
+  assert.deepEqual(relationEntry('is equivalent to <->'), { name: 'is equivalent to', ends: 'both' });
+  assert.deepEqual(relationEntry('near  --'), { name: 'near', ends: 'none' });
+  assert.deepEqual(relationEntry('forgets'), { name: 'forgets', ends: null });
+  assert.deepEqual(cleanRelationList('a ->, A, b<->,  c'), ['a ->', 'b <->', 'c']);
+  assert.deepEqual(cleanRelations('a ->, b <->, c'), ['a', 'b', 'c']);
+  assert.deepEqual(cleanRelations('', ['related to']), ['related to']);
+  assert.deepEqual(relationEnds(['a ->', 'b <->', 'c'], 'none'), { a: 'arrow', b: 'both', c: 'none' });
+  assert.deepEqual(withRelation(['a ->', 'b'], 'c'), ['a ->', 'b', 'c']); // the others keep their marks
+  assert.deepEqual(withRelation(['a ->', 'b'], 'A'), ['a ->', 'b']);
+});
+
+test('arrowsOf can keep its arrows apart, read its own setting, and refuse in its own words', () => {
+  const w = emptyWorld(1);
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 2), b = create(w, MESSY, { kind: 'line', text: 'b' }, 3);
+  const setting = { ...RELATIONS, key: 'relations', default: ['related to', 'leads to ->'] };
+  const net = arrowsOf({ of: 'web', store: 'web-links', setting, isNode: (x, r, id) => !!x.things[id], nodes: (x, r) => [a, b], loops: true, words: { self: 'Not to itself.' } });
+  assert.deepEqual(net.relations(w, MESSY), ['related to', 'leads to']);
+  assert.equal(net.link(w, MESSY, a.id, b.id), '');
+  assert.equal(net.relationOf(w, MESSY, a.id, b.id), 'related to');
+  assert.ok(own(w, MESSY, 'web-links')[b.id]);
+  assert.equal(own(w, MESSY, 'web', false)[b.id], undefined);
+  assert.equal(net.link(w, MESSY, a.id, a.id), 'Not to itself.');
+  assert.equal(net.link(w, MESSY, b.id, a.id), ''); // loops allowed
 });

@@ -73,6 +73,11 @@ It offers no service of its own.
     into it. In a .traum file an arrow is an `arrow: ^from -> ^to | relation | label` line in its
     `# In russell` section (roomfile's FORMAT.md). Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
+  - **Proust** (the proust feature's, `app/features/proust`). Every thought free on the canvas,
+    joined by named links that may run in loops, and gathered into clusters; its README says how.
+    The room writes into it through the ontology's `goOn` (where the thought after the last one
+    goes: Enter links on from it) and `kept` (a new thought was kept: place it, link it), and
+    Ctrl+Enter shows the ontology's own `fresh` note ("New cluster: type to start it.").
     **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click chooses it; a right-click opens it in the content editor, in the right dock's
     Editor tab: its name and its thoughts in order as flowing paragraphs, maths drawn (without

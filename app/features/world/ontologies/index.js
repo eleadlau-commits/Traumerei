@@ -53,7 +53,13 @@
 //                         (it waits in the tray). draft is { x, y, for? }: where it was written,
 //                         and whatever a move put in for (c.write({ x, y, for }) starts one).
 //                         Without it, a Joyce train at x, y. An ontology without groups writes
-//                         into Joyce's trains
+//                         into Joyce's trains. draft.fresh: it was asked for with Ctrl+Enter
+//   fresh                 (optional) the note Ctrl+Enter shows ('New cluster: type to start it.')
+//   goOn(w, room, id)     (optional) where the next thought goes after `id` (the thought kept last,
+//                         or the one chosen): a draft { train, after, x, y } (train: the group it
+//                         joins, or null). Without it, the room goes on with the group kept last
+//   kept(w, room, th, draft)   (optional) a new thought was just kept from draft (begin's, or
+//                         goOn's): it can place it (draft.x, draft.y) and join it on (draft.after)
 //   press(c, e)           (optional) a press on the canvas, before the room's own: return true when
 //                         it took it (Russell: a drag from a chapter's foot draws an arrow)
 //   open(c, id)           (optional) a tap on a thought or group, before the room chooses it: return
@@ -95,7 +101,7 @@ export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', press: 'function', props: 'function', settingChanged: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', settingChanged: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

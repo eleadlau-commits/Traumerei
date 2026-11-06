@@ -18,6 +18,13 @@
 //   word               a node in words ('chapter'), for the reasons an arrow is refused
 //   loops              true to allow loops (an arrow back up to an ancestor); false refuses them
 //   changed(w, room)   (optional) called after an arrow is drawn or taken away
+//   store              (optional) where in the room's own data the arrows are kept (own(w, room,
+//                      store)); the ontology's id when left out. Proust keeps its places under its
+//                      id, so its links go elsewhere
+//   setting            (optional) the room setting that holds its relations (RELATIONS when left
+//                      out): its default is what a room with none has
+//   words              (optional) { join, self }: why an arrow between these can't be drawn, and
+//                      why one from a node to itself can't, in the ontology's own words
 
 import { own, roomSetting, shut } from '../model.js';
 
@@ -48,15 +55,48 @@ export function splitList(text) {
 // A list of names written back with commas, a name with a comma in it in quotes.
 export const listText = (names) => names.map((n) => (n.includes(',') ? `"${n}"` : n)).join(', ');
 
-// A list of relations made tidy: from a list, or names with commas (splitList); each once
-// (whatever its case), none empty. Never empty: "forgets" when nothing is left.
-export function cleanRelations(v) {
-  const out = [];
+// ---- A relation's ends ----
+// In a room's list, a relation may end with the ends its links take: "leads to ->" (an arrow),
+// "is equivalent to <->" (an arrow both ways), "related to --" (a plain line). Without a mark it
+// takes the ontology's own (Russell: always an arrow; Proust: a plain line). The name itself is
+// what comes before the mark.
+const MARKS = { '--': 'none', '->': 'arrow', '<->': 'both' };
+export const ENDS_MARK = { none: '--', arrow: '->', both: '<->' };
+const MARKED = /\s*(<->|->|--)\s*$/;
+
+// One entry of a list: { name, ends } (ends null when it has no mark).
+export function relationEntry(x) {
+  const s = String(x ?? '');
+  const m = s.match(MARKED);
+  return { name: relationName(m ? s.slice(0, m.index) : s), ends: m ? MARKS[m[1]] : null };
+}
+
+// A list of relations made tidy, each with its ends mark kept when it had one: "leads to ->".
+// Each name once (whatever its case), none empty. Never empty: `fallback` when nothing is left.
+export function cleanRelationList(v, fallback = RELATIONS.default) {
+  const out = [], seen = new Set();
   for (const x of Array.isArray(v) ? v : splitList(v)) {
-    const t = relationName(x);
-    if (t && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+    const { name, ends } = relationEntry(x);
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(ends ? `${name} ${ENDS_MARK[ends]}` : name);
   }
-  return out.length ? out : [...RELATIONS.default];
+  return out.length ? out : [...fallback];
+}
+
+// A list of relations made tidy: from a list, or names with commas (splitList); each once
+// (whatever its case), none empty, ends marks left off. Never empty: "forgets" (or `fallback`)
+// when nothing is left.
+export function cleanRelations(v, fallback = RELATIONS.default) {
+  return cleanRelationList(v, fallback).map((x) => relationEntry(x).name);
+}
+
+// Each relation's ends in a room's list: { [name]: 'none' | 'arrow' | 'both' }, `none` for one
+// with no mark.
+export function relationEnds(v, none = 'arrow') {
+  const out = {};
+  for (const x of cleanRelationList(v)) { const { name, ends } = relationEntry(x); out[name] = ends || none; }
+  return out;
 }
 
 // The setting that holds a room's relations. clean: how a written list is read; text: how it is
@@ -71,33 +111,33 @@ export const RELATIONS = {
 export const relationShown = (names, rel) => (!rel || (names.length === 1 && names[0] === rel) ? '' : rel);
 
 // The room's list with a new name added at its end (the same list if it is already there, in any
-// case, or can't be a name).
-export function withRelation(names, name) {
+// case, or can't be a name). The others keep their ends marks.
+export function withRelation(names, name, fallback = RELATIONS.default) {
   const t = relationName(name);
-  const list = cleanRelations(names);
-  return t && !list.some((n) => n.toLowerCase() === t.toLowerCase()) ? [...list, t] : list;
+  const list = cleanRelationList(names, fallback);
+  return t && !list.some((n) => relationEntry(n).name.toLowerCase() === t.toLowerCase()) ? [...list, t] : list;
 }
 
 // ---- Arrows ----
 
 const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
 
-export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, changed = () => {} }) {
-  const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, of)[child] = { parents, labels, rel }; };
+export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, changed = () => {}, store = of, setting = RELATIONS, words = {} }) {
+  const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, store)[child] = { parents, labels, rel }; };
 
   // A room's relations, the first the one a new arrow gets (globals: the global settings, for a
   // room with none).
-  const relations = (w, roomId, globals = {}) => cleanRelations(roomSetting(w, roomId, of, RELATIONS, globals));
+  const relations = (w, roomId, globals = {}) => cleanRelations(roomSetting(w, roomId, of, setting, globals), setting.default);
 
   // After a room's relations change from one list to another of the same length, a relation renamed
   // in place is renamed on its arrows too. Returns how many arrows changed.
   function renameRelations(w, roomId, before, after) {
-    const a = cleanRelations(before), b = cleanRelations(after);
+    const a = cleanRelations(before, setting.default), b = cleanRelations(after, setting.default);
     if (a.length !== b.length) return 0;
     const map = new Map(a.map((x, i) => [x, b[i]]).filter(([x, y]) => x !== y));
     if (!map.size) return 0;
     let n = 0;
-    for (const data of Object.values(own(w, roomId, of, false))) {
+    for (const data of Object.values(own(w, roomId, store, false))) {
       for (const [p, r] of Object.entries(data?.rel || {})) if (map.has(r)) { data.rel[p] = map.get(r); n++; }
     }
     return n;
@@ -106,7 +146,7 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   // The arrows into a node: { parents, labels, rel }, only from nodes still there. rel has every
   // parent ('' for an unnamed arrow); labels only those with one.
   function arrowsInto(w, roomId, id) {
-    const a = own(w, roomId, of, false)[id];
+    const a = own(w, roomId, store, false)[id];
     const parents = (a?.parents || []).filter((p) => p !== id && isNode(w, roomId, p));
     const labels = {}, rel = {};
     for (const p of parents) {
@@ -142,8 +182,8 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
 
   // Why an arrow from parent to child can't be drawn, or '' when it can.
   function whyNot(w, roomId, parent, child) {
-    if (!isNode(w, roomId, parent) || !isNode(w, roomId, child)) return `Arrows join two ${word}s.`;
-    if (parent === child) return `A ${word} can't be its own parent.`;
+    if (parent === child) return words.self || `A ${word} can't be its own parent.`;
+    if (!isNode(w, roomId, parent) || !isNode(w, roomId, child)) return words.join || `Arrows join two ${word}s.`;
     if (parentsOf(w, roomId, child).includes(parent)) return 'That arrow is already there.';
     if (!loops && above(w, roomId, child, parent)) return 'That arrow would make a loop.';
     return '';

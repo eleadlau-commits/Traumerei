@@ -1,0 +1,12 @@
+{
+  "name": "Proust",
+  "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.",
+  "version": "0.1.0",
+  "main": "Proust.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "world"
+  ]
+}

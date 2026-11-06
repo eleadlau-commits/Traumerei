@@ -531,6 +531,11 @@ export class Bars {
     }
     const cur = this.current[this.roomId];
     const t = this.world.things[cur];
+    // An ontology that goes on from a thought (Proust): the next one links on from the last.
+    if (this.writer.goOn && !this.fresh && t?.parent === this.roomId) {
+      const next = this.writer.goOn(this.world, this.roomId, cur);
+      if (next) return next;
+    }
     if (!this.fresh && t?.parent === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
     const spot = this.freeSpot();
     this.fresh = false;
