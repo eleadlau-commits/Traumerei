@@ -16,3 +16,4 @@ export * as pessoa from './ontologies/pessoa.js';
 export * as russell from './ontologies/russell.js';
 export * as relations from './ontologies/relations.js'; // arrows and their relations, for any ontology
 export * as lines from './ontologies/lines.js';         // lines on a canvas: strands, arrows and their ends
+export * as arrowview from './ontologies/arrowview.js'; // arrows on the screen: drawn, edited, drawn anew, in a pop-up
