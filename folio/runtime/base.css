@@ -884,6 +884,49 @@ html.rail-narrow { --rail: 48px; }
 .page-label { font-family: var(--font); font-weight: 400; font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
 .page-row :is(p, small, .hint) { font-size: var(--t-label); line-height: 1.5; letter-spacing: .01em; color: var(--muted); }
 
+/* On a page, controls are working words: sentence case at the working size, as in a dock. A word
+   or a button (.word, .btn) is a box (as .box-btn); a .seg is a row of boxes joined in one
+   hairline frame, the chosen one washed amber with an amber line under it; a fold's head is a
+   word with + or −; a choice (select) and a text line take the working size. */
+.page-panel :is(.word, .btn) {
+  min-height: var(--field);
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border: 1px solid var(--chrome-edge);
+  background: var(--paper);
+  background-image: none;
+  font-size: var(--t-work);
+  letter-spacing: .02em;
+  text-transform: none;
+  white-space: nowrap;
+  opacity: 1;
+  transition: background-color var(--quick);
+}
+.page-panel :is(.word, .btn):is(:hover, :focus-visible) { background-color: var(--hover-wash); }
+.page-panel :is(.word, .btn).primary { background-color: var(--amber-soft); border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
+.page-panel :is(.word, .btn):disabled { opacity: var(--off); background-color: var(--paper); }
+.page-panel :is(.word, .btn) + :is(.word, .btn) { margin-left: var(--s-2); }
+.page-panel .seg { display: inline-flex; flex-wrap: wrap; gap: 0; justify-self: start; border: 1px solid var(--chrome-edge); background: var(--paper); }
+.page-panel .seg button {
+  min-height: calc(var(--field) - 2px);
+  padding: 3px 12px;
+  font-size: var(--t-work);
+  letter-spacing: .02em;
+  text-transform: none;
+  opacity: .8;
+  background-image: none;
+  transition: background-color var(--quick), opacity var(--quick);
+}
+.page-panel .seg button + button { box-shadow: -1px 0 0 var(--chrome-edge); }
+.page-panel .seg button:is(:hover, :focus-visible) { opacity: 1; background-color: var(--hover-wash); }
+.page-panel .seg button:is([aria-selected="true"], [aria-checked="true"], [aria-pressed="true"], .on) { opacity: 1; background-color: var(--amber-soft); box-shadow: inset 0 -2px 0 var(--amber); }
+.page-panel details > summary { padding: 6px 0; font-size: var(--t-work); letter-spacing: .02em; text-transform: none; opacity: .85; }
+.page-panel details > summary small { letter-spacing: .02em; }
+.page-panel :where(select, input, textarea) { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
+.page-panel .feature-text b { font-weight: 400; font-size: var(--t-work); }
+.page-panel :is(.kv, label, .label) { font-size: var(--t-work); letter-spacing: .02em; text-transform: none; }
+
 /* ---- Pop-ups over a page ---- */
 
 /* A faint shade over the whole screen, under a pop-up. */
