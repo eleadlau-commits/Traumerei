@@ -397,22 +397,11 @@ export class Gestures {
     if (id && kindOf(this.world.things[id]) !== 'line') this.openSheet(null, id);
   }
 
-  // ---- Add: the one word at the bottom, which unfolds to the templates and the room's settings ----
+  // ---- Add: the menu a right-click on the empty canvas opens there, with the templates ----
 
   addItem(label, note, fn, keep = true) {
     return el('button', { type: 'button', class: 'pick room-add-item', role: 'menuitem', onclick: () => { this.closeAdd(keep); fn(); } },
       el('span', {}, label), el('span', { class: 'pick-note' }, note));
-  }
-
-  toggleAdd() {
-    const open = this.addMenu.hidden || this.addMenu.classList.contains('at');
-    this.addAt = null;
-    this.addMenu.classList.remove('at');
-    this.addMenu.style.left = this.addMenu.style.top = '';
-    this.addMenu.hidden = !open;
-    this.addBtn.setAttribute('aria-expanded', String(open));
-    this.addBtn.classList.toggle('open', open);
-    if (open) this.addMenu.querySelector('button')?.focus();
   }
 
   // Closes Add; what was asked for at a point (keep) still goes there.
@@ -422,8 +411,6 @@ export class Gestures {
     this.addMenu.hidden = true;
     this.addMenu.classList.remove('at');
     this.addMenu.style.left = this.addMenu.style.top = '';
-    this.addBtn.setAttribute('aria-expanded', 'false');
-    this.addBtn.classList.remove('open');
   }
 
   // ---- Search (Ctrl+K): the search feature's panel; a find it opens comes back as 'search:found' ----

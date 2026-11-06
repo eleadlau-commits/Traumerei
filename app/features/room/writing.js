@@ -408,7 +408,6 @@ export class Writing {
     this.addAt = this.toWorld(x, y);
     this.addMenu.hidden = false;
     this.addMenu.classList.add('at');
-    this.addBtn.setAttribute('aria-expanded', 'true');
     const w = this.addMenu.offsetWidth || 300, h = this.addMenu.offsetHeight || 220;
     this.addMenu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - w - 8))}px`;
     this.addMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - h - 8))}px`;

@@ -7,7 +7,8 @@
 // canvas opens Add there. What is on the canvas, where it sits and what a drag does is the
 // ontology's (the world feature's ontologies/). This feature keeps no mode of its own. Writing is the
 // same in every room: Enter goes on with the train, and Ctrl+Enter starts a new one.
-// Add (bottom left) unfolds to Thought, Passage (Alt+P), Picture (Alt+I, or paste) and Import;
+// A right-click on the empty canvas opens Add there: Thought, Passage (Alt+P), Picture (Alt+I, or
+// paste) and Import. The loose dock's + has Passage, Picture and Import too, which land loose;
 // Export, Edit as text and Keys are under ⋯ More at the foot of the rail. A
 // group can be closed into one thought, which you name, and opened again.
 // Ctrl+K searches every room; Ctrl+Z / Ctrl+Shift+Z undo and redo; a quiet "Saved" shows when the
@@ -311,9 +312,7 @@ export default class Room extends Feature {
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
           ...(this.files ? [el('div', { class: 'pick-rule' }),
-            this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : [])),
-        this.addBtn = el('button', { type: 'button', class: 'word room-add-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleAdd() },
-          el('span', { class: 'room-add-plus', 'aria-hidden': 'true' }, '+'), 'Add')),
+            this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : []))),
       this.trayEl,
       this.bar,
       this.sheet = el('div', { class: 'panel sheet room-sheet', hidden: true }),
@@ -340,7 +339,8 @@ export default class Room extends Feature {
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });
     document.addEventListener('pointerdown', (e) => {
-      if (!this.addMenu.hidden && !e.target.closest('.room-add-menu, .room-add-btn')) this.closeAdd();
+      if (!this.addMenu.hidden && !e.target.closest('.room-add-menu')) this.closeAdd();
+      if (this.loose?.menu && !this.loose.menu.hidden && !e.target.closest('.room-loose-plus, .room-loose-menu')) this.closeLooseMenu();
     });
     this.stage.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     // The status bar explains what is under the pointer on the canvas.

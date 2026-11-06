@@ -301,6 +301,7 @@ export class Bars {
       this.loose.handle?.setTitle(title);
       this.loose.handle?.setLabel(`Loose · ${items.length}`);
       this.loose.add.hidden = this.locked;
+      if (this.locked) this.closeLooseMenu();
       return;
     }
     this.looseQuery = '';
@@ -320,7 +321,7 @@ export class Bars {
       search,
       el('p', { class: 'room-loose-hint' }, 'Thoughts not placed in this mode yet, newest first. Drag one onto the room.'),
       listEl, add);
-    const loose = (this.loose = { list: listEl, search, add, handle: null });
+    const loose = (this.loose = { list: listEl, search, add, menu: add.querySelector('.room-loose-menu'), plus: add.querySelector('.room-loose-plus'), handle: null });
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
     dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, beforeClose: () => { dock.toggle(); return false; },
       onClose: () => { if (this.loose === loose) { this.loose = null; this.looseQuery = ''; } } })
@@ -342,7 +343,36 @@ export class Bars {
         if (!enterKeeps(e)) { grow(e.target); return; }
         if (this.keepLoose(e.target.value)) { e.target.value = ''; grow(e.target); }
       } });
-    return el('div', { class: 'room-loose-add', hidden: this.locked }, box);
+    const menu = el('div', { class: 'panel room-loose-menu', role: 'menu', hidden: true,
+      onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); this.closeLooseMenu(); plus.focus(); } } },
+    this.looseItem('Passage', 'a title and a body', () => this.openSheet('passage', null, null, true)),
+    this.looseItem('Picture', 'a file, with a caption', () => this.choosePicture(true)),
+    ...(this.files ? [this.looseItem('Import…', 'objects from a file', () => this.importIntoRoom())] : []));
+    const plus = el('button', { type: 'button', class: 'word room-loose-plus', 'aria-label': 'Add something else', title: 'A passage, a picture, or objects from a file',
+      'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleLooseMenu() }, '+');
+    return el('div', { class: 'room-loose-add', hidden: this.locked }, menu, el('div', { class: 'room-loose-bar' }, box, plus));
+  }
+
+  looseItem(label, note, fn) {
+    return el('button', { type: 'button', class: 'pick', role: 'menuitem', onclick: () => { this.closeLooseMenu(); fn(); } },
+      el('span', {}, label), el('span', { class: 'pick-note' }, note));
+  }
+
+  // The + beside the add bar: its menu unfolds above it.
+  toggleLooseMenu() {
+    const l = this.loose;
+    if (!l?.menu) return;
+    if (!l.menu.hidden) { this.closeLooseMenu(); return; }
+    l.menu.hidden = false;
+    l.plus.setAttribute('aria-expanded', 'true');
+    l.menu.querySelector('button')?.focus();
+  }
+
+  closeLooseMenu() {
+    const l = this.loose;
+    if (!l?.menu || l.menu.hidden) return;
+    l.menu.hidden = true;
+    l.plus.setAttribute('aria-expanded', 'false');
   }
 
   // Keeps text as a new loose thought of this room, as one step. Returns it, or null.
@@ -503,9 +533,10 @@ export class Bars {
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
   }
 
-  async choosePicture() {
+  // loose: from the loose dock's +, so the picture is kept loose (in the tray).
+  async choosePicture(loose = false) {
     const file = await this.picker.pick();
-    if (file) this.takePicture(file); else this.addAt = null;
+    if (file) this.takePicture(file, loose); else this.addAt = null;
   }
 
   onPaste(e) {
@@ -522,10 +553,10 @@ export class Bars {
     this.beginWriting(text);
   }
 
-  async takePicture(file) {
+  async takePicture(file, loose = false) {
     try {
       const src = await shrinkPicture(file);
-      this.openSheet('picture', null, src);
+      this.openSheet('picture', null, src, loose);
     } catch {
       this.toast('That file couldn\'t be read as a picture.');
     }
@@ -533,14 +564,15 @@ export class Bars {
 
   // The sheet: to write a passage, caption a picture or name a closed group, new (kind) or an
   // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
-  // room). Keep (Enter) saves it; Escape or Cancel leaves it.
-  openSheet(kind, id = null, src = null) {
+  // room). Keep (Enter) saves it; Escape or Cancel leaves it. loose: a new one is kept loose, in no
+  // group (from the loose dock's +), so it waits in the tray.
+  openSheet(kind, id = null, src = null, loose = false) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.commit();
     const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;
-    this.editing = { kind, id, src: src || th?.src || null };
+    this.editing = { kind, id, src: src || th?.src || null, loose: loose && !th };
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
@@ -597,9 +629,8 @@ export class Bars {
         ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
         : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
       if (ed.id) update(this.world, ed.id, fields);
-      else {
-        this.keepNew(this.target(), fields);
-      }
+      else if (ed.loose) create(this.world, this.roomId, fields);
+      else this.keepNew(this.target(), fields);
     }
     this.save();
     this.closeSheet();
