@@ -1,7 +1,7 @@
 // Tests for clear space: overlapping blocks are pushed apart; fixed ones stay.
 
 import { test, assert } from 'folio/testing';
-import { clearSpace, clearSpot } from '../clear.js';
+import { clearSpace, clearSpot, nearSpot } from '../clear.js';
 import { setHeights, clearHeights, stepAfter, STEP } from '../../world/ontologies/joyce.js';
 
 const box = (x, y, w, h) => ({ x, y, w, h });
@@ -57,4 +57,15 @@ test('Joyce steps by a thought\'s measured height once it has been drawn', () =>
   setHeights(new Map([['h1', { h: 10 }]]));
   assert.equal(stepAfter(th), STEP.line); // never closer than a line's step
   clearHeights();
+});
+
+test('near the mouse: the spot itself when clear, else the nearest clear one around it', () => {
+  const size = { w: 200, h: 50 };
+  assert.deepEqual(nearSpot({ x: 100, y: 100 }, [], size), { x: 100, y: 100 });
+  const taken = [box(80, 80, 300, 100)];
+  const p = nearSpot({ x: 100, y: 100 }, taken, size, { gap: 10 });
+  const r = taken[0];
+  const overlaps = p.x < r.x + r.w + 10 && r.x < p.x + size.w + 10 && p.y < r.y + r.h + 10 && r.y < p.y + size.h + 10;
+  assert.ok(!overlaps);
+  assert.ok(Math.hypot(p.x - 100, p.y - 100) < 400); // close by, not across the room
 });

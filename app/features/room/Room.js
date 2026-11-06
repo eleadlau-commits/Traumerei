@@ -370,7 +370,9 @@ export default class Room extends Feature {
       const t = e.target.closest?.('[data-thought]');
       this.frame?.hover(t ? OVER.thought : e.target.closest?.('[data-train], .room-strand') ? OVER.group : null);
     });
-    this.stage.addEventListener('pointerleave', () => this.frame?.hover(null));
+    this.stage.addEventListener('pointerleave', () => { this.frame?.hover(null); this.mouse = null; });
+    // Where the pointer last was on the canvas: typing and pasting start there (freeSpot).
+    this.stage.addEventListener('pointermove', (e) => { this.mouse = { x: e.clientX, y: e.clientY }; });
     this.listenForFiles();
   }
 

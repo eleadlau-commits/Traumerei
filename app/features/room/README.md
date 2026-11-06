@@ -157,7 +157,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   thought to move it alone; double-click a train to choose it whole, then drag it.
 - **Spacing that fits the text:** in a Joyce train, each thought sits below the one before by that
   thought's real height as drawn (and a gap), so one that wraps onto several lines never runs
-  into the next. A new train starts in clear space on the screen, away from everything drawn.
+  into the next. A new train starts at the mouse (or the nearest clear spot around it, `clear.js` nearSpot); pasted words, thoughts and pictures too. With the pointer off the canvas it starts in clear space on the screen.
 - **Clear space** (`clear.js`): after any change (writing, deleting, editing, folding, a drag),
   the room measures the real size of what is on its canvas and pushes apart anything that
   overlaps, in every mode. Joyce's blocks are its trains (and each run started by a thought
