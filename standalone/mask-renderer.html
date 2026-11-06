@@ -2122,9 +2122,12 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-item:hover { background: color-mix(in srgb, var(--room-ink) 10%, transparent); }
 .room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; }
+.room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; max-width: 260px; }
+/* The tray lit while something is held over it (st-drop): drawn just inside, so the dock doesn't
+   clip it (the loose list keeps a little room round it for that). */
+.room-loose.st-drop, .room-tray-row.st-drop { outline-offset: -2px; }
 /* The loose thoughts in the left dock (the docks feature): a column of the same cards. */
-.room-loose { display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+.room-loose { display: flex; flex-direction: column; gap: 14px; min-height: calc(100% + 12px); margin: -6px; padding: 6px; }
 .room-loose-list { flex: 1; align-content: start; }
 .room-loose > :not(.room-loose-list) { flex-shrink: 0; }
 .room-loose-add { position: sticky; bottom: calc(-1 * var(--s-4)); margin: 0 calc(-1 * var(--s-4)); padding: 10px var(--s-4) var(--s-4); border-top: 1px solid var(--chrome-edge); background: var(--chrome); }
@@ -12693,7 +12696,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const th = w2.things[id];
     if (!th || !(isLeaf(th) || isGroup(th))) return false;
     const to = otherSide(w2, th.parent);
-    return !!to && move(w2, id, to.id, x, y);
+    if (!to || !move(w2, id, to.id, x, y)) return false;
+    if (isGroup(th) && th.of !== view3(w2, to.id).mode) th.shared = true;
+    return true;
   }
 
   // dist/web/features/world/look.js
@@ -13438,8 +13443,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   __export(pessoa_exports, {
     SPIRAL: () => SPIRAL,
     default: () => pessoa_default,
+    ownUnits: () => ownUnits,
     spiralPoint: () => spiralPoint
   });
+  function ownUnits(w2, roomId) {
+    const inside4 = inForeign(w2, roomId, "pessoa");
+    return roomUnits(w2, roomId).filter((th) => !inside4(th.id));
+  }
   var SPIRAL = { step: 230, gap: 190 };
   function spiralPoint(i2, id = "") {
     const b = SPIRAL.gap / (2 * Math.PI);
@@ -13455,7 +13465,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const places = own(w2, roomId, "pessoa", false);
       const out = [];
       const spiral = [];
-      for (const th of roomUnits(w2, roomId)) {
+      for (const th of ownUnits(w2, roomId)) {
         const p = places[th.id];
         if (!c.ref(th.id)) continue;
         if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
@@ -13504,7 +13514,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // each on its own
     order: 20,
     groups: null,
-    units: (w2, roomId) => [...roomUnits(w2, roomId), ...placedForeign(w2, roomId, "pessoa")],
+    lays: true,
+    // places every thought itself
+    units: (w2, roomId) => [...ownUnits(w2, roomId), ...placedForeign(w2, roomId, "pessoa")],
     tray: (w2, roomId) => trayForeign(w2, roomId, "pessoa"),
     placed: (w2, roomId, id) => !isGroup(w2.things[id]) || !!spot2(w2, roomId, "pessoa", id),
     // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
@@ -13515,7 +13527,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const placed = own(w2, roomId, "pessoa", false)[id];
       if (placed) return placed;
       if (isGroup(w2.things[id])) return null;
-      const units = roomUnits(w2, roomId);
+      const units = ownUnits(w2, roomId);
       const i2 = units.findIndex((u) => u.id === id);
       return spiralPoint(i2 < 0 ? units.length : i2, id);
     },
@@ -14936,6 +14948,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (o2.groups != null && !["one", "many"].includes(o2.groups.membership)) out.push("groups");
     for (const k2 of ["settings", "moves"]) if (o2[k2] != null && !Array.isArray(o2[k2])) out.push(k2);
     if (o2.roomsPage != null && typeof o2.roomsPage !== "boolean") out.push("roomsPage");
+    if (o2.lays != null && typeof o2.lays !== "boolean") out.push("lays");
     if (o2.traum != null && (typeof o2.traum.write !== "function" || typeof o2.traum.read !== "function")) out.push("traum");
     if (Array.isArray(o2.moves) && o2.moves.some((m2) => !m2 || typeof m2.label !== "string" || typeof m2.run !== "function")) out.push("moves");
     return out;
@@ -20703,6 +20716,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var view6;
   var placedForeign2;
   var trayForeign2;
+  var inForeign2;
   var spot4;
   var putAt2;
   var place3;
@@ -20718,7 +20732,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var spiralPoint2;
   function bind4(lib) {
     ({ own: own3, shut: shut4, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting3, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2, view: view6 } = lib.model);
-    ({ placedForeign: placedForeign2, trayForeign: trayForeign2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
+    ({ placedForeign: placedForeign2, trayForeign: trayForeign2, inForeign: inForeign2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
     ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEntry: relationEntry2, relationEnds: relationEnds2, listText: listText2 } = lib.relations);
     ({ arrowView: arrowView2 } = lib.arrowview);
     ({ maths: maths2 } = lib.maths);
@@ -20759,16 +20773,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (self?.loose) return "tray";
     return out;
   }
-  var clusters = (w2, roomId) => groupsIn3(w2, roomId, ID2).filter((g2) => itemsIn2(w2, g2.id).length && shownAs(w2, g2.id) !== "tray");
-  function isNode(w2, roomId, id) {
+  function clusters(w2, roomId) {
+    const inside4 = inForeign2(w2, roomId, ID2);
+    return groupsIn3(w2, roomId, ID2).filter((g2) => itemsIn2(w2, g2.id).length && shownAs(w2, g2.id) !== "tray" && !inside4(g2.id));
+  }
+  function isNode(w2, roomId, id, inside4 = null) {
     const th = w2.things[id];
     if (!th || th.parent !== roomId) return false;
+    if ((inside4 || inForeign2(w2, roomId, ID2))(id)) return false;
     if (isLeaf3(th)) return shownAs(w2, id) !== "tray";
     if (!isGroup3(th)) return false;
     if (th.of === ID2) return !!itemsIn2(w2, id).length && shownAs(w2, id) !== "tray";
     return !!spot4(w2, roomId, ID2, id);
   }
-  var nodes = (w2, roomId) => [...roomItems3(w2, roomId), ...groupsIn3(w2, roomId, ID2), ...placedForeign2(w2, roomId, ID2)].filter((th) => isNode(w2, roomId, th.id));
+  function nodes(w2, roomId) {
+    const inside4 = inForeign2(w2, roomId, ID2);
+    return [...roomItems3(w2, roomId), ...groupsIn3(w2, roomId, ID2), ...placedForeign2(w2, roomId, ID2)].filter((th) => isNode(w2, roomId, th.id, inside4));
+  }
   function nodeName(w2, id) {
     const th = w2.things[id];
     if (!th) return "";
@@ -20945,8 +20966,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     write(w2, roomId, c) {
       const places = own3(w2, roomId, ID2, false);
       const out = [], spiral = [];
+      const inside4 = inForeign2(w2, roomId, ID2);
       for (const th of roomItems3(w2, roomId)) {
-        if (!c.ref(th.id)) continue;
+        if (!c.ref(th.id) || inside4(th.id)) continue;
         const p = places[th.id];
         if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
         else spiral.push(c.ref(th.id));
@@ -21022,6 +21044,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // a web
     order: 40,
     groups: { form: "cluster", name: "Cluster", membership: "one" },
+    lays: true,
+    // places every thought itself
     live: true,
     // a drag moves the node at once, so its links follow it
     fresh: "New cluster: type to start it.",
@@ -21044,12 +21068,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     traum: traum4,
     // Every thought not in a closed or waiting cluster, each closed cluster, and other modes' groups
     // placed here.
+    // A thought inside another mode's group is not on the canvas on its own: the group stands for it.
     units(w2, roomId) {
+      const inside4 = inForeign2(w2, roomId, ID2);
       return [
         ...roomItems3(w2, roomId).filter((th) => shownAs(w2, th.id) === th.id),
-        ...groupsIn3(w2, roomId, ID2).filter((g2) => g2.closed && itemsIn2(w2, g2.id).length && shownAs(w2, g2.id) === g2.id),
-        ...placedForeign2(w2, roomId, ID2)
-      ];
+        ...groupsIn3(w2, roomId, ID2).filter((g2) => g2.closed && itemsIn2(w2, g2.id).length && shownAs(w2, g2.id) === g2.id)
+      ].filter((th) => !inside4(th.id)).concat(placedForeign2(w2, roomId, ID2));
     },
     // Clusters thrown back (or made in the tray), and other modes' groups not placed yet.
     tray: (w2, roomId) => [
@@ -23179,7 +23204,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const n = throwBack2(c.ont, c.world, c.roomId, ids);
     if (!n) {
-      c.toast(c.ont.groups ? "Already loose, or it can't go alone." : `${c.ont.name} places every thought itself: only another mode's group can go back.`);
+      const one2 = c.ont.groups?.name.toLowerCase();
+      c.toast(!c.ont.lays ? "Already loose, or it can't go alone." : `${c.ont.name} places every thought itself: only ${one2 ? `a ${one2} or ` : ""}another mode's group can go back.`);
       return 0;
     }
     c.sel = null;
@@ -23445,6 +23471,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.drawBox(g2, e);
         return;
       }
+      if (g2.kind === "drag" || g2.kind === "group") this.trayHover(g2, e.clientX, e.clientY);
       if (g2.kind === "drag" && g2.thing?.still) {
         g2.kind = "pan";
       }
@@ -23482,6 +23509,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const g2 = this.gesture;
       this.gesture = null;
       clearTimeout(this.ctxTimer);
+      if (g2) this.trayHover(g2, null);
       if (!g2 || g2.kind === "pinch") {
         this.save();
         return;
@@ -23552,11 +23580,41 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawWorld();
       this.save();
     }
+    // While a thought (or what is chosen) is dragged over the loose tray, the tray lights as a place
+    // to let go, and a card of it follows the pointer above the dock (the canvas itself stays under
+    // the dock). x null: the drag is over, both go.
+    trayHover(g2, x, y) {
+      const tray = x != null && !g2.thing?.still && this.ont.tray && !this.locked ? this.trayAt(x, y) : null;
+      if (g2.trayEl !== tray) {
+        g2.trayEl?.classList.remove("st-drop");
+        tray?.classList.add("st-drop");
+        g2.trayEl = tray;
+      }
+      if (!tray) {
+        g2.ghost?.remove();
+        g2.ghost = null;
+        return;
+      }
+      if (!g2.ghost) {
+        const ids = g2.kind === "group" ? Object.keys(g2.from) : [g2.thing?.id];
+        const th = ids.length === 1 && this.world.things[ids[0]];
+        g2.ghost = th ? this.looseCard(th) : el15("div", { class: "room-tray-item" }, el15("span", { class: "room-tray-text" }, `${ids.length} thoughts`));
+        g2.ghost.classList.remove("st-sel");
+        g2.ghost.classList.add("panel", "room-tray-ghost", "st-drag");
+        (document.getElementById("folio-root") || document.body).append(g2.ghost);
+      }
+      g2.ghost.style.left = `${x + 12}px`;
+      g2.ghost.style.top = `${y + 8}px`;
+    }
+    // The loose tray under a point on the screen (the left dock's list, or the row at the foot of the
+    // room), or null.
+    trayAt(x, y) {
+      return document.elementFromPoint(x, y)?.closest?.(".room-loose, .room-tray-row, .room-tray-btn") || null;
+    }
     // Whether a point on the screen is over the loose tray (the left dock's list, or the row at the
     // foot of the room).
     overTray(x, y) {
-      const at2 = document.elementFromPoint(x, y);
-      return !!at2?.closest?.(".room-loose, .room-tray-row, .room-tray-btn");
+      return !!this.trayAt(x, y);
     }
     // What a drag moves on the screen, with where each piece started: the one thought, or every piece
     // drawn for a group (its thoughts, its name, its foot) when the group is dragged.
