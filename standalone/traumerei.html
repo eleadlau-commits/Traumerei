@@ -1898,6 +1898,11 @@ html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var
 .home-quick:focus-visible { outline: 0; }
 .home-quick.dropping { opacity: 0; }
 
+/* Under the quick thought: how many wait in Messy thoughts, faint, a word to press. */
+.home-waiting { pointer-events: auto; margin-top: calc(-1 * clamp(16px, 3vh, 40px)); font-size: 13px; text-transform: none; letter-spacing: .04em; opacity: .5; }
+.home-waiting:hover { opacity: .85; }
+.home-waiting[hidden] { display: none; }
+
 /* Under a page in the frame (Settings), the home page's words step aside. */
 .page-open .home { visibility: hidden; }
 
@@ -13024,8 +13029,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Messy thoughts' lightness inside
     vivid: VIVID,
     // how strongly a square shows its room's colour
-    peek: 0
+    peek: 0,
     // a square's last thoughts: 0 when hovered over, 1 always
+    size: 19
+    // thoughts' text inside a room, in px (--t-read), one size for the whole app
   };
   function lookPrefs(saved) {
     const out = { ...LOOK };
@@ -20995,10 +21002,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             { class: "home-nav", "aria-label": "Home" },
             el14("button", { type: "button", class: "word home-link home-create", onclick: () => this.create() }, "Create")
           ),
-          this.quick.el
+          this.quick.el,
+          this.waitingLine = el14("button", { type: "button", class: "word home-waiting", hidden: true, onclick: () => this.goToMessy() })
         )
       );
       (document.getElementById("folio-root") || document.body).append(this.page);
+      this.drawWaiting();
+      for (const ev of ["world:saved", "world:changed", "room:changed"]) this.on(ev, () => this.drawWaiting());
       this.frame?.show(this, {
         crumbs: [{ label: "Home", current: true }],
         idle: this.w ? "Type anywhere to note down a messy thought · Enter drops it in Messy thoughts · Ctrl+Enter new line" : "Create opens the rooms"
@@ -21012,6 +21022,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // ---- Create ----
     create() {
       this.use("create")?.open();
+    }
+    // Into Messy thoughts: the rooms page opens, then the room.
+    goToMessy() {
+      if (!this.w) return;
+      this.create();
+      this.use("rooms")?.openRoom(this.w.lib.model.MESSY);
     }
     // Whether Home is what shows: no rooms page over it.
     showing() {
@@ -21036,7 +21052,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.w.save();
       this.w.write();
       this.frame?.hint("Dropped in Messy thoughts");
+      this.drawWaiting();
       return true;
+    }
+    // ---- What waits in Messy thoughts ----
+    // How many things wait in Messy thoughts' loose tray, in the mode it is seen in (0 without the world).
+    waiting() {
+      const world = this.w?.world;
+      if (!world) return 0;
+      const { model } = this.w.lib;
+      try {
+        const o2 = this.w.ontology(model.view(world, model.MESSY).mode);
+        return o2?.tray ? o2.tray(world, model.MESSY).length : 0;
+      } catch {
+        return 0;
+      }
+    }
+    // A faint line under the quick thought, "3 waiting in Messy thoughts"; a click goes in. Hidden at 0.
+    drawWaiting() {
+      if (!this.waitingLine) return;
+      const n = this.waiting();
+      this.waitingLine.hidden = !n;
+      this.waitingLine.textContent = `${n} waiting in Messy thoughts`;
+      this.waitingLine.title = "Go into Messy thoughts";
     }
     // ---- Typeface ----
     applyFont() {
@@ -22801,7 +22839,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Shows a change straight away, in the open room.
     repaint() {
-      if (this.roomId) this.paintRoom();
+      if (!this.roomId) return;
+      const was = this.roomPage.style.getPropertyValue("--t-read");
+      this.paintRoom();
+      if (this.roomPage.style.getPropertyValue("--t-read") !== was) {
+        this.drawWorld();
+        this.clearSoon();
+      }
     }
     // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
     // colour from its pop-up on the rooms page.
@@ -22859,6 +22903,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ),
         fold4(
           "Inside a room",
+          slider2("Thought size", "size", 14, 28, 1),
           slider2("Lightness", "light", 0.05, 0.98),
           slider2("Messy lightness", "lightMessy", 0.05, 0.98),
           ...this.ontologies.flatMap((o2) => [
@@ -22885,6 +22930,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       this.roomPage.classList.toggle("dark", look.dark);
       document.documentElement.classList.toggle("room-dark", look.dark);
+      const size = Math.min(32, Math.max(12, +this.prefs.size || 19));
+      this.roomPage.style.setProperty("--t-read", `${size}px`);
       this.frame?.update(this, { ink: look.ink });
       return look;
     }
