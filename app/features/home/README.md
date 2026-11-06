@@ -13,7 +13,7 @@ The home page, laid over the picture that the Renderer draws full screen behind 
 
 The menu is Folio's, restyled in `style.css`: no panel and no dark backdrop. When it opens, the
 page goes pale and soft-focus behind a veil of light, and the words (Create, Account, Settings,
-About) stand on the left in the home page's type, fading in one after another. Who is signed in
+About) stand on the left in the home page's type, in sentence case, fading in one after another. Who is signed in
 sits small at the bottom. The three lines become a thin cross in the same place. It closes on a
 tap anywhere empty (the cross included), Escape, back, or a swipe left. Create in the menu calls
 the same `create()` as the home page.
