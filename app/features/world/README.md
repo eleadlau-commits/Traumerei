@@ -14,6 +14,7 @@ list is everything it offers:
 |---|---|
 | `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below), `relationsview` (the relations editor in a mode's ⚙: below). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
+| `lib.model.reading(w, fn)` | Runs `fn` with a fast "which groups hold this?" (`groupsOf`, `groupOf`): who holds what is listed once, not looked up across the whole world per thought. For drawing a big room (the room wraps each redraw in it). `join`, `leave`, `create` and `remove` keep the list true; code that sets a group's `members` itself must call `lib.model.changed()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |
 | `save()` | After a change: a change to the thoughts or rooms (not just a view) is a step Ctrl+Z can take back. Written down soon, then `world:saved` is sent. True when it was a step. |
