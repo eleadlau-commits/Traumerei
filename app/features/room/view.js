@@ -5,7 +5,7 @@
 import {
   room, addRoom, view, create, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  light, twinOf, relationsRow, reading,
+  light, twinOf, relationsRow, reading, showSizes,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
@@ -99,11 +99,12 @@ export class RoomView {
 
   // Shows a change straight away, in the open room.
   repaint() {
+    const sized = showSizes(!!this.prefs.sizes); // Varied sizes within a thought, turned on or off
     if (!this.roomId) return;
     const was = this.roomPage.style.getPropertyValue('--t-read');
     this.paintRoom();
     // Thought size changed: draw again and measure, so every layout stays tidy.
-    if (this.roomPage.style.getPropertyValue('--t-read') !== was) { this.drawWorld(); this.clearSoon(); }
+    if (sized || this.roomPage.style.getPropertyValue('--t-read') !== was) { this.drawWorld(); this.clearSoon(); }
   }
 
   // Settings → Rooms, in two folds. The colours come from Settings → Colour, and each room's own
@@ -131,6 +132,11 @@ export class RoomView {
             el('option', { value: 1, ...(p.peek >= 0.5 ? { selected: '' } : {}) }, 'Always')))),
       fold('Inside a room',
         slider('Thought size', 'size', 14, 28, 1),
+        // Some words in a thought bigger or smaller: chosen while writing, Ctrl+Shift+. or Ctrl+Shift+,.
+        el('label', { class: 'renderer-slider' }, el('span', {}, 'Varied sizes within a thought'), el('span'),
+          el('select', { 'aria-label': 'Varied sizes within a thought', onchange: (e) => this.setPref('sizes', +e.target.value) },
+            el('option', { value: 0, ...(p.sizes < 0.5 ? { selected: '' } : {}) }, 'Off'),
+            el('option', { value: 1, ...(p.sizes >= 0.5 ? { selected: '' } : {}) }, 'On (Ctrl+Shift+. and ,)'))),
         slider('Lightness', 'light', 0.05, 0.98),
         slider('Messy lightness', 'lightMessy', 0.05, 0.98),
         // Each ontology's own settings (Joyce: its line's tension): the global ones, which a new

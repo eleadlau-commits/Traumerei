@@ -97,6 +97,7 @@ export const LOOK = {
   vivid: VIVID,       // how strongly a square shows its room's colour
   peek: 0,            // a square's last thoughts: 0 when hovered over, 1 always
   size: 19,           // thoughts' text inside a room, in px (--t-read), one size for the whole app
+  sizes: 0,           // varied sizes within a thought ([words]{size=big}): 0 off, 1 on
 };
 
 // Saved settings, checked and filled in with the defaults.

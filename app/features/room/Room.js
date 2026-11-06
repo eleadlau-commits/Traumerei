@@ -22,7 +22,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, view, shut, MESSY, roomLook, sides, twinOf } from './world.js';
+import { bind, room, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -47,6 +47,7 @@ export default class Room extends Feature {
     // world feature's (its service; world.js binds its rules for the files here).
     this.w = this.use('world');
     bind(this.w.lib);
+    showSizes(!!this.w.prefs?.sizes); // Varied sizes within a thought (Settings → Rooms; view.js repaint follows it)
     this.rooms = this.use('rooms'); // the rooms page: back to it, and into another room
     this.floors = this.use('floors'); // where a new room goes (the floors feature)
     this.roomId = null;   // the open room, or null

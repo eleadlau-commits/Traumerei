@@ -107,9 +107,74 @@ function formula(tex, display) {
   return node;
 }
 
+// ---- Sizes within a thought ----
+// Some words may carry a size, written as Pandoc writes a span: [some words]{size=big}. The five
+// steps are smallest, small, (no mark: the usual size), big, biggest. Like maths, the mark stays in
+// the words as typed (search, peeks and writing show it); only the drawing changes. While sizes are
+// shown (Settings → Rooms → Varied sizes within a thought, off by default: showSizes), the words
+// are drawn at their size; otherwise as plain words at the usual size.
+
+export const SIZES = ['smallest', 'small', null, 'big', 'biggest'];
+const SIZE_MARK = /\[([^\[\]\n]+)\]\{size=(smallest|small|big|biggest)\}/g;
+let sizesShown = false;
+export function showSizes(on) { const was = sizesShown; sizesShown = !!on; return was !== sizesShown; }
+export const sizesOn = () => sizesShown;
+
+// The size marks in some words: [{ start, end, inner: [from, to], size }], in order.
+export function sizeMarks(text) {
+  const s = String(text ?? '');
+  const out = [];
+  for (const m of s.matchAll(SIZE_MARK)) out.push({ start: m.index, end: m.index + m[0].length, inner: [m.index + 1, m.index + 1 + m[1].length], size: m[2] });
+  return out;
+}
+
+// Makes the words from `a` to `b` one step bigger (dir 1) or smaller (dir -1). Inside a mark (or
+// the caret in one), the mark changes step, and goes at the usual size; otherwise the chosen words
+// get a mark. Returns { text, select: [from, to] } (the words, chosen again), or null when there is
+// nothing to size (no words chosen, or a line break or bracket among them).
+export function resize(text, a, b, dir) {
+  const s = String(text ?? '');
+  const mark = sizeMarks(s).find((m) => a >= m.start && b <= m.end && (a === b ? a > m.start && a < m.end : true));
+  if (mark) {
+    const words = s.slice(mark.inner[0], mark.inner[1]);
+    const next = SIZES[Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(mark.size) + dir))];
+    if (next === mark.size) return { text: s, select: mark.inner };
+    const put = next ? `[${words}]{size=${next}}` : words;
+    const from = mark.start + (next ? 1 : 0);
+    return { text: s.slice(0, mark.start) + put + s.slice(mark.end), select: [from, from + words.length] };
+  }
+  if (a === b) return null;
+  const words = s.slice(a, b);
+  if (/[\n\[\]]/.test(words) || !words.trim()) return null;
+  const size = SIZES[2 + dir];
+  return { text: `${s.slice(0, a)}[${words}]{size=${size}}${s.slice(b)}`, select: [a + 1, a + 1 + words.length] };
+}
+
+// The words to draw: sized words as spans (or plain words while sizes aren't shown), each drawn
+// with its maths.
+export function maths(text) {
+  const s = String(text ?? '');
+  if (!s.includes('{size=')) return mathsOnly(s);
+  const out = [];
+  let from = 0;
+  for (const m of sizeMarks(s)) {
+    if (m.start > from) out.push(...[].concat(mathsOnly(s.slice(from, m.start))));
+    const words = s.slice(m.inner[0], m.inner[1]);
+    if (sizesShown) {
+      const span = document.createElement('span');
+      span.className = `room-size room-size-${m.size}`;
+      span.append(...[].concat(mathsOnly(words)));
+      out.push(span);
+    } else out.push(...[].concat(mathsOnly(words)));
+    from = m.end;
+  }
+  if (from < s.length) out.push(...[].concat(mathsOnly(s.slice(from))));
+  return out.filter((p) => p !== '');
+}
+
 // The words to draw: the text itself when it holds no maths, or a list of strings and nodes.
 // The line break just before and after display maths is its own line, so it is left out.
-export function maths(text) {
+function mathsOnly(text) {
   const s = String(text ?? '');
   if (!s.includes('$')) return s;
   const parts = split(s);

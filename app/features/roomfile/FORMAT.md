@@ -201,6 +201,9 @@ A vector is a list of numbers.
 ## ^2 line: A vector is a list of numbers.
 ```
 
+Words in any thought may carry a size, written as Pandoc writes a span: `[some words]{size=big}`
+(`smallest`, `small`, `big` or `biggest`). It is part of the words, so it round-trips as typed.
+
 ### Kind: passage
 
 A title and a body (paragraphs, display maths, blank lines inside it).

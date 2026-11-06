@@ -165,6 +165,12 @@ only says where (its `roomfile` service), and leaves those choices out when it i
 - **Thought size:** Settings → Rooms → Inside a room → *Thought size* (14 to 28 px, 19 by default,
   the world's look `size`): every thought's text in every room (`--t-read` on the room page). The
   room draws again and measures, so Joyce's spacing, clear space and the trees stay tidy.
+- **Sizes within a thought:** Settings → Rooms → Inside a room → *Varied sizes within a thought*
+  (off by default). While writing a thought, choose some words and press **Ctrl+Shift+.** to make
+  them bigger or **Ctrl+Shift+,** smaller (five steps, smallest to biggest). The size is kept in
+  the words as `[words]{size=big}` (the world's `maths.js`: `resize`, drawn by `maths()`), so it
+  survives copy, paste and .traum files. While writing you see the mark; once kept, the words show
+  at their size. With the setting off, marks show as plain words at the usual size.
 - **Clear space** (`clear.js`): after any change (writing, deleting, editing, folding, a drag),
   the room measures the real size of what is on its canvas and pushes apart anything that
   overlaps, in every mode. Joyce's blocks are its trains (and each run started by a thought
