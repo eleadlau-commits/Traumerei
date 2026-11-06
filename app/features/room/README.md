@@ -137,7 +137,10 @@ It offers no service of its own.
   under *Sides* in the rail, works on that side instead. A thought or a whole group dragged from
   the side you work on and let go over the other goes across, to where it was let go, and belongs
   to that side alone. The two sides share one loose tray: the left dock lists both sides' loose
-  thoughts, and one dragged onto either canvas goes to that side.
+  thoughts, and one dragged onto either canvas goes to that side. The line between the halves
+  drags left and right (each half stays at least 280px wide) and a double-click puts it back at
+  half and half. Where it sits is kept per Twin, on this device only (the room's `twinSplits`
+  storage): a way of looking, never part of the world or a .traum file.
 
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
 saving and undo are the **world** feature's (`app/features/world`, see its README); the room

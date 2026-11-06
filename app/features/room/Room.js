@@ -328,6 +328,7 @@ export default class Room extends Feature {
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
       this.stage,
       otherSide,
+      this.dividerEl,
       this.modes,
       el('div', { class: 'room-add' },
         this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' },
