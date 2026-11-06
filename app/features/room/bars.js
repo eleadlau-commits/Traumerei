@@ -3,8 +3,8 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  room, name, view, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, roomTrains, randomSpot, isBig, shrinkPicture, ITEMS, placeName, moveTargets, wait,
+  room, name, view, create, update, remove, closeGroup, openGroup, kindOf, groupOf, isGroup,
+  thoughtText, trainThoughts, isBig, shrinkPicture, ITEMS, placeName, moveTargets, wait, moveLoose,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -452,12 +452,11 @@ export class Bars {
       onchange: (e) => {
         const to = e.target.value === '+' ? this.addPlainRoom() : e.target.value;
         if (!to) return;
-        const v = view(this.world, to);
-        ids.forEach((id, i) => move(this.world, id, to, Math.round(v.x - 200 + (i % 4) * 220), Math.round(v.y - 120 + Math.floor(i / 4) * 140)));
+        ids.forEach((id) => moveLoose(this.world, id, to)); // each waits in the room's loose tray
         this.sel = null;
         this.save();
         this.drawWorld();
-        this.toast(`Moved ${ids.length} to ${placeName(this.world, to)}`);
+        this.toast(`Moved ${ids.length} to ${placeName(this.world, to)}'s loose tray`);
       } },
       el('option', { value: '' }, 'Move to…'),
       ...others.map((r) => el('option', { value: r.id }, r.name)),
@@ -661,16 +660,13 @@ export class Bars {
     if (ed?.docked) this.panel?.close('sheet', true);
   }
 
+  // Move to… (Ctrl+M): what is chosen goes to that room's loose tray, in every mode (the world's
+  // moveLoose).
   moveTo(toRoom) {
-    const v = view(this.world, toRoom);
-    const box = { x: v.x - 300, y: v.y - 160, w: 400, h: 320 };
-    const taken = roomTrains(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
-    const spot = randomSpot(box, taken);
-    const x = Math.round(spot.x), y = Math.round(spot.y);
-    move(this.world, this.sel.id, toRoom, x, y);
+    moveLoose(this.world, this.sel.id, toRoom);
     this.sel = null;
     this.save();
     this.drawWorld();
-    this.toast(`Moved to ${placeName(this.world, toRoom)}`);
+    this.toast(`Moved to ${placeName(this.world, toRoom)}'s loose tray`);
   }
 }

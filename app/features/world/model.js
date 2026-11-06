@@ -496,8 +496,8 @@ function rehome(w, th, to) {
 // Moves a thought into `into` (a room, or a group). A group moves to another room with its items;
 // an item put into a group joins it; an item put into a room gets a train of its own there (at x,
 // y: Joyce holds every item in a train), and the rest of its old train stays joined. Never into
-// itself.
-export function move(w, id, into, x = 0, y = 0) {
+// itself. `loose`: an item put into a room gets no train (it is loose there: groups.js moveLoose).
+export function move(w, id, into, x = 0, y = 0, { loose = false } = {}) {
   const th = w.things[id], to = w.things[into];
   if (!th || !to || th.parent === into && !isLeaf(th) || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
   if (isTwin(to)) return false; // a Twin holds only its two sides: a thought goes to one of them
@@ -521,6 +521,7 @@ export function move(w, id, into, x = 0, y = 0) {
     return join(w, into, id);
   }
   if (kindOf(to) !== 'room') return false;
+  if (loose) { rehome(w, th, into); return true; }
   const train = create(w, into, { kind: 'group', of: 'joyce', x, y }, th.at);
   if (!train) return false;
   rehome(w, th, into);

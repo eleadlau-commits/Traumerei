@@ -2,8 +2,8 @@
 // modes, in their tray until placed; a group made in the tray stays there.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, MESSY, startTrain, addThought, create, members } from '../model.js';
-import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting } from '../groups.js';
+import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom } from '../model.js';
+import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting, moveLoose } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
 import joyce from '../ontologies/joyce.js';
 import pessoa from '../ontologies/pessoa.js';
@@ -223,4 +223,23 @@ test('a thought added away from the canvas waits in the tray, even in Pessoa, un
   assert.deepEqual(ids(pessoa.units(w, MESSY)), [a.id, n.id]);
   assert.deepEqual(pessoa.tray(w, MESSY), []);
   assert.deepEqual(pessoa.point(w, MESSY, n.id), { x: 70, y: 80 });
+});
+
+test('moved to another room (Move to…): it lands in that room\'s loose tray in every mode', () => {
+  const w = emptyWorld();
+  const other = addRoom(w, 'Other', 1);
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 2);
+  const b = create(w, MESSY, { kind: 'line', text: 'b' }, 3);
+  const c = create(w, MESSY, { kind: 'line', text: 'c' }, 4);
+  const t = groupChosen(joyce, w, MESSY, [b.id, c.id], 5);
+  assert.ok(moveLoose(w, a.id, other.id));
+  assert.equal(a.parent, other.id);
+  assert.ok(ids(joyce.tray(w, other.id)).includes(a.id));   // no train of its own
+  assert.ok(ids(pessoa.tray(w, other.id)).includes(a.id));  // waits until dragged out
+  assert.ok(ids(russell.tray(w, other.id)).includes(a.id));
+  assert.ok(moveLoose(w, t.id, other.id));
+  assert.ok(t.loose);
+  assert.ok(ids(joyce.tray(w, other.id)).includes(t.id));
+  assert.ok(!joyce.placed(w, other.id, t.id));
+  assert.ok(waiting(w, other.id, 'pessoa', b.id));
 });

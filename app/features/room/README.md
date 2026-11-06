@@ -110,7 +110,9 @@ It offers no service of its own.
   Ctrl+click or Shift+click cards to choose several; Ctrl+G then makes a group of them that stays
   in the tray until it is dragged out.
 - **Moving.** Tap a train (Joyce) or a thought (Pessoa) to select it, then *Move to* a room, or
-  *A new room*. A thought moved on its own leaves its train; the rest of the train stays joined.
+  *A new room* (Ctrl+M). It lands in that room's loose tray in every mode (the world's
+  `groups.moveLoose`), to be dragged out where it belongs. A thought moved on its own leaves its
+  train; the rest of the train stays joined.
 - **Bigger thoughts.** *Passage* (Alt+P): a title and a paragraph or small article. *Picture*
   (Alt+I, or paste one): a picture, shrunk to a small JPEG, with a caption. Double-click either to
   edit it. Both are written in the right dock's Editor tab (without docks, a sheet over the room):

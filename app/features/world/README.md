@@ -111,6 +111,11 @@ Joyce and Pessoa keep where they placed one in their own data, `spot` / `putAt`)
 outermost groups show this way: a train of trains is one Train. A group made from thoughts in an
 ontology's tray is `loose` and stays in the tray until dragged out (`place`).
 
+**Moving to another room** (`groups.js`: `moveLoose`, for Move to… and Ctrl+M) puts the thing in
+that room's loose tray in every mode: a thought gets no train, a group waits in its own mode's
+tray (loose), and every thought it carries waits in Pessoa's and Proust's trays until dragged out.
+A Twin's drag across its sides (`twin.js`) still places it where it is dropped.
+
 **Folding** (`groups.js`: `fold`, `foldPlan`) is not grouping: the chosen thoughts (and everything
 inside chosen groups) become one new thought, which takes their place in every group of every
 ontology that held them and in each ontology's own data; the old ones are deleted.

@@ -16,7 +16,7 @@
 // the old ones go, everywhere: the new one takes their place in every group, of every ontology,
 // that held them.
 
-import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, changed } from './model.js';
+import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, changed, move } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -65,6 +65,18 @@ export function wait(w, roomId, id) {
 }
 // Whether thought `id` still waits in ontology `of`'s tray.
 export const waiting = (w, roomId, of, id) => !!own(w, roomId, WAITS, false)[id] && !spot(w, roomId, of, id);
+
+// Moves a thought or a group to another room (Move to…, Ctrl+M) so that it lands in that room's
+// loose tray in every mode: a thought goes with no train; a group keeps what it holds and waits in
+// its own mode's tray (loose); every thought it carries waits in the tray of the modes that place
+// every thought themselves (Pessoa, Proust), until it is dragged out. True when it went.
+export function moveLoose(w, id, into) {
+  const th = w.things[id];
+  if (!th || kindOf(w.things[into]) !== 'room' || !move(w, id, into, 0, 0, { loose: true })) return false;
+  if (isGroup(th)) th.loose = true;
+  for (const m of [th, ...(isGroup(th) ? within(w, id) : [])]) if (isLeaf(m)) wait(w, into, m.id);
+  return true;
+}
 
 // Whether a group of its own ontology waits in the tray (made there), and taking it out.
 export const isLoose = (g) => isGroup(g) && !!g.loose;
