@@ -3981,9 +3981,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   var { el: el3 } = ui_exports;
   var MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var FIELD = "input, textarea, select, [contenteditable], [contenteditable] *";
+  var BROWSER = /* @__PURE__ */ new Set(["r", "d", "l", "f"]);
   var Keys = class extends Feature {
     start() {
-      this.defineSlot("keys", '{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room" or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; typing: true lets it run while a field has focus.');
+      this.defineSlot("keys", `{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room" or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; no key runs while a field has focus (writing a thought, search, the tray, the Editor): there only the field's own keys work.`);
       this.add("keys", {
         id: "keys.list",
         keys: ["?"],
@@ -4022,6 +4023,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       if (!k2) return "";
       return k2.shows || (k2.keys || []).map((c) => label(c, MAC)).join(" · ");
     }
+    // While a field has focus (a thought being written, search, the tray, the Editor) no app key
+    // runs: the field keeps Enter, Ctrl+Enter, Escape and its own text keys, and Chrome's
+    // Ctrl+R/D/L/F do nothing. Elsewhere the key is matched first, and only the entries it matches
+    // are asked whether they are live (asking every entry on each key was slow).
     onKey(e) {
       if (e.defaultPrevented || e.isComposing) return;
       if (!this.box.hidden) {
@@ -4030,11 +4035,18 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         this.hide();
         return;
       }
+      if (e.target?.matches?.(FIELD)) {
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && BROWSER.has((e.key || "").toLowerCase())) e.preventDefault();
+        return;
+      }
       if (document.querySelector("dialog[open]")) return;
-      const inField = !!e.target?.matches?.(FIELD);
-      for (const k2 of this.live()) {
-        if (!k2.run || inField && !k2.typing) continue;
-        if (!(k2.keys || []).some((c) => matches(c, e))) continue;
+      for (const k2 of this.slot("keys").items) {
+        if (!k2.run || !(k2.keys || []).some((c) => matches(c, e))) continue;
+        try {
+          if (k2.when && !k2.when()) continue;
+        } catch {
+          continue;
+        }
         e.preventDefault();
         e.stopPropagation();
         try {
@@ -4363,7 +4375,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     { id: "docks.left", keys: ["Ctrl+Alt+L"], words: "show or hide the left dock" },
     { id: "docks.right", keys: ["Ctrl+Alt+E"], words: "show or hide the right dock" },
     { id: "docks.canvas", keys: ["Ctrl+Alt+F"], words: "canvas only: hide every dock, and bring them back" }
-  ].map((k2, i2) => ({ order: 80 + i2, typing: true, ...k2 }));
+  ].map((k2, i2) => ({ order: 80 + i2, ...k2 }));
 
   // dist/web/features/docks/Docks.js
   var SIDES = ["left", "right"];
@@ -15404,7 +15416,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var { el: el8 } = ui_exports;
   var MAC2 = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
   var HINT_MS = 9e3;
-  var RAIL_KEY = { id: "frame.rail", keys: ["Ctrl+Alt+B"], words: "narrow the rail to its icons, or widen it", order: 79, typing: true };
+  var RAIL_KEY = { id: "frame.rail", keys: ["Ctrl+Alt+B"], words: "narrow the rail to its icons, or widen it", order: 79 };
   var Frame = class extends Feature {
     start() {
       const self = this;
@@ -17504,7 +17516,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/time/keys.js
   var TIME_KEYS = [
     { id: "time.toggle", keys: ["Ctrl+Alt+T"], words: "Time: show it, bring it to the front, or hide it" }
-  ].map((k2, i2) => ({ order: 86 + i2, typing: true, ...k2 }));
+  ].map((k2, i2) => ({ order: 86 + i2, ...k2 }));
 
   // dist/web/features/time/Time.js
   var { el: el11 } = ui_exports;
@@ -19865,7 +19877,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "rooms.open", keys: ["Enter"], shows: "Double-click · Enter", words: "go into the chosen room" },
     { id: "rooms.properties", keys: ["ContextMenu", "Shift+F10"], shows: "Right-click", words: "the properties of a room" },
     { id: "rooms.delete", keys: ["Delete"], words: "delete the chosen rooms (or the floor chosen in the rail)" },
-    { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room", typing: true },
+    { id: "rooms.rename", keys: ["Ctrl+R"], words: "rename the chosen room" },
     { id: "rooms.duplicate", keys: ["Ctrl+D"], words: "duplicate the chosen rooms (or Alt+drag one)" },
     { id: "rooms.move", keys: ["Ctrl+M"], words: "move the chosen rooms to another floor" },
     { id: "rooms.lock", keys: ["Ctrl+L"], words: "lock or unlock the chosen rooms" },
@@ -22796,13 +22808,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.paintDraft();
       this.showDraft();
     }
+    // The thought being written keeps only its own keys (no app shortcut runs while typing; see
+    // the keys feature): Enter, Ctrl+Enter, Escape, and Backspace / Ctrl+Z at its very start.
     onInputKey(e) {
-      if (e.altKey && (e.code === "KeyP" || e.code === "KeyI")) {
-        e.preventDefault();
-        if (e.code === "KeyP") this.openSheet("passage");
-        else this.choosePicture();
-        return;
-      }
       const mod = e.ctrlKey || e.metaKey, k2 = e.key.toLowerCase();
       if (mod && !e.altKey && (k2 === "z" || k2 === "y") && !this.input.value) {
         e.preventDefault();
@@ -24961,16 +24969,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.more", shows: "Shift+click · Ctrl+click", words: "add to the choice · in or out of it" },
     { id: "room.copy", keys: ["Ctrl+C", "Ctrl+V"], words: "copy what is chosen · put a copy here" },
     { id: "room.delete", keys: ["Delete"], words: "delete what is chosen" },
-    { id: "room.rename", keys: ["Ctrl+R"], words: "rename what is chosen (a thought: write in it)", typing: true },
-    { id: "room.duplicate", keys: ["Ctrl+D"], words: "duplicate what is chosen", typing: true },
-    { id: "room.fold", keys: ["Ctrl+F"], words: "fold what is chosen into one thought (the old ones go, in every mode)", typing: true },
-    { id: "room.close", keys: ["Ctrl+Shift+F"], words: "close or open its group (only how it shows)", typing: true },
-    { id: "room.group", keys: ["Ctrl+G"], words: "make what is chosen one group of this mode (a train, a chapter)", typing: true },
-    { id: "room.join", keys: ["Ctrl+J"], words: "join the two chosen (Proust: a link from the first to the other)", typing: true },
-    { id: "room.ungroup", keys: ["Ctrl+Shift+G"], words: "take what is chosen out of its group", typing: true },
-    { id: "room.throw-back", keys: ["Ctrl+Shift+Backspace"], shows: "Ctrl+Shift+Backspace · drag onto the tray", words: "throw what is chosen back into the loose tray", typing: true },
-    { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room", typing: true },
-    { id: "room.lock", keys: ["Ctrl+L"], words: "lock or unlock this room", typing: true },
+    { id: "room.rename", keys: ["Ctrl+R"], words: "rename what is chosen (a thought: write in it)" },
+    { id: "room.duplicate", keys: ["Ctrl+D"], words: "duplicate what is chosen" },
+    { id: "room.fold", keys: ["Ctrl+F"], words: "fold what is chosen into one thought (the old ones go, in every mode)" },
+    { id: "room.close", keys: ["Ctrl+Shift+F"], words: "close or open its group (only how it shows)" },
+    { id: "room.group", keys: ["Ctrl+G"], words: "make what is chosen one group of this mode (a train, a chapter)" },
+    { id: "room.join", keys: ["Ctrl+J"], words: "join the two chosen (Proust: a link from the first to the other)" },
+    { id: "room.ungroup", keys: ["Ctrl+Shift+G"], words: "take what is chosen out of its group" },
+    { id: "room.throw-back", keys: ["Ctrl+Shift+Backspace"], shows: "Ctrl+Shift+Backspace · drag onto the tray", words: "throw what is chosen back into the loose tray" },
+    { id: "room.move", keys: ["Ctrl+M"], words: "move what is chosen to another room" },
+    { id: "room.lock", keys: ["Ctrl+L"], words: "lock or unlock this room" },
     { id: "room.back-into", shows: "Backspace in an empty thought", words: "back into the one before" },
     { id: "room.nudge", keys: ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight", "Shift+ArrowUp", "Shift+ArrowDown"], shows: "Arrows · Shift+arrows", words: "nudge what is chosen" },
     { id: "room.search", keys: ["Ctrl+K"], words: "search every room" },
