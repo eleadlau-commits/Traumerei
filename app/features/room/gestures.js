@@ -8,6 +8,7 @@ import {
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 import * as verbs from './verbs.js';
+import { fitAll, centreChosen } from './centre.js';
 
 export class Gestures {
   onDown(e) {
@@ -16,6 +17,7 @@ export class Gestures {
     const pointers = (this.pointers ||= new Map());
     if (e.pointerType === 'mouse') pointers.clear(); // a mouse is one pointer: forget one whose release was lost (a Mac's Ctrl+click menu)
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    cancelAnimationFrame(this.glideFrame); // a glide (centre.js) gives way
     this.stage.setPointerCapture(e.pointerId);
     if (pointers.size === 2) { this.gesture = { kind: 'pinch', ...this.pinchState() }; return; }
     // In the thought being written: a click places the caret, a drag chooses letters, Shift extends.
@@ -229,6 +231,8 @@ export class Gestures {
       this.openProps(this.sel);
       return true;
     }
+    if (k === 'Home' && !mod && !e.altKey && !e.shiftKey) { e.preventDefault(); fitAll(this); return true; } // the view fits everything
+    if (mod && e.shiftKey && !e.altKey && e.code === 'KeyC') { e.preventDefault(); centreChosen(this); return true; } // the view glides to what is chosen
     if (mod && !e.altKey && k.toLowerCase() === 'a') { // choose everything in the room
       e.preventDefault();
       const ids = this.ont.units(this.world, this.roomId).map((th) => th.id);
@@ -456,6 +460,7 @@ export class Gestures {
 
   onWheel(e) {
     e.preventDefault();
+    cancelAnimationFrame(this.glideFrame); // a glide (centre.js) gives way
     const v = view(this.world, this.roomId);
     // A mouse wheel (big steps, or lines) and Ctrl+wheel / pinch on a trackpad zoom;
     // a trackpad's two-finger scroll moves around.

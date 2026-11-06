@@ -15,6 +15,8 @@ export const ROOM_KEYS = [
   { id: 'room.drag', shows: 'Drag', words: 'move a thing · on empty space, move around' },
   { id: 'room.box', shows: 'Shift+drag', words: 'a box to choose many' },
   { id: 'room.pan', shows: 'Ctrl+drag', words: 'move around, wherever it starts' },
+  { id: 'room.fit', keys: ['Home'], words: 'fit the view to everything in the room' },
+  { id: 'room.centre', keys: ['Ctrl+Shift+C'], words: 'bring the view to what is chosen' },
   { id: 'room.all', keys: ['Ctrl+A'], words: 'choose everything' },
   { id: 'room.more', shows: 'Shift+click · Ctrl+click', words: 'add to the choice · in or out of it' },
   { id: 'room.copy', keys: ['Ctrl+C', 'Ctrl+V'], words: 'copy what is chosen · put a copy here' },

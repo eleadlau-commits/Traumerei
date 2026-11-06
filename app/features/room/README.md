@@ -131,7 +131,7 @@ uses, so every file imports them from there. It goes back to the rooms page, or 
 room, through the `rooms` service. The `Room` class is written across several files:
 `Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space), `writing.js` (thoughts, the draft, the caret),
-`gestures.js` (pointer, keys, selection, copy and paste, opening Search), `bars.js` (pop-ups, tray,
+`gestures.js` (pointer, keys, selection, copy and paste, opening Search), `centre.js` (Home and Ctrl+Shift+C: plain functions of the room), `bars.js` (pop-ups, tray,
 sheets, pictures) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
@@ -214,6 +214,11 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   world's `groupChosen`; Pessoa has no groups and says so), **Ctrl+Shift+G** takes it out of its
   group (Joyce: each its own train, where it was; Russell: loose again), **Ctrl+L** locks or
   unlocks the room, and **Delete** deletes. In a field these keys do nothing (so the browser doesn't reload, bookmark or find).
+- **Bringing the view to things** (`centre.js`), in every mode: **Home** fits the view to
+  everything on the canvas (zooming out as far as it must, never in past the natural size), and
+  **Ctrl+Shift+C** glides it to what is chosen, at the same zoom unless it would not fit. Only the
+  view moves; nothing in the room changes. What shows is measured as drawn, so a mode needs to
+  tell it nothing. A drag, a pinch or the wheel stops a glide.
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or ⋯ More → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.
