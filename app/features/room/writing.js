@@ -206,12 +206,9 @@ export class Writing {
     this.showDraft();
   }
 
+  // The thought being written keeps only its own keys (no app shortcut runs while typing; see
+  // the keys feature): Enter, Ctrl+Enter, Escape, and Backspace / Ctrl+Z at its very start.
   onInputKey(e) {
-    if (e.altKey && (e.code === 'KeyP' || e.code === 'KeyI')) {
-      e.preventDefault();
-      if (e.code === 'KeyP') this.openSheet('passage'); else this.choosePicture();
-      return;
-    }
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     // Ctrl+Z undoes typing inside the thought; once it is empty, it undoes whole steps again.
     if (mod && !e.altKey && (k === 'z' || k === 'y') && !this.input.value) {

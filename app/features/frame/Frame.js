@@ -19,7 +19,7 @@ import { Feature, ui } from 'folio';
 const { el } = ui;
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const HINT_MS = 9000;
-const RAIL_KEY = { id: 'frame.rail', keys: ['Ctrl+Alt+B'], words: 'narrow the rail to its icons, or widen it', order: 79, typing: true };
+const RAIL_KEY = { id: 'frame.rail', keys: ['Ctrl+Alt+B'], words: 'narrow the rail to its icons, or widen it', order: 79 };
 
 export default class Frame extends Feature {
   start() {

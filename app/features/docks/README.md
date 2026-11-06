@@ -47,7 +47,7 @@ of width is sent as `docks:resized`.
 
 ## Keys
 
-Added to the key map (the keys feature), working while typing too (`keys.js`):
+Added to the key map (the keys feature), not while typing, like every key (`keys.js`):
 **Ctrl+Alt+L** shows or hides the left dock, **Ctrl+Alt+E** the right dock, and
 **Ctrl+Alt+F** is Canvas only. Opening something in a hidden dock brings it back.
 

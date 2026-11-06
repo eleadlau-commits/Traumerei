@@ -10,10 +10,13 @@ import { label, matches, clashes } from './keymap.js';
 const { el } = ui;
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const FIELD = 'input, textarea, select, [contenteditable], [contenteditable] *';
+// Chrome's own keys that would leave or break what is being written (reload, bookmark, the address
+// bar, find): swallowed while a field has focus, so a thought can't be lost mid-sentence.
+const BROWSER = new Set(['r', 'd', 'l', 'f']);
 
 export default class Keys extends Feature {
   start() {
-    this.defineSlot('keys', '{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room" or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; typing: true lets it run while a field has focus.');
+    this.defineSlot('keys', '{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room" or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; no key runs while a field has focus (writing a thought, search, the tray, the Editor): there only the field\'s own keys work.');
     this.add('keys', { id: 'keys.list', keys: ['?'], words: 'these keys', zone: 'everywhere', order: 99,
       when: () => this.live().some((k) => k.id !== 'keys.list'), run: () => this.show() });
     this.provide('keys', {
@@ -41,14 +44,21 @@ export default class Keys extends Feature {
     return k.shows || (k.keys || []).map((c) => label(c, MAC)).join(' · ');
   }
 
+  // While a field has focus (a thought being written, search, the tray, the Editor) no app key
+  // runs: the field keeps Enter, Ctrl+Enter, Escape and its own text keys, and Chrome's
+  // Ctrl+R/D/L/F do nothing. Elsewhere the key is matched first, and only the entries it matches
+  // are asked whether they are live (asking every entry on each key was slow).
   onKey(e) {
     if (e.defaultPrevented || e.isComposing) return;
     if (!this.box.hidden) { e.preventDefault(); e.stopPropagation(); this.hide(); return; }
+    if (e.target?.matches?.(FIELD)) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && BROWSER.has((e.key || '').toLowerCase())) e.preventDefault();
+      return;
+    }
     if (document.querySelector('dialog[open]')) return;
-    const inField = !!e.target?.matches?.(FIELD);
-    for (const k of this.live()) {
-      if (!k.run || (inField && !k.typing)) continue;
-      if (!(k.keys || []).some((c) => matches(c, e))) continue;
+    for (const k of this.slot('keys').items) {
+      if (!k.run || !(k.keys || []).some((c) => matches(c, e))) continue;
+      try { if (k.when && !k.when()) continue; } catch { continue; }
       e.preventDefault();
       e.stopPropagation();
       try { k.run(e); } catch (err) { console.warn(`Keys: ${k.id}`, err); }
