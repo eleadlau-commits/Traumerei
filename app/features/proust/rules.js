@@ -25,8 +25,8 @@
 // (relations.js: { [to]: { parents, labels, rel } }).
 
 import {
-  own, shut, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
-  placedForeign, trayForeign, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEnds, listText, spiralPoint,
+  own, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
+  placedForeign, trayForeign, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
 } from './world.js';
 
 export const ID = 'proust';
@@ -95,7 +95,7 @@ export function nodeName(w, id) {
 
 let net = null;
 export const links = () => (net ||= arrowsOf({
-  of: ID, store: LINKS, setting: RELATIONS, isNode, nodes, word: 'thought', loops: true,
+  of: ID, store: LINKS, setting: RELATIONS, isNode, nodes, word: 'thought', noun: 'link', loops: true,
   words: { self: 'A thought can\'t be linked to itself.', join: 'Links join two things on the canvas.' },
 }));
 
@@ -203,6 +203,113 @@ export function below(w, roomId, id) {
   return { x: Math.round(spot.x), y: Math.round(spot.y) };
 }
 
+// ---- In a .traum file (the roomfile feature): its # In proust section ----
+//
+//   at: ^a 120 40 [auto]   a thought placed at a point (auto: pushed there to keep clear, not
+//                          dragged); another mode's group placed here; a cluster moved whole
+//   on canvas: ^b ^c        thoughts on the spiral, where Proust lays them (the same as no line); a
+//                          cluster out of the tray
+//   tray: ^g                a cluster waiting in the tray; another mode's group not placed yet
+//   link: ^a -> ^b | leads to | the proof    a link: -- a plain line, -> an arrow, <-> both ways
+//   arrow: ^a -> ^b | forgets                Russell's arrow lines, read as links with an arrow
+//
+// A link's ends are its relation's (the room's ⚙ list), written on each line so a file reads on
+// its own. Read back, a relation the room doesn't have yet joins its list with the ends the line
+// gives; one it has keeps its own ends, and a line saying otherwise is reported. A relation object
+// (## ^r relation: leads to, with from:, to:, and ends: none, arrow or both) is a link too.
+// c: the roomfile feature's helpers (ref, writeLink; thing, report, keep, link(line), arrow(line),
+// relations, scope, change, name).
+
+const roomList = (w, roomId) => cleanRelationList(roomSetting(w, roomId, ID, RELATIONS), DEFAULT_RELATIONS);
+const ENDS_SAID = { none: 'a plain line', arrow: 'an arrow', both: 'an arrow both ways' };
+const MARK = { none: '--', arrow: '->', both: '<->' };
+
+// Each link read takes its relation's ends; a relation new to the room joins its list.
+function settleEnds(w, roomId, list, c) {
+  let names = roomList(w, roomId);
+  for (const a of list) {
+    if (!a.ends) continue;
+    const rel = a.rel ?? '';
+    if (!rel) {
+      if (a.ends !== 'none') c.report(a.line, `a link with no relation is a plain line, so its ${MARK[a.ends]} was read as --.`);
+      continue;
+    }
+    const had = names.find((n) => relationEntry(n).name.toLowerCase() === rel.toLowerCase());
+    if (!had) {
+      names = [...names, a.ends === 'none' ? rel : `${rel} ${MARK[a.ends]}`];
+      if (!shut(w, roomId)) setRoomSetting(w, roomId, ID, RELATIONS.key, names);
+      continue;
+    }
+    const ends = relationEntry(had).ends || 'none';
+    if (ends !== a.ends) c.report(a.line, `"${relationEntry(had).name}" is ${ENDS_SAID[ends]} in this room's relations, so this link is drawn as one (the line said ${MARK[a.ends]}).`);
+  }
+}
+
+const traum = {
+  write(w, roomId, c) {
+    const places = own(w, roomId, ID, false);
+    const out = [], spiral = [];
+    for (const th of roomItems(w, roomId)) {
+      if (!c.ref(th.id)) continue;
+      const p = places[th.id];
+      if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
+      else spiral.push(c.ref(th.id));
+    }
+    for (const g of placedForeign(w, roomId, ID)) { const p = spot(w, roomId, ID, g.id); if (c.ref(g.id)) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`); }
+    if (spiral.length) out.push(`on canvas: ${spiral.join(' ')}`);
+    const tray = proust.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
+    if (tray.length) out.push(`tray: ${tray.join(' ')}`);
+    const list = roomList(w, roomId);
+    for (const a of links().arrows(w, roomId)) {
+      if (!c.ref(a.from) || !c.ref(a.to)) continue;
+      out.push(`link: ${c.writeLink({ from: c.ref(a.from), to: c.ref(a.to), ends: endsOf(list, a.rel), rel: a.rel, label: a.label })}`);
+    }
+    return out;
+  },
+  read(w, roomId, lines, c) {
+    const read = [...(c.relations || [])];
+    const placed = new Set(), wholes = [];
+    const num = (v) => (v?.t === 'num' ? v.v : null);
+    for (const l of lines) {
+      if (l.key === 'at') {
+        const id = c.thing(l.values[0], l.line);
+        const x = num(l.values[1]), y = num(l.values[2]);
+        if (!id) continue;
+        if (x == null || y == null) { c.report(l.line, 'at: needs a ^reference and two numbers.'); continue; }
+        if (placed.has(id)) { c.report(l.line, 'Proust places a thing once; this second at: was left out.'); continue; }
+        placed.add(id);
+        const th = w.things[id];
+        if (isLeaf(th)) own(w, roomId, ID)[id] = { x: Math.round(x), y: Math.round(y), ...(l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : {}) };
+        else if (isGroup(th) && th.of === ID) wholes.push([id, x, y]); // after its thoughts are placed
+        else moveTo(w, roomId, id, x, y);
+      } else if (l.key === 'on canvas' || l.key === 'tray') {
+        for (const v of l.values) {
+          const id = c.thing(v, l.line);
+          const th = id && w.things[id];
+          if (!th) continue;
+          if (l.key === 'on canvas') {
+            if (isLeaf(th) && !placed.has(id)) delete own(w, roomId, ID)[id]; // back on the spiral
+            else if (isGroup(th) && th.of === ID) place(w, id);
+          } else if (isGroup(th) && th.of === ID) th.loose = true;
+          else if (isGroup(th) && !placed.has(id)) delete own(w, roomId, ID)[id];
+          else c.report(l.line, 'Proust places every thought on the canvas, so only a cluster or another mode\'s group waits in the tray.');
+        }
+      } else if (l.key === 'link') {
+        const a = c.link(l);
+        if (a) read.push(a);
+      } else if (l.key === 'arrow') {
+        const a = c.arrow(l);
+        if (a) read.push({ ...a, ends: 'arrow' });
+      } else c.keep(l);
+    }
+    for (const [id, x, y] of wholes) moveTo(w, roomId, id, x, y);
+    settleEnds(w, roomId, read, c);
+    links().traumArrows(w, roomId, read, c);
+  },
+  // (c.scope, when editing: the things the text holds. Links touching them are made to read as the
+  // text does: ones not in it are taken away, ones changed are changed. c.change(words) says so.)
+};
+
 // ---- The ontology ----
 
 export const proust = {
@@ -223,6 +330,7 @@ export const proust = {
   settingChanged(w, roomId, key, before, after) {
     if (key === RELATIONS.key) links().renameRelations(w, roomId, before, after);
   },
+  traum,
 
   // Every thought not in a closed or waiting cluster, each closed cluster, and other modes' groups
   // placed here.

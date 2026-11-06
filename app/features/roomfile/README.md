@@ -57,7 +57,7 @@ no slots.
 
 - `grammar.js`: the text in and out with no world: front matter, `## ^id kind: title` objects,
   `# …` sections, `key: values` lines, typed values (`^a`, `^a#2`, `^a@"words"`, numbers, dates,
-  `"text"`, `[lists]`, `->`, `|`), escaping, the `arrow:` line.
+  `"text"`, `[lists]`, `->`, `|`), escaping, the `arrow:` line and the `link:` line (`readLink`, `writeLink`: `--`, `->` or `<->` between its ends).
 - `traum.js`: parts into a room and a room into parts (`importRoom`, `importInto`, `exportRoom`,
   Twins too). It names no mode: each kind of item reads and writes itself (`traum` in the world
   feature's `items/`), and so does each ontology for its own `# In <mode>` section (`traum` in

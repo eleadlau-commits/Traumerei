@@ -25,6 +25,7 @@
 //                      out): its default is what a room with none has
 //   words              (optional) { join, self }: why an arrow between these can't be drawn, and
 //                      why one from a node to itself can't, in the ontology's own words
+//   noun               (optional) what an arrow is called in its words ('arrow'; Proust: 'link')
 
 import { own, roomSetting, shut } from '../model.js';
 
@@ -122,7 +123,7 @@ export function withRelation(names, name, fallback = RELATIONS.default) {
 
 const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
 
-export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, changed = () => {}, store = of, setting = RELATIONS, words = {} }) {
+export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, changed = () => {}, store = of, setting = RELATIONS, words = {}, noun = 'arrow' }) {
   const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, store)[child] = { parents, labels, rel }; };
 
   // A room's relations, the first the one a new arrow gets (globals: the global settings, for a
@@ -184,7 +185,7 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   function whyNot(w, roomId, parent, child) {
     if (parent === child) return words.self || `A ${word} can't be its own parent.`;
     if (!isNode(w, roomId, parent) || !isNode(w, roomId, child)) return words.join || `Arrows join two ${word}s.`;
-    if (parentsOf(w, roomId, child).includes(parent)) return 'That arrow is already there.';
+    if (parentsOf(w, roomId, child).includes(parent)) return `That ${noun} is already there.`;
     if (!loops && above(w, roomId, child, parent)) return 'That arrow would make a loop.';
     return '';
   }
@@ -259,7 +260,7 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
       for (const a of arrows(w, roomId)) {
         if (!c.scope.has(a.from) && !c.scope.has(a.to)) continue;
         const x = want.get(`${a.from}>${a.to}`);
-        if (!x) { unlink(w, roomId, a.from, a.to); c.change?.(`The arrow from ${name(a.from)} to ${name(a.to)} is taken away`); continue; }
+        if (!x) { unlink(w, roomId, a.from, a.to); c.change?.(`The ${noun} from ${name(a.from)} to ${name(a.to)} is taken away`); continue; }
         want.delete(`${a.from}>${a.to}`);
         if ((x.rel ?? '') !== a.rel && setRelation(w, roomId, a.from, a.to, x.rel ?? '')) c.change?.(`${name(a.from)} → ${name(a.to)}: ${a.rel || 'no relation'} becomes ${x.rel || 'no relation'}`);
         if (tidy(x.label) !== a.label && setLabel(w, roomId, a.from, a.to, x.label || '')) c.change?.(`${name(a.from)} → ${name(a.to)}: label ${a.label ? `"${a.label}"` : 'none'} becomes ${tidy(x.label) ? `"${tidy(x.label)}"` : 'none'}`);
@@ -268,8 +269,8 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
     }
     for (const a of fresh) {
       const why = link(w, roomId, a.from, a.to, a.label || '', a.rel ?? '');
-      if (why) c.report(a.line, `the arrow wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, '')}.`);
-      else if (c.scope) c.change?.(`A new arrow from ${c.name?.(a.from) || a.from} to ${c.name?.(a.to) || a.to}`);
+      if (why) c.report(a.line, `the ${noun} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, '')}.`);
+      else if (c.scope) c.change?.(`A new ${noun} from ${c.name?.(a.from) || a.from} to ${c.name?.(a.to) || a.to}`);
     }
   }
 

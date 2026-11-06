@@ -258,6 +258,7 @@ pointed at). The title is the relation's name.
 | `to: ^b` | Where it ends. |
 | `label: "…"` | A short label. |
 | `made in: <mode>` | The mode it belongs to; without it, the room's first mode with groups. |
+| `ends: arrow` | Its ends, where the mode draws ends (Proust): `none`, `arrow` or `both` (or `--`, `->`, `<->`). |
 
 A relation with one `from:` and one `to:` is an arrow in that mode, the same as an `arrow:` line.
 One joining more (`from: ^a ^b` and `to: ^c`: "A and B, therefore C") is kept as written until a mode
@@ -313,8 +314,61 @@ Chapters joined into a tree by arrows, each an abstraction of the one above it. 
 
 A chapter has any number of parents. A loop is refused and reported, and the other arrows are
 still drawn. The room's list of relations is the setting `russell.relations`. The `arrow:` line
-belongs to the shared arrows part (`relations.js`), so a later mode that joins its groups (a
-network that allows loops) writes the same line in its own section.
+belongs to the shared arrows part (`relations.js`); Proust reads it too.
+
+### Ontology: proust
+
+Every thought free on the canvas, joined by named links that may run in loops, and gathered into
+clusters (its groups, `made in: proust`). Its section is `# In proust`.
+
+| Line | Meaning |
+|---|---|
+| `at: ^a x y` | A thought placed at x, y (`auto` after it: pushed there to keep clear, not dragged). Also another mode's group placed in Proust, or a cluster moved whole so its corner is there. |
+| `on canvas: ^a ^b` | Thoughts on the spiral, where Proust lays them (the same as no line). A cluster named here comes out of the tray. |
+| `tray: ^g` | A cluster waiting in the tray, or another mode's group not placed yet (the same as no line). Thoughts are always on the canvas. |
+| `link: ^a -> ^b \| relation \| label` | A link. Between its ends: `--` a plain line, `->` an arrow, `<->` an arrow both ways. Relation and label are written as in an `arrow:` line, and may be left out. |
+| `arrow: ^a -> ^b \| relation \| label` | Russell's line, read as a link with an arrow. |
+
+Links join any two things on the canvas: thoughts, clusters, other modes' groups. Loops are fine;
+two things have at most one link each way; a link from a thing to itself is refused and reported.
+
+**Each relation has its own ends**, kept in the room's list of relations, the setting
+`proust.relations`: a relation's name, then its mark (`leads to ->`, `is equivalent to <->`; no mark,
+or `--`, is a plain line). Without the setting a room has `[related to, "leads to ->", "is equivalent
+to <->"]`. A `link:` line writes its relation's ends too, so the file reads on its own: a relation
+the room doesn't have yet joins its list with the ends the line gives; one it has keeps its own
+ends, and a line that says otherwise is drawn the relation's way and reported. A link with no
+relation is a plain line.
+
+```
+---
+format: room/2
+room: Combray
+modes: [proust]
+proust.relations: [related to, "calls up ->", "is the same as <->"]
+---
+
+# Objects
+
+## ^1 line: the madeleine
+## ^2 line: Combray
+## ^3 line: the church at Combray
+## ^4 line: Swann's way
+## ^5 group: Combray
+made in: proust
+holds: ^2 ^3
+
+# In proust
+at: ^1 0 0
+at: ^2 320 0
+at: ^3 320 120
+at: ^4 0 240
+link: ^1 -> ^2 | calls up | in the tea
+link: ^2 -- ^3
+link: ^3 -> ^4 | calls up
+link: ^4 -> ^1 | calls up
+link: ^5 <-> ^4 | is the same as
+```
 
 ## Twins
 
@@ -376,7 +430,7 @@ paragraph is a line, a heading and its paragraph a passage, `![caption](address)
 - Ids: short numbers or words, unique in the file.
 - Use only the keys and lines in this file. Never invent keys: Träumerei keeps unknown ones, but no
   mode will act on them.
-- Put each `arrow:` in the section of the mode it belongs to.
+- Put each `arrow:` or `link:` in the section of the mode it belongs to.
 - Positions are optional; leave them out unless you mean them.
 - Check the card before Import: it lists every line that couldn't be read.
 
