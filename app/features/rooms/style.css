@@ -208,9 +208,9 @@
   position: absolute;
   z-index: 4;
   top: 10px;
-  left: 50%;
+  left: calc(var(--canvas-left) + (100% - var(--canvas-left) - var(--canvas-right)) / 2); /* the canvas's middle, past the rail */
   transform: translateX(-50%);
-  width: min(460px, calc(100% - 2 * var(--gutter)));
+  width: min(460px, calc(100% - var(--canvas-left) - var(--canvas-right) - 2 * var(--gutter)));
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -349,3 +349,7 @@
 .rooms-past-tile { cursor: default; }
 .rooms-past-tile.ghost { opacity: .35; outline: 1px dashed color-mix(in srgb, var(--ink) 40%, transparent); outline-offset: -1px; }
 .rooms-rooms.past .rooms-cell { cursor: default; }
+
+/* The rooms page keeps its rail at the screen's edge, so the canvas (where pop-ups centre) starts
+   after it, or after the left dock when that reaches further. */
+html.rooms-open { --canvas-left: max(var(--rail), calc(var(--dock-left-at) + var(--dock-left))); }

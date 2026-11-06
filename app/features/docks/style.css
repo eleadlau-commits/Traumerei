@@ -2,7 +2,13 @@
    dock's box is Folio's .panel (the pale, blurred veil) with .dock for its place. What opens in a
    dock puts its own content in .dock-body. */
 
-:root { --dock-left: 0px; --dock-right: 0px; --dock-left-at: 0px; } /* --dock-left-at: how far from the screen's edge the left dock (and its strip) starts: a page may keep its rail outside it */
+:root {
+  --dock-left: 0px; --dock-right: 0px;
+  --dock-left-at: 0px; /* how far from the screen's edge the left dock (and its strip) starts: a page may keep its rail outside it */
+  /* The canvas (Folio's base.css) is what the docks leave free, so pop-ups centre between them. */
+  --canvas-left: calc(var(--dock-left-at) + var(--dock-left));
+  --canvas-right: var(--dock-right);
+}
 
 .dock {
   position: fixed;
@@ -44,7 +50,7 @@
 .dock-title { font-size: var(--t-work); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 var(--s-4) var(--s-4); }
-.dock-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dock-page { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .dock-page[hidden] { display: none; }
 
 /* The inner edge: drag it to change the width. */
