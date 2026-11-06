@@ -11,7 +11,7 @@ import { Feature, ui } from 'folio';
 import { FONTS, DEFAULT_FONT, READING, findFont, loadFont } from './fonts.js';
 
 const { el } = ui;
-const TITLE = 'Traumerei';
+const TITLE = 'Träumerei';
 
 export default class Home extends Feature {
   start() {

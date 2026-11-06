@@ -1,22 +1,29 @@
 // The typefaces the home page can be set in. The first is the default.
 //
-// Each entry: { id, name, family, files?: [{ src, weight?, style? }] }
+// Each entry: { id, name, family, files?: [{ src, weight?, style?, family?, range? }] }
 //   family  the CSS font-family to use, with fallbacks
-//   files   font files to load (data: URLs or paths); leave out for fonts already on the device
+//   files   font files to load (data: URLs or paths); leave out for fonts already on the device.
+//           A file's own `family` names its face (else the first name in `family`), and `range`
+//           limits it to some characters (a CSS unicode-range).
 //
 // To add a font (for example Traumerei Sans once it's ready): put its .woff2 in fonts/ as a
 // data: URL module like tenor-sans.js, import it here, and add an entry. To make it the default,
 // put it first.
 
 import tenorSans from './fonts/tenor-sans.js';
+import umlautDots from './fonts/umlaut-dots.js';
 import * as serif from './fonts/source-serif-4.js';
 
 export const FONTS = [
   {
     id: 'tenor-sans',
     name: 'Tenor Sans',
-    family: '"Tenor Sans", "Optima", "Candara", sans-serif',
-    files: [{ src: tenorSans, weight: '400' }],
+    // Traumerei Dots first: Tenor Sans's own Ä and ä, with the dots wide enough to read small.
+    family: '"Traumerei Dots", "Tenor Sans", "Optima", "Candara", sans-serif',
+    files: [
+      { src: tenorSans, weight: '400', family: 'Tenor Sans' },
+      { src: umlautDots, weight: '400', family: 'Traumerei Dots', range: 'U+00C4, U+00E4' },
+    ],
   },
   {
     id: 'system',
@@ -46,7 +53,8 @@ export function loadFont(font) {
   if (!loaded.has(font.id)) {
     const name = font.family.split(',')[0].trim().replace(/^["']|["']$/g, '');
     loaded.set(font.id, Promise.all(font.files.map(async (f) => {
-      const face = new FontFace(name, `url(${f.src})`, { weight: f.weight || '400', style: f.style || 'normal', display: 'swap' });
+      const face = new FontFace(f.family || name, `url(${f.src})`, {
+        weight: f.weight || '400', style: f.style || 'normal', display: 'swap', ...(f.range ? { unicodeRange: f.range } : {}) });
       document.fonts.add(await face.load());
     })).catch(() => {}));
   }
