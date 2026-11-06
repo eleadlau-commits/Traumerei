@@ -2293,6 +2293,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-tray-kind { display: block; margin-bottom: 2px; }
 .room-tray-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .room-tray-ghost { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; opacity: .92; max-width: 260px; }
+.room-tray-ghost-count { position: absolute; top: -8px; right: -8px; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 9px; background: var(--ink); color: var(--paper, #fff); }
 /* The tray lit while something is held over it (st-drop): drawn just inside, so the dock doesn't
    clip it (the loose list keeps a little room round it for that). */
 .room-loose.st-drop, .room-tray-row.st-drop { outline-offset: -2px; }
@@ -25229,8 +25230,42 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.drawWorld();
       return th;
     }
+    // The tray cards chosen together with `id` (Ctrl+click or Shift+click), when it is one of
+    // several chosen there; else just `id`.
+    trayGroup(id) {
+      const ids = this.sel?.kind === "many" ? this.sel.ids || [] : [];
+      if (!ids.includes(id)) return [id];
+      const inTray = new Set(this.trayItems().map((th) => th.id));
+      const out = ids.filter((x) => inTray.has(x));
+      return out.length > 1 ? out : [id];
+    }
+    // Several tray cards let go over the canvas at once: each placed as its own thought or group,
+    // centred around the pointer (at: world units) and nudged clear of what is there and of each
+    // other (clear.js nearSpot), in the order they were chosen. One step.
+    placeMany(ids, at2) {
+      const SIZE = { w: 300, h: 60 }, GAP_X = 30, GAP_Y = 24;
+      const cols = Math.ceil(Math.sqrt(ids.length));
+      const rows = Math.ceil(ids.length / cols);
+      const left = at2.x - (cols * SIZE.w + (cols - 1) * GAP_X) / 2;
+      const top = at2.y - (rows * SIZE.h + (rows - 1) * GAP_Y) / 2;
+      const taken = [...this.drawnRects().values()];
+      let n = 0;
+      ids.forEach((id, i2) => {
+        if (!this.world.things[id] || !this.fromOtherSide(id)) return;
+        const want = { x: left + i2 % cols * (SIZE.w + GAP_X), y: top + Math.floor(i2 / cols) * (SIZE.h + GAP_Y) };
+        const p = nearSpot(want, taken, SIZE, { gap: 12 });
+        taken.push({ ...p, ...SIZE });
+        this.ont.drop(this.world, this.roomId, id, Math.round(p.x), Math.round(p.y));
+        n++;
+      });
+      this.sel = null;
+      this.save();
+      this.drawWorld();
+      if (n > 1) this.toast(`Placed ${n} from the tray. Ctrl+Z undoes.`);
+    }
     // A thought dragged out of the tray: a copy of its card follows the pointer; let go over the
-    // canvas, the ontology places it there.
+    // canvas, the ontology places it there. When several cards are chosen in the tray and this is
+    // one of them, they all go, around the pointer (placeMany).
     trayDrag(e, id) {
       if (e.button !== 0) return;
       e.preventDefault();
@@ -25246,6 +25281,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ghost = card.cloneNode(true);
           ghost.classList.add("panel", "room-tray-ghost");
           ghost.classList.remove("st-sel");
+          const many = this.trayGroup(id).length;
+          if (many > 1) ghost.append(el17("span", { class: "room-tray-ghost-count" }, `+${many - 1}`));
           Object.assign(ghost.style, { width: `${r.width}px`, left: `${r.left}px`, top: `${r.top}px` });
           (document.getElementById("folio-root") || document.body).append(ghost);
         }
@@ -25272,6 +25309,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         if (there) {
           this.dropAcross(id, ev.clientX - off.x, ev.clientY - off.y);
+          return;
+        }
+        const all = this.trayGroup(id);
+        if (all.length > 1 && this.stage.contains(over)) {
+          this.placeMany(all, this.toWorld(ev.clientX, ev.clientY));
           return;
         }
         if (!this.stage.contains(over) || !this.fromOtherSide(id)) return;
