@@ -54,3 +54,30 @@
 
 /* Settings → Typeface: each choice in its own face, in ordinary case. */
 .home-fonts button { --word-spacing: .14em; font-size: 15px; text-transform: none; }
+
+/* The quick-thought line under Create: only words, in the reading face. No box, no outline; the
+   words before typing are faint. It grows a line at a time (quick.js). */
+.home-quick {
+  pointer-events: auto;
+  display: block;
+  width: min(560px, 80%);
+  margin: calc(-1 * clamp(8px, 2vh, 24px)) 0 0;
+  padding: 4px 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  box-shadow: none;
+  resize: none;
+  overflow: hidden;
+  font: 400 19px/1.5 var(--font-read);
+  letter-spacing: .005em;
+  color: var(--ink);
+  caret-color: var(--ink);
+  text-align: center;
+  text-transform: none;
+  transition: opacity .42s ease;
+}
+.home-quick::placeholder { color: var(--ink); opacity: .38; transition: opacity .25s; }
+.home-quick:focus::placeholder { opacity: .3; }
+.home-quick:focus-visible { outline: 0; }
+.home-quick.dropping { opacity: 0; }

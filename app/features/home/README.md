@@ -10,6 +10,14 @@ frame as the rooms page and a room (the `frame` feature):
   counts as the Twin, archived rooms are left out). A click on one opens the rooms page and goes in.
 - **Traumerei** in the middle of what the rail leaves, in the chosen typeface, and **Create**
   beneath it, a plain word, not a button. Create opens the rooms (the `create` service).
+- **The quick thought** (`quick.js`), under Create: faint words in the reading face, *A quick
+  thought…*, and nothing else (no box, no buttons). Typing anywhere on Home writes there; it is a
+  plain text field, so ordinary editing works. **Enter** drops the thought into Messy thoughts as
+  a loose thought, waiting in its tray in every mode (the world's `groups.wait`, as a thought added
+  from the tray); the words fade and the status bar says *Dropped in Messy thoughts*. **Ctrl+Enter**
+  puts in a new line, Escape lets go of the line, Ctrl+K searches. The world is read afresh before
+  and written at once after, so the rooms page finds it. Messy thoughts can't be deleted (the
+  world gives it back if it is missing); if it is locked, nothing drops and the status bar says so.
 - **The status bar** at the foot: its quiet line, and Saved.
 
 It uses the services `create`, `rooms` (`openRoom`), `world` (the rooms and the attention log),
