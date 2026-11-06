@@ -1,7 +1,8 @@
 // Account: sign in with Google, and your rooms and settings follow you to every device.
 //
 // Fills the framework's 'account' slot, so the account button and the menu's Account row open
-// a small page to sign in or out. Signed in, every saved setting (every feature's, except the
+// a small page to sign in or out. Its item also gives the page as sections (`sections()`), so the
+// pages feature can show it as a page in the frame; 'account:changed' says when it changed. Signed in, every saved setting (every feature's, except the
 // areas in sync.js's LOCAL_AREAS) is kept in Firestore at users/{uid}, and this device keeps its
 // own copy as before, so the page still works offline and signed out.
 //
@@ -36,7 +37,7 @@ export default class Account extends Feature {
     this.timer = null;
     this.synced = false; // true once this device and the account agree, so changes can go up
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
-    this.add('account', { name: () => this.name(), open: () => this.open() });
+    this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     this.app.storage.watch(() => this.changed());
     window.addEventListener('pagehide', () => this.flush());
     if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
@@ -162,6 +163,7 @@ export default class Account extends Feature {
   setState(state) {
     this.state = state;
     if (this.page?.isOpen) this.render();
+    this.emit('account:changed');
   }
 
   // ---- The account page ----
@@ -172,19 +174,22 @@ export default class Account extends Feature {
     this.page.open();
   }
 
-  render() {
+  // The page in two sections, each { id, title, icon, body (nodes) }: Sign in (who, and the
+  // button to sign in or out) and Saving (where the rooms and settings are kept, and how it went).
+  sections() {
     const busy = this.state === 'busy';
-    if (!firebaseConfig) {
-      this.page.setContent(el('p', {}, "Accounts aren't set up yet."));
-      return;
-    }
+    const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), el('span', {}, value));
+    if (!firebaseConfig) return [{ id: 'account-sign-in', title: 'Sign in', icon: 'account', body: [el('p', {}, "Accounts aren't set up yet.")] }];
     if (!this.user) {
-      this.page.setContent(
-        el('p', {}, 'Sign in to keep your rooms and settings on every device.'),
-        this.state === 'error' && el('p', { class: 'account-error' }, "Couldn't sign in. Please try again."),
-        el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signIn() },
-          busy ? 'Signing in…' : 'Sign in with Google'));
-      return;
+      return [
+        { id: 'account-sign-in', title: 'Sign in', icon: 'account', body: [
+          kv('Signed in', 'No'),
+          el('p', { class: 'hint' }, 'Sign in to keep your rooms and settings on every device.'),
+          this.state === 'error' && el('p', { class: 'account-error' }, "Couldn't sign in. Please try again."),
+          el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signIn() },
+            busy ? 'Signing in…' : 'Sign in with Google'))].filter(Boolean) },
+        { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [kv('Saved on', 'This device only')] },
+      ];
     }
     const status = {
       busy: 'Saving…',
@@ -192,14 +197,24 @@ export default class Account extends Feature {
       error: "Couldn't reach your account. Your rooms and settings are still saved on this device.",
       idle: '',
     }[this.state];
-    this.page.setContent(
-      el('div', { class: 'account-who' },
-        this.user.photoURL && el('img', { class: 'account-photo', src: this.user.photoURL, alt: '', referrerpolicy: 'no-referrer' }),
-        el('div', {}, el('b', {}, this.name()), this.user.email && el('small', {}, this.user.email))),
-      status && el('p', { class: this.state === 'error' ? 'account-error' : 'hint' }, status),
-      this.guarded && el('p', { class: 'hint' },
-        "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."),
-      this.state === 'error' && el('button', { type: 'button', class: 'btn', onclick: () => (this.synced ? this.push() : this.pull()) }, 'Try again'),
-      el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, 'Sign out'));
+    return [
+      { id: 'account-sign-in', title: 'Signed in', icon: 'account', body: [
+        el('div', { class: 'account-who' },
+          this.user.photoURL && el('img', { class: 'account-photo', src: this.user.photoURL, alt: '', referrerpolicy: 'no-referrer' }),
+          el('div', {}, el('b', {}, this.name()), this.user.email && el('small', {}, this.user.email))),
+        el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, 'Sign out'))] },
+      { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [
+        kv('Saved on', 'Your account and this device'),
+        status && el('p', { class: this.state === 'error' ? 'account-error' : 'hint' }, status),
+        this.guarded && el('p', { class: 'hint' },
+          "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."),
+        this.state === 'error' && el('div', {}, el('button', { type: 'button', class: 'btn', onclick: () => (this.synced ? this.push() : this.pull()) }, 'Try again'))].filter(Boolean) },
+    ];
+  }
+
+  // The small page (Folio's window), when no page in the frame shows it: the sections one under
+  // another.
+  render() {
+    this.page.setContent(...this.sections().flatMap((s) => s.body));
   }
 }
