@@ -1,7 +1,7 @@
 # Träumerei: how to build here
 
 Read `README.md` for building, testing and publishing, and the README of the feature you are
-changing. Never commit `standalone/mask-renderer.html`: an Action rebuilds it after each merge.
+changing. Never commit `standalone/traumerei.html`: an Action rebuilds it after each merge.
 
 ## The splitting rule
 

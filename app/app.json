@@ -1,5 +1,5 @@
 {
-  "id": "mask-renderer",
+  "id": "traumerei",
   "name": "Träumerei",
   "description": "Rooms for thinking: write your thoughts, arrange them in different ways, and finish what you start.",
   "version": "1.0.0",
@@ -12,6 +12,6 @@
     "backgroundDark": "#111112"
   },
   "native": {
-    "appId": "io.github.creation.maskrenderer"
+    "appId": "io.github.creation.traumerei"
   }
 }
