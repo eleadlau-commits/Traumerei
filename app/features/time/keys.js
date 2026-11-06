@@ -3,4 +3,4 @@
 
 export const TIME_KEYS = [
   { id: 'time.toggle', keys: ['Ctrl+Alt+T'], words: 'Time: show it, bring it to the front, or hide it' },
-].map((k, i) => ({ order: 86 + i, typing: true, ...k }));
+].map((k, i) => ({ order: 86 + i, ...k }));

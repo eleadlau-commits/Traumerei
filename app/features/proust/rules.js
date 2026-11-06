@@ -369,6 +369,7 @@ export const proust = {
   icon: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="8" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6.4l8 1.2M6.4 8l1.2 8M10 18h6M18 10v6M7.5 7.5l9 9"/>', // a web
   order: 40,
   groups: { form: 'cluster', name: 'Cluster', membership: 'one' },
+  lays: true, // places every thought itself
   live: true, // a drag moves the node at once, so its links follow it
   fresh: 'New cluster: type to start it.',
   settings: [

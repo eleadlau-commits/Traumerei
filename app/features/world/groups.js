@@ -16,7 +16,7 @@
 // the old ones go, everywhere: the new one takes their place in every group, of every ontology,
 // that held them.
 
-import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership } from './model.js';
+import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, changed } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -159,6 +159,7 @@ export function fold(w, roomId, ids, now = Date.now()) {
     g.members = i < 0 ? [...rest, th.id] : [...g.members.slice(0, i).filter((m) => !old.has(m)), th.id, ...g.members.slice(i + 1).filter((m) => !old.has(m))];
     if (one) placedIn.add(g.of);
   }
+  changed();
   // Each ontology's own data: the first old one's place, for the new one.
   for (const data of Object.values(w.own[roomId] || {})) {
     if (!data || typeof data !== 'object' || data[th.id]) continue;

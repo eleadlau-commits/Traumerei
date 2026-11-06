@@ -7,7 +7,7 @@ import {
   roomOf, thoughtText, randomSpot, view, roomAt,
   search,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  roomsOn, pageCount, addPage, isBig, own, members, itemsIn, within, holds, groupsOf, groupOf, join, declareGroups, isGroup,
+  roomsOn, pageCount, addPage, isBig, own, members, itemsIn, within, holds, groupsOf, groupOf, join, declareGroups, isGroup, reading, leave,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
   roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells, copyRoom,
 } from '../model.js';
@@ -558,4 +558,31 @@ test('Messy thoughts copies into an ordinary 2 × 2 room; an archived room is no
   const r = addRoom(w, 'Old', 1);
   archive(w, r.id);
   assert.equal(copyRoom(w, r.id), null);
+});
+
+test('inside reading(), who holds what is listed once and kept true as groups change', () => {
+  declareGroups('sets', { membership: 'many' });
+  const w = emptyWorld();
+  const t = train(w, MESSY, 'a', 'b');
+  const [a, b] = trainThoughts(w, t.id);
+  const s1 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Blue' }, 5);
+  join(w, s1.id, a.id);
+  const ids = (gs) => gs.map((g) => g.id);
+  const outside = ids(groupsOf(w, a.id));
+  reading(w, () => {
+    assert.deepEqual(ids(groupsOf(w, a.id)), outside); // the same answer, in the same order
+    assert.deepEqual(ids(groupsOf(w, a.id, 'sets')), [s1.id]);
+    assert.equal(groupOf(w, b.id)?.id, t.id);
+    const s2 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Night' }, 6);
+    join(w, s2.id, b.id); // joined while reading: seen at once
+    assert.deepEqual(ids(groupsOf(w, b.id, 'sets')), [s2.id]);
+    leave(w, s1.id, a.id); // left (and s1, now empty, gone): seen at once
+    assert.deepEqual(ids(groupsOf(w, a.id, 'sets')), []);
+    reading(w, () => assert.deepEqual(ids(groupsOf(w, a.id)), [t.id])); // reading inside reading
+    remove(w, t.id);
+    assert.deepEqual(ids(groupsOf(w, b.id)), []);
+  });
+  const w2 = emptyWorld(); // another world while reading this one: read as before
+  const t2 = train(w2, MESSY, 'c');
+  reading(w, () => assert.equal(groupOf(w2, trainThoughts(w2, t2.id)[0].id)?.id, t2.id));
 });

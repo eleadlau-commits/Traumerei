@@ -59,10 +59,13 @@ export function moveTargets(w, from) {
 
 // A thought or a whole group moved from its side to the other, at (x, y) there: it leaves every
 // group on its own side and belongs to the other side alone. False when it can't (not on a side,
-// locked).
+// locked). A group going to a side seen through another mode becomes shared (groups.js): one
+// object there, standing for its thoughts, so they don't also wait loose in that mode's tray.
 export function across(w, id, x = 0, y = 0) {
   const th = w.things[id];
   if (!th || !(isLeaf(th) || isGroup(th))) return false;
   const to = otherSide(w, th.parent);
-  return !!to && move(w, id, to.id, x, y);
+  if (!to || !move(w, id, to.id, x, y)) return false;
+  if (isGroup(th) && th.of !== view(w, to.id).mode) th.shared = true;
+  return true;
 }
