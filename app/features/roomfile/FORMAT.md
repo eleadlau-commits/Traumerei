@@ -298,7 +298,7 @@ section is `# In pessoa`.
 |---|---|
 | `at: ^a x y` | Placed at x, y (`auto` after it: pushed there to keep clear, not dragged). Another mode's group is on Pessoa's canvas only with an `at:`. |
 | `on canvas: ^a ^b` | On the spiral, where Pessoa lays it (the same as no line). |
-| `tray: ^g` | Another mode's group not placed yet (the same as no line). |
+| `tray: ^g ^n` | Another mode's group not placed yet (the same as no line), or a thought added away from the canvas (the tray's box), waiting there until it is dragged out. |
 
 ### Ontology: russell
 
@@ -332,7 +332,7 @@ clusters (its groups, `made in: proust`). Its section is `# In proust`.
 |---|---|
 | `at: ^a x y` | A thought placed at x, y (`auto` after it: pushed there to keep clear, not dragged). Also another mode's group placed in Proust, or a cluster moved whole so its corner is there. |
 | `on canvas: ^a ^b` | Thoughts on the spiral, where Proust lays them (the same as no line). A cluster named here comes out of the tray. |
-| `tray: ^g` | A cluster waiting in the tray, or another mode's group not placed yet (the same as no line). Thoughts are always on the canvas. |
+| `tray: ^g ^n` | A cluster waiting in the tray, another mode's group not placed yet (the same as no line), or a thought added away from the canvas (the tray's box), waiting there until it is dragged out. |
 | `link: ^a -> ^b \| relation \| label` | A link. Between its ends: `--` a plain line, `->` an arrow, `<->` an arrow both ways. Relation and label are written as in an `arrow:` line, and may be left out. |
 | `arrow: ^a -> ^b \| relation \| label` | Russell's line, read as a link with an arrow. |
 

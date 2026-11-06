@@ -114,7 +114,7 @@ test('a relation the room lacks joins its list with the line\'s ends; one it has
 
 test('refused lines are reported and the rest arrives: a link to itself, unknown ends, a missing thing, a second at:', () => {
   const text = [...head(), '# Objects', '## ^1 line: a', '## ^2 line: b', '# In proust',
-    'at: ^1 5 5', 'at: ^1 6 6', 'at: ^2 x', 'link: ^1 -> ^1', 'link: ^1 => ^2', 'link: ^1 -> ^9', 'link: ^1 -> ^2 | leads to', 'link: ^1 -> ^2 | leads to', 'tray: ^2', 'wobble: ^1'].join('\n');
+    'at: ^1 5 5', 'at: ^1 6 6', 'at: ^2 x', 'link: ^1 -> ^1', 'link: ^1 => ^2', 'link: ^1 -> ^9', 'link: ^1 -> ^2 | leads to', 'link: ^1 -> ^2 | leads to', 'wobble: ^1'].join('\n');
   const { w, room: r, report } = fresh(text);
   const said = report.join('\n');
   assert.ok(/places a thing once/.test(said));
@@ -123,7 +123,6 @@ test('refused lines are reported and the rest arrives: a link to itself, unknown
   assert.ok(/a link's ends are --, -> or <->, not "=>"/.test(said));
   assert.ok(/\^9 isn't in the file/.test(said));
   assert.ok(/the link wasn't drawn: that link is already there/.test(said));
-  assert.ok(/only a cluster or another mode's group waits in the tray/.test(said));
   assert.ok(/proust doesn't know "wobble"; it was kept/.test(said));
   assert.equal(L().arrows(w, r.id).length, 1);
   assert.ok(out(w, r.id).includes('wobble: ^1')); // kept, and written back
@@ -237,4 +236,15 @@ test('each relation\'s look rides in the front matter and comes back the same, f
   assert.deepEqual(w.settings[r.id].russell.relations, ['forgets | rust', 'is a case of | dashed slate']);
   assert.ok(first.includes('calls up -> | dashed amber') && first.includes('is a case of | dashed slate'), first);
   assert.deepEqual(b.w.settings[b.room.id].proust.relations, w.settings[r.id].proust.relations);
+});
+
+test('a thought waiting in the tray (added away from the canvas) is written as tray: and comes back waiting, in Proust and Pessoa', () => {
+  const text = [...head('[proust, pessoa]'), '# Objects', '## ^1 line: a', '## ^2 line: new',
+    '# In proust', 'at: ^1 0 0', 'tray: ^2', '# In pessoa', 'tray: ^2'].join('\n');
+  const { w, room: r, first } = roundTrip(text);
+  const n = byText(w, r.id).new;
+  assert.deepEqual(proust.tray(w, r.id).map((th) => th.id), [n]);
+  const pessoa = ontologies.find((o) => o.id === 'pessoa');
+  assert.deepEqual(pessoa.tray(w, r.id).map((th) => th.id), [n]);
+  assert.ok(section(first).some((l) => /^tray: \^\d+$/.test(l)));
 });

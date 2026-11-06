@@ -26,7 +26,7 @@
 
 import {
   own, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
-  placedForeign, trayForeign, inForeign, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
+  placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
 } from './world.js';
 
 export const ID = 'proust';
@@ -65,6 +65,9 @@ export function shownAs(w, id) {
   }
   const self = ownGroup(w, id);
   if (self?.loose) return 'tray';
+  // A thought added away from the canvas, in no cluster, waits in the tray until it is dragged out.
+  const th = w.things[id];
+  if (out === id && isLeaf(th) && !clusterOf(w, id) && waiting(w, th.parent, ID, id)) return 'tray';
   return out;
 }
 
@@ -254,7 +257,8 @@ export function below(w, roomId, id) {
 //                          dragged); another mode's group placed here; a cluster moved whole
 //   on canvas: ^b ^c        thoughts on the spiral, where Proust lays them (the same as no line); a
 //                          cluster out of the tray
-//   tray: ^g                a cluster waiting in the tray; another mode's group not placed yet
+//   tray: ^g ^n             a cluster waiting in the tray; another mode's group not placed yet; a
+//                          thought added away from the canvas, waiting until it is dragged out
 //   link: ^a -> ^b | leads to | the proof    a link: -- a plain line, -> an arrow, <-> both ways
 //   arrow: ^a -> ^b | forgets                Russell's arrow lines, read as links with an arrow
 //
@@ -296,7 +300,7 @@ const traum = {
     const out = [], spiral = [];
     const inside = inForeign(w, roomId, ID);
     for (const th of roomItems(w, roomId)) {
-      if (!c.ref(th.id) || inside(th.id)) continue; // another mode's group stands for it
+      if (!c.ref(th.id) || inside(th.id) || shownAs(w, th.id) === 'tray') continue; // another mode's group stands for it; or it waits in the tray
       const p = places[th.id];
       if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
       else spiral.push(c.ref(th.id));
@@ -338,7 +342,7 @@ const traum = {
             else if (isGroup(th) && th.of === ID) place(w, id);
           } else if (isGroup(th) && th.of === ID) th.loose = true;
           else if (isGroup(th) && !placed.has(id)) delete own(w, roomId, ID)[id];
-          else c.report(l.line, 'Proust places every thought on the canvas, so only a cluster or another mode\'s group waits in the tray.');
+          else if (isLeaf(th) && !placed.has(id)) { delete own(w, roomId, ID)[id]; wait(w, roomId, id); }
         }
       } else if (l.key === 'link') {
         const a = c.link(l);
@@ -392,11 +396,15 @@ export const proust = {
       ...groupsIn(w, roomId, ID).filter((g) => g.closed && itemsIn(w, g.id).length && shownAs(w, g.id) === g.id),
     ].filter((th) => !inside(th.id)).concat(placedForeign(w, roomId, ID));
   },
-  // Clusters thrown back (or made in the tray), and other modes' groups not placed yet.
-  tray: (w, roomId) => [
-    ...groupsIn(w, roomId, ID).filter((g) => g.loose && itemsIn(w, g.id).length && !(clusterOf(w, g.id))),
-    ...trayForeign(w, roomId, ID),
-  ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+  // Clusters thrown back (or made in the tray), thoughts added away from the canvas, and other
+  // modes' groups not placed yet.
+  tray(w, roomId) {
+    const inside = inForeign(w, roomId, ID);
+    return [
+      ...groupsIn(w, roomId, ID).filter((g) => g.loose && itemsIn(w, g.id).length && !(clusterOf(w, g.id))),
+      ...roomItems(w, roomId).filter((th) => !clusterOf(w, th.id) && shownAs(w, th.id) === 'tray'),
+    ].filter((th) => !inside(th.id)).concat(trayForeign(w, roomId, ID)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  },
   placed(w, roomId, id) {
     const th = w.things[id];
     if (isGroup(th) && th.of !== ID) return !!spot(w, roomId, ID, id);

@@ -53,6 +53,19 @@ export function putAt(w, roomId, of, id, x, y) {
 export const placedForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) => spot(w, roomId, of, g.id));
 export const trayForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) => !spot(w, roomId, of, g.id));
 
+// A thought added away from the canvas (the tray's box, its +) waits in the tray: an ontology that
+// places every thought itself (Pessoa, Proust) keeps it there until it is dragged out, that is,
+// until it has a spot of its own there. (The others keep a thought in no group in their tray
+// anyway.) Kept as own(w, room, 'tray')[id] = true.
+export const WAITS = 'tray';
+export function wait(w, roomId, id) {
+  if (shut(w, roomId) || w.things[id]?.parent !== roomId) return false;
+  own(w, roomId, WAITS)[id] = true;
+  return true;
+}
+// Whether thought `id` still waits in ontology `of`'s tray.
+export const waiting = (w, roomId, of, id) => !!own(w, roomId, WAITS, false)[id] && !spot(w, roomId, of, id);
+
 // Whether a group of its own ontology waits in the tray (made there), and taking it out.
 export const isLoose = (g) => isGroup(g) && !!g.loose;
 export function place(w, id) {

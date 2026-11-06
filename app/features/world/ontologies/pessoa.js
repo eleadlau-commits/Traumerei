@@ -4,14 +4,17 @@
 // thoughts don't float on their own as well. Its own data: where each thought was dragged to.
 
 import { roomUnits, own, shut, hash, isGroup } from '../model.js';
-import { placedForeign, trayForeign, spot, unplace, inForeign } from '../groups.js';
+import { placedForeign, trayForeign, spot, unplace, inForeign, waiting, wait } from '../groups.js';
 
 // The room's thoughts Pessoa floats on their own: all but those inside another mode's group,
-// which stands for them (one card, on the canvas once it is placed, or in the tray).
-export function ownUnits(w, roomId) {
+// which stands for them (one card, on the canvas once it is placed, or in the tray), and those
+// added away from the canvas that wait in the tray (groups.js: waiting) until they are dragged out.
+function ownThoughts(w, roomId) {
   const inside = inForeign(w, roomId, 'pessoa');
   return roomUnits(w, roomId).filter((th) => !inside(th.id));
 }
+export const ownUnits = (w, roomId) => ownThoughts(w, roomId).filter((th) => !waiting(w, roomId, 'pessoa', th.id));
+const waitingThoughts = (w, roomId) => ownThoughts(w, roomId).filter((th) => waiting(w, roomId, 'pessoa', th.id));
 
 // The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
 // length, nudged a little by its id so it doesn't look ruled.
@@ -30,7 +33,8 @@ export function spiralPoint(i, id = '') {
 //   at: ^a 120 40 [auto]   placed at a point (auto: pushed there to keep clear, not dragged); a
 //                          group another mode made is on the canvas only when it has one
 //   on canvas: ^b ^c        on the spiral, where Pessoa lays it (the same as no line)
-//   tray: ^g                another mode's group not placed yet (the same as no line)
+//   tray: ^g ^n             another mode's group not placed yet (the same as no line), or a thought
+//                          added away from the canvas, waiting until it is dragged out
 const traum = {
   write(w, roomId, c) {
     const places = own(w, roomId, 'pessoa', false);
@@ -44,7 +48,7 @@ const traum = {
     }
     for (const g of placedForeign(w, roomId, 'pessoa')) { const p = spot(w, roomId, 'pessoa', g.id); if (c.ref(g.id)) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`); }
     if (spiral.length) out.push(`on canvas: ${spiral.join(' ')}`);
-    const tray = trayForeign(w, roomId, 'pessoa').map((g) => c.ref(g.id)).filter(Boolean);
+    const tray = [...waitingThoughts(w, roomId), ...trayForeign(w, roomId, 'pessoa')].map((g) => c.ref(g.id)).filter(Boolean);
     if (tray.length) out.push(`tray: ${tray.join(' ')}`);
     return out;
   },
@@ -63,6 +67,7 @@ const traum = {
         for (const v of l.values) {
           const id = c.thing(v, l.line);
           if (id && l.key === 'on canvas' && !placed.has(id)) delete own(w, roomId, 'pessoa')[id]; // back on the spiral
+          else if (id && l.key === 'tray' && !isGroup(w.things[id]) && !placed.has(id)) { delete own(w, roomId, 'pessoa')[id]; wait(w, roomId, id); }
         }
       } else c.keep(l);
     }
@@ -79,8 +84,9 @@ export default {
   lays: true, // places every thought itself
 
   units: (w, roomId) => [...ownUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
-  tray: (w, roomId) => trayForeign(w, roomId, 'pessoa'),
-  placed: (w, roomId, id) => !isGroup(w.things[id]) || !!spot(w, roomId, 'pessoa', id),
+  // New thoughts added away from the canvas, and other modes' groups not placed yet.
+  tray: (w, roomId) => [...waitingThoughts(w, roomId), ...trayForeign(w, roomId, 'pessoa')].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+  placed: (w, roomId, id) => (isGroup(w.things[id]) ? !!spot(w, roomId, 'pessoa', id) : !waiting(w, roomId, 'pessoa', id)),
   // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
   // plain thought can't go.
   unplace: (w, roomId, id) => unplace(w, roomId, 'pessoa', id, { leaves: false }),
@@ -89,7 +95,7 @@ export default {
   point(w, roomId, id) {
     const placed = own(w, roomId, 'pessoa', false)[id];
     if (placed) return placed;
-    if (isGroup(w.things[id])) return null; // in the tray
+    if (isGroup(w.things[id]) || waiting(w, roomId, 'pessoa', id)) return null; // in the tray
     const units = ownUnits(w, roomId);
     const i = units.findIndex((u) => u.id === id);
     return spiralPoint(i < 0 ? units.length : i, id);
