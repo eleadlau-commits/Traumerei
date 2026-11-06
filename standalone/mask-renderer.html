@@ -1784,6 +1784,9 @@ button.time-date.on { opacity: 1; color: var(--amber); }
 .room-proust-dot.room-proust-hull-dot { opacity: .2; margin: -5px 0 0 -5px; }
 .room-proust-dot:hover, .room-bead:hover > .room-proust-dot:hover { opacity: .9; transform: scale(1.3); }
 .room-proust-names { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+/* Centre: a node further out than the room's reach shows faint; the bar over a centred layout. */
+.room-proust-far { opacity: .28; }
+.room-proust-centre-bar { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 14px; padding: 4px 12px; white-space: nowrap; }
 
 /* ---- feature: search (style.css) ---- */
 /* Styles for Search: layout only. Class names start with "search-". Folio's faint shade over the
@@ -2439,20 +2442,20 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   function onSwipe(target, fn) {
     let x = 0;
     let y = 0;
-    let start = null;
+    let start2 = null;
     target.addEventListener("touchstart", (e) => {
       x = e.changedTouches[0].clientX;
       y = e.changedTouches[0].clientY;
-      start = e.target;
+      start2 = e.target;
     }, { passive: true });
     target.addEventListener("touchend", (e) => {
       const dx = e.changedTouches[0].clientX - x;
       const dy = e.changedTouches[0].clientY - y;
-      if (Math.abs(dx) > 60 && Math.abs(dy) < Math.abs(dx) * 0.6) fn(dx < 0 ? 1 : -1, start);
+      if (Math.abs(dx) > 60 && Math.abs(dy) < Math.abs(dx) * 0.6) fn(dx < 0 ? 1 : -1, start2);
     }, { passive: true });
   }
-  function ownsSwipe(node, stop) {
-    for (let n = node instanceof Element ? node : node?.parentElement; n && n !== stop; n = n.parentElement) {
+  function ownsSwipe(node, stop2) {
+    for (let n = node instanceof Element ? node : node?.parentElement; n && n !== stop2; n = n.parentElement) {
       if (n.hasAttribute("data-own-swipe")) return true;
       if (n.scrollWidth > n.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(n).overflowX)) return true;
     }
@@ -2930,26 +2933,26 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     }
     // The panel follows a finger dragging it left, and closes if it went far enough or fast.
     followSwipes() {
-      let start = null;
+      let start2 = null;
       this.panel.addEventListener("touchstart", (e) => {
         const t = e.changedTouches[0];
-        start = { x: t.clientX, y: t.clientY, at: Date.now(), dx: 0, sideways: null };
+        start2 = { x: t.clientX, y: t.clientY, at: Date.now(), dx: 0, sideways: null };
       }, { passive: true });
       this.panel.addEventListener("touchmove", (e) => {
-        if (!start) return;
+        if (!start2) return;
         const t = e.changedTouches[0];
-        const dx = t.clientX - start.x;
-        const dy = t.clientY - start.y;
-        if (start.sideways === null && Math.hypot(dx, dy) > 8) start.sideways = Math.abs(dx) > Math.abs(dy);
-        if (!start.sideways) return;
-        start.dx = Math.min(0, dx);
+        const dx = t.clientX - start2.x;
+        const dy = t.clientY - start2.y;
+        if (start2.sideways === null && Math.hypot(dx, dy) > 8) start2.sideways = Math.abs(dx) > Math.abs(dy);
+        if (!start2.sideways) return;
+        start2.dx = Math.min(0, dx);
         this.element.classList.add("dragging");
-        this.panel.style.transform = `translateX(${start.dx}px)`;
+        this.panel.style.transform = `translateX(${start2.dx}px)`;
       }, { passive: true });
       const end = () => {
-        if (!start) return;
-        const { dx, at: at2, sideways } = start;
-        start = null;
+        if (!start2) return;
+        const { dx, at: at2, sideways } = start2;
+        start2 = null;
         this.element.classList.remove("dragging");
         if (!sideways) return;
         const fast = dx < -40 && Date.now() - at2 < 250;
@@ -3257,8 +3260,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         this.tabs
       );
       root.replaceChildren(this.frame);
-      onSwipe(this.main, (dir, start) => {
-        if (!ownsSwipe(start, this.main)) this.tabBar.move(dir);
+      onSwipe(this.main, (dir, start2) => {
+        if (!ownsSwipe(start2, this.main)) this.tabBar.move(dir);
       });
       document.addEventListener("keydown", (e) => {
         if (this.main.hidden || document.querySelector("dialog[open]")) return;
@@ -3301,14 +3304,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     selectView(id, { quiet = false } = {}) {
       const slot = this.app.slot("views");
       const views = this.views;
-      let view8 = views.find((v2) => v2.id === id);
-      if (!view8) {
-        view8 = views.find((v2) => slot.run(v2, (x) => !!x.contains?.(id), false));
-        if (!view8) return false;
-        slot.run(view8, (x) => x.open?.(id));
+      let view9 = views.find((v2) => v2.id === id);
+      if (!view9) {
+        view9 = views.find((v2) => slot.run(v2, (x) => !!x.contains?.(id), false));
+        if (!view9) return false;
+        slot.run(view9, (x) => x.open?.(id));
       }
-      const changed2 = this.currentId !== view8.id;
-      this.currentId = view8.id;
+      const changed2 = this.currentId !== view9.id;
+      this.currentId = view9.id;
       if (!quiet) {
         if (changed2) window.scrollTo(0, 0);
         this.render();
@@ -3316,8 +3319,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       return true;
     }
     step(direction) {
-      const view8 = this.currentView;
-      if (view8?.step) this.app.slot("views").run(view8, (v2) => v2.step(direction));
+      const view9 = this.currentView;
+      if (view9?.step) this.app.slot("views").run(view9, (v2) => v2.step(direction));
     }
     // ---- Drawing ----
     render() {
@@ -3774,12 +3777,12 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         const cloud2 = snap2.exists() ? unpack(snap2.data().settings) : null;
         const local = this.app.storage.snapshot(LOCAL_AREAS);
         const justReloaded = reloadedRecently(this.storage.get("reloadedAt", null), Date.now());
-        const step = decide(cloud2, local, justReloaded);
+        const step2 = decide(cloud2, local, justReloaded);
         this.synced = true;
-        if (step === "upload") {
+        if (step2 === "upload") {
           this.guarded = cloud2 != null && justReloaded;
           await this.push();
-        } else if (step === "apply") {
+        } else if (step2 === "apply") {
           this.app.storage.restore(cloud2, LOCAL_AREAS);
           this.storage.set("reloadedAt", Date.now());
           location.reload();
@@ -4030,12 +4033,12 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     // resized(px): its showing width changed (0 when shut). tab: the tab a thing opens in when it
     // names none ('' for a dock without tabs).
     // keyLabel(): the dock's key as the screen shows it ("Ctrl+Alt+E"), shown in its tab strip.
-    constructor({ side, saved, keep: keep2, resized, label: label2, tab = "", keyLabel = () => "" }) {
+    constructor({ side, saved, keep: keep3, resized, label: label2, tab = "", keyLabel = () => "" }) {
       this.side = side;
       this.keyLabel = keyLabel;
       this.least = LEAST[side];
       this.usual = WIDTH[side];
-      this.keep = keep2;
+      this.keep = keep3;
       this.resized = resized;
       this.width = this.fit(saved ?? this.usual);
       this.firstTab = tab;
@@ -4280,9 +4283,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     isShowing(key) {
       return this.visible && this.front?.key === key;
     }
-    setWidth(px, keep2 = true) {
+    setWidth(px, keep3 = true) {
       this.width = this.fit(px);
-      if (keep2) this.keep(this.width);
+      if (keep3) this.keep(this.width);
       this.root.style.width = `${this.width}px`;
       if (this.visible) this.resized(this.width);
     }
@@ -4341,8 +4344,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.provide("docks", services);
       this.provide("panel", services.right);
       this.tuckedAll = null;
-      const run = { "docks.left": () => this.toggle("left"), "docks.right": () => this.toggle("right"), "docks.canvas": () => this.canvasOnly() };
-      for (const k2 of DOCK_KEYS) this.add("keys", { ...k2, zone: "everywhere", run: run[k2.id] });
+      const run2 = { "docks.left": () => this.toggle("left"), "docks.right": () => this.toggle("right"), "docks.canvas": () => this.canvasOnly() };
+      for (const k2 of DOCK_KEYS) this.add("keys", { ...k2, zone: "everywhere", run: run2[k2.id] });
       window.addEventListener("resize", () => {
         for (const side of SIDES) this.docks[side].refit();
       });
@@ -4836,15 +4839,15 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     const cell = G.hx * G.hy;
     const found = [];
     let next = 0;
-    for (let start = 0; start < Fp.length; start++) {
-      if (label2[start] || Fp[start] < T) continue;
+    for (let start2 = 0; start2 < Fp.length; start2++) {
+      if (label2[start2] || Fp[start2] < T) continue;
       next++;
       let top = 0;
       let count = 0;
       let sx = 0;
       let sy = 0;
-      stack[top++] = start;
-      label2[start] = next;
+      stack[top++] = start2;
+      label2[start2] = next;
       while (top) {
         const p = stack[--top];
         const i2 = p % gw;
@@ -4955,9 +4958,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     return out;
   }
   function upscaleMask(G, Fp, T, delta, W2, H2, feather = 0) {
-    const step = (x) => smoothstep(T - delta, T + delta, x);
-    if (!(feather > 0)) return upscale(G, Fp, W2, H2, step);
-    const blurred = gaussianBlur(G, Fp.map(step), feather / G.hx);
+    const step2 = (x) => smoothstep(T - delta, T + delta, x);
+    if (!(feather > 0)) return upscale(G, Fp, W2, H2, step2);
+    const blurred = gaussianBlur(G, Fp.map(step2), feather / G.hx);
     return upscale(G, blurred, W2, H2, (x) => x);
   }
   function maskTone(m2) {
@@ -5018,14 +5021,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       for (let i2 = 0; i2 < gw - 1; i2++) {
         const v2 = [at2(i2, j), at2(i2 + 1, j), at2(i2 + 1, j + 1), at2(i2, j + 1)];
         const pts = [];
-        const corners = [[i2, j], [i2 + 1, j], [i2 + 1, j + 1], [i2, j + 1]];
+        const corners2 = [[i2, j], [i2 + 1, j], [i2 + 1, j + 1], [i2, j + 1]];
         for (let e = 0; e < 4; e++) {
           const a = v2[e];
           const b = v2[e + 1 & 3];
           if (a >= 0 !== b >= 0) {
             const s = cut2(a, b);
-            const [x0, y0] = corners[e];
-            const [x12, y12] = corners[e + 1 & 3];
+            const [x0, y0] = corners2[e];
+            const [x12, y12] = corners2[e + 1 & 3];
             pts.push([(x0 + (x12 - x0) * s + 0.5) / gw, (y0 + (y12 - y0) * s + 0.5) / gh]);
           }
         }
@@ -5207,20 +5210,20 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     }
     return count;
   }
-  function sampled(f2, W2, H2, px, step) {
-    const gw = Math.ceil((W2 - 1) / step) + 1;
-    const gh = Math.ceil((H2 - 1) / step) + 1;
+  function sampled(f2, W2, H2, px, step2) {
+    const gw = Math.ceil((W2 - 1) / step2) + 1;
+    const gh = Math.ceil((H2 - 1) / step2) + 1;
     const g2 = new Float32Array(gw * gh);
     for (let j = 0; j < gh; j++) {
-      for (let i2 = 0; i2 < gw; i2++) g2[j * gw + i2] = f2((i2 * step + 0.5) * px, (j * step + 0.5) * px);
+      for (let i2 = 0; i2 < gw; i2++) g2[j * gw + i2] = f2((i2 * step2 + 0.5) * px, (j * step2 + 0.5) * px);
     }
     const out = new Float32Array(W2 * H2);
     for (let y = 0, p = 0; y < H2; y++) {
-      const j02 = Math.min(gh - 2, Math.floor(y / step));
-      const fy = y / step - j02;
+      const j02 = Math.min(gh - 2, Math.floor(y / step2));
+      const fy = y / step2 - j02;
       for (let x = 0; x < W2; x++, p++) {
-        const i02 = Math.min(gw - 2, Math.floor(x / step));
-        const fx = x / step - i02;
+        const i02 = Math.min(gw - 2, Math.floor(x / step2));
+        const fx = x / step2 - i02;
         const a = g2[j02 * gw + i02];
         const b = g2[j02 * gw + i02 + 1];
         const c = g2[(j02 + 1) * gw + i02];
@@ -6592,7 +6595,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   function headroom(L) {
     return Math.min(1, Math.max(0, (1 - L) / 0.35));
   }
-  function plainRGB(view8, field3, base2, P, W2, H2) {
+  function plainRGB(view9, field3, base2, P, W2, H2) {
     const N = 1024;
     const eta = headroom(base2.L);
     const lut = new Float32Array(3 * N);
@@ -6600,8 +6603,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       const f2 = i2 / (N - 1);
       let L = base2.L + P.plainAlpha * eta * f2;
       let C = base2.C * (1 - P.plainBeta * f2);
-      if (view8 === "base") [L, C] = [base2.L, base2.C];
-      if (view8 === "pattern") [L, C] = [0.12 + 0.82 * f2, 0];
+      if (view9 === "base") [L, C] = [base2.L, base2.C];
+      if (view9 === "pattern") [L, C] = [0.12 + 0.82 * f2, 0];
       const rgb3 = lchToLinear(L, C, base2.h);
       for (let c = 0; c < 3; c++) lut[3 * i2 + c] = 255 * delinearise(rgb3[c]);
     }
@@ -7581,7 +7584,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.anim = this.engine.animate(this.mode, this.P, this.picture, this.ctx());
       const paint2 = this.anim.kind === "pixels" ? this.pixels() : this.shapes();
       let last = null;
-      const step = (now) => {
+      const step2 = (now) => {
         if (this.covered) {
           this.layer.hidden = true;
           return;
@@ -7589,14 +7592,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         this.clock += last === null ? 0 : Math.min(0.1, (now - last) / 1e3);
         last = now;
         paint2(this.anim);
-        this.tick = requestAnimationFrame(step);
+        this.tick = requestAnimationFrame(step2);
       };
       this.resume = () => {
         cancelAnimationFrame(this.tick);
         last = null;
-        this.tick = requestAnimationFrame(step);
+        this.tick = requestAnimationFrame(step2);
       };
-      this.tick = requestAnimationFrame(step);
+      this.tick = requestAnimationFrame(step2);
     }
     // A 'pixels' animation: the rectangles that changed are copied from its rgba to the picture.
     pixels() {
@@ -13011,14 +13014,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const out = {};
     if (!t) return out;
     let x = t.x, y = t.y - STEP2.line;
-    let step = STEP2.line;
+    let step2 = STEP2.line;
     for (const th of trainThoughts(w2, trainId)) {
       if (Number.isFinite(th.dx)) {
         x = t.x + th.dx;
         y = t.y + th.dy;
-      } else y += step;
+      } else y += step2;
       out[th.id] = { x, y };
-      step = stepAfter(th);
+      step2 = stepAfter(th);
     }
     return out;
   }
@@ -13062,17 +13065,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at2(all) });
         continue;
       }
-      let run = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
-      const runs = [run];
+      let run2 = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
+      const runs = [run2];
       for (const th of all) {
-        if (Number.isFinite(th.dx) && run.thoughts.length) runs.push(run = { id: th.id, thoughts: [], group: t.id, hand: true });
+        if (Number.isFinite(th.dx) && run2.thoughts.length) runs.push(run2 = { id: th.id, thoughts: [], group: t.id, hand: true });
         else if (Number.isFinite(th.dx)) {
-          run.id = th.id;
-          run.hand = true;
+          run2.id = th.id;
+          run2.hand = true;
         }
-        run.thoughts.push(th.id);
+        run2.thoughts.push(th.id);
       }
-      run.tail = true;
+      run2.tail = true;
       for (const r of runs) out.push({ ...r, at: at2(r.thoughts.map((id) => w2.things[id])) });
     }
     return out;
@@ -13728,10 +13731,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       editing = { room: c.roomId, from, to, text: a.labels[from] || "", rel: a.rel[from], fresh: true };
       c.drawWorld();
     }
-    function finishEdit(c, keep2) {
+    function finishEdit(c, keep3) {
       const e = editing;
       editing = null;
-      if (keep2 && e && e.room === c.roomId && !c.locked) {
+      if (keep3 && e && e.room === c.roomId && !c.locked) {
         setLabel2(c.world, c.roomId, e.from, e.to, e.text);
         setRelation2(c.world, c.roomId, e.from, e.to, e.rel);
         c.save();
@@ -14518,7 +14521,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var BUILT_IN = [joyce_default, pessoa_default, russell_default];
   var FALLBACK = "pessoa";
   var NEEDS = { id: "string", name: "string", note: "string", units: "function", point: "function", drop: "function" };
-  var MAY = { group: "function", ungroup: "function", draftPoint: "function", tray: "function", draw: "function", placed: "function", unplace: "function", tag: "function", blocks: "function", shift: "function", measured: "function", begin: "function", goOn: "function", kept: "function", press: "function", props: "function", join: "function", settingChanged: "function" };
+  var MAY = { group: "function", ungroup: "function", draftPoint: "function", tray: "function", draw: "function", placed: "function", unplace: "function", tag: "function", blocks: "function", shift: "function", measured: "function", begin: "function", goOn: "function", kept: "function", press: "function", props: "function", join: "function", centre: "function", escape: "function", settingChanged: "function" };
   function missing2(o2) {
     if (!o2 || typeof o2 !== "object") return ["everything"];
     const out = Object.entries(NEEDS).filter(([k2, t]) => typeof o2[k2] !== t || t === "string" && !o2[k2]).map(([k2]) => k2);
@@ -14731,16 +14734,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // can take back. The world is written down soon. True when it was a step.
     save() {
       const now = this.snap();
-      let step = false;
+      let step2 = false;
       if (now !== this.lastSnap) {
         this.undoStack.push(this.lastSnap);
         if (this.undoStack.length > UNDO) this.undoStack.shift();
         this.redoStack = [];
         this.lastSnap = now;
-        step = true;
+        step2 = true;
       }
       this.writeSoon(true);
-      return step;
+      return step2;
     }
     // Written down in a moment; a later call takes the place of an earlier one. say: then sends
     // 'world:saved' (a quiet "Saved" shows).
@@ -15376,7 +15379,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           el9("div", { class: "label" }, label2),
           el9("ul", {}, ...items.slice(0, SHOWN).map((t) => el9("li", {}, t)), items.length > SHOWN ? el9("li", { class: "source-more" }, `and ${items.length - SHOWN} more`) : null)
         ) : null;
-        const run = () => {
+        const run2 = () => {
           let r = {};
           try {
             r = check(unfence(box.value), { ...chosen }) || {};
@@ -15393,7 +15396,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             { class: "source-option" },
             el9("input", { type: "checkbox", checked: chosen[o2.key] ? "" : null, onchange: (e) => {
               chosen[o2.key] = e.target.checked;
-              run();
+              run2();
             } }),
             ` ${o2.label}`
           )));
@@ -15401,7 +15404,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         };
         const soon = () => {
           clearTimeout(timer);
-          timer = setTimeout(run, CHECK);
+          timer = setTimeout(run2, CHECK);
         };
         box.addEventListener("input", soon);
         box.addEventListener("keydown", (e) => {
@@ -15448,13 +15451,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
           box.value = unfence(t);
-          run();
+          run2();
           say3("Pasted");
         };
         const doReset = () => {
           if (reset) base2 = reset();
           box.value = base2;
-          run();
+          run2();
           say3("Back to what it holds now");
         };
         const doApply = async () => {
@@ -15469,7 +15472,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           go.disabled = false;
           if (!ok) {
-            run();
+            run2();
             return;
           }
           applied = true;
@@ -15511,7 +15514,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
           handle = this.handle = h;
-          run();
+          run2();
           if (kept) say3(kept.base === base2 ? "Your changes from last time are back" : "Your changes from last time are back · it has changed since (Reset shows it now)");
           box.focus({ preventScroll: true });
           box.setSelectionRange(0, 0);
@@ -15616,13 +15619,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return { v: v2, end: s.length, open: true };
   }
-  function values(raw, stop = "") {
+  function values(raw, stop2 = "") {
     const s = String(raw ?? "");
     const out = [];
     let i2 = 0;
     const read = () => {
       while (/\s/.test(s[i2] || "")) i2++;
-      if (i2 >= s.length || stop.includes(s[i2])) return null;
+      if (i2 >= s.length || stop2.includes(s[i2])) return null;
       const c = s[i2];
       if (c === '"') {
         const q = quoted(s, i2);
@@ -16017,18 +16020,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       let j = i2;
       while (j < held.length && isGroup2(held[j])) j++;
-      const run = held.slice(i2, j);
+      const run2 = held.slice(i2, j);
       let lo = i2 > 0 ? held[i2 - 1].at : null, hi = j < held.length ? held[j].at : null;
       if (lo == null && hi == null) {
-        const ats = run.map((g2) => g2.at).sort((a, b) => a - b);
-        run.forEach((g2, k2) => {
+        const ats = run2.map((g2) => g2.at).sort((a, b) => a - b);
+        run2.forEach((g2, k2) => {
           g2.at = ats[k2];
         });
       } else {
         if (lo == null) lo = hi - 1;
         if (hi == null || hi <= lo) hi = lo + 1;
-        run.forEach((g2, k2) => {
-          g2.at = lo + (hi - lo) * (k2 + 1) / (run.length + 1);
+        run2.forEach((g2, k2) => {
+          g2.at = lo + (hi - lo) * (k2 + 1) / (run2.length + 1);
         });
       }
       i2 = j;
@@ -17103,9 +17106,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     else delete rec.days[today];
     return rec;
   }
-  function prune(rec, keep2, when = Date.now()) {
-    if (!keep2) return rec;
-    const from = dayOf(when - (keep2 - 1) * DAY3);
+  function prune(rec, keep3, when = Date.now()) {
+    if (!keep3) return rec;
+    const from = dayOf(when - (keep3 - 1) * DAY3);
     const old = sortedDays(rec).filter((d) => d < from);
     if (!old.length) return rec;
     const rooms4 = { ...rec.base?.rooms || {} };
@@ -17865,12 +17868,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Where a pop-up beside a square (or a cell) goes: on its right if there is room, else its left.
     beside(c, cell, cols, extra = "") {
-      const step = cell + GRID.gap;
+      const step2 = cell + GRID.gap;
       const size = c.size ? span3(c).w : 1;
       const right = c.col + size + 1 + 2 <= cols;
       return {
         class: "panel pop rooms-options" + (right ? "" : " left") + extra,
-        style: right ? `left:${(c.col + size) * step + 4}px;top:${c.row * step}px` : `right:${(cols - c.col) * step + 4 - GRID.gap}px;top:${c.row * step}px`,
+        style: right ? `left:${(c.col + size) * step2 + 4}px;top:${c.row * step2}px` : `right:${(cols - c.col) * step2 + 4 - GRID.gap}px;top:${c.row * step2}px`,
         onpointerdown: (e) => e.stopPropagation(),
         oncontextmenu: (e) => e.stopPropagation()
       };
@@ -18298,9 +18301,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // one), or a new group (Enter makes it and opens it). Escape, or an empty Enter, leaves it.
     makeField(group3) {
       const forGroup = group3 == null;
-      const done = (keep2, value) => {
+      const done = (keep3, value) => {
         this.makingTag = null;
-        if (keep2 && value.trim()) {
+        if (keep3 && value.trim()) {
           if (forGroup ? makeGroup3(this.world, value) : makeTag2(this.world, value, group3, this.ontologies)) {
             this.save();
             if (forGroup) this.openGroup = tidyTag2(value).toLowerCase();
@@ -18337,12 +18340,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // let go over gets the tag. A press that doesn't move stays a click.
     dragTag(e, tag, moved) {
       if (e.button) return;
-      const start = { x: e.clientX, y: e.clientY };
+      const start2 = { x: e.clientX, y: e.clientY };
       let chip = null, over = null;
       const tileAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.(".rooms-tile[data-room]") || null;
       const move5 = (ev) => {
         if (!chip) {
-          if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+          if (Math.hypot(ev.clientX - start2.x, ev.clientY - start2.y) < 5) return;
           moved();
           chip = el12("div", { class: "panel rooms-tag-ghost", "aria-hidden": "true" }, tag);
           this.root.append(chip);
@@ -18383,9 +18386,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The field that puts a tag in a group: Enter keeps it (empty: in no group), Escape leaves it.
     groupField(tag) {
-      const done = (keep2, value) => {
+      const done = (keep3, value) => {
         this.regrouping = null;
-        if (keep2 && setTagGroup2(this.world, tag, value, this.ontologies)) this.save();
+        if (keep3 && setTagGroup2(this.world, tag, value, this.ontologies)) this.save();
         this.drawTags();
       };
       const list2 = el12("datalist", { id: "rooms-group-list" }, ...groupNames2(this.world).slice(1).map((g2) => el12("option", { value: g2 })));
@@ -18689,8 +18692,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The grid cell under a point (on `grid`: this floor's, or a copy in the strip), or null.
     cellAt(x, y, grid2 = this.grid) {
       const box = grid2.getBoundingClientRect();
-      const step = parseFloat(grid2.style.getPropertyValue("--cell")) + GRID.gap;
-      const col = Math.floor((x - box.left) / step), row = Math.floor((y - box.top) / step);
+      const step2 = parseFloat(grid2.style.getPropertyValue("--cell")) + GRID.gap;
+      const col = Math.floor((x - box.left) / step2), row = Math.floor((y - box.top) / step2);
       return col >= 0 && row >= 0 && col < this.cols && row < this.floors.size.rows ? { col, row } : null;
     }
     // What is under a point while a square is dragged: a page number, or the Archive.
@@ -18711,7 +18714,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (e.button || e.target.closest("input, textarea, select")) return;
       this.pickBefore = this.roomPick;
       if (e.ctrlKey && MAC3) return;
-      const start = { x: e.clientX, y: e.clientY };
+      const start2 = { x: e.clientX, y: e.clientY };
       const grab = this.cellAt(e.clientX, e.clientY);
       const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
       const top0 = this.grid.getBoundingClientRect().top;
@@ -18719,7 +18722,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       let floor = this.page;
       let edge2 = 0, edgeTimer = 0, frame2 = 0;
       this.held = null;
-      const hold = e.pointerType !== "mouse" && setTimeout(() => {
+      const hold2 = e.pointerType !== "mouse" && setTimeout(() => {
         this.held = r.id;
         finish();
         this.chooseRoom(r.id, true);
@@ -18753,7 +18756,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const follow = () => {
         if (!last) return;
         const shift2 = this.grid.getBoundingClientRect().top - top0;
-        tile.style.transform = `translate(${last.clientX - start.x}px, ${last.clientY - start.y - shift2}px)`;
+        tile.style.transform = `translate(${last.clientX - start2.x}px, ${last.clientY - start2.y - shift2}px)`;
       };
       const following = () => {
         follow();
@@ -18785,9 +18788,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (edge2) edgeTimer = setTimeout(slide, 450);
       };
       const moveFn = (ev) => {
-        const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+        const dx = ev.clientX - start2.x, dy = ev.clientY - start2.y;
         if (!dragging && Math.hypot(dx, dy) < 5) return;
-        clearTimeout(hold);
+        clearTimeout(hold2);
         if (r.archived || r.locked && !ev.altKey) return;
         if (!dragging) {
           dragging = true;
@@ -18806,7 +18809,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         mark(target);
       };
       const finish = () => {
-        clearTimeout(hold);
+        clearTimeout(hold2);
         clearTimeout(edgeTimer);
         cancelAnimationFrame(frame2);
         window.removeEventListener("pointermove", moveFn);
@@ -18910,10 +18913,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // An input for a room's name: Enter or leaving it keeps the name, Escape keeps the old one.
     nameField(r, done) {
       let finished = false;
-      const finish = (keep2) => {
+      const finish = (keep3) => {
         if (finished) return;
         finished = true;
-        if (keep2) {
+        if (keep3) {
           name3(this.world, r.id, field3.value);
           this.save();
         }
@@ -19108,7 +19111,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const list2 = el12("datalist", { id: "rooms-group-tags" }, ...allTags2(this.world, this.ontologies).map((t) => el12("option", { value: t.tag || t })));
       const field3 = el12("input", { class: "field rooms-group-tag", placeholder: "A tag they share (or Group: tag)", "aria-label": "A tag for the chosen rooms", list: "rooms-group-tags", maxlength: 61, autocomplete: "off", spellcheck: "false" });
-      const keep2 = () => {
+      const keep3 = () => {
         const text = field3.value.trim(), tag = tidyTag2(text.split(":").pop());
         this.closeSheet();
         if (!tag) return;
@@ -19121,7 +19124,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.openSheet(`Tag ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}`, [field3, list2], (ev) => {
         if (ev.key === "Enter") {
           ev.preventDefault();
-          keep2();
+          keep3();
         }
       });
       field3.focus({ preventScroll: true });
@@ -19619,7 +19622,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.addEventListener("keydown", (e) => this.onKey(e));
       document.addEventListener("pointerdown", (e) => this.makingAway(e), true);
       this.keyMap = this.use("keys");
-      const run = {
+      const run2 = {
         // the same verbs as in a room (room/verbs.js)
         "rooms.rename": (e) => this.renameChosen(e),
         "rooms.duplicate": (e) => this.duplicateChosen(e),
@@ -19629,7 +19632,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "rooms.group": (e) => this.tagChosen(e),
         "rooms.ungroup": (e) => this.untagChosen(e)
       };
-      for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom && !this.past, ...run[k2.id] ? { run: run[k2.id] } : {} });
+      for (const k2 of ROOMS_KEYS) this.add("keys", { ...k2, zone: "rooms", when: () => !this.root.hidden && !this.inRoom && !this.past, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       window.addEventListener("resize", () => {
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
       });
@@ -19738,7 +19741,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.leaving = true;
       this.drawRooms();
       const text = el12("textarea", { class: "rooms-sheet-body", rows: 3, placeholder: "Where you were, what to pick up next", "aria-label": "Comment for next time" });
-      const keep2 = () => {
+      const keep3 = () => {
         const t = text.value.trim();
         if (t) this.storage.set("note", { text: t, at: Date.now() });
         this.close();
@@ -19749,7 +19752,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           e.preventDefault();
           this.close();
         }
-        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep2();
+        if (e.key === "Enter" && !e.isComposing && enterKeeps(e)) keep3();
       };
       this.leaveBox.replaceChildren(
         el12("div", { class: "label" }, "Add a comment for next time?"),
@@ -19757,7 +19760,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el12(
           "div",
           { class: "sheet-words" },
-          el12("button", { type: "button", class: "word", onclick: keep2 }, "Keep"),
+          el12("button", { type: "button", class: "word", onclick: keep3 }, "Keep"),
           el12("button", { type: "button", class: "word", onclick: () => this.close() }, "Skip"),
           el12("span", { class: "sheet-keys" }, "Enter keeps it · Ctrl+Enter a new line")
         )
@@ -20290,6 +20293,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var groupsIn3;
   var roomItems3;
   var thoughtText2;
+  var view6;
   var placedForeign2;
   var trayForeign2;
   var spot4;
@@ -20306,7 +20310,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var maths2;
   var spiralPoint2;
   function bind4(lib) {
-    ({ own: own3, shut: shut4, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting3, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2 } = lib.model);
+    ({ own: own3, shut: shut4, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting3, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2, view: view6 } = lib.model);
     ({ placedForeign: placedForeign2, trayForeign: trayForeign2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
     ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEntry: relationEntry2, relationEnds: relationEnds2, listText: listText2 } = lib.relations);
     ({ arrowView: arrowView2 } = lib.arrowview);
@@ -20385,14 +20389,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         delete data[to];
         continue;
       }
-      const keep2 = a.parents.filter((p) => !set.has(p));
-      if (keep2.length === a.parents.length) continue;
-      n += a.parents.length - keep2.length;
+      const keep3 = a.parents.filter((p) => !set.has(p));
+      if (keep3.length === a.parents.length) continue;
+      n += a.parents.length - keep3.length;
       for (const p of a.parents) if (set.has(p)) {
         delete a.labels?.[p];
         delete a.rel?.[p];
       }
-      a.parents = keep2;
+      a.parents = keep3;
     }
     return n;
   }
@@ -20416,9 +20420,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const text = !th ? "" : isGroup3(th) ? nodeName(w2, id) : thoughtText2(w2, th);
     return { w: Math.min(340, Math.max(40, String(text).length * 9)), h: 30 };
   }
+  var VIEWS = /* @__PURE__ */ new Map();
+  var centred = (roomId) => VIEWS.get(roomId) || null;
+  function setCentred(roomId, v2) {
+    if (v2) VIEWS.set(roomId, v2);
+    else VIEWS.delete(roomId);
+  }
+  function keep2(w2, roomId) {
+    const v2 = VIEWS.get(roomId);
+    if (!v2 || shut4(w2, roomId)) return false;
+    VIEWS.delete(roomId);
+    for (const [id, p] of Object.entries(v2.at)) moveTo(w2, roomId, id, p.x, p.y);
+    return true;
+  }
   function point(w2, roomId, id) {
     const th = w2.things[id];
     if (!th || th.parent !== roomId) return null;
+    const shown2 = VIEWS.get(roomId)?.at[id];
+    if (shown2) return { x: shown2.x, y: shown2.y };
     const placed = own3(w2, roomId, ID2, false)[id];
     if (isLeaf3(th)) {
       if (placed && Number.isFinite(placed.x)) return { x: placed.x, y: placed.y };
@@ -20435,6 +20454,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function moveTo(w2, roomId, id, x, y, auto = false) {
     const th = w2.things[id];
     if (!th || shut4(w2, roomId)) return false;
+    const view9 = VIEWS.get(roomId);
+    if (view9) return moveInView(w2, roomId, view9, id, x, y);
     const places = own3(w2, roomId, ID2);
     if (isLeaf3(th)) {
       places[id] = { x: Math.round(x), y: Math.round(y), ...auto ? { auto: true } : {} };
@@ -20452,26 +20473,39 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     place3(w2, id);
     return true;
   }
+  function moveInView(w2, roomId, view9, id, x, y) {
+    const at2 = point(w2, roomId, id);
+    if (!at2) return false;
+    const dx = x - at2.x, dy = y - at2.y;
+    const ids = view9.at[id] ? [id] : itemsIn2(w2, id).map((m2) => shownAs(w2, m2.id)).filter((m2, i2, all) => view9.at[m2] && all.indexOf(m2) === i2);
+    if (!ids.length) return false;
+    for (const m2 of ids) {
+      const p = view9.at[m2];
+      view9.at[m2] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy) };
+      view9.moved?.(m2);
+    }
+    return true;
+  }
   var GAP = 64;
   var ROOM = { w: 300, h: 34, margin: 26 };
   function below(w2, roomId, id) {
     const p = point(w2, roomId, id) || { x: 0, y: 0 };
     const own4 = sizeOf(w2, shownAs(w2, id) === id ? id : shownAs(w2, id));
-    const start = { x: p.x, y: p.y + own4.h + GAP };
+    const start2 = { x: p.x, y: p.y + own4.h + GAP };
     const others = proust.units(w2, roomId).map((u) => ({ p: point(w2, roomId, u.id), s: sizeOf(w2, u.id) })).filter((o2) => o2.p);
     const m2 = ROOM.margin;
     const clear = (x, y) => !others.some((o2) => x < o2.p.x + o2.s.w + m2 && x + ROOM.w > o2.p.x - m2 && y < o2.p.y + o2.s.h + m2 && y + ROOM.h > o2.p.y - m2);
-    if (clear(start.x, start.y)) return { x: Math.round(start.x), y: Math.round(start.y) };
+    if (clear(start2.x, start2.y)) return { x: Math.round(start2.x), y: Math.round(start2.y) };
     const tries = [];
     for (let r = 1; r <= 14; r++) {
       for (let k2 = -r; k2 <= r; k2++) for (const [dx, dy] of [[k2, -r], [k2, r], [-r, k2], [r, k2]]) {
-        const x = start.x + dx * 40, y = start.y + dy * 30;
+        const x = start2.x + dx * 40, y = start2.y + dy * 30;
         if (y < p.y) continue;
         tries.push({ x, y, cost: Math.hypot(dx * 40, dy * 30) - (dy > 0 ? 6 : 0) - (dx > 0 ? 4 : 0) });
       }
     }
     tries.sort((a, b) => a.cost - b.cost);
-    const spot5 = tries.find((t) => clear(t.x, t.y)) || start;
+    const spot5 = tries.find((t) => clear(t.x, t.y)) || start2;
     return { x: Math.round(spot5.x), y: Math.round(spot5.y) };
   }
   var roomList = (w2, roomId) => cleanRelationList2(roomSetting2(w2, roomId, ID2, RELATIONS2), DEFAULT_RELATIONS);
@@ -20582,7 +20616,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     fresh: "New cluster: type to start it.",
     settings: [
       RELATIONS2,
-      { key: "tension", label: "Line tension", min: 0, max: 1, default: 0.5 }
+      { key: "tension", label: "Line tension", min: 0, max: 1, default: 0.5 },
+      {
+        key: "reach",
+        label: "Centre shows",
+        type: "choice",
+        default: "all",
+        options: [["all", "The whole web"], ["1", "1 step out"], ["2", "2 steps out"], ["3", "3 steps out"]]
+      }
     ],
     // A relation renamed in the room's list is renamed on its links.
     settingChanged(w2, roomId, key, before, after) {
@@ -20638,7 +20679,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A new thought: placed where it was written, and linked on from the one before (the room's
     // first relation).
     kept(w2, roomId, th, draft) {
-      if (Number.isFinite(draft?.x) && Number.isFinite(draft?.y)) own3(w2, roomId, ID2)[th.id] = { x: Math.round(draft.x), y: Math.round(draft.y) };
+      if (Number.isFinite(draft?.x) && Number.isFinite(draft?.y)) {
+        const at2 = { x: Math.round(draft.x), y: Math.round(draft.y) };
+        own3(w2, roomId, ID2)[th.id] = at2;
+        const view9 = VIEWS.get(roomId);
+        if (view9) view9.at[th.id] = { ...at2 };
+      }
       if (draft?.after && draft.after !== th.id && isNode(w2, roomId, draft.after)) links().link(w2, roomId, draft.after, th.id);
     },
     // Clear space (clear.js): each node is a block; one dragged was placed by hand. One pushed clear
@@ -20663,6 +20709,140 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return g2 ? { id: g2.id, name: nodeName(w2, g2.id) } : null;
     }
   };
+
+  // dist/web/features/proust/centre.js
+  var RING = 210;
+  var LINK = 150;
+  var TURN = 0.03;
+  var SPRING = 0.05;
+  var PUSH = 5200;
+  var PULL = 0.08;
+  var DAMP = 0.62;
+  var COOL = 0.985;
+  var STILL = 0.02;
+  function distances2(ids, edges, from) {
+    const near = new Map(ids.map((id) => [id, []]));
+    for (const [a, b] of edges) {
+      near.get(a)?.push(b);
+      near.get(b)?.push(a);
+    }
+    const out = new Map(ids.map((id) => [id, Infinity]));
+    let edge2 = from.filter((id) => out.has(id));
+    for (const id of edge2) out.set(id, 0);
+    for (let d = 1; edge2.length; d++) {
+      const next = [];
+      for (const id of edge2) for (const n of near.get(id)) if (out.get(n) === Infinity) {
+        out.set(n, d);
+        next.push(n);
+      }
+      edge2 = next;
+    }
+    return out;
+  }
+  function start(nodes2, links2, chosen = [], reach3 = null) {
+    const ids = nodes2.map((n) => n.id), index = new Map(ids.map((id, i2) => [id, i2]));
+    const pairs = links2.filter(([a, b]) => index.has(a) && index.has(b) && a !== b);
+    const dist = distances2(ids, pairs, chosen);
+    const far = Math.max(0, ...[...dist.values()].filter(Number.isFinite));
+    const out = nodes2.map((n) => {
+      const d = dist.get(n.id);
+      const dim = !chosen.length ? false : !Number.isFinite(d) || reach3 != null && d > reach3;
+      return {
+        id: n.id,
+        x: n.x + n.w / 2,
+        y: n.y + n.h / 2,
+        vx: 0,
+        vy: 0,
+        w: n.w,
+        h: n.h,
+        r: Math.hypot(n.w, n.h) / 2 + 14,
+        ring: dim ? (reach3 != null ? Math.min(far, reach3) : far) + 1 : d,
+        pinned: false,
+        dim
+      };
+    });
+    const middle2 = (list2) => ({ x: list2.reduce((s, n) => s + n.x, 0) / (list2.length || 1), y: list2.reduce((s, n) => s + n.y, 0) / (list2.length || 1) });
+    const sources = out.filter((n) => chosen.length && n.ring === 0);
+    const c = middle2(sources.length ? sources : out);
+    if (sources.length) {
+      const rings = /* @__PURE__ */ new Map();
+      for (const n of out) if (n.ring > 0) rings.set(n.ring, [...rings.get(n.ring) || [], n]);
+      for (const list2 of rings.values()) {
+        const angle = (n) => Math.atan2(n.y - c.y, n.x - c.x);
+        list2.sort((p, q) => angle(p) - angle(q));
+        const first = angle(list2[0]);
+        list2.forEach((n, i2) => {
+          n.angle = first + 2 * Math.PI * i2 / list2.length;
+        });
+      }
+    }
+    return { nodes: out, edges: pairs.map(([a, b]) => [index.get(a), index.get(b)]), c, alpha: 1, centred: !!sources.length };
+  }
+  function step(L) {
+    const ns = L.nodes, a = L.alpha;
+    for (const [i2, j] of L.edges) {
+      const p = ns[i2], q = ns[j];
+      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+      const rest = LINK + (p.r + q.r) * 0.5;
+      const f2 = SPRING * (d - rest) / d * a;
+      p.vx += dx * f2;
+      p.vy += dy * f2;
+      q.vx -= dx * f2;
+      q.vy -= dy * f2;
+    }
+    for (let i2 = 0; i2 < ns.length; i2++) {
+      for (let j = i2 + 1; j < ns.length; j++) {
+        const p = ns[i2], q = ns[j];
+        let dx = q.x - p.x, dy = q.y - p.y;
+        if (!dx && !dy) {
+          dx = (i2 - j) * 0.7 || 0.5;
+          dy = 0.3;
+        }
+        const d22 = dx * dx + dy * dy, d = Math.sqrt(d22);
+        const room6 = p.r + q.r;
+        const f2 = PUSH / Math.max(d22, 400) * a + (d < room6 ? (room6 - d) * 0.2 : 0);
+        p.vx -= dx / d * f2;
+        p.vy -= dy / d * f2;
+        q.vx += dx / d * f2;
+        q.vy += dy / d * f2;
+      }
+    }
+    const c = L.c;
+    for (const n of ns) {
+      const dx = n.x - c.x, dy = n.y - c.y, d = Math.hypot(dx, dy) || 1;
+      if (L.centred) {
+        const want = n.ring * RING;
+        const k2 = (n.ring === 0 ? PULL * 2 : PULL) * a;
+        n.vx += dx / d * (want - d) * k2;
+        n.vy += dy / d * (want - d) * k2;
+        if (n.angle != null) {
+          n.vx += (c.x + Math.cos(n.angle) * want - n.x) * TURN * a;
+          n.vy += (c.y + Math.sin(n.angle) * want - n.y) * TURN * a;
+        }
+      } else {
+        n.vx -= dx * 4e-3 * a;
+        n.vy -= dy * 4e-3 * a;
+      }
+    }
+    for (const n of ns) {
+      if (n.pinned) {
+        n.vx = 0;
+        n.vy = 0;
+        continue;
+      }
+      n.vx *= DAMP;
+      n.vy *= DAMP;
+      n.x += n.vx;
+      n.y += n.vy;
+    }
+    L.alpha *= COOL;
+    return L.alpha > STILL;
+  }
+  function settle3(L, most = 400) {
+    for (let i2 = 0; i2 < most && step(L); i2++) ;
+    return L;
+  }
+  var corners = (L) => Object.fromEntries(L.nodes.map((n) => [n.id, { x: Math.round(n.x - n.w / 2), y: Math.round(n.y - n.h / 2) }]));
 
   // dist/web/features/proust/draw.js
   var PAD2 = 7;
@@ -20724,8 +20904,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const upright = Math.abs(dy) > Math.abs(dx);
     return { d, spot: upright ? { x: m2.x + 10, y: m2.y, side: "right" } : { x: m2.x, y: m2.y - 6, side: "above" } };
   }
-  var view6 = null;
-  var arrows2 = () => view6 ||= arrowView2({
+  var view7 = null;
+  var arrows2 = () => view7 ||= arrowView2({
     of: ID2,
     net: links(),
     setting: RELATIONS2,
@@ -20747,14 +20927,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   });
   function press(c, e) {
+    const act = e.button === 0 && e.target.closest?.("[data-centre]")?.dataset.centre;
+    if (act) {
+      e.preventDefault();
+      if (act === "keep") keepCentred(c);
+      else escape2(c);
+      return true;
+    }
     if (e.button !== 0 || c.locked) return false;
-    const view8 = arrows2();
-    if (view8.press(c, e)) return true;
+    const view9 = arrows2();
+    if (view9.press(c, e)) return true;
     const dot = e.target.closest?.("[data-dot]");
     const b = dot && boxes2(c.world, c.roomId)[dot.dataset.dot];
     if (!b) return false;
     e.preventDefault();
-    view8.drag(c, e, dot.dataset.dot, edge(b, centre2(b)), (q) => lines2.strand(edge(b, q), q, 0));
+    view9.drag(c, e, dot.dataset.dot, edge(b, centre2(b)), (q) => lines2.strand(edge(b, q), q, 0));
     return true;
   }
   function join4(c) {
@@ -20775,6 +20962,115 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     c.save();
     arrows2().edit(c, a, b);
+  }
+  var run = null;
+  var HOLD_MS = 250;
+  function shownUnits(w2, id, units) {
+    const s = shownAs(w2, id);
+    if (units.has(s)) return [s];
+    const g2 = w2.things[id];
+    if (!isGroup3(g2) || g2.of !== ID2) return [];
+    return [...new Set(itemsIn2(w2, id).map((m2) => shownAs(w2, m2.id)).filter((m2) => units.has(m2)))];
+  }
+  function centreWeb(c) {
+    const w2 = c.world, roomId = c.roomId;
+    const all = boxes2(w2, roomId);
+    const list2 = proust.units(w2, roomId).filter((u) => all[u.id]);
+    if (!list2.length) {
+      c.toast("Nothing on the canvas to centre.");
+      return true;
+    }
+    const units = new Set(list2.map((u) => u.id));
+    const nodes2 = list2.map((u) => ({ id: u.id, x: all[u.id].at.x, y: all[u.id].at.y, w: all[u.id].size.w, h: all[u.id].size.h }));
+    const pairs = [];
+    for (const a of links().arrows(w2, roomId)) for (const p of shownUnits(w2, a.from, units)) for (const q of shownUnits(w2, a.to, units)) pairs.push([p, q]);
+    for (const g2 of clusters(w2, roomId)) {
+      const inside4 = shownUnits(w2, g2.id, units);
+      for (let i2 = 1; i2 < inside4.length; i2++) pairs.push([inside4[i2 - 1], inside4[i2]]);
+    }
+    const chosen = [...new Set((c.sel ? c.sel.ids || [c.sel.id] : []).flatMap((id) => shownUnits(w2, id, units)))];
+    const reach3 = c.setting("reach");
+    const L = start(nodes2, pairs, chosen, reach3 && reach3 !== "all" ? Number(reach3) : null);
+    stop();
+    const view9 = { at: corners(L), dim: new Set(L.nodes.filter((n) => n.dim).map((n) => n.id)), tidy: !chosen.length, moved: (id) => hold(id) };
+    setCentred(roomId, view9);
+    run = { room: roomId, L, c, frame: 0 };
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still || typeof requestAnimationFrame !== "function") {
+      settle3(L);
+      view9.at = { ...view9.at, ...corners(L) };
+      c.drawWorld();
+    } else animate();
+    c.toast(chosen.length ? "Centred: Esc goes back, or keep this layout." : "Tidied: Esc goes back, or keep this layout.");
+    return true;
+  }
+  function hold(id) {
+    const view9 = run && centred(run.room);
+    const n = view9 && run.L.nodes.find((x) => x.id === id);
+    if (!n) return;
+    const p = view9.at[id];
+    n.x = p.x + n.w / 2;
+    n.y = p.y + n.h / 2;
+    n.pinned = performance.now();
+    run.L.alpha = Math.max(run.L.alpha, 0.25);
+    if (!run.frame) animate();
+  }
+  function animate() {
+    const r = run;
+    r.frame = requestAnimationFrame(() => {
+      r.frame = 0;
+      const view9 = centred(r.room);
+      if (run !== r || !view9 || r.c.roomId !== r.room) return;
+      const now = performance.now();
+      for (const n of r.L.nodes) if (n.pinned && now - n.pinned > HOLD_MS) n.pinned = false;
+      let going = true;
+      for (let i2 = 0; i2 < 3 && going; i2++) going = step(r.L);
+      view9.at = { ...view9.at, ...corners(r.L) };
+      const v2 = view6(r.c.world, r.room);
+      if (v2 && r.L.centred && typeof r.c.place === "function") {
+        v2.x += (r.L.c.x - v2.x) * 0.12;
+        v2.y += (r.L.c.y - v2.y) * 0.12;
+        r.c.place();
+      }
+      r.c.drawWorld();
+      if (going || r.L.nodes.some((n) => n.pinned)) animate();
+    });
+  }
+  function stop() {
+    if (run?.frame) cancelAnimationFrame(run.frame);
+    run = null;
+  }
+  function escape2(c) {
+    if (!centred(c.roomId)) return false;
+    stop();
+    setCentred(c.roomId, null);
+    c.drawWorld();
+    return true;
+  }
+  function keepCentred(c) {
+    if (c.locked) {
+      c.toast("This room is locked.");
+      return;
+    }
+    stop();
+    if (!keep2(c.world, c.roomId)) return;
+    c.save();
+    c.drawWorld();
+    c.toast("Kept: every thought stays where it is now. Ctrl+Z undoes.");
+  }
+  function centreBar(c, view9, all) {
+    const bs = Object.keys(view9.at).map((id) => all[id]).filter(Boolean);
+    if (!bs.length) return null;
+    const x = (Math.min(...bs.map((b) => b.at.x)) + Math.max(...bs.map((b) => b.at.x + b.size.w))) / 2;
+    const y = Math.min(...bs.map((b) => b.at.y)) - 28;
+    const word = (label2, act, title) => c.el("button", { type: "button", class: "word", title, "data-centre": act, onclick: () => act === "keep" ? keepCentred(c) : escape2(c) }, label2);
+    return c.el(
+      "div",
+      { class: "panel room-proust-centre-bar", style: `left:${Math.round(x)}px;top:${Math.round(y)}px` },
+      c.el("span", { class: "label" }, view9.tidy ? "Tidied" : "Centred"),
+      c.locked ? null : word("Keep this layout", "keep", "Place every thought where it shows now"),
+      word("Back", "back", "Back to the layout by hand (Esc)")
+    );
   }
   function props(c, th) {
     const w2 = c.world, roomId = c.roomId, net3 = links();
@@ -20808,6 +21104,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const layer2 = lines2.layer("room-proust-links");
     const nodes2 = [];
     const chosenGroup = (id) => c.sel?.kind === "train" && c.sel.id === id || c.isSel(id);
+    const view9 = centred(roomId);
+    const far = (id) => view9?.dim.has(id) ? " room-proust-far" : "";
     const dot = (id, style) => c.locked ? null : el16("span", { class: "room-proust-dot", "data-dot": id, title: "Drag onto another thing to link them", ...style ? { style } : {} });
     for (const g2 of clusters(w2, roomId)) {
       if (g2.closed || shownAs(w2, g2.id) !== g2.id) continue;
@@ -20835,7 +21133,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const style = `left:${b.at.x}px;top:${b.at.y}px`;
       if (isGroup3(u)) {
         nodes2.push(el16("div", {
-          class: "room-bead room-closed" + (u.of !== ID2 ? " room-foreign" : "") + (chosenGroup(u.id) ? " selected" : ""),
+          class: "room-bead room-closed" + (u.of !== ID2 ? " room-foreign" : "") + (chosenGroup(u.id) ? " selected" : "") + far(u.id),
           "data-group": u.id,
           "data-measure": u.id,
           style
@@ -20844,11 +21142,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const g2 = clusterOf(w2, u.id);
       nodes2.push(el16("div", {
-        class: "room-bead" + (g2 && chosenGroup(g2.id) || c.isSel(u.id) ? " selected" : "") + (c.found === u.id ? " found" : ""),
+        class: "room-bead" + (g2 && chosenGroup(g2.id) || c.isSel(u.id) ? " selected" : "") + (c.found === u.id ? " found" : "") + far(u.id),
         ...g2 ? { "data-group": g2.id } : {},
         "data-thought": u.id,
         style
       }, c.thoughtNode(u), dot(u.id)));
+    }
+    if (view9) {
+      const bar = centreBar(c, view9, all);
+      if (bar) nodes2.push(bar);
     }
     if (c.draft && !c.draft.edit) {
       const at2 = { x: c.draft.x ?? 0, y: c.draft.y ?? 0 };
@@ -20867,7 +21169,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var Proust = class extends Feature {
     start() {
       bind4(this.use("world").lib);
-      this.add("world.ontologies", { ...proust, draw: draw2, press, join: join4, props });
+      this.add("world.ontologies", { ...proust, draw: draw2, press, join: join4, props, centre: centreWeb, escape: escape2 });
     }
   };
 
@@ -20953,7 +21255,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/room/world.js
   var room5;
-  var view7;
+  var view8;
   var shut5;
   var MESSY4;
   var name4;
@@ -21007,7 +21309,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function bind5(lib) {
     ({
       room: room5,
-      view: view7,
+      view: view8,
       shut: shut5,
       MESSY: MESSY4,
       name: name4,
@@ -21095,7 +21397,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     const thoughts = () => members4(w2(), groupId);
     const node = c.el("div", { class: "room-doc-paras" });
-    const keep2 = () => {
+    const keep3 = () => {
       if (!writing) return null;
       const { id, prev, box } = writing;
       writing = null;
@@ -21106,7 +21408,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     const write2 = (id, prev = null, caret = "end") => {
       if (locked) return;
-      const before = keep2();
+      const before = keep3();
       if (!w2().things[groupId]) {
         gone();
         return;
@@ -21121,7 +21423,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         e.stopPropagation();
         if (e.key === "Escape") {
           e.preventDefault();
-          keep2();
+          keep3();
           draw3();
           escaped();
           return;
@@ -21132,7 +21434,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const back = list2[here - 1];
           if (back && kindOf3(back) === "line") {
             e.preventDefault();
-            keep2();
+            keep3();
             write2(back.id);
           }
           return;
@@ -21145,11 +21447,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         if (!box.value.trim() && !id) {
-          keep2();
+          keep3();
           draw3();
           return;
         }
-        const k2 = keep2();
+        const k2 = keep3();
         write2(null, k2?.id || prev);
       });
       draw3();
@@ -21192,7 +21494,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         write2(null, list2.at(-1)?.id || null);
       }
     }, "+");
-    return { node, more, keep: keep2, draw: draw3, write: write2, get writing() {
+    return { node, more, keep: keep3, draw: draw3, write: write2, get writing() {
       return !!writing;
     } };
   }
@@ -21476,7 +21778,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // colour from its pop-up on the rooms page.
     settingsPane() {
       const p = this.prefs;
-      const slider2 = (label2, key, min, max, step = 0.01) => {
+      const slider2 = (label2, key, min, max, step2 = 0.01) => {
         const out = el15("output", { class: "renderer-value" }, String(p[key]));
         return el15(
           "label",
@@ -21487,7 +21789,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             type: "range",
             min,
             max,
-            step,
+            step: step2,
             value: p[key],
             "aria-label": label2,
             oninput: (e) => {
@@ -21571,7 +21873,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.crumbDesc.textContent = r.desc || "";
       this.crumbDesc.hidden = !r.desc;
       this.roomPage.classList.toggle("locked", !!this.locked);
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const big = isBig3(r);
       const items = [el15("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
       const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el15("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
@@ -21621,10 +21923,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // An input for the room's name: Enter or leaving it keeps the name, Escape keeps the old one.
     nameField(r, done) {
       let finished = false;
-      const finish = (keep2) => {
+      const finish = (keep3) => {
         if (finished) return;
         finished = true;
-        if (keep2) {
+        if (keep3) {
           name(this.world, r.id, field3.value);
           this.save();
         }
@@ -21768,16 +22070,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return !a || a === document.body || this.stage.contains(a) && a !== this.input;
     }
     // Tab / Shift+Tab: the next mode of a big room, or the one before (round the list).
-    nextMode(step = 1) {
+    nextMode(step2 = 1) {
       const list2 = this.ontologies;
       const at2 = list2.findIndex((m2) => m2.id === this.mode);
-      const next = list2[(at2 + step + list2.length) % list2.length];
+      const next = list2[(at2 + step2 + list2.length) % list2.length];
       if (next && next.id !== this.mode) this.setMode(next.id);
     }
     // Only a big room switches its mode.
     setMode(id) {
       if (!isBig3(room5(this.world, this.roomId))) return;
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       v2.mode = id;
       this.sel = null;
       this.gearFor = null;
@@ -21787,20 +22089,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The world's transform: the view's x, y (world units) sit at the middle of the screen.
     place() {
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const { width, height } = this.stage.getBoundingClientRect();
       this.world$.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
       this.positionEdit?.();
       this.placeOther?.();
     }
     toWorld(clientX, clientY) {
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const b = this.stage.getBoundingClientRect();
       return { x: v2.x + (clientX - b.left - b.width / 2) / v2.zoom, y: v2.y + (clientY - b.top - b.height / 2) / v2.zoom };
     }
     // What's on the screen, in world units, less a margin all round.
     visibleBox(margin = 0.18) {
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const { width, height } = this.stage.getBoundingClientRect();
       const w2 = width / v2.zoom, h = height / v2.zoom;
       return { x: v2.x - w2 / 2 + w2 * margin, y: v2.y - h / 2 + h * margin, w: w2 * (1 - 2 * margin) * 0.75, h: h * (1 - 2 * margin) };
@@ -21887,7 +22189,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const n of this.world$.querySelectorAll("[data-thought]")) nodes2.set(n.dataset.thought, n);
       const editing = this.draft?.edit || null;
       const measured = [];
-      const origin = this.world$.getBoundingClientRect(), zoom = view7(w2, roomId).zoom || 1;
+      const origin = this.world$.getBoundingClientRect(), zoom = view8(w2, roomId).zoom || 1;
       for (const b of blocks) {
         if (b.hand && overlap) continue;
         const els = b.thoughts.map((id) => nodes2.get(id)).filter(Boolean);
@@ -22042,7 +22344,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (this.editing?.close) this.editing.close();
         else if (this.panel?.shown) this.panel.close();
         else if (!this.addMenu.hidden) this.closeAdd();
-        else if (this.roomId && this.sel && this.barFor) {
+        else if (this.roomId && this.ont.escape?.(this)) {
+        } else if (this.roomId && this.sel && this.barFor) {
           this.barFor = null;
           this.drawBar();
         } else if (this.sel) {
@@ -22112,7 +22415,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // data-measure is keyed by that id, so an ontology hears its size (Russell: a chapter's name).
     drawnRects() {
       const out = /* @__PURE__ */ new Map();
-      const origin = this.world$.getBoundingClientRect(), zoom = view7(this.world, this.roomId).zoom || 1;
+      const origin = this.world$.getBoundingClientRect(), zoom = view8(this.world, this.roomId).zoom || 1;
       let k2 = 0;
       for (const n of this.world$.querySelectorAll("[data-thought], div[data-group]")) {
         const r = n.getBoundingClientRect();
@@ -22278,7 +22581,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (r.bottom > b.bottom - pad * 2) dy = r.bottom - (b.bottom - pad * 2);
       if (r.top < b.top + pad * 1.5) dy = r.top - (b.top + pad * 1.5);
       if (!dx && !dy) return;
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       v2.x += dx / v2.zoom;
       v2.y += dy / v2.zoom;
       this.place();
@@ -22523,15 +22826,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/room/centre.js
   var GLIDE_MS = 320;
-  function fitView(box, width, height, { pad = 48, most = 1, keep: keep2 = null } = {}) {
+  function fitView(box, width, height, { pad = 48, most = 1, keep: keep3 = null } = {}) {
     const w2 = Math.max(box.w, 1), h = Math.max(box.h, 1);
     const fits2 = Math.min((width - 2 * pad) / w2, (height - 2 * pad) / h);
-    let zoom = keep2 != null ? Math.min(keep2, fits2) : Math.min(most, fits2);
+    let zoom = keep3 != null ? Math.min(keep3, fits2) : Math.min(most, fits2);
     zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom || ZOOM.min));
     return { x: box.x + box.w / 2, y: box.y + box.h / 2, zoom };
   }
   function drawnBox(c, selector) {
-    const origin = c.world$.getBoundingClientRect(), zoom = view7(c.world, c.roomId).zoom || 1;
+    const origin = c.world$.getBoundingClientRect(), zoom = view8(c.world, c.roomId).zoom || 1;
     let x0 = Infinity, y0 = Infinity, x12 = -Infinity, y12 = -Infinity;
     for (const n of c.world$.querySelectorAll(selector)) {
       const r = n.getBoundingClientRect();
@@ -22554,17 +22857,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     glide(c, fitView(box, width, height));
   }
   function centreChosen(c) {
+    if (c.ont?.centre?.(c)) return;
     const box = c.sel && drawnBox(c, ".selected");
     if (!box) {
       c.toast("Choose something first: Ctrl+Shift+C brings the view to it.");
       return;
     }
-    const v2 = view7(c.world, c.roomId);
+    const v2 = view8(c.world, c.roomId);
     const { width, height } = c.stage.getBoundingClientRect();
     glide(c, fitView(box, width, height, { keep: v2.zoom }));
   }
   function glide(c, to) {
-    const v2 = view7(c.world, c.roomId);
+    const v2 = view8(c.world, c.roomId);
     const roomId = c.roomId;
     cancelAnimationFrame(c.glideFrame);
     const from = { x: v2.x, y: v2.y, zoom: v2.zoom };
@@ -22579,7 +22883,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return;
     }
     const t02 = performance.now();
-    const step = (now) => {
+    const step2 = (now) => {
       if (c.roomId !== roomId) return;
       const t = Math.min(1, (now - t02) / GLIDE_MS);
       if (t >= 1) {
@@ -22591,9 +22895,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       v2.x = from.x + (to.x - from.x) * k2;
       v2.y = from.y + (to.y - from.y) * k2;
       c.place();
-      c.glideFrame = requestAnimationFrame(step);
+      c.glideFrame = requestAnimationFrame(step2);
     };
-    c.glideFrame = requestAnimationFrame(step);
+    c.glideFrame = requestAnimationFrame(step2);
   }
 
   // dist/web/features/room/gestures.js
@@ -22640,7 +22944,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (this.stage.hasPointerCapture?.(e.pointerId)) this.stage.releasePointerCapture(e.pointerId);
         return;
       }
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
       let thing2 = null;
       const pan = { x0: e.clientX, y0: e.clientY, vx: v2.x, vy: v2.y, moved: false };
@@ -22694,7 +22998,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     pinchState() {
       const [a, b] = [...this.pointers.values()];
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       return { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: v2.zoom, mid: this.toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
     }
     onMove(e) {
@@ -22702,7 +23006,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const g2 = this.gesture;
       if (!g2) return;
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       if (g2.kind === "pinch") {
         const [a, b] = [...this.pointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -22802,8 +23106,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
         }
-        const keep2 = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
-        this.sel = keep2 ? this.sel : isGroup4(tapped) ? { kind: "train", id: tapped.id } : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
+        const keep3 = this.sel?.kind === "train" && g2.thing?.kind === "train" && this.sel.id === g2.thing.id;
+        this.sel = keep3 ? this.sel : isGroup4(tapped) ? { kind: "train", id: tapped.id } : g2.thing ? { kind: g2.thing.kind, id: g2.thing.id } : null;
         const train = g2.el?.dataset.group;
         const now = Date.now();
         if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: "train", id: train };
@@ -22892,10 +23196,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const arrows3 = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
       if (arrows3[k2] && !mod) {
         e.preventDefault();
-        const step = e.shiftKey ? 60 : 10;
+        const step2 = e.shiftKey ? 60 : 10;
         const ids = this.sel.ids || [this.sel.id];
         const from = this.groupSpots(ids);
-        for (const [id, p] of Object.entries(from)) this.putAt(id, p.x + arrows3[k2][0] * step, p.y + arrows3[k2][1] * step);
+        for (const [id, p] of Object.entries(from)) this.putAt(id, p.x + arrows3[k2][0] * step2, p.y + arrows3[k2][1] * step2);
         this.save();
         this.drawWorld();
         return true;
@@ -23053,11 +23357,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (id && kindOf3(this.world.things[id]) !== "line") this.openSheet(null, id);
     }
     // ---- Add: the menu a right-click on the empty canvas opens there, with the templates ----
-    addItem(label2, note2, fn, keep2 = true) {
+    addItem(label2, note2, fn, keep3 = true) {
       return el15(
         "button",
         { type: "button", class: "pick room-add-item", role: "menuitem", onclick: () => {
-          this.closeAdd(keep2);
+          this.closeAdd(keep3);
           fn();
         } },
         el15("span", {}, label2),
@@ -23065,8 +23369,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       );
     }
     // Closes Add; what was asked for at a point (keep) still goes there.
-    closeAdd(keep2 = false) {
-      if (!keep2) this.addAt = null;
+    closeAdd(keep3 = false) {
+      if (!keep3) this.addAt = null;
       if (!this.addMenu || this.addMenu.hidden) return;
       this.addMenu.hidden = true;
       this.addMenu.classList.remove("at");
@@ -23092,7 +23396,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!f2.room) return;
       if (this.roomId !== f2.room) this.openRoom(f2.room);
       const th = this.world.things[f2.id];
-      const v2 = view7(this.world, f2.room);
+      const v2 = view8(this.world, f2.room);
       const p = this.ont.point(this.world, f2.room, f2.id);
       if (p) {
         v2.x = p.x + 120;
@@ -23111,7 +23415,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     onWheel(e) {
       e.preventDefault();
       cancelAnimationFrame(this.glideFrame);
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       const mouse = e.deltaMode !== 0 || e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY);
       if (e.ctrlKey || mouse) {
         const k2 = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 15e-4) * (e.deltaMode === 1 ? 30 : 1));
@@ -23126,7 +23430,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Zooms to `zoom`, keeping the world point `at` (default: the one under the screen point) still.
     zoomAt(clientX, clientY, zoom, at2 = this.toWorld(clientX, clientY)) {
-      const v2 = view7(this.world, this.roomId);
+      const v2 = view8(this.world, this.roomId);
       v2.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom));
       const b = this.stage.getBoundingClientRect();
       v2.x = at2.x - (clientX - b.left - b.width / 2) / v2.zoom;
@@ -23276,11 +23580,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           kind === "group" && !inPanel && this.files?.canEdit ? el15("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
         ].filter(Boolean);
       }
-      const stop = (e) => {
+      const stop2 = (e) => {
         e.stopPropagation();
         if (e.key === "Escape" || e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur();
       };
-      const field3 = (value, label2, onchange, cls = "pop-name") => el15("input", { class: cls, value: value || "", placeholder: label2, "aria-label": label2, onkeydown: stop, onchange });
+      const field3 = (value, label2, onchange, cls = "pop-name") => el15("input", { class: cls, value: value || "", placeholder: label2, "aria-label": label2, onkeydown: stop2, onchange });
       const word = (label2, fn, extra = "") => el15("button", { type: "button", class: "word " + extra, onclick: fn }, label2);
       const grow = (t) => {
         t.style.height = "auto";
@@ -23808,11 +24112,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const card = e.currentTarget;
       const r = card.getBoundingClientRect();
       const off = { x: e.clientX - r.left, y: e.clientY - r.top };
-      const start = { x: e.clientX, y: e.clientY };
+      const start2 = { x: e.clientX, y: e.clientY };
       let ghost = null;
       const move5 = (ev) => {
         if (!ghost) {
-          if (this.locked || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+          if (this.locked || Math.hypot(ev.clientX - start2.x, ev.clientY - start2.y) < 5) return;
           ghost = card.cloneNode(true);
           ghost.classList.add("panel", "room-tray-ghost");
           ghost.classList.remove("st-sel");
@@ -23835,7 +24139,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (ev.type !== "pointerup" || !over || !this.world.things[id]) return;
         const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
         if (there && this.world.things[id].parent === there.id) {
-          this.ontology(view7(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
+          this.ontology(view8(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
           this.save();
           this.drawWorld();
           return;
@@ -23871,7 +24175,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onchange: (e) => {
             const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
             if (!to) return;
-            const v2 = view7(this.world, to);
+            const v2 = view8(this.world, to);
             ids.forEach((id, i2) => move4(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
             this.sel = null;
             this.save();
@@ -24019,10 +24323,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const th = id ? this.world.things[id] : null;
       kind = th ? kindOf3(th) : kind;
       this.editing = { kind, id, src: src || th?.src || null, loose: loose && !th };
-      const keep2 = () => this.keepSheet();
+      const keep3 = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
-        if (e.key === "Enter" && !e.isComposing && enterKeeps2(e)) keep2();
+        if (e.key === "Enter" && !e.isComposing && enterKeeps2(e)) keep3();
         if (e.key === "Escape") {
           e.preventDefault();
           this.closeSheet();
@@ -24045,7 +24349,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const words = el15(
         "div",
         { class: "sheet-words" },
-        el15("button", { type: "button", class: "word", onclick: keep2 }, "Keep"),
+        el15("button", { type: "button", class: "word", onclick: keep3 }, "Keep"),
         el15("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
         el15("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
@@ -24108,7 +24412,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ed?.docked) this.panel?.close("sheet", true);
     }
     moveTo(toRoom) {
-      const v2 = view7(this.world, toRoom);
+      const v2 = view8(this.world, toRoom);
       const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
       const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
       const spot5 = randomSpot2(box, taken);
@@ -24158,7 +24462,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.otherWorld.replaceChildren();
         return;
       }
-      const o2 = this.ontology(view7(this.world, other.id).mode);
+      const o2 = this.ontology(view8(this.world, other.id).mode);
       this.otherLabel.textContent = `${other.name} · ${o2.name} · click to work here`;
       this.otherWorld.replaceChildren(...this.sideNodes(other.id));
       this.placeOther();
@@ -24167,7 +24471,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     placeOther() {
       const other = this.otherSide;
       if (!other || this.otherEl.hidden) return;
-      const v2 = view7(this.world, other.id);
+      const v2 = view8(this.world, other.id);
       const { width, height } = this.otherEl.getBoundingClientRect();
       this.otherWorld.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
     }
@@ -24175,14 +24479,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // drawing, or its units where they sit), with nothing chosen and nothing being written. The
     // nodes are only to look at.
     sideNodes(id) {
-      const keep2 = { roomId: this.roomId, sel: this.sel, draft: this.draft, found: this.found, draftEl: this.draftEl };
+      const keep3 = { roomId: this.roomId, sel: this.sel, draft: this.draft, found: this.found, draftEl: this.draftEl };
       Object.assign(this, { roomId: id, sel: null, draft: null, found: null });
       try {
         return this.canvasNodes();
       } catch {
         return [];
       } finally {
-        Object.assign(this, keep2);
+        Object.assign(this, keep3);
       }
     }
     // In the rail, under Sides: each side with its mode; the one you work in is current, a click on
@@ -24195,7 +24499,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el15("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
         ...all.map((s) => {
           const on = s.id === this.roomId;
-          const o2 = this.ontology(view7(this.world, s.id).mode);
+          const o2 = this.ontology(view8(this.world, s.id).mode);
           return el15(
             "button",
             {
@@ -24230,7 +24534,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!other || this.otherEl.hidden) return null;
       const b = this.otherEl.getBoundingClientRect();
       if (x < b.left || x > b.right || y < b.top || y > b.bottom) return null;
-      const v2 = view7(this.world, other.id);
+      const v2 = view8(this.world, other.id);
       return { id: other.id, x: Math.round(v2.x + (x - b.left - b.width / 2) / v2.zoom), y: Math.round(v2.y + (y - b.top - b.height / 2) / v2.zoom) };
     }
     // A thought or group let go over the other side goes across, to that spot there. True when it went.
@@ -24240,7 +24544,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const th = this.world.things[id];
       if (!th) return false;
       if (!across2(this.world, id, at2.x, at2.y)) return false;
-      const o2 = this.ontology(view7(this.world, at2.id).mode);
+      const o2 = this.ontology(view8(this.world, at2.id).mode);
       try {
         o2.drop(this.world, at2.id, id, at2.x, at2.y);
       } catch {
@@ -24256,7 +24560,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     twinTrayItems(own4) {
       const other = this.otherSide;
       if (!other) return own4;
-      const o2 = this.ontology(view7(this.world, other.id).mode);
+      const o2 = this.ontology(view8(this.world, other.id).mode);
       let theirs = [];
       try {
         theirs = o2.tray?.(this.world, other.id) || [];
@@ -24288,7 +24592,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.box", shows: "Shift+drag", words: "a box to choose many" },
     { id: "room.pan", shows: "Ctrl+drag", words: "move around, wherever it starts" },
     { id: "room.fit", keys: ["Home"], words: "fit the view to everything in the room" },
-    { id: "room.centre", keys: ["Ctrl+Shift+C"], words: "bring the view to what is chosen" },
+    { id: "room.centre", keys: ["Ctrl+Shift+C"], words: "bring the view to what is chosen (Proust: centre the web on it; nothing chosen: tidy)" },
     { id: "room.all", keys: ["Ctrl+A"], words: "choose everything" },
     { id: "room.more", shows: "Shift+click · Ctrl+click", words: "add to the choice · in or out of it" },
     { id: "room.copy", keys: ["Ctrl+C", "Ctrl+V"], words: "copy what is chosen · put a copy here" },
@@ -24342,7 +24646,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.keyMap = this.use("keys");
       this.frame = this.use("frame");
       this.time = this.use("time");
-      const run = {
+      const run2 = {
         "room.mode": (e) => this.nextMode(e.shiftKey ? -1 : 1),
         // The same verbs as on the rooms page (verbs.js).
         "room.rename": (e) => rename(this, e),
@@ -24358,7 +24662,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       const live = () => !this.root.hidden && !!this.roomId;
       const when = { "room.mode": () => live() && this.tabSwaps(), "room.join": () => live() && !!this.ont?.join };
-      for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: when[k2.id] || live, ...run[k2.id] ? { run: run[k2.id] } : {} });
+      for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: when[k2.id] || live, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
       if (this.frame) {
         if (this.files) {
           this.add("rail.more", {
@@ -24709,7 +25013,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.w.ontology(id);
     }
     get mode() {
-      return this.ontology(view7(this.world, this.roomId).mode).id;
+      return this.ontology(view8(this.world, this.roomId).mode).id;
     }
     get ont() {
       return this.ontology(this.mode);
