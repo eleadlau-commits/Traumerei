@@ -1,13 +1,19 @@
 # Home
 
-The home page, laid over the picture that the Renderer draws full screen behind it:
+The home page, laid over the picture that the Renderer draws full screen behind it, in the same
+frame as the rooms page and a room (the `frame` feature):
 
-- **Traumerei** in the middle, in the chosen typeface.
-- **Create** beneath it, then **Settings** and **Account** under that. They are plain words,
-  not buttons. Create opens the rooms (the `create` feature, if it's there); Settings and
-  Account open those pages.
-- The top bar keeps only the menu button: the three lines alone at 80% opacity
-  (`style.css`).
+- **The top bar** says *Home*, with Search at the right (the `search` feature: every room's
+  thoughts; Ctrl+K too). A find opens the rooms page, then its room. There is no back arrow.
+- **The rail** (Folio's `.rail`): under *Start*, Create, Settings, Account and About; under
+  *Recent rooms*, the five rooms gone into lately (the world's attention log; a Twin's side
+  counts as the Twin, archived rooms are left out). A click on one opens the rooms page and goes in.
+- **Traumerei** in the middle of what the rail leaves, in the chosen typeface, and **Create**
+  beneath it, a plain word, not a button. Create opens the rooms (the `create` service).
+- **The status bar** at the foot: its quiet line, and Saved.
+
+It uses the services `create`, `rooms` (`openRoom`), `world` (the rooms and the attention log),
+`frame` and `search`, and adds `home.search` (Ctrl+K, zone `home`) to the key map.
 
 ## The menu ("Veil")
 
