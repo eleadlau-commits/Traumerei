@@ -872,6 +872,17 @@ html.rail-narrow { --rail: 48px; }
 .expand.go { transition: transform .43s cubic-bezier(.65, 0, .25, 1); }
 .expand.done { transition: opacity .25s ease; opacity: 0; }
 
+/* ---- A page in the frame (Settings, Account) ----
+   A panel of flat veil on the canvas, with a hairline edge (.page-panel); its rows (.page-row) are
+   a quiet label (.page-label, the section's name, small spaced capitals) beside its value, with a
+   hairline between rows, on the page's canvas (.page-canvas, plain paper). Each feature lays out
+   the columns. */
+.page-canvas { background: var(--paper); } /* covers what is under the page */
+.page-panel { background: var(--chrome); box-shadow: 0 0 0 1px var(--chrome-edge); }
+.page-row + .page-row { border-top: 1px solid var(--chrome-edge); }
+.page-label { font-family: var(--font); font-weight: 400; font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+.page-row :is(p, small, .hint) { font-size: var(--t-label); line-height: 1.5; letter-spacing: .01em; color: var(--muted); }
+
 /* ---- Pop-ups over a page ---- */
 
 /* A faint shade over the whole screen, under a pop-up. */

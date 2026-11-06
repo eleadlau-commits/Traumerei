@@ -81,3 +81,6 @@
 .home-quick:focus::placeholder { opacity: .3; }
 .home-quick:focus-visible { outline: 0; }
 .home-quick.dropping { opacity: 0; }
+
+/* Under a page in the frame (Settings), the home page's words step aside. */
+.page-open .home { visibility: hidden; }
