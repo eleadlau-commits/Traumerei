@@ -77,7 +77,9 @@ It offers no service of its own.
     joined by named links that may run in loops, and gathered into clusters; its README says how.
     The room writes into it through the ontology's `goOn` (where the thought after the last one
     goes: Enter links on from it) and `kept` (a new thought was kept: place it, link it), and
-    Ctrl+Enter shows the ontology's own `fresh` note ("New cluster: type to start it.").
+    Ctrl+Enter shows the ontology's own `fresh` note ("New cluster: type to start it."). With one
+    thing chosen, typing goes on from it instead of the last (`goOn` with the chosen id). Ctrl+J
+    (`room.join`, verbs.js) is live only in a mode with its own `join` (Proust: link the two chosen).
     **A closed chapter.** *Close* in a chapter's pop-up (it asks for a name) closes it:
     only its name shows on the canvas. A click chooses it; a right-click opens it in the content editor, in the right dock's
     Editor tab: its name and its thoughts in order as flowing paragraphs, maths drawn (without

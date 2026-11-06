@@ -62,5 +62,18 @@ A relation a file brings that the room lacks joins the room's list with the line
 room has keeps its own ends, and a line that says otherwise is reported. Tests:
 `tests/traum.test.js`.
 
-Not yet: drawing a link by dragging, Ctrl+J, writing on from a chosen node, the Editor's link rows,
-and Centre.
+**Working with links** (`draw.js`; tests: `tests/links.test.js`):
+
+- **Drag from a dot.** While the pointer is on a node, a small dot shows just off its right side
+  (an open cluster's sits on its box's right side, always faint). Drag it onto another node: a link
+  from the first, with the room's first relation.
+- **Ctrl+J** links the two things chosen (click one, Shift+click the other), from the one chosen
+  first, and opens the new link where it is to be named: its relation and its label, Enter keeps.
+- **A double-click** on a link or its label edits it where it is (the world's `arrowview.js`).
+- **Writing on from a chosen node.** With one thing chosen, typing starts a thought just below it,
+  linked on from it (and in its cluster, if it is a thought in an open one).
+- **The Editor** has a Proust section for a node with links: *Points to* (its arrows out),
+  *Pointed to by* (arrows in) and *Linked with* (plain lines and both ways, once a pair). Each name
+  goes to that node and chooses it.
+
+Not yet: Centre.

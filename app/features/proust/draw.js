@@ -85,10 +85,66 @@ const arrows = () => (view ||= arrowView({
     return null;
   },
   ends: (rel, c) => endsOf(c.setting(RELATIONS.key), rel),
+  // A thought is its own node even inside an open cluster (whose box a drop elsewhere finds).
+  onNode: (c, at) => {
+    const id = at.closest?.('[data-thought]')?.dataset.thought || at.closest?.('[data-dot]')?.dataset.dot || at.closest?.('.room-bead[data-group]')?.dataset.group;
+    return id && isNode(c.world, c.roomId, id) ? id : null;
+  },
 }));
 
-// A press on the canvas: a link's own (its edit box, a double-click to edit it).
-export const press = (c, e) => e.button === 0 && !c.locked && arrows().press(c, e);
+// A press on the canvas: a link's own (its edit box, a double-click to edit it), or a drag from
+// a node's dot, which draws a new link onto the node it is let go on.
+export function press(c, e) {
+  if (e.button !== 0 || c.locked) return false;
+  const view = arrows();
+  if (view.press(c, e)) return true;
+  const dot = e.target.closest?.('[data-dot]');
+  const b = dot && boxes(c.world, c.roomId)[dot.dataset.dot];
+  if (!b) return false;
+  e.preventDefault();
+  view.drag(c, e, dot.dataset.dot, edge(b, centre(b)), (q) => lines.strand(edge(b, q), q, 0));
+  return true;
+}
+
+// Ctrl+J: the two things chosen are linked, from the one chosen first to the other (the room's
+// first relation), and the new link opens to be named where it is.
+export function join(c) {
+  if (c.locked) { c.toast('This room is locked.'); return; }
+  const ids = c.sel?.kind === 'many' ? c.sel.ids : [];
+  if (ids.length !== 2) { c.toast('Choose two things to link: click one, then Shift+click the other.'); return; }
+  const [a, b] = ids;
+  const why = links().link(c.world, c.roomId, a, b);
+  if (why) { c.toast(why); return; }
+  c.save();
+  arrows().edit(c, a, b);
+}
+
+// In the pop-up of what is chosen: what it points to, what points to it, and what it is linked
+// with (by a plain line, or both ways); each name goes to that node.
+export function props(c, th) {
+  const w = c.world, roomId = c.roomId, net = links();
+  if (!isNode(w, roomId, th.id)) return [];
+  const list = c.setting(RELATIONS.key);
+  const out = [], into = [], with_ = [];
+  for (const a of net.arrows(w, roomId)) {
+    if (a.from !== th.id && a.to !== th.id) continue;
+    const other = a.from === th.id ? a.to : a.from;
+    const ends = endsOf(list, a.rel);
+    const entry = { id: other, rel: a.rel, label: a.label };
+    if (ends === 'arrow') (a.from === th.id ? out : into).push(entry);
+    else if (!with_.some((x) => x.id === other)) with_.push(entry);
+  }
+  const go = (x) => c.el('button', {
+    type: 'button', class: 'value-btn room-proust-go', title: [x.rel, x.label].filter(Boolean).join(' · ') || 'Go to it',
+    onclick: () => {
+      const to = shownAs(w, x.id) === 'tray' ? x.id : shownAs(w, x.id);
+      c.goTo({ room: roomId, id: to });
+      if (c.sel) c.openProps?.(c.sel);
+    },
+  }, nodeName(w, x.id) || 'Untitled');
+  const row = (label, xs) => (xs.length ? c.el('div', { class: 'kv room-proust-links' }, c.el('span', {}, label), c.el('span', { class: 'room-proust-names' }, ...xs.map(go))) : null);
+  return [row('Points to', out), row('Pointed to by', into), row('Linked with', with_)].filter(Boolean);
+}
 
 // The canvas.
 export function draw(c) {
@@ -97,6 +153,8 @@ export function draw(c) {
   const layer = lines.layer('room-proust-links');
   const nodes = [];
   const chosenGroup = (id) => (c.sel?.kind === 'train' && c.sel.id === id) || c.isSel(id);
+  // A node's dot, on its right side while the pointer is on it: drag it onto another node to link.
+  const dot = (id, style) => (c.locked ? null : el('span', { class: 'room-proust-dot', 'data-dot': id, title: 'Drag onto another thing to link them', ...(style ? { style } : {}) }));
 
   // Each open cluster: a faint box around what it holds, its title over it.
   for (const g of clusters(w, roomId)) {
@@ -108,6 +166,8 @@ export function draw(c) {
       class: 'room-line room-proust-cluster' + (chosenGroup(g.id) ? ' selected' : ''),
     }));
     if (g.title) nodes.push(el('div', { class: 'label room-proust-title', 'data-group': g.id, style: `left:${h.at.x + 10}px;top:${h.at.y - 9}px` }, g.title));
+    const d = dot(g.id, `left:${h.at.x + h.size.w}px;top:${h.at.y + h.size.h / 2}px`);
+    if (d) { d.classList.add('room-proust-hull-dot'); nodes.push(d); }
   }
 
   // The links, with their labels (arrowview.js).
@@ -123,14 +183,14 @@ export function draw(c) {
       nodes.push(el('div', {
         class: 'room-bead room-closed' + (u.of !== ID ? ' room-foreign' : '') + (chosenGroup(u.id) ? ' selected' : ''),
         'data-group': u.id, 'data-measure': u.id, style,
-      }, c.thoughtNode(u)));
+      }, c.thoughtNode(u), dot(u.id)));
       continue;
     }
     const g = clusterOf(w, u.id);
     nodes.push(el('div', {
       class: 'room-bead' + ((g && chosenGroup(g.id)) || c.isSel(u.id) ? ' selected' : '') + (c.found === u.id ? ' found' : ''),
       ...(g ? { 'data-group': g.id } : {}), 'data-thought': u.id, style,
-    }, c.thoughtNode(u)));
+    }, c.thoughtNode(u), dot(u.id)));
   }
 
   // The thought being written, where it will be kept, with a faint line from the one it links on from.

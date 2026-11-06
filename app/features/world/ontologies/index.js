@@ -66,6 +66,8 @@
 //                         true when it took it (Russell: a closed chapter opens as a document)
 //   props(c, th)          (optional) more rows (DOM nodes) for the pop-up of what is chosen
 //                         (Russell: what a chapter forgets about each parent)
+//   join(c)               (optional) Ctrl+J: joins what is chosen (Proust: a link between the two
+//                         chosen); it says why not itself, with c.toast
 //   blocks(w, room)       (optional) clear space (clear.js): what moves together, as
 //                         [{ id, thoughts, group?, tail?, hand, at }]; hand: placed by hand.
 //                         Without it, each unit is a block, none by hand
@@ -101,7 +103,7 @@ export const BUILT_IN = [joyce, pessoa, russell];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', settingChanged: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', join: 'function', settingChanged: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

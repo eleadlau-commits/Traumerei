@@ -75,7 +75,9 @@ next). `arrowView({ of, net, boxes, pads, nodeAt, name, ends })` draws each arro
 lines part with its relation and label beside it, edits an arrow where it is (a double-click: its
 relation and its label), draws a new one dragged from a point onto another node, and gives a
 node's pop-up rows (each arrow into it). `ends(rel)` gives a relation's ends (Russell: always an
-arrow). An ontology may route the line itself (`route`: Proust's strands), keep its relations in
+arrow). An ontology may route the line itself (`route`: Proust's strands), say which node a drawn element
+stands for (`onNode`), shape the line drawn while dragging (`drag`'s `shape`), open a link's edit
+box from its own key (`edit`: Proust's Ctrl+J), keep its relations in
 its own setting (`setting`), and leave its first relation unnamed beside its links (`quiet`). Its
 look is the room's `.room-arrow-*` classes.
 

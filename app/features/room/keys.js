@@ -24,6 +24,7 @@ export const ROOM_KEYS = [
   { id: 'room.fold', keys: ['Ctrl+F'], words: 'fold what is chosen into one thought (the old ones go, in every mode)', typing: true },
   { id: 'room.close', keys: ['Ctrl+Shift+F'], words: 'close or open its group (only how it shows)', typing: true },
   { id: 'room.group', keys: ['Ctrl+G'], words: 'make what is chosen one group of this mode (a train, a chapter)', typing: true },
+  { id: 'room.join', keys: ['Ctrl+J'], words: 'join the two chosen (Proust: a link from the first to the other)', typing: true },
   { id: 'room.ungroup', keys: ['Ctrl+Shift+G'], words: 'take what is chosen out of its group', typing: true },
   { id: 'room.throw-back', keys: ['Ctrl+Shift+Backspace'], shows: 'Ctrl+Shift+Backspace · drag onto the tray', words: 'throw what is chosen back into the loose tray', typing: true },
   { id: 'room.move', keys: ['Ctrl+M'], words: 'move what is chosen to another room', typing: true },
