@@ -152,6 +152,7 @@ export default class Frame extends Feature {
     const wasHidden = this.root.hidden;
     this.root.hidden = false;
     this.searchBtn.hidden = !o.search;
+    this.backBtn.hidden = !o.back;
     this.backBtn.setAttribute('aria-label', o.backLabel || 'Back');
     this.drawCrumbs(o.crumbs || []);
     this.selEl.textContent = o.selection || '';
