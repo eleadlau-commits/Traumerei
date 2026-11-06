@@ -6,7 +6,7 @@ washi paper, lets seeded ink marks come and go over it, and shows how each layer
 ## What it adds
 
 - The **Renderer** view (the app's only tab): just the picture, filling the screen edge to edge
-  (cropped to fit, like a cover photo), shown as **Washi** at first. It starts as a plain white
+  (cropped to fit, like a cover photo), shown as **Mondrian** at first (the lightest to draw; Washi and Plain are in Settings). It starts as a plain white
   image the shape of the screen. **Settings → Colour** holds the one tint τ, with *From the
   picture* (the picture's dominant hue, as Plain finds it, at τ's lightness and a chroma of
   0.35 C, kept within 0.015–0.06) and *Back to defaults*. Every colour in the app comes from τ
