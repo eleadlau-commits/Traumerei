@@ -1,12 +1,16 @@
 {
   "name": "Home",
-  "description": "The home page over the picture: the name in the middle, then Create, Settings and Account. Its typeface is a setting.",
+  "description": "The home page over the picture, in the frame: a rail with Start and Recent rooms, the name in the middle, then Create. Its typeface is a setting.",
   "version": "1.0.0",
   "main": "Home.js",
   "styles": [
     "style.css"
   ],
   "uses": [
-    "rooms"
+    "rooms",
+    "world",
+    "frame",
+    "search",
+    "keys"
   ]
 }
