@@ -97,7 +97,9 @@ export function throwBack(c, e, ids = null) {
   if (!c.ont.tray) { c.toast(`${c.ont.name} has no loose tray.`); return 0; }
   const n = throwBackIn(c.ont, c.world, c.roomId, ids);
   if (!n) {
-    c.toast(c.ont.groups ? 'Already loose, or it can\'t go alone.' : `${c.ont.name} places every thought itself: only another mode's group can go back.`);
+    const one = c.ont.groups?.name.toLowerCase();
+    c.toast(!c.ont.lays ? 'Already loose, or it can\'t go alone.'
+      : `${c.ont.name} places every thought itself: only ${one ? `a ${one} or ` : ''}another mode's group can go back.`);
     return 0;
   }
   c.sel = null;

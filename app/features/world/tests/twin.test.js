@@ -2,7 +2,8 @@
 // a thought or group can be moved across.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig } from '../model.js';
+import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig, join } from '../model.js';
+import russell from '../ontologies/russell.js';
 import { addTwin, sides, twinOf, otherSide, across, isTwin, placeName, moveTargets } from '../twin.js';
 
 const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, { id: 'russell', name: 'Russell' }];
@@ -66,4 +67,26 @@ test('Move to lists a Twin as its two sides, the other side first from inside on
   assert.ok(!moveTargets(w, 'messy').some((x) => x.id === t.id)); // never the Twin itself
   assert.deepEqual(names(r.id), ['Pair · Left', 'Messy thoughts']);
   assert.deepEqual(names(l.id), ['Pair · Right', 'Messy thoughts']);
+});
+
+test('a group moved across to a side in another mode is one object there: its thoughts are not loose too', () => {
+  const w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['joyce', 'russell']);
+  const [l, r] = sides(w, t.id);
+  const a = create(w, l.id, { kind: 'line', text: 'a' }, 2);
+  const g = create(w, l.id, { kind: 'group', of: 'joyce', x: 0, y: 0 }, 2);
+  join(w, g.id, a.id);
+  assert.ok(!g.shared); // a train made by writing on: layout only
+  assert.ok(across(w, g.id, 10, 20));
+  assert.equal(a.parent, r.id);
+  assert.ok(g.shared);
+  assert.deepEqual(russell.tray(w, r.id).map((x) => x.id), [g.id]); // the train, not its thought as well
+  // Across to a side in its own mode, a group stays layout only.
+  const u = addTwin(w, 'Same', 1, {}, ['joyce', 'joyce']);
+  const [ul] = sides(w, u.id);
+  const b = create(w, ul.id, { kind: 'line', text: 'b' }, 3);
+  const h = create(w, ul.id, { kind: 'group', of: 'joyce', x: 0, y: 0 }, 3);
+  join(w, h.id, b.id);
+  assert.ok(across(w, h.id));
+  assert.ok(!h.shared);
 });

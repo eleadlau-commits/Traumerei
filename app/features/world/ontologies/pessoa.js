@@ -68,6 +68,7 @@ export default {
   icon: '<circle cx="6" cy="7" r="2"/><circle cx="17" cy="6" r="2"/><circle cx="11" cy="13" r="2"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18" cy="17" r="2"/>', // each on its own
   order: 20,
   groups: null,
+  lays: true, // places every thought itself
 
   units: (w, roomId) => [...roomUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
   tray: (w, roomId) => trayForeign(w, roomId, 'pessoa'),
