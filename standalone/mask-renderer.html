@@ -21828,6 +21828,81 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     c.toast(`${on ? "Locked" : "Unlocked"}.${key ? ` ${key} ${on ? "unlocks" : "locks"} it.` : ""}`);
   }
 
+  // dist/web/features/room/centre.js
+  var GLIDE_MS = 320;
+  function fitView(box, width, height, { pad = 48, most = 1, keep: keep2 = null } = {}) {
+    const w2 = Math.max(box.w, 1), h = Math.max(box.h, 1);
+    const fits2 = Math.min((width - 2 * pad) / w2, (height - 2 * pad) / h);
+    let zoom = keep2 != null ? Math.min(keep2, fits2) : Math.min(most, fits2);
+    zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom || ZOOM.min));
+    return { x: box.x + box.w / 2, y: box.y + box.h / 2, zoom };
+  }
+  function drawnBox(c, selector) {
+    const origin = c.world$.getBoundingClientRect(), zoom = view6(c.world, c.roomId).zoom || 1;
+    let x0 = Infinity, y0 = Infinity, x12 = -Infinity, y12 = -Infinity;
+    for (const n of c.world$.querySelectorAll(selector)) {
+      const r = n.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      x0 = Math.min(x0, r.left);
+      y0 = Math.min(y0, r.top);
+      x12 = Math.max(x12, r.right);
+      y12 = Math.max(y12, r.bottom);
+    }
+    if (x0 === Infinity) return null;
+    return { x: (x0 - origin.left) / zoom, y: (y0 - origin.top) / zoom, w: (x12 - x0) / zoom, h: (y12 - y0) / zoom };
+  }
+  function fitAll(c) {
+    const box = drawnBox(c, "[data-thought], [data-group], [data-measure]");
+    if (!box) {
+      c.toast("Nothing on the canvas yet.");
+      return;
+    }
+    const { width, height } = c.stage.getBoundingClientRect();
+    glide(c, fitView(box, width, height));
+  }
+  function centreChosen(c) {
+    const box = c.sel && drawnBox(c, ".selected");
+    if (!box) {
+      c.toast("Choose something first: Ctrl+Shift+C brings the view to it.");
+      return;
+    }
+    const v2 = view6(c.world, c.roomId);
+    const { width, height } = c.stage.getBoundingClientRect();
+    glide(c, fitView(box, width, height, { keep: v2.zoom }));
+  }
+  function glide(c, to) {
+    const v2 = view6(c.world, c.roomId);
+    const roomId = c.roomId;
+    cancelAnimationFrame(c.glideFrame);
+    const from = { x: v2.x, y: v2.y, zoom: v2.zoom };
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const end = () => {
+      Object.assign(v2, to);
+      c.place();
+      c.save();
+    };
+    if (still) {
+      end();
+      return;
+    }
+    const t02 = performance.now();
+    const step = (now) => {
+      if (c.roomId !== roomId) return;
+      const t = Math.min(1, (now - t02) / GLIDE_MS);
+      if (t >= 1) {
+        end();
+        return;
+      }
+      const k2 = 1 - (1 - t) ** 3;
+      v2.zoom = from.zoom * (to.zoom / from.zoom) ** k2;
+      v2.x = from.x + (to.x - from.x) * k2;
+      v2.y = from.y + (to.y - from.y) * k2;
+      c.place();
+      c.glideFrame = requestAnimationFrame(step);
+    };
+    c.glideFrame = requestAnimationFrame(step);
+  }
+
   // dist/web/features/room/gestures.js
   var Gestures = class {
     onDown(e) {
@@ -21836,6 +21911,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const pointers = this.pointers ||= /* @__PURE__ */ new Map();
       if (e.pointerType === "mouse") pointers.clear();
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      cancelAnimationFrame(this.glideFrame);
       this.stage.setPointerCapture(e.pointerId);
       if (pointers.size === 2) {
         this.gesture = { kind: "pinch", ...this.pinchState() };
@@ -22087,6 +22163,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.openProps(this.sel);
         return true;
       }
+      if (k2 === "Home" && !mod && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        fitAll(this);
+        return true;
+      }
+      if (mod && e.shiftKey && !e.altKey && e.code === "KeyC") {
+        e.preventDefault();
+        centreChosen(this);
+        return true;
+      }
       if (mod && !e.altKey && k2.toLowerCase() === "a") {
         e.preventDefault();
         const ids = this.ont.units(this.world, this.roomId).map((th) => th.id);
@@ -22331,6 +22417,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     onWheel(e) {
       e.preventDefault();
+      cancelAnimationFrame(this.glideFrame);
       const v2 = view6(this.world, this.roomId);
       const mouse = e.deltaMode !== 0 || e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY);
       if (e.ctrlKey || mouse) {
@@ -23501,6 +23588,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     { id: "room.drag", shows: "Drag", words: "move a thing · on empty space, move around" },
     { id: "room.box", shows: "Shift+drag", words: "a box to choose many" },
     { id: "room.pan", shows: "Ctrl+drag", words: "move around, wherever it starts" },
+    { id: "room.fit", keys: ["Home"], words: "fit the view to everything in the room" },
+    { id: "room.centre", keys: ["Ctrl+Shift+C"], words: "bring the view to what is chosen" },
     { id: "room.all", keys: ["Ctrl+A"], words: "choose everything" },
     { id: "room.more", shows: "Shift+click · Ctrl+click", words: "add to the choice · in or out of it" },
     { id: "room.copy", keys: ["Ctrl+C", "Ctrl+V"], words: "copy what is chosen · put a copy here" },
