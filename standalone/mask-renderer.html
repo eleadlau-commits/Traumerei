@@ -1847,19 +1847,19 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-choice-row .seg { grid-column: 1 / -1; gap: 4px 20px; }
 .room-list-row input { grid-column: 1 / -1; }
 .room-list-note { grid-column: 1 / -1; font-size: 11px; opacity: .55; }
-.room-russell-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
-.room-russell-hit { cursor: pointer; }
-.room-russell-hint { opacity: 0; transition: opacity .2s; }
-.room-russell-hint.show, .room-russell-hint:hover { opacity: .35; }
-.room-russell-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
-.room-russell-edit.side-right { transform: translateY(-50%); }
-.room-russell-edit.side-left { transform: translate(-100%, -50%); }
-.room-russell-edit.side-above { transform: translate(-50%, -100%); }
-.room-russell-edit.side-right-up { transform: translateY(-100%); }
-.room-russell-edit.side-left-up { transform: translate(-100%, -100%); }
-.room-russell-edit.side-left-down { transform: translateX(-100%); }
-.room-russell-edit input { width: 200px; }
-.room-russell-edit .room-russell-new, .room-russell-forgets .room-russell-new { width: 140px; }
+.room-arrow-rel { font-style: normal; letter-spacing: .06em; opacity: .7; }
+.room-arrow-hit { cursor: pointer; }
+.room-arrow-hint { opacity: 0; transition: opacity .2s; }
+.room-arrow-hint.show, .room-arrow-hint:hover { opacity: .35; }
+.room-arrow-edit { position: absolute; z-index: 5; display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; font-size: 15px; }
+.room-arrow-edit.side-right { transform: translateY(-50%); }
+.room-arrow-edit.side-left { transform: translate(-100%, -50%); }
+.room-arrow-edit.side-above { transform: translate(-50%, -100%); }
+.room-arrow-edit.side-right-up { transform: translateY(-100%); }
+.room-arrow-edit.side-left-up { transform: translate(-100%, -100%); }
+.room-arrow-edit.side-left-down { transform: translateX(-100%); }
+.room-arrow-edit input { width: 200px; }
+.room-arrow-edit .room-arrow-new, .room-arrow-row .room-arrow-new { width: 140px; }
 .room-mode-settings-reset { justify-self: start; font-size: 12px; padding: 2px 0; cursor: pointer; opacity: .7; }
 .room-mode-settings-reset:hover { opacity: 1; }
 .room-settings-ont { margin: 8px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
@@ -2099,8 +2099,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
    side of a parent facing a child to the child's facing side, with their label at the middle. */
-.room-russell-arrow { opacity: .4; }
-.room-russell-drawing { opacity: .7; stroke-dasharray: 4 4; }
+.room-arrow { opacity: .4; }
+.room-arrow-drawing { opacity: .7; stroke-dasharray: 4 4; }
 .room-russell-rule { stroke: currentColor; stroke-width: 1; opacity: .22; }
 .room-russell-rule.selected { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
 .room-russell-title {
@@ -2112,7 +2112,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   white-space: nowrap;
   cursor: grab;
 }
-.room-russell-label {
+.room-arrow-label {
   position: absolute;
   max-width: 200px;
   width: max-content;
@@ -2137,14 +2137,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-russell-foot:hover { opacity: .8; transform: scale(1.3); }
 .room-russell-pick { cursor: copy; }
 .room-russell-pick:hover { outline: var(--drop-line); outline-offset: 7px; }
-.room-russell-forgets { display: grid; gap: 4px; }
-.room-russell-label.side-right { transform: translateY(-50%); }
-.room-russell-label.side-left { transform: translate(-100%, -50%); text-align: right; }
-.room-russell-label.side-above { transform: translate(-50%, -100%); text-align: center; }
-.room-russell-label.side-right-up { transform: translateY(-100%); }
-.room-russell-label.side-right-down { transform: none; }
-.room-russell-label.side-left-up { transform: translate(-100%, -100%); text-align: right; }
-.room-russell-label.side-left-down { transform: translateX(-100%); text-align: right; }
+.room-arrow-row { display: grid; gap: 4px; }
+.room-arrow-label.side-right { transform: translateY(-50%); }
+.room-arrow-label.side-left { transform: translate(-100%, -50%); text-align: right; }
+.room-arrow-label.side-above { transform: translate(-50%, -100%); text-align: center; }
+.room-arrow-label.side-right-up { transform: translateY(-100%); }
+.room-arrow-label.side-right-down { transform: none; }
+.room-arrow-label.side-left-up { transform: translate(-100%, -100%); text-align: right; }
+.room-arrow-label.side-left-down { transform: translateX(-100%); text-align: right; }
 
 /* Russell: a closed chapter shows only its name; a click opens it as a document. */
 .room-russell-closed { cursor: pointer; }
@@ -3283,14 +3283,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     selectView(id, { quiet = false } = {}) {
       const slot = this.app.slot("views");
       const views = this.views;
-      let view6 = views.find((v2) => v2.id === id);
-      if (!view6) {
-        view6 = views.find((v2) => slot.run(v2, (x) => !!x.contains?.(id), false));
-        if (!view6) return false;
-        slot.run(view6, (x) => x.open?.(id));
+      let view7 = views.find((v2) => v2.id === id);
+      if (!view7) {
+        view7 = views.find((v2) => slot.run(v2, (x) => !!x.contains?.(id), false));
+        if (!view7) return false;
+        slot.run(view7, (x) => x.open?.(id));
       }
-      const changed2 = this.currentId !== view6.id;
-      this.currentId = view6.id;
+      const changed2 = this.currentId !== view7.id;
+      this.currentId = view7.id;
       if (!quiet) {
         if (changed2) window.scrollTo(0, 0);
         this.render();
@@ -3298,8 +3298,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       return true;
     }
     step(direction) {
-      const view6 = this.currentView;
-      if (view6?.step) this.app.slot("views").run(view6, (v2) => v2.step(direction));
+      const view7 = this.currentView;
+      if (view7?.step) this.app.slot("views").run(view7, (v2) => v2.step(direction));
     }
     // ---- Drawing ----
     render() {
@@ -6574,7 +6574,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   function headroom(L) {
     return Math.min(1, Math.max(0, (1 - L) / 0.35));
   }
-  function plainRGB(view6, field3, base2, P, W2, H2) {
+  function plainRGB(view7, field3, base2, P, W2, H2) {
     const N = 1024;
     const eta = headroom(base2.L);
     const lut = new Float32Array(3 * N);
@@ -6582,8 +6582,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       const f2 = i2 / (N - 1);
       let L = base2.L + P.plainAlpha * eta * f2;
       let C = base2.C * (1 - P.plainBeta * f2);
-      if (view6 === "base") [L, C] = [base2.L, base2.C];
-      if (view6 === "pattern") [L, C] = [0.12 + 0.82 * f2, 0];
+      if (view7 === "base") [L, C] = [base2.L, base2.C];
+      if (view7 === "pattern") [L, C] = [0.12 + 0.82 * f2, 0];
       const rgb3 = lchToLinear(L, C, base2.h);
       for (let c = 0; c < 3; c++) lut[3 * i2 + c] = 255 * delinearise(rgb3[c]);
     }
@@ -7712,6 +7712,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   // dist/web/features/world/lib.js
   var lib_exports = {};
   __export(lib_exports, {
+    arrowview: () => arrowview_exports,
     attention: () => attention_exports,
     groups: () => groups_exports,
     items: () => items_exports,
@@ -13666,6 +13667,279 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
   }
 
+  // dist/web/features/world/ontologies/arrowview.js
+  var arrowview_exports = {};
+  __export(arrowview_exports, {
+    arrowKey: () => arrowKey,
+    arrowView: () => arrowView
+  });
+  var arrowKey = (from, to) => `${from}>${to}`;
+  function arrowView({ of, net: net2, boxes: boxes2, pads: pads2, nodeAt, name: name5, ends = () => "arrow" }) {
+    const { arrows: arrows2, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, setLabel: setLabel2, setRelation: setRelation2 } = net2;
+    const box = ({ at: at2, size }) => ({ x: at2.x, y: at2.y, w: size.w, h: size.h });
+    let editing = null;
+    let lastArrow = null;
+    function startEdit(c, from, to) {
+      const a = arrowsInto2(c.world, c.roomId, to);
+      if (!a.parents.includes(from)) return;
+      editing = { room: c.roomId, from, to, text: a.labels[from] || "", rel: a.rel[from], fresh: true };
+      c.drawWorld();
+    }
+    function finishEdit(c, keep2) {
+      const e = editing;
+      editing = null;
+      if (keep2 && e && e.room === c.roomId && !c.locked) {
+        setLabel2(c.world, c.roomId, e.from, e.to, e.text);
+        setRelation2(c.world, c.roomId, e.from, e.to, e.rel);
+        c.save();
+      }
+      c.drawWorld();
+    }
+    function pick(c, now, chosen, keys = () => {
+    }) {
+      const names = cleanRelations(c.setting(RELATIONS.key));
+      const list2 = names.includes(now) || !now ? names : [...names, now];
+      const wrap = c.el("span", { class: "room-arrow-rel-pick" });
+      const select2 = c.el(
+        "select",
+        {
+          class: "room-arrow-pick-rel",
+          "aria-label": "The arrow's relation",
+          onkeydown: keys,
+          onchange: (ev) => {
+            const v2 = ev.target.value;
+            if (v2 === "new") {
+              wrap.replaceChildren(field3);
+              field3.focus();
+              return;
+            }
+            chosen(v2 === "none" ? "" : list2[Number(v2)]);
+          }
+        },
+        ...list2.map((n, i2) => c.el("option", { value: String(i2), selected: n === now }, n)),
+        c.el("option", { value: "none", selected: !now }, "(no relation)"),
+        c.el("option", { value: "new" }, "+ New…")
+      );
+      const back = () => {
+        select2.value = now ? String(list2.indexOf(now)) : "none";
+        wrap.replaceChildren(select2);
+        select2.focus();
+      };
+      const field3 = c.el("input", {
+        class: "room-edit-text room-arrow-new",
+        placeholder: "is a case of",
+        spellcheck: "false",
+        "aria-label": "A new relation",
+        onkeydown: (ev) => {
+          ev.stopPropagation();
+          if (ev.key === "Escape") {
+            ev.preventDefault();
+            back();
+            return;
+          }
+          if (ev.key !== "Enter") return;
+          ev.preventDefault();
+          const n = relationName(field3.value);
+          if (!n) {
+            if (n === null) c.toast("A relation can't hold [[ or ]].");
+            back();
+            return;
+          }
+          const next = withRelation(names, n);
+          if (!c.locked && next.length !== names.length) {
+            setRoomSetting(c.world, c.roomId, of, RELATIONS.key, next);
+            c.save();
+          }
+          chosen(next.find((x) => x.toLowerCase() === n.toLowerCase()));
+        }
+      });
+      wrap.append(select2);
+      return wrap;
+    }
+    function editBox(c, spot4) {
+      const e = editing;
+      const keys = (ev) => {
+        ev.stopPropagation();
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          finishEdit(c, true);
+        } else if (ev.key === "Escape") {
+          ev.preventDefault();
+          finishEdit(c, false);
+        }
+      };
+      const input = c.el("input", {
+        class: "room-edit-text",
+        value: e.text,
+        placeholder: "the coordinates",
+        spellcheck: "false",
+        "aria-label": "The arrow's label",
+        oninput: (ev) => {
+          e.text = ev.target.value;
+        },
+        onkeydown: keys
+      });
+      const picker = pick(c, e.rel, (n) => {
+        e.rel = n;
+        input.focus();
+      }, keys);
+      const out = c.el("div", {
+        class: `panel room-arrow-edit side-${spot4.side}`,
+        style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
+      }, picker, input);
+      requestAnimationFrame(() => {
+        if (!out.isConnected || out.contains(document.activeElement)) return;
+        input.focus();
+        if (e.fresh) input.select();
+        else input.setSelectionRange(input.value.length, input.value.length);
+        e.fresh = false;
+      });
+      return out;
+    }
+    function nodeUnder(c, ev) {
+      const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-group]");
+      const g2 = n && c.world.things[n.dataset.group];
+      if (g2 && g2.of === of) return g2.id;
+      const p = c.toWorld(ev.clientX, ev.clientY);
+      return nodeAt(c.world, c.roomId, p.x, p.y);
+    }
+    function drag(c, e, from, p) {
+      const layer2 = c.world$?.querySelector(".room-lines");
+      if (!layer2) return;
+      const line2 = c.setting("line") || "straight";
+      const [drawn] = line("", { ends: "arrow", cls: "room-arrow room-arrow-drawing" });
+      layer2.append(drawn);
+      const move5 = (ev) => {
+        const q = c.toWorld(ev.clientX, ev.clientY);
+        drawn.setAttribute("d", path({ p, q, from: "bottom", to: "top" }, line2));
+      };
+      const up = (ev) => {
+        document.removeEventListener("pointermove", move5);
+        document.removeEventListener("pointerup", up);
+        document.removeEventListener("pointercancel", up);
+        drawn.remove();
+        if (ev.type !== "pointerup") return;
+        const to = nodeUnder(c, ev);
+        if (!to || to === from) {
+          c.drawWorld();
+          return;
+        }
+        const why = link2(c.world, c.roomId, from, to);
+        if (why) c.toast(why);
+        c.save();
+        c.drawWorld();
+      };
+      move5(e);
+      document.addEventListener("pointermove", move5);
+      document.addEventListener("pointerup", up);
+      document.addEventListener("pointercancel", up);
+    }
+    return {
+      pick,
+      drag,
+      nodeUnder,
+      // Whether an arrow is being edited in this room.
+      editing: (c) => !!editing && editing.room === c.roomId,
+      // A press on the canvas: one in the edit box is its own, anywhere else keeps the edit; a
+      // double-click on an arrow or its label edits it. True when the press was the arrows'.
+      press(c, e) {
+        if (editing && editing.room === c.roomId) {
+          if (e.target.closest?.(".room-arrow-edit")) return true;
+          finishEdit(c, true);
+        }
+        const hit = e.target.closest?.("[data-arrow]");
+        if (!hit) {
+          lastArrow = null;
+          return false;
+        }
+        const key = hit.dataset.arrow, now = Date.now();
+        if (lastArrow?.key === key && now - lastArrow.at < 400) {
+          lastArrow = null;
+          e.preventDefault();
+          const [from, to] = key.split(">");
+          startEdit(c, from, to);
+          return true;
+        }
+        lastArrow = { key, at: now };
+        return false;
+      },
+      // Each arrow on the canvas, into `layer` (lines.layer): from the side of the parent that faces
+      // the child to the child's facing side, its label at its middle. Returns the label nodes.
+      draw(c, layer2, all = boxes2(c.world, c.roomId)) {
+        const w2 = c.world, roomId = c.roomId, el16 = c.el;
+        const nodes = [];
+        const line2 = c.setting("line") || "straight";
+        const names = cleanRelations(c.setting(RELATIONS.key));
+        for (const { from, to, label: label2, rel } of arrows2(w2, roomId)) {
+          const a = all[from], b = all[to];
+          if (!a || !b) continue;
+          const arrow = between(box(a), box(b), pads2(w2, from, to));
+          const d = path(arrow, line2), key = arrowKey(from, to);
+          const [drawn, hit] = line(d, { ends: ends(rel), cls: "room-arrow", hit: { cls: "room-arrow-hit", "data-arrow": key } });
+          layer2.append(drawn, hit);
+          const mid = labelSpot(arrow, line2);
+          if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
+            nodes.push(editBox(c, mid));
+            continue;
+          }
+          const shown2 = relationShown(names, rel);
+          if (!label2 && !shown2 && !c.locked) {
+            const hint2 = el16("div", { class: `room-arrow-label room-arrow-hint side-${mid.side}`, "data-arrow": key, title: "Double-click to write this arrow's label", style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ""}…`);
+            hit.addEventListener("pointerenter", () => hint2.classList.add("show"));
+            hit.addEventListener("pointerleave", () => hint2.classList.remove("show"));
+            nodes.push(hint2);
+          }
+          if (label2 || shown2) {
+            const prefer = parentsOf2(w2, roomId, to).length > 1 ? arrow.p.x < arrow.q.x ? "left" : "right" : null;
+            const fan = arrow.from === "bottom" && childrenOf2(w2, roomId, from).length > 1;
+            const spot4 = labelSpot(arrow, line2, { prefer, t: fan ? 0.7 : 0.5 });
+            nodes.push(el16("div", {
+              class: `room-arrow-label side-${spot4.side}`,
+              "data-group": to,
+              "data-arrow": key,
+              title: `${[rel, label2].filter(Boolean).join(" ")} (double-click to edit)`,
+              style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
+            }, shown2 ? el16("span", { class: "room-arrow-rel" }, label2 ? `${shown2} ` : shown2) : null, label2 ? maths(label2) : null));
+          }
+        }
+        return nodes;
+      },
+      // In a node's pop-up: each arrow into it, its relation (any of the room's, none, or a new one)
+      // and its label.
+      props(c, th) {
+        const { parents, labels, rel } = arrowsInto2(c.world, c.roomId, th.id);
+        return parents.map((p) => {
+          const from = name5(c.world, p);
+          const picker = pick(c, rel[p], (r) => {
+            setRelation2(c.world, c.roomId, p, th.id, r);
+            c.save();
+            c.drawWorld();
+          });
+          return c.el(
+            "label",
+            { class: "room-arrow-row" },
+            c.el("span", { class: "pop-note" }, `From ${from}: `, picker),
+            c.el("input", {
+              class: "room-edit-text",
+              value: labels[p] || "",
+              placeholder: "the coordinates",
+              "aria-label": `The label of the arrow from ${from}`,
+              onkeydown: (e) => {
+                e.stopPropagation();
+                if (e.key === "Enter" || e.key === "Escape") e.target.blur();
+              },
+              onchange: (e) => {
+                setLabel2(c.world, c.roomId, p, th.id, e.target.value);
+                c.save();
+                c.drawWorld();
+              }
+            })
+          );
+        });
+      }
+    };
+  }
+
   // dist/web/features/world/ontologies/russell.js
   var ID = "russell";
   var LAYOUT = { width: 380, title: 32, closed: 30, rhythm: 24, gapX: 72, rootGap: 120, gapY: 72, fan: 240 };
@@ -13859,126 +14133,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (isGroup(th)) return th.of === ID ? th.id : null;
     return groupOf(c.world, id, ID)?.id || null;
   }
-  var editing = null;
-  var lastArrow = null;
-  var arrowKey = (from, to) => `${from}>${to}`;
-  function startEdit(c, from, to) {
-    const a = arrowsInto(c.world, c.roomId, to);
-    if (!a.parents.includes(from)) return;
-    editing = { room: c.roomId, from, to, text: a.labels[from] || "", rel: a.rel[from], fresh: true };
-    c.drawWorld();
-  }
-  function finishEdit(c, keep2) {
-    const e = editing;
-    editing = null;
-    if (keep2 && e && e.room === c.roomId && !c.locked) {
-      setLabel(c.world, c.roomId, e.from, e.to, e.text);
-      setRelation(c.world, c.roomId, e.from, e.to, e.rel);
-      c.save();
-    }
-    c.drawWorld();
-  }
-  function relationPick(c, now, pick, keys = () => {
-  }) {
-    const names = cleanRelations(c.setting(RELATIONS.key));
-    const list2 = names.includes(now) || !now ? names : [...names, now];
-    const wrap = c.el("span", { class: "room-russell-rel-pick" });
-    const select2 = c.el(
-      "select",
-      {
-        class: "room-russell-pick-rel",
-        "aria-label": "The arrow's relation",
-        onkeydown: keys,
-        onchange: (ev) => {
-          const v2 = ev.target.value;
-          if (v2 === "new") {
-            wrap.replaceChildren(field3);
-            field3.focus();
-            return;
-          }
-          pick(v2 === "none" ? "" : list2[Number(v2)]);
-        }
-      },
-      ...list2.map((n, i2) => c.el("option", { value: String(i2), selected: n === now }, n)),
-      c.el("option", { value: "none", selected: !now }, "(no relation)"),
-      c.el("option", { value: "new" }, "+ New…")
-    );
-    const back = () => {
-      select2.value = now ? String(list2.indexOf(now)) : "none";
-      wrap.replaceChildren(select2);
-      select2.focus();
-    };
-    const field3 = c.el("input", {
-      class: "room-edit-text room-russell-new",
-      placeholder: "is a case of",
-      spellcheck: "false",
-      "aria-label": "A new relation",
-      onkeydown: (ev) => {
-        ev.stopPropagation();
-        if (ev.key === "Escape") {
-          ev.preventDefault();
-          back();
-          return;
-        }
-        if (ev.key !== "Enter") return;
-        ev.preventDefault();
-        const name5 = relationName(field3.value);
-        if (!name5) {
-          if (name5 === null) c.toast("A relation can't hold [[ or ]].");
-          back();
-          return;
-        }
-        const next = withRelation(names, name5);
-        if (!c.locked && next.length !== names.length) {
-          setRoomSetting(c.world, c.roomId, ID, RELATIONS.key, next);
-          c.save();
-        }
-        pick(next.find((n) => n.toLowerCase() === name5.toLowerCase()));
-      }
-    });
-    wrap.append(select2);
-    return wrap;
-  }
-  function editBox(c, spot4) {
-    const e = editing;
-    const keys = (ev) => {
-      ev.stopPropagation();
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        finishEdit(c, true);
-      } else if (ev.key === "Escape") {
-        ev.preventDefault();
-        finishEdit(c, false);
-      }
-    };
-    const input = c.el("input", {
-      class: "room-edit-text",
-      value: e.text,
-      placeholder: "the coordinates",
-      spellcheck: "false",
-      "aria-label": "The arrow's label",
-      oninput: (ev) => {
-        e.text = ev.target.value;
-      },
-      onkeydown: keys
-    });
-    const pick = relationPick(c, e.rel, (name5) => {
-      e.rel = name5;
-      input.focus();
-    }, keys);
-    const box = c.el("div", {
-      class: `panel room-russell-edit side-${spot4.side}`,
-      style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
-    }, pick, input);
-    requestAnimationFrame(() => {
-      if (!box.isConnected || box.contains(document.activeElement)) return;
-      input.focus();
-      if (e.fresh) input.select();
-      else input.setSelectionRange(input.value.length, input.value.length);
-      e.fresh = false;
-    });
-    return box;
-  }
   var pending = null;
   var svg2 = svg;
   var FOOT = 16;
@@ -13995,46 +14149,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const g2 of chapters(w2, roomId)) if (places[g2.id]) out[g2.id] = { at: places[g2.id], size: chapterSize(w2, g2.id) };
     return out;
   }
-  function chapterUnder(c, ev) {
-    const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-group]");
-    const g2 = n && c.world.things[n.dataset.group];
-    if (g2 && g2.of === ID) return g2.id;
-    const p = c.toWorld(ev.clientX, ev.clientY);
-    return chapterAt(c.world, c.roomId, p.x, p.y);
-  }
-  function dragArrow(c, e, from) {
-    const layer2 = c.world$?.querySelector(".room-russell-arrows");
-    const b = boxes(c.world, c.roomId)[from];
-    if (!layer2 || !b) return;
-    const p = foot(arrowBox(b));
-    const line2 = c.setting("line") || "straight";
-    const [drawn] = line("", { ends: "arrow", cls: "room-russell-arrow room-russell-drawing" });
-    layer2.append(drawn);
-    const move5 = (ev) => {
-      const q = c.toWorld(ev.clientX, ev.clientY);
-      drawn.setAttribute("d", path({ p, q, from: "bottom", to: "top" }, line2));
-    };
-    const up = (ev) => {
-      document.removeEventListener("pointermove", move5);
-      document.removeEventListener("pointerup", up);
-      document.removeEventListener("pointercancel", up);
-      drawn.remove();
-      if (ev.type !== "pointerup") return;
-      const to = chapterUnder(c, ev);
-      if (!to || to === from) {
-        c.drawWorld();
-        return;
-      }
-      const why = link(c.world, c.roomId, from, to);
-      if (why) c.toast(why);
-      c.save();
-      c.drawWorld();
-    };
-    move5(e);
-    document.addEventListener("pointermove", move5);
-    document.addEventListener("pointerup", up);
-    document.addEventListener("pointercancel", up);
-  }
+  var view4 = arrowView({
+    of: ID,
+    net,
+    boxes,
+    pads,
+    name: (w2, id) => chapterName(w2, id),
+    nodeAt: (w2, roomId, x, y) => chapterAt(w2, roomId, x, y)
+  });
   var traum3 = {
     write(w2, roomId, c) {
       const out = [];
@@ -14200,26 +14322,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // the one clicked (anywhere else lets it go).
     press(c, e) {
       if (e.button !== 0 || c.locked) return false;
-      if (editing && editing.room === c.roomId) {
-        if (e.target.closest?.(".room-russell-edit")) return true;
-        finishEdit(c, true);
-      }
-      const hit = e.target.closest?.("[data-arrow]");
-      if (hit) {
-        const key = hit.dataset.arrow, now = Date.now();
-        if (lastArrow?.key === key && now - lastArrow.at < 400) {
-          lastArrow = null;
-          e.preventDefault();
-          const [from, to] = key.split(">");
-          startEdit(c, from, to);
-          return true;
-        }
-        lastArrow = { key, at: now };
-      } else lastArrow = null;
+      if (view4.press(c, e)) return true;
       if (pending && pending.room === c.roomId) {
         const job = pending;
         pending = null;
-        const to = chapterUnder(c, e);
+        const to = view4.nodeUnder(c, e);
         if (to) {
           if (job.kind === "add") {
             const why = link(c.world, c.roomId, to, job.child);
@@ -14233,7 +14340,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const f2 = e.target.closest?.("[data-foot]");
       if (!f2) return false;
       e.preventDefault();
-      dragArrow(c, e, f2.dataset.foot);
+      const b = boxes(c.world, c.roomId)[f2.dataset.foot];
+      if (b) view4.drag(c, e, f2.dataset.foot, foot(arrowBox(b)));
       return true;
     },
     moves: [
@@ -14282,35 +14390,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // and its label.
     props(c, th) {
       if (!isGroup(th) || th.of !== ID) return [];
-      const { parents, labels, rel } = arrowsInto(c.world, c.roomId, th.id);
-      return parents.map((p) => {
-        const name5 = chapterName(c.world, p);
-        const pick = relationPick(c, rel[p], (r) => {
-          setRelation(c.world, c.roomId, p, th.id, r);
-          c.save();
-          c.drawWorld();
-        });
-        return c.el(
-          "label",
-          { class: "room-russell-forgets" },
-          c.el("span", { class: "pop-note" }, `From ${name5}: `, pick),
-          c.el("input", {
-            class: "room-edit-text",
-            value: labels[p] || "",
-            placeholder: "the coordinates",
-            "aria-label": `The label of the arrow from ${name5}`,
-            onkeydown: (e) => {
-              e.stopPropagation();
-              if (e.key === "Enter" || e.key === "Escape") e.target.blur();
-            },
-            onchange: (e) => {
-              setLabel(c.world, c.roomId, p, th.id, e.target.value);
-              c.save();
-              c.drawWorld();
-            }
-          })
-        );
-      });
+      return view4.props(c, th);
     },
     // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
     // arrows down to its children with their labels, and the thought being written.
@@ -14320,40 +14400,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const layer2 = layer("room-russell-arrows");
       const nodes = [];
       const picking = pending && pending.room === roomId;
-      const line2 = c.setting("line") || "straight";
-      const names = cleanRelations(c.setting(RELATIONS.key));
-      for (const { from, to, label: label2, rel } of arrows(w2, roomId)) {
-        const a = all[from], b = all[to];
-        if (!a || !b) continue;
-        const arrow = between(arrowBox(a), arrowBox(b), pads(w2, from, to));
-        const d = path(arrow, line2), key = arrowKey(from, to);
-        const [drawn, hit] = line(d, { ends: "arrow", cls: "room-russell-arrow", hit: { cls: "room-russell-hit", "data-arrow": key } });
-        layer2.append(drawn, hit);
-        const mid = labelSpot(arrow, line2);
-        if (editing && editing.room === roomId && editing.from === from && editing.to === to && !c.locked) {
-          nodes.push(editBox(c, mid));
-          continue;
-        }
-        const shown2 = relationShown(names, rel);
-        if (!label2 && !shown2 && !c.locked) {
-          const hint2 = el16("div", { class: `room-russell-label room-russell-hint side-${mid.side}`, "data-arrow": key, title: "Double-click to write this arrow's label", style: `left:${Math.round(mid.x)}px;top:${Math.round(mid.y)}px` }, `${rel ? `${rel} ` : ""}…`);
-          hit.addEventListener("pointerenter", () => hint2.classList.add("show"));
-          hit.addEventListener("pointerleave", () => hint2.classList.remove("show"));
-          nodes.push(hint2);
-        }
-        if (label2 || shown2) {
-          const prefer = parentsOf(w2, roomId, to).length > 1 ? arrow.p.x < arrow.q.x ? "left" : "right" : null;
-          const fan = arrow.from === "bottom" && childrenOf(w2, roomId, from).length > 1;
-          const spot4 = labelSpot(arrow, line2, { prefer, t: fan ? 0.7 : 0.5 });
-          nodes.push(el16("div", {
-            class: `room-russell-label side-${spot4.side}`,
-            "data-group": to,
-            "data-arrow": key,
-            title: `${[rel, label2].filter(Boolean).join(" ")} (double-click to edit)`,
-            style: `left:${Math.round(spot4.x)}px;top:${Math.round(spot4.y)}px`
-          }, shown2 ? el16("span", { class: "room-russell-rel" }, label2 ? `${shown2} ` : shown2) : null, label2 ? maths(label2) : null));
-        }
-      }
+      nodes.push(...view4.draw(c, layer2, all));
       for (const g2 of chapters(w2, roomId)) {
         const box = all[g2.id];
         if (!box) continue;
@@ -15424,7 +15471,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/roomfile/world.js
   var room3;
   var shut2;
-  var view4;
+  var view5;
   var create2;
   var update2;
   var members2;
@@ -15454,7 +15501,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({
       room: room3,
       shut: shut2,
-      view: view4,
+      view: view5,
       create: create2,
       update: update2,
       members: members2,
@@ -15791,7 +15838,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function modesOf(w2, roomId, ontologies = []) {
     const r = room3(w2, roomId);
-    const mine = view4(w2, roomId).mode;
+    const mine = view5(w2, roomId).mode;
     if (r?.size === 2 || r?.id === "messy") return [mine, ...ontologies.map((o2) => o2.id).filter((id) => id !== mine)];
     return [mine];
   }
@@ -15857,7 +15904,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!r) return { text: "", ids: /* @__PURE__ */ new Map() };
     const kept = own2(w2, roomId, KEPT2, false);
     const twin = isTwin2(r) ? sides2(w2, roomId) : null;
-    const modes = twin ? twin.map((s) => view4(w2, s.id).mode) : modesOf(w2, roomId, ontologies);
+    const modes = twin ? twin.map((s) => view5(w2, s.id).mode) : modesOf(w2, roomId, ontologies);
     const front = [
       ["format", FORMAT],
       ["guide", GUIDE],
@@ -16253,14 +16300,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return { room: t, report, made, ids };
   }
   function frame(w2, roomId, ontologies = [], box = { w: 1100, h: 640 }) {
-    const o2 = ontology(ontologies, view4(w2, roomId).mode);
+    const o2 = ontology(ontologies, view5(w2, roomId).mode);
     if (typeof o2?.units !== "function" || typeof o2?.point !== "function") return;
     const ps = o2.units(w2, roomId).map((u) => o2.point(w2, roomId, u.id)).filter(Boolean);
     if (!ps.length) return;
     const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
     const x0 = Math.min(...xs), x12 = Math.max(...xs) + 340, y0 = Math.min(...ys) - 40, y12 = Math.max(...ys) + 80;
     const zoom = Math.max(0.5, Math.min(1, box.w / (x12 - x0), box.h / (y12 - y0)));
-    Object.assign(view4(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
+    Object.assign(view5(w2, roomId), { x: Math.round((x0 + x12) / 2), y: Math.round(zoom < 0.6 ? y0 + box.h / zoom / 2 : (y0 + y12) / 2), zoom: Math.round(zoom * 100) / 100 });
   }
   var fileName = (name5) => `${String(name5 || "Untitled").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled"}.traum`;
 
@@ -16335,7 +16382,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${of}.${k2}`, of, k: k2, from: now, to: v2, text: `${of}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
       }
     }
-    const mode = view4(w2, roomId).mode;
+    const mode = view5(w2, roomId).mode;
     if (meta.modes && meta.modes[0] !== mode) report.push(`The room's modes stay as they are: modes: can't change here.`);
     return out;
   }
@@ -20220,7 +20267,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/room/world.js
   var room5;
-  var view5;
+  var view6;
   var shut4;
   var MESSY4;
   var name4;
@@ -20274,7 +20321,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function bind4(lib) {
     ({
       room: room5,
-      view: view5,
+      view: view6,
       shut: shut4,
       MESSY: MESSY4,
       name: name4,
@@ -20838,7 +20885,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.crumbDesc.textContent = r.desc || "";
       this.crumbDesc.hidden = !r.desc;
       this.roomPage.classList.toggle("locked", !!this.locked);
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const big = isBig3(r);
       const items = [el15("div", { class: "rail-head", "aria-hidden": "true" }, big ? "Modes" : "Mode")];
       const mark = (m2) => m2.icon ? railIcon2(m2.icon) : el15("span", { class: "rail-icon rail-num", "aria-hidden": "true" }, m2.name.slice(0, 1));
@@ -21044,7 +21091,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Only a big room switches its mode.
     setMode(id) {
       if (!isBig3(room5(this.world, this.roomId))) return;
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       v2.mode = id;
       this.sel = null;
       this.gearFor = null;
@@ -21054,20 +21101,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The world's transform: the view's x, y (world units) sit at the middle of the screen.
     place() {
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const { width, height } = this.stage.getBoundingClientRect();
       this.world$.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
       this.positionEdit?.();
       this.placeOther?.();
     }
     toWorld(clientX, clientY) {
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const b = this.stage.getBoundingClientRect();
       return { x: v2.x + (clientX - b.left - b.width / 2) / v2.zoom, y: v2.y + (clientY - b.top - b.height / 2) / v2.zoom };
     }
     // What's on the screen, in world units, less a margin all round.
     visibleBox(margin = 0.18) {
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const { width, height } = this.stage.getBoundingClientRect();
       const w2 = width / v2.zoom, h = height / v2.zoom;
       return { x: v2.x - w2 / 2 + w2 * margin, y: v2.y - h / 2 + h * margin, w: w2 * (1 - 2 * margin) * 0.75, h: h * (1 - 2 * margin) };
@@ -21152,9 +21199,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const blocks = ont.blocks ? ont.blocks(w2, roomId) : ont.units(w2, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
       const nodes = /* @__PURE__ */ new Map();
       for (const n of this.world$.querySelectorAll("[data-thought]")) nodes.set(n.dataset.thought, n);
-      const editing2 = this.draft?.edit || null;
+      const editing = this.draft?.edit || null;
       const measured = [];
-      const origin = this.world$.getBoundingClientRect(), zoom = view5(w2, roomId).zoom || 1;
+      const origin = this.world$.getBoundingClientRect(), zoom = view6(w2, roomId).zoom || 1;
       for (const b of blocks) {
         if (b.hand && overlap) continue;
         const els = b.thoughts.map((id) => nodes.get(id)).filter(Boolean);
@@ -21168,7 +21215,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           x12 = Math.max(x12, (r.right - origin.left) / zoom);
           y12 = Math.max(y12, (r.bottom - origin.top) / zoom);
         }
-        const writing = b.tail && this.draft?.train && this.draft.train === b.group && !this.draft.edit || editing2 && (b.thoughts.includes(editing2) || b.id === editing2);
+        const writing = b.tail && this.draft?.train && this.draft.train === b.group && !this.draft.edit || editing && (b.thoughts.includes(editing) || b.id === editing);
         measured.push({ id: b.id, box: { x: x0, y: y0, w: x12 - x0, h: y12 - y0 }, fixed: !!b.hand || !!writing, at: b.at });
       }
       const moves = clearSpace(measured);
@@ -21379,7 +21426,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // data-measure is keyed by that id, so an ontology hears its size (Russell: a chapter's name).
     drawnRects() {
       const out = /* @__PURE__ */ new Map();
-      const origin = this.world$.getBoundingClientRect(), zoom = view5(this.world, this.roomId).zoom || 1;
+      const origin = this.world$.getBoundingClientRect(), zoom = view6(this.world, this.roomId).zoom || 1;
       let k2 = 0;
       for (const n of this.world$.querySelectorAll("[data-thought], div[data-group]")) {
         const r = n.getBoundingClientRect();
@@ -21542,7 +21589,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (r.bottom > b.bottom - pad * 2) dy = r.bottom - (b.bottom - pad * 2);
       if (r.top < b.top + pad * 1.5) dy = r.top - (b.top + pad * 1.5);
       if (!dx && !dy) return;
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       v2.x += dx / v2.zoom;
       v2.y += dy / v2.zoom;
       this.place();
@@ -21824,7 +21871,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (this.stage.hasPointerCapture?.(e.pointerId)) this.stage.releasePointerCapture(e.pointerId);
         return;
       }
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const { groupEl, thoughtEl, hit: hitId } = this.hitAt(e.target);
       let thing2 = null;
       const pan = { x0: e.clientX, y0: e.clientY, vx: v2.x, vy: v2.y, moved: false };
@@ -21878,7 +21925,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     pinchState() {
       const [a, b] = [...this.pointers.values()];
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       return { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: v2.zoom, mid: this.toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
     }
     onMove(e) {
@@ -21886,7 +21933,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const g2 = this.gesture;
       if (!g2) return;
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       if (g2.kind === "pinch") {
         const [a, b] = [...this.pointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -22266,7 +22313,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!f2.room) return;
       if (this.roomId !== f2.room) this.openRoom(f2.room);
       const th = this.world.things[f2.id];
-      const v2 = view5(this.world, f2.room);
+      const v2 = view6(this.world, f2.room);
       const p = this.ont.point(this.world, f2.room, f2.id);
       if (p) {
         v2.x = p.x + 120;
@@ -22284,7 +22331,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     onWheel(e) {
       e.preventDefault();
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       const mouse = e.deltaMode !== 0 || e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY);
       if (e.ctrlKey || mouse) {
         const k2 = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 15e-4) * (e.deltaMode === 1 ? 30 : 1));
@@ -22299,7 +22346,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Zooms to `zoom`, keeping the world point `at` (default: the one under the screen point) still.
     zoomAt(clientX, clientY, zoom, at2 = this.toWorld(clientX, clientY)) {
-      const v2 = view5(this.world, this.roomId);
+      const v2 = view6(this.world, this.roomId);
       v2.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, zoom));
       const b = this.stage.getBoundingClientRect();
       v2.x = at2.x - (clientX - b.left - b.width / 2) / v2.zoom;
@@ -23008,7 +23055,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (ev.type !== "pointerup" || !over || !this.world.things[id]) return;
         const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
         if (there && this.world.things[id].parent === there.id) {
-          this.ontology(view5(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
+          this.ontology(view6(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
           this.save();
           this.drawWorld();
           return;
@@ -23044,7 +23091,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onchange: (e) => {
             const to = e.target.value === "+" ? this.addPlainRoom() : e.target.value;
             if (!to) return;
-            const v2 = view5(this.world, to);
+            const v2 = view6(this.world, to);
             ids.forEach((id, i2) => move4(this.world, id, to, Math.round(v2.x - 200 + i2 % 4 * 220), Math.round(v2.y - 120 + Math.floor(i2 / 4) * 140)));
             this.sel = null;
             this.save();
@@ -23275,7 +23322,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ed?.docked) this.panel?.close("sheet", true);
     }
     moveTo(toRoom) {
-      const v2 = view5(this.world, toRoom);
+      const v2 = view6(this.world, toRoom);
       const box = { x: v2.x - 300, y: v2.y - 160, w: 400, h: 320 };
       const taken = roomTrains2(this.world, toRoom).map((t) => ({ x: t.x, y: t.y }));
       const spot4 = randomSpot2(box, taken);
@@ -23325,7 +23372,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.otherWorld.replaceChildren();
         return;
       }
-      const o2 = this.ontology(view5(this.world, other.id).mode);
+      const o2 = this.ontology(view6(this.world, other.id).mode);
       this.otherLabel.textContent = `${other.name} · ${o2.name} · click to work here`;
       this.otherWorld.replaceChildren(...this.sideNodes(other.id));
       this.placeOther();
@@ -23334,7 +23381,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     placeOther() {
       const other = this.otherSide;
       if (!other || this.otherEl.hidden) return;
-      const v2 = view5(this.world, other.id);
+      const v2 = view6(this.world, other.id);
       const { width, height } = this.otherEl.getBoundingClientRect();
       this.otherWorld.style.transform = `translate(${width / 2 - v2.x * v2.zoom}px, ${height / 2 - v2.y * v2.zoom}px) scale(${v2.zoom})`;
     }
@@ -23362,7 +23409,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el15("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
         ...all.map((s) => {
           const on = s.id === this.roomId;
-          const o2 = this.ontology(view5(this.world, s.id).mode);
+          const o2 = this.ontology(view6(this.world, s.id).mode);
           return el15(
             "button",
             {
@@ -23397,7 +23444,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!other || this.otherEl.hidden) return null;
       const b = this.otherEl.getBoundingClientRect();
       if (x < b.left || x > b.right || y < b.top || y > b.bottom) return null;
-      const v2 = view5(this.world, other.id);
+      const v2 = view6(this.world, other.id);
       return { id: other.id, x: Math.round(v2.x + (x - b.left - b.width / 2) / v2.zoom), y: Math.round(v2.y + (y - b.top - b.height / 2) / v2.zoom) };
     }
     // A thought or group let go over the other side goes across, to that spot there. True when it went.
@@ -23407,7 +23454,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const th = this.world.things[id];
       if (!th) return false;
       if (!across2(this.world, id, at2.x, at2.y)) return false;
-      const o2 = this.ontology(view5(this.world, at2.id).mode);
+      const o2 = this.ontology(view6(this.world, at2.id).mode);
       try {
         o2.drop(this.world, at2.id, id, at2.x, at2.y);
       } catch {
@@ -23423,7 +23470,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     twinTrayItems(own3) {
       const other = this.otherSide;
       if (!other) return own3;
-      const o2 = this.ontology(view5(this.world, other.id).mode);
+      const o2 = this.ontology(view6(this.world, other.id).mode);
       let theirs = [];
       try {
         theirs = o2.tray?.(this.world, other.id) || [];
@@ -23872,7 +23919,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.w.ontology(id);
     }
     get mode() {
-      return this.ontology(view5(this.world, this.roomId).mode).id;
+      return this.ontology(view6(this.world, this.roomId).mode).id;
     }
     get ont() {
       return this.ontology(this.mode);
