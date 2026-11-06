@@ -25,6 +25,7 @@ export const ROOM_KEYS = [
   { id: 'room.close', keys: ['Ctrl+Shift+F'], words: 'close or open its group (only how it shows)', typing: true },
   { id: 'room.group', keys: ['Ctrl+G'], words: 'make what is chosen one group of this mode (a train, a chapter)', typing: true },
   { id: 'room.ungroup', keys: ['Ctrl+Shift+G'], words: 'take what is chosen out of its group', typing: true },
+  { id: 'room.throw-back', keys: ['Ctrl+Shift+Backspace'], shows: 'Ctrl+Shift+Backspace · drag onto the tray', words: 'throw what is chosen back into the loose tray', typing: true },
   { id: 'room.move', keys: ['Ctrl+M'], words: 'move what is chosen to another room', typing: true },
   { id: 'room.lock', keys: ['Ctrl+L'], words: 'lock or unlock this room', typing: true },
   { id: 'room.back-into', shows: 'Backspace in an empty thought', words: 'back into the one before' },

@@ -16,7 +16,7 @@
 // the old ones go, everywhere: the new one takes their place in every group, of every ontology,
 // that held them.
 
-import { groupsIn, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership } from './model.js';
+import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -59,6 +59,27 @@ export function place(w, id) {
   const g = w.things[id];
   if (!isGroup(g) || !g.loose) return false;
   delete g.loose;
+  return true;
+}
+
+// Throw back (Ctrl+Shift+Backspace): ontology `of` takes a thing it placed back into its tray. It
+// leaves every group of `of` that holds it (a train, a chapter; one left empty goes); a group of
+// `of`'s own then waits in the tray (loose), and another mode's group loses its spot. A thought
+// inside another mode's shared group can't go alone (the group stands for it). True when it went;
+// `leaves` false: a plain thought can't (Pessoa places every thought itself).
+export function unplace(w, roomId, of, id, { leaves = true } = {}) {
+  const th = w.things[id];
+  if (!th || th.parent !== roomId || shut(w, roomId) || !(isLeaf(th) || isGroup(th))) return false;
+  if (inForeign(w, roomId, of)(id)) return false;
+  const mine = isGroup(th) && th.of === of;
+  const theirs = isGroup(th) && !mine;
+  if (!mine && !theirs && !leaves) return false;
+  const holders = groupsOf(w, id, of);
+  const spotted = theirs && !!spot(w, roomId, of, id);
+  if (!holders.length && !spotted && !(mine && !th.loose)) return false; // in the tray already
+  for (const g of holders) leave(w, g.id, id);
+  if (theirs) delete own(w, roomId, of)[id];
+  if (mine) th.loose = true;
   return true;
 }
 

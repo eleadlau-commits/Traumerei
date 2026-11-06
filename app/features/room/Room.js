@@ -79,6 +79,7 @@ export default class Room extends Feature {
       'room.group': (e) => verbs.group(this, e),
       'room.ungroup': (e) => verbs.ungroup(this, e),
       'room.move': (e) => verbs.moveTo(this, e),
+      'room.throw-back': (e) => verbs.throwBack(this, e),
       'room.lock': (e) => verbs.lock(this, e),
     };
     const live = () => !this.root.hidden && !!this.roomId;

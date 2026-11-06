@@ -1,10 +1,10 @@
 // The same verbs on whatever is chosen in a room, a thought or a group (and on a room, on the rooms
 // page): rename (Ctrl+R), duplicate (Ctrl+D), fold into one (Ctrl+F), close or open (Ctrl+Shift+F), move to another room
-// (Ctrl+M), group (Ctrl+G), ungroup (Ctrl+Shift+G) and lock the room (Ctrl+L); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
+// (Ctrl+M), throw back into the tray (Ctrl+Shift+Backspace), group (Ctrl+G), ungroup (Ctrl+Shift+G) and lock the room (Ctrl+L); Delete deletes (gestures.js). Each is a plain function of the room (c), like editor.js,
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, lock as lockRoom } from './world.js';
+import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, lock as lockRoom, throwBack as throwBackIn } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -76,6 +76,28 @@ export async function moveTo(c, e) {
   if (!pick) return;
   pick.focus({ preventScroll: true });
   try { pick.showPicker?.(); } catch { /* the list opens with Alt+Down instead */ }
+}
+
+// Throw back: what is chosen goes back into this mode's loose tray, at the top (the world's
+// throwBack, each ontology by its own unplace()): a thought leaves its train or chapter, a group
+// of this mode waits in the tray, another mode's group loses its place. One step; Ctrl+Z undoes.
+// ids: what to throw (a drag onto the tray); otherwise what is chosen.
+export function throwBack(c, e, ids = null) {
+  if (typing(e) || c.editing) return 0;
+  ids ??= c.sel ? (c.sel.ids || [c.sel.id]) : [];
+  if (!ids.length) return 0;
+  if (c.locked) { c.toast('This room is locked.'); return 0; }
+  if (!c.ont.tray) { c.toast(`${c.ont.name} has no loose tray.`); return 0; }
+  const n = throwBackIn(c.ont, c.world, c.roomId, ids);
+  if (!n) {
+    c.toast(c.ont.groups ? 'Already loose, or it can\'t go alone.' : `${c.ont.name} places every thought itself: only another mode's group can go back.`);
+    return 0;
+  }
+  c.sel = null;
+  c.save();
+  c.drawWorld();
+  c.toast(`${n === 1 ? 'Back' : `${n} back`} in the loose tray. Ctrl+Z undoes.`);
+  return n;
 }
 
 // Group: what is chosen becomes one group of this mode, by the mode's own rule (the world's

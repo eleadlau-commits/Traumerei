@@ -4,10 +4,10 @@
 import { test, assert } from 'folio/testing';
 import { emptyWorld, MESSY, startTrain, addThought, create, members } from '../model.js';
 import { outermost, foreign, trayForeign, placedForeign, kindTag } from '../groups.js';
-import { groupChosen } from '../ontologies/index.js';
+import { groupChosen, throwBack } from '../ontologies/index.js';
 import joyce from '../ontologies/joyce.js';
 import pessoa from '../ontologies/pessoa.js';
-import russell, { chapters } from '../ontologies/russell.js';
+import russell, { chapters, addChapter } from '../ontologies/russell.js';
 
 const train = (w, ...texts) => {
   const t = startTrain(w, MESSY, 0, 0, 1);
@@ -157,4 +157,52 @@ test('fold: many thoughts become one, in their place in every mode, and the old 
   assert.ok(foldPlan(w, MESSY, [two.id]).why);
   const pic = create(w, MESSY, { kind: 'picture', src: 'data:image/png;base64,AAAA' }, 400);
   assert.match(fold(w, MESSY, [pic.id, x.id]).why, /Pictures/);
+});
+
+test('throw back: each mode takes what it placed back into its tray, at the top', () => {
+  const w = emptyWorld();
+  const t = train(w, 'a', 'b', 'c');
+  const [a, b, c] = members(w, t.id);
+  // Joyce: a thought leaves its train (the rest stay joined) and comes first in the tray.
+  assert.equal(throwBack(joyce, w, MESSY, [b.id], 100), 1);
+  assert.deepEqual(ids(members(w, t.id)), [a.id, c.id]);
+  assert.deepEqual(ids(joyce.tray(w, MESSY)), [b.id]);
+  assert.equal(w.things[b.id].looseAt, 100);
+  assert.equal(throwBack(joyce, w, MESSY, [b.id], 101), 0); // loose already
+  // A whole train waits in the tray (made-there), its thoughts with it.
+  assert.equal(throwBack(joyce, w, MESSY, [t.id, a.id], 102), 1); // a is in the chosen train: once
+  assert.ok(w.things[t.id].loose);
+  assert.ok(!joyce.placed(w, MESSY, t.id));
+  assert.deepEqual(ids(joyce.tray(w, MESSY)).sort(), [b.id, t.id].sort());
+});
+
+test('throw back: another mode\'s group loses its place; Pessoa\'s own thoughts can\'t go', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
+  const g = groupChosen(joyce, w, MESSY, [a.id, b.id], 3);
+  pessoa.drop(w, MESSY, g.id, 40, 50);
+  assert.equal(throwBack(pessoa, w, MESSY, [a.id], 4), 0);   // a plain thought: Pessoa places it itself
+  assert.equal(throwBack(pessoa, w, MESSY, [g.id], 5), 1);
+  assert.deepEqual(ids(pessoa.tray(w, MESSY)), [g.id]);
+  // Russell: placed into a chapter, thrown back out of it; a thought inside the group can't go alone.
+  russell.drop(w, MESSY, g.id, 100, 100);
+  assert.ok(!ids(russell.tray(w, MESSY)).includes(g.id));
+  assert.equal(throwBack(russell, w, MESSY, [a.id], 6), 0);
+  assert.equal(throwBack(russell, w, MESSY, [g.id], 7), 1);
+  assert.ok(ids(russell.tray(w, MESSY)).includes(g.id));
+});
+
+test('throw back: a Russell chapter waits in the tray, its thoughts with it', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const top = addChapter(w, MESSY, {}, 2);
+  const sub = addChapter(w, MESSY, { parent: top.id }, 3);
+  russell.drop(w, MESSY, a.id, 0, 0);
+  w.things[sub.id].members.push(a.id);
+  assert.equal(throwBack(russell, w, MESSY, [sub.id], 5), 1);
+  assert.ok(w.things[sub.id].loose);
+  assert.ok(!chapters(w, MESSY).some((g) => g.id === sub.id));
+  assert.ok(ids(russell.tray(w, MESSY)).includes(sub.id));
+  assert.ok(!ids(russell.tray(w, MESSY)).includes(a.id)); // it went with its chapter
 });
