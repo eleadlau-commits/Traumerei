@@ -78,7 +78,8 @@ relation and its label), draws a new one dragged from a point onto another node,
 node's pop-up rows (each arrow into it). `ends(rel)` gives a relation's ends (Russell: always an
 arrow). An ontology may route the line itself (`route`: Proust's strands), say which node a drawn element
 stands for (`onNode`), shape the line drawn while dragging (`drag`'s `shape`), open a link's edit
-box from its own key (`edit`: Proust's Ctrl+J), keep its relations in
+box from its own key (`edit`: Proust's Ctrl+J), take an arrow away (`remove`: one undo step, as the edit
+box's Remove and Delete and a pop-up row's × do), keep its relations in
 its own setting (`setting`), and leave its first relation unnamed beside its links (`quiet`). Its
 look is the room's `.room-arrow-*` classes.
 

@@ -1,19 +1,28 @@
 /* Styles for Home: layout only (the look is Folio's, folio/runtime/base.css). Class names start
    with "home-". The menu, Settings, Account and About take Folio's veil as they are. */
 
-/* The page over the picture: the name in the middle, a little above centre. Only the words
-   take clicks, so the picture underneath still can (e.g. moving the anchor). */
+/* The page over the picture, in the frame: the rail on the left (Folio's .rail), and the name in
+   the middle of what it leaves, a little above centre. Only the words and the rail take clicks, so
+   the picture underneath still can (e.g. moving the anchor). */
 .home {
   position: fixed;
   inset: 0;
   z-index: 2;
+  pointer-events: none;
+}
+.home-rail { pointer-events: auto; }
+.home-centre {
+  position: absolute;
+  top: var(--bar);
+  bottom: var(--status, 0px);
+  left: var(--rail);
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: clamp(28px, 5vh, 56px);
   padding: 0 24px 6vh;
-  pointer-events: none;
   color: var(--ink);
   font-family: var(--font);
   text-align: center;
@@ -24,7 +33,7 @@
   margin: 0;
   font-family: inherit;
   font-weight: 400;
-  font-size: clamp(36px, 8vw, 104px);
+  font-size: clamp(36px, 6.4vw, 104px);
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -34,14 +43,13 @@
 }
 
 .home-nav { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.home-row { display: flex; gap: clamp(28px, 4vw, 48px); }
 
-/* Its words are Folio's .word, larger; Create larger still. The spacing after the last letter is
-   taken back, so each word is truly centred. */
-.home-link { pointer-events: auto; font-size: 15px; margin-right: calc(-1 * var(--word-spacing)); }
+/* Create is Folio's .word, larger. The spacing after the last letter is taken back, so it is
+   truly centred. */
+.home-link { pointer-events: auto; margin-right: calc(-1 * var(--word-spacing)); }
 .home-link.home-create { font-size: 25px; opacity: .8; }
 
-/* The top bar: only the menu button. */
+/* The top bar: the menu button, then the frame's. */
 .topbar .top-right { display: none; }
 
 /* Settings → Typeface: each choice in its own face, in ordinary case. */

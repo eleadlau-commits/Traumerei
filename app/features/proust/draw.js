@@ -238,7 +238,8 @@ function centreBar(c, view, all) {
 }
 
 // In the pop-up of what is chosen: what it points to, what points to it, and what it is linked
-// with (by a plain line, or both ways); each name goes to that node.
+// with (by a plain line, or both ways); each name goes to that node, and the × beside it takes
+// that link away (both ways, for a pair linked each way; Ctrl+Z brings it back).
 export function props(c, th) {
   const w = c.world, roomId = c.roomId, net = links();
   if (!isNode(w, roomId, th.id)) return [];
@@ -248,9 +249,11 @@ export function props(c, th) {
     if (a.from !== th.id && a.to !== th.id) continue;
     const other = a.from === th.id ? a.to : a.from;
     const ends = endsOf(list, a.rel);
-    const entry = { id: other, rel: a.rel, label: a.label };
+    const entry = { id: other, rel: a.rel, label: a.label, links: [[a.from, a.to]] };
+    const same = ends === 'arrow' ? null : with_.find((x) => x.id === other);
     if (ends === 'arrow') (a.from === th.id ? out : into).push(entry);
-    else if (!with_.some((x) => x.id === other)) with_.push(entry);
+    else if (same) same.links.push([a.from, a.to]);
+    else with_.push(entry);
   }
   const go = (x) => c.el('button', {
     type: 'button', class: 'value-btn room-proust-go', title: [x.rel, x.label].filter(Boolean).join(' · ') || 'Go to it',
@@ -260,7 +263,18 @@ export function props(c, th) {
       if (c.sel) c.openProps?.(c.sel);
     },
   }, nodeName(w, x.id) || 'Untitled');
-  const row = (label, xs) => (xs.length ? c.el('div', { class: 'kv room-proust-links' }, c.el('span', {}, label), c.el('span', { class: 'room-proust-names' }, ...xs.map(go))) : null);
+  const cut = (x) => (c.locked ? null : c.el('button', {
+    type: 'button', class: 'close-x room-arrow-x', 'aria-label': `Remove the link with ${nodeName(w, x.id) || 'Untitled'}`, title: 'Remove this link (Ctrl+Z brings it back)',
+    onclick: (e) => {
+      e.currentTarget.blur();
+      for (const [from, to] of x.links) net.unlink(w, roomId, from, to);
+      c.save();
+      c.drawWorld();
+      c.toast(`Link${x.links.length > 1 ? 's' : ''} removed. Ctrl+Z brings ${x.links.length > 1 ? 'them' : 'it'} back.`);
+    },
+  }));
+  const name = (x) => c.el('span', { class: 'room-proust-name' }, go(x), cut(x));
+  const row = (label, xs) => (xs.length ? c.el('div', { class: 'kv room-proust-links' }, c.el('span', {}, label), c.el('span', { class: 'room-proust-names' }, ...xs.map(name))) : null);
   return [row('Points to', out), row('Pointed to by', into), row('Linked with', with_)].filter(Boolean);
 }
 

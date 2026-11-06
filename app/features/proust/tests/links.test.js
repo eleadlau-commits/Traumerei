@@ -141,3 +141,23 @@ test('a double-click on a link edits it where it is', () => {
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
   assert.equal(links().arrows(w, MESSY)[0].label, 'the steeples');
 });
+
+test('the × beside a name in the pop-up takes that link away; both ways for a pair', () => {
+  const { w, a, b, c, r } = three();
+  links().link(w, MESSY, a, b, '', 'leads to');
+  links().link(w, MESSY, a, c, '', 'is equivalent to');
+  links().link(w, MESSY, c, a);
+  let rows = props(r, w.things[a]);
+  rows[0].querySelector('.room-arrow-x').click();
+  assert.equal(links().arrows(w, MESSY).some((x) => x.from === a && x.to === b), false);
+  assert.equal(r.saved, 1);
+  rows = props(r, w.things[a]);
+  assert.equal(rows.length, 1);
+  rows[0].querySelector('.room-arrow-x').click();
+  assert.deepEqual(links().arrows(w, MESSY), []);
+  assert.equal(r.saved, 2);
+  // A locked room shows no ×.
+  links().link(w, MESSY, a, b, '', 'leads to');
+  r.locked = true;
+  assert.equal(props(r, w.things[a])[0].querySelector('.room-arrow-x'), null);
+});
