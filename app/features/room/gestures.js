@@ -118,6 +118,7 @@ export class Gestures {
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     g.moved = true;
     if (g.kind === 'box') { this.drawBox(g, e); return; }
+    if (g.kind === 'drag' || g.kind === 'group') this.trayHover(g, e.clientX, e.clientY);
     if (g.kind === 'drag' && g.thing?.still) { g.kind = 'pan'; }
     if (g.kind === 'group') {
       if (this.locked) return;
@@ -147,6 +148,7 @@ export class Gestures {
     const g = this.gesture;
     this.gesture = null;
     clearTimeout(this.ctxTimer);
+    if (g) this.trayHover(g, null);
     if (!g || g.kind === 'pinch') { this.save(); return; }
     if (g.ctx && !g.moved) { this.contextAt(g.ctx); return; } // a Mac's Ctrl+click
     if (g.toggle && !g.moved) { if (g.pick) this.chooseMore(g.pick, true); return; } // Ctrl+click (Cmd+click on a Mac): in or out of the choice
@@ -200,11 +202,35 @@ export class Gestures {
     this.save();
   }
 
+  // While a thought (or what is chosen) is dragged over the loose tray, the tray lights as a place
+  // to let go, and a card of it follows the pointer above the dock (the canvas itself stays under
+  // the dock). x null: the drag is over, both go.
+  trayHover(g, x, y) {
+    const tray = x != null && !g.thing?.still && this.ont.tray && !this.locked ? this.trayAt(x, y) : null;
+    if (g.trayEl !== tray) { g.trayEl?.classList.remove('st-drop'); tray?.classList.add('st-drop'); g.trayEl = tray; }
+    if (!tray) { g.ghost?.remove(); g.ghost = null; return; }
+    if (!g.ghost) {
+      const ids = g.kind === 'group' ? Object.keys(g.from) : [g.thing?.id];
+      const th = ids.length === 1 && this.world.things[ids[0]];
+      g.ghost = th ? this.looseCard(th) : el('div', { class: 'room-tray-item' }, el('span', { class: 'room-tray-text' }, `${ids.length} thoughts`));
+      g.ghost.classList.remove('st-sel');
+      g.ghost.classList.add('panel', 'room-tray-ghost', 'st-drag');
+      (document.getElementById('folio-root') || document.body).append(g.ghost);
+    }
+    g.ghost.style.left = `${x + 12}px`;
+    g.ghost.style.top = `${y + 8}px`;
+  }
+
+  // The loose tray under a point on the screen (the left dock's list, or the row at the foot of the
+  // room), or null.
+  trayAt(x, y) {
+    return document.elementFromPoint(x, y)?.closest?.('.room-loose, .room-tray-row, .room-tray-btn') || null;
+  }
+
   // Whether a point on the screen is over the loose tray (the left dock's list, or the row at the
   // foot of the room).
   overTray(x, y) {
-    const at = document.elementFromPoint(x, y);
-    return !!at?.closest?.('.room-loose, .room-tray-row, .room-tray-btn');
+    return !!this.trayAt(x, y);
   }
 
   // What a drag moves on the screen, with where each piece started: the one thought, or every piece
