@@ -232,7 +232,7 @@ its body is key lines:
 | Line | Meaning |
 |---|---|
 | `made in: <mode>` | The ontology that made it, so it shows as a train or a chapter. Without it, the room's first mode that makes groups. |
-| `holds: ^a ^b` | What it holds, in order: thoughts, and other groups (a group of groups; nesting has no limit). Where its mode keeps an order (Russell), this is it; where its mode reads by time (Joyce), the thoughts are in the order they were written. |
+| `holds: ^a ^b` | What it holds, in order: thoughts, and other groups (a group of groups; nesting has no limit). Where its mode keeps an order (Russell), this is it; where its mode reads by time (Joyce), the thoughts are in the order they were written, and a group it holds sits where `holds:` puts it among them. |
 | `closed` | It shows as one thought (its title). |
 | `shared` | Made on purpose (Ctrl+G): every other mode of the room sees it as one object, and its thoughts are not loose there as well. |
 

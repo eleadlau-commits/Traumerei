@@ -11,8 +11,8 @@
 // The thoughts are stamped in the file's order, a millisecond apart, so the file's order is the
 // Timeline's. Export writes short numbers for ids (^1, ^2, …), the items in the order they were
 // written and each group after everything it holds. holds: gives a group's order where its mode
-// keeps one (a Russell chapter); a mode that reads by time (a Joyce train) orders them by when
-// they were written.
+// keeps one (a Russell chapter); a mode that reads by time (a Joyce train) orders its thoughts by
+// when they were written, and the groups it holds where holds: puts them (keepHeldOrder).
 
 import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow } from './grammar.js';
 import {
@@ -189,6 +189,28 @@ export function placementSections(w, roomId, ids, modes, ontologies) {
 
 // ---- Bringing objects in ----
 
+// A group that orders what it holds by time (a Joyce train) puts a group it holds by that group's
+// own stamp, which the file doesn't write. So where the time order isn't holds:'s, the groups held
+// are stamped again to sit where holds: puts them: between the thoughts on either side.
+function keepHeldOrder(w, groupId, order) {
+  const held = order.map((id) => w.things[id]).filter(Boolean);
+  if (members(w, groupId).every((th, k) => th === held[k])) return;
+  for (let i = 0; i < held.length;) {
+    if (!isGroup(held[i])) { i++; continue; }
+    let j = i;
+    while (j < held.length && isGroup(held[j])) j++;
+    const run = held.slice(i, j);
+    let lo = i > 0 ? held[i - 1].at : null, hi = j < held.length ? held[j].at : null;
+    if (lo == null && hi == null) { const ats = run.map((g) => g.at).sort((a, b) => a - b); run.forEach((g, k) => { g.at = ats[k]; }); }
+    else {
+      if (lo == null) lo = hi - 1;
+      if (hi == null || hi <= lo) hi = lo + 1;
+      run.forEach((g, k) => { g.at = lo + ((hi - lo) * (k + 1)) / (run.length + 1); });
+    }
+    i = j;
+  }
+}
+
 // The file's objects made in a room: items and groups (with what each holds), stamped from `now`
 // in the file's order. Returns { ids: Map(file id → thing id), made: { groups, thoughts, pictures },
 // report, relations: [the relation objects, for the placement sections] }. An object of a kind
@@ -250,7 +272,7 @@ export function bringObjects(w, roomId, parts, { modes = [], ontologies = [], no
       if (join(w, g.id, id)) order.push(id);
       else if (!w.things[g.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v.id} (a group can't hold itself, or a group that holds it).`);
     }
-    if (w.things[g.id]) setOrder(w, g.id, order);
+    if (w.things[g.id]) { setOrder(w, g.id, order); keepHeldOrder(w, g.id, order); }
   }
   // A group left with nothing in it goes.
   for (const { g, obj } of groups) {
