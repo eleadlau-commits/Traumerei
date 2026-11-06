@@ -2433,12 +2433,18 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* ---- A Twin (twin.js): two rooms side by side. The side you work in is the canvas; the other
    shows in the other half, quieter, and a click there works in it. ---- */
-.room-page.twin .room-stage { right: calc((100% - var(--rail)) / 2); }
-.room-page.twin.twin-right .room-stage { left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; }
-.room-twin-other { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + (100% - var(--rail)) / 2); right: 0; overflow: hidden;
+.room-page.twin { --twin-left: clamp(280px, calc((100% - var(--rail)) * var(--twin-split, .5)), calc(100% - var(--rail) - 280px)); }
+.room-page.twin .room-stage { right: calc(100% - var(--rail) - var(--twin-left)); }
+.room-page.twin.twin-right .room-stage { left: calc(var(--rail) + var(--twin-left)); right: 0; }
+.room-twin-other { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + var(--twin-left)); right: 0; overflow: hidden;
   border-left: 1px solid color-mix(in srgb, currentColor 16%, transparent); opacity: .55; cursor: pointer; transition: opacity var(--quick); }
-.room-page.twin.twin-right .room-twin-other { left: var(--rail); right: calc((100% - var(--rail)) / 2); border-left: 0;
+.room-page.twin.twin-right .room-twin-other { left: var(--rail); right: calc(100% - var(--rail) - var(--twin-left)); border-left: 0;
   border-right: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+/* The divider between the halves (twin.js dragSplit): drag it left or right; double-click for half and half. */
+.room-twin-divider { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + var(--twin-left)); width: 9px;
+  transform: translateX(-50%); z-index: 2; cursor: col-resize; touch-action: none; }
+.room-twin-divider::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 1px; background: transparent; transition: background var(--quick); }
+.room-twin-divider:hover::after, .room-twin-divider.dragging::after { background: var(--amber); }
 .room-twin-other:hover { opacity: .8; }
 .room-twin-other .room-world { pointer-events: none; }
 .room-twin-label { position: absolute; bottom: var(--s-5, 24px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
@@ -25696,6 +25702,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/room/twin.js
+  var SIDE_MIN = 280;
+  function splitAt(x, left, width, min = SIDE_MIN) {
+    if (!(width > 2 * min)) return 0.5;
+    const f2 = (x - left) / width;
+    return Math.min(1 - min / width, Math.max(min / width, Number.isFinite(f2) ? f2 : 0.5));
+  }
   var Twin = class {
     // The other side of the Twin this room is a side of, or null.
     get otherSide() {
@@ -25719,7 +25731,64 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.otherWorld,
         this.otherLabel = el17("div", { class: "label room-twin-label" })
       );
+      this.dividerEl = el17("div", {
+        class: "room-twin-divider",
+        hidden: true,
+        role: "separator",
+        "aria-orientation": "vertical",
+        title: "Drag to resize the halves · double-click for half and half",
+        onpointerdown: (e) => this.dragSplit(e),
+        ondblclick: (e) => {
+          e.stopPropagation();
+          this.setSplit(0.5, true);
+        }
+      });
       return this.otherEl;
+    }
+    // Where the divider of the open Twin sits: the left half's share (0.5 when never moved).
+    get twinSplit() {
+      const t = this.roomId && twinOf2(this.world, this.roomId);
+      const f2 = t && this.storage.get("twinSplits", {})?.[t.id];
+      return typeof f2 === "number" && f2 > 0 && f2 < 1 ? f2 : 0.5;
+    }
+    // Puts the divider at share `f` (style.css lays both halves out from --twin-split); `keep`
+    // writes it down for this Twin.
+    setSplit(f2, keep3 = false) {
+      this.roomPage.style.setProperty("--twin-split", String(f2));
+      this.place();
+      if (!keep3) return;
+      const t = this.roomId && twinOf2(this.world, this.roomId);
+      if (!t) return;
+      const all = { ...this.storage.get("twinSplits", {}) || {} };
+      if (f2 === 0.5) delete all[t.id];
+      else all[t.id] = f2;
+      this.storage.set("twinSplits", all);
+    }
+    // Dragging the divider: both halves follow the pointer, and where it is let go is kept.
+    dragSplit(e) {
+      if (e.button !== 0 || !this.otherSide) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const a = this.stage.getBoundingClientRect(), b = this.otherEl.getBoundingClientRect();
+      const left = Math.min(a.left, b.left), width = Math.max(a.right, b.right) - left;
+      const bar = this.dividerEl;
+      let f2 = this.twinSplit;
+      bar.setPointerCapture?.(e.pointerId);
+      bar.classList.add("dragging");
+      const move5 = (m2) => {
+        f2 = splitAt(m2.clientX, left, width);
+        this.setSplit(f2);
+      };
+      const up = () => {
+        bar.removeEventListener("pointermove", move5);
+        bar.removeEventListener("pointerup", up);
+        bar.removeEventListener("pointercancel", up);
+        bar.classList.remove("dragging");
+        this.setSplit(f2, true);
+      };
+      bar.addEventListener("pointermove", move5);
+      bar.addEventListener("pointerup", up);
+      bar.addEventListener("pointercancel", up);
     }
     // Lays the room out as one side of a Twin (or as a room of its own), and draws the other side.
     drawTwin() {
@@ -25727,11 +25796,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const me2 = this.roomId && room5(this.world, this.roomId);
       this.roomPage.classList.toggle("twin", !!other);
       this.roomPage.classList.toggle("twin-right", !!other && me2?.side === 1);
-      this.otherEl.hidden = !other;
+      this.otherEl.hidden = this.dividerEl.hidden = !other;
       if (!other) {
         this.otherWorld.replaceChildren();
+        this.roomPage.style.removeProperty("--twin-split");
         return;
       }
+      this.roomPage.style.setProperty("--twin-split", String(this.twinSplit));
       const o2 = this.ontology(view8(this.world, other.id).mode);
       this.otherLabel.textContent = `${other.name} · ${o2.name} · click to work here`;
       this.otherWorld.replaceChildren(...this.sideNodes(other.id));
@@ -26231,6 +26302,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         { class: "room-page", "aria-label": "Room" },
         this.stage,
         otherSide3,
+        this.dividerEl,
         this.modes,
         el17(
           "div",
