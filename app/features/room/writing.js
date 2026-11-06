@@ -126,6 +126,7 @@ export class Writing {
       if (this.editing?.close) this.editing.close(); // a chapter open as a document
       else if (this.panel?.shown) this.panel.close(); // the right dock (the content editor, the source), if not hidden
       else if (!this.addMenu.hidden) this.closeAdd();
+      else if (this.roomId && this.ont.escape?.(this)) { /* the mode's own (Proust: back from Centre) */ }
       else if (this.roomId && this.sel && this.barFor) { this.barFor = null; this.drawBar(); }
       else if (this.sel) { this.sel = null; this.drawWorld(); }
       else this.back();

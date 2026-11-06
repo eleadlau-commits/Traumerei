@@ -138,11 +138,30 @@ export function sizeOf(w, id) {
   return { w: Math.min(340, Math.max(40, String(text).length * 9)), h: 30 };
 }
 
+// ---- Centre's view ----
+// While a room is centred (Ctrl+Shift+C, draw.js), each node shows where Centre put it, not where
+// it was placed by hand: a view, kept here and never saved, gone on Esc. A move while centred
+// moves a node in the view; "Keep this layout" (keep) places every node where it shows.
+// A view: { at: { [id]: { x, y } }, dim: Set of ids shown faint, moved?(id) }.
+const VIEWS = new Map();
+export const centred = (roomId) => VIEWS.get(roomId) || null;
+export function setCentred(roomId, v) { if (v) VIEWS.set(roomId, v); else VIEWS.delete(roomId); }
+export function keep(w, roomId) {
+  const v = VIEWS.get(roomId);
+  if (!v || shut(w, roomId)) return false;
+  VIEWS.delete(roomId);
+  for (const [id, p] of Object.entries(v.at)) moveTo(w, roomId, id, p.x, p.y);
+  return true;
+}
+
 // Where a thought, a cluster or a group sits ({ x, y }, its top left), or null (in the tray). A
 // thought: where it was placed, or its place on the spiral. A cluster: the corner of what it holds.
+// While centred: where Centre shows it.
 export function point(w, roomId, id) {
   const th = w.things[id];
   if (!th || th.parent !== roomId) return null;
+  const shown = VIEWS.get(roomId)?.at[id];
+  if (shown) return { x: shown.x, y: shown.y };
   const placed = own(w, roomId, ID, false)[id];
   if (isLeaf(th)) {
     if (placed && Number.isFinite(placed.x)) return { x: placed.x, y: placed.y };
@@ -162,6 +181,8 @@ export function point(w, roomId, id) {
 export function moveTo(w, roomId, id, x, y, auto = false) {
   const th = w.things[id];
   if (!th || shut(w, roomId)) return false;
+  const view = VIEWS.get(roomId);
+  if (view) return moveInView(w, roomId, view, id, x, y);
   const places = own(w, roomId, ID);
   if (isLeaf(th)) { places[id] = { x: Math.round(x), y: Math.round(y), ...(auto ? { auto: true } : {}) }; return true; }
   if (!isGroup(th)) return false;
@@ -174,6 +195,17 @@ export function moveTo(w, roomId, id, x, y, auto = false) {
     if (p) places[m.id] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy), ...(auto ? { auto: true } : {}) };
   }
   place(w, id);
+  return true;
+}
+
+// While centred, a move moves a node only as Centre shows it (an open cluster: what it holds).
+function moveInView(w, roomId, view, id, x, y) {
+  const at = point(w, roomId, id);
+  if (!at) return false;
+  const dx = x - at.x, dy = y - at.y;
+  const ids = view.at[id] ? [id] : itemsIn(w, id).map((m) => shownAs(w, m.id)).filter((m, i, all) => view.at[m] && all.indexOf(m) === i);
+  if (!ids.length) return false;
+  for (const m of ids) { const p = view.at[m]; view.at[m] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy) }; view.moved?.(m); }
   return true;
 }
 
@@ -324,6 +356,8 @@ export const proust = {
   settings: [
     RELATIONS,
     { key: 'tension', label: 'Line tension', min: 0, max: 1, default: 0.5 },
+    { key: 'reach', label: 'Centre shows', type: 'choice', default: 'all',
+      options: [['all', 'The whole web'], ['1', '1 step out'], ['2', '2 steps out'], ['3', '3 steps out']] },
   ],
 
   // A relation renamed in the room's list is renamed on its links.
@@ -381,7 +415,12 @@ export const proust = {
   // A new thought: placed where it was written, and linked on from the one before (the room's
   // first relation).
   kept(w, roomId, th, draft) {
-    if (Number.isFinite(draft?.x) && Number.isFinite(draft?.y)) own(w, roomId, ID)[th.id] = { x: Math.round(draft.x), y: Math.round(draft.y) };
+    if (Number.isFinite(draft?.x) && Number.isFinite(draft?.y)) {
+      const at = { x: Math.round(draft.x), y: Math.round(draft.y) };
+      own(w, roomId, ID)[th.id] = at;
+      const view = VIEWS.get(roomId);
+      if (view) view.at[th.id] = { ...at }; // written while centred: it shows where it was written
+    }
     if (draft?.after && draft.after !== th.id && isNode(w, roomId, draft.after)) links().link(w, roomId, draft.after, th.id);
   },
 

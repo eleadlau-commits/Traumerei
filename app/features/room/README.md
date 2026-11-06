@@ -224,7 +224,8 @@ only says where (its `roomfile` service), and leaves those choices out when it i
 - **Bringing the view to things** (`centre.js`), in every mode: **Home** fits the view to
   everything on the canvas (zooming out as far as it must, never in past the natural size), and
   **Ctrl+Shift+C** glides it to what is chosen, at the same zoom unless it would not fit. Only the
-  view moves; nothing in the room changes. What shows is measured as drawn, so a mode needs to
+  view moves; nothing in the room changes. A mode may take Ctrl+Shift+C for its own layout
+  (ontologies/index.js: `centre`; Proust's Centre), and Esc first (`escape`: back from it). What shows is measured as drawn, so a mode needs to
   tell it nothing. A drag, a pinch or the wheel stops a glide.
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or ⋯ More → Keys) lists them all, from the key map (the keys feature;

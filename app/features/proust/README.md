@@ -76,4 +76,19 @@ room has keeps its own ends, and a line that says otherwise is reported. Tests:
   *Pointed to by* (arrows in) and *Linked with* (plain lines and both ways, once a pair). Each name
   goes to that node and chooses it.
 
-Not yet: Centre.
+**Centre** (Ctrl+Shift+C; `centre.js` is the layout, `draw.js` runs it; tests:
+`tests/centre.test.js`). What is chosen goes to the middle and every other node into rings round
+it by how many links away it is, counting links both ways, from the nearest chosen node (so
+several chosen, or webs that never meet, all work). Each ring is shared out all the way round, in
+the order its nodes already lay, and then it settles like a web of springs: links pull, nodes push
+each other off, nothing overlaps. It moves into place elastically and the screen drifts with it, so
+what is chosen ends in the middle; a node dragged meanwhile is held where it is dragged and the
+rest settle round it again. The room's ⚙ *Centre shows* is the whole web, or 1, 2 or 3 steps out:
+nodes further out (or never reached) wait faint on the outermost ring. With nothing chosen it is
+**Tidy**: the whole web just settles round its middle.
+
+Centre is a **view**: nothing is saved (the places it shows are kept in `rules.js`'s Centre view,
+not in the world). A bar over the layout says *Centred* (or *Tidied*) with **Keep this layout**,
+which places every node where it shows (one step, Ctrl+Z takes it back), and **Back**; **Esc**
+goes back too, to the layout by hand. A move while centred moves a node only in the view. A thought
+written while centred shows where it was written, and is placed there by hand too.

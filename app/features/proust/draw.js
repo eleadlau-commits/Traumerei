@@ -4,8 +4,9 @@
 // thoughts written close together, slack after a pause (the room's Line tension); a link back the
 // other way bows to the other side.
 
-import { isGroup, itemsIn, lines, arrowView } from './world.js';
-import { ID, RELATIONS, links, endsOf, nodeName, nodes as allNodes, point, sizeOf, shownAs, clusterOf, clusters, isNode, proust } from './rules.js';
+import { isGroup, itemsIn, lines, arrowView, view as viewOf } from './world.js';
+import { ID, RELATIONS, links, endsOf, nodeName, nodes as allNodes, point, sizeOf, shownAs, clusterOf, clusters, isNode, proust, centred, setCentred, keep as keepLayout } from './rules.js';
+import { start, step, settle, corners } from './centre.js';
 
 const PAD = 7;           // how far off a node a link starts and ends
 const HULL = 14;         // how far a cluster's box stands off what it holds (more for each cluster inside)
@@ -95,6 +96,8 @@ const arrows = () => (view ||= arrowView({
 // A press on the canvas: a link's own (its edit box, a double-click to edit it), or a drag from
 // a node's dot, which draws a new link onto the node it is let go on.
 export function press(c, e) {
+  const act = e.button === 0 && e.target.closest?.('[data-centre]')?.dataset.centre;
+  if (act) { e.preventDefault(); if (act === 'keep') keepCentred(c); else escape(c); return true; }
   if (e.button !== 0 || c.locked) return false;
   const view = arrows();
   if (view.press(c, e)) return true;
@@ -117,6 +120,121 @@ export function join(c) {
   if (why) { c.toast(why); return; }
   c.save();
   arrows().edit(c, a, b);
+}
+
+// ---- Centre (Ctrl+Shift+C) ----
+// What is chosen goes to the middle and everything else into rings around it, by how many links
+// away it is (centre.js); with nothing chosen, the web just settles (Tidy). It is a view: nothing
+// is saved, Esc goes back to the layout by hand, and "Keep this layout" places every node where it
+// shows. It moves into place elastically, and settles again round a node dragged meanwhile.
+let run = null; // the layout settling: { room, L, c, frame }
+const HOLD_MS = 250; // a dragged node stays pinned this long after its last move
+
+// The units a link end shows as: itself, the closed cluster holding it, or (an open cluster) what
+// it holds.
+function shownUnits(w, id, units) {
+  const s = shownAs(w, id);
+  if (units.has(s)) return [s];
+  const g = w.things[id];
+  if (!isGroup(g) || g.of !== ID) return [];
+  return [...new Set(itemsIn(w, id).map((m) => shownAs(w, m.id)).filter((m) => units.has(m)))];
+}
+
+export function centreWeb(c) {
+  const w = c.world, roomId = c.roomId;
+  const all = boxes(w, roomId);
+  const list = proust.units(w, roomId).filter((u) => all[u.id]);
+  if (!list.length) { c.toast('Nothing on the canvas to centre.'); return true; }
+  const units = new Set(list.map((u) => u.id));
+  const nodes = list.map((u) => ({ id: u.id, x: all[u.id].at.x, y: all[u.id].at.y, w: all[u.id].size.w, h: all[u.id].size.h }));
+  const pairs = [];
+  for (const a of links().arrows(w, roomId)) for (const p of shownUnits(w, a.from, units)) for (const q of shownUnits(w, a.to, units)) pairs.push([p, q]);
+  // What an open cluster holds keeps together, as if lightly linked in a row.
+  for (const g of clusters(w, roomId)) {
+    const inside = shownUnits(w, g.id, units);
+    for (let i = 1; i < inside.length; i++) pairs.push([inside[i - 1], inside[i]]);
+  }
+  const chosen = [...new Set((c.sel ? c.sel.ids || [c.sel.id] : []).flatMap((id) => shownUnits(w, id, units)))];
+  const reach = c.setting('reach');
+  const L = start(nodes, pairs, chosen, reach && reach !== 'all' ? Number(reach) : null);
+  stop();
+  const view = { at: corners(L), dim: new Set(L.nodes.filter((n) => n.dim).map((n) => n.id)), tidy: !chosen.length, moved: (id) => hold(id) };
+  setCentred(roomId, view);
+  run = { room: roomId, L, c, frame: 0 };
+  const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (still || typeof requestAnimationFrame !== 'function') { settle(L); view.at = { ...view.at, ...corners(L) }; c.drawWorld(); }
+  else animate();
+  c.toast(chosen.length ? 'Centred: Esc goes back, or keep this layout.' : 'Tidied: Esc goes back, or keep this layout.');
+  return true;
+}
+
+// A node dragged while centred: pinned where it is dragged, and the rest settle round it again.
+function hold(id) {
+  const view = run && centred(run.room);
+  const n = view && run.L.nodes.find((x) => x.id === id);
+  if (!n) return;
+  const p = view.at[id];
+  n.x = p.x + n.w / 2; n.y = p.y + n.h / 2;
+  n.pinned = performance.now();
+  run.L.alpha = Math.max(run.L.alpha, 0.25);
+  if (!run.frame) animate();
+}
+
+function animate() {
+  const r = run;
+  r.frame = requestAnimationFrame(() => {
+    r.frame = 0;
+    const view = centred(r.room);
+    if (run !== r || !view || r.c.roomId !== r.room) return;
+    const now = performance.now();
+    for (const n of r.L.nodes) if (n.pinned && now - n.pinned > HOLD_MS) n.pinned = false;
+    let going = true;
+    for (let i = 0; i < 3 && going; i++) going = step(r.L);
+    view.at = { ...view.at, ...corners(r.L) };
+    // The screen drifts to the middle of the layout as it settles, so what is chosen ends there.
+    const v = viewOf(r.c.world, r.room);
+    if (v && r.L.centred && typeof r.c.place === 'function') { v.x += (r.L.c.x - v.x) * 0.12; v.y += (r.L.c.y - v.y) * 0.12; r.c.place(); }
+    r.c.drawWorld();
+    if (going || r.L.nodes.some((n) => n.pinned)) animate();
+  });
+}
+
+function stop() {
+  if (run?.frame) cancelAnimationFrame(run.frame);
+  run = null;
+}
+
+// Esc while centred: back to the layout by hand. True when it was centred.
+export function escape(c) {
+  if (!centred(c.roomId)) return false;
+  stop();
+  setCentred(c.roomId, null);
+  c.drawWorld();
+  return true;
+}
+
+// "Keep this layout": every node is placed where Centre shows it (one step Ctrl+Z takes back).
+export function keepCentred(c) {
+  if (c.locked) { c.toast('This room is locked.'); return; }
+  stop();
+  if (!keepLayout(c.world, c.roomId)) return;
+  c.save();
+  c.drawWorld();
+  c.toast('Kept: every thought stays where it is now. Ctrl+Z undoes.');
+}
+
+// The bar over a centred layout: what it is, Keep this layout, Back.
+function centreBar(c, view, all) {
+  const bs = Object.keys(view.at).map((id) => all[id]).filter(Boolean);
+  if (!bs.length) return null;
+  const x = (Math.min(...bs.map((b) => b.at.x)) + Math.max(...bs.map((b) => b.at.x + b.size.w))) / 2;
+  const y = Math.min(...bs.map((b) => b.at.y)) - 28;
+  // Its words are pressed through press() (the canvas holds the pointer), or the keyboard.
+  const word = (label, act, title) => c.el('button', { type: 'button', class: 'word', title, 'data-centre': act, onclick: () => (act === 'keep' ? keepCentred(c) : escape(c)) }, label);
+  return c.el('div', { class: 'panel room-proust-centre-bar', style: `left:${Math.round(x)}px;top:${Math.round(y)}px` },
+    c.el('span', { class: 'label' }, view.tidy ? 'Tidied' : 'Centred'),
+    c.locked ? null : word('Keep this layout', 'keep', 'Place every thought where it shows now'),
+    word('Back', 'back', 'Back to the layout by hand (Esc)'));
 }
 
 // In the pop-up of what is chosen: what it points to, what points to it, and what it is linked
@@ -153,6 +271,8 @@ export function draw(c) {
   const layer = lines.layer('room-proust-links');
   const nodes = [];
   const chosenGroup = (id) => (c.sel?.kind === 'train' && c.sel.id === id) || c.isSel(id);
+  const view = centred(roomId);
+  const far = (id) => (view?.dim.has(id) ? ' room-proust-far' : '');
   // A node's dot, on its right side while the pointer is on it: drag it onto another node to link.
   const dot = (id, style) => (c.locked ? null : el('span', { class: 'room-proust-dot', 'data-dot': id, title: 'Drag onto another thing to link them', ...(style ? { style } : {}) }));
 
@@ -181,17 +301,19 @@ export function draw(c) {
     const style = `left:${b.at.x}px;top:${b.at.y}px`;
     if (isGroup(u)) {
       nodes.push(el('div', {
-        class: 'room-bead room-closed' + (u.of !== ID ? ' room-foreign' : '') + (chosenGroup(u.id) ? ' selected' : ''),
+        class: 'room-bead room-closed' + (u.of !== ID ? ' room-foreign' : '') + (chosenGroup(u.id) ? ' selected' : '') + far(u.id),
         'data-group': u.id, 'data-measure': u.id, style,
       }, c.thoughtNode(u), dot(u.id)));
       continue;
     }
     const g = clusterOf(w, u.id);
     nodes.push(el('div', {
-      class: 'room-bead' + ((g && chosenGroup(g.id)) || c.isSel(u.id) ? ' selected' : '') + (c.found === u.id ? ' found' : ''),
+      class: 'room-bead' + ((g && chosenGroup(g.id)) || c.isSel(u.id) ? ' selected' : '') + (c.found === u.id ? ' found' : '') + far(u.id),
       ...(g ? { 'data-group': g.id } : {}), 'data-thought': u.id, style,
     }, c.thoughtNode(u), dot(u.id)));
   }
+
+  if (view) { const bar = centreBar(c, view, all); if (bar) nodes.push(bar); }
 
   // The thought being written, where it will be kept, with a faint line from the one it links on from.
   if (c.draft && !c.draft.edit) {
