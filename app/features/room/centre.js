@@ -42,9 +42,12 @@ export function fitAll(c) {
   glide(c, fitView(box, width, height));
 }
 
-// Ctrl+Shift+C: the view glides to what is chosen, at the same zoom, zooming out only if it
+// Ctrl+Shift+C: the mode's own centre (Proust: a layout round what is chosen), or else the view
+// glides to what is chosen, at the same zoom, zooming out only if it
 // would not fit.
 export function centreChosen(c) {
+  // A mode may lay things out round what is chosen instead (ontologies/index.js: centre).
+  if (c.ont?.centre?.(c)) return;
   const box = c.sel && drawnBox(c, '.selected');
   if (!box) { c.toast('Choose something first: Ctrl+Shift+C brings the view to it.'); return; }
   const v = view(c.world, c.roomId);
