@@ -2962,11 +2962,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       if (!this.element.open || this.closing) return;
       this.element.classList.remove("shown");
       this.panel.style.transform = "";
-      const wait = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : SLIDE_MS;
+      const wait4 = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : SLIDE_MS;
       this.closing = setTimeout(() => {
         this.closing = 0;
         this.element.close();
-      }, wait);
+      }, wait4);
     }
     finish() {
       clearTimeout(this.closing);
@@ -12522,6 +12522,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/groups.js
   var groups_exports = {};
   __export(groups_exports, {
+    WAITS: () => WAITS,
     fold: () => fold,
     foldPlan: () => foldPlan,
     foreign: () => foreign,
@@ -12535,7 +12536,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     putAt: () => putAt,
     spot: () => spot2,
     trayForeign: () => trayForeign,
-    unplace: () => unplace
+    unplace: () => unplace,
+    wait: () => wait,
+    waiting: () => waiting
   });
   var isShared = (g2) => isGroup(g2) && !!g2.shared;
   function outermost(w2, roomId) {
@@ -12559,6 +12562,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var placedForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => spot2(w2, roomId, of, g2.id));
   var trayForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => !spot2(w2, roomId, of, g2.id));
+  var WAITS = "tray";
+  function wait(w2, roomId, id) {
+    if (shut(w2, roomId) || w2.things[id]?.parent !== roomId) return false;
+    own(w2, roomId, WAITS)[id] = true;
+    return true;
+  }
+  var waiting = (w2, roomId, of, id) => !!own(w2, roomId, WAITS, false)[id] && !spot2(w2, roomId, of, id);
   var isLoose = (g2) => isGroup(g2) && !!g2.loose;
   function place(w2, id) {
     const g2 = w2.things[id];
@@ -13446,10 +13456,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ownUnits: () => ownUnits,
     spiralPoint: () => spiralPoint
   });
-  function ownUnits(w2, roomId) {
+  function ownThoughts(w2, roomId) {
     const inside4 = inForeign(w2, roomId, "pessoa");
     return roomUnits(w2, roomId).filter((th) => !inside4(th.id));
   }
+  var ownUnits = (w2, roomId) => ownThoughts(w2, roomId).filter((th) => !waiting(w2, roomId, "pessoa", th.id));
+  var waitingThoughts = (w2, roomId) => ownThoughts(w2, roomId).filter((th) => waiting(w2, roomId, "pessoa", th.id));
   var SPIRAL = { step: 230, gap: 190 };
   function spiralPoint(i2, id = "") {
     const b = SPIRAL.gap / (2 * Math.PI);
@@ -13476,7 +13488,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (c.ref(g2.id)) out.push(`at: ${c.ref(g2.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
       }
       if (spiral.length) out.push(`on canvas: ${spiral.join(" ")}`);
-      const tray = trayForeign(w2, roomId, "pessoa").map((g2) => c.ref(g2.id)).filter(Boolean);
+      const tray = [...waitingThoughts(w2, roomId), ...trayForeign(w2, roomId, "pessoa")].map((g2) => c.ref(g2.id)).filter(Boolean);
       if (tray.length) out.push(`tray: ${tray.join(" ")}`);
       return out;
     },
@@ -13501,6 +13513,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           for (const v2 of l2.values) {
             const id = c.thing(v2, l2.line);
             if (id && l2.key === "on canvas" && !placed.has(id)) delete own(w2, roomId, "pessoa")[id];
+            else if (id && l2.key === "tray" && !isGroup(w2.things[id]) && !placed.has(id)) {
+              delete own(w2, roomId, "pessoa")[id];
+              wait(w2, roomId, id);
+            }
           }
         } else c.keep(l2);
       }
@@ -13517,8 +13533,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     lays: true,
     // places every thought itself
     units: (w2, roomId) => [...ownUnits(w2, roomId), ...placedForeign(w2, roomId, "pessoa")],
-    tray: (w2, roomId) => trayForeign(w2, roomId, "pessoa"),
-    placed: (w2, roomId, id) => !isGroup(w2.things[id]) || !!spot2(w2, roomId, "pessoa", id),
+    // New thoughts added away from the canvas, and other modes' groups not placed yet.
+    tray: (w2, roomId) => [...waitingThoughts(w2, roomId), ...trayForeign(w2, roomId, "pessoa")].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+    placed: (w2, roomId, id) => isGroup(w2.things[id]) ? !!spot2(w2, roomId, "pessoa", id) : !waiting(w2, roomId, "pessoa", id),
     // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
     // plain thought can't go.
     unplace: (w2, roomId, id) => unplace(w2, roomId, "pessoa", id, { leaves: false }),
@@ -13526,7 +13543,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     point(w2, roomId, id) {
       const placed = own(w2, roomId, "pessoa", false)[id];
       if (placed) return placed;
-      if (isGroup(w2.things[id])) return null;
+      if (isGroup(w2.things[id]) || waiting(w2, roomId, "pessoa", id)) return null;
       const units = ownUnits(w2, roomId);
       const i2 = units.findIndex((u) => u.id === id);
       return spiralPoint(i2 < 0 ? units.length : i2, id);
@@ -20717,6 +20734,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var placedForeign2;
   var trayForeign2;
   var inForeign2;
+  var waiting2;
+  var wait2;
   var spot4;
   var putAt2;
   var place3;
@@ -20732,7 +20751,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var spiralPoint2;
   function bind4(lib) {
     ({ own: own3, shut: shut4, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting3, isGroup: isGroup3, isLeaf: isLeaf3, create: create3, join: join3, members: members3, itemsIn: itemsIn2, within: within3, groupOf: groupOf2, groupsIn: groupsIn3, roomItems: roomItems3, thoughtText: thoughtText2, view: view6 } = lib.model);
-    ({ placedForeign: placedForeign2, trayForeign: trayForeign2, inForeign: inForeign2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
+    ({ placedForeign: placedForeign2, trayForeign: trayForeign2, inForeign: inForeign2, waiting: waiting2, wait: wait2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = lib.groups);
     ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEntry: relationEntry2, relationEnds: relationEnds2, listText: listText2 } = lib.relations);
     ({ arrowView: arrowView2 } = lib.arrowview);
     ({ maths: maths2 } = lib.maths);
@@ -20771,6 +20790,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     const self = ownGroup(w2, id);
     if (self?.loose) return "tray";
+    const th = w2.things[id];
+    if (out === id && isLeaf3(th) && !clusterOf(w2, id) && waiting2(w2, th.parent, ID2, id)) return "tray";
     return out;
   }
   function clusters(w2, roomId) {
@@ -20968,7 +20989,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const out = [], spiral = [];
       const inside4 = inForeign2(w2, roomId, ID2);
       for (const th of roomItems3(w2, roomId)) {
-        if (!c.ref(th.id) || inside4(th.id)) continue;
+        if (!c.ref(th.id) || inside4(th.id) || shownAs(w2, th.id) === "tray") continue;
         const p = places[th.id];
         if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? " auto" : ""}`);
         else spiral.push(c.ref(th.id));
@@ -21019,7 +21040,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               else if (isGroup3(th) && th.of === ID2) place3(w2, id);
             } else if (isGroup3(th) && th.of === ID2) th.loose = true;
             else if (isGroup3(th) && !placed.has(id)) delete own3(w2, roomId, ID2)[id];
-            else c.report(l2.line, "Proust places every thought on the canvas, so only a cluster or another mode's group waits in the tray.");
+            else if (isLeaf3(th) && !placed.has(id)) {
+              delete own3(w2, roomId, ID2)[id];
+              wait2(w2, roomId, id);
+            }
           }
         } else if (l2.key === "link") {
           const a = c.link(l2);
@@ -21076,11 +21100,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...groupsIn3(w2, roomId, ID2).filter((g2) => g2.closed && itemsIn2(w2, g2.id).length && shownAs(w2, g2.id) === g2.id)
       ].filter((th) => !inside4(th.id)).concat(placedForeign2(w2, roomId, ID2));
     },
-    // Clusters thrown back (or made in the tray), and other modes' groups not placed yet.
-    tray: (w2, roomId) => [
-      ...groupsIn3(w2, roomId, ID2).filter((g2) => g2.loose && itemsIn2(w2, g2.id).length && !clusterOf(w2, g2.id)),
-      ...trayForeign2(w2, roomId, ID2)
-    ].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)),
+    // Clusters thrown back (or made in the tray), thoughts added away from the canvas, and other
+    // modes' groups not placed yet.
+    tray(w2, roomId) {
+      const inside4 = inForeign2(w2, roomId, ID2);
+      return [
+        ...groupsIn3(w2, roomId, ID2).filter((g2) => g2.loose && itemsIn2(w2, g2.id).length && !clusterOf(w2, g2.id)),
+        ...roomItems3(w2, roomId).filter((th) => !clusterOf(w2, th.id) && shownAs(w2, th.id) === "tray")
+      ].filter((th) => !inside4(th.id)).concat(trayForeign2(w2, roomId, ID2)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+    },
     placed(w2, roomId, id) {
       const th = w2.things[id];
       if (isGroup3(th) && th.of !== ID2) return !!spot4(w2, roomId, ID2, id);
@@ -21745,6 +21773,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var moveTargets2;
   var relationsRow2;
   var reading2;
+  var wait3;
   function bind5(lib) {
     ({
       room: room5,
@@ -21791,7 +21820,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ light: light3 } = lib.attention);
     ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
-    ({ fold: foldInto, foldPlan: foldPlan2 } = lib.groups);
+    ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
     ({ relationsRow: relationsRow2 } = lib.relationsview);
   }
@@ -24571,12 +24600,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       l2.menu.hidden = true;
       l2.plus.setAttribute("aria-expanded", "false");
     }
-    // Keeps text as a new loose thought of this room, as one step. Returns it, or null.
+    // Keeps text as a new loose thought of this room, as one step. Returns it, or null. Added away
+    // from the canvas, it waits in the tray in every mode, even one that places every thought
+    // itself (Pessoa, Proust: the world's wait), until it is dragged out.
     keepLoose(text) {
       if (!this.roomId || this.locked || !text.trim()) return null;
       if (this.draft) this.stopWriting();
       const th = create4(this.world, this.roomId, { kind: "line", text: text.trim() });
       if (!th) return null;
+      wait3(this.world, this.roomId, th.id);
       this.save();
       this.drawWorld();
       return th;
@@ -24874,8 +24906,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       else {
         const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
         if (ed.id) update4(this.world, ed.id, fields);
-        else if (ed.loose) create4(this.world, this.roomId, fields);
-        else this.keepNew(this.target(), fields);
+        else if (ed.loose) {
+          const th = create4(this.world, this.roomId, fields);
+          if (th) wait3(this.world, this.roomId, th.id);
+        } else this.keepNew(this.target(), fields);
       }
       this.save();
       this.closeSheet();
