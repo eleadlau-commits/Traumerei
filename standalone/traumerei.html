@@ -753,6 +753,9 @@ button.crumb:hover { color: var(--ink); background-size: 100% 1px; }
   user-select: none;
   transition: opacity .4s;
 }
+/* A wordmark that is a button (it goes home): no box, the same words. */
+button.wordmark { pointer-events: auto !important; cursor: pointer; padding: 0; border: 0; background: none; color: inherit; font-family: inherit; }
+button.wordmark:hover { opacity: 1 !important; }
 
 /* The search bar: a word on a pale strip, with its keys on the right. */
 .find-btn {
@@ -1341,7 +1344,7 @@ html.rail-narrow { --rail: 48px; }
 }
 .frame > * { pointer-events: auto; }
 .frame[hidden], .frame [hidden] { display: none !important; }
-.frame-wordmark, .frame-bar { pointer-events: none !important; }
+.frame-bar { pointer-events: none !important; }
 
 .frame-bar { opacity: 0; transition: opacity .4s; }
 .frame.on .frame-bar { opacity: 1; }
@@ -1351,6 +1354,7 @@ html.rail-narrow { --rail: 48px; }
 .frame.on .frame-back { opacity: .8; }
 .frame.on .frame-search { opacity: .8; }
 .frame:not(.on) :is(.frame-back, .frame-search, .frame-crumbs) { pointer-events: none; }
+.frame:not(.on) .frame-wordmark { pointer-events: none !important; }
 
 /* The status bar: the foot of the window, full width; the docks end above it (--status). */
 :root { --status-h: 26px; --status: 0px; }
@@ -7459,7 +7463,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       this.engine = new Engine();
       this.P = { ...DEFAULTS, ...this.storage.get("params", {}) };
       this.anchor = this.storage.get("anchor", { x: 0.5, y: 0.5 });
-      this.mode = modeById(this.storage.get("theme", "washi"));
+      this.mode = modeById(this.storage.get("theme", "mondrian"));
       this.views = Object.fromEntries(MODES.map((m2) => [m2.id, this.storage.get(m2.viewKey, m2.startView)]));
       this.marks = this.storage.get("marks", false);
       this.clock = 0;
@@ -15787,7 +15791,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     build() {
       this.bar = el8("div", { class: "chrome-bar frame-bar" });
-      this.wordmark = el8("div", { class: "wordmark frame-wordmark", "aria-hidden": "true" }, "Träumerei");
+      this.wordmark = el8("button", {
+        type: "button",
+        class: "wordmark frame-wordmark",
+        title: "Home",
+        "aria-label": "Home",
+        "data-hint": "Back to the home page",
+        onclick: () => this.emit("frame:home")
+      }, "Träumerei");
       this.crumbs = el8("nav", { class: "crumbs frame-crumbs", "aria-label": "Where you are" });
       this.searchBtn = el8(
         "button",
@@ -20210,6 +20221,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.frame = this.use("frame");
       this.time = this.use("time");
       this.propsDock = null;
+      this.on("frame:home", () => this.home());
       this.on("frame:rail", () => {
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
       });
@@ -20352,6 +20364,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         backLabel: "Back to the home page"
       });
       this.backdrop?.cover?.(true);
+    }
+    // Home (the frame's wordmark): out of a room, then as Back from the rooms page would (with the
+    // comment for next time, if rooms changed).
+    home() {
+      if (this.root.hidden || this.away) return;
+      if (this.inRoom) this.showRooms();
+      this.tagLight = null;
+      if (this.edited?.size && !this.leaving) {
+        if (this.shelf) this.toggleShelf();
+        this.askNote();
+      } else this.close();
     }
     close() {
       this.away = true;
