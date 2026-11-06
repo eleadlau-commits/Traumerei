@@ -6,7 +6,7 @@ import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, ITEMS, maths,
 } from './world.js';
-import { clearSpot } from './clear.js';
+import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
 
 export class Writing {
@@ -176,13 +176,26 @@ export class Writing {
     this.showDraft();
   }
 
-  // Where a new train starts: a clear space on the screen, away from everything already drawn
-  // (measured as drawn, so a long train counts all the way down).
-  freeSpot() {
-    const rects = [...this.drawnRects().values()];
-    const NEW = { w: 340, h: 64 }; // room for a new thought's first line or two
-    const p = clearSpot(this.visibleBox(), rects.map((r) => ({ ...r, x: r.x + 20 })), NEW);
+  // Where a new train starts: at the mouse, while the pointer is on the canvas, or the nearest clear
+  // spot around it when thoughts are already there; with the pointer off the canvas, a clear space
+  // on the screen, away from everything already drawn (measured as drawn, so a long train counts
+  // all the way down). size: the room it needs ({ w, h }), a new thought's first line or two.
+  freeSpot(size = { w: 340, h: 64 }) {
+    const rects = [...this.drawnRects().values()].map((r) => ({ ...r, x: r.x + 20 }));
+    const at = this.mouseSpot();
+    const p = at ? nearSpot(at, rects, size) : clearSpot(this.visibleBox(), rects, size);
     return { x: Math.round(p.x + 20), y: Math.round(p.y) }; // the thought's words start right of its knot
+  }
+
+  // The pointer's place on the canvas in world units (the words start just left of and a little
+  // above it, so they sit under the pointer), or null when it is off the canvas.
+  mouseSpot() {
+    const m = this.mouse;
+    if (!m || !this.stage) return null;
+    const b = this.stage.getBoundingClientRect();
+    if (m.x < b.left || m.x > b.right || m.y < b.top || m.y > b.bottom) return null;
+    const p = this.toWorld(m.x, m.y);
+    return { x: p.x - 20, y: p.y - 16 };
   }
 
   // Each drawn thought's box in world units (Map id → { x, y, w, h }): data-thought nodes, and a
