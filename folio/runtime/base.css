@@ -74,6 +74,13 @@
      and where a drop will land. Ink stays for words and lines; red only on Delete. */
   --amber: color-mix(in oklab, var(--glow) 50%, #9a6414);
   --amber-soft: rgb(var(--glow-rgb) / .35);
+  /* Lines joining things may have a colour of their own (a relation's look): a few quiet inks that
+     sit on paper beside the words. The relations editor shows them as swatches. */
+  --rel-amber: var(--amber);
+  --rel-rust: color-mix(in oklab, var(--ink) 30%, #b0502a);
+  --rel-moss: color-mix(in oklab, var(--ink) 30%, #5d8a3a);
+  --rel-slate: color-mix(in oklab, var(--ink) 30%, #4a78a8);
+  --rel-plum: color-mix(in oklab, var(--ink) 30%, #94508a);
   /* Two surfaces: the canvas is paper (and the washi, if the picture has it); all chrome (top bar,
      rail, docks, status bar) is the flat veil with a hairline edge. */
   --chrome: var(--veil);
@@ -1021,6 +1028,20 @@ html.rail-narrow { --rail: 48px; }
   transition: opacity 0.2s, transform 0.2s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* A relation's look, for any line joining things (stroke follows the colour): its line and its
+   colour, and the swatch that picks the colour (.rel-swatch, aria-checked="true" when chosen). */
+.rel-line-dashed { stroke-dasharray: 6 4; }
+.rel-line-dotted { stroke-dasharray: 1 3.5; stroke-linecap: round; }
+.rel-colour-ink { color: var(--ink); }
+.rel-colour-amber { color: var(--rel-amber); }
+.rel-colour-rust { color: var(--rel-rust); }
+.rel-colour-moss { color: var(--rel-moss); }
+.rel-colour-slate { color: var(--rel-slate); }
+.rel-colour-plum { color: var(--rel-plum); }
+.rel-swatch { width: 14px; height: 14px; padding: 0; border: 0; border-radius: 50%; background: currentColor; cursor: pointer; opacity: .85; }
+.rel-swatch:hover { opacity: 1; }
+.rel-swatch[aria-checked="true"] { outline: var(--sel-line); outline-offset: 2px; opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .icon-btn.spin svg { animation: none; }

@@ -8,7 +8,7 @@ export let
   thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
   isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
   seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, ITEMS, maths, roomLook, light,
-  shrinkPicture, groupChosen, ungroupChosen, throwBack, setOrder, foldInto, foldPlan, lock, sides, twinOf, otherSide, across, placeName, moveTargets;
+  shrinkPicture, groupChosen, ungroupChosen, throwBack, setOrder, foldInto, foldPlan, lock, sides, twinOf, otherSide, across, placeName, moveTargets, relationsRow;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
@@ -26,4 +26,5 @@ export function bind(lib) {
   ({ groupChosen, ungroupChosen, throwBack } = lib.ontologies);
   ({ fold: foldInto, foldPlan } = lib.groups);
   ({ sides, twinOf, otherSide, across, placeName, moveTargets } = lib.twin);
+  ({ relationsRow } = lib.relationsview);
 }

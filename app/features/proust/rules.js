@@ -35,10 +35,15 @@ export const LINKS = 'proust-links';
 // ---- Relations ----
 
 export const DEFAULT_RELATIONS = ['related to', 'leads to ->', 'is equivalent to <->'];
+// Shown in the room's ⚙ by the relations editor (the world's relationsview.js): each relation's
+// name, ends, line and colour. uses and retag let it say how many links a relation has, and move
+// them to another when it is deleted.
 export const RELATIONS = {
-  key: 'relations', label: 'Relations', type: 'list', default: DEFAULT_RELATIONS,
+  key: 'relations', label: 'Relations', type: 'relations', default: DEFAULT_RELATIONS, ends: true, none: 'none',
   clean: (v) => cleanRelationList(v, DEFAULT_RELATIONS), text: (v) => listText(v),
-  note: 'Any words or signs. End one with -> for an arrow, <-> for both ways, or -- (or nothing) for a plain line. A new link gets the first.',
+  note: 'A new link gets the first. Ends: a plain line, an arrow, or both ways.',
+  uses: (c, name) => links().uses(c.world, c.roomId, name),
+  retag: (c, from, to) => links().retag(c.world, c.roomId, from, to),
 };
 
 // A relation's ends in a room's list ('none' when it has no mark, or isn't in the list).
@@ -356,6 +361,7 @@ export const proust = {
   settings: [
     RELATIONS,
     { key: 'tension', label: 'Line tension', min: 0, max: 1, default: 0.5 },
+    { key: 'legend', label: 'Legend on the canvas', type: 'switch', default: false },
     { key: 'reach', label: 'Centre shows', type: 'choice', default: 'all',
       options: [['all', 'The whole web'], ['1', '1 step out'], ['2', '2 steps out'], ['3', '3 steps out']] },
   ],

@@ -5,7 +5,7 @@
 import {
   room, addRoom, view, create, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
-  light, twinOf,
+  light, twinOf, relationsRow,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
 import { ui } from 'folio';
@@ -43,11 +43,14 @@ export class RoomView {
     return st ? roomSetting(this.world, this.roomId, ont.id, st, this.ontPrefs) : undefined;
   }
 
-  // One setting as a row: a slider, an on/off switch (type: 'switch'), a row of words to pick
+  // One setting as a row: the relations editor (type: 'relations'), a slider, an on/off switch (type: 'switch'), a row of words to pick
   // one from (type: 'choice', options [[value, word]]), or a list of words written with commas
   // (type: 'list'; word: what each must match, or clean(v): its own reading of what was written, and
   // text(list): its own way of writing it back; note: a line under it).
   settingRow(st, value, onChange) {
+    // A room's relations: the world's relations editor (relationsview.js), shared by every mode
+    // that names its lines.
+    if (st.type === 'relations') return relationsRow(st, { el, value, onChange, c: this.roomId ? this : null, toast: (t) => this.toast(t) });
     if (st.type === 'list') {
       const plain = (v) => (Array.isArray(v) ? v : String(v ?? '').replace(/^\s*\[(.*)\]\s*$/s, '$1').split(','))
         .map((x) => String(x).trim()).filter((x, i, all) => x && (!st.word || st.word.test(x)) && all.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);

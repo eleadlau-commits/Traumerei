@@ -49,7 +49,7 @@ export { relationName, splitList, listText, cleanRelations, relationShown, withR
 
 const net = arrowsOf({ of: ID, isNode: isChapter, nodes: (w, roomId) => chapters(w, roomId), word: 'chapter', loops: false, changed: (w, roomId) => settle(w, roomId) });
 export const {
-  relations, renameRelations, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
+  relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
   link, unlink, setLabel, setRelation,
 } = net;
 
@@ -351,7 +351,8 @@ const russell = {
   groups: { form: 'chapter', name: 'Chapter', membership: 'one', order: 'kept' },
   settings: [
     { key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' },
-    RELATIONS,
+    { ...RELATIONS, uses: (c, name) => uses(c.world, c.roomId, name), retag: (c, from, to) => retag(c.world, c.roomId, from, to) },
+    { key: 'legend', label: 'Legend on the canvas', type: 'switch', default: false },
   ],
 
   // A relation renamed in the room's list is renamed on its arrows.

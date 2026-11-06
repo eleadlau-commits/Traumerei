@@ -12,7 +12,7 @@ list is everything it offers:
 
 | Member | What it is |
 |---|---|
-| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below). Plain functions of a world; none touches the screen. |
+| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below), `relationsview` (the relations editor in a mode's ⚙: below). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |
@@ -87,7 +87,21 @@ read its relations from its own setting (`setting`, with its own default) and sa
 refused in its words (`words`). In a room's list a relation may end with a mark for its ends:
 `leads to ->` (an arrow), `is equivalent to <->` (both ways), `related to --` (a plain line).
 `cleanRelations` gives the names without their marks, `cleanRelationList` the tidy list with them,
-`relationEnds` each name's ends.
+`relationEnds` each name's ends. After its ends an entry may carry its **look** after a `|`: its
+line (`solid`, `dashed`, `dotted`) and colour (`ink`, `amber`, `rust`, `moss`, `slate`, `plum`):
+`calls up -> | dashed amber` (`relationEntry`, `entryText`, `relationLooks`; so no name holds a `|`).
+The colours and dashes are Folio's base.css (`.rel-line-*`, `.rel-colour-*`); `arrowview.js` draws
+each line in its relation's look, and a legend over the web when the room's ⚙ *Legend on the
+canvas* is on. `arrowsOf` also gives `uses` (how many arrows have a relation) and `retag` (move them
+to another); a list put in another order renames nothing.
+
+**The relations editor** (`ontologies/relationsview.js`, `lib.relationsview`) is the screen half
+for a room's list: a setting of type `'relations'` shows in the room's ⚙ as a row for each relation
+(its name, renamed where it is; its ends when the setting says `ends: true`; its line; its colour as
+swatches), a row at the foot to add one, drag or Alt+↑/↓ to reorder (the first is what a new link
+gets), and × to delete, asking what its links become when it has any (the setting's `uses` and
+`retag`). Keyboard first: ↑/↓ between rows, Enter writes in the name, Delete deletes. Russell and
+Proust both use it. Its layout is the room's `.room-rel-*` classes.
 
 **Groups are shared objects** (`groups.js`, `lib.groups`): every other ontology of the room sees
 a group as one thought, in its tray until it places it (`foreign`, `trayForeign`, `placedForeign`;

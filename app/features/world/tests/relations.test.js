@@ -4,7 +4,7 @@ import { test, assert } from 'folio/testing';
 import { emptyWorld, create, MESSY, groupsIn, members, isGroup, setRoomSetting, own } from '../model.js';
 import {
   arrowsOf, relationName, splitList, listText, cleanRelations, relationShown, withRelation,
-  relationEntry, cleanRelationList, relationEnds, RELATIONS,
+  relationEntry, cleanRelationList, relationEnds, relationLooks, entryText, RELATIONS,
 } from '../ontologies/relations.js';
 
 test('relation names: any words or signs, or none; [[ ]] refused', () => {
@@ -76,10 +76,10 @@ test('a new arrow gets the room\'s first relation, or the one it is given', () =
 });
 
 test('a relation may carry its ends as a mark after its name', () => {
-  assert.deepEqual(relationEntry('leads to ->'), { name: 'leads to', ends: 'arrow' });
-  assert.deepEqual(relationEntry('is equivalent to <->'), { name: 'is equivalent to', ends: 'both' });
-  assert.deepEqual(relationEntry('near  --'), { name: 'near', ends: 'none' });
-  assert.deepEqual(relationEntry('forgets'), { name: 'forgets', ends: null });
+  assert.deepEqual(relationEntry('leads to ->'), { name: 'leads to', ends: 'arrow', line: null, colour: null });
+  assert.deepEqual(relationEntry('is equivalent to <->'), { name: 'is equivalent to', ends: 'both', line: null, colour: null });
+  assert.deepEqual(relationEntry('near  --'), { name: 'near', ends: 'none', line: null, colour: null });
+  assert.deepEqual(relationEntry('forgets'), { name: 'forgets', ends: null, line: null, colour: null });
   assert.deepEqual(cleanRelationList('a ->, A, b<->,  c'), ['a ->', 'b <->', 'c']);
   assert.deepEqual(cleanRelations('a ->, b <->, c'), ['a', 'b', 'c']);
   assert.deepEqual(cleanRelations('', ['related to']), ['related to']);
@@ -100,4 +100,28 @@ test('arrowsOf can keep its arrows apart, read its own setting, and refuse in it
   assert.equal(own(w, MESSY, 'web', false)[b.id], undefined);
   assert.equal(net.link(w, MESSY, a.id, a.id), 'Not to itself.');
   assert.equal(net.link(w, MESSY, b.id, a.id), ''); // loops allowed
+});
+
+test('a relation may carry its look after a |: its line and its colour; plain ones are left out', () => {
+  assert.deepEqual(relationEntry('calls up -> | dashed amber'), { name: 'calls up', ends: 'arrow', line: 'dashed', colour: 'amber' });
+  assert.deepEqual(relationEntry('near | rust'), { name: 'near', ends: null, line: null, colour: 'rust' });
+  assert.deepEqual(relationEntry('near | solid ink wobbly'), { name: 'near', ends: null, line: null, colour: null });
+  assert.equal(entryText({ name: 'calls up', ends: 'arrow', line: 'dotted', colour: 'slate' }), 'calls up -> | dotted slate');
+  assert.equal(entryText({ name: 'calls up', ends: 'arrow', line: 'dotted', colour: null }, false), 'calls up | dotted');
+  assert.deepEqual(cleanRelationList(['a -> | dashed', 'b | plum', 'A']), ['a -> | dashed', 'b | plum']);
+  assert.deepEqual(relationLooks(['a -> | dashed', 'b']), { a: { line: 'dashed', colour: null }, b: { line: null, colour: null } });
+  assert.equal(relationName('a | b'), null); // | parts a line from its look, so no name holds one
+});
+
+test('renaming follows only true renames: a list put in another order renames nothing', () => {
+  const w = emptyWorld(1);
+  const net = arrowsOf({ of: 'russell', isNode: () => true, nodes: () => [], loops: true });
+  own(w, MESSY, 'russell')['x'] = { parents: ['y', 'z'], labels: {}, rel: { y: 'forgets', z: 'is a case of' } };
+  assert.equal(net.renameRelations(w, MESSY, ['forgets', 'is a case of'], ['is a case of', 'forgets']), 0);
+  assert.deepEqual(own(w, MESSY, 'russell').x.rel, { y: 'forgets', z: 'is a case of' });
+  assert.equal(net.renameRelations(w, MESSY, ['forgets', 'is a case of'], ['omits', 'is a case of']), 1);
+  assert.equal(own(w, MESSY, 'russell').x.rel.y, 'omits');
+  assert.equal(net.uses(w, MESSY, 'is a case of'), 1);
+  assert.equal(net.retag(w, MESSY, 'is a case of', ''), 1);
+  assert.equal(own(w, MESSY, 'russell').x.rel.z, '');
 });
