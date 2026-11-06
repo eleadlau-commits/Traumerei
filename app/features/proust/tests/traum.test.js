@@ -172,17 +172,21 @@ test('a big room: Joyce, Russell and Proust share their objects, each mode its o
     '## ^ch group: Chapter', 'made in: russell', 'holds: ^3', 'shared',
     '## ^cl group: Cluster', 'made in: proust', 'holds: ^4 ^5', 'shared',
     '# In joyce', 'at: ^t 0 0', '# In russell', 'on canvas: ^ch',
-    '# In proust', 'at: ^t 300 300', 'at: ^4 0 0', 'at: ^5 0 80', 'link: ^t -> ^cl | leads to', 'link: ^3 <-> ^4 | is equivalent to'].join('\n');
+    '# In proust', 'at: ^t 300 300', 'at: ^ch 200 0', 'at: ^4 0 0', 'at: ^5 0 80', 'link: ^t -> ^cl | leads to', 'link: ^ch <-> ^4 | is equivalent to'].join('\n');
   const { w, room: r, first } = roundTrip(text);
   assert.ok(/# In joyce/.test(first) && /# In russell/.test(first) && /# In proust/.test(first));
   const t = groupsIn(w, r.id).find((x) => x.title === 'Train');
   assert.deepEqual(point(w, r.id, t.id), { x: 300, y: 300 }); // Joyce's train, placed in Proust
   assert.equal(L().arrows(w, r.id).length, 2);
-  // Every mode sees the same objects: the thoughts, and each shared group once (on the canvas or in the tray).
-  // (Proust's own open cluster is drawn as a box around its thoughts, so it counts as there.)
+  // Every mode sees the same objects: each shared group once (a card on the canvas or in the tray),
+  // never its thoughts as well. (Proust's own open cluster is drawn as a box around its thoughts,
+  // so in Proust it counts as the cluster.)
   const seen = (id) => { const o = ontologies.find((x) => x.id === id); return [...o.units(w, r.id), ...(o.tray?.(w, r.id) || [])].map((u) => u.id); };
-  const inProust = new Set([...seen('proust'), ...groupsIn(w, r.id, 'proust').filter((g) => !g.loose).map((g) => g.id)]);
+  const cl = groupsIn(w, r.id, 'proust').find((g) => g.title === 'Cluster');
+  const inCl = new Set(members(w, cl.id).map((m) => m.id));
+  const inProust = new Set([...seen('proust').filter((id) => !inCl.has(id)), cl.id]);
   assert.ok(inProust.has(t.id));
+  assert.ok(!seen('pessoa').some((id) => inCl.has(id)));
   assert.deepEqual([...inProust].sort(), [...new Set(seen('pessoa'))].sort());
   // Links are Proust's own: no other mode's section has them.
   assert.ok(!first.slice(first.indexOf('# In joyce'), first.indexOf('# In proust')).includes('link:'));

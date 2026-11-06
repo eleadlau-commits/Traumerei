@@ -5,14 +5,14 @@
 
 export let
   own, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view, // model
-  placedForeign, trayForeign, spot, putAt, place, unplace, // groups: other modes' groups, as one thing here
+  placedForeign, trayForeign, inForeign, spot, putAt, place, unplace, // groups: other modes' groups, as one thing here
   arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, // relations: links and their relations
   lines, arrowView, maths, spiralPoint;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
   ({ own, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = lib.model);
-  ({ placedForeign, trayForeign, spot, putAt, place, unplace } = lib.groups);
+  ({ placedForeign, trayForeign, inForeign, spot, putAt, place, unplace } = lib.groups);
   ({ arrowsOf, cleanRelationList, relationEntry, relationEnds, listText } = lib.relations);
   ({ arrowView } = lib.arrowview);
   ({ maths } = lib.maths);

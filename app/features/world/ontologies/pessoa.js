@@ -1,9 +1,17 @@
 // Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they were
 // written, and stays where it is dragged. Pessoa makes no groups: a group another mode made (a
-// train, a chapter) is one thought here, in the tray until it is dragged onto the canvas. Its own data: where each thought was dragged to.
+// train, a chapter) is one thought here, in the tray until it is dragged onto the canvas, and its
+// thoughts don't float on their own as well. Its own data: where each thought was dragged to.
 
 import { roomUnits, own, shut, hash, isGroup } from '../model.js';
-import { placedForeign, trayForeign, spot, unplace } from '../groups.js';
+import { placedForeign, trayForeign, spot, unplace, inForeign } from '../groups.js';
+
+// The room's thoughts Pessoa floats on their own: all but those inside another mode's group,
+// which stands for them (one card, on the canvas once it is placed, or in the tray).
+export function ownUnits(w, roomId) {
+  const inside = inForeign(w, roomId, 'pessoa');
+  return roomUnits(w, roomId).filter((th) => !inside(th.id));
+}
 
 // The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
 // length, nudged a little by its id so it doesn't look ruled.
@@ -28,7 +36,7 @@ const traum = {
     const places = own(w, roomId, 'pessoa', false);
     const out = [];
     const spiral = [];
-    for (const th of roomUnits(w, roomId)) {
+    for (const th of ownUnits(w, roomId)) {
       const p = places[th.id];
       if (!c.ref(th.id)) continue;
       if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
@@ -70,7 +78,7 @@ export default {
   groups: null,
   lays: true, // places every thought itself
 
-  units: (w, roomId) => [...roomUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
+  units: (w, roomId) => [...ownUnits(w, roomId), ...placedForeign(w, roomId, 'pessoa')],
   tray: (w, roomId) => trayForeign(w, roomId, 'pessoa'),
   placed: (w, roomId, id) => !isGroup(w.things[id]) || !!spot(w, roomId, 'pessoa', id),
   // Thrown back: another mode's group loses its spot. Pessoa places every thought itself, so a
@@ -82,7 +90,7 @@ export default {
     const placed = own(w, roomId, 'pessoa', false)[id];
     if (placed) return placed;
     if (isGroup(w.things[id])) return null; // in the tray
-    const units = roomUnits(w, roomId);
+    const units = ownUnits(w, roomId);
     const i = units.findIndex((u) => u.id === id);
     return spiralPoint(i < 0 ? units.length : i, id);
   },

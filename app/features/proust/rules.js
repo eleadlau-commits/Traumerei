@@ -26,7 +26,7 @@
 
 import {
   own, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
-  placedForeign, trayForeign, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
+  placedForeign, trayForeign, inForeign, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
 } from './world.js';
 
 export const ID = 'proust';
@@ -69,22 +69,30 @@ export function shownAs(w, id) {
 }
 
 // The room's clusters with something in them, not in the tray, oldest first (nested ones too).
-export const clusters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => itemsIn(w, g.id).length && shownAs(w, g.id) !== 'tray');
+export function clusters(w, roomId) {
+  const inside = inForeign(w, roomId, ID);
+  return groupsIn(w, roomId, ID).filter((g) => itemsIn(w, g.id).length && shownAs(w, g.id) !== 'tray' && !inside(g.id));
+}
 
 // ---- Nodes ----
 
 // Whether links can join a thing: a thought of the room, a cluster, or another mode's group placed
-// here (not in the tray).
-export function isNode(w, roomId, id) {
+// here (not in the tray). A thing inside another mode's group is not a node: the group stands for
+// it (one card). inside: inForeign's test, when it is already made.
+export function isNode(w, roomId, id, inside = null) {
   const th = w.things[id];
   if (!th || th.parent !== roomId) return false;
+  if ((inside || inForeign(w, roomId, ID))(id)) return false;
   if (isLeaf(th)) return shownAs(w, id) !== 'tray';
   if (!isGroup(th)) return false;
   if (th.of === ID) return !!itemsIn(w, id).length && shownAs(w, id) !== 'tray';
   return !!spot(w, roomId, ID, id);
 }
 
-export const nodes = (w, roomId) => [...roomItems(w, roomId), ...groupsIn(w, roomId, ID), ...placedForeign(w, roomId, ID)].filter((th) => isNode(w, roomId, th.id));
+export function nodes(w, roomId) {
+  const inside = inForeign(w, roomId, ID);
+  return [...roomItems(w, roomId), ...groupsIn(w, roomId, ID), ...placedForeign(w, roomId, ID)].filter((th) => isNode(w, roomId, th.id, inside));
+}
 
 // A node in words: a cluster's or group's title, or a thought's first words.
 export function nodeName(w, id) {
@@ -286,8 +294,9 @@ const traum = {
   write(w, roomId, c) {
     const places = own(w, roomId, ID, false);
     const out = [], spiral = [];
+    const inside = inForeign(w, roomId, ID);
     for (const th of roomItems(w, roomId)) {
-      if (!c.ref(th.id)) continue;
+      if (!c.ref(th.id) || inside(th.id)) continue; // another mode's group stands for it
       const p = places[th.id];
       if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
       else spiral.push(c.ref(th.id));
@@ -375,12 +384,13 @@ export const proust = {
 
   // Every thought not in a closed or waiting cluster, each closed cluster, and other modes' groups
   // placed here.
+  // A thought inside another mode's group is not on the canvas on its own: the group stands for it.
   units(w, roomId) {
+    const inside = inForeign(w, roomId, ID);
     return [
       ...roomItems(w, roomId).filter((th) => shownAs(w, th.id) === th.id),
       ...groupsIn(w, roomId, ID).filter((g) => g.closed && itemsIn(w, g.id).length && shownAs(w, g.id) === g.id),
-      ...placedForeign(w, roomId, ID),
-    ];
+    ].filter((th) => !inside(th.id)).concat(placedForeign(w, roomId, ID));
   },
   // Clusters thrown back (or made in the tray), and other modes' groups not placed yet.
   tray: (w, roomId) => [
