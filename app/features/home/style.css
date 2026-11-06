@@ -81,5 +81,10 @@
 .home-quick:focus-visible { outline: 0; }
 .home-quick.dropping { opacity: 0; }
 
+/* Under the quick thought: how many wait in Messy thoughts, faint, a word to press. */
+.home-waiting { pointer-events: auto; margin-top: calc(-1 * clamp(16px, 3vh, 40px)); font-size: 13px; text-transform: none; letter-spacing: .04em; opacity: .5; }
+.home-waiting:hover { opacity: .85; }
+.home-waiting[hidden] { display: none; }
+
 /* Under a page in the frame (Settings), the home page's words step aside. */
 .page-open .home { visibility: hidden; }

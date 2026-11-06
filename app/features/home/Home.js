@@ -35,8 +35,11 @@ export default class Home extends Feature {
         el('h1', { class: 'home-title' }, TITLE),
         el('nav', { class: 'home-nav', 'aria-label': 'Home' },
           el('button', { type: 'button', class: 'word home-link home-create', onclick: () => this.create() }, 'Create')),
-        this.quick.el));
+        this.quick.el,
+        this.waitingLine = el('button', { type: 'button', class: 'word home-waiting', hidden: true, onclick: () => this.goToMessy() })));
     (document.getElementById('folio-root') || document.body).append(this.page);
+    this.drawWaiting();
+    for (const ev of ['world:saved', 'world:changed', 'room:changed']) this.on(ev, () => this.drawWaiting());
     this.frame?.show(this, {
       crumbs: [{ label: 'Home', current: true }],
       idle: this.w ? 'Type anywhere to note down a messy thought · Enter drops it in Messy thoughts · Ctrl+Enter new line' : 'Create opens the rooms',
@@ -55,6 +58,13 @@ export default class Home extends Feature {
   // ---- Create ----
 
   create() { this.use('create')?.open(); }
+
+  // Into Messy thoughts: the rooms page opens, then the room.
+  goToMessy() {
+    if (!this.w) return;
+    this.create();
+    this.use('rooms')?.openRoom(this.w.lib.model.MESSY);
+  }
 
   // Whether Home is what shows: no rooms page over it.
   showing() { return !document.documentElement.classList.contains('rooms-open'); }
@@ -76,7 +86,30 @@ export default class Home extends Feature {
     this.w.save();
     this.w.write();
     this.frame?.hint('Dropped in Messy thoughts');
+    this.drawWaiting();
     return true;
+  }
+
+  // ---- What waits in Messy thoughts ----
+
+  // How many things wait in Messy thoughts' loose tray, in the mode it is seen in (0 without the world).
+  waiting() {
+    const world = this.w?.world;
+    if (!world) return 0;
+    const { model } = this.w.lib;
+    try {
+      const o = this.w.ontology(model.view(world, model.MESSY).mode);
+      return o?.tray ? o.tray(world, model.MESSY).length : 0;
+    } catch { return 0; }
+  }
+
+  // A faint line under the quick thought, "3 waiting in Messy thoughts"; a click goes in. Hidden at 0.
+  drawWaiting() {
+    if (!this.waitingLine) return;
+    const n = this.waiting();
+    this.waitingLine.hidden = !n;
+    this.waitingLine.textContent = `${n} waiting in Messy thoughts`;
+    this.waitingLine.title = 'Go into Messy thoughts';
   }
 
   // ---- Typeface ----

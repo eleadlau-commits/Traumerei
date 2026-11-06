@@ -16,9 +16,13 @@ It is kept clean: no rail and no Search (Search and Ctrl+K are on the rooms page
   puts in a new line, Escape lets go of the line. The world is read afresh before
   and written at once after, so the rooms page finds it. Messy thoughts can't be deleted (the
   world gives it back if it is missing); if it is locked, nothing drops and the status bar says so.
+- **What waits:** under the quick thought, faint, *3 waiting in Messy thoughts*: how many
+  things are in Messy thoughts' loose tray, in the mode it is seen in (that ontology's `tray`).
+  A click goes into Messy thoughts. Hidden when nothing waits; drawn again after a drop and on
+  `world:saved`, `world:changed` and `room:changed`.
 - **The status bar** at the foot: its quiet line, and Saved.
 
-It uses the services `create`, `world` (Messy thoughts) and `frame`. Settings, Account and About
+It uses the services `create`, `rooms` (`openRoom`), `world` (Messy thoughts) and `frame`. Settings, Account and About
 are in the menu.
 
 ## The menu ("Veil")
