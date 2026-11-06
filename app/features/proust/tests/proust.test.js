@@ -233,3 +233,14 @@ test('drawn: a link and the one back bow apart; links into a closed cluster run 
   assert.equal(d.length, 1); // a ↔ b are inside it now; c → a runs to the cluster
   assert.ok(out.some((n) => n.dataset?.group === g.id && n.classList.contains('room-closed')));
 });
+
+test('another mode\'s group is one card: its thoughts are not nodes on their own, in the tray or placed', () => {
+  const w = emptyWorld(1);
+  const a = line(w, 'a'), b = line(w, 'b'), c = line(w, 'c');
+  const t = groupChosen(joyce, w, MESSY, [a.id, b.id], clock++);
+  assert.deepEqual(ids(proust.units(w, MESSY)), [c.id]);
+  assert.deepEqual(ids(proust.tray(w, MESSY)), [t.id]);
+  proust.drop(w, MESSY, t.id, 100, 100);
+  assert.deepEqual(ids(proust.units(w, MESSY)), [c.id, t.id]);
+  assert.equal(L().link(w, MESSY, a.id, c.id), 'Links join two things on the canvas.'); // the train stands for it
+});

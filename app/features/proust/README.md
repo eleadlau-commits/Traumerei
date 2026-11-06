@@ -10,7 +10,8 @@ seen through Proust is then seen through Pessoa.
 
 - **Nodes.** Every thought is on the canvas, as in Pessoa: on Pessoa's spiral until it is
   dragged, then where it was let go. A group another mode made (a train, a chapter) waits in the
-  tray as one thing until it is dragged out; then it is one node. A cluster closed to its title
+  tray as one thing until it is dragged out; then it is one node (one card: its thoughts are not
+  nodes on their own as well). A cluster closed to its title
   (Ctrl+Shift+F) is one node too.
 - **Links** join any two nodes: thoughts, clusters, other modes' groups. Each has a relation and
   a label (the world's `relations.js`, shared with Russell). Loops are fine (A to B to C to A);
@@ -34,7 +35,7 @@ seen through Proust is then seen through Pessoa.
   tray, and every link touching it (or anything in it) goes; Ctrl+Z brings them back. A thought
   can't go back: Proust places every thought itself.
 - Links are Proust's own: no other mode shows them. Proust sees the same objects as Pessoa:
-  every thought, and each shared group once.
+  every thought not in another mode's group, and each such group once.
 
 ## Its parts
 

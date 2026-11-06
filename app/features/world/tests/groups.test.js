@@ -41,13 +41,13 @@ test('a group made with Ctrl+G is one thought in the other modes: in their tray,
   assert.deepEqual(ids(foreign(w, MESSY, 'joyce')), []); // Joyce's own
   assert.deepEqual(ids(pessoa.tray(w, MESSY)), [t.id]);
   assert.equal(kindTag(t, { joyce: 'Train' }), 'Train');
-  // Pessoa still floats each thought; the train joins them once placed.
-  assert.equal(pessoa.units(w, MESSY).length, 3);
+  // In Pessoa the train is one card: its thoughts don't float on their own as well, in the tray or placed.
+  assert.deepEqual(ids(pessoa.units(w, MESSY)), [c.id]);
   pessoa.drop(w, MESSY, t.id, 40, 50);
   assert.deepEqual(ids(placedForeign(w, MESSY, 'pessoa')), [t.id]);
   assert.deepEqual(pessoa.tray(w, MESSY), []);
   assert.deepEqual(pessoa.point(w, MESSY, t.id), { x: 40, y: 50 });
-  assert.equal(pessoa.units(w, MESSY).length, 4);
+  assert.deepEqual(ids(pessoa.units(w, MESSY)), [c.id, t.id]);
   // In Russell the train waits in the tray as one thought, and its thoughts are not loose there too:
   // Joyce has a, b (in the train) and c loose; Russell has the train and c, the same objects.
   assert.deepEqual(ids(russell.tray(w, MESSY)), [c.id, t.id]);
