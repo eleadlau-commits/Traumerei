@@ -73,7 +73,7 @@ export class RoomsMany {
     const key = (id) => el('span', { class: 'key' }, this.keyMap?.label?.(id) || '');
     const btn = (label, fn, id = null, extra = '') => el('button', { type: 'button', class: 'box-btn ' + extra, onclick: fn }, label, id ? key(id) : '');
     const all = () => rs.map((r) => r.id);
-    const locked = rs.every((r) => r.locked);
+    const locked = rs.every((r) => shut(this.world, r.id));
     const rows = [
       el('div', { class: 'title-field' }, `${rs.length} rooms`),
       el('p', { class: 'pop-note' }, rs.map((r) => r.name).join(', ')),

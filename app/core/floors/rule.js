@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, cellOf, setCell, unsetCell, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
+import { room, cellOf, setCell, unsetCell, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, shut, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -87,7 +87,7 @@ export function settle(w, page, board) {
 // archived room). Returns whether it moved.
 export function move(w, id, col, row, board) {
   const r = room(w, id);
-  if (!r || r.locked || isArchived(w, id) || !free(w, r, col, row, board)) return false;
+  if (!r || shut(w, r.id) || isArchived(w, id) || !free(w, r, col, row, board)) return false;
   return setCell(w, id, col, row);
 }
 
@@ -95,7 +95,7 @@ export function move(w, id, col, row, board) {
 // board and free.
 export function resize(w, id, size, board) {
   const r = room(w, id);
-  if (!r || r.locked) return false;
+  if (!r || shut(w, r.id)) return false;
   const was = r.size || 1;
   r.size = size === 2 || size === 'twin' ? size : 1;
   const at = cellOf(w, id);
@@ -109,7 +109,7 @@ export function resize(w, id, size, board) {
 // 'full' when that floor has no spot of its size.
 export function toFloor(w, id, page, board, cell = null) {
   const r = room(w, id);
-  if (!r || id === MESSY || r.locked || isArchived(w, id) || floorOf(w, id) === page) return false;
+  if (!r || id === MESSY || shut(w, r.id) || isArchived(w, id) || floorOf(w, id) === page) return false;
   const at = cell && free(w, r, cell.col, cell.row, board, page) ? cell : spot(w, r, page, board);
   if (!at) return 'full';
   if (!toPage(w, id, page)) return false;
@@ -133,7 +133,7 @@ export function removeFloor(w, page, now = Date.now()) {
   if (page === 0) return { error: 'first' };
   if (page < 0 || page >= pageCount(w)) return { error: 'none' };
   const on = roomsOn(w, page);
-  if (on.some((r) => r.locked)) return { error: 'locked' };
+  if (on.some((r) => shut(w, r.id))) return { error: 'locked' };
   for (const r of on) archive(w, r.id, now);
   for (const r of allRooms(w)) { // (an archived room's floor is the one it would go back to)
     const p = floorOf(w, r.id), at = cellOf(w, r.id);
