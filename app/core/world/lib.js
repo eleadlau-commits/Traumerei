@@ -7,6 +7,7 @@ export * as links from './links.js';          // the links table: part of, stand
 export * as places from './places.js';        // the places table: the context each thought is in (Laws 1, 2)
 export * as gaps from './gaps.js';            // the gaps table: what a mark was made to close, derived up the links (Law 5)
 export * as distance from './distance.js';    // the distance table: who a context is written for (Law 7)
+export * as ahead from './ahead.js';          // moments ahead: due, revisit, a note for the next visit; the Returns tray (phase 7)
 export * as tables from './tables.js';        // the six tables read off the world and written back: what carriers move (Law 8)
 export * as traum from './traum.js';          // the .traum carrier: the six tables as text (Law 8)
 export * as rules from './rules.js';          // rules: an ontology as the kernel sees it (layout, admit, moves, draws)

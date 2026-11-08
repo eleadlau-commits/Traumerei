@@ -282,6 +282,15 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     return known.some((m) => m.kind === 'made') ? known : [...fallback(th).filter((m) => !known.length || m.kind === 'made'), ...known];
   }
   const all = () => (log() ? log().since(0).map(momentRow) : Object.values(w().things).flatMap(fallback)).sort(byTime);
+  const AHEAD = lib.ahead;
+  const ask = (mark, kind, o) => {
+    if (!thing(mark)) return refuse('No such mark');
+    if (model.shut(w(), mark)) return refuse('The mark is locked');
+    if (o.at != null && !Number.isFinite(o.at)) return refuse('A time to come back at is needed');
+    const r = AHEAD.ask(w(), mark, kind, { ...o, note: typeof o.note === 'string' ? o.note : '' });
+    return land(!r.why, r.id, r.why);
+  };
+  const answer = (mark, how) => { if (!thing(mark)) return refuse('No such mark'); const r = AHEAD.answer(w(), mark, how); return land(!r.why, r.id, r.why); };
   const moments = Object.freeze({
     of: (mark) => rows(momentsOf(mark).sort(byTime)),
     since: (time) => rows(all().filter((m) => m.time >= +time)),
@@ -302,10 +311,19 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     seq: () => log()?.log.seq ?? 0,
     outbox: (seq) => (log() ? rows(log().outbox(seq)) : rows([])),
     absorb: (list) => { if (!log()) return later('Taking in moments', 1); if (!Array.isArray(list)) return refuse('Rows to take in are a list'); const landed = log().absorb(list.map((r) => ({ ...r }))); return row({ ok: true, id: 'moments', landed: landed.length }); },
-    ahead: () => rows([]),
-    due: () => later('A due moment', 7),
-    revisit: () => later('A return', 7),
-    note: () => later('A note on a mark', 7),
+    // Moments ahead (world/ahead.js, phase 7): what is still to come, soonest first; what came
+    // back and waits in the Returns tray; asking for a mark to come back (due by a time, to
+    // revisit at a time, a note for the next visit), answering it (met or refused, each a
+    // moment in the record) and taking it back.
+    ahead: (context = null) => rows(context == null || thing(context) ? AHEAD.waiting(w(), context) : []),
+    returns: (context = null) => rows(context == null || thing(context) ? AHEAD.back(w(), context) : []),
+    next: (mark) => { const r = thing(mark) ? AHEAD.get(w(), mark) : null; return r ? row(r) : null; },
+    due: (mark, time, note = '') => ask(mark, 'due', { at: +time, note }),
+    revisit: (mark, time, note = '') => ask(mark, 'revisit', { at: +time, note }),
+    note: (mark, text) => ask(mark, 'return', { note: text }),
+    meet: (mark) => answer(mark, 'met'),
+    refuse: (mark) => answer(mark, 'refused'),
+    clear: (mark) => { if (!thing(mark)) return refuse('No such mark'); const r = AHEAD.clear(w(), mark); return land(!r.why, r.id, r.why); },
     on: on('moments'),
   });
 

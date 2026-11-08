@@ -68,7 +68,7 @@ export default class WordCount extends Feature {
 | `t.links` | read and make links: a group's members (`part of`), arrows (`relation`) |
 | `t.distance` | who a room is for (`me now`, `others`): a locked room reads `others` |
 | `t.gaps` | what a thought was made to close: open a gap (to check, do or judge), resolve it, read a group's or a tree's progress |
-| `t.moments` | times: made, edited, visited, due (due and return come in phase 7) |
+| `t.moments` | times: made, edited, visited; what is to come and what came back (due, revisit, a note for the next visit) |
 | `t.slots.rules` | add a mode (a way of seeing a room) |
 | `t.slots.kinds` | add a kind of thought (a picture, a PDF page) |
 | `t.slots.commands` | add a named action, with keys |

@@ -174,8 +174,20 @@ line per mark at most. A group's gap is derived from its parts and never written
 2026-11-08T09:00:00.000Z made ^mark
 ```
 
-A mark's history: when it was made, edited, moved, visited. It comes in as history only (it
-changes nothing), so a room taken out and brought back remembers when its thoughts were written.
+A mark's history: when it was made, edited, moved, visited, came back and was met or refused. It
+comes in as history only (it changes nothing), so a room taken out and brought back remembers
+when its thoughts were written.
+
+A line with a `state` is a moment ahead instead (kernel phase 7): the mark comes back to its maker
+`due` (to be done by the time), to `revisit` (at the time) or with a `return`, a note for the next
+time it or its room is opened (the time is when the note was left). `state` is `waiting`, `back`
+(it came back and is in the Returns tray), `met` or `refused`; `set` is when it was asked for,
+`back` and `answered` when it came and was answered. One per mark at most. It lands as it is:
+
+```
+2026-11-12T09:00:00.000Z due ^mark | state: waiting | set: 2026-11-08T21:00:00.000Z
+2026-11-08T21:00:00.000Z return ^room | state: waiting | set: 2026-11-08T21:00:00.000Z | note: "Start from the second draft"
+```
 
 ## A file written by hand
 

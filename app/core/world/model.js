@@ -40,6 +40,7 @@
 //   links:  { [id]: { from, to, kind, … } }         the links table (links.js): part of, stands for, relation
 //   places: { [id]: { mark, context, rule?, position? } }   the places table (places.js): where each thought is
 //   gaps:   { [id]: { mark, direction, state, … } }  the gaps table (gaps.js)
+//   ahead:  { [id]: { mark, kind, at?, note?, state, … } }  moments ahead: due, revisit, return (ahead.js)
 //   distance: { [id]: { context, reader } }       the distance table (distance.js): who a context is for
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [store]: { … } } }        a plugin's data in a room that is not a position (own()); where a
@@ -54,6 +55,7 @@ import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
 import * as G from './gaps.js';
+import * as A from './ahead.js';
 import * as D from './distance.js';
 import * as T from './tables.js';
 
@@ -100,7 +102,7 @@ export const isContext = (th) => kindOf(th) === 'context';
 export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 
 export function emptyWorld(now = Date.now()) {
-  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, distance: {}, views: {}, own: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, distance: {}, ahead: {}, views: {}, own: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
   P.setHome(w, MESSY, FLOOR(0));
   P.putSpot(w, FLOOR(0), MESSY, CELL, { col: 0, row: 0 }); // its four squares at the top left
   return w;
@@ -127,7 +129,7 @@ export const isArchived = (w, id) => P.home(w, id) === ARCHIVE;
 // table once.)
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'links', 'places', 'gaps', 'distance', 'views', 'own', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'links', 'places', 'gaps', 'distance', 'ahead', 'views', 'own', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   for (const [roomId, set] of Object.entries(w.settings || {})) if (kindOf(w.things[roomId]) === 'room' && set && typeof set === 'object' && Object.keys(set).length) w.things[roomId].rules = set; // settings were beside the rooms once (phase 6)
   delete w.settings;
   for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
@@ -182,6 +184,7 @@ export function loadWorld(saved, now = Date.now()) {
   }
   L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && P.home(w, r.from) === P.home(w, r.to) : true));
   G.repair(w); // a gap sits on a mark that is there (Law 1)
+  A.repair(w); // and a moment ahead (phase 7)
   for (const th of Object.values(w.things)) if (th && 'locked' in th) { if (th.locked && kindOf(th) === 'room') D.declare(w, th.id, 'others'); delete th.locked; } // Lock was a field once (phase 6)
   D.repair(w, (id) => declarable(w, id)); // a reader on a context that is there (Law 1)
   for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
@@ -357,7 +360,7 @@ export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
   L.drop(w, L.partId(groupId, id));
-  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); G.drop(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
+  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); G.drop(w, groupId); A.drop(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
   return true;
 }
 
@@ -638,11 +641,12 @@ export function remove(w, id) {
   L.dropAll(w, id);
   G.drop(w, id);
   D.drop(w, id);
+  A.drop(w, id);
   for (const c of P.marksIn(w, id)) remove(w, c); // (folded-away ones too)
   P.dropMark(w, id);
   for (const m of inside) remove(w, m);
   for (const m of stoodFor) remove(w, m);
-  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); G.drop(w, g.id); P.dropMark(w, g.id); forget(w, g.id); }
+  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); G.drop(w, g.id); A.drop(w, g.id); P.dropMark(w, g.id); forget(w, g.id); }
   forget(w, id);
   delete w.views[id];
   delete w.own[id];
@@ -873,6 +877,7 @@ export function copyRoom(w, id, now = Date.now()) {
   for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
   for (const [lid, row] of Object.entries(L.copyFor(w, ids))) L.set(w, lid, row);
   for (const row of Object.values(G.copyFor(w, ids))) G.set(w, row);
+  for (const row of A.copyFor(w, ids)) A.set(w, row);
   const fresh = renamed(copy(r), ids);
   Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || 'Untitled'} copy` });
   delete fresh.edited; // (and no distance row: a copy starts for me now)
@@ -1061,6 +1066,7 @@ function settle(w, ids, room, page) {
   L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && P.home(w, r.from) === P.home(w, r.to) : true));
   for (const g of ids) if (isGroup(w.things[g]) && holds(w, g, g)) for (const r of L.to(w, g, 'part of')) if (holds(w, r.from, g)) L.drop(w, r.id);
   G.repair(w);
+  A.repair(w);
   D.repair(w, (id) => declarable(w, id));
   touch(w);
 }

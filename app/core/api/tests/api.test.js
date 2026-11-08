@@ -18,7 +18,7 @@ const V2 = {
   carriers: ['check', 'land', 'list', 'read', 'replace', 'tables', 'text'],
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
-  moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
+  moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
   ui: ['chosen', 'docks', 'frame', 'open', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
@@ -427,7 +427,7 @@ test('gaps: one row per mark, open or resolved, landing as steps; a mark with ga
   assert.ok(w.gaps[`gap:${a.id}`].state === 'open');
 });
 test('moments: the log read by mark, since a time and by day; a mark older than the log keeps its made and edited times', () => {
-  const { w, room, a, service, log } = smallWorld();
+  const { w, room, a, b, locked, service, log } = smallWorld();
   const k = kernel({ lib, world: service });
   assert.deepEqual(k.moments.of(a.id), [{ time: 4000, kind: 'made', mark: a.id }]);
   const before = M.stateOf(JSON.parse(JSON.stringify(w)));
@@ -456,9 +456,29 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   assert.deepEqual(taken, { ok: true, id: 'moments', landed: 1 });
   assert.equal(k.marks.text(a.id), 'from afar');
   assert.equal(k.moments.absorb('no').ok, false);
+  // moments ahead (phase 7): asked for, come back, answered; each a saved step or a refusal
   assert.deepEqual(k.moments.ahead(), []);
-  assert.match(k.moments.due(a.id, 10000).reason, /phase 7/);
-  assert.match(k.moments.revisit(a.id, 10000).reason, /phase 7/);
+  const saved = service.saved;
+  assert.deepEqual(k.moments.due(a.id, 10000), { ok: true, id: `ahead:${a.id}` });
+  assert.ok(k.moments.revisit(b.id, 20000, 'look again').ok);
+  assert.ok(k.moments.note(room.id, 'start from the second draft').ok);
+  assert.equal(service.saved, saved + 3);
+  assert.deepEqual(ids(k.moments.ahead()), [a.id, b.id, room.id]); // soonest first, the next-visit note last
+  assert.deepEqual(ids(k.moments.ahead(room.id)), [a.id, b.id, room.id].filter((m) => m === room.id || lib.places.home(w, m) === room.id));
+  assert.ok(Object.isFrozen(k.moments.next(a.id)) && k.moments.next(a.id).kind === 'due');
+  assert.equal(k.moments.due(a.id, 'soon').ok, false);
+  assert.equal(k.moments.note(a.id, '  ').ok, false);
+  assert.equal(k.moments.due('nope', 1).ok, false);
+  assert.equal(k.moments.due(locked.id, 1).ok, false, 'a locked mark is not asked to come back');
+  assert.match(k.moments.refuse(a.id).reason, /not come back/);
+  lib.ahead.come(w, 15000);
+  assert.deepEqual(ids(k.moments.returns()), [a.id]);
+  assert.ok(k.moments.refuse(a.id).ok);
+  assert.deepEqual(k.moments.returns(), []);
+  assert.equal(k.moments.next(a.id).state, 'refused');
+  assert.match(k.moments.meet(a.id).reason, /Answered already/);
+  assert.ok(k.moments.clear(b.id).ok);
+  assert.equal(k.moments.next(b.id), null);
 });
 
 test('subscribing to a table hears the rows that land in its table, and stops when the plugin is switched off', () => {
