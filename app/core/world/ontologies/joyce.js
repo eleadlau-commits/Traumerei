@@ -14,13 +14,16 @@
 import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
 import { placedForeign, trayForeign, spot, putAt, place, inForeign, unplace } from '../groups.js';
 import * as lines from './lines.js';
+import { kindFor } from '../items/index.js';
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
 // ---- Where each thought of a train sits ----
 
 // How far below the one before a thought sits, until it is dragged somewhere else.
-export const STEP = { line: 58, passage: 190, picture: 270, group: 190 };
+// A line's step and a closed group's; every other kind says its own (its `step`; a passage's 190).
+export const STEP = { line: 58, group: 190 };
+const stepOf = (kind) => STEP[kind] ?? kindFor(kind).step ?? STEP.group;
 const LINE = 29; // each extra line of a thought written over several lines; the gap under a thought
 
 // Each thought's height as drawn (world units), measured after each drawing (measured() below),
@@ -43,9 +46,9 @@ export const clearHeights = () => HEIGHTS.clear();
 // until then, a guess from the lines written.
 export function stepAfter(th) {
   const kind = kindOf(th);
-  const guess = kind !== 'line' ? STEP[kind] : STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
+  const guess = kind !== 'line' ? stepOf(kind) : STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
   const h = HEIGHTS.get(th.id);
-  return h > 0 ? Math.max(STEP[kind] ?? STEP.line, Math.ceil(h) + LINE) : guess;
+  return h > 0 ? Math.max(stepOf(kind), Math.ceil(h) + LINE) : guess;
 }
 
 // Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or

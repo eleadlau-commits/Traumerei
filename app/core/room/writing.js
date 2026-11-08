@@ -134,9 +134,10 @@ export class Writing {
     }
     if (this.editing) return;
     if (this.shortcut(e, mod)) return;
-    if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyP' || e.code === 'KeyI')) {
+    const kind = this.roomId && this.kindForKey(e); // a kind's own key: a passage's Alt+P (kinds.js)
+    if (kind) {
       e.preventDefault();
-      if (e.code === 'KeyP') this.openSheet('passage'); else this.choosePicture();
+      this.addKind(kind);
       return;
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && this.roomId) { this.freshStart(); return; }
@@ -440,6 +441,7 @@ export class Writing {
     this.sel = null;
     this.drawWorld();
     this.addAt = this.toWorld(x, y);
+    this.fillAddMenu();
     this.addMenu.hidden = false;
     this.addMenu.classList.add('at');
     const w = this.addMenu.offsetWidth || 300, h = this.addMenu.offsetHeight || 220;

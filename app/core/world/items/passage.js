@@ -9,6 +9,12 @@ export default {
     return title || body ? { title, body } : null;
   },
   text: (th) => [th.title, th.body].filter(Boolean).join(' — '),
+  fields: [
+    { key: 'title', type: 'line', label: 'Title' },
+    { key: 'body', type: 'text', label: 'A paragraph, or a small article' },
+  ],
+  add: { note: 'a title and a body', keys: ['Alt+P'] },
+  step: 190,
   // In a .traum file (the roomfile feature): ## ^id passage: its title, then its body as written.
   traum: {
     read: ({ title, body }) => ({ kind: 'passage', title: title || '', body }),

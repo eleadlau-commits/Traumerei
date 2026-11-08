@@ -142,7 +142,7 @@ should not use them; existing ones move to the tables phase by phase. `modes`, `
 | `arrows` | `arrowView` |
 | `lines` | `svg`, `layer`, `group`, `line`, `knot`, `slack`, `strand`, `path`, `middle`, `between`, `labelSpot`, `sidePoint`, `facing`, `PAD`, `ENDS`, `ENDS_WORDS`, `cleanEnds`, `PAUSE`, `HEAD` |
 | `maths` | `maths(text)`, `broken(text)` |
-| `pictures` | `keepOrShrink(blob, src?)` |
+| `pictures` | `shrinkPicture(file)` (a picture file made small enough to keep), `keepOrShrink(blob, src?)` |
 
 The drawing helpers (`lines`, `arrows`, `maths`, `pictures`, `trains`) are not kernel; they move
 to a `parts` plugin that other plugins may require. The kernel API has no DOM in it.

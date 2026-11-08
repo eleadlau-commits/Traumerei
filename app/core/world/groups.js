@@ -16,6 +16,7 @@
 // the old ones go, everywhere: the new one takes their place in every group, of every ontology,
 // that held them.
 
+import { kindFor } from './items/index.js';
 import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, changed, move } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
@@ -146,7 +147,9 @@ export function foldPlan(w, roomId, ids) {
   }
   for (const g of groups) gone.delete(g.id); // a chosen group stays, holding the new thought
   if (leaves.length < 2) return { why: leaves.length ? 'One thought: nothing to fold.' : 'Nothing here to fold.' };
-  if (leaves.some((th) => kindOf(th) === 'picture')) return { why: 'Pictures can\'t be folded yet.' };
+  // Only words fold: a line or a passage (a picture, or any kind a plugin adds, can't yet).
+  const other = leaves.find((th) => kindOf(th) !== 'line' && kindOf(th) !== 'passage');
+  if (other) return { why: `${kindFor(kindOf(other)).name}s can't be folded yet.` };
   if (shut(w, roomId)) return { why: 'This room is locked.' };
   return { leaves, gone: [...gone.values()], groups };
 }

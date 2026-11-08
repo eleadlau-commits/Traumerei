@@ -1,17 +1,20 @@
 """Tests for the Folio compiler. Run with `python build.py test` (or `python -m unittest` in folio/tests)."""
 
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(os.path.abspath(__file__)).parents[2]
 sys.path.insert(0, str(ROOT / 'folio' / 'compiler'))
 
 import plistlib  # noqa: E402
-from folioc import Log, Project, cmd_android_project, cmd_ios_project, deep_merge, merge_plist  # noqa: E402
+from folioc import Log, Project, cmd_android_project, cmd_ios_project, cmd_new_plugin, deep_merge, merge_plist  # noqa: E402
 
 
 def make_app(tmp: Path, features: dict) -> Path:
@@ -392,6 +395,32 @@ class CompilerTests(unittest.TestCase):
         for fid in cases:
             self.assertEqual(by_id[fid].kind, 'mistake', fid)
             self.assertIn('plugin', by_id[fid].reason, fid)
+
+    def test_new_plugin_makes_a_plugin_that_compiles(self):
+        app = make_plugin_app(self.tmp, {'core': {'api': feature()}, 'plugins': {}})
+        project = Project(ROOT, app)
+        args = lambda fid, **o: SimpleNamespace(id=fid, **{'name': None, 'description': None, 'requires': None,
+                                                           'kind': None, 'author': None, **o})
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(cmd_new_plugin(project, args('word-count', kind='editor', author='E')), 0)
+            self.assertEqual(cmd_new_plugin(project, args('word-count')), 1)  # it is there already
+            self.assertEqual(cmd_new_plugin(project, args('Word count')), 1)  # not a folder name
+            self.assertEqual(cmd_new_plugin(project, args('two', kind='Mode')), 1)  # not a kind
+        folder = app / 'plugins' / 'word-count'
+        manifest = json.loads((folder / 'feature.json').read_text('utf-8'))
+        self.assertEqual(manifest['plugin'], {'api': 2, 'minApp': '1.4.0', 'kind': ['editor'], 'load': 'start', 'author': 'E'})
+        self.assertEqual(manifest['main'], 'WordCount.js')
+        self.assertTrue((folder / 'WordCount.js').is_file())
+        self.assertFalse(any('__' in p.name for p in folder.rglob('*')))
+        # Folio's feature template (this app has none of its own) gets a plugin block; it is a valid plugin
+        found = project.discover(Log(quiet=True))
+        self.assertEqual({f.id: f.reason for f in found}['word-count'], '')
+
+    def test_new_plugin_needs_an_app_with_plugins(self):
+        project = Project(ROOT, make_app(self.tmp, {}))
+        with redirect_stdout(io.StringIO()):
+            code = cmd_new_plugin(project, SimpleNamespace(id='x', name=None, description=None, requires=None, kind=None, author=None))
+        self.assertEqual(code, 1)
 
     def test_a_typo_in_a_plugin_block_is_a_warning(self):
         _, _, by_id = self.discover_plugins({'plugins': {'p': plugin({'loads': 'start'})}})
