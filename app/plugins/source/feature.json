@@ -11,7 +11,7 @@
     "docks"
   ],
   "plugin": {
-    "api": 1,
+    "api": 2,
     "minApp": "1.0.0",
     "kind": [
       "editor"
