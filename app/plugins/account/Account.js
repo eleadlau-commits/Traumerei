@@ -39,7 +39,7 @@ export default class Account extends Feature {
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     this.app.storage.watch(() => this.changed());
-    window.addEventListener('pagehide', () => this.flush());
+    this.listenTo(window, 'pagehide', () => this.flush());
     if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
   }
 

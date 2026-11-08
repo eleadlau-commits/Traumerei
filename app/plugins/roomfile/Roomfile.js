@@ -44,6 +44,9 @@ export default class Roomfile extends Feature {
     });
   }
 
+  // Switched off: an open card goes (as Cancel).
+  stop() { this.card?.close(); }
+
   pick() {
     this.picker ||= ui.filePicker('.traum,.md,.markdown,.txt,text/markdown,text/plain');
     return this.picker.pick();

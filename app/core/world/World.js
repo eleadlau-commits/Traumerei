@@ -30,7 +30,10 @@ export default class World extends Feature {
     this.palette = this.backdrop?.palette?.() || PALETTE;
     document.addEventListener('palette', (e) => { this.palette = e.detail; this.emit('world:palette', this.palette); });
     this.log = loadLog(this.storage.get('attention'));
-    this.defineSlot('world.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see world/ontologies/index.js).');
+    // A mode a plugin adds or takes away (switched on or off): 'world:modes' says so; a room seen
+    // through a mode that is off is seen through the fallback until it is on again.
+    this.defineSlot('world.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see world/ontologies/index.js).')
+      .watch(() => this.emit('world:modes'));
     // More kinds of item, from plugins: ITEMS follows the slot, and 'world:kinds' says it changed
     // (a thought of a kind switched off shows as a stand-in and is kept as it is).
     const kinds = this.defineSlot('world.items', 'A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el), traum? } (see world/items/index.js).');

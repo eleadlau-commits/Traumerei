@@ -17,7 +17,7 @@ export function settingsSections(slot, folio) {
   for (const s of slot.items) {
     let body = null;
     try { body = s.render(); } catch (err) { console.warn(`Settings: ${s.id}`, err); }
-    if (body) out.push({ id: s.id, title: s.title || 'Settings', icon: ICONS[s.id] || 'dots', body });
+    if (body) out.push({ id: s.id, title: s.title || 'Settings', icon: s.icon || ICONS[s.id] || 'dots', body });
   }
   if (folio?.featuresSection) out.push({ id: 'folio-features', title: 'Features', icon: 'dots', body: folio.featuresSection() });
   if (folio?.aboutParts) out.push({ id: 'folio-about', title: 'About', icon: 'info', body: folio.aboutParts().filter(Boolean) });
