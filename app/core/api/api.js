@@ -7,8 +7,6 @@
 // `connect(...)` (Api.js) adds the world itself, saving, the plugin's own data and the places to
 // plug in, each owned by the plugin, so switching it off takes everything it added away.
 
-import { ui } from 'folio';
-
 export const API_VERSION = 1;
 
 // Picks names from a module, failing loudly if one is missing (a rename in world shows here).
@@ -51,8 +49,9 @@ export const PLACES = {
 };
 
 // The API one plugin gets. app: the Folio app; world: the world service; plugin: the Feature
-// asking (its id owns what it adds); parts: surface(world.lib), made once.
-export function connect({ app, world, plugin, parts }) {
+// asking (its id owns what it adds); parts: surface(world.lib), made once; toast: Folio's
+// ui.toast (passed in, so this file imports nothing and runs in Node too).
+export function connect({ app, world, plugin, parts, toast = () => {} }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) {
     throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
@@ -72,6 +71,6 @@ export function connect({ app, world, plugin, parts }) {
     data: (roomId) => parts.model.own(world.world, roomId, owner),
     ...parts,
     ...places,
-    toast: (text) => ui.toast(text),
+    toast: (text) => toast(text),
   });
 }
