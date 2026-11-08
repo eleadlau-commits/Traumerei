@@ -12,7 +12,14 @@ API version it was written for, the oldest app version it works with, what it ad
 loads). See `folio/README.md` §3. A plugin reaches the app only through the `traumerei` service,
 the plugin API (`app/core/API.md`); the compiler leaves out a plugin that reaches past it. Keep
 app.json's `plugins.exempt` empty: when a plugin needs something the API lacks, add it to the API
-(v1.js, API.md and its test together).
+(v2.js, API.md and its test together).
+
+## The kernel
+
+The app is being rebuilt on six tables and eight laws (`app/core/KERNEL.md`): marks, places,
+links, distance, gaps, moments. The API's namespaces are named after them; new plugin code uses
+the tables (`t.marks`, `t.places`, …), not v1's `model`/`groups` names, which go in kernel phase 6.
+Judge a feature by what it composes from the six primitives; one that needs a seventh is a red flag.
 
 ## The splitting rule
 
