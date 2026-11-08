@@ -12,7 +12,7 @@ import { emptyWorld } from '../../../core/world/model.js';
 import { parse } from '../grammar.js';
 import { importRoom, exportRoom } from '../traum.js';
 import { bind as bindProust } from '../../proust/world.js';
-import { surface } from '../../../core/api/api.js';
+import { surface } from '../../../core/api/v1.js';
 import { proust } from '../../proust/rules.js';
 
 bind(lib);

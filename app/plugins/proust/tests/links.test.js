@@ -4,7 +4,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
-import { surface } from '../../api/api.js';
+import { surface } from '../../api/v1.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY } from '../../world/model.js';
 import { groupChosen } from '../../world/ontologies/index.js';

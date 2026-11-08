@@ -474,6 +474,17 @@ class CompilerTests(unittest.TestCase):
         })
         self.assertIn('p', [f.id for f in project.resolve(found)])
 
+
+    def test_file_names_that_differ_only_in_capitals_are_a_mistake(self):
+        app = make_app(self.tmp, {'api': (feature(main='Api.js'), {
+            'Api.js': "import { Feature } from 'folio';\nexport default class A extends Feature {}\n",
+            'api.js': 'export const x = 1;\n'})})
+        if len(list((app / 'features' / 'api').iterdir())) < 3:
+            self.skipTest('this file system ignores capitals, so the two files are one')
+        found = Project(ROOT, app).discover(Log(quiet=True))
+        self.assertEqual(found[0].kind, 'mistake')
+        self.assertIn('Api.js and api.js differ only in capital letters', found[0].reason)
+
     def test_deep_merge(self):
         base = {'a': {'b': 1, 'list': [1, 2]}, 'c': 1}
         deep_merge(base, {'a': {'d': 2, 'list': [2, 3]}, 'c': 5})

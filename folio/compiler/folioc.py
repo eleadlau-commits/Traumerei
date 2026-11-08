@@ -508,7 +508,23 @@ class Project:
         kind, problem = self.check_plugin(f)
         if problem:
             return f.leave_out(kind, problem)
+        clash = self.case_clash(f.path)
+        if clash:
+            return f.leave_out('mistake', f'{clash[0]} and {clash[1]} differ only in capital letters, which '
+                                          'breaks on Windows and in one-file builds; rename one')
         self.scan_code(f)
+
+    @staticmethod
+    def case_clash(folder: Path):
+        """Two files in one folder whose names differ only in capitals (Api.js and api.js), or None."""
+        for here, dirs, files in os.walk(folder):
+            seen = {}
+            for name in sorted(dirs + files):
+                other = seen.setdefault(name.lower(), name)
+                if other != name:
+                    rel = Path(here).relative_to(folder)
+                    return (rel / other).as_posix(), (rel / name).as_posix()
+        return None
 
     def check_plugin(self, f: FeatureInfo) -> tuple[str, str]:
         """Checks a plugin's block: every feature in the plugins folder has one, and only they do.
