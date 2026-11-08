@@ -114,10 +114,11 @@ test('a thought of another kind takes the old one\'s place in its group', () => 
   assert.deepEqual(members(w, g.id).map((th) => th.kind), ['passage', 'line']);
 });
 
-test('a locked room is blocked; maths KaTeX can\'t draw is found by its line', () => {
+test('a locked room is blocked; maths KaTeX can\'t draw is found by its line', async () => {
   const { w, id } = book();
   const s = open(w, id, { scope: 'room', ontologies });
   lock(w, id);
   assert.ok(run(w, id, s, s.text).blocked);
+  await lib.maths.loadMaths(); // KaTeX loads when first needed
   assert.deepEqual(badMaths(parse('# Objects\n## ^1 line\nfine $x$\nbad $\\frac{$')), [{ line: 4, tex: '\\frac{' }]);
 });

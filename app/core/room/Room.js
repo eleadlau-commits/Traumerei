@@ -114,6 +114,7 @@ export default class Room extends Feature {
     this.on('frame:rail', () => { if (this.roomId) this.place(); });    // the canvas starts beside the rail
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
+    this.on('world:maths', () => { if (this.roomId) this.drawWorld(); }); // KaTeX has loaded: formulas draw as mathematics
     this.on('world:modes', () => { if (this.roomId) { this.sel = null; this.drawRoom(); } }); // a mode came or went (a plugin)
     this.on('world:kinds', () => { this.drawKindKeys(live); if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });

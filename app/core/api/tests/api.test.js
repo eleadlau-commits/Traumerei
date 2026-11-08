@@ -115,6 +115,10 @@ test('the world, saving and the plugin\'s own data in a room', () => {
   const own = { world: w, saved: 0, save() { this.saved++; return true; } };
   const t = connect({ app: fakeApp(), world: own, plugin: plugin('haiku'), parts: surface(lib), lib });
   assert.equal(t.world, w);
+  const fresh = lib.model.emptyWorld();
+  own.world = fresh; // read back from storage: a new world object
+  assert.equal(t.world, fresh); // a plugin always writes to the world there is now
+  own.world = w;
   assert.deepEqual(t.app, { name: 'Träumerei', version: '1.0.0' });
   assert.deepEqual(t.plugin, { id: 'haiku', name: 'Haiku' });
   const room = lib.model.MESSY;
