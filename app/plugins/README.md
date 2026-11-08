@@ -67,7 +67,7 @@ export default class WordCount extends Feature {
 | `t.places` | read and change where a mark sits in a room, under which rule |
 | `t.links` | read and make links: a group's members (`part of`), arrows (`relation`) |
 | `t.distance` | who a room is for (`me now`, `others`): a locked room reads `others` |
-| `t.gaps` | open questions and tasks (empty until kernel phase 5) |
+| `t.gaps` | what a thought was made to close: open a gap (to check, do or judge), resolve it, read a group's or a tree's progress |
 | `t.moments` | times: made, edited, visited, due (due and return come in phase 7) |
 | `t.slots.rules` | add a mode (a way of seeing a room) |
 | `t.slots.kinds` | add a kind of thought (a picture, a PDF page) |
@@ -76,6 +76,7 @@ export default class WordCount extends Feature {
 | `t.slots.editor` | add a section to the Editor |
 | `t.slots.formats` | add a file format to import and export |
 | `t.ui.toast(text)` | show a short message |
+| `t.ui.chosen()` | the open room and the thought chosen there, as ids (for a command on it) |
 | `t.plugin`, `t.app` | `{ id, name }` of this plugin; `{ name, version }` of the app |
 
 Reads return frozen rows: hold ids, not rows. A change (`make`, `edit`, `put`, `link`, …) returns

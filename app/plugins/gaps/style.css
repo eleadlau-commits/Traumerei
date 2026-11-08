@@ -1,0 +1,6 @@
+/* Gaps: the Editor section. Only layout here; the look is Folio's (base.css). */
+.gaps-section { display: grid; gap: 6px; }
+.gaps-open { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.gaps-line { font-size: var(--t-small, .9em); }
+.gaps-bar { height: 3px; background: rgb(var(--ink-rgb) / .12); border-radius: 2px; overflow: hidden; }
+.gaps-bar-done { height: 100%; background: rgb(var(--ink-rgb) / .6); }

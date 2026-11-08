@@ -63,12 +63,24 @@ names the phase that brings it, and the read is empty. A refusal is never a step
 | `places` | `of(mark)` · `home(mark)` (the context it is in) · `in(context, rule?)` · `loose(context)` (marks at home there that no rule places) · `position(mark, context, rule)` | `put(mark, context, rule?, position?)` (into a context, laid under a rule when given; a room onto a floor `floor:<n>` or into the Archive `archive`) · `move(mark, from, to)` (lands loose in `to`) · `unplace(mark, context)` (loose there, under every rule) | `on(change)` |
 | `links` | `get(id)` · `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `standsFor(fold)` (the marks it folded) · `kinds()` (part of, stands for, relation) · `count()` | `link(from, to, kind, label?, { rule, note }?)` (a relation needs the `rule` whose arrows these are and goes through its checks) · `fold(context, ids)` (one new mark stands for them) · `unlink(id)` (a stands-for row undone brings the mark back loose) · `order(group, ids)` | `on(change)` |
 | `distance` | `of(context)` (a reader, or `null`) | `declare(context, reader)` | `on(change)` |
-| `gaps` | `of(mark)` · `opened(context?)` · `oldest(context?)` · `progress(group)` | `open(mark, direction)` · `resolve(mark, by?)` · `reopen(mark)` | `on(change)` |
+| `gaps` | `of(mark)` (its row: `{ mark, direction, state, openedAt, resolvedAt?, resolvedBy? }`, or the derived gap of a mark whose parts carry gaps: `{ …, derived: true, open, resolved, of }`, open while any part's is; `null` for none) · `opened(context?)` (the open rows, oldest first; of the marks at home in a context) · `oldest(context?)` · `progress(mark)` (`{ open, resolved, of }` over its parts, through *part of* and *relation* rows up to it, however deep) | `open(mark, direction)` (one open gap per mark; refuses on a mark whose gap is derived: open one on a part) · `resolve(mark, by?)` (`by` a link id that exists, or `judgement`, the default; a derived gap resolves only through its parts) · `reopen(mark)` (its direction kept, from now) | `on(change)` |
 | `moments` | `of(mark)` · `changed(mark)` (when last written) · `since(time)` · `day(date)` · `at(time)` (the marks as they were then) · `placesAt(time)` (the place rows as they were then) · `first()` · `kept()` (days of history kept) · `ahead(context?)` (due and return moments to come) · `seq()` · `outbox(seq)` (the rows since a seq as another copy of the world can take them; `null` for the whole world) | `keep(days)` (0: forever) · `absorb(rows)` (rows from another copy; the latest word on a thing wins) · `due(mark, time)` · `revisit(mark, time)` · `note(mark, text)` | `on(change)` |
 
 Two names differ from the plan's table so that a read and a propose never share one word:
 the open gaps are `gaps.opened(context?)` (the propose is `gaps.open(mark, direction)`), and the
 moments to come are `moments.ahead(context?)` (the propose is `moments.due(mark, time)`).
+
+**Gaps** (phase 5). A gap is what a mark was made to close, with a direction: `to world` (check
+it against the world), `from world` (do it), `to maker` (judge it). A mark has one at most, open
+or resolved (Law 5); `gaps.of` reads it. A mark that holds others (a group, a Russell chapter, a
+Proust hub: anything with *part of* or *relation* rows pointing up to it) has a **derived** gap,
+read off its parts and never stored: open while any part's gap is open, resolved once every
+part's is, with `open`, `resolved` and `of` counting the parts (a part that is itself derived
+counts through its own parts, once). So a to-do list is a group whose parts have gaps to do, and
+its progress is `gaps.progress(group)`; `gaps.open` and `gaps.resolve` on such a mark refuse and
+say why. Every open, resolve and reopen is a moment (`opened`, `resolved`) Ctrl+Z takes back. The
+room draws an open gap as an edge on the thought; the Gaps plugin (`app/plugins/gaps`) is the
+hands: an Editor section and Ctrl+Alt+G.
 
 **What the rows are read from, in phase 0.** Places: a thought in a train is placed under
 `joyce` at `{ group, index }`; a thought a rule laid itself (Pessoa, Proust) at `{ x, y }`; a
@@ -83,7 +95,7 @@ a locked room reads *others*, any other *me now*; `declare(context, 'others')` l
 `'me now'` unlocks it. Moments: the world's log (`world/moments.js`): *made*, *edited*, *moved*,
 *linked*, *removed* of a mark, *arranged* and *visited* of a context, *undone* and *redone* of a
 step; rows of one save share a `step`. A mark older than the history kept still reads its *made*
-and *edited* times. Gaps and the moments ahead: empty, until phases 5 and 7.
+and *edited* times. Gaps: the gaps table (`world/gaps.js`, phase 5): *opened* and *resolved* moments, *removed* with the mark. The moments ahead: empty until phase 7.
 
 **Words.** Readers: `me now`, `me later`, `others`, `machine`. Directions: `to world` (check),
 `from world` (do), `to maker` (judge). Link kinds now: `part of`, `relation`.
@@ -124,6 +136,7 @@ take a thought or a link away (`world/tests/rules.test.js`).
 | `slots.formats` | a file format: `add({ id, name, accepts(file), importRoom?, importInto?, exportRoom?, canEdit?, editRoom?, editGroup?, cancel? })`. `app/core/world/formats.js`. |
 | Folio's `settings` slot | a section on the Settings page: `this.add('settings', { id, title, order, render() })`. |
 | `ui.toast(text)` | A short message at the foot of the screen. |
+| `ui.chosen()` | What the person is looking at: `{ context, mark }`, the open room and the one mark chosen there (`mark` `null` for none), or `null` outside a room. For a command on the chosen thought; nothing else of the screen is in the API. |
 | `plugin` | `{ id, name }` of the plugin that connected. |
 | `app` | `{ name, version }` of the app. |
 

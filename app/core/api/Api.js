@@ -21,13 +21,14 @@ export default class Api extends Feature {
     // The rooms page starts after the plugins it shows (it uses Time and Search), so it is
     // looked up when a plugin first goes somewhere, not here.
     const service = (name) => app.use(name);
+    const room = () => app.slot('rooms.room')?.items?.[0] || null; // the open room (the room feature's slot item), looked up when asked
     const events = { on: (name, fn) => this.on(name, fn) }; // what a plugin subscribes to, heard through this feature
     // What to undo when a plugin is switched off, by plugin: the dock tabs it opened.
     this.leaving = new Map();
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, docks, keys, frame, floors, service, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

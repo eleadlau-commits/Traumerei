@@ -7,7 +7,7 @@ import {
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides,
+  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides, openGaps,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 import { pastFloor, pastWords } from './past.js';
@@ -285,6 +285,16 @@ export class RoomsGrid {
   }
 
   // One room's square: its colour, its light, its name and count; its last thoughts (the peek);
+  // The tile's dot: a thought left half written there, or open gaps (the gaps table): what is
+  // unfinished in the room, in a word on hover.
+  tileDot(id) {
+    const open = openGaps(this.world, id).length;
+    const draft = !!this.room?.hasDraft(id);
+    if (!open && !draft) return null;
+    const words = [draft ? 'A thought left half written' : null, open ? `${open} open gap${open === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+    return el('span', { class: 'rooms-tile-dot' + (open ? ' gaps' : ''), title: words });
+  }
+
   // a glow if it was the last room gone into, a dot if a thought was left half written there, a
   // thin bar along its top if it is locked, and how many finds it holds while the lights are on.
   tile(r, now = Date.now(), hits = null) {
@@ -323,7 +333,7 @@ export class RoomsGrid {
       lines.length || r.desc ? el('div', { class: 'rooms-peek', 'aria-hidden': 'true' },
         r.desc ? el('div', { class: 'rooms-peek-desc' }, r.desc) : null,
         ...lines.map((t) => el('div', { class: 'rooms-peek-line' }, t))) : null,
-      this.room?.hasDraft(r.id) ? el('span', { class: 'rooms-tile-dot', title: 'A thought left half written' }) : null,
+      this.tileDot(r.id),
       typeof found === 'number' && found ? el('span', { class: 'rooms-tile-found' }, String(found)) : null,
       el('div', { class: 'rooms-tile-label' },
         name,

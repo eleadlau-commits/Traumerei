@@ -4,7 +4,8 @@
 
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
-  groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf,
+  groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf, members,
+  gapState, gapOf, openGap, linksFrom, UP_LINKS,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -14,14 +15,18 @@ export class Writing {
   thoughtNode(th) {
     if (this.draft?.edit === th.id) return this.draftNode(); // a thought opened again to write in
     const kind = kindOf(th);
+    let node;
     if (kind === 'group') { // a closed group reads as one passage; another mode's says what kind it is
       const body = thoughtText(this.world, th);
-      return el('div', { class: 'room-passage closed', 'data-id': th.id },
+      node = el('div', { class: 'room-passage closed', 'data-id': th.id },
         th.of !== this.mode ? el('div', { class: 'label room-passage-kind' }, this.groupName(th)) : null,
         th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
         body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
-    }
-    return kindFor(kind).node(th, el); // a kind whose plugin is off shows as a quiet stand-in
+    } else node = kindFor(kind).node(th, el); // a kind whose plugin is off shows as a quiet stand-in
+    // The gap's edge: a mark with an open gap (its own, or derived from its parts: the gaps
+    // table, world/gaps.js) shows an open edge at its start, until it is resolved.
+    if (gapState(this.world, th.id) === 'open') node.classList?.add('room-gap');
+    return node;
   }
 
   draftNode() {
@@ -304,11 +309,27 @@ export class Writing {
     const th = create(w, g ? g.id : this.roomId, fields, now);
     if (!th && made && g && w.things[g.id]) remove(w, g.id);
     if (th && wr.kept) wr.kept(w, this.roomId, th, d);
+    if (th) this.inheritGap(th, g, now);
     // An ontology that goes on from a thought (goOn) remembers the thought; the others its group.
     if (th && wr.goOn) this.current[this.roomId] = th.id;
     else if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
     else if (th) delete this.current[this.roomId];
     return th;
+  }
+
+  // Enter under a plan opens a gap: a thought written on from one with an open gap (the one before
+  // it in its train, else the mark it is linked up to, else its group's own) opens a gap of the
+  // same direction, so a list of things to do grows by writing (KERNEL.md, Law 5).
+  inheritGap(th, g, now) {
+    const w = this.world;
+    const above = [];
+    if (g && w.things[g.id]) { const ms = members(w, g.id), i = ms.findIndex((m) => m.id === th.id); if (i > 0) above.push(ms[i - 1].id); }
+    for (const r of linksFrom(w, th.id)) if (UP_LINKS.includes(r.kind) && r.to !== g?.id) above.push(r.to);
+    if (g && w.things[g.id]) above.push(g.id);
+    for (const id of above) {
+      const gap = gapOf(w, id);
+      if (gap?.state === 'open') { openGap(w, th.id, gap.direction, now); return; }
+    }
   }
 
   // Starts writing a new thought at x, y (world units), with no group to go on with; for is kept

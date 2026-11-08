@@ -17,8 +17,8 @@ API offers the name over today's world (`world/model.js`), as a thin layer.
 | **places** | `mark`, `context`, `rule`, `position`, `pinned?` | A context is any mark that holds marks: a room, a floor, the loose tray, the archive. One mark may have several rows, one per context or rule. **No row in a context means the mark is loose there.** *(Phase 3: `world/places.js`, `w.places`, served from an index by mark and by context. Every mark but a floor or the Archive has exactly one **home row** (`rule` none, id `place:<context>:<mark>`): an item's and a group's room, a room's floor, the Archive (position `{ at, floor }`: when, and the floor it goes back to) or, for a Twin's side, the Twin. Rows with a rule (id `place:<context>:<mark>:<rule>`) are where that rule puts the mark (phase 4: no rule keeps a position of its own): a room's cell `{ col, row }` under `borges`, a Twin's side `{ side }` under `twin`, a group's spot `{ x, y, hand? }` under its own rule (no row: it waits in that rule's tray), Pessoa's and Proust's `{ x, y, auto? }`, a train's thought dragged off its line `{ dx, dy }` under `joyce`, and `tray` for a thought waiting in the tray of the rules that lay every thought.)* |
 | **links** | `from`, `to`, `kind`, `order?`, `rule?`, `label?`, `note?` | `from` and `to` are marks. Kinds are a slot: *part of*, *stands for*, *relation*, and later *about*, *answers*, *resolves*. Groups, trains, folds and arrows are all rows here. *(Phase 2: `world/links.js`, `w.links`, served from an index by from, to and rule. A row's id says what it is: `part:<group>:<member>` with `order` a rank; `for:<fold>:<mark>`, the folded mark staying in the world but shown nowhere; `rel:<rule>:<child>:<parent>` pointing up like part-of, `label` the relation's name, `note` the arrow's words. No group keeps a list of members.)* |
 | **distance** | `context`, `reader` | Reader is one of *me now*, *me later*, *others*, *machine*. Declared per context, inherited by its marks. Lock sets it to others. *(Today: Lock. Its own table in phase 6.)* |
-| **gaps** | `mark`, `direction`, `state`, `openedAt`, `resolvedBy?` | Direction: *to world* (check), *from world* (do), *to maker* (judge). `resolvedBy` is a link id or the word *judgement*. One open gap per mark at most. *(Phase 5.)* |
-| **moments** | `time`, `kind`, `mark` or `context`, `payload?` | An append-only log: made, moved, linked, visited, resolved, due, return. Timeline, the daily record, the time scrub and undo are all reads of this table. *(Phase 1: `world/moments.js`, saved beside the world as 'moments'; rows carry `before` and `after` so undo and replay read the log; squashed to a row per thing per day after 30 days, folded into a base after the days kept. Due and return in phase 7.)* |
+| **gaps** | `mark`, `direction`, `state`, `openedAt`, `resolvedAt?`, `resolvedBy?` | Direction: *to world* (check), *from world* (do), *to maker* (judge). `resolvedBy` is a link id or the word *judgement*. One open gap per mark at most. *(Phase 5: `world/gaps.js`, `w.gaps`, one row per mark under `gap:<mark>`, open or resolved, so Law 5 holds by construction; opening again takes the row over and the log keeps what was. A mark whose parts carry gaps, through *part of* or *relation* rows up to it however deep, reads a **derived** gap: open while any part's is open, resolved once all are, never stored; its own row, if any, lends the direction and counts for nothing further up. Moments: *opened*, *resolved*, and *removed* with the mark.)* |
+| **moments** | `time`, `kind`, `mark` or `context`, `payload?` | An append-only log: made, moved, linked, opened, resolved, visited, due, return. Timeline, the daily record, the time scrub and undo are all reads of this table. *(Phase 1: `world/moments.js`, saved beside the world as 'moments'; rows carry `before` and `after` so undo and replay read the log; squashed to a row per thing per day after 30 days, folded into a base after the days kept. Due and return in phase 7.)* |
 
 A context (a room, a floor, the tray) is a mark of kind `context`, so Borges, the rooms page's
 ontology, is a rule over context marks like any other rule. A group is a mark of kind `group`
@@ -38,7 +38,10 @@ tables and nothing else; a `.traum` file is the same tables written as text.
 4. **Links are the only structure.** Membership, folding, order and relation are all link rows.
    No plugin keeps its own list of members.
 5. **One open gap per mark**, with a direction. A group's gap is derived: open while any
-   *part of* child has an open gap. It is never stored.
+   *part of* child has an open gap. It is never stored. *(Phase 5 reads the same up a tree of
+   relations: a Russell chapter's gap is its sections', a section's its leaves'. The checker is
+   this law and the links, not a kind of thought: a to-do list is a group whose parts have gaps
+   to do, and a plan written on with Enter hands its gap down.)*
 6. **Every change is a moment.** Nothing writes to the five other tables except through an event
    that lands in moments. Undo, Timeline, the daily record and the scrub read the same log.
 7. **Distance is inherited and only lengthens by hand.** A mark's reader is its context's
@@ -75,7 +78,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
   returns `{ ok: false, reason }` with the reason in words. No propose writes directly.
 - **subscribe**: `on(fn)`, told after each change to that table.
 
-Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules (done) · 5 gap ·
+Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap (done) ·
 6 distance and carriers, v1 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen ·
 9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

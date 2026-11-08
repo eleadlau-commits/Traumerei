@@ -1,0 +1,22 @@
+{
+  "name": "Gaps",
+  "description": "The checker: open a gap on a thought (something to check, do or judge), resolve it, and see a group's or a tree's progress in the Editor (Ctrl+Alt+G).",
+  "version": "0.1.0",
+  "main": "Gaps.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "editor",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

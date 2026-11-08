@@ -3,11 +3,11 @@
 // in words; tests/api.test.js holds the list, so a change here is always deliberate (change
 // API.md and the test with it).
 //
-// Phases 0 to 2 of the kernel plan: four namespaces are a thin layer over the world as it is
-// today (v1.js, world/model.js), links reads the links table (world/links.js) and moments the
-// world's log (world/moments.js). Each read
+// Phases 0 to 5 of the kernel plan: marks and distance are a thin layer over the world as it is
+// today (v1.js, world/model.js); links, places and gaps read their tables (world/links.js,
+// places.js, gaps.js) and moments the world's log (world/moments.js). Each read
 // gives frozen rows; each propose goes through the world's own checks and lands as one step in
-// the log (its rows are the moments), or returns a refusal with its reason in words. Where a table does not exist yet (gaps, forward
+// the log (its rows are the moments), or returns a refusal with its reason in words. Where a table does not exist yet (forward
 // moments) the read is empty and the propose refuses, naming the phase that brings it. Nothing
 // here touches the screen.
 
@@ -222,15 +222,39 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('distance'),
   });
 
-  // -- gaps: nothing is open yet. --
+  // -- gaps: the gaps table (world/gaps.js). One row per mark at most (Law 5), open or resolved;
+  // a mark whose parts (part of, or a relation up to it) carry gaps reads a derived gap, open
+  // while any part's is, which no propose can open or resolve directly: its parts are the way. --
+  const GAPS = lib.gaps;
+  const gapOf = (mark) => { const r = thing(mark) ? GAPS.of(w(), mark) : null; return r ? row(r) : null; };
+  const partsOpen = (mark) => { const p = GAPS.progress(w(), mark); return p.open ? `${p.open} of ${p.of} parts still open` : null; };
   const gaps = Object.freeze({
-    of: () => null,
-    opened: () => rows([]),
-    oldest: () => null,
-    progress: () => row({ open: 0, resolved: 0, of: 0 }),
-    open: (mark, direction) => (DIRECTIONS.includes(direction) ? later('Opening a gap', 5) : refuse(`A direction is one of ${DIRECTIONS.join(', ')}`)),
-    resolve: () => later('Resolving a gap', 5),
-    reopen: () => later('Reopening a gap', 5),
+    of: gapOf,
+    opened: (context = null) => rows(context == null || thing(context) ? GAPS.opened(w(), context) : []),
+    oldest: (context = null) => { const r = context == null || thing(context) ? GAPS.oldest(w(), context) : null; return r ? row(r) : null; },
+    progress: (mark) => row(GAPS.progress(w(), mark)),
+    open: (mark, direction) => {
+      if (!DIRECTIONS.includes(direction)) return refuse(`A direction is one of ${DIRECTIONS.join(', ')}`);
+      if (!thing(mark)) return refuse('No such mark');
+      if (model.shut(w(), mark)) return refuse('The mark is locked');
+      if (GAPS.derived(w(), mark)) return refuse('This mark\'s gap is derived from its parts: open a gap on a part');
+      const r = GAPS.open(w(), mark, direction);
+      return land(!r.why, r.id, r.why);
+    },
+    resolve: (mark, by = GAPS.JUDGEMENT) => {
+      if (!thing(mark)) return refuse('No such mark');
+      if (model.shut(w(), mark)) return refuse('The mark is locked');
+      if (GAPS.derived(w(), mark)) return refuse(partsOpen(mark) || 'Resolved already: every part of it is');
+      const r = GAPS.resolve(w(), mark, by == null ? GAPS.JUDGEMENT : String(by));
+      return land(!r.why, r.id, r.why);
+    },
+    reopen: (mark) => {
+      if (!thing(mark)) return refuse('No such mark');
+      if (model.shut(w(), mark)) return refuse('The mark is locked');
+      if (GAPS.derived(w(), mark)) return refuse(partsOpen(mark) ? 'The gap is open: a part of it is' : 'This mark\'s gap is derived from its parts: open one of theirs again');
+      const r = GAPS.reopen(w(), mark);
+      return land(!r.why, r.id, r.why);
+    },
     on: on('gaps'),
   });
 
@@ -313,7 +337,9 @@ export function connect(o) {
     ...tables,
     // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
     slots: Object.freeze({ rules: base.modes, kinds: base.items, commands: base.commands, more: base.more, editor: base.editor, formats: base.formats }),
-    ui: Object.freeze({ toast: base.toast }),
+    // What the person is looking at: the open room and the one mark chosen there, as ids, or null
+    // (a command on the chosen thought reads it here; nothing else of the screen is in the API).
+    ui: Object.freeze({ toast: base.toast, chosen: () => { const r = o.room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); } }),
   });
 }
 
