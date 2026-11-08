@@ -9,6 +9,7 @@ export * as items from './items/index.js';    // ITEMS: the kinds of item (line,
 export * as maths from './maths.js';          // split, maths: LaTeX in a thought's words
 export * as look from './look.js';            // colours: a room's, a square's, the rooms page's
 export * as attention from './attention.js';  // a room's light from your visits
+export * as moments from './moments.js';      // the moments log: every change and visit, undo, replay
 export * as picture from './picture.js';      // shrinkPicture, keepOrShrink
 export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, FALLBACK
 export * as joyce from './ontologies/joyce.js';
