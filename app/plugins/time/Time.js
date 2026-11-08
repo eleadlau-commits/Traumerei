@@ -9,16 +9,15 @@
 // rooms page each add one item to the slot `time.place` (README.md). Whether Time is on is one
 // choice for everywhere, saved here: leaving a room keeps it on, and the rooms page shows its own.
 //
-// It also keeps a daily record of the rooms page (record.js): at the end of each day, where each
-// room sat and what it was called, and which rooms were written in. Settings → History says how
-// long it is kept (1 month, 1 year, or forever).
+// Going back to a day reads the world's moments log through the API's moments table: the rooms
+// page as it was at that day's end (record.js), a room's thoughts written by then (days.js).
+// Settings → History says how many days the log keeps (moments.keep).
 //
-// Saved data: 'open' (whether Time is on), 'record' (the daily record), 'keep' (days kept, 0 for
-// forever).
+// Saved data: 'open' (whether Time is on).
 
 import { Feature, ui } from 'folio';
 import { timeline, days, changed, dayOf, roomBoard, roomFirst } from './days.js';
-import { snapshot, note, prune, emptyRecord, earliest, pastBoard, KEEP, KEEP_DEFAULT, DAY } from './record.js';
+import { earliest, pastBoard, KEEP, DAY } from './record.js';
 import { TIME_KEYS } from './keys.js';
 
 const { el } = ui;
@@ -45,14 +44,7 @@ export default class Time extends Feature {
       get on() { return !!self.panel && self.isOn; },
       get showing() { return !!self.panel?.isShowing(KEY); },
     });
-    // The daily record: written a moment after anything is saved, and when Create starts.
-    this.keep = this.storage.get('keep', KEEP_DEFAULT);
-    this.record = this.storage.get('record', null) || emptyRecord();
-    this.written = new Set(); // rooms written in since the record was last written
-    this.on('world:saved', () => this.recordSoon());
-    this.on('world:changed', () => this.recordSoon());
-    this.on('room:changed', (id) => { this.written.add(this.squareId(id)); this.recordSoon(); });
-    this.recordSoon();
+    for (const old of ['record', 'keep']) if (this.storage.has(old)) this.storage.set(old, null); // the daily record is the world's moments log now
     this.add('settings', { id: 'time-history', title: 'History', order: 31, render: () => this.settingsPane() });
     if (!this.panel) return;
     // Time under ⋯ More, at the foot of both rails (the frame feature's).
@@ -75,29 +67,10 @@ export default class Time extends Feature {
   get world() { return this.t.world; }
   get m() { return this.t.model; }
 
-  // ---- The daily record ----
+  // ---- Settings → History: how many days the moments log keeps ----
 
-  // The square on the rooms page a room is: itself, or its Twin (a side's).
-  squareId(id) {
-    const r = this.m.room(this.world, id);
-    return r?.parent && this.m.room(this.world, r.parent) ? r.parent : id;
-  }
+  get keep() { return this.t.moments.kept(); }
 
-  recordSoon() {
-    clearTimeout(this.recordTimer);
-    this.recordTimer = setTimeout(() => this.writeRecord(), 1500);
-  }
-
-  // Today, as it is now, into the record; days older than the history kept are folded away.
-  writeRecord() {
-    clearTimeout(this.recordTimer);
-    note(this.record, snapshot(this.world), [...this.written]);
-    this.written.clear();
-    prune(this.record, this.keep);
-    this.storage.set('record', this.record);
-  }
-
-  // Settings → History: how long the record is kept.
   settingsPane() {
     return el('div', { class: 'stack' },
       el('label', { class: 'row' }, el('span', {}, 'Keep the history'),
@@ -107,9 +80,7 @@ export default class Time extends Feature {
   }
 
   setKeep(days) {
-    this.keep = days;
-    this.storage.set('keep', days);
-    this.writeRecord();
+    this.t.moments.keep(days);
   }
 
   // The place that shows now, or null (the home page).
@@ -194,11 +165,10 @@ export default class Time extends Feature {
     if (!p?.showDay || day == null) { this.toNow(); this.draw(); return; }
     day = dayStart(Math.max(this.firstFor(p), Math.min(day, Date.now())));
     if (day >= this.today()) { this.toNow(); this.draw(); return; }
-    this.writeRecord(); // (today's changes are in it before anything is read back)
     this.day = day;
     this.pastFor = p;
     const roomId = p.room?.();
-    p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day) : pastBoard(this.m, this.world, this.record, day));
+    p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day, this.t.moments) : pastBoard(this.m, this.world, this.t.moments, day));
     this.draw();
   }
 
@@ -213,7 +183,7 @@ export default class Time extends Feature {
   // The first day the slider reaches: the room's first, or (on the rooms page) the first known.
   firstFor(p) {
     const roomId = p.room?.();
-    return roomId ? roomFirst(this.m, this.world, roomId) : earliest(this.world, this.record);
+    return roomId ? roomFirst(this.m, this.world, roomId) : earliest(this.world, this.t.moments);
   }
 
   // A day earlier (-1) or later (+1), or a week with Shift.
@@ -261,7 +231,7 @@ export default class Time extends Feature {
     const w = this.world, m = this.m;
     const day = this.pastFor === p ? this.day : null;
     const end = day == null ? Infinity : day + DAY - 1;
-    const items = timeline(m, w, roomId).filter((th) => (th.at ?? 0) <= end);
+    const items = timeline(m, w, roomId, this.t.moments).filter((th) => (th.at ?? 0) <= end);
     if (!items.length) return el('p', { class: 'time-none' }, day == null ? 'Nothing written here yet' : 'Nothing written here by then');
     const ont = this.t.modes.get(m.view(w, roomId).mode);
     const sel = p.chosen?.() || null;
@@ -270,12 +240,12 @@ export default class Time extends Feature {
       const tag = ont?.tag?.(w, th.id) || null;
       return el('li', {}, el('button', {
         type: 'button', class: 'pick time-item' + (sel && (sel === th.id || sel === tag?.id) ? ' on' : '')
-          + (day != null && (dayOf(th.at) === day || dayOf(changed(th)) === day) ? ' lit' : ''),
+          + (day != null && (dayOf(th.at) === day || dayOf(changed(th, this.t.moments)) === day) ? ' lit' : ''),
         style: tag ? `--tag:hsl(${m.hash(tag.id) % 360} 32% 46%)` : '',
         onclick: () => p.go({ id: th.id, kind: m.kindOf(th), room: roomId }),
       },
         el('span', { class: 'time-meta' },
-          el('span', { class: 'time-when' }, when(changed(th))),
+          el('span', { class: 'time-when' }, when(changed(th, this.t.moments))),
           tag ? el('span', { class: 'time-tag' }, tag.name) : null),
         el('span', { class: 'time-text' }, m.thoughtText(w, th))));
     }));
@@ -284,7 +254,7 @@ export default class Time extends Feature {
   // On the rooms page: the days something was written, newest first, and where.
   dayList(p) {
     const w = this.world, m = this.m;
-    const all = days(m, w);
+    const all = days(m, w, this.t.moments);
     if (!all.length) return el('p', { class: 'time-none' }, 'Nothing written yet');
     const sel = p.chosen?.() || null;
     // A day's date goes back to it (the rooms page as it was then); again, back to now.

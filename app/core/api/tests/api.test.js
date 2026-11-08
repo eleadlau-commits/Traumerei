@@ -17,7 +17,7 @@ const V2 = {
   links: ['from', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'to', 'unlink'],
   distance: ['declare', 'of', 'on'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
-  moments: ['ahead', 'day', 'due', 'note', 'of', 'on', 'revisit', 'since'],
+  moments: ['ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'revisit', 'since'],
   slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
   ui: ['toast'],
 };
@@ -237,7 +237,7 @@ function smallWorld() {
   const log = M.emptyLog(1000, M.stateOf(w));
   M.visit(log, room.id, 9000);
   M.visit(log, room.id, 99000);
-  const moments = { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id) };
+  const moments = { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id), at: (t) => M.stateAt(log, t), first: () => M.first(log), get keep() { return log.keep; }, setKeep: (d) => { log.keep = d; } };
   const service = { world: w, lib, saved: 0, save() { this.saved++; return true; }, ontologies: [{ id: 'joyce' }, { id: 'pessoa', lays: true }, { id: 'proust', lays: true }], moments };
   return { w, room, train, a, b, c, loose, locked, service, log };
 }
@@ -372,6 +372,15 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   assert.deepEqual(k.moments.since(9000).map((m) => m.time), [9000, 99000]);
   assert.equal(k.moments.day(new Date(5000)).length, k.moments.since(0).length); // all on the day of the epoch, locally
   assert.ok(k.moments.since(0).every(Object.isFrozen));
+  assert.equal(k.moments.changed(a.id), 4500);
+  assert.equal(k.moments.changed(room.id), 2000); // older than the log: its made time
+  assert.equal(k.moments.first(), 1000);
+  assert.deepEqual(k.moments.at(4000).find((m) => m.id === a.id).text, 'first'); // replayed from the log's base
+  assert.equal(k.moments.at(5000).find((m) => m.id === a.id).text, 'first, again');
+  assert.equal(k.moments.kept(), 365);
+  assert.equal(k.moments.keep(-1).ok, false);
+  assert.ok(k.moments.keep(30).ok);
+  assert.equal(k.moments.kept(), 30);
   assert.deepEqual(k.moments.ahead(), []);
   assert.match(k.moments.due(a.id, 10000).reason, /phase 7/);
   assert.match(k.moments.revisit(a.id, 10000).reason, /phase 7/);

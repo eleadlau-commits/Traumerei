@@ -242,6 +242,11 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
       const end = start.getTime() + 24 * 3600e3;
       return rows(all().filter((m) => m.time >= start.getTime() && m.time < end));
     },
+    changed: (mark) => log()?.changed(mark) ?? (thing(mark) ? thing(mark).edited || thing(mark).at : null), // when a mark was last written
+    at: (time) => { const s = log()?.at(time); return rows(Object.values((s || w()).things)); }, // the marks as they were then
+    first: () => log()?.first() ?? null, // the first time the log knows of
+    kept: () => log()?.keep ?? 0,        // days of history kept (0: forever)
+    keep: (days) => { if (!log()) return later('Keeping history', 1); if (![0, 30, 365].includes(days) && !(Number.isInteger(days) && days > 0)) return refuse('Days kept is a whole number, 0 for forever'); log().setKeep(days); return landed('moments'); },
     ahead: () => rows([]),
     due: () => later('A due moment', 7),
     revisit: () => later('A return', 7),

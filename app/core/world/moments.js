@@ -164,7 +164,7 @@ export function stateAt(log, time = Infinity) {
   const state = log.base ? clone(log.base.state) : { things: {}, own: {}, pages: 1 };
   const steps = new Map();
   for (const r of log.rows) {
-    if (r.time > time) break;
+    if (r.time > time) continue; // (rows land in time order, but a clock may jump)
     if (CHANGES.includes(r.kind)) { apply(state, [r]); if (r.step != null) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r); }
     else if (r.kind === 'undone') revert(state, steps.get(r.step) || []);
     else if (r.kind === 'redone') apply(state, steps.get(r.step) || []);
@@ -176,9 +176,10 @@ export function stateAt(log, time = Infinity) {
 
 // The change rows that speak of a mark, oldest first.
 export const of = (log, mark) => log.rows.filter((r) => r.mark === mark || (r.kind === 'visited' && r.context === mark));
-// The last time a mark was made or changed, or null if the log does not know it.
+// The last time a mark was written (made or edited; not moved or linked), or null if the log
+// does not know it.
 export function changed(log, mark) {
-  for (let i = log.rows.length - 1; i >= 0; i--) { const r = log.rows[i]; if (r.mark === mark) return r.time; }
+  for (let i = log.rows.length - 1; i >= 0; i--) { const r = log.rows[i]; if (r.mark === mark && (r.kind === 'made' || r.kind === 'edited')) return r.time; }
   return null;
 }
 // Every row from `time` on (all rows for 0), oldest first.
@@ -203,8 +204,10 @@ export const first = (log) => log.base?.time ?? log.rows[0]?.time ?? null;
 
 // ---- Compaction ----
 
-// The kind a squashed row has for a thing, given how its day began and ended.
-const squashKind = (madeToday, last, after) => (after == null ? 'removed' : madeToday ? 'made' : last);
+// The kind a squashed row has for a thing, given how its day began and ended: made if it was
+// made that day, else the weightiest of the day's kinds (an edit outweighs a move).
+const RANK = { edited: 3, linked: 2, moved: 1, arranged: 1, floors: 1 };
+const squashKind = (madeToday, best, after) => (after == null ? 'removed' : madeToday ? 'made' : best);
 const inverse = (kind) => (kind === 'made' ? 'removed' : kind === 'removed' ? 'made' : kind);
 
 // Tidies the log at `now`: rows older than COMPACT days are squashed to one per thing per day
@@ -225,9 +228,9 @@ export function compact(log, now = Date.now()) {
   let dayStart = null, baseState = null, folded = false;
   const flush = () => {
     if (dayStart == null) return;
-    for (const { row, madeToday, last } of touched.values()) {
+    for (const { row, madeToday, best } of touched.values()) {
       const after = row.mark != null ? state.things[row.mark] : row.kind === 'floors' ? state.pages : state.own[row.context];
-      const out = { seq: row.seq, time: row.time, kind: squashKind(madeToday, last, after), table: row.table, after: clone(after) ?? null };
+      const out = { seq: row.seq, time: row.time, kind: squashKind(madeToday, best, after), table: row.table, after: clone(after) ?? null };
       if (row.mark != null) out.mark = row.mark; else out.context = row.context;
       if (dayStart >= floor) squashed.push(out);
     }
@@ -236,7 +239,8 @@ export function compact(log, now = Date.now()) {
   };
   const land = (r, kind, seq, time) => {
     const key = keyOf(r), was = touched.get(key);
-    touched.set(key, { row: { ...r, seq, time }, madeToday: was ? was.madeToday : kind === 'made', last: kind });
+    const best = was && (RANK[was.best] || 0) >= (RANK[kind] || 0) ? was.best : kind;
+    touched.set(key, { row: { ...r, seq, time }, madeToday: was ? was.madeToday : kind === 'made', best: best === 'made' || best === 'removed' ? kind : best });
   };
   for (const r of old) {
     const d = dayOf(r.time);

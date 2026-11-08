@@ -16,8 +16,7 @@ A tab of the right dock, **Time** (Ctrl+Alt+T), the same everywhere Create shows
   room deleted since as a faint ghost; the rooms written in that day glowing; rooms made later
   not there. It is view only. In the dock ↑ goes a day later and ↓ a day earlier (Shift: a
   week); Escape, × or Now comes back to now, and so does leaving the rooms page. Days before the
-  record began are rebuilt from the stamps: the rooms made by then, where they sit now, lit if
-  their thoughts were last changed that day.
+  log's history began show its starting picture.
 - **Going back in a room**: the same slider (from the day the room or its first thought was
   made). The list keeps only the thoughts made by the end of that day, those written that day
   with their time lit. On the canvas everything stays where it is now; the room (through
@@ -30,17 +29,16 @@ everywhere, saved as 'open': going into a room or back out keeps it on, showing 
 Without the docks, Time is off and adds no key. It is a plugin: it reaches the app only through
 the plugin API (`app/core/API.md`), and defines its own slot `time.place` and service `time`.
 
-## The daily record
+## Going back in time
 
-Time also keeps a record of the rooms page, day by day (`record.js`), for going back in time:
-at the end of each day, every square on the rooms page (name, floor, cell, size, archived, colour)
-and which rooms were written in that day (from `room:changed`; a Twin's side counts for its
-Twin). Only changes are kept: a day holds the rooms that changed since the day before, the rooms
-that went, and the rooms written in, and a day with none holds nothing. It is written a moment
-after the world is saved (or a step undone), and when Create starts.
+Going back to a day reads the world's moments log through the API's moments table (`t.moments`):
+`moments.at(time)` gives the things as they were at that day's end, so the rooms page shows the
+rooms where they sat and as they were called then (`record.js`'s `pastBoard`), and
+`moments.changed(id)` says when each thought was last written, for the Timeline's order and the
+days list (`days.js`). Time keeps no record of its own.
 
-**Settings → History** says how long it is kept: 1 month, 1 year (the usual) or forever. Days
-older than that are folded into one starting picture (`base`), so the record never grows past it.
+**Settings → History** says how many days the log keeps (`moments.keep(days)`): 1 month, 1 year
+(the usual) or forever. Days older than that fold into one starting picture in the log.
 
 ## The time.place slot
 
@@ -72,8 +70,7 @@ feature and the rooms feature each add one item. The first whose `live()` is tru
 | `now()` | Back from a past day to now (the rooms page's Escape) |
 
 It listens to `world:saved`, `world:changed`, `room:open` and `room:changed`, and reads the
-world through the `world` service. Saved data: 'open' (whether it is on), 'record' (the daily
-record), 'keep' (days of history kept, 0 for forever).
+world through the `world` service. Saved data: 'open' (whether it is on).
 
 **The code.** `Time.js` is the feature; `days.js` and `record.js` its rules with no screen
 (tested in `tests/`); `keys.js` its key; `style.css` its layout (classes start with `time-`).

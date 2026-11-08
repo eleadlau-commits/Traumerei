@@ -1,88 +1,58 @@
 import { test, assert } from 'folio/testing';
-import { snapshot, note, prune, stateAt, writtenOn, firstDay, emptyRecord, pastBoard, earliest, DAY } from '../record.js';
+import { snapshot, pastBoard, earliest, DAY } from '../record.js';
 import { dayOf } from '../days.js';
 
 const t = new Date(2026, 10, 5, 12).getTime(); // 5 Nov, noon
-const world = (extra = {}) => ({ things: {
-  messy: { id: 'messy', kind: 'room', parent: null, name: 'Messy thoughts', col: 0, row: 0, size: 2 },
-  a: { id: 'a', kind: 'room', parent: null, name: 'A', col: 2, row: 0, page: 0 },
-  tw: { id: 'tw', kind: 'room', parent: null, name: 'Twin', size: 3 },
-  s1: { id: 's1', kind: 'room', parent: 'tw', name: 'Left' },
+const things = (extra = {}) => ({
+  messy: { id: 'messy', kind: 'room', parent: null, name: 'Messy thoughts', col: 0, row: 0, size: 2, at: 0 },
+  a: { id: 'a', kind: 'room', parent: null, name: 'A', col: 2, row: 0, page: 0, at: 0 },
+  tw: { id: 'tw', kind: 'room', parent: null, name: 'Twin', size: 3, at: 0 },
+  s1: { id: 's1', kind: 'room', parent: 'tw', name: 'Left', at: 0 },
   x: { id: 'x', kind: 'line', parent: 'a', at: 1 },
   ...extra,
-} });
+});
+const m = { isLeaf: (th) => ['line', 'passage', 'picture'].includes(th.kind) };
+
+// A stand-in for the API's moments table: the things at each day's end, and when each was written.
+function moments(byDay, written = {}, first = null) {
+  const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+  return {
+    at: (time) => { let s = {}; for (const d of days) if (d <= time) s = byDay[d]; return Object.values(s); },
+    changed: (id) => written[id] ?? null,
+    first: () => first,
+  };
+}
 
 test('a snapshot holds the squares on the rooms page, not the sides or thoughts', () => {
-  const s = snapshot(world());
+  const s = snapshot(things());
   assert.deepEqual(Object.keys(s).sort(), ['a', 'messy', 'tw']);
   assert.equal(s.a.col, 2);
   assert.equal(s.a.archived, false);
 });
 
-test('each day keeps only what changed', () => {
-  const rec = emptyRecord();
-  note(rec, snapshot(world()), ['a'], t - DAY);
-  assert.deepEqual(Object.keys(rec.days[dayOf(t - DAY)].set).sort(), ['a', 'messy', 'tw']);
-  const w = world();
-  w.things.a.name = 'Renamed';
-  delete w.things.tw;
-  note(rec, snapshot(w), [], t);
-  const d = rec.days[dayOf(t)];
-  assert.deepEqual(Object.keys(d.set), ['a']);
-  assert.deepEqual(d.gone, ['tw']);
-  assert.equal(d.written, undefined);
-  assert.equal(stateAt(rec, dayOf(t - DAY)).a.name, 'A');
-  assert.equal(stateAt(rec).a.name, 'Renamed');
-  assert.ok(!stateAt(rec).tw);
-  assert.deepEqual(writtenOn(rec, t - DAY), ['a']);
+test('a past day shows the rooms as they were at its end, how many thoughts each held, and which were written in', () => {
+  const d0 = dayOf(t - DAY), d1 = dayOf(t);
+  const then = things({ y: { id: 'y', kind: 'line', parent: 's1', at: t - DAY } });
+  const now = things({ y: { id: 'y', kind: 'line', parent: 's1', at: t - DAY, edited: t }, z: { id: 'z', kind: 'line', parent: 'a', at: t } });
+  now.a = { ...now.a, name: 'Renamed' };
+  delete now.tw; delete now.s1; delete now.y;
+  const mo = moments({ [d0 + DAY - 1]: then, [d1 + DAY - 1]: now }, { x: 1, y: t - DAY, z: t }, t - 3 * DAY);
+  const past = pastBoard(m, { things: now }, mo, d0);
+  assert.equal(past.rooms.a.name, 'A');
+  assert.deepEqual(Object.keys(past.rooms).sort(), ['a', 'messy', 'tw']);
+  assert.deepEqual(past.counts, { a: 1, tw: 1 });
+  assert.deepEqual(past.written, ['tw']); // y, in the Twin's side, was written that day
+  const today = pastBoard(m, { things: now }, mo, d1);
+  assert.equal(today.rooms.a.name, 'Renamed');
+  assert.ok(!today.rooms.tw);
+  assert.deepEqual(today.written, ['a']);
+  assert.deepEqual(today.counts, { a: 2 });
 });
 
-test('a day with no change holds nothing, and written rooms add up', () => {
-  const rec = emptyRecord();
-  note(rec, snapshot(world()), [], t - DAY);
-  note(rec, snapshot(world()), [], t);
-  assert.ok(!rec.days[dayOf(t)]);
-  note(rec, snapshot(world()), ['a'], t);
-  note(rec, snapshot(world()), ['messy', 'a'], t + 1000);
-  assert.deepEqual(rec.days[dayOf(t)].written, ['a', 'messy']);
-});
-
-test('old days fold into the base; forever keeps them', () => {
-  const rec = emptyRecord();
-  note(rec, snapshot(world()), ['a'], t - 40 * DAY);
-  const w = world(); w.things.a.name = 'B';
-  note(rec, snapshot(w), [], t - 5 * DAY);
-  prune(rec, 0, t);
-  assert.equal(Object.keys(rec.days).length, 2);
-  prune(rec, 30, t);
-  assert.equal(Object.keys(rec.days).length, 1);
-  assert.equal(rec.base.day, dayOf(t - 29 * DAY));
-  assert.equal(rec.base.rooms.a.name, 'A');
-  assert.equal(firstDay(rec), dayOf(t - 29 * DAY));
-  assert.equal(stateAt(rec).a.name, 'B');
-});
-
-test('a past day shows the rooms the record kept, or those made by then', () => {
-  const m = { isLeaf: (th) => th.kind === 'line' };
-  const w = world();
-  w.things.a.at = t - 10 * DAY;
-  w.things.messy.at = t - 20 * DAY;
-  w.things.tw.at = t - DAY;
-  w.things.x.at = t - 10 * DAY + 1000;
-  const rec = emptyRecord();
-  // Before the record: rebuilt from the stamps.
-  let b = pastBoard(m, w, rec, dayOf(t - 5 * DAY));
-  assert.deepEqual(Object.keys(b.rooms).sort(), ['a', 'messy']);
-  assert.deepEqual(b.counts, { a: 1 });
-  b = pastBoard(m, w, rec, dayOf(t - 10 * DAY));
-  assert.deepEqual(b.written, ['a']);
-  // From the record on: what it kept, a room gone since included.
-  note(rec, { ...snapshot(w), old: { name: 'Old', page: 0, col: 4, row: 1, size: 1, archived: false } }, [], t - 2 * DAY);
-  note(rec, snapshot(w), ['tw'], t);
-  b = pastBoard(m, w, rec, dayOf(t - 2 * DAY));
-  assert.ok(b.rooms.old);
-  b = pastBoard(m, w, rec, dayOf(t));
-  assert.ok(!b.rooms.old);
-  assert.deepEqual(b.written, ['tw']);
-  assert.equal(earliest(w, rec, t), dayOf(t - 20 * DAY));
+test('the first day is the log\'s first, or an older thought\'s', () => {
+  const w = { things: things() };
+  assert.equal(earliest(w, moments({}, {}, t - 3 * DAY), t), dayOf(1)); // x was made at 1
+  w.things.x.at = t;
+  assert.equal(earliest(w, moments({}, {}, t - 3 * DAY), t), dayOf(t - 3 * DAY));
+  assert.equal(earliest(w, moments({}, {}, null), t), dayOf(t));
 });
