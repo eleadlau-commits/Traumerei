@@ -2,13 +2,17 @@
 //
 // Fills the framework's 'account' slot, so the account button and the menu's Account row open
 // a small page to sign in or out. Its item also gives the page as sections (`sections()`), so the
-// pages feature can show it as a page in the frame; 'account:changed' says when it changed. Signed in, every saved setting (every feature's, except the
-// areas in sync.js's LOCAL_AREAS) is kept in Firestore at users/{uid}, and this device keeps its
-// own copy as before, so the page still works offline and signed out.
+// pages feature can show it as a page in the frame; 'account:changed' says when it changed. Signed
+// in, every saved setting (every feature's, except the areas in sync.js's LOCAL_AREAS and the
+// world itself) is kept in Firestore at users/{uid}, and the world travels as moments: each push
+// sends the rows of the moments log since the last one (world/moments.js), as a batch in
+// users/{uid}/moments, never the whole world. This device keeps its own copy as before, so the page
+// still works offline and signed out.
 //
-// On signing in: a new account is given this device's settings; an account that already has
-// settings wins, and the page reloads so every feature picks them up. After that, each change is
-// sent up a moment after it's made.
+// On signing in: a new account is given this device's settings and its whole world as one first
+// batch; an account that already has settings wins, the batches other devices sent since this
+// one last looked are taken into the log, and the page reloads so every feature picks them up.
+// After that, each change is sent up a moment after it's made.
 //
 // Firebase is loaded from Google's servers only once someone signs in (or was signed in last
 // time), so visitors who never sign in don't download it. The project is set in config.js.
@@ -20,10 +24,12 @@
 //
 // Saved data: 'signedIn' → true while someone is signed in on this device
 //             'reloadedAt' → when the page last reloaded itself to apply the account's settings
+//             'device' → this device's name among the account's, 'sent' → the log seq last sent,
+//             'pulledAt' → the time of the last batch taken from the account
 
 import { Feature, ui } from 'folio';
 import { firebaseConfig } from './config.js';
-import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently } from './sync.js';
+import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently, settingsOf, incoming, batchesOf, wholeWorld } from './sync.js';
 
 const { el } = ui;
 const SDK = 'https://www.gstatic.com/firebasejs/11.0.2/';
@@ -38,6 +44,8 @@ export default class Account extends Feature {
     this.synced = false; // true once this device and the account agree, so changes can go up
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
+    this.world = this.use('world'); // the world service: its moments log is what travels
+    if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
     window.addEventListener('pagehide', () => this.flush());
     if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
@@ -105,38 +113,70 @@ export default class Account extends Feature {
   doc() {
     return this.sdk.doc(this.db, 'users', this.user.uid);
   }
+  batches() {
+    return this.sdk.collection(this.db, 'users', this.user.uid, 'moments');
+  }
+  get device() { return this.storage.get('device'); }
 
-  // Compares the account's settings with this device's, then uploads or applies them.
+  // Compares the account's settings with this device's and takes in the moments other devices
+  // sent since this one last looked; then uploads, or applies and reloads.
   async pull() {
     this.setState('busy');
     try {
       const snap = await this.sdk.getDoc(this.doc());
-      const cloud = snap.exists() ? unpack(snap.data().settings) : null;
-      const local = this.app.storage.snapshot(LOCAL_AREAS);
+      const cloud = snap.exists() ? settingsOf(unpack(snap.data().settings) || {}) : null; // (an account from before the moments log may still hold the world: not taken)
+      const local = settingsOf(this.app.storage.snapshot(LOCAL_AREAS));
       const justReloaded = reloadedRecently(this.storage.get('reloadedAt', null), Date.now());
       const step = decide(cloud, local, justReloaded);
       this.synced = true;
+      if (cloud == null) { // a new account: this device's settings, and its whole world as the first batch
+        this.storage.set('sent', 0);
+        await this.push(wholeWorld(this.world.lib.moments.diff, this.world.lib.moments.stateOf(this.world.world), Date.now()));
+        return;
+      }
+      const landed = await this.take();
       if (step === 'upload') {
-        this.guarded = cloud != null && justReloaded;
+        this.guarded = justReloaded;
         await this.push();
-      } else if (step === 'apply') {
-        this.app.storage.restore(cloud, LOCAL_AREAS);
+      } else if (step === 'apply' || landed) {
+        if (step === 'apply') this.app.storage.restore(cloud, LOCAL_AREAS.concat(['world']));
         this.storage.set('reloadedAt', Date.now());
         location.reload();
-      } else this.setState('saved');
+      } else {
+        await this.push(); // whatever this device did while away
+      }
     } catch (e) {
       this.fail(e);
     }
   }
 
-  async push() {
+  // Takes in the batches other devices sent since this one last looked. True when rows landed.
+  async take() {
+    const { query, where, getDocs } = this.sdk;
+    const since = this.storage.get('pulledAt', 0);
+    const found = await getDocs(query(this.batches(), where('at', '>', since)));
+    const batches = incoming(found.docs.map((d) => d.data()), since, this.device);
+    let landed = 0;
+    for (const b of batches) landed += this.world.moments.absorb(b.rows).length;
+    const last = Math.max(since, ...found.docs.map((d) => d.data()?.at || 0));
+    this.storage.set('pulledAt', last);
+    this.storage.set('sent', this.world.moments.log.seq); // what landed is the account's already
+    return landed > 0;
+  }
+
+  // Sends this device's settings and the moments since the last push (or `rows`, given).
+  async push(rows = null) {
     clearTimeout(this.timer);
     this.timer = null;
     if (!this.user || !this.synced) return;
     this.setState('busy');
     try {
-      const settings = pack(this.app.storage.snapshot(LOCAL_AREAS));
+      const settings = pack(settingsOf(this.app.storage.snapshot(LOCAL_AREAS)));
       await this.sdk.setDoc(this.doc(), { settings, updated: Date.now() });
+      const seq = this.world.moments.log.seq;
+      const out = rows || this.world.moments.outbox(this.storage.get('sent', 0));
+      for (const b of batchesOf(out, this.device)) await this.sdk.addDoc(this.batches(), b);
+      this.storage.set('sent', seq);
       this.setState('saved');
     } catch (e) {
       this.fail(e);

@@ -11,13 +11,22 @@ Sign in with Google, and your settings follow you to every device.
   Signed out: **Sign in with Google**. Signed in: your name,
   email and photo, whether your settings are saved, and **Sign out**. The menu shows who is signed in.
 - **Settings sync.** Signed in, everything the app saves (every feature's area except `account` and
-  `folio`, and never the `once` records) is kept in Firestore at `users/{uid}` as one packed text
-  field, `settings`, with the time it was `updated`. This device keeps its own copy too, so the page
-  works offline and signed out.
-  - Signing in to a **new** account gives it this device's settings.
+  `folio`, the world's own keys, and never the `once` records) is kept in Firestore at `users/{uid}`
+  as one packed text field, `settings`, with the time it was `updated`. This device keeps its own
+  copy too, so the page works offline and signed out.
+- **The world travels as moments.** The world and its moments log (`world/moments.js`) are never
+  sent as settings. Each push sends the log's rows since the last push, as a batch
+  `{ at, device, from, to, rows }` in `users/{uid}/moments` (cut so no batch outgrows a document);
+  undos travel as the plain changes they made. On signing in or opening the page, the batches
+  other devices sent since this one last looked are taken into the world and the log
+  (`world.moments.absorb`): on each thing the latest word wins, and nothing taken in is this
+  device's to undo. Rows taken in count as sent, so they never bounce. The account keeps every
+  batch (compaction of the account's copy is for the carriers phase of the kernel plan).
+  - Signing in to a **new** account gives it this device's settings and its whole world as a
+    first batch.
   - Signing in to an account that **already has settings**: the account wins, and the page reloads
-    so every feature uses them. The same happens when you open the page on a device whose
-    settings are older than the account's.
+    so every feature uses them, with the moments taken in. The same happens when you open the
+    page on a device whose settings are older than the account's, or when moments have arrived.
   - **Reload guard.** Opening the app can save things before the account is compared, so right
     after that reload the copies may differ again. Within a minute of an automatic reload the page
     never reloads again: it sends this device's copy up instead, and the account page says so.
@@ -30,7 +39,7 @@ Sign in with Google, and your settings follow you to every device.
 2. **Authentication** → Sign-in method → turn on **Google**. Under Settings → Authorized domains,
    add `eleadlau-commits.github.io`.
 3. **Firestore Database** → Create database, then paste `extras/firestore.rules` into its Rules tab
-   and publish. Each person can read and write only their own settings.
+   and publish. Each person can read and write only their own settings and moments.
 4. **Project settings** → Your apps → add a **Web** app, and paste its `firebaseConfig` into
    `config.js`. The values are public; the rules are what keep settings private.
 5. Run `python standalone.py`.

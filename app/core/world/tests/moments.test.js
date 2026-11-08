@@ -246,3 +246,38 @@ test('a saved log loads back whole; anything else starts afresh', () => {
   assert.deepEqual(torn.undo, log.undo);
   assert.equal(torn.seq, log.seq);
 });
+
+test('the outbox carries the rows since a seq, with undos turned into plain changes; another copy absorbs them and ends the same', () => {
+  const { w, log } = sixtyDays(21);
+  const now = 61 * DAY;
+  // another copy of the world, as it was when the first batch was taken
+  const copy = model.emptyWorld(0);
+  const copyLog = emptyLog(0, state(copy));
+  const batch = L.outbox(log, 0);
+  assert.ok(batch.every((r) => L.CHANGES.includes(r.kind) || r.kind === 'visited'), 'no undone or redone rows travel');
+  assert.ok(batch.some((r) => r.kind === 'visited'));
+  const landed = L.absorb(copyLog, copy, batch);
+  assert.ok(same(state(copy), state(w)), 'the copy ends as the original');
+  assert.ok(landed.every((r) => r.step === undefined), 'absorbed rows are not the copy\'s to undo');
+  assert.deepEqual(copyLog.undo, []);
+  assert.ok(same(stateAt(copyLog), state(copy)), 'the copy\'s log replays to its world');
+  assert.deepEqual(L.visits(copyLog), L.visits(log));
+  // nothing new: nothing to send, nothing lands
+  assert.deepEqual(L.outbox(log, log.seq), []);
+  assert.deepEqual(L.absorb(copyLog, copy, batch), []);
+  // a change on the copy goes back the other way
+  const prev = state(copy);
+  model.create(copy, model.MESSY, { kind: 'line', text: 'from the copy' }, now);
+  record(copyLog, prev, state(copy), now);
+  const back = L.outbox(copyLog, copyLog.seq - 1);
+  assert.equal(back.length, 1);
+  L.absorb(log, w, back);
+  assert.ok(same(state(copy), state(w)));
+  assert.ok(same(stateAt(log), state(w)));
+  // on one thing, the latest word wins: an older row from elsewhere changes nothing
+  const id = back[0].mark;
+  assert.deepEqual(L.absorb(log, w, [{ ...back[0], time: now - 1, after: { ...back[0].after, text: 'stale' } }]), []);
+  assert.equal(w.things[id].text, 'from the copy');
+  L.absorb(log, w, [{ ...back[0], kind: 'edited', time: now + 5, after: { ...back[0].after, text: 'newer' } }]);
+  assert.equal(w.things[id].text, 'newer');
+});
