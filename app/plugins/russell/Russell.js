@@ -11,7 +11,7 @@ export default class Russell extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Russell needs the plugin API');
-    bind(t);
-    t.modes.add(russell);
+    bind(t.parts);
+    t.slots.rules.add(russell);
   }
 }

@@ -11,7 +11,7 @@ export default class Proust extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Proust needs the plugin API');
-    bind(t);
-    t.modes.add({ ...proust, draw, press, join, props, centre: centreWeb, escape });
+    bind(t.parts);
+    t.slots.rules.add({ ...proust, draw, press, join, props, centre: centreWeb, escape });
   }
 }

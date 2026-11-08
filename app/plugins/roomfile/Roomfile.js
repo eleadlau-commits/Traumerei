@@ -85,7 +85,7 @@ export default class Roomfile extends Feature {
         if (!res.ok) throw new Error(res.status);
         const blob = await res.blob();
         if (!blob.type.startsWith('image/')) throw new Error('not a picture');
-        m.body.content.src = await this.t.pictures.keepOrShrink(blob);
+        m.body.content.src = await this.t.parts.pictures.keepOrShrink(blob);
       } catch { out.report.push(`The picture at ${src} couldn't be fetched, so it came in as its address.`); m.body = { kind: 'line', content: { text: src } }; }
     }
     return out;

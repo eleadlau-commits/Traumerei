@@ -27,12 +27,11 @@ export default class Search extends Feature {
   }
 
   open() {
-    const { search } = this.t.model;
     const field = el('input', { class: 'search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
     const list = el('div', { class: 'search-list', role: 'listbox' });
     let found = [], at = 0;
     const show = () => {
-      found = search(this.t.world, field.value);
+      found = this.t.marks.search(field.value);
       at = Math.min(at, Math.max(0, found.length - 1));
       list.replaceChildren(...found.map((f, i) => el('button', {
         type: 'button', class: 'pick search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),

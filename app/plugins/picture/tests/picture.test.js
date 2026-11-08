@@ -5,7 +5,7 @@
 import { test, assert } from 'folio/testing';
 import { ui } from 'folio';
 import * as lib from '../../world/lib.js';
-import { surface } from '../../api/v1.js';
+import { surface } from '../../api/v2.js';
 import { picture } from '../item.js';
 import { ITEMS, BUILT_IN, setKinds, lacks, kindFor } from '../../world/items/index.js';
 import { emptyWorld, create, addRoom, roomItems, thoughtText, MESSY } from '../../world/model.js';

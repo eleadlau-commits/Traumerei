@@ -3,7 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
-import { surface } from '../../api/v1.js';
+import { surface } from '../../api/v2.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY, own, members, setRoomSetting, closeGroup } from '../../world/model.js';
 import { gather, missing, groupChosen, throwBack } from '../../world/ontologies/index.js';

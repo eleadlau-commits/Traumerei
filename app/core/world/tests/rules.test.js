@@ -6,7 +6,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../lib.js';
-import { surface } from '../../api/v1.js';
+import { surface } from '../../api/v2.js';
 import { bind as bindRussell } from '../../russell/world.js';
 import { bind as bindProust } from '../../proust/world.js';
 import * as model from '../model.js';

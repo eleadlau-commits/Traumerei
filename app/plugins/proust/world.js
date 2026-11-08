@@ -9,8 +9,8 @@ export let
   lines, arrowView, maths, spiralPoint;
 
 // t: the plugin API (this.use('traumerei').connect(this)), or in a test the same parts from
-// surface(lib) (app/core/api/v1.js).
-export function bind(t) {
+// surface(lib) (app/core/api/v2.js).
+export function bind(t) { // t: the plugin API's parts (t.parts), or surface(lib) in a test
   ({ parentOf, shut, isLooseGroup, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = t.model);
   ({ placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, unput, spotsOf, place, unplace } = t.groups);
   ({ arrowsOf, cleanRelationList, relationEntry, relationEnds, listText } = t.relations);

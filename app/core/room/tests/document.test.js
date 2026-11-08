@@ -2,7 +2,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as libForRussell from '../../world/lib.js';
-import { surface as surfaceForRussell } from '../../api/v1.js';
+import { surface as surfaceForRussell } from '../../api/v2.js';
 import { bind as bindRussell } from '../../russell/world.js';
 bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import * as lib from '../../world/lib.js';

@@ -22,7 +22,9 @@ app.json's `plugins.exempt` empty: when a plugin needs something the API lacks, 
 
 The app is being rebuilt on six tables and eight laws (`app/core/KERNEL.md`): marks, places,
 links, distance, gaps, moments. The API's namespaces are named after them; new plugin code uses
-the tables (`t.marks`, `t.places`, …), not v1's `model`/`groups` names, which go in kernel phase 6.
+the tables (`t.marks`, `t.places`, …); the rule kit in `t.parts` is for a rule's own gestures and
+views. Version 1's flat names went in phase 6. The `.traum` file is the tables (Law 8): what a
+plugin keeps outside them is not saved.
 Judge a feature by what it composes from the six primitives; one that needs a seventh is a red flag.
 
 ## The splitting rule

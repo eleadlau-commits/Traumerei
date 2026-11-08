@@ -5,7 +5,8 @@
 // Everything it adds through the API is taken away again when it is switched off in
 // Settings → Plugins, so stop() only undoes what it made itself.
 //
-// Saved data: none. (A plugin that keeps something in a room lists it here: t.data(roomId) → {…}.)
+// Saved data: none. (What a plugin keeps lives in the six tables: a mark, a link, a rule row. Law 8:
+// nothing else is saved.)
 
 import { Feature, ui } from 'folio';
 import { words, wordsLine } from './rules.js';

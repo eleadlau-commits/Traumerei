@@ -31,8 +31,7 @@ out cleanly without it, and `"plugin": { "api": 2, … }`.
 **Version 2 is not frozen yet.** It changes freely through the kernel phases and is frozen at the
 end of phase 8 (the stress corpus); from then on it changes only by adding. `tests/api.test.js`
 in `app/core/api/` holds this list, so a change here is always made in three places at once:
-`v2.js`, this file and the test. Version 1's names ([below](#version-1-the-compatibility-surface))
-stay offered beneath v2 until phase 6.
+`v2.js`, this file and the test. Version 1's names went in phase 6 ([below](#version-1)).
 
 ## Connecting
 
@@ -145,43 +144,30 @@ take a thought or a link away (`world/tests/rules.test.js`).
 Each `add` returns a function that takes the item away again; everything a plugin adds is taken
 away when it is switched off.
 
-## Docks, the frame and going somewhere
+## ui: docks, the frame and going somewhere
 
 | Member | What it is |
 |---|---|
-| `docks` | `{ left, right }`, or `null` when the app has no docks. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose })` (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
-| `frame` | The top bar and status bar for a page the plugin shows: `show({ crumbs, idle })`, `update(o)`, `hide()`, `hint(text)`, `clearHint()` (`app/core/frame/README.md`). `null` without the frame. |
-| `open` | `rooms()` (the rooms page), `room(id)` (into a room, from anywhere). |
-| `floors` | `place(id, cell?)`: where a new room goes on the rooms page. |
-| `data(roomId)` | This plugin's own data in a room, kept with the room. *(Goes with Law 4 and the file law: what a plugin keeps here that is not rows is not saved after phase 6.)* |
+| `ui.docks` | `{ left, right }`, or `null` when the app has no docks. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose })` (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
+| `ui.frame` | The top bar and status bar for a page the plugin shows: `show({ crumbs, idle })`, `update(o)`, `hide()`, `hint(text)`, `clearHint()` (`app/core/frame/README.md`). `null` without the frame. |
+| `ui.open` | `rooms()` (the rooms page), `room(id)` (into a room, from anywhere). |
+
+## Parts: what rules and views share
+
+| Member | What it is |
+|---|---|
+| `parts.model`, `parts.groups` | The rule kit: plain functions of a world handed to them (`parentOf`, `shut`, `members`, `groupOf`, `create`, `join`, `setSpot`, …; `wait`, `putAt`, `trayForeign`, …). A rule reads the world its layout and gestures are handed; a write with the kit is a rule's own gesture, which the room lands as one step. Anything else proposes through the tables. |
+| `parts.world()` | The tables as the world holds them now, for a rule or a view to read (read afresh each time: the world is replaced when read back from storage). |
+| `parts.lines`, `parts.arrows`, `parts.maths`, `parts.layout`, `parts.trains`, `parts.relations` | Drawing: lines and their ends, arrows on the screen, KaTeX, Pessoa's spiral, a train's rhythm, relation lists. |
+| `parts.kinds`, `parts.twins`, `parts.pictures` | `ITEMS`, `kindFor(kind)`, `isKnown`; `isTwin`, `twinOf`, `sides`, `addTwin`; `shrinkPicture(file)`, `keepOrShrink(blob, src?)`. |
 
 ## Events a plugin may listen to
 
 `world:saved`, `world:changed` (`{ undone }`), `world:look`, `world:palette`, `room:open`,
 `room:changed`, and Folio's `app:ready`, `app:resume`, `app:tick`. Prefer a table's `on`.
 
-## Version 1: the compatibility surface
+## Version 1
 
-These names are still offered, unchanged, beneath v2, and go in kernel phase 6. New plugins
-should not use them; existing ones move to the tables phase by phase. `modes`, `items`,
-`commands`, `more`, `editor`, `formats` and `toast` are the same objects as `slots.*` and `ui.toast`.
-
-| Member | What it is |
-|---|---|
-| `version` | 2 |
-| `world` | The world itself (`app/core/world/model.js`). Read it freely; change it only through proposes or the calls below. |
-| `save()`, `write()`, `load()` | A step Ctrl+Z can take back; written down now; read afresh with a fresh undo history. |
-| `model` | `own`, `parentOf`, `shut`, `hash`, `roomSetting`, `setRoomSetting`, `isGroup`, `isLeaf`, `create`, `join`, `members`, `itemsIn`, `within`, `groupOf`, `groupsIn`, `roomItems`, `thoughtText`, `view`, `setOrder`, `groupLabel`, `room`, `roomThoughts`, `kindOf`, `update`, `remove`, `groupsOf`, `addRoom`, `seedRoomSettings`, `search`, `MESSY`, `DEFAULT_MODE`, `leave`, `replaceIn` |
-| `groups` | `placedForeign`, `trayForeign`, `inForeign`, `waiting`, `wait`, `spot`, `putAt`, `place`, `unplace` |
-| `layout` | `spiralPoint` |
-| `trains` | `stepAfter`, `setHeights`, `STEP` |
-| `twins` | `isTwin`, `twinOf`, `sides`, `addTwin` |
-| `kinds` | `ITEMS`, `kindFor(kind)`, `isKnown` |
-| `relations` | `arrowsOf`, `cleanRelationList`, `relationEntry`, `relationEnds`, `listText`, `relationName`, `splitList`, `cleanRelations`, `relationShown`, `withRelation`, `RELATIONS` |
-| `arrows` | `arrowView` |
-| `lines` | `svg`, `layer`, `group`, `line`, `knot`, `slack`, `strand`, `path`, `middle`, `between`, `labelSpot`, `sidePoint`, `facing`, `PAD`, `ENDS`, `ENDS_WORDS`, `cleanEnds`, `PAUSE`, `HEAD` |
-| `maths` | `maths(text)`, `broken(text)` |
-| `pictures` | `shrinkPicture(file)` (a picture file made small enough to keep), `keepOrShrink(blob, src?)` |
-
-The drawing helpers (`lines`, `arrows`, `maths`, `pictures`, `trains`) are not kernel; they move
-to a `parts` plugin that other plugins may require. The kernel API has no DOM in it.
+Version 1's flat names (`world`, `save`, `write`, `load`, `data`, `model`, `groups`, `modes`,
+`items`, `commands`, `toast`, `docks`, `frame`, `open`, `floors`, …) went in kernel phase 6. A
+plugin written for API 1 no longer connects; `tests/api.test.js` checks none is offered.
