@@ -1,6 +1,7 @@
-// The traumerei plugin API, version 1: everything a plugin may use of the app, in one list.
-// app/core/API.md says the same in words; tests/api.test.js holds the list, so a change to it is
-// always deliberate (change API.md and the test with it).
+// The traumerei plugin API, version 1: the compatibility surface. Version 2 (v2.js) names the
+// app after the kernel's six primitives and is layered over this file; v1's names stay offered
+// until the kernel phase that replaces them (phase 6), then this file goes. app/core/API.md says
+// the API in words; tests/api.test.js holds both lists, so a change is always deliberate.
 //
 // `surface(lib)` is the part that needs no app: the world's rules and the shared parts, chosen
 // from the world service's lib (world/lib.js). A plugin's tests call it with the same modules.
@@ -92,11 +93,13 @@ function dockFor(dock, gone) {
 // service ({ left, right }), or null; keys, frame, floors: those core services, or null;
 // service(name): any other core service, looked up when it is needed (the rooms page starts
 // after the plugins it shows); gone(fn): fn runs when the plugin is switched off.
+// offers: the API version the app offers (v2.js passes its own; a plugin asking for a newer one
+// can't connect).
 export function connect({ app, world, plugin, parts, toast = () => {}, docks = null, keys = null, frame = null,
-  floors = null, service = () => null, gone = () => {} }) {
-  const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
-  if (wanted > API_VERSION) {
-    throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
+  floors = null, service = () => null, gone = () => {}, offers = API_VERSION }) {
+  const wanted = plugin.manifest?.plugin?.api ?? offers;
+  if (wanted > offers) {
+    throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${offers}`);
   }
   const owner = plugin.id;
   const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
@@ -115,7 +118,7 @@ export function connect({ app, world, plugin, parts, toast = () => {}, docks = n
   });
   if (frame) gone(() => frame.hide(plugin));
   return Object.freeze({
-    version: API_VERSION,
+    version: offers,
     app: Object.freeze({ name: app.config.name, version: app.config.version }),
     plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
     get world() { return world.world; },
