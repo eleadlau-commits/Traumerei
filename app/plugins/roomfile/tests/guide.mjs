@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as lib from '../../../core/world/lib.js';
 import { bind } from '../world.js';
-import { ITEMS } from '../../../core/world/items/index.js';
+import { ITEMS, setKinds } from '../../../core/world/items/index.js';
+import { picture } from '../../picture/item.js';
 import { gather } from '../../../core/world/ontologies/index.js';
 import { emptyWorld } from '../../../core/world/model.js';
 import { parse } from '../grammar.js';
@@ -21,6 +22,7 @@ bind(surface(lib)); // roomfile is a plugin too
 bindProust(surface(lib)); // Proust is a plugin: it gets the world's rules through the plugin API
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
 bindRussell(surface(lib)); // Russell too
+setKinds([picture({ maths: lib.maths.maths, shrinkPicture: async () => '' })]); // and Pictures' kind
 const ontologies = gather([proust, russell]);
 const wrong = [];
 

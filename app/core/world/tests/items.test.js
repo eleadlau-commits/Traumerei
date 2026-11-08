@@ -1,10 +1,17 @@
 // Tests for the kinds of item (items/index.js, missing.js): a plugin's kind comes and goes with
 // the slot, a broken one is skipped, and a thought whose kind is switched off is never lost.
 
-import { test, assert } from 'folio/testing';
+import { test as plainTest, assert } from 'folio/testing';
 import { ui } from 'folio';
 import { ITEMS, BUILT_IN, setKinds, kindFor, isKnown, lacks } from '../items/index.js';
 import { emptyWorld, create, update, kindOf, isLeaf, thoughtText, MESSY } from '../model.js';
+
+// Every test here changes the kinds; the kinds other tests set (a plugin's, such as Pictures')
+// are put back after each, as the tests share one page.
+const test = (name, fn) => plainTest(name, async () => {
+  const before = Object.values(ITEMS).filter((k) => !BUILT_IN.includes(k));
+  try { await fn(); } finally { setKinds(before); }
+});
 
 const haiku = {
   kind: 'haiku',
@@ -15,11 +22,11 @@ const haiku = {
 };
 
 test('the built-in kinds are always there, and a plugin\'s kind comes and goes', () => {
-  assert.deepEqual(BUILT_IN.map((k) => k.kind), ['line', 'passage', 'picture']);
-  assert.deepEqual(setKinds([haiku]), ['line', 'passage', 'picture', 'haiku']);
+  assert.deepEqual(BUILT_IN.map((k) => k.kind), ['line', 'passage']);
+  assert.deepEqual(setKinds([haiku]), ['line', 'passage', 'haiku']);
   assert.equal(ITEMS.haiku, haiku);
   assert.ok(isKnown('haiku'));
-  assert.deepEqual(setKinds([]), ['line', 'passage', 'picture']);
+  assert.deepEqual(setKinds([]), ['line', 'passage']);
   assert.equal(ITEMS.haiku, undefined);
   assert.equal(isKnown('haiku'), false);
 });
@@ -27,7 +34,7 @@ test('the built-in kinds are always there, and a plugin\'s kind comes and goes',
 test('a kind that lacks something, or takes a built-in name, is skipped and said why', () => {
   const said = [];
   setKinds([{ kind: 'half', name: 'Half' }, { ...haiku, kind: 'passage' }, { ...haiku, kind: 'room' }, { ...haiku, kind: 'Bad Name' }], (k, why) => said.push(`${k.kind}: ${why}`));
-  assert.deepEqual(Object.keys(ITEMS), ['line', 'passage', 'picture']);
+  assert.deepEqual(Object.keys(ITEMS), ['line', 'passage']);
   assert.equal(ITEMS.passage.name, 'Passage');
   assert.deepEqual(said, ['half: it lacks tidy, text, node', 'passage: the kind "passage" is already there', 'room: it lacks kind', 'Bad Name: it lacks kind']);
   assert.deepEqual(lacks(haiku), []);

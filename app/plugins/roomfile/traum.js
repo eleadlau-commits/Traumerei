@@ -268,7 +268,10 @@ export function bringObjects(w, roomId, parts, { modes = [], ontologies = [], no
     for (const v of holds) {
       if (v.t !== 'ref') { report.push(`Line ${line}: "${writeValue(v)}" in ^${obj.id}'s holds isn't a ^reference, so it was left out.`); continue; }
       const id = ids.get(v.id);
-      if (!id) { report.push(`Line ${line}: ^${obj.id} holds ^${v.id}, which isn't in the file.`); continue; }
+      if (!id) { // (an object of a kind Träumerei doesn't know is kept, and said so, already)
+        if (!kept.objects.some((o) => o.id === v.id)) report.push(`Line ${line}: ^${obj.id} holds ^${v.id}, which isn't in the file.`);
+        continue;
+      }
       if (join(w, g.id, id)) order.push(id);
       else if (!w.things[g.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v.id} (a group can't hold itself, or a group that holds it).`);
     }
@@ -347,12 +350,15 @@ export function readSections(w, roomId, parts, { ids = new Map(), relations = []
     (byMode[mode] ||= []).push(...s.lines);
   }
   const fresh = freshIds || new Set(ids.values());
+  // Objects of a kind Träumerei doesn't know (its plugin is off) are kept, and said so, already:
+  // a mode's line naming one is left out quietly.
+  const unknown = new Set(parts.objects.filter((o) => o.kind !== 'group' && o.kind !== 'relation' && !ITEMS[o.kind]?.traum?.read).map((o) => o.id));
   const helpers = (mode) => {
     const say = (line, words) => report.push(`Line ${line}: ${words}`);
     const thing = (v, line) => {
       if (v?.t !== 'ref') { say(line, `"${writeValue(v)}" isn't a ^reference.`); return null; }
       const id = ids.get(v.id);
-      if (!id) { say(line, `^${v.id} isn't in the file.`); return null; }
+      if (!id) { if (!unknown.has(v.id)) say(line, `^${v.id} isn't in the file.`); return null; }
       if (v.occ || v.span != null) say(line, `${mode} doesn't use occurrences or spans; ${writeValue(v)} was read as ^${v.id}.`);
       return id;
     };
