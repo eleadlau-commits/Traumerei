@@ -65,6 +65,13 @@ export default class Time extends Feature {
     this.on('room:open', () => this.refreshSoon());
   }
 
+  // Switched off: today's record is written down now, and nothing waits to run.
+  stop() {
+    clearTimeout(this.timer);
+    if (this.recordTimer) this.writeRecord();
+    this.toNow();
+  }
+
   get world() { return this.t.world; }
   get m() { return this.t.model; }
 

@@ -29,6 +29,7 @@ export default class Home extends Feature {
     this.t = t;
     this.frame = t.frame;             // the top bar and the status bar, or null
     this.quick = quickLine({
+      listen: (target, type, fn) => this.listenTo(target, type, fn), // taken away when Home is switched off
       drop: (text) => this.drop(text),
       live: () => this.showing() && !document.querySelector('dialog[open], .search:not([hidden])'),
     });
@@ -39,7 +40,7 @@ export default class Home extends Feature {
           el('button', { type: 'button', class: 'word home-link home-create', onclick: () => this.create() }, 'Create')),
         this.quick.el,
         this.waitingLine = el('button', { type: 'button', class: 'word home-waiting', hidden: true, onclick: () => this.goToMessy() })));
-    (document.getElementById('folio-root') || document.body).append(this.page);
+    this.attach(this.page);
     this.drawWaiting();
     for (const ev of ['world:saved', 'world:changed', 'room:changed']) this.on(ev, () => this.drawWaiting());
     this.frame?.show({
@@ -50,7 +51,7 @@ export default class Home extends Feature {
     // Create is also the first word in the menu (Folio adds Account, Settings and About).
     this.add('header.buttons', { id: 'home-create', label: 'Create', icon: 'plus', order: 5, onClick: () => this.create() });
     // The menu is a veil over the whole screen (style.css): tapping its empty part closes it.
-    document.addEventListener('click', (e) => {
+    this.listenTo(document, 'click', (e) => {
       if (e.target.matches?.('dialog.menu-drawer .menu-panel, dialog.menu-drawer .menu-list')) this.app.shell?.closeMenu?.();
     });
 

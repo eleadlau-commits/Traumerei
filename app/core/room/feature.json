@@ -13,7 +13,8 @@
     "floors",
     "keys",
     "frame",
-    "time"
+    "time",
+    "plugins"
   ],
   "requires": [
     "world",

@@ -9,6 +9,8 @@ import { el, missing, dialog } from 'folio/ui.js';
 import { Tabs } from 'folio/Tabs.js';
 import { mediaFor } from 'folio/appearance.js';
 import { getText } from 'folio/net.js';
+import { App } from 'folio/App.js';
+import { Feature } from 'folio/Feature.js';
 
 // A stand-in for the app that records reported problems.
 const fakeApp = () => ({ problems: [], report(owner, err) { this.problems.push([owner, err.message]); } });
@@ -204,4 +206,81 @@ test('getText: in the phone apps the phone downloads it, with HTTP errors kept',
   let error = null;
   try { await getText('https://example.ac.uk/gone.ics', phone(404, '')); } catch (err) { error = err; }
   assert.equal(error?.status, 404);
+});
+
+// An app with three features already started, without a page: Base, Notes (requires Base) and
+// Clock (a plugin on its own). Each records when it starts and stops.
+function liveApp() {
+  const app = Object.create(App.prototype);
+  const kept = {};
+  app.storage = { area: () => ({ get: (k, d) => (k in kept ? kept[k] : d), set: (k, v) => { kept[k] = v; } }) };
+  app.kept = kept;
+  app.slots = new Map();
+  app.services = new Map();
+  app.events = new Events(app);
+  app.problems = [];
+  app.report = (owner, err) => app.problems.push([owner, err.message]);
+  app.features = new Map();
+  app.log = [];
+  const made = (id) => class extends Feature {
+    start() { app.log.push(`start ${id}`); this.add('things', { id }); this.attach(el('i', { id: `live-${id}` }), document.body); }
+    stop() { app.log.push(`stop ${id}`); }
+  };
+  app.registry = [
+    { id: 'base', name: 'Base' },
+    { id: 'notes', name: 'Notes', requires: ['base'], plugin: { api: 1 } },
+    { id: 'clock', name: 'Clock', plugin: { api: 1 } },
+  ];
+  app.modules = new Map(app.registry.map((m) => [m.id, { status: 'fulfilled', value: { default: made(m.id) } }]));
+  for (const m of app.registry) {
+    const instance = new (app.modules.get(m.id).value.default)(app, m);
+    app.features.set(m.id, { manifest: m, status: 'active', reason: '', problem: null, instance });
+    instance.start();
+  }
+  app.log.length = 0;
+  return app;
+}
+
+test('a feature switched off while the app runs takes what needs it with it, and everything it added', () => {
+  const app = liveApp();
+  const said = [];
+  app.on('app:stopped', (id) => said.push(id));
+  assert.deepEqual(app.dependents('base'), ['notes']);
+  assert.deepEqual(app.stopFeature('base'), ['notes', 'base']);
+  assert.deepEqual(app.log, ['stop notes', 'stop base']);
+  assert.deepEqual(said, ['notes', 'base']);
+  assert.deepEqual(app.slot('things').items.map((i) => i.id), ['clock']);
+  assert.equal(document.getElementById('live-base'), null); // what it attached is gone
+  assert.equal(app.features.get('base').status, 'disabled');
+  assert.equal(app.features.get('notes').status, 'skipped');
+  assert.match(app.features.get('notes').reason, /Needs Base, which is switched off/);
+  assert.deepEqual(app.kept.disabled, ['base']); // only what was chosen is remembered as off
+  assert.deepEqual(app.stopFeature('base'), []); // already off
+  document.getElementById('live-clock')?.remove();
+});
+
+test('switched on again, a feature starts afresh, and what waited for it comes back', async () => {
+  const app = liveApp();
+  app.stopFeature('base');
+  app.log.length = 0;
+  assert.deepEqual(await app.startFeature('base'), ['base', 'notes']);
+  assert.deepEqual(app.log, ['start base', 'start notes']);
+  assert.equal(app.features.get('notes').status, 'active');
+  assert.deepEqual(app.kept.disabled, []);
+  assert.deepEqual(app.slot('things').items.map((i) => i.id).sort(), ['base', 'clock', 'notes']);
+  for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
+});
+
+test('a feature switched on whose needs are off says so, and one that fails to start says why', async () => {
+  const app = liveApp();
+  app.stopFeature('notes');
+  app.stopFeature('base');
+  assert.deepEqual(await app.startFeature('notes'), []);
+  assert.match(app.features.get('notes').reason, /Needs Base, which is switched off/);
+  app.modules.set('clock', { status: 'fulfilled', value: { default: class extends Feature { start() { throw new Error('no time'); } } } });
+  app.stopFeature('clock');
+  assert.deepEqual(await app.startFeature('clock'), []);
+  assert.equal(app.features.get('clock').status, 'failed');
+  assert.equal(app.features.get('clock').reason, 'no time');
+  for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
 });

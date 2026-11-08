@@ -71,6 +71,7 @@ export default class Room extends Feature {
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
     this.frame = this.use('frame');       // the top bar and the foot around the room (the frame feature), or null
     this.time = this.use('time');         // the Time dock (the time feature), or null
+    this.plugins = this.use('plugins');   // which plugins run (the plugins feature): a mode that is off says so, or null
     const run = {
       'room.mode': (e) => this.nextMode(e.shiftKey ? -1 : 1),
       // The same verbs as on the rooms page (verbs.js).
@@ -114,6 +115,7 @@ export default class Room extends Feature {
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
     this.on('world:maths', () => { if (this.roomId) this.drawWorld(); }); // KaTeX has loaded: formulas draw as mathematics
+    this.on('world:modes', () => { if (this.roomId) { this.sel = null; this.drawRoom(); } }); // a mode came or went (a plugin)
     this.on('world:kinds', () => { this.drawKindKeys(live); if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone

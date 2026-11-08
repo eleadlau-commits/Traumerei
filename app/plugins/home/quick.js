@@ -8,14 +8,14 @@
 //   empty and ready again. Ctrl+Enter (Cmd+Enter) puts a new line in; the line grows to hold it.
 // - Escape lets go of the line, keeping its words.
 //
-// quickLine({ drop(text) → bool, live() → whether Home shows }) → { el, focus() }
+// quickLine({ drop(text) → bool, live() → whether Home shows, listen(target, type, fn) }) → { el, focus() }
 
 import { ui } from 'folio';
 
 const { el } = ui;
 const FADE_MS = 420;
 
-export function quickLine({ drop, live }) {
+export function quickLine({ drop, live, listen = (t, type, fn) => t.addEventListener(type, fn) }) {
   const field = el('textarea', { class: 'home-quick', rows: 1, spellcheck: 'true', placeholder: 'Note down a messy thought…',
     'aria-label': 'A quick thought, dropped in Messy thoughts', 'data-hint': 'Enter drops it in Messy thoughts · Ctrl+Enter new line' });
 
@@ -37,7 +37,7 @@ export function quickLine({ drop, live }) {
   });
 
   // A letter typed anywhere on Home lands here: the line takes the focus before the key does.
-  document.addEventListener('keydown', (e) => {
+  listen(document, 'keydown', (e) => {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     const a = document.activeElement;
     if (a === field || a?.matches?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;

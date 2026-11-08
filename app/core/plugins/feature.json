@@ -1,0 +1,12 @@
+{
+  "name": "Plugins",
+  "description": "Settings → Plugins: every plugin with a switch that works at once, why one isn't running, and safe mode.",
+  "version": "1.0.0",
+  "main": "Plugins.js",
+  "styles": [
+    "style.css"
+  ],
+  "uses": [
+    "api"
+  ]
+}

@@ -67,7 +67,8 @@ export class Settings {
 
   featuresSection() {
     const disabled = new Set(this.prefs.get('disabled', []));
-    const features = [...this.app.features.values()].filter((f) => f.status !== 'not-for-platform');
+    // Plugins (a "plugin" block) have their own page in the app (Settings → Plugins); this lists the rest.
+    const features = [...this.app.features.values()].filter((f) => f.status !== 'not-for-platform' && !f.manifest.plugin);
     const rows = features.map((f) => {
       const on = !disabled.has(f.manifest.id);
       const note = {

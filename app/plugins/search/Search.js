@@ -23,7 +23,7 @@ export default class Search extends Feature {
     });
     const box = this.box = el('div', { class: 'shade search', hidden: true, role: 'dialog', 'aria-label': 'Search' });
     box.onpointerdown = (e) => { if (e.target === box) this.close(); };
-    (document.getElementById('folio-root') || document.body).append(box);
+    this.attach(box);
   }
 
   open() {
