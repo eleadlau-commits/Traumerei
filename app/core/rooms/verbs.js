@@ -11,7 +11,7 @@
 
 
 
-import { MESSY, room, cellOf, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
+import { MESSY, room, cellOf, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore, shut } from './world.js';
 import { el, MAC } from './shared.js';
 
 export class RoomsVerbs {
@@ -62,7 +62,7 @@ export class RoomsVerbs {
     const one = ids.length === 1 && room(this.world, ids[0]);
     if (moved) this.toast(one ? `${one.name} is on Floor ${page + 1}.` : `Moved ${moved} to Floor ${page + 1}${full || stuck ? `; ${ids.length - moved} stayed` : ''}.`);
     else if (full) this.toast(`Floor ${page + 1} is full.`);
-    else this.toast(one?.locked ? `${one.name} is locked, so it keeps its place.` : 'Nothing could move there.');
+    else this.toast((one && shut(this.world, one.id)) ? `${one.name} is locked, so it keeps its place.` : 'Nothing could move there.');
     return moved > 0;
   }
 
@@ -79,7 +79,7 @@ export class RoomsVerbs {
   lockRooms(ids) {
     const rs = ids.map((id) => room(this.world, id)).filter(Boolean);
     if (!rs.length) return;
-    const on = rs.some((r) => !r.locked);
+    const on = rs.some((r) => !shut(this.world, r.id));
     for (const r of rs) lock(this.world, r.id, on);
     this.save();
     this.drawRooms();
@@ -91,7 +91,7 @@ export class RoomsVerbs {
   // Takes rooms to the Archive (not Messy thoughts, nor a locked room): one step.
   archiveRooms(ids) {
     const rs = ids.map((id) => room(this.world, id)).filter((r) => r && !isArchived(this.world, r.id));
-    const ok = rs.filter((r) => r.id !== MESSY && !r.locked);
+    const ok = rs.filter((r) => r.id !== MESSY && !shut(this.world, r.id));
     if (!ok.length) { if (rs.length) this.toast('Messy thoughts and locked rooms stay.'); return; }
     for (const r of ok) archive(this.world, r.id);
     this.picks = [];
@@ -143,7 +143,7 @@ export class RoomsVerbs {
   moveChosen(e) {
     const rs = this.chosenFor(e);
     if (!rs.length) return;
-    const movable = rs.filter((r) => r.id !== MESSY && !r.locked && !isArchived(this.world, r.id));
+    const movable = rs.filter((r) => r.id !== MESSY && !shut(this.world, r.id) && !isArchived(this.world, r.id));
     if (!movable.length) { this.toast(rs.length === 1 && rs[0].id === MESSY ? 'Messy thoughts stays on Floor 1.' : 'A locked room keeps its place.'); return; }
     this.floorPicker(movable);
   }
@@ -168,7 +168,7 @@ export class RoomsVerbs {
   // Ctrl+G: a tag for every chosen room (one step), written in a small field (the tags there are
   // offered). It is how rooms are grouped on the rooms page: by a tag they share.
   tagChosen(e) {
-    const rs = this.chosenFor(e).filter((r) => !r.locked);
+    const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
     if (!rs.length) { this.toast(this.chosenFor(e).length ? 'A locked room keeps its tags.' : 'Choose rooms first (Shift+click, or Ctrl+A).'); return; }
     const list = el('datalist', { id: 'rooms-group-tags' }, ...allTags(this.world, this.ontologies).map((t) => el('option', { value: t.tag || t })));
     const field = el('input', { class: 'field rooms-group-tag', placeholder: 'A tag they share (or Group: tag)', 'aria-label': 'A tag for the chosen rooms', list: 'rooms-group-tags', maxlength: 61, autocomplete: 'off', spellcheck: 'false' });
@@ -190,7 +190,7 @@ export class RoomsVerbs {
 
   // Ctrl+Shift+G: the tags every chosen room shares (their own, not their mode's) come off: one step.
   untagChosen(e) {
-    const rs = this.chosenFor(e).filter((r) => !r.locked);
+    const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
     if (!rs.length) return;
     const own = (r) => roomTags(this.world, r.id, this.ontologies).filter((t) => !t.auto).map((t) => t.tag.toLowerCase());
     const shared = rs.map(own).reduce((a, b) => a.filter((t) => b.includes(t)));

@@ -3,9 +3,9 @@
 // in words; tests/api.test.js holds the list, so a change here is always deliberate (change
 // API.md and the test with it).
 //
-// Phases 0 to 5 of the kernel plan: marks and distance are a thin layer over the world as it is
-// today (v1.js, world/model.js); links, places and gaps read their tables (world/links.js,
-// places.js, gaps.js) and moments the world's log (world/moments.js). Each read
+// Phases 0 to 6 of the kernel plan: marks are a thin layer over the world as it is today
+// (world/model.js); links, places, gaps and distance read their tables (world/links.js,
+// places.js, gaps.js, distance.js) and moments the world's log (world/moments.js). Each read
 // gives frozen rows; each propose goes through the world's own checks and lands as one step in
 // the log (its rows are the moments), or returns a refusal with its reason in words. Where a table does not exist yet (forward
 // moments) the read is empty and the propose refuses, naming the phase that brings it. Nothing
@@ -210,14 +210,21 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('links'),
   });
 
-  // -- distance: a context's reader. Lock is the only way yet: locked is others, else me now. --
+  // -- distance: the distance table (world/distance.js). A context is declared for a reader; a
+  // mark's reader is the farthest on its way up (Law 7: inherited, lengthened only by a hand).
+  // Lock is a room declared for others; a context for others or a machine is shut. --
+  const DIST = lib.distance;
   const distance = Object.freeze({
-    of: (context) => { const r = model.room(w(), context); return r ? (r.locked ? 'others' : 'me now') : null; },
+    of: (mark) => (thing(mark) ? DIST.of(w(), mark) : null),
+    declared: (context) => (thing(context) ? DIST.declared(w(), context) : null),
+    all: () => rows(DIST.all(w()).map(({ context, reader }) => ({ context, reader }))),
+    shut: (mark) => !!thing(mark) && model.shut(w(), mark),
+    readers: () => READERS,
     declare: (context, reader) => {
       if (!READERS.includes(reader)) return refuse(`A reader is one of ${READERS.join(', ')}`);
-      if (!model.room(w(), context)) return refuse('Only a room can be declared for a reader until phase 6');
-      if (reader === 'me later' || reader === 'machine') return later(`Declaring a room for ${reader}`, 6);
-      return land(model.lock(w(), context, reader === 'others'), context, 'No such room');
+      if (!model.declarable(w(), context)) return refuse('Only a context is declared for a reader: a room, a floor, the Archive');
+      if (DIST.declared(w(), context) === reader || (reader === DIST.NEAREST && !DIST.declared(w(), context))) return landed(DIST.idOf(context));
+      return land(!DIST.declare(w(), context, reader).why, DIST.idOf(context), 'No such reader');
     },
     on: on('distance'),
   });
@@ -261,7 +268,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
   // not know of (older than the history kept) still has its made and edited times. --
   const log = () => world.moments;
-  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
   function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });

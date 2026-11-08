@@ -16,7 +16,7 @@ const V2 = {
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
   links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
-  distance: ['declare', 'of', 'on'],
+  distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
   slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
@@ -382,17 +382,24 @@ test('links: part-of rows with order and relation rows with their names; join, l
   assert.equal(k.links.link(a.id, c.id, 'about').reason, 'No such kind of link: about');
 });
 
-test('distance: a room\'s reader is others when locked, me now otherwise; declaring it locks and unlocks', () => {
-  const { w, room, locked, service } = smallWorld();
+test('distance: a table of readers, inherited down; Lock is a room for others; every reader can be declared', () => {
+  const { w, room, locked, a, service } = smallWorld();
   const k = kernel({ lib, world: service });
   assert.deepEqual(READERS, ['me now', 'me later', 'others', 'machine']);
+  assert.deepEqual(k.distance.readers(), READERS);
   assert.equal(k.distance.of(room.id), 'me now');
   assert.equal(k.distance.of(locked.id), 'others');
   assert.equal(k.distance.of('nowhere'), null);
-  assert.ok(k.distance.declare(room.id, 'others').ok && w.things[room.id].locked);
-  assert.ok(k.distance.declare(room.id, 'me now').ok && !w.things[room.id].locked);
+  assert.equal(k.distance.of(a.id), 'me now');
+  assert.deepEqual(k.distance.all(), [{ context: locked.id, reader: 'others' }]);
+  assert.ok(k.distance.declare(room.id, 'others').ok && lib.model.shut(w, room.id) && k.distance.shut(a.id), 'a mark inherits its room\'s reader');
+  assert.equal(k.distance.of(a.id), 'others');
+  assert.ok(k.distance.declare(room.id, 'me now').ok && !lib.model.shut(w, room.id) && k.distance.declared(room.id) === null);
   assert.equal(k.distance.declare(room.id, 'everyone').ok, false);
-  assert.match(k.distance.declare(room.id, 'machine').reason, /phase 6/);
+  assert.ok(k.distance.declare(room.id, 'me later').ok && !k.distance.shut(a.id) && k.distance.of(a.id) === 'me later');
+  assert.ok(k.distance.declare('floor:0', 'machine').ok && k.distance.of(a.id) === 'machine' && k.distance.shut(room.id), 'a floor\'s reader reaches every room on it');
+  assert.equal(k.distance.declare(a.id, 'others').ok, false, 'a line is not a context');
+  assert.ok(Object.isFrozen(k.distance.all()[0]));
 });
 
 test('gaps: one row per mark, open or resolved, landing as steps; a mark with gapped parts reads a derived gap', () => {
@@ -466,7 +473,7 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   // a carrier: the rows since a seq, the whole world, and rows taken in
   assert.equal(k.moments.seq(), 3);
   assert.deepEqual(k.moments.outbox(2).map((m) => [m.kind, m.mark]), [['edited', a.id]]);
-  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'linked' || m.kind === 'moved' || m.kind === 'arranged'));
+  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'linked' || m.kind === 'moved' || m.kind === 'declared' || m.kind === 'arranged'));
   assert.ok(k.moments.outbox(null).some((m) => m.kind === 'linked' && m.link), 'the whole world carries its links as rows');
   const taken = k.moments.absorb([{ kind: 'edited', table: 'marks', mark: a.id, time: 6000, after: { ...w.things[a.id], text: 'from afar' } }]);
   assert.deepEqual(taken, { ok: true, id: 'moments', landed: 1 });

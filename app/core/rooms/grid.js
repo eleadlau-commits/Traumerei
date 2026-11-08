@@ -7,7 +7,7 @@ import {
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides, openGaps,
+  seedRoomSettings, allTags, shut, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides, openGaps,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 import { pastFloor, pastWords } from './past.js';
@@ -313,7 +313,7 @@ export class RoomsGrid {
     const tile = el('div', {
       class: 'rooms-tile' + (lit ? ' lit' : '') + (r.id === MESSY ? ' messy' : '') + (look.alpha > 0.4 ? ' deep' : '') + (this.roomSel === r.id ? ' chosen' : '')
         + (this.roomPick === r.id || this.picks?.includes(r.id) ? ' picked' : '')
-        + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
+        + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (shut(this.world, r.id) ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
       style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${at.col + 1} / span ${across};grid-row:${at.row + 1} / span ${down}`,
       'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
@@ -674,7 +674,7 @@ export class RoomsGrid {
     } });
     p.lightness = lightness;
     p.opacity = el('input', { type: 'range', min: 0.3, max: 1, step: 0.01, value: look.opacity, 'aria-label': 'Opacity', oninput: (e) => set({ opacity: +e.target.value }) });
-    p.sizes = r.locked ? null : [1, 2].map((n) => el('button', {
+    p.sizes = shut(this.world, r.id) ? null : [1, 2].map((n) => el('button', {
       type: 'button', class: 'word', 'aria-pressed': String((r.size || 1) === n),
       onclick: () => {
         if (this.floors.resize(r.id, n)) { this.save(); this.drawRooms(); }
@@ -684,10 +684,10 @@ export class RoomsGrid {
     p.untint = r.tint || r.light != null || r.opacity != null ? () => { delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms(); } : null;
     // Locked: nothing inside can change, and the square stays where it is.
     p.lock = () => this.lockRooms([r.id]);
-    p.archive = r.id !== MESSY && !r.locked ? () => this.archiveRooms([r.id]) : null;
+    p.archive = r.id !== MESSY && !shut(this.world, r.id) ? () => this.archiveRooms([r.id]) : null;
     // Taken out as a .traum file (the roomfile feature); a locked room too.
     p.export = this.files.canExport ? () => this.exportRoomFile(r.id) : null;
-    p.remove = r.id !== MESSY && !r.locked ? () => {
+    p.remove = r.id !== MESSY && !shut(this.world, r.id) ? () => {
       remove(this.world, r.id);
       this.roomSel = this.roomPick = null;
       this.save();
@@ -711,7 +711,7 @@ export class RoomsGrid {
       p.sizes ? el('div', { class: 'pop-row' }, el('span', { class: 'label' }, 'Size'), ...p.sizes) : null,
       el('div', { class: 'pop-row' },
         word('Back to the tint', p.untint),
-        word(r.locked ? 'Unlock' : 'Lock', p.lock),
+        word(shut(this.world, r.id) ? 'Unlock' : 'Lock', p.lock),
         word('Archive', p.archive),
         word('Export room file', p.export),
         word('Delete', p.remove, 'pop-delete')),
@@ -740,7 +740,7 @@ export class RoomsGrid {
         p.sizes ? kv('Size', el('div', { class: 'seg' }, ...p.sizes)) : null,
         p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
       sec('Actions', el('div', { class: 'box-btns' },
-        btn(r.locked ? 'Unlock' : 'Lock', p.lock, this.keyMap?.label?.('rooms.lock') || ''),
+        btn(shut(this.world, r.id) ? 'Unlock' : 'Lock', p.lock, this.keyMap?.label?.('rooms.lock') || ''),
         btn('Archive', p.archive, this.keyMap?.label?.('rooms.archive') || ''),
         btn('Export', p.export),
         btn('Delete', p.remove, 'Delete', 'danger pop-delete'))),
@@ -879,7 +879,7 @@ export class RoomsGrid {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
       if (!dragging && Math.hypot(dx, dy) < 5) return;
       clearTimeout(hold);
-      if (isArchived(this.world, r.id) || (r.locked && !ev.altKey)) return; // a locked room keeps its place (Alt drags a copy of it); an archived one has none
+      if (isArchived(this.world, r.id) || (shut(this.world, r.id) && !ev.altKey)) return; // a locked room keeps its place (Alt drags a copy of it); an archived one has none
       if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); this.roomSel = null; }
       last = ev;
       follow();

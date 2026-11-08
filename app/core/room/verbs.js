@@ -4,7 +4,7 @@
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, lock as lockRoom, throwBack as throwBackIn } from './world.js';
+import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, shut, lock as lockRoom, throwBack as throwBackIn } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -144,7 +144,7 @@ export function lock(c, e) {
   if (typing(e) || c.editing || !c.roomId) return;
   const r = room(c.world, c.roomId);
   if (!r) return;
-  const on = !r.locked;
+  const on = !shut(c.world, r.id);
   lockRoom(c.world, r.id, on);
   c.save();
   c.drawRoom();

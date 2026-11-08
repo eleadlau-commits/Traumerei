@@ -13,10 +13,11 @@
 //            same group, never a copy. loose: made in its ontology's tray, and still there.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
 //              col, row, size,                   through an ontology; on the rooms page it is a
-//              desc, tags, locked }              square at (col, row) of its floor, its shape from
+//              desc, tags }                      square at (col, row) of its floor, its shape from
 //                                                size (span()). desc: a line or two about it.
 //                                                tags: words it is sorted by (its ontology is one
-//                                                too: roomTags). locked: nothing in it can change.
+//                                                too: roomTags). Locked is the distance table's
+//                                                (distance.js): a room for others.
 //   context  { name, holds: 'rooms', n? }        a context of the top: a floor of the rooms page
 //                                                (id floor:<n>) or the Archive (id archive).
 //
@@ -38,6 +39,8 @@
 //   things: { [id]: thought },
 //   links:  { [id]: { from, to, kind, … } }         the links table (links.js): part of, stands for, relation
 //   places: { [id]: { mark, context, rule?, position? } }   the places table (places.js): where each thought is
+//   gaps:   { [id]: { mark, direction, state, … } }  the gaps table (gaps.js)
+//   distance: { [id]: { context, reader } }       the distance table (distance.js): who a context is for
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [store]: { … } } }        a plugin's data in a room that is not a position (own()); where a
 //                                                 rule puts a thing is a rule row of places, never here (phase 4)
@@ -52,6 +55,7 @@ import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
 import * as G from './gaps.js';
+import * as D from './distance.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
@@ -96,7 +100,7 @@ export const isContext = (th) => kindOf(th) === 'context';
 export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 
 export function emptyWorld(now = Date.now()) {
-  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, distance: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
   P.setHome(w, MESSY, FLOOR(0));
   P.putSpot(w, FLOOR(0), MESSY, CELL, { col: 0, row: 0 }); // its four squares at the top left
   return w;
@@ -123,7 +127,7 @@ export const isArchived = (w, id) => P.home(w, id) === ARCHIVE;
 // table once.)
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'links', 'places', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'links', 'places', 'gaps', 'distance', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
   P.touched(w);
   L.touched(w);
@@ -176,6 +180,8 @@ export function loadWorld(saved, now = Date.now()) {
   }
   L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && P.home(w, r.from) === P.home(w, r.to) : true));
   G.repair(w); // a gap sits on a mark that is there (Law 1)
+  for (const th of Object.values(w.things)) if (th && 'locked' in th) { if (th.locked && kindOf(th) === 'room') D.declare(w, th.id, 'others'); delete th.locked; } // Lock was a field once (phase 6)
+  D.repair(w, (id) => declarable(w, id)); // a reader on a context that is there (Law 1)
   for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
   const messy = w.things[MESSY];
   messy.size = 2;
@@ -229,11 +235,13 @@ export const archived = (w) => marksAt(w, P.marksIn(w, ARCHIVE)).filter((th) => 
 // The rooms on one page of the rooms page.
 export const roomsOn = (w, page = 0) => marksAt(w, P.marksIn(w, FLOOR(page))).filter((th) => kindOf(th) === 'room').sort(byTime);
 
-// True if `id` is a locked room, or is somewhere inside one: then nothing about it can change.
-export function shut(w, id) {
-  for (let th = w.things[id]; th; th = w.things[P.home(w, th.id)]) if (kindOf(th) === 'room' && th.locked) return true;
-  return false;
-}
+// True if `id` is in a context written for others (or a machine), or is one: then nothing about
+// it can change. Lock declares a room for others (distance.js; Law 7: inherited down, by hand only).
+export const shut = (w, id) => D.isShut(w, id);
+// Who a mark is written for: its own or its contexts' farthest declared reader (distance.js).
+export const readerOf = (w, id) => D.of(w, id);
+// Whether a context can be declared for a reader: a room (a Twin too), a floor, the Archive.
+export const declarable = (w, id) => { const k = kindOf(w.things[id]); return !!w.things[id] && (k === 'room' || k === 'context'); };
 
 // The room at the top (on the rooms page, or archived) that a thought is in.
 export function topRoom(w, id) {
@@ -495,7 +503,6 @@ function tidy(f) {
   if (desc) out.desc = desc;
   const tags = tidyTags(f.tags);
   if (tags.length) out.tags = tags;
-  if (f.locked) out.locked = true;
   return out;
 }
 
@@ -603,7 +610,7 @@ export function update(w, id, fields, now = Date.now()) {
     next.of = th.of;
     if (!next.closed) delete th.closed;
   }
-  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked']) if (!(k in next)) delete th[k];
+  if (kindOf(th) === 'room') for (const k of ['desc', 'tags']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   placeFields(w, th, fields);
   touch(w);
@@ -624,6 +631,7 @@ export function remove(w, id) {
   const holders = groupsOf(w, id);
   L.dropAll(w, id);
   G.drop(w, id);
+  D.drop(w, id);
   for (const c of P.marksIn(w, id)) remove(w, c); // (folded-away ones too)
   P.dropMark(w, id);
   for (const m of inside) remove(w, m);
@@ -809,14 +817,13 @@ export function search(w, query, most = 30) {
 export function lock(w, id, on = true) {
   const r = room(w, id);
   if (!r) return false;
-  if (on) r.locked = true; else delete r.locked;
-  return true;
+  return !D.declare(w, id, on ? 'others' : D.NEAREST).why;
 }
 
 // Takes a room off the grid to the Archive page (not Messy thoughts, nor a locked room).
 export function archive(w, id, now = Date.now()) {
   const r = room(w, id);
-  if (!r || id === MESSY || r.locked || !isFloor(P.home(w, id))) return false;
+  if (!r || id === MESSY || shut(w, id) || !isFloor(P.home(w, id))) return false;
   P.setHome(w, id, ARCHIVE, { at: now, floor: floorOf(w, id) });
   return true;
 }
@@ -862,7 +869,7 @@ export function copyRoom(w, id, now = Date.now()) {
   for (const row of Object.values(G.copyFor(w, ids))) G.set(w, row);
   const fresh = renamed(copy(r), ids);
   Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || 'Untitled'} copy` });
-  for (const k of ['locked', 'edited']) delete fresh[k];
+  delete fresh.edited; // (and no distance row: a copy starts for me now)
   if (id === MESSY) fresh.size = 2;
   w.things[fresh.id] = fresh;
   P.setHome(w, fresh.id, FLOOR(floorOf(w, id)));
