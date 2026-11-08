@@ -6,23 +6,21 @@ machine. The rooms page and the room say where (a cell and floor, a room, a spot
 choices in their menus; this feature reads the file, shows the card, changes the world and
 downloads. The world itself is the world feature's.
 
-## The roomfile service
+## The .traum format
 
-`this.use('roomfile')` gives everything it offers:
+It adds itself to the world's slot `world.formats` (shape in `app/core/world/formats.js`), so the
+rooms page and a room find it there: `accepts(file)` (a `.traum` room file, or plain Markdown or
+text, `.md`, `.markdown`, `.txt`, which comes in as loose thoughts), `importRoom({ file, cell, page,
+ok })` (a new room on floor `page`, placed by the floors feature: in `cell` if it is free, else
+that floor's first free one, else a new floor), `importInto(roomId, { file, at, ok, before })` (the
+file's objects into a room as new ones, not a locked one), `exportRoom(id)` (downloads `<its
+name>.traum`, a locked room too), `canEdit()` (whether editing as text is there: it needs the source
+editor feature), `editGroup(roomId, groupId, { before, ok })` and `editRoom(roomId, { before, ok })`
+(the group or room as `.traum` text in the source editor, read only in a locked room) and `cancel()`
+(closes the card). The caller saves (one step).
 
-| Member | What it does |
-|---|---|
-| `isRoomFile(file)` | Whether a dropped file can come in: a `.traum` room file, or plain Markdown or text (`.md`, `.markdown`, `.txt`), which comes in as loose thoughts. |
-| `importRoom({ file, cell, page, ok })` | A new room from `file` (picked, if none) on floor `page`, placed by the floors feature: in `cell` if it is free, else that floor's first free one, else a new floor (the room's `page` says which). `ok()` says whether it is still wanted, before the card and on Import. Resolves with the new room once it is in the world, or `null`. The caller saves. |
-| `importInto(roomId, { file, at, ok, before })` | The file's objects (groups and thoughts, with their places) into a room as new ones (not a locked one). `at()` is where new trains start; `before()` runs just before the world changes. Resolves `true` once they are in, else `false`. The caller saves. |
-| `exportRoom(id)` | Downloads the room as `<its name>.traum` (a locked room too). |
-| `canEdit` | Whether editing as text is there (it needs the source editor feature). |
-| `editGroup(roomId, groupId, { before, ok })` | The group as `.traum` text in the source editor (read only in a locked room). `before()` runs just before Apply changes the world; `ok()` says whether it is still wanted. Resolves `true` once Apply has changed the world, else `false` when it closes. The caller saves (one step). |
-| `editRoom(roomId, { before, ok })` | The same for the whole room. |
-| `cancel()` | Closes the card, if it shows. |
-
-It uses the `source` service (the source editor) when it is there. It sends no events and has
-no slots.
+It uses the `source` service (the source editor) when it is there. It offers no service and sends
+no events.
 
 ## What it does
 

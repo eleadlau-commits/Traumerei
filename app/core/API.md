@@ -75,6 +75,7 @@ plugin adds is taken away when it is switched off.
 | `commands` | a named action, with its keys if it has any (the ? list, and later a command list, read them all from here) | `{ id, keys?, words, zone, order, when?(), run?(e) }`: `app/core/keys/README.md` |
 | `more` | an entry under ⋯ More | `{ id, label, icon, order, run(), on?(), visible?(), title?() }` |
 | `editor` | a section in the Editor for the chosen thing | `{ id, order, when?(x), render(x) → node \| null }`, x: `{ world, roomId, mode, id, thing, locked, refresh() }`: `app/core/room/README.md` |
+| `formats` | a file format: rooms in and out, and edited as text | `{ id, name, accepts(file), importRoom?, importInto?, exportRoom?, canEdit?, editRoom?, editGroup?, cancel? }`: `app/core/world/formats.js` |
 | Folio's `settings` slot | a section on the Settings page | `this.add('settings', { id, title, order, render() })` |
 
 ## Docks

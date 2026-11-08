@@ -47,6 +47,7 @@ export const PLACES = {
   commands: 'keys',          // a named action, with its keys if it has any (keys/README.md)
   more: 'rail.more',         // an entry under ⋯ More (frame/README.md)
   editor: 'room.editor',     // a section in the Editor for the chosen thing (room/README.md)
+  formats: 'world.formats',  // a file format: rooms in and out, and edited as text (world/formats.js)
 };
 
 const DOCK = ['open', 'close', 'show', 'isOpen', 'isShowing'];

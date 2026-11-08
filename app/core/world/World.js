@@ -10,6 +10,7 @@ import * as lib from './lib.js';
 import { loadWorld } from './model.js';
 import { gather, forRooms, forPage, FALLBACK } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
+import { formatsOf } from './formats.js';
 import { visit, loadLog } from './attention.js';
 import { lookPrefs, savedLook, LOOK, PALETTE } from './look.js';
 
@@ -37,10 +38,13 @@ export default class World extends Feature {
       setKinds(slot.items, (k, why) => console.warn(`World: the item kind "${k?.kind}" was skipped: ${why}`));
       this.emit('world:kinds');
     });
+    // File formats, from plugins (Room files' .traum): one thing to ask (formats.js).
+    const formats = formatsOf(this.defineSlot('world.formats', 'A file format: { id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id), canEdit?(), editRoom?(roomId, o), editGroup?(roomId, groupId, o), cancel?() } (see world/formats.js).'));
 
     const w = this;
     this.provide('world', {
       lib,                                          // the rules, by module (lib.js)
+      formats,                                      // the file formats plugins add (formats.js)
       get world() { return w.world; },              // the world itself (model.js)
       load: () => { w.world = loadWorld(w.storage.get(KEY)); return w.world; },
       begin: () => w.begin(),

@@ -8,7 +8,7 @@ import { API_VERSION, surface, connect, PLACES } from '../api.js';
 
 // Version 1, as API.md lists it. Changing the API means changing this and API.md together.
 const V1 = {
-  top: ['app', 'arrows', 'commands', 'data', 'docks', 'editor', 'groups', 'items', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'version', 'world'],
+  top: ['app', 'arrows', 'commands', 'data', 'docks', 'editor', 'formats', 'groups', 'items', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'version', 'world'],
   model: ['create', 'groupOf', 'groupsIn', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'members', 'own', 'roomItems', 'roomSetting', 'setRoomSetting', 'shut', 'thoughtText', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
   relations: ['arrowsOf', 'cleanRelationList', 'listText', 'relationEnds', 'relationEntry'],
@@ -41,7 +41,7 @@ test('version 1 is exactly the written list', () => {
   assert.equal(API_VERSION, 1);
   assert.deepEqual(Object.keys(t).sort(), V1.top);
   for (const part of Object.keys(V1).filter((k) => k !== 'top')) assert.deepEqual(Object.keys(t[part]).sort(), V1[part], part);
-  assert.deepEqual(Object.keys(PLACES).sort(), ['commands', 'editor', 'items', 'modes', 'more']);
+  assert.deepEqual(Object.keys(PLACES).sort(), ['commands', 'editor', 'formats', 'items', 'modes', 'more']);
 });
 
 test('every name is the world\'s own, and the API can\'t be changed by a plugin', () => {

@@ -68,7 +68,7 @@ export class Bars {
       return [
         el('div', { class: 'label' }, 'Locked'),
         kind === 'group' && inPanel ? null : el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
-        kind === 'group' && !inPanel && this.files?.canEdit ? el('button', { type: 'button', class: 'word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
+        kind === 'group' && !inPanel && this.files.canEdit ? el('button', { type: 'button', class: 'word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
       ].filter(Boolean);
     }
     const stop = (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT')) e.target.blur(); };
@@ -115,7 +115,7 @@ export class Bars {
       rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }),
         el('div', { class: 'pop-row' },
           el('span', { class: 'pop-note' }, `${n} thought${n === 1 ? '' : 's'}`),
-          this.files?.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
+          this.files.canEdit && !inPanel ? word('Edit as Markdown', () => this.editAsMarkdown(th.id)) : null));
     }
     // The ontology's own rows for what is chosen (ontologies/index.js: props), then its moves,
     // those that fit.
@@ -352,7 +352,7 @@ export class Bars {
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); this.closeLooseMenu(); plus.focus(); } } },
     this.looseItem('Passage', 'a title and a body', () => this.openSheet('passage', null, null, true)),
     this.looseItem('Picture', 'a file, with a caption', () => this.choosePicture(true)),
-    ...(this.files ? [this.looseItem('Import…', 'objects from a file', () => this.importIntoRoom())] : []));
+    ...(this.files.any ? [this.looseItem('Import…', 'objects from a file', () => this.importIntoRoom())] : []));
     const plus = el('button', { type: 'button', class: 'word room-loose-plus', 'aria-label': 'Add something else', title: 'A passage, a picture, or objects from a file',
       'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleLooseMenu() }, '+');
     return el('div', { class: 'room-loose-add', hidden: this.locked }, menu, el('div', { class: 'room-loose-bar' }, box, plus));
