@@ -194,6 +194,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   -webkit-user-select: none;
 }
 
+/* The gap's edge: a thought with an open gap (its own, or its parts') carries a fine open edge at
+   its start, where the unfinished dot was; resolved, it goes. */
+.room-gap { box-shadow: inset 2px 0 0 0 rgb(var(--ink-rgb) / .55); padding-left: .45em; }
+.room-passage.closed.room-gap { padding-left: .6em; }
+
 /* In a dark room the words glow faintly, like a lit window. */
 .room-page.dark :is(.room-bead, .room-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb) / .3); }
 

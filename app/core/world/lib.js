@@ -5,6 +5,7 @@
 export * as model from './model.js';          // the world: rooms, items, groups, tags, pages
 export * as links from './links.js';          // the links table: part of, stands for, relation (Law 4)
 export * as places from './places.js';        // the places table: the context each thought is in (Laws 1, 2)
+export * as gaps from './gaps.js';            // the gaps table: what a mark was made to close, derived up the links (Law 5)
 export * as rules from './rules.js';          // rules: an ontology as the kernel sees it (layout, admit, moves, draws)
 export * as groups from './groups.js';        // groups as shared objects: outermost, foreign, trays
 export * as twin from './twin.js';            // a Twin: two sides, each a room, side by side

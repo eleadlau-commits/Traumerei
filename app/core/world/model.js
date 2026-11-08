@@ -51,6 +51,7 @@
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
+import * as G from './gaps.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
@@ -95,7 +96,7 @@ export const isContext = (th) => kindOf(th) === 'context';
 export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 
 export function emptyWorld(now = Date.now()) {
-  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
   P.setHome(w, MESSY, FLOOR(0));
   P.putSpot(w, FLOOR(0), MESSY, CELL, { col: 0, row: 0 }); // its four squares at the top left
   return w;
@@ -174,6 +175,7 @@ export function loadWorld(saved, now = Date.now()) {
     if (!Object.keys(stores || {}).length) delete w.own[roomId];
   }
   L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && P.home(w, r.from) === P.home(w, r.to) : true));
+  G.repair(w); // a gap sits on a mark that is there (Law 1)
   for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
   const messy = w.things[MESSY];
   messy.size = 2;
@@ -345,7 +347,7 @@ export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
   L.drop(w, L.partId(groupId, id));
-  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
+  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); G.drop(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
   return true;
 }
 
@@ -621,11 +623,12 @@ export function remove(w, id) {
   const stoodFor = L.from(w, id, 'stands for').map((r) => r.to);
   const holders = groupsOf(w, id);
   L.dropAll(w, id);
+  G.drop(w, id);
   for (const c of P.marksIn(w, id)) remove(w, c); // (folded-away ones too)
   P.dropMark(w, id);
   for (const m of inside) remove(w, m);
   for (const m of stoodFor) remove(w, m);
-  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); P.dropMark(w, g.id); forget(w, g.id); }
+  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); G.drop(w, g.id); P.dropMark(w, g.id); forget(w, g.id); }
   forget(w, id);
   delete w.views[id];
   delete w.own[id];
@@ -856,6 +859,7 @@ export function copyRoom(w, id, now = Date.now()) {
   const ids = { [id]: uid('r') };
   for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
   for (const [lid, row] of Object.entries(L.copyFor(w, ids))) L.set(w, lid, row);
+  for (const row of Object.values(G.copyFor(w, ids))) G.set(w, row);
   const fresh = renamed(copy(r), ids);
   Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || 'Untitled'} copy` });
   for (const k of ['locked', 'edited']) delete fresh[k];

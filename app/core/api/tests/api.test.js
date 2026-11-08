@@ -20,7 +20,7 @@ const V2 = {
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
   slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
-  ui: ['toast'],
+  ui: ['chosen', 'toast'],
 };
 // Version 1's names, still offered beneath v2 until kernel phase 6.
 const V1 = {
@@ -75,6 +75,7 @@ test('version 2 is exactly the written list, with every v1 name beneath it', () 
   assert.equal(t.slots.rules, t.modes); // the same places, named for what they are to the kernel
   assert.equal(t.slots.kinds, t.items);
   assert.equal(t.ui.toast, t.toast);
+  assert.equal(t.ui.chosen(), null); // no room shows in a test
   assert.equal(t.frame, null); // no frame in this app
   assert.deepEqual(Object.keys(PLACES).sort(), ['commands', 'editor', 'formats', 'items', 'modes', 'more']);
 });
@@ -394,20 +395,53 @@ test('distance: a room\'s reader is others when locked, me now otherwise; declar
   assert.match(k.distance.declare(room.id, 'machine').reason, /phase 6/);
 });
 
-test('gaps: empty reads and refusals that name the phase, until the table exists', () => {
-  const { a, service } = smallWorld();
+test('gaps: one row per mark, open or resolved, landing as steps; a mark with gapped parts reads a derived gap', () => {
+  const { a, b, c, train, room, locked, service } = smallWorld();
+  const w = service.world;
   const k = kernel({ lib, world: service });
   assert.deepEqual(DIRECTIONS, ['to world', 'from world', 'to maker']);
   assert.equal(k.gaps.of(a.id), null);
   assert.deepEqual(k.gaps.opened(), []);
   assert.equal(k.gaps.oldest(), null);
   assert.deepEqual(k.gaps.progress(a.id), { open: 0, resolved: 0, of: 0 });
-  assert.match(k.gaps.open(a.id, 'to maker').reason, /phase 5/);
   assert.equal(k.gaps.open(a.id, 'sideways').ok, false);
-  assert.match(k.gaps.resolve(a.id).reason, /phase 5/);
+  assert.equal(k.gaps.open('nothing', 'to maker').ok, false);
+  assert.equal(k.gaps.resolve(a.id).ok, false); // nothing open
   assert.equal(service.saved, 0);
+  // Open: a row, a step; a second open on the same mark refuses (Law 5).
+  assert.ok(k.gaps.open(a.id, 'from world').ok && service.saved === 1);
+  assert.deepEqual({ ...k.gaps.of(a.id), openedAt: 0 }, { id: `gap:${a.id}`, mark: a.id, direction: 'from world', state: 'open', openedAt: 0 });
+  assert.ok(Object.isFrozen(k.gaps.of(a.id)));
+  assert.match(k.gaps.open(a.id, 'to maker').reason, /One open gap/);
+  assert.ok(k.gaps.open(b.id, 'to world').ok);
+  assert.deepEqual(k.gaps.opened().map((r) => r.mark), [a.id, b.id]);
+  assert.deepEqual(k.gaps.opened(room.id).map((r) => r.mark), [a.id, b.id]);
+  assert.deepEqual(k.gaps.opened(locked.id), []);
+  assert.equal(k.gaps.oldest().mark, a.id);
+  // The train holds a and b (part of): its gap is derived, open, with progress; it cannot be opened or resolved itself.
+  assert.deepEqual(k.gaps.progress(train.id), { open: 2, resolved: 0, of: 2 });
+  assert.equal(k.gaps.of(train.id).state, 'open');
+  assert.ok(k.gaps.of(train.id).derived);
+  assert.match(k.gaps.open(train.id, 'from world').reason, /derived/);
+  assert.match(k.gaps.resolve(train.id).reason, /2 of 2 parts/);
+  // c is above a by a relation (a → c): its gap is derived too.
+  assert.deepEqual(k.gaps.progress(c.id), { open: 1, resolved: 0, of: 1 });
+  // Resolve by a link that exists, or by judgement; by a link that does not refuses.
+  assert.equal(k.gaps.resolve(a.id, 'rel:nowhere').ok, false);
+  assert.ok(k.gaps.resolve(a.id, lib.links.relId('proust-links', a.id, c.id)).ok);
+  assert.equal(k.gaps.of(a.id).resolvedBy, lib.links.relId('proust-links', a.id, c.id));
+  assert.ok(k.gaps.resolve(b.id).ok && k.gaps.of(b.id).resolvedBy === 'judgement');
+  assert.deepEqual(k.gaps.progress(train.id), { open: 0, resolved: 2, of: 2 });
+  assert.equal(k.gaps.of(train.id).state, 'resolved');
+  assert.equal(k.gaps.of(c.id).state, 'resolved');
+  assert.deepEqual(k.gaps.opened(), []);
+  // Reopen keeps the direction; a locked room's marks refuse; the rows are in the moments table.
+  assert.ok(k.gaps.reopen(a.id).ok && k.gaps.of(a.id).state === 'open' && k.gaps.of(a.id).direction === 'from world');
+  assert.equal(k.gaps.reopen(a.id).ok, false);
+  const inVault = lib.model.create(w, locked.id, { kind: 'line', text: 'shut' }, 10000);
+  assert.ok(inVault == null || k.gaps.open(inVault.id, 'to maker').ok === false);
+  assert.ok(w.gaps[`gap:${a.id}`].state === 'open');
 });
-
 test('moments: the log read by mark, since a time and by day; a mark older than the log keeps its made and edited times', () => {
   const { w, room, a, service, log } = smallWorld();
   const k = kernel({ lib, world: service });
