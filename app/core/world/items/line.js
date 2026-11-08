@@ -9,11 +9,5 @@ export default {
     return text ? { text } : null;
   },
   text: (th) => th.text || '',
-  // In a .traum file (the roomfile feature): its words are the object's body (## ^id line, then the
-  // words). A title on the header (## ^id line: words) is read as its first line.
-  traum: {
-    read: ({ title, body }) => ({ kind: 'line', text: [title, body].filter(Boolean).join('\n') }),
-    write: (th) => ({ body: th.text }),
-  },
   node: (th, el) => el('span', { class: 'room-thought', 'data-id': th.id }, maths(th.text)),
 };

@@ -13,7 +13,7 @@ API offers the name over today's world (`world/model.js`), as a thin layer.
 
 | Table | Row | Notes |
 |---|---|---|
-| **marks** | `id`, `body { kind, content }`, `material?` | The only things that exist. `body.kind` is a plugin slot (text, passage, picture, maths); a room, a floor, a group, a tag, a note are marks of a kind too. `material` is a mark's own overrides of the look; the look itself stays in Folio. *(Today: a thought object; floors (`floor:<n>`) and the Archive (`archive`) are marks of kind `context`, a room is a context mark of kind room. The body/material shape lands with the file law, phase 6.)* |
+| **marks** | `id`, `body { kind, content }`, `material?` | The only things that exist. `body.kind` is a plugin slot (text, passage, picture, maths); a room, a floor, a group, a tag, a note are marks of a kind too. `material` is a mark's own overrides of the look; the look itself stays in Folio. *(Today: a thought object; floors (`floor:<n>`) and the Archive (`archive`) are marks of kind `context`, a room is a context mark of kind room. Phase 6: a carrier reads a thought as this row (`world/tables.js`): `content` the kind's own fields, `text` its words and `title` or `name` its name; a room's `rules` (each rule's settings, kept on the room since phase 6) and `mode` ride in its content, its tint, light, opacity and size are its material.)* |
 | **places** | `mark`, `context`, `rule`, `position`, `pinned?` | A context is any mark that holds marks: a room, a floor, the loose tray, the archive. One mark may have several rows, one per context or rule. **No row in a context means the mark is loose there.** *(Phase 3: `world/places.js`, `w.places`, served from an index by mark and by context. Every mark but a floor or the Archive has exactly one **home row** (`rule` none, id `place:<context>:<mark>`): an item's and a group's room, a room's floor, the Archive (position `{ at, floor }`: when, and the floor it goes back to) or, for a Twin's side, the Twin. Rows with a rule (id `place:<context>:<mark>:<rule>`) are where that rule puts the mark (phase 4: no rule keeps a position of its own): a room's cell `{ col, row }` under `borges`, a Twin's side `{ side }` under `twin`, a group's spot `{ x, y, hand? }` under its own rule (no row: it waits in that rule's tray), Pessoa's and Proust's `{ x, y, auto? }`, a train's thought dragged off its line `{ dx, dy }` under `joyce`, and `tray` for a thought waiting in the tray of the rules that lay every thought.)* |
 | **links** | `from`, `to`, `kind`, `order?`, `rule?`, `label?`, `note?` | `from` and `to` are marks. Kinds are a slot: *part of*, *stands for*, *relation*, and later *about*, *answers*, *resolves*. Groups, trains, folds and arrows are all rows here. *(Phase 2: `world/links.js`, `w.links`, served from an index by from, to and rule. A row's id says what it is: `part:<group>:<member>` with `order` a rank; `for:<fold>:<mark>`, the folded mark staying in the world but shown nowhere; `rel:<rule>:<child>:<parent>` pointing up like part-of, `label` the relation's name, `note` the arrow's words. No group keeps a list of members.)* |
 | **distance** | `context`, `reader` | Reader is one of *me now*, *me later*, *others*, *machine*. Declared per context, inherited by its marks. Lock sets it to others. *(Phase 6: `world/distance.js`, `w.distance`, one row per context under `dist:<context>`; no row is *me now*. A mark reads the farthest reader declared on its way up its home rows, so a floor declared for others reaches every room on it. A context for *others* or a *machine* is shut (`model.shut`): nothing in it can be written, moved or deleted. Moments: *declared*.)* |
@@ -47,7 +47,10 @@ tables and nothing else; a `.traum` file is the same tables written as text.
 7. **Distance is inherited and only lengthens by hand.** A mark's reader is its context's
    reader. Lock sets a context to others; nothing automatic sets it back.
 8. **The file is the tables.** A `.traum` file round-trips the six tables with no plugin loaded;
-   plugin data that cannot be expressed as rows is not saved.
+   plugin data that cannot be expressed as rows is not saved. *(Phase 6: `world/tables.js` reads
+   the six tables of a room, a group or the whole world and writes them back; `world/traum.js` is
+   the `.traum` carrier, format traum/3 (`app/plugins/roomfile/FORMAT.md`); the account carries
+   the same tables as the moments log's rows. `tests/traum.test.js` is the gate.)*
 
 Each law has a test that is the gate of the phase that lands it (`api.test.js` and the world's
 tests). Laws 2, 3 and 6 are what make the app trustworthy to finish things in: nothing a rule or a
@@ -78,7 +81,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
   returns `{ ok: false, reason }` with the reason in words. No propose writes directly.
 - **subscribe**: `on(fn)`, told after each change to that table.
 
-Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap (done) ·
-6 distance and carriers, v1 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen ·
+Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap · 6 distance and carriers, v1
+deleted (done) · 7 return · 8 stress corpus of thirty plugins, v2 frozen ·
 9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

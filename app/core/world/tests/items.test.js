@@ -64,13 +64,11 @@ test('a thought of a kind switched off is kept exactly, read, and shown as a sta
   setKinds([]);
 });
 
-test('a stand-in reads the words such kinds keep, and writes them under its own kind', () => {
+test('a stand-in reads the words such kinds keep', () => {
   const stand = kindFor('pdf-page');
   assert.equal(stand.name, 'Pdf page');
   const th = { id: 'x', kind: 'pdf-page', title: 'Chapter 2', body: 'Eigenvalues', src: 'data:…' };
   assert.equal(stand.text(th), 'Chapter 2 — Eigenvalues');
-  assert.deepEqual(stand.traum.write(th), { title: 'Chapter 2', body: 'Eigenvalues' });
-  assert.deepEqual(stand.traum.write({ kind: 'pdf-page', text: 'A caption', src: 'data:x' }), { title: 'A caption', body: 'data:x' });
   assert.equal(kindFor('pdf-page'), stand); // one stand-in per kind
   assert.equal(kindFor('line'), ITEMS.line);
 });

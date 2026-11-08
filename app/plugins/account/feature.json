@@ -6,6 +6,9 @@
   "styles": [
     "style.css"
   ],
+  "uses": [
+    "api"
+  ],
   "plugin": {
     "api": 2,
     "minApp": "1.0.0",

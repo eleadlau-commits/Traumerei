@@ -279,41 +279,9 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
     L.set(w, L.relId(store, child, parent), { from: child, to: parent, kind: 'relation', rule: store, label: relations(w, roomId)[0] });
   }
 
-  // In a .traum file (the roomfile feature): the arrow: lines of any ontology that uses these
-  // arrows, `arrow: ^from -> ^to | relation | label`. c: the roomfile feature's helpers
-  // (ref, writeArrow; thing, report). traumLines gives the lines; traumArrows draws the arrows read
-  // ([{ from, to, rel, label, line }], from and to as ids), through this ontology's own rules, and
-  // reports each it refuses.
-  const traumLines = (w, roomId, c) => arrows(w, roomId).filter((a) => c.ref(a.from) && c.ref(a.to))
-    .map((a) => `arrow: ${c.writeArrow({ from: c.ref(a.from), to: c.ref(a.to), rel: a.rel, label: a.label })}`);
-  // When editing (c.scope: the ids the text holds), the arrows touching those are made to read as
-  // the list does: one not in it is taken away, a changed relation or label is changed, and each
-  // change is said (c.change(words), with c.name(id) for a node's name).
-  function traumArrows(w, roomId, list, c) {
-    let fresh = list;
-    if (c.scope) {
-      const want = new Map(list.map((a) => [`${a.from}>${a.to}`, a]));
-      const name = (id) => c.name?.(id) || id;
-      for (const a of arrows(w, roomId)) {
-        if (!c.scope.has(a.from) && !c.scope.has(a.to)) continue;
-        const x = want.get(`${a.from}>${a.to}`);
-        if (!x) { unlink(w, roomId, a.from, a.to); c.change?.(`The ${noun} from ${name(a.from)} to ${name(a.to)} is taken away`); continue; }
-        want.delete(`${a.from}>${a.to}`);
-        if ((x.rel ?? '') !== a.rel && setRelation(w, roomId, a.from, a.to, x.rel ?? '')) c.change?.(`${name(a.from)} → ${name(a.to)}: ${a.rel || 'no relation'} becomes ${x.rel || 'no relation'}`);
-        if (tidy(x.label) !== a.label && setLabel(w, roomId, a.from, a.to, x.label || '')) c.change?.(`${name(a.from)} → ${name(a.to)}: label ${a.label ? `"${a.label}"` : 'none'} becomes ${tidy(x.label) ? `"${tidy(x.label)}"` : 'none'}`);
-      }
-      fresh = [...want.values()];
-    }
-    for (const a of fresh) {
-      const why = link(w, roomId, a.from, a.to, a.label || '', a.rel ?? '');
-      if (why) c.report(a.line, `the ${noun} wasn't drawn: ${why[0].toLowerCase()}${why.slice(1).replace(/\.$/, '')}.`);
-      else if (c.scope) c.change?.(`A new ${noun} from ${c.name?.(a.from) || a.from} to ${c.name?.(a.to) || a.to}`);
-    }
-  }
-
   const net = {
     store, relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
-    link, unlink, setLabel, setRelation, adopt, traumLines, traumArrows,
+    link, unlink, setLabel, setRelation, adopt,
   };
   NETS.set(store, net);
   return net;

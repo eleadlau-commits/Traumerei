@@ -9,6 +9,7 @@
 import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
+import * as traum from './traum.js';
 import { loadWorld } from './model.js';
 import { gather, forRooms, forPage, FALLBACK } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
@@ -39,13 +40,18 @@ export default class World extends Feature {
       .watch(() => this.emit('world:modes'));
     // More kinds of item, from plugins: ITEMS follows the slot, and 'world:kinds' says it changed
     // (a thought of a kind switched off shows as a stand-in and is kept as it is).
-    const kinds = this.defineSlot('world.items', 'A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el), traum? } (see world/items/index.js).');
+    const kinds = this.defineSlot('world.items', 'A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el) } (see world/items/index.js).');
     kinds.watch((slot) => {
       setKinds(slot.items, (k, why) => console.warn(`World: the item kind "${k?.kind}" was skipped: ${why}`));
       this.emit('world:kinds');
     });
     // File formats, from plugins (Room files' .traum): one thing to ask (formats.js).
     const formats = formatsOf(this.defineSlot('world.formats', 'A file format: { id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id), canEdit?(), editRoom?(roomId, o), editGroup?(roomId, groupId, o), cancel?() } (see world/formats.js).'));
+
+    // Carriers: what moves the six tables somewhere else and back (Law 8). The .traum file is the
+    // world's own; a plugin adds one here (the account's sync) to be listed with it.
+    const carriers = this.defineSlot('world.carriers', 'A carrier of the six tables: { id, name, moves: "text" | "moments" } (see world/README.md).');
+    const TRAUM = Object.freeze({ id: 'traum', name: '.traum file', moves: 'text' });
 
     // KaTeX loads the first time some words hold mathematics (maths.js): then rooms draw again.
     whenMathsLoads(() => this.emit('world:maths'));
@@ -76,6 +82,25 @@ export default class World extends Feature {
       get attention() { return w.visits(); },
       visit: (roomId) => w.visit(roomId),
       moments: this.momentsService(),
+      carriers: Object.freeze({
+        list: () => [TRAUM, ...carriers.items.filter((c) => c && typeof c.id === 'string')],
+        // The six tables of a room, a group with its parts, or (null) the whole world, with each
+        // mark's history from the log (tables.js).
+        tables: (root = null) => lib.model.tablesOf(w.world, root, { log: w.log }),
+        // …as .traum text (ids: 'short' to take out, 'real' to edit in place), and text read back:
+        // { tables, root, report }, or null when it is not traum/3 (traum.js).
+        write: (root = null, { ids = 'short' } = {}) => traum.write(lib.model.tablesOf(w.world, root, { log: w.log }), { root, ids }),
+        read: (text) => traum.read(text),
+        // A file read lands as new marks (a new room on floor `page`, or poured `into` a room); its
+        // history lands as told moments. The caller saves (one step). { id, ids } or { why }.
+        land: (got, o = {}) => {
+          const out = lib.model.landTables(w.world, got.tables, got.root, o);
+          if (out.told?.length) M.tell(w.log, out.told);
+          return out;
+        },
+        // Edited text (real ids) written over the room or group it was taken from. The caller saves.
+        replace: (root, got) => lib.model.replaceTables(w.world, root, got.tables, got.root),
+      }),
     });
   }
 

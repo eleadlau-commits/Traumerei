@@ -1,50 +1,27 @@
-// The format guide can't fall behind the code: FORMAT.md has a section for every kind of object
-// and every ontology there is, and every example file in it reads with nothing reported.
+// The format guide can't fall behind the code: every example file in FORMAT.md (a fenced block
+// whose front matter says traum/3) reads with nothing reported and lands in an empty world with
+// no plugin loaded, and writing what landed reads back as the same tables (Law 8).
 // Run with `node app/plugins/roomfile/tests/guide.mjs` (every pull request runs it: check.yml).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as lib from '../../../core/world/lib.js';
-import { bind } from '../world.js';
-import { ITEMS, setKinds } from '../../../core/world/items/index.js';
-import { picture } from '../../picture/item.js';
-import { gather } from '../../../core/world/ontologies/index.js';
-import { emptyWorld } from '../../../core/world/model.js';
-import { parse } from '../grammar.js';
-import { importRoom, exportRoom } from '../traum.js';
-import { bind as bindProust } from '../../proust/world.js';
-import { surface } from '../../../core/api/v1.js';
-import { proust } from '../../proust/rules.js';
-import russell from '../../russell/rules.js';
-import { bind as bindRussell } from '../../russell/world.js';
+import * as model from '../../../core/world/model.js';
+import * as X from '../../../core/world/traum.js';
 
-bind(surface(lib)); // roomfile is a plugin too
-bindProust(surface(lib)); // Proust is a plugin: it gets the world's rules through the plugin API
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
-bindRussell(surface(lib)); // Russell too
-setKinds([picture({ maths: lib.maths.maths, shrinkPicture: async () => '' })]); // and Pictures' kind
-const ontologies = gather([proust, russell]);
-const wrong = [];
-
-for (const kind of [...Object.keys(ITEMS), 'group', 'relation']) {
-  if (!guide.includes(`\n### Kind: ${kind}\n`)) wrong.push(`FORMAT.md has no "### Kind: ${kind}" section.`);
-}
-for (const o of ontologies) {
-  if (!guide.includes(`\n### Ontology: ${o.id}\n`)) wrong.push(`FORMAT.md has no "### Ontology: ${o.id}" section.`);
-  if (!o.traum) wrong.push(`The ontology ${o.id} has no traum member, so it can't write its # In ${o.id} section.`);
-}
-for (const kind of Object.keys(ITEMS)) if (!ITEMS[kind].traum) wrong.push(`The item kind ${kind} has no traum member.`);
-
-// Every fenced example that is a whole file reads with nothing reported (the picture data is cut short
-// in the guide, so a picture there reads as one that couldn't be fetched, which is said, not wrong).
-const examples = [...guide.matchAll(/```\n([\s\S]*?)```/g)].map((m) => m[1]).filter((t) => /^# Objects$/m.test(t));
-for (const text of examples) {
-  const w = emptyWorld(1);
-  const { room, report } = importRoom(w, parse(text), { ontologies, now: 10 });
-  const real = report.filter((r) => !/couldn't be fetched/.test(r));
-  if (!room || real.length) wrong.push(`An example in FORMAT.md doesn't read cleanly:\n  ${real.join('\n  ')}\n${text.split('\n').slice(0, 6).join('\n')}`);
-  else if (!exportRoom(w, room.id, { ontologies })) wrong.push('An example in FORMAT.md exports to nothing.');
-}
-
-if (wrong.length) { console.error(wrong.join('\n')); process.exit(1); }
-console.log(`FORMAT.md covers ${Object.keys(ITEMS).length + 2} kinds and ${ontologies.length} ontologies; ${examples.length} examples read cleanly.`);
+const blocks = [...guide.matchAll(/```traum\n([\s\S]*?)```/g)].map((m) => m[1]);
+let bad = 0;
+if (blocks.length < 3) { console.error(`FORMAT.md has ${blocks.length} example files; it should show at least 3`); bad++; }
+blocks.forEach((text, i) => {
+  const got = X.read(text);
+  if (!got) { console.error(`Example ${i + 1} is not read as traum/3`); bad++; return; }
+  if (got.report.length && !text.includes('# Wishes')) { console.error(`Example ${i + 1} reports:\n  ${got.report.join('\n  ')}`); bad++; } // (one example shows what is reported)
+  const w = model.emptyWorld(1000);
+  const out = model.landTables(w, got.tables, got.root, { now: 2000 });
+  if (out.why) { console.error(`Example ${i + 1} does not land: ${out.why}`); bad++; return; }
+  const again = X.read(X.write(model.tablesOf(w, out.id), { root: out.id }));
+  const same = ['marks', 'links', 'distance', 'gaps'].every((t) => again.tables[t].length === got.tables[t].length) && again.tables.places.length >= got.tables.places.length; // (a mark with no home is given one)
+  if (!same) { console.error(`Example ${i + 1} does not come back as the same rows`); bad++; }
+});
+if (bad) process.exit(1);
+console.log(`FORMAT.md: ${blocks.length} example files read, land and come back with no plugin loaded.`);

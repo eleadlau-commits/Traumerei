@@ -44,7 +44,10 @@ export default class Account extends Feature {
     this.synced = false; // true once this device and the account agree, so changes can go up
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
-    this.moments = this.use('traumerei')?.connect(this).moments || null; // the moments table: the world travels as its rows
+    const t = this.use('traumerei')?.connect(this);
+    this.moments = t?.moments || null; // the moments table: the world travels as its rows
+    // The account is a carrier of the six tables (Law 8): every change, as the moments log's rows.
+    t?.slots.carriers.add({ id: 'account', name: 'Your account', moves: 'moments' });
     if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
     this.listenTo(window, 'pagehide', () => this.flush());

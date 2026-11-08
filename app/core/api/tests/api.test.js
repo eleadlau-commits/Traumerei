@@ -11,15 +11,16 @@ import { API_VERSION as V1_VERSION } from '../v1.js';
 // Version 2, as API.md lists it: the six tables, the slots and ui, over every v1 name. Changing
 // the API means changing this and API.md together.
 const V2 = {
-  top: ['app', 'arrows', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'rules', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
+  top: ['app', 'arrows', 'carriers', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'rules', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
   links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
+  carriers: ['check', 'land', 'list', 'read', 'replace', 'tables', 'text'],
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
-  slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
+  slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
   ui: ['chosen', 'toast'],
 };
 // Version 1's names, still offered beneath v2 until kernel phase 6.

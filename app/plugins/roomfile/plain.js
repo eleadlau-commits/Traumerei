@@ -1,8 +1,9 @@
-// A plain Markdown (or text) file, brought in as loose thoughts: the same parts a .traum file reads
-// into (grammar.js), with objects only. No screen here (tests/plain.test.js).
+// A plain Markdown (or text) file, brought in as loose thoughts: the six tables a .traum file reads
+// into (the world's carriers), a room of marks with no rule placing them. No screen here
+// (tests/plain.test.js).
 //
 //   - a list item              a line thought each (indented lines under it stay in it)
-//   # A heading                a passage: the heading is its title, the paragraph under it its body
+//   # A heading                a passage: the heading is its title, the paragraph under it its words
 //   A paragraph                a line when it is one line, else a passage with no title
 //   ![caption](address)        a picture
 //
@@ -14,8 +15,9 @@ const ITEM = /^\s{0,3}[-*+]\s+(.*)$/;
 const PICTURE = /^!\[(.*)\]\((\S+)\)\s*$/;
 const dollars = (s) => (s.match(/\$\$/g) || []).length;
 
-// The file's text as parts: { front: [], objects, sections: [], report }.
-export function plain(text) {
+// The file's text as { tables, root, report }, as the carriers read a .traum file: root is the room
+// (named `name`) and every thought sits in it, loose.
+export function plain(text, name = 'Untitled', now = Date.now()) {
   let lines = String(text ?? '').replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
   const report = [];
   if (lines[0]?.trim() === '---') {
@@ -53,5 +55,13 @@ export function plain(text) {
     if (b.lines.length === 1) add('line', null, first, b.line);
     else add('passage', '', b.lines.join('\n'), b.line);
   }
-  return { front: [], objects, sections: [], report };
+  const marks = [{ id: 'room', body: { kind: 'room', content: { name } }, at: now }];
+  const places = [];
+  objects.forEach((o, i) => {
+    const words = o.lines.join('\n');
+    const content = o.kind === 'picture' ? { src: words, text: o.title || '' } : o.kind === 'passage' ? { title: o.title || '', text: words } : { text: words };
+    marks.push({ id: o.id, body: { kind: o.kind, content }, at: now + i });
+    places.push({ mark: o.id, context: 'room' });
+  });
+  return { tables: { marks, places, links: [], distance: [], gaps: [], moments: [] }, root: 'room', report };
 }

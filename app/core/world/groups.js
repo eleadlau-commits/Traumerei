@@ -136,7 +136,7 @@ export const kindTag = (th, names = {}) => (isGroup(th) ? names[th.of] || 'Group
 // ---- Fold: many thoughts become one ----
 
 // The words of one thought, for a fold.
-const wordsOf = (th) => (kindOf(th) === 'passage' ? [th.title, th.body].filter(Boolean).join('\n') : th.text || '');
+const wordsOf = (th) => (kindOf(th) === 'passage' ? [th.title, th.text].filter(Boolean).join('\n') : th.text || '');
 
 // What folding `ids` would take: { leaves, gone, groups } (leaves: the thoughts whose words are
 // folded, in order; gone: every thought that goes; groups: the chosen groups, which stay and hold
@@ -177,7 +177,7 @@ export function fold(w, roomId, ids, now = Date.now()) {
   const lines = leaves.every((th) => kindOf(th) === 'line');
   const title = groups.find((g) => g.title)?.title || leaves.find((th) => kindOf(th) === 'passage' && th.title)?.title || '';
   const fields = lines ? { kind: 'line', text: leaves.map(wordsOf).join('\n') }
-    : { kind: 'passage', title, body: leaves.filter((th) => !(title && th.title === title && !th.body)).map((th) => (th.title === title ? th.body || '' : wordsOf(th))).filter(Boolean).join('\n\n') };
+    : { kind: 'passage', title, text: leaves.filter((th) => !(title && th.title === title && !th.text)).map((th) => (th.title === title ? th.text || '' : wordsOf(th))).filter(Boolean).join('\n\n') };
   const th = create(w, roomId, fields, Math.min(...leaves.map((x) => x.at ?? now)));
   if (!th) return { why: 'Nothing here to fold.' };
   const old = new Set(gone.map((x) => x.id));

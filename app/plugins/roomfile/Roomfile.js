@@ -1,36 +1,51 @@
-// Room files: a room in and out as one .traum file (traum.js; FORMAT.md is the spec). A file comes
-// in as a new room or into a room; before anything changes, a quiet card says what will arrive and
-// what couldn't be read, and Import brings it all in as one step. A room goes out as a download.
-// It is a file format (the plugin API's formats place): the rooms page and the room ask for it
-// through the world's formats, and say where: which cell and floor, which room, where in it.
-// It reaches the world through the plugin API.
+// Room files: a room in and out as one .traum file, and edited as one. The file is the six tables
+// as text (Law 8): the world's own carrier reads and writes it (t.carriers; FORMAT.md is the spec),
+// so this plugin only says where, shows the card and downloads. A file comes in as a new room or
+// into a room; before anything changes, a quiet card says what will arrive and what couldn't be
+// read, and Import lands it all as one step. A plain Markdown file comes in as loose thoughts.
 
 import { Feature, ui } from 'folio';
-import { bind, room, shut, keepOrShrink, groupLabel, isGroup } from './world.js';
-import * as edit from './edit.js';
-import * as traum from './traum.js';
-import { parse as parseTraum } from './grammar.js';
 import { plain } from './plain.js';
 
 const { el } = ui;
 const FILE = /\.(traum|md|markdown|txt)$/i;
 const isRoomFile = (f) => !!f && (FILE.test(f.name || '') || /markdown|text\/plain/.test(f.type || ''));
-// A .traum file, or text written in its shape (front matter with format:, or a # Objects line);
-// anything else is plain Markdown, brought in as loose thoughts.
-const isTraum = (name, text) => /\.traum$/i.test(name || '') || /^---\s*\n(?:.*\n)*?format:\s/.test(text) || /^#\s+Objects\s*$/m.test(text);
-const say = traum.say;
 const REPORT = 8; // lines of the report the card shows
-const count = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+export const fileName = (name) => `${String(name || 'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Untitled'}.traum`;
+
+// What a read file holds, in words: "2 groups, 12 thoughts, 1 picture" (the root left out).
+export function summary(got) {
+  const n = { groups: 0, thoughts: 0, pictures: 0, rooms: 0 };
+  for (const m of got.tables.marks) {
+    if (m.id === got.root) continue;
+    const k = m.body?.kind;
+    if (k === 'group') n.groups++; else if (k === 'room') n.rooms++; else if (k !== 'context') { n.thoughts++; if (k === 'picture') n.pictures++; }
+  }
+  n.text = [n.rooms && plural(n.rooms, 'room'), plural(n.groups, 'group'), plural(n.thoughts, 'thought'), n.pictures && plural(n.pictures, 'picture')].filter(Boolean).join(', ');
+  return n;
+}
+
+// Pictures in an edited text show as picture:N, so a line is not a page of letters; full() puts
+// them back. One table per editing session.
+function shortPictures() {
+  const full = new Map(), short = new Map();
+  return {
+    short: (text) => text.replace(/^(src|content\.src): (data:\S+)$/gm, (all, k, data) => {
+      if (!short.has(data)) { const id = `picture:${short.size + 1}`; short.set(data, id); full.set(id, data); }
+      return `${k}: ${short.get(data)}`;
+    }),
+    full: (text) => text.replace(/^(src|content\.src): (picture:\d+)$/gm, (all, k, id) => `${k}: ${full.get(id) ?? id}`),
+  };
+}
 
 export default class Roomfile extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Room files needs the plugin API');
     this.t = t;
-    bind(t);
     this.source = this.use('source'); // the source editor (the source plugin), for editing as text, or null
-    // Room files as a file format (world/formats.js says its shape).
-    t.formats.add({
+    t.slots.formats.add({
       id: 'traum',
       name: 'Room file (.traum)',
       accepts: isRoomFile,
@@ -38,8 +53,8 @@ export default class Roomfile extends Feature {
       importInto: (roomId, o) => this.importInto(roomId, o),
       exportRoom: (id) => this.exportRoom(id),
       canEdit: () => !!this.source,
-      editGroup: (roomId, groupId, o) => this.edit(roomId, { scope: 'group', groupId, ...o }),
-      editRoom: (roomId, o) => this.edit(roomId, { scope: 'room', ...o }),
+      editGroup: (roomId, groupId, o) => this.edit(groupId, o),
+      editRoom: (roomId, o) => this.edit(roomId, o),
       cancel: () => this.card?.close(),
     });
   }
@@ -52,153 +67,122 @@ export default class Roomfile extends Feature {
     return this.picker.pick();
   }
 
-  // The file read into parts (grammar.js; a plain Markdown file as loose thoughts, plain.js), its
-  // pictures fetched and shrunk as pasted ones are. Returns the parts, or null.
+  // The file read as the six tables ({ tables, root, report }): a traum/3 file by the carrier,
+  // anything else as plain Markdown. Pictures at an https address are fetched and shrunk as pasted
+  // ones are; one that can't be keeps its address and says so. Null when it can't be read.
   async read(file) {
     let text;
     try { text = await file.text(); } catch { this.toast('That file couldn\'t be read.'); return null; }
-    return this.fetchObjectPictures(isTraum(file.name, text) ? parseTraum(text) : plain(text));
-  }
-
-  // The parts' pictures at an address (or as data) fetched and shrunk; one that can't be fetched
-  // keeps its address, and comes in as a line saying so.
-  async fetchObjectPictures(parts) {
-    const pics = parts.objects.filter((o) => o.kind === 'picture' && o.lines.join('').trim() && !/^picture:\d+$/.test(o.lines.join('').trim()));
-    if (pics.some((o) => /^https?:/i.test(o.lines.join('').trim()))) this.toast('Fetching pictures…');
-    for (const o of pics) {
-      const at = o.lines.join('').trim();
+    const name = file.name.replace(FILE, '') || 'Untitled';
+    if (/^\s*---\s*\n(?:.*\n)*?format:\s*room\/2/.test(text)) { this.toast('That room file is of an older format (room/2), which is no longer read.'); return null; }
+    const got = this.t.carriers.read(text);
+    const out = got ? JSON.parse(JSON.stringify(got)) : plain(text, name);
+    for (const m of out.tables.marks) {
+      const src = m.body?.kind === 'picture' ? m.body.content?.src : null;
+      if (typeof src !== 'string' || !/^https?:\/\//i.test(src)) continue;
       try {
-        let blob;
-        if (at.startsWith('data:')) blob = await (await fetch(at)).blob();
-        else if (/^https?:\/\//i.test(at)) {
-          const res = await fetch(at);
-          if (!res.ok) throw new Error(res.status);
-          blob = await res.blob();
-        } else throw new Error('no address');
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(res.status);
+        const blob = await res.blob();
         if (!blob.type.startsWith('image/')) throw new Error('not a picture');
-        o.lines = [await keepOrShrink(blob, at.startsWith('data:') ? at : undefined)];
-      } catch { /* left as it is: traum.js makes it a line that says so */ }
+        m.body.content.src = await this.t.pictures.keepOrShrink(blob);
+      } catch { out.report.push(`The picture at ${src} couldn't be fetched, so it came in as its address.`); m.body = { kind: 'line', content: { text: src } }; }
     }
-    return parts;
+    return out;
   }
 
-  // A new room from a file (picked, if none is given) on floor `page`, placed by the floors feature:
-  // in `cell` if it is free, else that floor's first free one, else a new floor (its `page` says
-  // which). ok(): whether it is still wanted (asked before the card shows and on Import). Resolves
-  // with the new room once it is in the world (the caller saves), or null.
+  // A new room from a file (picked, if none is given) on floor `page`, in `cell` if it is free
+  // (else that floor's first free one, else a new floor). ok(): whether it is still wanted. One
+  // step; resolves with the new room's id, or null.
   async importRoom({ file = null, cell = null, page = 0, ok = () => true } = {}) {
     file ||= await this.pick();
     if (!file) return null;
-    const parts = await this.read(file);
-    if (!parts || !ok()) return null;
-    const opts = () => ({
-      ontologies: this.t.modes.all, now: Date.now(), page,
-      globals: this.t.modes.settings, name: file.name.replace(FILE, '') || 'Untitled',
-    });
-    const dry = traum.importRoom(edit.copyWorld(this.t.world), parts, opts());
-    if (!await this.ask('Import a room', dry.room?.name || 'A new room', dry) || !ok()) return null;
-    const out = traum.importRoom(this.t.world, parts, opts());
-    if (!out.room) { this.toast('A room couldn\'t be made.'); return null; }
-    this.t.floors.place(out.room.id, cell);
-    return out.room;
+    const got = await this.read(file);
+    if (!got || !ok()) return null;
+    const name = got.tables.marks.find((m) => m.id === got.root)?.body?.content?.name || 'A new room';
+    if (!await this.ask('Import a room', name, got) || !ok()) return null;
+    const out = this.t.carriers.land(got, { page, cell });
+    if (!out.ok) { this.toast(out.reason); return null; }
+    return this.t.marks.get(out.id);
   }
 
-  // A file's objects and placement into a room, as new thoughts and groups (its front matter is
-  // for new rooms only). at(): where new trains start; ok(): whether it is still wanted; before():
-  // called just before the world changes. Resolves true once they are in the world (the caller
-  // saves).
-  async importInto(roomId, { file = null, at = () => null, ok = () => true, before = () => {} } = {}) {
-    if (shut(this.t.world, roomId)) { this.toast('This room is locked.'); return false; }
+  // A file's marks into a room, as new ones (the file's own room gives only what is in it).
+  // before(): called just before the world changes. One step; resolves true once landed.
+  async importInto(roomId, { file = null, ok = () => true, before = () => {} } = {}) {
+    if (this.t.distance.shut(roomId)) { this.toast('This room is locked.'); return false; }
     file ||= await this.pick();
     if (!file) return false;
-    const parts = await this.read(file);
-    if (!parts || !ok()) return false;
-    const opts = () => ({ ontologies: this.t.modes.all, now: Date.now(), at: at() });
-    const dry = traum.importInto(edit.copyWorld(this.t.world), roomId, parts, opts());
-    const name = room(this.t.world, roomId)?.name || '';
-    if (!await this.ask('Import into this room', name, dry) || !ok() || shut(this.t.world, roomId)) return false;
+    const got = await this.read(file);
+    if (!got || !ok()) return false;
+    if (!await this.ask('Import into this room', this.t.marks.get(roomId)?.name || '', got) || !ok()) return false;
     before();
-    traum.importInto(this.t.world, roomId, parts, opts());
+    const out = this.t.carriers.land(got, { into: roomId });
+    if (!out.ok) { this.toast(out.reason); return false; }
     return true;
   }
 
-  // ---- Editing as .traum text, in the source editor ----
-
-  // A group (scope 'group', groupId) or the whole room (scope 'room') as .traum text in the source
-  // editor (edit.js), with what Apply would do checked as it is typed. A locked room shows it read
-  // only. before(): called just before the world changes; ok(): whether it is still wanted.
-  // Resolves true once Apply has changed the world (the caller saves, as one step).
-  async edit(roomId, { scope, groupId = null, before = () => {}, ok = () => true }) {
-    const w = () => this.t.world;
-    if (!this.source) return false;
-    if (!room(w(), roomId) || (scope === 'group' && !isGroup(w().things[groupId]))) return false;
-    const pictures = edit.shortPictures();
-    const ontologies = () => this.t.modes.all;
-    let session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures });
-    const title = scope === 'group' ? groupLabel(w(), groupId) || 'Untitled' : room(w(), roomId).name;
-    const readOnly = shut(w(), roomId);
-    const opts = (chosen = {}) => ({ ontologies: ontologies(), pictures, removeMissing: !!chosen.remove });
-    const check = (text, chosen = {}) => {
-      const parts = parseTraum(text);
-      const n = traum.summary(parts);
-      const r = edit.apply(edit.copyWorld(w()), roomId, session, parts, opts(chosen));
-      const c = r.counts;
-      const doing = !readOnly ? [c.kept && `${c.kept} kept`, c.changed && `${c.changed} changed`, c.made && `${c.made} new`, c.deleted && `${c.deleted} deleted`].filter(Boolean).join(', ') : '';
-      const report = [...r.report, ...edit.badMaths(parts).map((b) => `Line ${b.line}: KaTeX can't draw ${b.tex.length > 50 ? b.tex.slice(0, 47) + '…' : b.tex}`)];
-      return {
-        summary: [say(n), doing].filter(Boolean).join(' · '), changes: readOnly ? [] : r.changes, report,
-        options: scope === 'room' ? [{ key: 'remove', label: 'Delete what isn\'t in the text', show: !!r.missing.length }] : [],
-        blocked: r.blocked,
-      };
+  // A room, or a group with its parts, as .traum text in the source editor (the world's own ids,
+  // so Apply writes it back over what it was: the carrier's replace). What Apply would do is
+  // checked as it is typed. A locked room shows it read only. One step.
+  async edit(id, { before = () => {}, ok = () => true } = {}) {
+    if (!this.source || !this.t.marks.get(id)) return false;
+    const pictures = shortPictures();
+    const mark = this.t.marks.get(id);
+    const title = mark.kind === 'room' ? mark.name : mark.title || 'A group';
+    const text = () => pictures.short(this.t.carriers.text(id, { ids: 'real' }));
+    const readOnly = this.t.distance.shut(id);
+    const check = (typed) => {
+      const got = this.t.carriers.read(pictures.full(typed));
+      if (!got) return { summary: 'Not a traum/3 text', changes: [], report: ['The front matter must say format: traum/3.'], blocked: true };
+      const n = this.t.carriers.check(id, got);
+      const doing = n.ok ? [n.kept && `${n.kept} kept`, n.changed && `${n.changed} changed`, n.made && `${n.made} new`, n.deleted && `${n.deleted} deleted`].filter(Boolean).join(', ') : '';
+      return { summary: [summary(got).text, readOnly ? '' : doing].filter(Boolean).join(' · '), changes: [], report: [...got.report, ...(n.ok ? [] : [n.reason])], blocked: !n.ok };
     };
-    const applyText = async (text, chosen = {}) => {
-      const parts = await this.fetchObjectPictures(parseTraum(text));
-      if (!ok() || shut(w(), roomId)) return false;
-      const dry = edit.apply(edit.copyWorld(w()), roomId, session, parts, opts(chosen));
-      if (dry.blocked) { this.toast(dry.report.at(-1) || 'That couldn\'t be applied.'); return false; }
+    const apply = async (typed) => {
+      const got = this.t.carriers.read(pictures.full(typed));
+      if (!got || !ok() || this.t.distance.shut(id)) return false;
+      const n = this.t.carriers.check(id, got);
+      if (!n.ok) { this.toast(n.reason); return false; }
       before();
-      edit.apply(w(), roomId, session, parts, opts(chosen));
-      return true;
+      const out = this.t.carriers.replace(id, got);
+      if (!out.ok) this.toast(out.reason);
+      return out.ok;
     };
-    const reset = () => { session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures }); return session.text; };
     return this.source.open({
-      kind: scope === 'group' ? 'Source' : 'Source · whole room', title, text: session.text, readOnly,
-      fileName: traum.fileName(title), full: (t) => pictures.full(t), reset,
-      options: scope === 'room' ? [{ key: 'remove', label: 'Delete what isn\'t in the text', value: false }] : [],
-      check, apply: readOnly ? null : applyText,
-      draft: scope === 'group' ? `traum-group:${groupId}` : `traum-room:${roomId}`, // changes closed unapplied come back next time
+      kind: mark.kind === 'room' ? 'Source · whole room' : 'Source', title, text: text(), readOnly,
+      fileName: fileName(title), full: (t) => pictures.full(t), reset: text, options: [],
+      check, apply: readOnly ? null : apply,
+      draft: `traum:${id}`, // changes closed unapplied come back next time
     });
   }
 
-  // The quiet card: what will arrive ("12 groups, 85 thoughts, 2 pictures") and what couldn't be
-  // read, with Import (Enter) and Cancel (Escape); or, given buttons ([[value, label], …]), a choice
-  // between them (the first is Enter's). Resolves true for Import, the button's value, or null.
-  ask(kind, title, { made = null, report = [], sum = null, buttons = null }) {
+  // The quiet card: what will arrive ("2 groups, 12 thoughts") and what couldn't be read, with
+  // Import (Enter) and Cancel (Escape). Resolves true for Import, or null.
+  ask(kind, title, got) {
     this.card?.close();
+    const n = summary(got), report = got.report || [];
     return new Promise((resolve) => {
       const box = el('div', { class: 'panel sheet roomfile-card', role: 'dialog', 'aria-label': 'Import', onpointerdown: (e) => e.stopPropagation() });
       const close = (yes = null) => { box.remove(); if (this.card === card) this.card = null; resolve(yes); };
       const card = { close: () => close(null) };
       this.card = card;
-      const shown = report.slice(0, REPORT);
-      const any = buttons || made.groups || made.thoughts;
-      const choices = buttons || (any ? [[true, 'Import']] : []);
+      const any = n.groups || n.thoughts || n.rooms;
       box.append(...[
         el('div', { class: 'label' }, kind),
         el('div', { class: 'roomfile-title' }, title),
-        el('div', { class: 'roomfile-sum' }, sum || (any ? say(made) : 'Nothing to bring in')),
+        el('div', { class: 'roomfile-sum' }, any ? n.text : 'Nothing to bring in'),
         report.length ? el('ul', { class: 'roomfile-report', 'aria-label': 'What couldn\'t be read' },
-          ...shown.map((r) => el('li', {}, r)),
+          ...report.slice(0, REPORT).map((r) => el('li', {}, r)),
           report.length > REPORT ? el('li', {}, `and ${report.length - REPORT} more`) : null) : null,
         el('div', { class: 'sheet-words' },
-          ...choices.map(([value, label], k) => el('button', { type: 'button', class: 'word' + (k ? '' : ' roomfile-go'), onclick: () => close(value) }, label)),
+          any ? el('button', { type: 'button', class: 'word roomfile-go', onclick: () => close(true) }, 'Import') : null,
           el('button', { type: 'button', class: 'word', onclick: () => close() }, 'Cancel'),
-          el('span', { class: 'sheet-keys' }, choices.length ? `Enter ${buttons ? 'replaces' : 'imports'} · Escape cancels` : 'Escape cancels')),
+          el('span', { class: 'sheet-keys' }, any ? 'Enter imports · Escape cancels' : 'Escape cancels')),
       ].filter(Boolean));
       box.onkeydown = (e) => {
         e.stopPropagation();
         if (e.key === 'Escape') { e.preventDefault(); close(); }
-        if (e.key === 'Enter' && !e.target.matches('button') && choices.length) { e.preventDefault(); close(choices[0][0]); }
+        if (e.key === 'Enter' && !e.target.matches('button') && any) { e.preventDefault(); close(true); }
       };
       (document.getElementById('folio-root') || document.body).append(box);
       (box.querySelector('.roomfile-go') || box.querySelector('button'))?.focus({ preventScroll: true });
@@ -207,11 +191,10 @@ export default class Roomfile extends Feature {
 
   // Downloads a room as <its name>.traum (a locked room too).
   exportRoom(id) {
-    const r = room(this.t.world, id);
+    const r = this.t.marks.get(id);
     if (!r) return;
-    const text = traum.exportRoom(this.t.world, id, { ontologies: this.t.modes.all });
-    const name = traum.fileName(r.name);
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const name = fileName(r.name);
+    const url = URL.createObjectURL(new Blob([this.t.carriers.text(id)], { type: 'text/plain;charset=utf-8' }));
     const a = el('a', { href: url, download: name, hidden: true });
     document.body.append(a);
     a.click();

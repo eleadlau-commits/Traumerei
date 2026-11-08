@@ -89,13 +89,6 @@
 //   shift(w, room, id, dx, dy)   (optional) moves a block by dx, dy; without it, drop() to point + d
 //   measured(sizes)       (optional) each thought's size as drawn (Map id → { w, h }, world units),
 //                         after each drawing; return true to be drawn again (Joyce: steps fit text)
-//   traum                 (optional) { write(w, room, c) → lines, read(w, room, lines, c) }: its
-//                         `# In <id>` section of a .traum file (the roomfile feature; FORMAT.md
-//                         has the rules and c's helpers). write gives its `key: values` lines:
-//                         where things sit, what waits in the tray, its arrows. read takes them
-//                         back (read lines: { key, values, raw, line }), and is called with none
-//                         when the file has no section for it, so it can place new things itself.
-//                         Without traum, a file's section for it is kept as written
 //   roomsPage             (optional) true: the rooms page's own ontology (Borges, the floors
 //                         feature's), not a room's. Its "room" is a floor (a page number from 0),
 //                         its units are the rooms on that floor, a point is a room's cell
@@ -131,7 +124,6 @@ export function missing(o) {
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
   if (o.roomsPage != null && typeof o.roomsPage !== 'boolean') out.push('roomsPage');
   if (o.lays != null && typeof o.lays !== 'boolean') out.push('lays');
-  if (o.traum != null && (typeof o.traum.write !== 'function' || typeof o.traum.read !== 'function')) out.push('traum');
   if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
 }
