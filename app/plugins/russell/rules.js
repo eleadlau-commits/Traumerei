@@ -11,7 +11,7 @@
 // hand); its children still hang under it. A thought in no chapter waits in the tray.
 //
 // A chapter is a group that holds each thought in only one chapter. The arrows and their labels
-// are Russell's own data in the room: own(w, room, 'russell')[child] = { parents, labels, rel }
+// are relation rows of the links table (relations.js arrowsOf, store 'russell')
 // (relations.js).
 // Thoughts stay shared with every other mode.
 
@@ -214,7 +214,7 @@ export function placeIn(w, roomId, chapterId, id, y) {
   const g = w.things[chapterId];
   const at = layout(w, roomId)[chapterId];
   if (!isGroup(g) || !at) return false;
-  if (!g.members.includes(id) && !join(w, chapterId, id)) return false;
+  if (!members(w, chapterId).some((th) => th.id === id) && !join(w, chapterId, id)) return false;
   const spots = chapterSpots(w, chapterId, at);
   const rest = members(w, chapterId).map((th) => th.id).filter((m) => m !== id);
   const mid = y + 12;

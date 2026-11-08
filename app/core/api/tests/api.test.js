@@ -14,7 +14,7 @@ const V2 = {
   top: ['app', 'arrows', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
-  links: ['from', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'to', 'unlink'],
+  links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
   distance: ['declare', 'of', 'on'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'revisit', 'seq', 'since'],
@@ -23,7 +23,7 @@ const V2 = {
 };
 // Version 1's names, still offered beneath v2 until kernel phase 6.
 const V1 = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'kindOf', 'members', 'own', 'remove', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'update', 'view', 'within'],
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'update', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
@@ -230,7 +230,9 @@ function smallWorld() {
   const c = lib.model.create(w, room.id, { kind: 'line', text: 'laid alone' }, 6000);
   lib.groups.putAt(w, room.id, 'pessoa', c.id, 300, 400);
   const loose = lib.model.create(w, room.id, { kind: 'line', text: 'loose' }, 7000);
-  lib.model.own(w, room.id, 'proust-links')[a.id] = { parents: [c.id], rel: { [c.id]: 'calls up' }, labels: { [c.id]: 'why' } };
+  // A rule that draws relations (as Proust does), and one arrow of its own from a up to c.
+  lib.relations.arrowsOf({ of: 'proust', store: 'proust-links', isNode: (x, r, id) => !!x.things[id] && lib.model.isLeaf(x.things[id]), nodes: (x, r) => lib.model.roomItems(x, r), loops: true, noun: 'link' });
+  lib.links.set(w, lib.links.relId('proust-links', a.id, c.id), { from: a.id, to: c.id, kind: 'relation', rule: 'proust-links', label: 'calls up', note: 'why' });
   const locked = lib.model.addRoom(w, 'Vault', 8000);
   lib.model.lock(w, locked.id);
   // The moments log begins on this world, and knows of two visits (as the world service reads it).
@@ -301,12 +303,12 @@ test('places: a row per context and rule, rooms on floors or in the archive, loo
 test('links: part-of rows with order and relation rows with their names; join, leave and reorder', () => {
   const { w, room, train, a, b, c, loose, service } = smallWorld();
   const k = kernel({ lib, world: service });
-  assert.deepEqual(k.links.kinds(), ['part of', 'relation']);
+  assert.deepEqual(k.links.kinds(), ['part of', 'stands for', 'relation']);
   assert.deepEqual(k.links.members(train.id), [a.id, b.id]);
   assert.deepEqual(k.links.holders(a.id), [train.id]);
   assert.deepEqual(k.links.from(a.id), [
     { id: `part:${train.id}:${a.id}`, from: a.id, to: train.id, kind: 'part of', order: 0 },
-    { id: `rel:proust-links:${a.id}:${c.id}`, from: a.id, to: c.id, kind: 'relation', label: 'calls up', note: 'why', rule: 'proust-links' },
+    { id: `rel:proust-links:${a.id}:${c.id}`, from: a.id, to: c.id, kind: 'relation', rule: 'proust-links', label: 'calls up', note: 'why' },
   ]);
   assert.equal(k.links.from(a.id, 'relation').length, 1);
   assert.deepEqual(k.links.to(train.id, 'part of').map((l) => l.order), [0, 1]);
@@ -329,9 +331,27 @@ test('links: part-of rows with order and relation rows with their names; join, l
   assert.deepEqual(k.links.members(train.id), [a.id, b.id]);
   assert.ok(w.things[loose.id]); // Law 2: leaving a group loses nothing
   assert.equal(k.links.link(a.id, c.id, 'part of').reason, 'Only a group can hold a part');
-  assert.match(k.links.link(a.id, c.id, 'relation').reason, /phase 2/);
-  assert.match(k.links.unlink(`rel:proust-links:${a.id}:${c.id}`).reason, /phase 2/);
-  assert.equal(k.links.link(a.id, c.id, 'stands for').ok, false);
+  // Relations go through the rule that draws them (its loops rule, its words), as rows of the table.
+  assert.match(k.links.link(a.id, c.id, 'relation').reason, /needs the rule/);
+  assert.match(k.links.link(b.id, c.id, 'relation', 'recalls', { rule: 'nowhere' }).reason, /No rule/);
+  assert.equal(k.links.link(b.id, c.id, 'relation', 'recalls', { rule: 'proust-links', note: 'because' }).ok, true);
+  assert.deepEqual(k.links.get(`rel:proust-links:${b.id}:${c.id}`), { id: `rel:proust-links:${b.id}:${c.id}`, from: b.id, to: c.id, kind: 'relation', rule: 'proust-links', label: 'recalls', note: 'because' });
+  assert.match(k.links.link(b.id, c.id, 'relation', 'recalls', { rule: 'proust-links' }).reason, /already there/);
+  assert.ok(k.links.unlink(`rel:proust-links:${a.id}:${c.id}`).ok);
+  assert.deepEqual(k.links.to(c.id, 'relation').map((l) => l.from), [b.id]);
+  assert.equal(k.links.unlink(`rel:proust-links:${a.id}:${c.id}`).reason, 'No such link');
+  // A fold: a new mark stands for the folded ones, which stay in the world but show nowhere (Law 2).
+  assert.match(k.links.link(a.id, b.id, 'stands for').reason, /fold/);
+  const folded = k.links.fold(room.id, [a.id, b.id]);
+  assert.ok(folded.ok);
+  assert.deepEqual(k.links.standsFor(folded.id), [a.id, b.id]);
+  assert.deepEqual(k.links.members(train.id), [folded.id]);
+  assert.ok(k.marks.get(a.id) && !k.marks.in(room.id).some((m) => m.id === a.id), 'kept, but shown nowhere');
+  assert.equal(k.links.from(folded.id, 'stands for').length, 2);
+  assert.ok(k.links.unlink(`for:${folded.id}:${b.id}`).ok); // b comes back, loose
+  assert.deepEqual(k.links.standsFor(folded.id), [a.id]);
+  assert.ok(k.places.loose(room.id).some((m) => m.id === b.id));
+  assert.equal(k.links.link(a.id, c.id, 'about').reason, 'No such kind of link: about');
 });
 
 test('distance: a room\'s reader is others when locked, me now otherwise; declaring it locks and unlocks', () => {
@@ -385,7 +405,8 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   // a carrier: the rows since a seq, the whole world, and rows taken in
   assert.equal(k.moments.seq(), 3);
   assert.deepEqual(k.moments.outbox(2).map((m) => [m.kind, m.mark]), [['edited', a.id]]);
-  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'arranged'));
+  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'linked' || m.kind === 'arranged'));
+  assert.ok(k.moments.outbox(null).some((m) => m.kind === 'linked' && m.link), 'the whole world carries its links as rows');
   const taken = k.moments.absorb([{ kind: 'edited', table: 'marks', mark: a.id, time: 6000, after: { ...w.things[a.id], text: 'from afar' } }]);
   assert.deepEqual(taken, { ok: true, id: 'moments', landed: 1 });
   assert.equal(k.marks.text(a.id), 'from afar');

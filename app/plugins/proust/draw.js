@@ -4,7 +4,7 @@
 // thoughts written close together, slack after a pause (the room's Line tension); a link back the
 // other way bows to the other side.
 
-import { isGroup, itemsIn, lines, arrowView, view as viewOf } from './world.js';
+import { isGroup, itemsIn, members, lines, arrowView, view as viewOf } from './world.js';
 import { ID, RELATIONS, links, endsOf, nodeName, nodes as allNodes, point, sizeOf, shownAs, clusterOf, clusters, isNode, proust, centred, setCentred, keep as keepLayout } from './rules.js';
 import { start, step, settle, corners } from './centre.js';
 
@@ -32,7 +32,7 @@ export function boxes(w, roomId) {
 function depth(w, id, seen = new Set()) {
   if (seen.has(id)) return 0;
   seen.add(id);
-  const inner = (w.things[id]?.members || []).map((m) => w.things[m]).filter((g) => isGroup(g) && g.of === ID && !g.closed);
+  const inner = members(w, id).filter((g) => isGroup(g) && g.of === ID && !g.closed);
   return inner.length ? 1 + Math.max(...inner.map((g) => depth(w, g.id, seen))) : 0;
 }
 function hull(w, roomId, id, all) {

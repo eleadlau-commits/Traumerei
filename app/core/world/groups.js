@@ -12,12 +12,14 @@
 // Each ontology that places foreign groups by a point keeps it in its own data: own(w, room, of)[id]
 // = { x, y } (Pessoa does so for every thought). No screen here (tests/groups.test.js).
 //
-// Folding is not grouping: fold(w, room, ids) turns the chosen thoughts into ONE new thought and
-// the old ones go, everywhere: the new one takes their place in every group, of every ontology,
-// that held them.
+// Folding is not grouping: fold(w, room, ids) turns the chosen thoughts into ONE new thought that
+// takes their place in every group, of every ontology, that held them. The old thoughts are not
+// deleted: the new one stands for them (a 'stands for' link each, links.js), so they stay in the
+// world but show nowhere, and go only with the fold (Law 2).
 
 import { kindFor } from './items/index.js';
-import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, changed, move } from './model.js';
+import * as L from './links.js';
+import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, memberIds, move } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -160,7 +162,9 @@ export function foldPlan(w, roomId, ids) {
 // group that held them, of every ontology (a group holding several takes it once, where the first
 // was; an ontology that holds a thought in one group only keeps it in the first). It takes the
 // first one's place in each ontology's own data (Pessoa's place, say). A chosen group stays and
-// holds just the new thought. The old ones are deleted. Returns the new thought, or { why }.
+// holds just the new thought. The folded thoughts stay in the world, stood for by the new one
+// (folded away: in no group, with no place, shown nowhere); the groups inside a chosen group go.
+// Returns the new thought, or { why }.
 export function fold(w, roomId, ids, now = Date.now()) {
   const plan = foldPlan(w, roomId, ids);
   if (plan.why) return plan;
@@ -179,23 +183,31 @@ export function fold(w, roomId, ids, now = Date.now()) {
   const placedIn = new Set();
   for (const g of holders) {
     if (!w.things[g.id]) continue;
-    const i = g.members.findIndex((m) => old.has(m));
-    if (i < 0 && !groups.includes(g)) continue;
+    const rows = L.parts(w, g.id);
+    const first = rows.find((r) => old.has(r.from));
+    if (!first && !groups.includes(g)) continue;
+    for (const r of rows) if (old.has(r.from)) L.drop(w, r.id);
     const one = membership(g.of) === 'one';
-    if (one && placedIn.has(g.of)) { g.members = g.members.filter((m) => !old.has(m)); continue; }
-    const rest = g.members.filter((m) => !old.has(m));
-    g.members = i < 0 ? [...rest, th.id] : [...g.members.slice(0, i).filter((m) => !old.has(m)), th.id, ...g.members.slice(i + 1).filter((m) => !old.has(m))];
+    if (one && placedIn.has(g.of)) continue;
+    L.join(w, g.id, th.id, first ? first.order : null);
     if (one) placedIn.add(g.of);
   }
-  changed();
   // Each ontology's own data: the first old one's place, for the new one.
   for (const data of Object.values(w.own[roomId] || {})) {
     if (!data || typeof data !== 'object' || data[th.id]) continue;
     const from = leaves.find((x) => data[x.id] != null) || gone.find((x) => data[x.id] != null);
     if (from) data[th.id] = JSON.parse(JSON.stringify(data[from.id]));
   }
-  for (const x of gone) if (w.things[x.id]) remove(w, x.id);
+  // The folded thoughts: stood for by the new one, out of every group, their places forgotten.
+  // The groups inside a chosen group go (their thoughts are stood for, not deleted with them).
+  for (const x of gone) {
+    if (!w.things[x.id]) continue;
+    if (isGroup(x)) { L.dropAll(w, x.id); remove(w, x.id); continue; }
+    for (const r of [...L.from(w, x.id), ...L.to(w, x.id)]) if (r.kind !== 'stands for') L.drop(w, r.id); // (what it stands for itself, it keeps)
+    L.set(w, L.forId(th.id, x.id), { from: th.id, to: x.id, kind: 'stands for' });
+    for (const data of Object.values(w.own[roomId] || {})) if (data && typeof data === 'object') delete data[x.id];
+  }
   // A group the fold left empty goes (without taking anything with it).
-  for (const g of groupsIn(w, roomId)) if (!g.members.length) leave(w, g.id, null);
+  for (const g of groupsIn(w, roomId)) if (!memberIds(w, g.id).length) leave(w, g.id, null);
   return th;
 }

@@ -6,7 +6,7 @@ import * as libForRussell from '../lib.js';
 import { surface as surfaceForRussell } from '../../api/v1.js';
 import { bind as bindRussell } from '../../russell/world.js';
 bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
-import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom } from '../model.js';
+import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom, join, roomItems, foldedAway } from '../model.js';
 import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting, moveLoose } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
 import joyce from '../ontologies/joyce.js';
@@ -129,7 +129,7 @@ test('a chapter of chapters keeps the inner ones out of the tree', () => {
   assert.ok(russell.point(w, MESSY, cx.id));
 });
 
-test('fold: many thoughts become one, in their place in every mode, and the old ones go', async () => {
+test('fold: many thoughts become one, in their place in every mode, and the old ones are stood for', async () => {
   const { fold, foldPlan } = await import('../groups.js');
   const w = emptyWorld();
   const t = train(w, 'a', 'b', 'c');
@@ -144,8 +144,8 @@ test('fold: many thoughts become one, in their place in every mode, and the old 
   const one = fold(w, MESSY, [b.id, c.id], 100);
   assert.equal(one.kind, 'line');
   assert.equal(one.text, 'b\nc');
-  assert.equal(w.things[b.id], undefined);
-  assert.equal(w.things[c.id], undefined);
+  assert.ok(w.things[b.id] && w.things[c.id], 'the folded thoughts stay (Law 2)');
+  assert.ok(foldedAway(w, b.id) && foldedAway(w, c.id) && !roomItems(w, MESSY).some((m) => m.id === b.id), 'but show nowhere: the fold stands for them');
   assert.deepEqual(members(w, t.id).map((m) => m.text), ['a', 'b\nc']); // in the train, where they were
   assert.ok(members(w, ch.id).some((m) => m.id === one.id)); // and in the chapter, once
   assert.equal(members(w, ch.id).filter((m) => m.id === one.id).length, 1);
@@ -156,7 +156,7 @@ test('fold: many thoughts become one, in their place in every mode, and the old 
   assert.equal(two.kind, 'passage');
   assert.deepEqual(members(w, t.id).map((m) => m.id), [two.id]);
   assert.match(two.body, /a[\s\S]*b\nc[\s\S]*body/);
-  assert.equal(w.things[p.id], undefined);
+  assert.ok(w.things[p.id] && foldedAway(w, p.id));
   // What can't be folded says why.
   assert.ok(foldPlan(w, MESSY, [two.id]).why);
   const pic = create(w, MESSY, { kind: 'picture', src: 'data:image/png;base64,AAAA' }, 400);
@@ -203,7 +203,7 @@ test('throw back: a Russell chapter waits in the tray, its thoughts with it', ()
   const top = addChapter(w, MESSY, {}, 2);
   const sub = addChapter(w, MESSY, { parent: top.id }, 3);
   russell.drop(w, MESSY, a.id, 0, 0);
-  w.things[sub.id].members.push(a.id);
+  join(w, sub.id, a.id);
   assert.equal(throwBack(russell, w, MESSY, [sub.id], 5), 1);
   assert.ok(w.things[sub.id].loose);
   assert.ok(!chapters(w, MESSY).some((g) => g.id === sub.id));

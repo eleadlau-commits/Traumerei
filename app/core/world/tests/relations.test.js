@@ -2,6 +2,7 @@
 
 import { test, assert } from 'folio/testing';
 import { emptyWorld, create, MESSY, groupsIn, members, isGroup, setRoomSetting, own } from '../model.js';
+import * as L from '../links.js';
 import {
   arrowsOf, relationName, splitList, listText, cleanRelations, relationShown, withRelation,
   relationEntry, cleanRelationList, relationEnds, relationLooks, entryText, RELATIONS,
@@ -96,8 +97,8 @@ test('arrowsOf can keep its arrows apart, read its own setting, and refuse in it
   assert.deepEqual(net.relations(w, MESSY), ['related to', 'leads to']);
   assert.equal(net.link(w, MESSY, a.id, b.id), '');
   assert.equal(net.relationOf(w, MESSY, a.id, b.id), 'related to');
-  assert.ok(own(w, MESSY, 'web-links')[b.id]);
-  assert.equal(own(w, MESSY, 'web', false)[b.id], undefined);
+  assert.deepEqual(L.get(w, L.relId('web-links', b.id, a.id)), { id: `rel:web-links:${b.id}:${a.id}`, from: b.id, to: a.id, kind: 'relation', rule: 'web-links', label: 'related to' }); // a row of the links table, under its store
+  assert.deepEqual(L.ofRule(w, 'web'), []);
   assert.equal(net.link(w, MESSY, a.id, a.id), 'Not to itself.');
   assert.equal(net.link(w, MESSY, b.id, a.id), ''); // loops allowed
 });
@@ -116,12 +117,15 @@ test('a relation may carry its look after a |: its line and its colour; plain on
 test('renaming follows only true renames: a list put in another order renames nothing', () => {
   const w = emptyWorld(1);
   const net = arrowsOf({ of: 'russell', isNode: () => true, nodes: () => [], loops: true });
-  own(w, MESSY, 'russell')['x'] = { parents: ['y', 'z'], labels: {}, rel: { y: 'forgets', z: 'is a case of' } };
+  for (const id of ['x', 'y', 'z']) w.things[id] = { id, kind: 'group', of: 'russell', parent: MESSY, at: 1 };
+  L.set(w, L.relId('russell', 'x', 'y'), { from: 'x', to: 'y', kind: 'relation', rule: 'russell', label: 'forgets' });
+  L.set(w, L.relId('russell', 'x', 'z'), { from: 'x', to: 'z', kind: 'relation', rule: 'russell', label: 'is a case of' });
+  const rel = (p) => L.get(w, L.relId('russell', 'x', p)).label || '';
   assert.equal(net.renameRelations(w, MESSY, ['forgets', 'is a case of'], ['is a case of', 'forgets']), 0);
-  assert.deepEqual(own(w, MESSY, 'russell').x.rel, { y: 'forgets', z: 'is a case of' });
+  assert.deepEqual([rel('y'), rel('z')], ['forgets', 'is a case of']);
   assert.equal(net.renameRelations(w, MESSY, ['forgets', 'is a case of'], ['omits', 'is a case of']), 1);
-  assert.equal(own(w, MESSY, 'russell').x.rel.y, 'omits');
+  assert.equal(rel('y'), 'omits');
   assert.equal(net.uses(w, MESSY, 'is a case of'), 1);
   assert.equal(net.retag(w, MESSY, 'is a case of', ''), 1);
-  assert.equal(own(w, MESSY, 'russell').x.rel.z, '');
+  assert.equal(rel('z'), '');
 });

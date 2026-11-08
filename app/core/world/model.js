@@ -2,9 +2,10 @@
 //
 //   item     a single thing: a line, a passage or a picture (items/, one file per kind; more
 //            kinds, such as a page of a PDF, are added there)
-//   group    { of, members, x, y, title, closed, loose }   thoughts held together by an ontology.
-//            `of` is the ontology that made it (Joyce makes trains, Russell chapters); `members`
-//            lists what it holds: items, and other groups (a train of trains). A group is one
+//   group    { of, x, y, title, closed, loose }   thoughts held together by an ontology.
+//            `of` is the ontology that made it (Joyce makes trains, Russell chapters); what it
+//            holds is the links table's part-of rows into it (links.js): items, and other groups
+//            (a train of trains). No group keeps a list of its own (Law 4). A group is one
 //            object shared by every ontology of its room: in the others it is one thought, in
 //            their tray until placed (groups.js), and its members stay where they are there.
 //            Closed, it shows as one thought (its title) in its own ontology too; that is only
@@ -19,8 +20,8 @@
 //                                                the Archive page.
 //
 // Every thought has { id, kind, parent, at }. An item's and a group's `parent` is its room; a
-// room's is null (the rooms page). An item (or a group) is in a group because the group lists it,
-// so one item can be in groups of several ontologies at once. A group never holds itself, nor a
+// room's is null (the rooms page). An item (or a group) is in a group because a part-of link says
+// so, so one item can be in groups of several ontologies at once. A group never holds itself, nor a
 // group that holds it. Each ontology declares whether an item can be
 // in one of its groups (a train) or in several (later, Perec's sets): see declareGroups.
 //
@@ -31,6 +32,7 @@
 // world = {
 //   v: 3,
 //   things: { [id]: thought },
+//   links:  { [id]: { from, to, kind, … } }         the links table (links.js): part of, stands for, relation
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
 //   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
@@ -42,6 +44,7 @@
 // No screen here, so it can be tested on its own (tests/model.test.js).
 
 import { kindFor } from './items/index.js';
+import * as L from './links.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
@@ -78,15 +81,17 @@ export function uid(prefix = 'x') {
 const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 3, things: { [MESSY]: messyRoom(now) }, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
+  return { v: 3, things: { [MESSY]: messyRoom(now) }, links: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
 }
 
 // A saved world, repaired: the messy room always exists; every room is on the rooms page; an
-// item or group whose room is gone goes to the messy room, and a group forgets members that are
-// gone. A world saved in an older shape is not kept: it starts afresh.
+// item or group whose room is gone goes to the messy room, and a link whose end is gone goes. A
+// world saved in an older shape is not kept: it starts afresh. (A world saved before the links
+// table, with `members` on its groups and arrows in the ontologies' own data, is read into the
+// table once.)
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'links', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
   w.pages = Math.max(1, Math.floor(+w.pages) || 1);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
@@ -96,10 +101,23 @@ export function loadWorld(saved, now = Date.now()) {
   }
   for (const g of Object.values(w.things)) {
     if (!isGroup(g)) continue;
-    g.members = [...new Set(Array.isArray(g.members) ? g.members : [])]
-      .filter((id) => id !== g.id && (isLeaf(w.things[id]) || isGroup(w.things[id])) && w.things[id].parent === g.parent);
     if (typeof g.of !== 'string' || !g.of) g.of = DEFAULT_MODE;
+    if (Array.isArray(g.members)) { g.members.forEach((id, i) => { if (typeof id === 'string' && !L.has(w, L.partId(g.id, id))) L.set(w, L.partId(g.id, id), { from: id, to: g.id, kind: 'part of', order: i }); }); }
+    delete g.members;
   }
+  for (const [roomId, stores] of Object.entries(w.own)) { // arrows kept the old way: { [child]: { parents, labels, rel } }
+    for (const [store, data] of Object.entries(stores || {})) {
+      for (const [child, a] of Object.entries(data || {})) {
+        if (!Array.isArray(a?.parents)) continue;
+        for (const p of a.parents) L.set(w, L.relId(store, child, p), { from: child, to: p, kind: 'relation', rule: store, label: a.rel?.[p] || '', note: a.labels?.[p] || '' });
+        delete data[child];
+      }
+      if (data && !Object.keys(data).length) delete stores[store];
+    }
+    if (!Object.keys(stores || {}).length) delete w.own[roomId];
+  }
+  L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && w.things[r.from].parent === w.things[r.to].parent : true));
+  for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
   const messy = w.things[MESSY];
   messy.size = 2;
   delete messy.page;
@@ -124,7 +142,9 @@ export const shapeOf = (r) => (r.id === MESSY || r.size === 2 ? 'all' : r.size =
 export const span = (r) => SHAPES[shapeOf(r)];
 export const isBig = (th) => kindOf(th) === 'room' && shapeOf(th) === 'all';
 
-export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id).sort(byTime);
+// (A thought a fold stands for is folded away: it stays in the world but is nobody's child.)
+export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id && !L.stoodFor(w, th.id)).sort(byTime);
+export const foldedAway = (w, id) => L.stoodFor(w, id);
 
 // The rooms at the top (the rooms page, every page), oldest first; archived ones are on the Archive page.
 export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && !th.archived);
@@ -156,39 +176,22 @@ export function roomOf(w, id) {
 
 // ---- Groups ----
 
-// Reading a big room fast: drawing it asks, for every thought, which groups hold it, and each
-// answer used to look through the whole world. Inside reading(w, fn), the first such question
-// lists who holds what once, and every later one reads that list, until something joins or leaves
-// a group (the list is made again when next asked). Outside it, nothing is kept.
-let held = null; // { w, by: Map of id → the groups holding it, in time order (or null: not made yet) }
-export function reading(w, fn) {
-  if (held) return fn();
-  held = { w, by: null };
-  try { return fn(); } finally { held = null; }
-}
-// (Who holds what changed: join, leave, create and remove say so, and anything that sets a group's
-// members itself must too.)
-export const changed = () => { if (held) held.by = null; };
-function holders(w) {
-  if (!held || held.w !== w) return null;
-  if (!held.by) {
-    const by = new Map();
-    for (const g of Object.values(w.things).filter(isGroup).sort(byTime)) {
-      for (const m of new Set(g.members)) { if (!by.has(m)) by.set(m, []); by.get(m).push(g); }
-    }
-    held.by = by;
-  }
-  return held.by;
-}
+// Who holds what is read off the links table's index (links.js), so a big room's drawing asks for
+// every thought's groups in constant time each. reading() and changed() are kept for the callers
+// that bracketed a drawing with them: there is nothing left for them to do.
+export function reading(w, fn) { return fn(); }
+export const changed = () => {};
 
 // What a group holds (items, and groups), in the order they were written (or as they were put in,
-// for an ontology that keeps its order: declareOrder).
+// for an ontology that keeps its order: declareOrder, read off the part-of rows' ranks).
 export function members(w, groupId) {
   const g = w.things[groupId];
   if (!isGroup(g)) return [];
-  const held = g.members.map((id) => w.things[id]).filter((th) => isLeaf(th) || isGroup(th));
+  const held = L.parts(w, groupId).map((r) => w.things[r.from]).filter((th) => isLeaf(th) || isGroup(th));
   return KEPT.has(g.of) ? held : held.sort(byTime);
 }
+// The ids a group holds, in rank order (no sorting by time: the rows as they are).
+export const memberIds = (w, groupId) => L.parts(w, groupId).map((r) => r.from);
 // Every item inside a group, however deep (a train of trains: the thoughts of each), each once,
 // in reading order.
 export function itemsIn(w, groupId, seen = new Set()) {
@@ -217,16 +220,16 @@ export function holds(w, a, id, seen = new Set()) {
   const g = w.things[a];
   if (!isGroup(g) || seen.has(a)) return false;
   seen.add(a);
-  return g.members.includes(id) || g.members.some((m) => holds(w, m, id, seen));
+  const ids = memberIds(w, a);
+  return ids.includes(id) || ids.some((m) => holds(w, m, id, seen));
 }
+// True if group `a` holds `id` directly (a part-of row from id into a).
+export const holdsDirectly = (w, a, id) => L.has(w, L.partId(a, id));
 // The groups in a room (of one ontology, or of all).
 export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
 // The groups an item is in (of one ontology, or of all); and the first of them.
 export function groupsOf(w, id, of = null) {
-  const by = holders(w);
-  if (!by) return Object.values(w.things).filter((g) => isGroup(g) && g.members.includes(id) && (of == null || g.of === of)).sort(byTime);
-  // (Each is checked again, so a group gone or left since the list was made is never given.)
-  return (by.get(id) || []).filter((g) => w.things[g.id] === g && g.members.includes(id) && (of == null || g.of === of));
+  return L.holders(w, id).map((g) => w.things[g]).filter((g) => isGroup(g) && (of == null || g.of === of)).sort(byTime);
 }
 export const groupOf = (w, id, of = DEFAULT_MODE) => groupsOf(w, id, of)[0] || null;
 // The items in a room, in the order they were written.
@@ -237,24 +240,28 @@ export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
 // into a group it holds.
 export function join(w, groupId, id) {
   const g = w.things[groupId], th = w.things[id];
-  if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || th.parent !== g.parent || g.members.includes(id)) return false;
+  if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || th.parent !== g.parent || holdsDirectly(w, groupId, id)) return false;
   if (id === groupId || holds(w, id, groupId)) return false;
   if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
   // A group that keeps its order takes a newcomer before the first item written after it (so a
   // thought written between two goes between them); one written last goes at the end.
-  const i = KEPT.has(g.of) ? g.members.findIndex((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : -1;
-  if (i < 0) g.members.push(id); else g.members.splice(i, 0, id);
-  changed();
+  const after = KEPT.has(g.of) ? memberIds(w, groupId).find((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : null;
+  L.join(w, groupId, id, after == null ? null : L.rankBefore(w, groupId, after));
   return true;
 }
 
 // Puts a group's items in the order `ids` gives (for a group that keeps its order; see
 // declareOrder). Items it holds that `ids` leaves out keep their places after them.
 export function setOrder(w, groupId, ids) {
-  const g = w.things[groupId];
-  if (!isGroup(g)) return false;
-  const listed = ids.filter((id) => g.members.includes(id));
-  g.members = [...new Set([...listed, ...g.members.filter((m) => !listed.includes(m))])];
+  if (!isGroup(w.things[groupId])) return false;
+  L.rank(w, groupId, ids);
+  return true;
+}
+
+// A new thought takes an old one's place in every group that held it (same groups, same ranks).
+export function replaceIn(w, was, now) {
+  if (!w.things[now] || !(isLeaf(w.things[now]) || isGroup(w.things[now]))) return false;
+  L.replace(w, was, now);
   return true;
 }
 
@@ -262,9 +269,8 @@ export function setOrder(w, groupId, ids) {
 export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
-  g.members = g.members.filter((m) => m !== id);
-  changed();
-  if (!g.members.length) { delete w.things[groupId]; forget(w, groupId); }
+  L.drop(w, L.partId(groupId, id));
+  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); forget(w, groupId); }
   return true;
 }
 
@@ -400,7 +406,6 @@ function tidy(f) {
   }
   if (kind === 'group') {
     const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
-      members: Array.isArray(f.members) ? [...new Set(f.members)] : [],
       x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) });
     if (f.closed) out.closed = true;
     if (f.loose) out.loose = true;
@@ -446,15 +451,13 @@ export function create(w, parent, fields, now = Date.now()) {
   const group = isLeaf(th) && isGroup(p) ? p : null;
   const at = group ? group.parent : parent;
   if (!canHold(w, at, th.kind) || (at != null && shut(w, at))) return null;
-  if (isGroup(th)) th.members = [];
   Object.assign(th, { id: uid(th.kind[0]), parent: at ?? null, at: now });
   w.things[th.id] = th;
-  changed();
   if (group) join(w, group.id, th.id);
   return th;
 }
 
-// Changes a thought's own fields (never its kind, place, time or members). An item left empty is
+// Changes a thought's own fields (never its kind, place, time or links). An item left empty is
 // removed.
 export function update(w, id, fields, now = Date.now()) {
   const th = w.things[id];
@@ -462,7 +465,6 @@ export function update(w, id, fields, now = Date.now()) {
   const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
   if (isGroup(th)) {
-    next.members = th.members;
     next.of = th.of;
     if (!next.closed) delete th.closed;
     if (!next.loose) delete th.loose;
@@ -473,16 +475,21 @@ export function update(w, id, fields, now = Date.now()) {
 }
 
 // Removes a thought and everything inside it: a room's items and groups; a group's items too, when
-// its ontology holds each item in only one group (a train). An item leaves every group it was in,
-// and a group left empty goes. Messy thoughts stays.
+// its ontology holds each item in only one group (a train); a fold's folded-away thoughts (it
+// stood for them). An item leaves every group it was in, and a group left empty goes. Every link
+// touching it goes. Messy thoughts stays.
 export function remove(w, id) {
   const th = w.things[id];
   if (!th || id === MESSY || shut(w, id)) return;
   delete w.things[id];
-  changed();
-  for (const c of children(w, id)) remove(w, c.id);
-  if (isGroup(th) && membership(th.of) === 'one') for (const m of th.members) remove(w, m);
-  for (const g of groupsOf(w, id)) leave(w, g.id, id);
+  const inside = isGroup(th) && membership(th.of) === 'one' ? memberIds(w, id) : [];
+  const stoodFor = L.from(w, id, 'stands for').map((r) => r.to);
+  const holders = groupsOf(w, id);
+  L.dropAll(w, id);
+  for (const c of Object.values(w.things).filter((x) => x.parent === id)) remove(w, c.id); // (folded-away ones too)
+  for (const m of inside) remove(w, m);
+  for (const m of stoodFor) remove(w, m);
+  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); forget(w, g.id); }
   forget(w, id);
   delete w.views[id];
   delete w.own[id];
@@ -528,7 +535,7 @@ export function move(w, id, into, x = 0, y = 0, { loose = false } = {}) {
   }
   if (!isLeaf(th)) return false; // a room never goes inside anything
   if (isGroup(to)) {
-    if (to.members.includes(id)) return false;
+    if (holdsDirectly(w, into, id)) return false;
     if (th.parent !== to.parent) rehome(w, th, to.parent);
     return join(w, into, id);
   }
@@ -623,6 +630,7 @@ export function search(w, query, most = 30) {
   if (!q) return [];
   const out = [];
   for (const th of Object.values(w.things).sort(byTime).reverse()) {
+    if (L.stoodFor(w, th.id)) continue; // folded away: its fold speaks for it
     const kind = kindOf(th);
     const text = kind === 'group' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
     if (!oneLine(text).toLowerCase().includes(q)) continue;
@@ -667,9 +675,9 @@ export function restore(w, id) {
 
 // ---- Copying a room ----
 // The one rule for a copy of a room: a new room with everything in it copied (its items, its
-// groups with their members, each ontology's own data, its view and its settings), every copied
-// thought a new id, and every mention of an old id inside them (a group's members, Russell's
-// arrows) changed to the new one, so the copy never shares a thing with the room it came from.
+// groups and the links between them, each ontology's own data, its view and its settings), every
+// copied thought a new id, and every mention of an old id inside them (a link's ends, a place)
+// changed to the new one, so the copy never shares a thing with the room it came from.
 // Its name says it is a copy; it is unlocked, not archived, on the same floor, with no cell yet
 // (the floors feature places it: floors.place, nearest the room's cell). Messy thoughts copies
 // into an ordinary 2 × 2 room. Returns the new room, or null (no such room, or archived).
@@ -693,6 +701,7 @@ export function copyRoom(w, id, now = Date.now()) {
   const inner = Object.values(w.things).filter((th) => th.id !== id && topRoom(w, th.id)?.id === id);
   const ids = { [id]: uid('r') };
   for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
+  for (const [lid, row] of Object.entries(L.copyFor(w, ids))) L.set(w, lid, row);
   const fresh = renamed(copy(r), ids);
   Object.assign(fresh, { id: ids[id], parent: null, at: now, name: `${r.name || 'Untitled'} copy` });
   for (const k of ['locked', 'archived', 'col', 'row', 'edited']) delete fresh[k];
@@ -708,7 +717,6 @@ export function copyRoom(w, id, now = Date.now()) {
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
   if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);
   if (w.settings?.[id]) w.settings[fresh.id] = copy(w.settings[id]);
-  changed();
   return fresh;
 }
 

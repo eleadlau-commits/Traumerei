@@ -7,7 +7,7 @@ import {
   roomOf, thoughtText, randomSpot, view, roomAt,
   search,
   shut, lock, archive, archived, restore, peek, roomHits, topRoom, DESC,
-  roomsOn, pageCount, addPage, isBig, own, members, itemsIn, within, holds, groupsOf, groupOf, join, declareGroups, isGroup, reading, leave,
+  roomsOn, pageCount, addPage, isBig, own, members, memberIds, itemsIn, within, holds, groupsOf, groupOf, join, declareGroups, isGroup, reading, leave,
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
   roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells, copyRoom,
 } from '../model.js';
@@ -48,7 +48,7 @@ test('what can sit inside what: items and groups in rooms, rooms at the top', ()
   assert.ok(!canHold(w, t.id, 'room'));
   const a = addThought(w, t.id, 'a');
   assert.equal(a.parent, MESSY);
-  assert.deepEqual(t.members, [a.id]);
+  assert.deepEqual(memberIds(w, t.id), [a.id]);
 });
 
 test('thoughts in a train keep the order they were written in', () => {
@@ -355,7 +355,7 @@ test('a train holds each thought in one train; an ontology of sets holds it in m
   const [a, b] = trainThoughts(w, t.id);
   const t2 = startTrain(w, MESSY, 0, 0);
   assert.ok(join(w, t2.id, a.id)); // a leaves its train for the new one
-  assert.deepEqual([t.members, t2.members], [[b.id], [a.id]]);
+  assert.deepEqual([memberIds(w, t.id), memberIds(w, t2.id)], [[b.id], [a.id]]);
   const s1 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Blue' });
   const s2 = create(w, MESSY, { kind: 'group', of: 'sets', title: 'Night' });
   assert.ok(join(w, s1.id, a.id) && join(w, s2.id, a.id) && join(w, s1.id, b.id));
@@ -395,7 +395,8 @@ test('a group can hold groups: a train of trains, never itself or a group holdin
   assert.equal(within(w, outer.id).length, 5);
   // Saved and loaded, it still holds them.
   const back = loadWorld(JSON.parse(JSON.stringify(w)));
-  assert.deepEqual(back.things[outer.id].members, [a.id, b.id]);
+  assert.deepEqual(memberIds(back, outer.id), [a.id, b.id]);
+  assert.equal(back.things[outer.id].members, undefined, 'no group keeps a list of its own (Law 4)');
   // Moved, everything inside goes with it; removed, so does everything inside (trains hold one each).
   const r = addRoom(w, 'Elsewhere');
   assert.ok(move(w, outer.id, r.id));
@@ -558,7 +559,7 @@ test('Messy thoughts copies into an ordinary 2 × 2 room; an archived room is no
   assert.equal(copyRoom(w, r.id), null);
 });
 
-test('inside reading(), who holds what is listed once and kept true as groups change', () => {
+test('who holds what is read off the links index, true as groups change (reading() brackets nothing now)', () => {
   declareGroups('sets', { membership: 'many' });
   const w = emptyWorld();
   const t = train(w, MESSY, 'a', 'b');

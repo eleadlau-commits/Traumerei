@@ -224,7 +224,7 @@ test('Joyce: trains with no at: line start side by side; a thought in no train p
   const t = named(w, r.id, 'T'), u = named(w, r.id, 'U');
   assert.deepEqual([t.x, t.y, u.x, u.y], [0, 0, 440, 0]);
   const three = roomItems(w, r.id)[2];
-  const train = groupsIn(w, r.id, 'joyce').find((g) => g.members.includes(three.id));
+  const train = groupsIn(w, r.id, 'joyce').find((g) => members(w, g.id).some((m) => m.id === three.id));
   assert.deepEqual([train.x, train.y], [500, 500]);
 });
 

@@ -3,16 +3,17 @@
 // it; nothing else remembers history. Pure maths, no screen (tests/moments.test.js).
 //
 // A row is one change to one thing at one time:
-//   { seq, time, kind, table, mark | context, step?, before?, after? }
-// kind: made · edited · moved · linked · removed (a thought, group or room: `mark`), arranged (a
-// room's relations: `context`), floors (how many floors: context 'floors'), visited (a room was
-// gone into: `context`), undone · redone (a step taken back or forward: `step`). `table` names the
-// kernel table the change is to (marks, places, links, moments). `before` and `after` are the
-// whole thing as it was and as it is, so a step can be taken back (before) or replayed (after).
-// Rows that land together from one save share a `step` (the seq of the first).
+//   { seq, time, kind, table, mark | link | context, step?, before?, after? }
+// kind: made · edited · moved · removed (a thought, group or room: `mark`), linked (a row of the
+// links table made, changed or gone: `link`, its id; before and after the row), arranged (an
+// ontology's own data in a room: `context`), floors (how many floors: context 'floors'), visited
+// (a room was gone into: `context`), undone · redone (a step taken back or forward: `step`).
+// `table` names the kernel table the change is to (marks, places, links, moments). `before` and
+// `after` are the whole thing as it was and as it is, so a step can be taken back (before) or
+// replayed (after). Rows that land together from one save share a `step` (the seq of the first).
 //
 // The log is { v, seq, base, rows, undo, redo, keep }:
-//   base  the state ({ things, own, pages }, at `time`) the rows build on, or null for nothing
+//   base  the state ({ things, links, own, pages }, at `time`) the rows build on, or null for nothing
 //   undo  steps that can be taken back, oldest first; redo: steps taken back, oldest first
 //   keep  days of history kept (0: forever); COMPACT days back, rows lose their `before`
 // Replaying the base and the rows, in order, gives the world as it was at any time (`stateAt`).
@@ -23,6 +24,8 @@
 // days fold into the base; visits older than COMPACT days are forgotten (a room's light has long
 // faded).
 
+import * as L from './links.js';
+
 export const VERSION = 1;
 export const DAY = 864e5;
 export const COMPACT = 30;          // days a row keeps its `before` (how far undo reaches)
@@ -32,9 +35,8 @@ export const MOST_VISITS = 40;      // visits of a room kept in `visits`
 export const KINDS = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'arranged', 'floors', 'visited', 'undone', 'redone']);
 export const CHANGES = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'arranged', 'floors']);
 
-// A thing's fields that say where it is (a places row), and the one that says what it holds.
+// A thing's fields that say where it is (a places row).
 const PLACE = new Set(['x', 'y', 'parent', 'page', 'col', 'row', 'side', 'loose', 'size']);
-const LINK = new Set(['members']);
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 // The same value, whatever order its keys are in (a thing undone comes back with its keys in
@@ -42,7 +44,12 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
 const canon = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',').replace(/^/, '{').concat('}') : Array.isArray(v) ? `[${v.map(canon).join(',')}]` : JSON.stringify(v) ?? 'undefined');
 export const same = (a, b) => canon(a) === canon(b);
 export const dayOf = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-const keyOf = (r) => (r.mark != null ? `m:${r.mark}` : `c:${r.context}`);
+const keyOf = (r) => (r.mark != null ? `m:${r.mark}` : r.link != null ? `l:${r.link}` : `c:${r.context}`);
+// Which thing a row speaks of, as a row's keys: { mark } | { link } | { context }.
+const who = (r) => (r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : { context: r.context });
+// The value a row's thing has in `state` now.
+const valueIn = (state, r) => (r.mark != null ? state.things[r.mark] : r.link != null ? state.links?.[r.link] : r.kind === 'floors' ? state.pages : state.own[r.context]);
+const empty = () => ({ things: {}, links: {}, own: {}, pages: 1 });
 const inverse = (kind) => (kind === 'made' ? 'removed' : kind === 'removed' ? 'made' : kind);
 
 // A new log, building on `state` (the world as it is when the log begins) or on nothing.
@@ -61,8 +68,8 @@ export function loadLog(saved, now = Date.now()) {
   return log;
 }
 
-// The state the log speaks of: the three saved parts of the world that hold things.
-export const stateOf = (w) => ({ things: w.things, own: w.own || {}, pages: w.pages || 1 });
+// The state the log speaks of: the saved parts of the world that hold things.
+export const stateOf = (w) => ({ things: w.things, links: w.links || {}, own: w.own || {}, pages: w.pages || 1 });
 
 // ---- Diffing: the rows that take `prev` to `next` ----
 
@@ -71,7 +78,6 @@ function kindOfChange(before, after) {
   keys.delete('edited');
   if (!keys.size) return null;
   if ([...keys].every((k) => PLACE.has(k))) return 'moved';
-  if ([...keys].every((k) => LINK.has(k))) return 'linked';
   return 'edited';
 }
 const TABLE = { made: 'marks', edited: 'marks', removed: 'marks', moved: 'places', linked: 'links', arranged: 'links', floors: 'places', visited: 'moments', undone: 'moments', redone: 'moments' };
@@ -88,6 +94,10 @@ export function diff(prev, next) {
       const kind = kindOfChange(a, b);
       if (kind) out.push({ kind, table: TABLE[kind], mark: id, before: clone(a), after: clone(b) });
     }
+  }
+  for (const id of new Set([...Object.keys(prev.links || {}), ...Object.keys(next.links || {})])) {
+    const a = prev.links?.[id], b = next.links?.[id];
+    if (!same(a, b)) out.push({ kind: 'linked', table: 'links', link: id, before: clone(a) ?? null, after: clone(b) ?? null });
   }
   for (const id of new Set([...Object.keys(prev.own || {}), ...Object.keys(next.own || {})])) {
     const a = prev.own?.[id], b = next.own?.[id];
@@ -140,6 +150,7 @@ export function visit(log, roomId, now = Date.now()) {
 
 function set(state, r, value) {
   if (r.mark != null) { if (value == null) delete state.things[r.mark]; else state.things[r.mark] = clone(value); return; }
+  if (r.link != null) { const t = (state.links ||= {}); if (value == null) delete t[r.link]; else t[r.link] = clone(value); L.touched(state); return; }
   if (r.kind === 'floors') { state.pages = value || 1; return; }
   if (value == null) delete state.own[r.context]; else state.own[r.context] = clone(value);
 }
@@ -162,7 +173,7 @@ export function undo(log, state, back = true, now = Date.now()) {
 
 // The state as it was at `time` (the end of time: now), built from the base and the rows.
 export function stateAt(log, time = Infinity) {
-  const state = log.base ? clone(log.base.state) : { things: {}, own: {}, pages: 1 };
+  const state = log.base ? { ...empty(), ...clone(log.base.state) } : empty();
   const steps = new Map();
   for (const r of log.rows) {
     if (r.time > time) continue; // (rows land in time order, but a clock may jump)
@@ -175,8 +186,10 @@ export function stateAt(log, time = Infinity) {
 
 // ---- Reading ----
 
-// The change rows that speak of a mark, oldest first.
-export const of = (log, mark) => log.rows.filter((r) => r.mark === mark || (r.kind === 'visited' && r.context === mark));
+// The change rows that speak of a mark, oldest first: its own, its visits, and the links at
+// either end of which it is.
+const touches = (r, mark) => r.link != null && [r.before, r.after].some((v) => v && (v.from === mark || v.to === mark));
+export const of = (log, mark) => log.rows.filter((r) => r.mark === mark || (r.kind === 'visited' && r.context === mark) || touches(r, mark));
 // The last time a mark was written (made or edited; not moved or linked), or null if the log
 // does not know it.
 export function changed(log, mark) {
@@ -216,7 +229,7 @@ export function outbox(log, seq) {
     if (CHANGES.includes(r.kind) || r.kind === 'visited') { out.push(clone(r)); continue; }
     const back = r.kind === 'undone';
     for (const s of steps.get(r.step) || []) {
-      out.push({ seq: r.seq, time: r.time, kind: back ? inverse(s.kind) : s.kind, table: s.table, ...(s.mark != null ? { mark: s.mark } : { context: s.context }),
+      out.push({ seq: r.seq, time: r.time, kind: back ? inverse(s.kind) : s.kind, table: s.table, ...who(s),
         before: clone(back ? s.after : s.before) ?? null, after: clone(back ? s.before : s.after) ?? null });
     }
   }
@@ -224,7 +237,7 @@ export function outbox(log, seq) {
 }
 
 // The whole of a state as rows another copy can take: everything made at `at`.
-export const whole = (state, at) => diff({ things: {}, own: {}, pages: 1 }, state).map((r, i) => ({ ...r, seq: i + 1, time: at }));
+export const whole = (state, at) => diff(empty(), state).map((r, i) => ({ ...r, seq: i + 1, time: at }));
 
 // Takes rows from another copy into this log and `state`, in their order: each change lands as
 // a row of its own (with this copy's `before`; no step, so it is not this copy's to undo), each
@@ -240,10 +253,10 @@ export function absorb(log, state, rows) {
     const key = keyOf(r);
     if (r.time <= (last.get(key) || 0)) continue;
     last.set(key, r.time);
-    const before = r.mark != null ? state.things[r.mark] : r.kind === 'floors' ? state.pages : state.own[r.context];
+    const before = valueIn(state, r);
     if (same(before, r.after)) continue;
     set(state, r, r.after);
-    const row = { kind: r.kind, table: r.table, ...(r.mark != null ? { mark: r.mark } : { context: r.context }), before: clone(before) ?? null, after: clone(r.after) ?? null, from: 'account' };
+    const row = { kind: r.kind, table: r.table, ...who(r), before: clone(before) ?? null, after: clone(r.after) ?? null, from: 'account' };
     landed.push(push(log, row, r.time));
   }
   return landed;
@@ -267,7 +280,7 @@ export function compact(log, now = Date.now()) {
   const oldSteps = new Set(old.map((r) => r.step).filter((s) => s != null));
   const ties = new Set(log.rows.filter((r) => r.time >= horizon && (r.kind === 'undone' || r.kind === 'redone') && oldSteps.has(r.step)));
   if (!old.length && !ties.size) return false;
-  const state = log.base ? clone(log.base.state) : { things: {}, own: {}, pages: 1 };
+  const state = log.base ? { ...empty(), ...clone(log.base.state) } : empty();
   const steps = new Map();
   const squashed = [];
   let touched = new Map(); // key → { row, madeToday, last }
@@ -275,9 +288,8 @@ export function compact(log, now = Date.now()) {
   const flush = () => {
     if (dayStart == null) return;
     for (const { row, madeToday, best } of touched.values()) {
-      const after = row.mark != null ? state.things[row.mark] : row.kind === 'floors' ? state.pages : state.own[row.context];
-      const out = { seq: row.seq, time: row.time, kind: squashKind(madeToday, best, after), table: row.table, after: clone(after) ?? null };
-      if (row.mark != null) out.mark = row.mark; else out.context = row.context;
+      const after = valueIn(state, row);
+      const out = { seq: row.seq, time: row.time, kind: squashKind(madeToday, best, after), table: row.table, after: clone(after) ?? null, ...who(row) };
       if (dayStart >= floor) squashed.push(out);
     }
     if (dayStart < floor) { baseState = clone(state); folded = true; }
@@ -307,8 +319,7 @@ export function compact(log, now = Date.now()) {
   const kept = log.rows.filter((r) => r.time >= horizon).flatMap((r) => {
     if (!ties.has(r)) return [r];
     const back = r.kind === 'undone';
-    return (steps.get(r.step) || []).map((s) => ({ seq: r.seq, time: r.time, kind: back ? inverse(s.kind) : s.kind, table: s.table,
-      ...(s.mark != null ? { mark: s.mark } : { context: s.context }),
+    return (steps.get(r.step) || []).map((s) => ({ seq: r.seq, time: r.time, kind: back ? inverse(s.kind) : s.kind, table: s.table, ...who(s),
       before: clone(back ? s.after : s.before) ?? null, after: clone(back ? s.before : s.after) ?? null }));
   });
   log.rows = [...squashed, ...kept];

@@ -118,17 +118,8 @@ export const links = () => (net ||= arrowsOf({
 // Takes away every link touching these ids. Returns how many went.
 export function cut(w, roomId, ids) {
   const set = new Set(ids);
-  const data = own(w, roomId, LINKS, false);
   let n = 0;
-  for (const [to, a] of Object.entries(data)) {
-    if (!a || !Array.isArray(a.parents)) continue;
-    if (set.has(to)) { n += a.parents.length; delete data[to]; continue; }
-    const keep = a.parents.filter((p) => !set.has(p));
-    if (keep.length === a.parents.length) continue;
-    n += a.parents.length - keep.length;
-    for (const p of a.parents) if (set.has(p)) { delete a.labels?.[p]; delete a.rel?.[p]; }
-    a.parents = keep;
-  }
+  for (const a of links().arrows(w, roomId)) if (set.has(a.from) || set.has(a.to)) { links().unlink(w, roomId, a.from, a.to); n++; }
   return n;
 }
 
