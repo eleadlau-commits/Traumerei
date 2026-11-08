@@ -1,5 +1,5 @@
-// Plugin API: offers the `traumerei` service, the one way a plugin reaches the app (v1.js holds
-// the list, app/core/API.md says it in words). A plugin connects once, in its start():
+// Plugin API: offers the `traumerei` service, the one way a plugin reaches the app (v2.js holds
+// the list, over v1.js; app/core/API.md says it in words, app/core/KERNEL.md the tables behind it). A plugin connects once, in its start():
 //
 //   const t = this.use('traumerei')?.connect(this);
 //
@@ -7,7 +7,7 @@
 // switched off. No saved data.
 
 import { Feature, ui } from 'folio';
-import { API_VERSION, surface, connect } from './v1.js';
+import { API_VERSION, surface, connect } from './v2.js';
 
 export default class Api extends Feature {
   start() {
@@ -21,12 +21,13 @@ export default class Api extends Feature {
     // The rooms page starts after the plugins it shows (it uses Time and Search), so it is
     // looked up when a plugin first goes somewhere, not here.
     const service = (name) => app.use(name);
+    const events = { on: (name, fn) => this.on(name, fn) }; // what a plugin subscribes to, heard through this feature
     // What to undo when a plugin is switched off, by plugin: the dock tabs it opened.
     this.leaving = new Map();
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, toast: ui.toast, docks, keys, frame, floors, service, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, docks, keys, frame, floors, service, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));
