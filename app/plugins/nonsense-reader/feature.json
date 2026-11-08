@@ -1,0 +1,19 @@
+{
+  "name": "Nonsense reader",
+  "description": "A machine reader that proposes only nonsense, to show the kernel refuses every such proposal in words and changes nothing.",
+  "version": "0.1.0",
+  "main": "NonsenseReader.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "reader",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

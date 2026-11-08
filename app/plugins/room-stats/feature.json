@@ -1,0 +1,19 @@
+{
+  "name": "Room statistics",
+  "description": "Ctrl+Alt+I shows what the open room holds: thoughts and words, groups, links by kind, gaps, what is ahead, and this week's changes.",
+  "version": "0.1.0",
+  "main": "RoomStats.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "view",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

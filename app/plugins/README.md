@@ -26,6 +26,13 @@ the API), `--kind mode,editor` (what it adds), `--author`. Run `python build.py 
 `python build.py serve`: the template already works (right-click a thought and the Editor says how
 many words it holds).
 
+A whole `feature.json`, for a plugin with no styles:
+
+```json
+{ "name": "Word count", "description": "…", "version": "0.1.0", "main": "WordCount.js",
+  "requires": ["api"], "plugin": { "api": 2, "minApp": "1.0.0", "kind": ["editor"], "load": "start", "author": "E" } }
+```
+
 ## 2. The plugin block
 
 ```json
@@ -90,8 +97,7 @@ them), the drawing parts (`lines`, `arrows`, `maths`, `layout`, `trains`, `relat
 `twins`, `pictures`, and `parts.world()`, the tables as the world holds them now. A rule writes
 with the kit only inside its own gestures, which the room lands as one step; anything else proposes
 through the tables. Version 1's flat names (`t.model`, `t.world`, `t.save`, …) went in kernel
-phase 6, and a plugin written for API 1 no longer connects. The API is not frozen yet: it
-changes through the kernel phases (`app/core/API.md` says what is current).
+phase 6, and a plugin written for API 1 no longer connects. Version 2 is frozen (kernel phase 8): it changes only by adding.
 
 ## 4. Switching off
 

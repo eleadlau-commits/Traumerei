@@ -1,0 +1,19 @@
+{
+  "name": "Checkbox",
+  "description": "A kind of thought that is a line to do; its tick is the thought's gap (resolved: ticked), so a group of checkboxes shows its progress. Ctrl+Alt+X ticks the chosen one.",
+  "version": "0.1.0",
+  "main": "Checkbox.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "item",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

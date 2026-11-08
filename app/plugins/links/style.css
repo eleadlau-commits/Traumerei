@@ -1,0 +1,6 @@
+/* Links: the Editor section. Only layout here; the look is Folio's (base.css). */
+.links-section { display: grid; gap: 6px; }
+.links-row { display: flex; justify-content: space-between; gap: 8px; }
+.links-add { display: flex; gap: 6px; }
+.links-find { flex: 1; min-width: 0; }
+.links-found { display: flex; flex-wrap: wrap; gap: 4px 10px; }

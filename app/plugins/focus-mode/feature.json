@@ -1,0 +1,18 @@
+{
+  "name": "Focus mode",
+  "description": "One key (Ctrl+Alt+Shift+F) hides every dock and names the one thing to do here: the chosen thought's open gap, else the room's oldest.",
+  "version": "0.1.0",
+  "main": "FocusMode.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

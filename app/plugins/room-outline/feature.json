@@ -1,0 +1,19 @@
+{
+  "name": "Room outline",
+  "description": "A tab in the left dock (Ctrl+Alt+U) listing the open room as an outline: groups with their parts, relations' children under their parents.",
+  "version": "0.1.0",
+  "main": "RoomOutline.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "view",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

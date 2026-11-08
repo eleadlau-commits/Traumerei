@@ -1,0 +1,20 @@
+{
+  "name": "Word linker",
+  "description": "A reader by rule: links thoughts in the open room that share two or more uncommon words, as \"echoes\", in one step.",
+  "version": "0.1.0",
+  "main": "WordLinker.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "reader",
+      "link",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

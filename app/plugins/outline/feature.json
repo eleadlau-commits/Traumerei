@@ -1,0 +1,18 @@
+{
+  "name": "Outline",
+  "description": "A mode that lays a room as an indented tree: each thought under its group or its parent, one line each.",
+  "version": "0.1.0",
+  "main": "Outline.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

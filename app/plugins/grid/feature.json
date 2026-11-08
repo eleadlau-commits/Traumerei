@@ -1,0 +1,18 @@
+{
+  "name": "Grid",
+  "description": "A mode that puts a room's thoughts in fixed cells, oldest first, six to a row.",
+  "version": "0.1.0",
+  "main": "Grid.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

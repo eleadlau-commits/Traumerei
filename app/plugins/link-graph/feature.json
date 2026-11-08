@@ -1,0 +1,22 @@
+{
+  "name": "Link graph",
+  "description": "A tab in the right dock (Ctrl+Alt+K) drawing the open room's thoughts on a circle and every link between them, of any kind.",
+  "version": "0.1.0",
+  "main": "LinkGraph.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "view",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  },
+  "styles": [
+    "style.css"
+  ]
+}

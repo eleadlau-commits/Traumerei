@@ -1,0 +1,19 @@
+{
+  "name": "Print view",
+  "description": "Ctrl+Alt+P shows the open room as a plain read-only page in a new window, ready to print.",
+  "version": "0.1.0",
+  "main": "PrintView.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "view",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

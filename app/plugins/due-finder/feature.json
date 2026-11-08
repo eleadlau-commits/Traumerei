@@ -1,0 +1,19 @@
+{
+  "name": "Due finder",
+  "description": "A reader by rule: sets thoughts in the open room due on the dates their words name (\"by 12 Nov\", \"tomorrow\"), where nothing is ahead yet; one step.",
+  "version": "0.1.0",
+  "main": "DueFinder.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "reader",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

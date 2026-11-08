@@ -1,0 +1,18 @@
+{
+  "name": "Oldest open gap",
+  "description": "One key (Ctrl+Alt+O) and an entry under More that go to the room holding the oldest gap still open, and say what waits and how long.",
+  "version": "0.1.0",
+  "main": "OldestGap.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}
