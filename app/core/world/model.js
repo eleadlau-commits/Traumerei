@@ -44,7 +44,6 @@
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [store]: { … } } }        a plugin's data in a room that is not a position (own()); where a
 //                                                 rule puts a thing is a rule row of places, never here (phase 4)
-//   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
 //   tagGroups: { [tag]: group }                   the group each tag is in (tag in lower case)
 //   tagsMade: [tag], groupsMade: [group]          tags and groups made with + (they show with no rooms)
 // }
@@ -56,6 +55,7 @@ import * as L from './links.js';
 import * as P from './places.js';
 import * as G from './gaps.js';
 import * as D from './distance.js';
+import * as T from './tables.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
@@ -100,7 +100,7 @@ export const isContext = (th) => kindOf(th) === 'context';
 export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 
 export function emptyWorld(now = Date.now()) {
-  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, distance: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, gaps: {}, distance: {}, views: {}, own: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
   P.setHome(w, MESSY, FLOOR(0));
   P.putSpot(w, FLOOR(0), MESSY, CELL, { col: 0, row: 0 }); // its four squares at the top left
   return w;
@@ -127,7 +127,9 @@ export const isArchived = (w, id) => P.home(w, id) === ARCHIVE;
 // table once.)
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'links', 'places', 'gaps', 'distance', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'links', 'places', 'gaps', 'distance', 'views', 'own', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const [roomId, set] of Object.entries(w.settings || {})) if (kindOf(w.things[roomId]) === 'room' && set && typeof set === 'object' && Object.keys(set).length) w.things[roomId].rules = set; // settings were beside the rooms once (phase 6)
+  delete w.settings;
   for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
   P.touched(w);
   L.touched(w);
@@ -410,31 +412,34 @@ const copy = (o) => JSON.parse(JSON.stringify(o || {}));
 
 // The value of an ontology's setting s ({ key, default }) in a room. globals: { [ontology]: { key: value } }.
 export function roomSetting(w, roomId, of, s, globals = {}) {
-  const mine = w.settings?.[roomId]?.[of]?.[s.key];
+  const mine = w.things[roomId]?.rules?.[of]?.[s.key];
   if (mine !== undefined) return mine;
   const global = globals?.[of]?.[s.key];
   return global !== undefined ? global : s.default;
 }
 
 export function setRoomSetting(w, roomId, of, key, value) {
-  const r = ((w.settings ||= {})[roomId] ||= {});
-  (r[of] ||= {})[key] = value;
+  const th = w.things[roomId];
+  if (!th) return;
+  ((th.rules ||= {})[of] ||= {})[key] = value;
 }
 
 // A room's settings for one ontology go back to the global ones (and follow them from then on).
 export function resetRoomSettings(w, roomId, of) {
-  if (w.settings?.[roomId]) delete w.settings[roomId][of];
+  const th = w.things[roomId];
+  if (th?.rules) { delete th.rules[of]; if (!Object.keys(th.rules).length) delete th.rules; }
 }
 
 // A room starts from the global settings.
 export function seedRoomSettings(w, roomId, globals = {}) {
-  (w.settings ||= {})[roomId] = copy(globals);
+  const th = w.things[roomId];
+  if (!th) return;
+  if (globals && Object.keys(globals).length) th.rules = copy(globals); else delete th.rules;
 }
 
 // Every room, archived ones too, takes the global settings.
 export function applySettingsToAll(w, globals = {}) {
-  w.settings = {};
-  for (const th of Object.values(w.things)) if (kindOf(th) === 'room') w.settings[th.id] = copy(globals);
+  for (const th of Object.values(w.things)) if (kindOf(th) === 'room') seedRoomSettings(w, th.id, globals);
 }
 
 // A group's name as lists show it: its title, else its first three words, else `none`.
@@ -495,6 +500,7 @@ function tidy(f) {
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
+  if (f.rules && typeof f.rules === 'object' && !Array.isArray(f.rules) && Object.keys(f.rules).length) out.rules = copy(f.rules); // its rules' settings (KERNEL.md: on the context mark)
   if (typeof f.tint === 'string' && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
   if (f.light != null) out.light = clamp01(f.light, 0.5);
   if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
@@ -610,7 +616,7 @@ export function update(w, id, fields, now = Date.now()) {
     next.of = th.of;
     if (!next.closed) delete th.closed;
   }
-  if (kindOf(th) === 'room') for (const k of ['desc', 'tags']) if (!(k in next)) delete th[k];
+  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'rules']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   placeFields(w, th, fields);
   touch(w);
@@ -885,7 +891,6 @@ export function copyRoom(w, id, now = Date.now()) {
   }
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
   if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);
-  if (w.settings?.[id]) w.settings[fresh.id] = copy(w.settings[id]);
   return fresh;
 }
 
@@ -1034,4 +1039,75 @@ export function roomHits(w, query) {
     if (at) out[at.id] = (out[at.id] || 0) + 1;
   }
   return out;
+}
+
+// ---- Carriers: the six tables in and out (tables.js; Law 8) ----
+
+// The six tables of a context (a room, a group with its parts, null for the whole world).
+export const tablesOf = (w, root = null, o = {}) => T.read(w, root, o);
+
+// After tables were written by a carrier: every mark is somewhere (Law 2: an item or group in
+// `room`, a room on floor `page`), every row's ends are marks (Law 1), no group holds itself.
+function settle(w, ids, room, page) {
+  P.touched(w); L.touched(w); G.touched(w);
+  for (const id of ids) {
+    const th = w.things[id];
+    if (!th || isContext(th)) continue;
+    const at = P.home(w, id), there = w.things[at];
+    if (kindOf(th) === 'room') { if (!(isContext(there) || (isTwin(there) && !isTwin(th)))) P.setHome(w, id, FLOOR(page)); }
+    else if (kindOf(there) !== 'room' || isTwin(there)) { if (room != null) P.setHome(w, id, room); else delete w.things[id]; }
+  }
+  P.repair(w);
+  L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && P.home(w, r.from) === P.home(w, r.to) : true));
+  for (const g of ids) if (isGroup(w.things[g]) && holds(w, g, g)) for (const r of L.to(w, g, 'part of')) if (holds(w, r.from, g)) L.drop(w, r.id);
+  G.repair(w);
+  D.repair(w, (id) => declarable(w, id));
+  touch(w);
+}
+
+// Lands a carrier's tables (traum.js read()) as new marks: `root` (the file's context) becomes a
+// new room on floor `page`, or, with `into`, the room it pours into (its own fields stay the
+// room's). Everything gets a fresh id. Returns { id, ids, told } (told: the file's moments, for
+// the log) or { why }.
+export function landTables(w, tables, root, { into = null, page = 0, now = Date.now() } = {}) {
+  if (into != null && (!room(w, into) || shut(w, into))) return { why: 'The room is locked, or not there.' };
+  const rootMark = tables.marks.find((m) => m.id === root);
+  let marks = tables.marks;
+  const keep = {};
+  if (into != null) { keep[root] = into; marks = marks.filter((m) => m.id !== root); }
+  else if (!rootMark || rootMark.body?.kind !== 'room') { // a file of loose thoughts: a room to hold them
+    const r = addRoom(w, 'Untitled', now, { page });
+    keep[root] = r.id;
+    marks = marks.filter((m) => m.id !== root);
+  }
+  const ids = T.renaming({ marks }, keep, () => uid('').slice(0, 14));
+  const fresh = new Set(marks.map((m) => ids[m.id]));
+  const told = T.write(w, { ...tables, marks }, ids);
+  const target = into ?? keep[root] ?? ids[root];
+  if (into == null && !P.home(w, target)) P.setHome(w, target, FLOOR(page));
+  settle(w, fresh, target, page);
+  return { id: target, ids, told };
+}
+
+// Writes edited tables (with the world's own ids) over a room or a group with its parts: what the
+// scope held and the text no longer has goes; what it has comes back as written. The scope's root
+// must stay, as must its kind. Returns { ids } (the marks now in the scope) or { why }.
+export function replaceTables(w, root, tables, fileRoot = root) {
+  if (!w.things[root] || shut(w, root)) return { why: 'This is locked, or not there.' };
+  if (fileRoot !== root) return { why: 'The text is of another room or group.' };
+  const rootMark = tables.marks.find((m) => m.id === root);
+  if (!rootMark) return { why: 'The text no longer has its own heading, so nothing was changed.' };
+  if (rootMark.body?.kind !== kindOf(w.things[root])) return { why: 'A room or group keeps its kind.' };
+  const taken = tables.marks.find((m) => m.id !== root && w.things[m.id] && !T.scopeOf(w, root).ids.has(m.id));
+  if (taken) return { why: `^${taken.id} is already elsewhere: give a new mark a new id.` };
+  const scope = T.scopeOf(w, root);
+  const outer = scope.outer ?? root;
+  T.clear(w, scope, root);
+  const ids = {};
+  for (const m of tables.marks) ids[m.id] = m.id;
+  for (const t of ['places', 'links']) for (const r of tables[t]) for (const k of ['mark', 'context', 'from', 'to']) if (r[k] != null && !(r[k] in ids) && w.things[r[k]]) ids[r[k]] = r[k];
+  T.write(w, tables, ids);
+  const now = new Set(tables.marks.map((m) => m.id));
+  settle(w, now, kindOf(w.things[root]) === 'room' ? root : outer, floorOf(w, topRoom(w, root)?.id ?? root));
+  return { ids: now };
 }

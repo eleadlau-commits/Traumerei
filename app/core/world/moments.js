@@ -10,7 +10,8 @@
 // gaps table made or changed: `gap`, its id; gone with its mark: `removed`), declared (a row of
 // the distance table made, changed or gone: `dist`, its id), arranged (an
 // ontology's own data in a room: `context`), visited
-// (a room was gone into: `context`), undone · redone (a step taken back or forward: `step`).
+// (a room was gone into: `context`), told (a mark's history as a file told it: `mark`, `said` the
+// kind it was, at the time it was; it changes nothing), undone · redone (a step taken back or forward: `step`).
 // `table` names the kernel table the change is to (marks, places, links, moments). `before` and
 // `after` are the whole thing as it was and as it is, so a step can be taken back (before) or
 // replayed (after). Rows that land together from one save share a `step` (the seq of the first).
@@ -37,7 +38,7 @@ export const COMPACT = 30;          // days a row keeps its `before` (how far un
 export const STEPS = 400;           // steps undo reaches back, at most
 export const VISIT_GAP = 60e3;      // going into a room again within this is the same visit
 export const MOST_VISITS = 40;      // visits of a room kept in `visits`
-export const KINDS = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged', 'visited', 'undone', 'redone']);
+export const KINDS = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged', 'visited', 'told', 'undone', 'redone']);
 export const CHANGES = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged']);
 
 // A thing's fields that say where it is (a places row).
@@ -166,6 +167,14 @@ export function visit(log, roomId, now = Date.now()) {
   return push(log, { kind: 'visited', table: 'moments', context: roomId }, now);
 }
 
+// Notes a mark's history as a carrier brought it ({ time, kind, mark } rows, tables.js): told rows,
+// at the times they say, changing nothing. Returns the rows that landed.
+export function tell(log, rows) {
+  const out = [];
+  for (const r of rows) if (r && r.mark != null && Number.isFinite(r.time) && typeof r.kind === 'string') out.push(push(log, { kind: 'told', table: 'moments', mark: r.mark, said: r.kind }, r.time));
+  return out;
+}
+
 // ---- Applying rows to a state ----
 
 function set(state, r, value) {
@@ -267,7 +276,7 @@ export function outbox(log, seq) {
   const out = [];
   for (const r of log.rows) {
     if (r.seq <= seq) continue;
-    if (CHANGES.includes(r.kind) || r.kind === 'visited') { out.push(clone(r)); continue; }
+    if (CHANGES.includes(r.kind) || r.kind === 'visited' || r.kind === 'told') { out.push(clone(r)); continue; }
     const back = r.kind === 'undone';
     for (const s of steps.get(r.step) || []) {
       out.push({ seq: r.seq, time: r.time, kind: back ? inverse(s) : s.kind, table: s.table, ...who(s),
@@ -290,6 +299,7 @@ export function absorb(log, state, rows) {
   const landed = [];
   for (const r of rows) {
     if (r.kind === 'visited') { const v = visit(log, r.context, r.time); if (v) landed.push(v); continue; }
+    if (r.kind === 'told') { if (!log.rows.some((x) => x.kind === 'told' && x.mark === r.mark && x.time === r.time && x.said === r.said)) landed.push(...tell(log, [{ time: r.time, kind: r.said, mark: r.mark }])); continue; }
     if (!CHANGES.includes(r.kind) || !Number.isFinite(r.time)) continue;
     const key = keyOf(r);
     if (r.time <= (last.get(key) || 0)) continue;
@@ -353,6 +363,7 @@ export function compact(log, now = Date.now()) {
       if (r.kind === 'undone') revert(state, rows); else apply(state, rows);
       for (const s of rows) land(s, r.kind === 'undone' ? inverse(s) : s.kind, r.seq, r.time);
     }
+    else if (r.kind === 'told' && dayOf(r.time) >= floor) squashed.push(r); // a told history stays as long as the record
     // a visit older than the horizon is forgotten
   }
   flush();

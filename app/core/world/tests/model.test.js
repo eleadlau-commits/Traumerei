@@ -73,7 +73,7 @@ test('a passage keeps its lines', () => {
   const w = emptyWorld();
   const t = startTrain(w, MESSY, 0, 0);
   assert.equal(create(w, t.id, { kind: 'passage', title: ' ', body: '  ' }), null);
-  assert.equal(create(w, t.id, { kind: 'passage', title: 'On notes', body: 'one\nline two' }).body, 'one\nline two');
+  assert.equal(create(w, t.id, { kind: 'passage', title: 'On notes', text: 'one\nline two' }).text, 'one\nline two');
 });
 
 test('moving a train takes every thought with it, in order', () => {
@@ -439,7 +439,7 @@ test('each room keeps its own ontology settings; global ones fill in, reset and 
   applySettingsToAll(w, g);
   g.joyce.tension = 1; // a copy, not the same object
   for (const id of [a.id, b.id, MESSY]) assert.equal(roomSetting(w, id, 'joyce', s), 0.3);
-  assert.deepEqual(loadWorld(JSON.parse(JSON.stringify(w))).settings[b.id], { joyce: { tension: 0.3 } });
+  assert.deepEqual(loadWorld(JSON.parse(JSON.stringify(w))).things[b.id].rules, { joyce: { tension: 0.3 } });
 });
 
 // ---- Tags ----

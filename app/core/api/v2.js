@@ -33,7 +33,7 @@ export const ARCHIVE = 'archive';
 // ---- Six tables over the world as it is ----
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
 // screen; the tests call it with the same modules.
-export function kernel({ lib, world, events = null, gone = () => {} }) {
+export function kernel({ lib, world, events = null, gone = () => {}, floors = null }) {
   const { model, groups, links: LINKS, places: PLACES_T } = lib; // (the links and places tables, world/links.js and places.js, reached as the world's rules are)
   const netFor = (rule) => lib.relations.netFor(rule);
   const w = () => world.world;
@@ -268,7 +268,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
   // not know of (older than the history kept) still has its made and edited times. --
   const log = () => world.moments;
-  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  const momentRow = (r) => ({ time: r.time, kind: r.kind === 'told' ? r.said : r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
   function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });
@@ -310,6 +310,49 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('moments'),
   });
 
+  // -- carriers: the six tables out and back in (world/tables.js, traum.js; Law 8). A context's
+  // tables, the same as .traum text, text read back, and read text landed as new marks or written
+  // over the room or group it was taken from. No plugin is needed for any of it. --
+  const deep = (v) => { if (v && typeof v === 'object') { for (const k of Object.keys(v)) deep(v[k]); Object.freeze(v); } return v; };
+  const C = () => world.carriers;
+  const scopeOk = (context) => context == null || !!thing(context);
+  // What writing `got` over a context would do, tried on a copy: counts of marks kept, changed,
+  // made and deleted, or the reason it would be refused.
+  function check(context, got) {
+    if (!got?.tables) return row({ ok: false, reason: 'Not a traum/3 text' });
+    const copy = lib.model.loadWorld(JSON.parse(JSON.stringify(w())));
+    const before = new Map(lib.model.tablesOf(copy, context).marks.map((m) => [m.id, JSON.stringify(m)]));
+    const out = lib.model.replaceTables(copy, context, got.tables, got.root);
+    if (out.why) return row({ ok: false, reason: out.why });
+    const after = lib.model.tablesOf(copy, context).marks;
+    const n = { ok: true, kept: 0, changed: 0, made: 0, deleted: 0 };
+    for (const m of after) { if (!before.has(m.id)) n.made++; else if (before.get(m.id) === JSON.stringify(m)) n.kept++; else n.changed++; }
+    n.deleted = [...before.keys()].filter((id) => !after.some((m) => m.id === id)).length;
+    return row(n);
+  }
+  const carriers = Object.freeze({
+    list: () => rows((C()?.list() || []).map(({ id, name, moves }) => ({ id, name, moves }))),
+    tables: (context = null) => (scopeOk(context) && C() ? deep(C().tables(context)) : null),
+    text: (context = null, { ids = 'short' } = {}) => (scopeOk(context) && C() ? C().write(context, { ids }) : ''),
+    read: (text) => { const got = C()?.read(text); return got ? deep(got) : null; },
+    check,
+    // A read text as new marks: a new room on floor `page` (in `cell` if it is free), or poured
+    // `into` a room. One step.
+    land: (got, { into = null, page = 0, cell = null } = {}) => {
+      if (!got?.tables || !C()) return refuse('Not a traum/3 text');
+      const out = C().land(JSON.parse(JSON.stringify(got)), { into, page });
+      if (out.why) return refuse(out.why);
+      if (into == null) floors?.place(out.id, cell);
+      return land(true, out.id);
+    },
+    replace: (context, got) => {
+      if (!got?.tables || !C()) return refuse('Not a traum/3 text');
+      if (!thing(context)) return refuse('No such room or group');
+      const out = C().replace(context, JSON.parse(JSON.stringify(got)));
+      return land(!out.why, context, out.why);
+    },
+  });
+
   // -- rules: every mode as the kernel sees it (world/rules.js). Pure reads of the tables: where
   // each unit sits under a rule, whether it would take a position or a link (a refusal in words),
   // what it offers for a chosen mark, and what it draws beside the marks. No rule keeps state.
@@ -328,14 +371,14 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     },
   });
 
-  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs });
+  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers });
 }
 
 // The API one plugin gets: v1's names (the compatibility surface) and v2's six tables beside
 // them. Same arguments as v1's connect, plus lib (world.lib) and events ({ on }, or null).
 export function connect(o) {
   const base = connectV1({ ...o, offers: API_VERSION });
-  const tables = kernel({ lib: o.lib || o.world.lib, world: o.world, events: o.events || null, gone: o.gone });
+  const tables = kernel({ lib: o.lib || o.world.lib, world: o.world, events: o.events || null, gone: o.gone, floors: o.floors || null });
   return Object.freeze({
     ...base,
     // (a spread reads a getter once: the world is read afresh each time, as v1 does, since it is
@@ -343,7 +386,8 @@ export function connect(o) {
     get world() { return base.world; },
     ...tables,
     // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
-    slots: Object.freeze({ rules: base.modes, kinds: base.items, commands: base.commands, more: base.more, editor: base.editor, formats: base.formats }),
+    slots: Object.freeze({ rules: base.modes, kinds: base.items, commands: base.commands, more: base.more, editor: base.editor, formats: base.formats,
+      carriers: Object.freeze({ add: (item) => o.app.slot('world.carriers').add(item, o.plugin.id) }) }), // a carrier of the six tables (the account's sync)
     // What the person is looking at: the open room and the one mark chosen there, as ids, or null
     // (a command on the chosen thought reads it here; nothing else of the screen is in the API).
     ui: Object.freeze({ toast: base.toast, chosen: () => { const r = o.room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); } }),

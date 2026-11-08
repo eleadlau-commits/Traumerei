@@ -5,22 +5,17 @@ export default {
   kind: 'passage',
   name: 'Passage',
   tidy(f, h) {
-    const title = h.oneLine(f.title), body = h.lines(f.body);
-    return title || body ? { title, body } : null;
+    const title = h.oneLine(f.title), text = h.lines(f.text ?? f.body); // (its words were `body` before phase 6)
+    return title || text ? { title, text } : null;
   },
-  text: (th) => [th.title, th.body].filter(Boolean).join(' — '),
+  text: (th) => [th.title, th.text].filter(Boolean).join(' — '),
   fields: [
     { key: 'title', type: 'line', label: 'Title' },
-    { key: 'body', type: 'text', label: 'A paragraph, or a small article' },
+    { key: 'text', type: 'text', label: 'A paragraph, or a small article' },
   ],
   add: { note: 'a title and a body', keys: ['Alt+P'] },
   step: 190,
-  // In a .traum file (the roomfile feature): ## ^id passage: its title, then its body as written.
-  traum: {
-    read: ({ title, body }) => ({ kind: 'passage', title: title || '', body }),
-    write: (th) => ({ title: th.title || '', body: th.body || '' }),
-  },
   node: (th, el) => el('div', { class: 'room-passage', 'data-id': th.id },
     th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
-    th.body ? el('div', { class: 'room-passage-body' }, maths(th.body)) : null),
+    th.text ? el('div', { class: 'room-passage-body' }, maths(th.text)) : null),
 };

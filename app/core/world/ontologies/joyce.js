@@ -145,16 +145,6 @@ export function joyceBlocks(w, roomId) {
   return out;
 }
 
-// ---- In a .traum file (the roomfile feature): its # In joyce section ----
-//
-//   at: ^t 120 40 [hand]   a train at a point (hand: placed by hand); another mode's group placed
-//                          here; or a thought in no train, which starts a train there
-//   offset: ^a 10 -6       a thought dragged within its train (dx, dy from where it would sit)
-//   tray: ^a ^b            waiting in the tray: a train made there (the rest wait there anyway)
-//
-// A train with no at: line goes where new trains start: rows of four, below what is there.
-// c (from the roomfile feature): ref(id) → '^n' (null when not in the file), thing(value) → id,
-// report(line, words), keep(line), fresh: the ids just brought in, at: where new trains start.
 
 // Where each new train starts: rows of four from `at`, each row below the longest train above.
 function spots(w, ids, at = { x: 0, y: 0 }) {
@@ -170,57 +160,6 @@ function spots(w, ids, at = { x: 0, y: 0 }) {
 }
 const bottom = (w, g) => corner(w, g.id).y + (g.closed ? 60 : members(w, g.id).reduce((s, th) => s + stepAfter(th), 0)) + 140;
 
-const traum = {
-  write(w, roomId, c) {
-    const out = [];
-    const trains = groupsIn(w, roomId, 'joyce').filter((g) => members(w, g.id).length && c.ref(g.id));
-    for (const g of trains) { const p = spotOf(w, g.id); if (p && !groupOf(w, g.id, 'joyce')) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}${p.hand === true ? ' hand' : ''}`); }
-    for (const g of placedForeign(w, roomId, 'joyce')) { const p = spot(w, roomId, 'joyce', g.id); if (c.ref(g.id)) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}`); }
-    for (const g of trains) for (const th of members(w, g.id)) { const o = offsetOf(w, th.id); if (o && c.ref(th.id)) out.push(`offset: ${c.ref(th.id)} ${o.dx} ${o.dy}`); }
-    const tray = joyce.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
-    if (tray.length) out.push(`tray: ${tray.join(' ')}`);
-    return out;
-  },
-  read(w, roomId, lines, c) {
-    const placed = new Set(), nudged = new Set();
-    const there = groupsIn(w, roomId, 'joyce').filter((g) => !c.fresh.has(g.id) && !isLooseGroup(w, g.id) && members(w, g.id).length);
-    const num = (v) => (v?.t === 'num' ? v.v : null);
-    for (const l of lines) {
-      if (l.key === 'at' || l.key === 'offset') {
-        const id = c.thing(l.values[0], l.line), x = num(l.values[1]), y = num(l.values[2]);
-        if (!id) continue;
-        if (x == null || y == null) { c.report(l.line, `${l.key}: needs a ^reference and two numbers.`); continue; }
-        const th = w.things[id];
-        if (l.key === 'offset') { setOffset(w, id, x, y); nudged.add(id); continue; }
-        if (placed.has(id)) { c.report(l.line, 'Joyce places a thing once; this second at: was left out.'); continue; }
-        placed.add(id);
-        const hand = l.values.slice(3).some((v) => v.t === 'word' && v.v === 'hand');
-        if (isGroup(th) && th.of === 'joyce') {
-          setSpot(w, id, { x, y, ...(hand ? { hand: true } : {}) });
-        } else if (isGroup(th)) putAt(w, roomId, 'joyce', id, x, y);
-        else if (!groupOf(w, id, 'joyce')) {
-          const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
-          if (t) { join(w, t.id, id); if (hand) setSpot(w, t.id, { hand: true }); }
-        } else c.report(l.line, 'that thought is in a train already, so its train\'s at: places it.');
-      } else if (l.key === 'tray') {
-        for (const v of l.values) {
-          const id = c.thing(v, l.line);
-          const g = id && w.things[id];
-          if (isGroup(g) && g.of === 'joyce') { unsetSpot(w, id); placed.add(id); }
-        }
-      } else c.keep(l);
-    }
-    // Editing (c.scope: the ids the text holds): a thought it holds with no offset: line sits where
-    // its train puts it.
-    if (c.scope) for (const id of c.scope) { const th = w.things[id]; if (th && offsetOf(w, id) && !nudged.has(id)) unsetOffset(w, id); }
-    // New trains with no place: side by side in clear space, below what was there.
-    const fresh = groupsIn(w, roomId, 'joyce').filter((g) => c.fresh.has(g.id) && !placed.has(g.id) && !isLooseGroup(w, g.id) && !groupOf(w, g.id, 'joyce'));
-    if (!fresh.length) return;
-    const below = Math.max(0, ...there.map((g) => bottom(w, g)));
-    const where = spots(w, fresh.map((g) => g.id), c.at || { x: 0, y: below });
-    for (const g of fresh) setSpot(w, g.id, where[g.id]);
-  },
-};
 
 // ---- The ontology ----
 
@@ -389,7 +328,6 @@ const joyce = {
     return [svg, ...nodes];
   },
 
-  traum,
 };
 
 export default joyce;

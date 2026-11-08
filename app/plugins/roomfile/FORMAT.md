@@ -1,472 +1,267 @@
 # The .traum format
 
-A `.traum` file is one Träumerei room as plain text (UTF-8): everything in the room, written once,
-and then where each thing sits in each of the room's ontologies (modes). This file is the spec.
-It is for anyone who writes a room file, a person by hand or a machine (Claude, a script), and for
-anyone who adds an ontology or a kind of thought to Träumerei.
+A `.traum` file is the kernel's six tables written as plain text (UTF-8): the marks of a room (or
+of the whole world) and the places, links, readers, gaps and moments that are about them. This is
+Law 8 of `app/core/KERNEL.md`, **the file is the tables**: nothing in a file is a mode's private
+section, and nothing a mode keeps outside the tables is saved. A file reads and writes with no
+plugin switched on, so a thought of a kind whose plugin is off goes out and comes back exactly as
+it was.
 
-Every file Träumerei writes says `format: room/2` and points here with `guide:`.
+This file is the spec, for anyone who writes a file by hand or by machine (Claude, a script). The
+reader and writer are `app/core/world/traum.js`; the tables are `app/core/world/tables.js`. Every
+file Träumerei writes says `format: traum/3` and points here with `guide:`. Files of the older
+`room/2` format are no longer read (saved data is disposable: export again).
 
 ## At a glance
 
-A Russell room with one Joyce train also in it (a big room, so it has both modes):
-
-```
+```traum
 ---
-format: room/2
-guide: https://github.com/eleadlau-commits/traumerei/blob/main/app/plugins/roomfile/FORMAT.md
-room: Linear algebra
-modes: [russell, joyce]
-description: A book where each chapter abstracts the last
+format: traum/3
+context: ^1
+---
+
+# Marks
+
+## ^1 room: Linear algebra
+mode: russell
 tags: [maths, book]
-tint: "#7a5c3e"
-russell.relations: [forgets, "is a case of", ⊂]
----
+rules: {"russell": {"relations": ["forgets", "is a case of"]}}
+material.tint: "#7a5c3e"
 
-# Objects
-
-## ^1 line
+## ^2 line
 A vector is a list of numbers.
 
-## ^2 passage: Why arrays
+## ^3 passage: Why arrays
 A passage keeps its paragraphs, with $x_i$ and
 
 $$\sum_i x_i$$
 
-## ^3 picture: A grid
-data:image/jpeg;base64,/9j/4AAQ...
-
 ## ^4 group: Arrays
-made in: russell
-holds: ^1 ^2 ^3
-closed
-shared
+of: russell
 
 ## ^5 line
 A matrix is a grid of numbers.
 
 ## ^6 group: Matrices
-made in: russell
-holds: ^5
+of: russell
 
-## ^7 group: Reading order
-made in: joyce
-holds: ^1 ^5
+# Places
+^2 in ^1
+^3 in ^1
+^4 in ^1
+^4 in ^1 | rule: russell | at: {x: 0, y: 0}
+^5 in ^1
+^6 in ^1
 
-# In russell
-on canvas: ^4 ^6
-arrow: ^4 -> ^6 | forgets | the individual equations
+# Links
+^2 part of ^4 | order: 0
+^3 part of ^4 | order: 1
+^5 part of ^6 | order: 0
+^4 relation ^6 | rule: russell | label: forgets | note: the individual equations
 
-# In joyce
-at: ^7 120 40
-tray: ^4 ^6
+# Gaps
+^5 open to world | opened: 2026-11-08T09:00:00.000Z
 ```
-
-The file has three parts: the **front matter**, the **`# Objects`** list, and one **`# In <mode>`
-section** per ontology. Only `# Objects` is needed.
-
-## A minimal file
-
-Five loose thoughts and nothing else. This is a whole, valid file:
-
-```
-# Objects
-
-## ^1 line: The first thought
-## ^2 line: The second thought
-## ^3 line
-A third, written under its header,
-over two lines.
-## ^4 passage: A title
-And the paragraph under it.
-## ^5 line: The last thought
-```
-
-It becomes a Joyce room named after the file, with the five thoughts in its tray.
 
 ## The grammar
 
-### Lines
+**Front matter**, between two `---` lines at the top: `format: traum/3` (required), `guide:` (a
+link here; optional) and `context: ^id`, the mark the file is about (a room; without it, the first
+mark). Any other key is reported and left out.
 
-- The file is read line by line. Line endings may be `\n` or `\r\n`.
-- `# Objects`, `# In <mode>`, `# Left: <mode>`, `# Right: <mode>`: a **section** header (one `#`,
-  a space, its name). Any other `# Name` is a section Träumerei doesn't know: it is reported and
-  kept.
-- `## ^id kind` or `## ^id kind: title`: an **object** header, inside `# Objects` (or before any
-  section). Everything up to the next header is that object's body.
-- `key: value value …` or a bare `key`: a **key line**. This one shape is used everywhere outside
-  an item's body: in the front matter, in groups and relations, and in every mode's section. A key
-  is one to four words (`made in`, `on canvas`); a bare key is one word and is a flag (`closed`).
-- Blank lines between things don't matter.
+**Sections** are `# ` headings, one per table: `# Marks`, `# Places`, `# Links`, `# Distance`,
+`# Gaps`, `# Moments`, in any order, each optional. Anything else is reported and left out.
 
-### Front matter
+**Ids** are written `^` and letters, digits, `_`, `.`, `:` or `-`: `^1`, `^arrays`, `^ch-1`. They
+are the file's own: brought in, every mark gets a fresh id of the world's. Träumerei writes short
+numbers (`^1` is the context, then in the order the marks were made); editing in the app shows the
+world's own ids.
 
-Optional, between `---` lines at the very top. Values with odd characters (a leading `#`, a comma
-in a list item, leading or trailing spaces) go in `"quotes"`; lists go in `[ ]`.
+**Values** after `key:` are JSON (`12`, `true`, `"quoted words"`, `[maths, book]` needs quotes:
+`["maths", "book"]`; objects may leave their keys bare: `{x: 120, y: 40}`), or else plain words,
+read as they are: `label: forgets`. Words that would read as something else (`true`, `12`, words
+with ` | ` or a line break) are quoted.
 
-| Key | Meaning |
+**Times** are ISO 8601 (`2026-11-08T09:00:00.000Z`), or milliseconds since 1970.
+
+## # Marks
+
+```
+## ^id kind: its name
+key: value
+…
+
+Its words, as many lines and paragraphs as it has.
+```
+
+A mark is `{ id, body: { kind, content }, material?, at, edited? }` (KERNEL.md). The header gives
+its id, its **kind** (lowercase words joined by dashes: `line`, `passage`, `picture`, `group`,
+`room`, or any kind a plugin adds) and, after a colon, its name: a room's `name`, anything else's
+`title`. The lines right under the header that read `key: value` are its fields (a blank line ends
+them); everything after is its **words**, `text` in its content, kept exactly (a line of the words
+that starts with `#` or `\` is written with a `\` before it).
+
+| Field | What it is |
 |---|---|
-| `format` | Always `room/2`. |
-| `guide` | A link to this file. |
-| `room` | The room's name. Without it, the file's name. |
-| `modes` | The ontologies the room is seen through, its own first: `[joyce]`. One mode makes a small room; more than one makes a big room, which holds every ontology. |
-| `twin` | Instead of `modes`, for a Twin (two rooms side by side): `[left, right]`, e.g. `[joyce, russell]`. |
-| `description` | A line or two about the room. |
-| `tags` | Words the rooms page sorts it by: `[maths, book]`. |
-| `tint`, `light`, `opacity` | Its colour: `"#7a5c3e"`, and two numbers from 0 to 1. |
-| `<mode>.<key>` | One of the room's settings for a mode: `russell.relations: [forgets, ⊂]`, `joyce.tension: 0.4`. |
-| `left.<mode>.<key>`, `right.<mode>.<key>` | A Twin side's settings. |
+| `made:`, `edited:` | when it was made and last written (`at`, `edited`) |
+| `material.<key>:` | its own look: a room's `tint` (`"#rrggbb"`), `light`, `opacity` (0 to 1), `size` (`1`, `2` or `"twin"`) |
+| `content.<key>:` | a field of its content whose name is not a plain word, or is one of the names above |
+| any other `key:` | a field of its content, as the kind keeps it |
 
-Any other key is reported, kept, and written back out.
+What the content of each kind holds is the kind's own; the file carries every field whether or not
+its plugin is on. The built-in kinds:
 
-### Objects
-
-```
-## ^id kind: title
-body
-```
-
-- **The id** is any word after `^` (no spaces): `^7`, `^arrays`, `^ch-2`. It only has to be
-  unique in the file. Träumerei writes short numbers; a person may write names.
-- **The kind** says what the object is (below). Kinds are open: an object of a kind Träumerei
-  doesn't know (`region`, `pdf-page` before it exists) is reported, kept exactly as written, and
-  written back out.
-- **The title** is everything after the colon, on one line.
-- **The body** is the lines under the header. For a thought it is its words, kept exactly as
-  written, LaTeX included; for a group or a relation it is key lines.
-- **Order.** Objects are listed in the order they were written: that order is the Timeline. Each
-  group comes after everything it holds. A reader may also meet a reference to an object further
-  down; it is found all the same.
-- **Escaping.** A body line that starts with `## ^` or `# ` is written with a backslash in front
-  (`\# Not a section`) and read back without it. A line that already starts with a backslash
-  before one of those gets one more.
-
-### Values
-
-The values after `key:` are typed:
-
-| Value | Example | Meaning |
-|---|---|---|
-| reference | `^a` | an object |
-| occurrence | `^a#2` | the second time an object appears (for modes that place one thing more than once) |
-| span | `^a@"the cruellest month"` | some words inside an object |
-| number | `120`, `-3.5` | |
-| date | `2026-11-05`, `2026-11-05T14:30` | |
-| text | `"quoted text"` | `\"` is a quote, `\\` a backslash |
-| list | `[a, "b, c", 3]` | |
-| sign | `->`, `\|` | used by `arrow:` |
-| word | `hand`, `auto` | anything else, up to a space |
-
-A mode uses what it needs; a mode that doesn't use occurrences or spans reads `^a#2` as `^a` and
-says so.
-
-### Sections
-
-Each ontology of the room has one `# In <mode>` section (a Twin: `# Left: <mode>` and
-`# Right: <mode>`). It says where objects sit in that mode, and nothing else. Its lines are key
-lines; which keys a mode reads is in its part below.
-
-- **Missing lines are fine.** An object with no line in a mode sits where that mode puts new things
-  (its tray, its spiral, its own layout). So a file may have no sections at all.
-- **The mode keeps its own rules.** Russell refuses a loop and reports it; the rest still arrives.
-- **Exact positions.** Träumerei writes every position it has, so a room taken out and brought back
-  is the same. Positions are never needed on the way in.
-- **Repeated placement** (the same object placed twice) is allowed where a mode supports it; one
-  that doesn't reports the second line.
-- **Unknown lines and sections** are reported and kept, and written back into the same section next
-  time. A section for a mode the room doesn't have is kept too.
-
-### What isn't understood
-
-Nothing is dropped silently. Anything Träumerei doesn't understand (a front matter key, a kind, a
-group's key, a mode's line, a section) is listed in the card before Import, kept with the room, and
-written back out on the next export, so a file passes through an older Träumerei without loss.
-(References inside kept parts are written as they were; if the room changes meanwhile, they may
-point at the wrong thing.)
-
-## Kinds of object
-
-Each kind of thought reads and writes its own body (the `traum` member in
-`app/core/world/items/`).
-
-### Kind: line
-
-A passing thought. Its words are the body; a title on the header is read as its first line, so a
-one-line thought can be written on one line.
-
-```
-## ^1 line
-A vector is a list of numbers.
-
-## ^2 line: A vector is a list of numbers.
-```
-
-Words in any thought may carry a size, written as Pandoc writes a span: `[some words]{size=big}`
-(`smallest`, `small`, `big` or `biggest`). It is part of the words, so it round-trips as typed.
-
-### Kind: passage
-
-A title and a body (paragraphs, display maths, blank lines inside it).
-
-```
-## ^2 passage: Why arrays
-A passage keeps its paragraphs, with $x_i$ and
-
-$$\sum_i x_i$$
-```
-
-### Kind: picture
-
-The caption is the title; the body is its address on one line: a `data:image/…` URL (always
-works), or an `https://` address, which Träumerei fetches when the other site allows it (many
-don't; then it arrives as a line saying so). Pictures are shrunk as pasted ones are. In the source
-editor a picture shows as a short reference, `picture:3`, that reads back as the same picture.
-
-```
-## ^3 picture: A grid
-data:image/jpeg;base64,/9j/4AAQ...
-```
-
-### Kind: group
-
-Thoughts held together by an ontology: a Joyce train, a Russell chapter. Its title is the header's;
-its body is key lines:
-
-| Line | Meaning |
+| Kind | Content |
 |---|---|
-| `made in: <mode>` | The ontology that made it, so it shows as a train or a chapter. Without it, the room's first mode that makes groups. |
-| `holds: ^a ^b` | What it holds, in order: thoughts, and other groups (a group of groups; nesting has no limit). Where its mode keeps an order (Russell), this is it; where its mode reads by time (Joyce), the thoughts are in the order they were written, and a group it holds sits where `holds:` puts it among them. |
-| `closed` | It shows as one thought (its title). |
-| `shared` | Made on purpose (Ctrl+G): every other mode of the room sees it as one object, and its thoughts are not loose there as well. |
+| `line` | `text`: its words (a line break is a new line within the thought) |
+| `passage` | `title` (on the header), `text`: a paragraph or a small article; `$…$` and `$$…$$` are mathematics |
+| `picture` | `src`: a `data:image/…` address, or `https://…` (fetched when it comes in, if the other site allows it; else it comes in as a line with the address); `text`: its caption |
+| `group` | `title` (on the header), `of`: the mode that made it (`joyce` makes trains, `russell` chapters); `closed: true`, `shared: true` |
+| `room` | `name` (on the header), `mode`: the mode it is seen through; `desc`, `tags`; `rules`: each mode's settings for this room, `{ "<mode>": { "<key>": value } }` |
 
-One thought can sit in several groups of different modes; nothing is copied, since groups point at
-ids. A mode that holds a thought in only one of its groups (Joyce) keeps it in the last. A group
-that holds nothing is left out. A folded thought is just one new thought: folds need nothing.
-
-```
-## ^4 group: Arrays
-made in: russell
-holds: ^1 ^2 ^3
-closed
-```
-
-### Kind: relation
-
-A relation between objects, as an object of its own (so it can be named, labelled, grouped or
-pointed at). The title is the relation's name.
-
-| Line | Meaning |
-|---|---|
-| `from: ^a` | Where it starts. |
-| `to: ^b` | Where it ends. |
-| `label: "…"` | A short label. |
-| `made in: <mode>` | The mode it belongs to; without it, the room's first mode with groups. |
-| `ends: arrow` | Its ends, where the mode draws ends (Proust): `none`, `arrow` or `both` (or `--`, `->`, `<->`). |
-
-A relation with one `from:` and one `to:` is an arrow in that mode, the same as an `arrow:` line.
-One joining more (`from: ^a ^b` and `to: ^c`: "A and B, therefore C") is kept as written until a mode
-reads it.
+## # Places
 
 ```
-## ^r relation: is a case of
-from: ^arrays
-to: ^matrices
-label: "the square ones"
+^mark in ^context | rule: <mode> | at: {x: 120, y: 40} | pinned
 ```
 
-## Ontologies
+Where a mark sits: `{ mark, context, rule?, position?, pinned? }`. A line with no rule is the mark's
+**home**: the room an item or group is in (every mark but the file's context needs one; a mark
+with none is put in the context). A line with a rule is where that rule (a mode) puts it there,
+`at` its position as the rule keeps it: Pessoa's and Proust's `{x, y, auto?}`, a group under its
+own mode `{x, y, hand?}`, a Joyce thought dragged off its train `{dx, dy}`, a Twin's side
+`{side}`. **No rule line means the mark is loose under that rule** (Law 2): the mode lays it out
+itself or keeps it in its tray.
 
-Each ontology reads and writes its own section (the `traum` member in
-`app/core/world/ontologies/`).
-
-### Ontology: joyce
-
-Thoughts joined by time into trains. Its section is `# In joyce`.
-
-| Line | Meaning |
-|---|---|
-| `at: ^t x y` | A train starts at x, y (`hand` after it: placed by hand). Also another mode's group placed in Joyce, or a thought in no train, which then starts a train of its own there. |
-| `offset: ^a dx dy` | A thought dragged within its train, this far from where the train would put it. |
-| `tray: ^a ^b` | Waiting in the tray. A train named here was made in the tray; thoughts in no train and other modes' groups not placed wait there anyway. |
-
-A train with no `at:` starts beside the others, in rows of four, below what is there. Joyce places a
-thing once.
-
-### Ontology: pessoa
-
-Every thought on its own, on a spiral, staying where it is dragged. Pessoa makes no groups. Its
-section is `# In pessoa`.
-
-| Line | Meaning |
-|---|---|
-| `at: ^a x y` | Placed at x, y (`auto` after it: pushed there to keep clear, not dragged). Another mode's group is on Pessoa's canvas only with an `at:`. |
-| `on canvas: ^a ^b` | On the spiral, where Pessoa lays it (the same as no line). |
-| `tray: ^g ^n` | Another mode's group not placed yet (the same as no line), or a thought added away from the canvas (the tray's box), waiting there until it is dragged out. |
-
-### Ontology: russell
-
-Chapters joined into a tree by arrows, each an abstraction of the one above it. Its section is
-`# In russell`.
-
-| Line | Meaning |
-|---|---|
-| `on canvas: ^a ^b` | Chapters in the tree, laid out by Russell. |
-| `at: ^c x y` | A chapter placed by hand at x, y; its children still hang under it. |
-| `tray: ^d` | Waiting in the tray. A chapter named here was made in the tray; thoughts in no chapter wait there anyway. |
-| `arrow: ^from -> ^to \| relation \| label` | An arrow from a parent chapter to a child. The relation (`forgets`, `is a case of`, `⊂`, or nothing) and the label may be left out or empty: `arrow: ^a -> ^b`, `arrow: ^a -> ^b \| \| a label`. Either may be in quotes. |
-
-A chapter has any number of parents. A loop is refused and reported, and the other arrows are
-still drawn. The room's list of relations is the setting `russell.relations`. The `arrow:` line
-belongs to the shared arrows part (`relations.js`); Proust reads it too.
-
-**A relation's look.** In the list, a relation may end with its look after a `|`: its line
-(`solid`, `dashed` or `dotted`) and its colour (`ink`, `amber`, `rust`, `moss`, `slate` or `plum`),
-in either order: `russell.relations: [forgets | rust, is a case of | dashed slate]`. Solid ink is
-the plain look and is left out. Proust's relations take a look the same way, after their ends:
-`calls up -> | dashed amber`. A word Träumerei doesn't know there is left out. That is why a
-relation's name can't hold a `|`.
-
-### Ontology: proust
-
-Every thought free on the canvas, joined by named links that may run in loops, and gathered into
-clusters (its groups, `made in: proust`). Its section is `# In proust`.
-
-| Line | Meaning |
-|---|---|
-| `at: ^a x y` | A thought placed at x, y (`auto` after it: pushed there to keep clear, not dragged). Also another mode's group placed in Proust, or a cluster moved whole so its corner is there. |
-| `on canvas: ^a ^b` | Thoughts on the spiral, where Proust lays them (the same as no line). A cluster named here comes out of the tray. |
-| `tray: ^g ^n` | A cluster waiting in the tray, another mode's group not placed yet (the same as no line), or a thought added away from the canvas (the tray's box), waiting there until it is dragged out. |
-| `link: ^a -> ^b \| relation \| label` | A link. Between its ends: `--` a plain line, `->` an arrow, `<->` an arrow both ways. Relation and label are written as in an `arrow:` line, and may be left out. |
-| `arrow: ^a -> ^b \| relation \| label` | Russell's line, read as a link with an arrow. |
-
-Links join any two things on the canvas: thoughts, clusters, other modes' groups. Loops are fine;
-two things have at most one link each way; a link from a thing to itself is refused and reported.
-
-**Each relation has its own ends**, kept in the room's list of relations, the setting
-`proust.relations`: a relation's name, then its mark (`leads to ->`, `is equivalent to <->`; no mark,
-or `--`, is a plain line). Without the setting a room has `[related to, "leads to ->", "is equivalent
-to <->"]`. A `link:` line writes its relation's ends too, so the file reads on its own: a relation
-the room doesn't have yet joins its list with the ends the line gives; one it has keeps its own
-ends, and a line that says otherwise is drawn the relation's way and reported. A link with no
-relation is a plain line. After its ends a relation may carry its look, as Russell's do:
-`"calls up -> | dashed amber"`.
+## # Links
 
 ```
+^member part of ^group | order: 0
+^fold stands for ^mark
+^child relation ^parent | rule: russell | label: forgets | note: the arrow's words
+```
+
+The only structure there is (Law 4): `{ from, to, kind, order?, rule?, label?, note? }`. *Part of*
+puts a mark in a group (`order`: its rank, for a mode that keeps its order as given); a group may
+be part of a group. *Stands for* is a fold: the folded marks stay in the file, shown nowhere. A
+*relation* is an arrow of a mode's (`rule`), `label` the relation's name (one of the room's
+`rules.<mode>.relations`), `note` its words. A link whose ends are not marks of the file is left
+out; the mode's own checks (Russell refuses a loop) still hold once it is in.
+
+## # Distance
+
+```
+^context for others
+```
+
+Who a context is written for: `me now` (the same as no line), `me later`, `others`, `machine`
+(Law 7). A room for others is locked: nothing in it can change until it is unlocked by hand.
+
+## # Gaps
+
+```
+^mark open from world | opened: 2026-11-08T09:00:00Z
+^mark resolved to maker | opened: … | resolved: … | by: judgement
+```
+
+What a mark was made to close (Law 5): `open` or `resolved`, with a direction, `to world` (check),
+`from world` (do) or `to maker` (judge); `by` is the link that resolved it, or `judgement`. One
+line per mark at most. A group's gap is derived from its parts and never written.
+
+## # Moments
+
+```
+2026-11-08T09:00:00.000Z made ^mark
+```
+
+A mark's history: when it was made, edited, moved, visited. It comes in as history only (it
+changes nothing), so a room taken out and brought back remembers when its thoughts were written.
+
+## A file written by hand
+
+The least a file needs is its front matter and its marks; each mark with no home sits in the
+context, loose, and every mode lays it out its own way.
+
+```traum
 ---
-format: room/2
-room: Combray
-modes: [proust]
-proust.relations: [related to, "calls up ->", "is the same as <->"]
+format: traum/3
 ---
 
-# Objects
+# Marks
 
-## ^1 line: the madeleine
-## ^2 line: Combray
-## ^3 line: the church at Combray
-## ^4 line: Swann's way
-## ^5 group: Combray
-made in: proust
-holds: ^2 ^3
-
-# In proust
-at: ^1 0 0
-at: ^2 320 0
-at: ^3 320 120
-at: ^4 0 240
-link: ^1 -> ^2 | calls up | in the tea
-link: ^2 -- ^3
-link: ^3 -> ^4 | calls up
-link: ^4 -> ^1 | calls up
-link: ^5 <-> ^4 | is the same as
-```
-
-## Twins
-
-A Twin is two rooms side by side, each with its own mode. Its file says `twin: [left, right]`
-instead of `modes`, lists both sides' objects in one `# Objects`, and has `# Left: <mode>` and
-`# Right: <mode>`:
-
-```
----
-format: room/2
-room: Pair
-twin: [joyce, russell]
-left.joyce.tension: 0.3
----
-
-# Objects
+## ^room room: Things to finish
 
 ## ^1 line
-On the left.
+Fix the bike
 
 ## ^2 line
-On the right.
-
-## ^3 group: Train
-made in: joyce
-holds: ^1
-
-## ^4 group: Chapter
-made in: russell
-holds: ^2
-
-# Left: joyce
-at: ^3 10 20
-
-# Right: russell
-on canvas: ^4
+Call the bank
 ```
 
-Each object is on the side whose section names it, and a group takes everything it holds with it
-(and a relation its ends). An object no section names is on the left, in the shared tray. A Twin
-side's section brought into an ordinary room is read as that mode's own.
+A to-do list: a Joyce train of things to do, each with a gap, one done.
 
-## Writing by hand
+```traum
+---
+format: traum/3
+context: ^room
+---
 
-- Start with `# Objects` only. Add front matter when you want a name, modes or a colour.
-- Use named ids (`^arrays`, `^ch-1`): easier to read and to refer to.
-- Leave out positions and let the modes place things. Add `# In russell` with `arrow:` lines for a
-  tree.
-- A one-line thought fits on its header: `## ^1 line: A vector is a list of numbers.`
-- Drop the file on the rooms page (a new room) or on a room (its objects join it).
+# Marks
 
-A plain `.md` file needs none of this: it comes in as loose thoughts (a list item or a one-line
-paragraph is a line, a heading and its paragraph a passage, `![caption](address)` a picture).
+## ^room room: This week
+mode: joyce
+
+## ^list group: To do
+of: joyce
+
+## ^1 line
+Fix the bike
+
+## ^2 line
+Call the bank
+
+# Places
+^1 in ^room
+^2 in ^room
+^list in ^room
+
+# Links
+^1 part of ^list | order: 0
+^2 part of ^list | order: 1
+
+# Gaps
+^1 open from world | opened: 2026-11-08T09:00:00Z
+^2 resolved from world | opened: 2026-11-08T09:00:00Z | resolved: 2026-11-08T12:00:00Z
+```
 
 ## Writing as a machine (Claude or a script)
 
-- Always write `format: room/2` and `modes:` (or `twin:`).
-- Write every object once, in the order it should read; list each group after what it holds.
+- Always write `format: traum/3` and `context:`; write the context's mark first.
+- Write every mark once; give each a home line in `# Places`, and a rule line only when you mean a
+  position.
+- Use the kinds and fields in this file; a field Träumerei doesn't know is kept, but nothing acts
+  on it.
 - Ids: short numbers or words, unique in the file.
-- Use only the keys and lines in this file. Never invent keys: Träumerei keeps unknown ones, but no
-  mode will act on them.
-- Put each `arrow:` or `link:` in the section of the mode it belongs to.
-- Positions are optional; leave them out unless you mean them.
 - Check the card before Import: it lists every line that couldn't be read.
 
 ## Editing in the app
 
-*Edit room source* (in a room's Add) or *Source* (at the foot of a group's editor) opens the room or
-one group as this text in the source editor. The ids are the room's own for as long as the editor is
-open: an id it wrote is that thing, changed in place when its words change (keeping its time, its
-groups and its place); a new id is a new thing; an object taken out is deleted (for the whole room,
-only when *Delete what isn't in the text* is ticked). A group's text holds its objects and the
-section lines about them, and may refer to other things in the room by their ids (an arrow to
-another chapter). Apply is one step: one Ctrl+Z takes it back.
+*Edit room source* (in a room's Add) or *Source* (at the foot of a group's editor) opens the room,
+or a group with its parts, as this text in the source editor, with the world's own ids (pictures
+show as `picture:1`, and go back to what they were). Apply writes the text back over what it was:
+a mark whose id is there is changed in place; a new id is a new mark; a mark taken out is deleted,
+with its links, places and gap. A group's text names the room its parts sit in (`^item in
+^room`), which it does not hold. Apply is one step: one Ctrl+Z takes it back.
 
-## Adding an ontology or a kind of thought
+## Plain Markdown
 
-1. **Code.** A kind of thought: `traum: { read({ title, body }) → fields, write(th) → { title, body } }`
-   in its file in `app/core/world/items/`. An ontology: `traum: { write(w, room, c) → lines,
-   read(w, room, lines, c) }` in its file (or its feature's slot entry); `index.js` in
-   `app/core/world/ontologies/` lists what `c` gives (references, reports, keeping lines it
-   doesn't know, its arrows). An ontology that joins its groups with arrows uses `relations.js`'s
-   `traumLines` and `traumArrows` for the `arrow:` line.
-2. **This file.** A section `### Kind: <kind>` or `### Ontology: <id>`, with its lines and an
-   example. A check (`node app/plugins/roomfile/tests/guide.mjs`, run on every pull request) fails
-   when one is missing.
-3. **A test.** A round trip in `app/plugins/roomfile/tests/traum.test.js`: a file in, the room out,
-   the same file again.
+A plain `.md` file needs none of this: it comes in as loose thoughts (a list item or a one-line
+paragraph is a line, a heading and its paragraph a passage, `![caption](address)` a picture).
 
-The grammar never changes for a new ontology: it only adds its own lines here and its own code.
+## Adding a kind of thought or a mode
+
+Nothing here changes: a kind's content is its own fields, a mode's positions are its rule lines in
+`# Places`, its settings `rules.<mode>` on the room, its arrows relation links with `rule:` its id.
+A plugin that keeps something no row can say does not have it saved (Law 8). The check
+`node app/plugins/roomfile/tests/guide.mjs` (every pull request runs it) reads every ```` ```traum ````
+example here and lands it with no plugin on.

@@ -10,16 +10,13 @@ import { picture } from '../item.js';
 import { ITEMS, BUILT_IN, setKinds, lacks, kindFor } from '../../world/items/index.js';
 import { emptyWorld, create, addRoom, roomItems, thoughtText, MESSY } from '../../world/model.js';
 import { gather } from '../../world/ontologies/index.js';
-import { bind as bindRoomfile } from '../../roomfile/world.js';
-import { parse } from '../../roomfile/grammar.js';
-import { importRoom, exportRoom } from '../../roomfile/traum.js';
+import { landTables, tablesOf } from '../../world/model.js';
+import * as X from '../../world/traum.js';
 
 const t = surface(lib);
-bindRoomfile(t); // Room files, to write a room out and read it back
 const shrunk = [];
 const kind = picture({ maths: t.maths.maths, shrinkPicture: async (file) => { shrunk.push(file.name); return 'data:image/jpeg;base64,SMALL'; } });
 const SRC = 'data:image/jpeg;base64,AAAA';
-const ontologies = gather([]);
 
 // Each test sets the kinds it needs, and puts back what was there (the tests share one page).
 const withKinds = (kinds, fn) => async () => {
@@ -62,44 +59,45 @@ function roomWithPicture() {
   create(w, r.id, { kind: 'picture', src: SRC, text: 'dusk' }, 3);
   return { w, r };
 }
+// A room out as .traum text, and a text read into a fresh world (the carrier: Law 8, no plugin).
+const exportRoom = (w, id) => X.write(tablesOf(w, id), { root: id });
 const readBack = (text) => {
   const w = emptyWorld(1);
-  const out = importRoom(w, parse(text), { ontologies, now: 5 });
-  return { w, room: out.room, report: out.report };
+  const got = X.read(text);
+  const out = landTables(w, got.tables, got.root, { now: 5 });
+  return { w, room: { id: out.id }, report: got.report };
 };
 
 test('a room with pictures goes out and comes back the same, with Pictures on', withKinds([kind], () => {
   const { w, r } = roomWithPicture();
-  const once = exportRoom(w, r.id, { ontologies });
-  assert.match(once, /## \^\d+ picture: dusk\ndata:image\/jpeg;base64,AAAA/);
+  const once = exportRoom(w, r.id);
+  assert.match(once, /\nsrc: data:image\/jpeg;base64,AAAA\n\ndusk\n/);
   const back = readBack(once);
   assert.deepEqual(back.report, []);
-  assert.equal(exportRoom(back.w, back.room.id, { ontologies }), once);
+  assert.equal(exportRoom(back.w, back.room.id), once);
   assert.deepEqual(roomItems(back.w, back.room.id).map((th) => th.kind), ['line', 'picture']);
 }));
 
 test('with Pictures off, a picture is kept as it is, shows as a stand-in, and goes out and back the same', withKinds([kind], () => {
   const { w, r } = roomWithPicture();
-  const on = exportRoom(w, r.id, { ontologies });
+  const on = exportRoom(w, r.id);
   setKinds([]); // Pictures is switched off
   const pic = roomItems(w, r.id).find((th) => th.kind === 'picture');
   assert.equal(pic.src, SRC); // nothing lost
   assert.ok(kindFor('picture').missing);
   assert.equal(kindFor('picture').fields, undefined); // nothing to write in: the room offers no sheet for it
   assert.ok(kindFor('picture').node(pic, ui.el).classList.contains('st-off'));
-  const off = exportRoom(w, r.id, { ontologies });
-  assert.equal(off, on); // written out under its own kind, with its picture
+  assert.equal(exportRoom(w, r.id), on); // the same rows: a carrier needs no plugin
   setKinds([kind]); // on again: the same thought is a picture again
   assert.equal(thoughtText(w, pic), '[dusk]');
-  assert.equal(exportRoom(w, r.id, { ontologies }), on);
+  assert.equal(exportRoom(w, r.id), on);
 }));
 
 test('a file read while Pictures is off keeps its pictures as they were written, and writes them back out', withKinds([kind], () => {
   const { w, r } = roomWithPicture();
-  const on = exportRoom(w, r.id, { ontologies });
+  const on = exportRoom(w, r.id);
   setKinds([]);
   const back = readBack(on);
-  assert.equal(back.report.length, 1, back.report.join(' | '));
-  assert.match(back.report[0], /doesn't know the kind "picture"; \^\d+ was kept and will be written back out/);
-  assert.match(exportRoom(back.w, back.room.id, { ontologies }), /## \^\d+ picture: dusk\ndata:image\/jpeg;base64,AAAA/);
+  assert.deepEqual(back.report, []);
+  assert.equal(exportRoom(back.w, back.room.id), on);
 }));

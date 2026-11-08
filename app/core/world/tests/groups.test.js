@@ -156,7 +156,7 @@ test('fold: many thoughts become one, in their place in every mode, and the old 
   const two = fold(w, MESSY, [t.id], 300);
   assert.equal(two.kind, 'passage');
   assert.deepEqual(members(w, t.id).map((m) => m.id), [two.id]);
-  assert.match(two.body, /a[\s\S]*b\nc[\s\S]*body/);
+  assert.match(two.text, /a[\s\S]*b\nc[\s\S]*body/);
   assert.ok(w.things[p.id] && foldedAway(w, p.id));
   // What can't be folded says why.
   assert.ok(foldPlan(w, MESSY, [two.id]).why);
