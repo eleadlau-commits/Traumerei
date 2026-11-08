@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
+import { room, cellOf, setCell, unsetCell, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -20,7 +20,7 @@ const inside = (r, col, row, board) => { const { w, h } = span(r); return col >=
 // Whether room `r` could sit at (col, row) of floor `page` (its own by default): on the board and
 // clear of every other room there.
 export function free(w, r, col, row, board, page = floorOf(w, r.id)) {
-  return inside(r, col, row, board) && cells({ ...r, col, row }).every(([c, rr]) => !roomAt(w, c, rr, r.id, page));
+  return inside(r, col, row, board) && cells(r, { col, row }).every(([c, rr]) => !roomAt(w, c, rr, r.id, page));
 }
 
 // The first free spot for room `r` on floor `page` (left to right, top to bottom), or null.
@@ -50,7 +50,7 @@ export function place(w, id, board, cell = null, { near = false } = {}) {
   const r = room(w, id);
   if (!r || isArchived(w, id)) return null;
   const from = floorOf(w, id);
-  delete r.col; delete r.row; // so its old cell doesn't hold its own place
+  unsetCell(w, id); // so its old cell doesn't hold its own place
   let at = cell && free(w, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w, r, from, board, cell) : spot(w, r, from, board);
   let page = from;
   if (!at) {
@@ -58,8 +58,7 @@ export function place(w, id, board, cell = null, { near = false } = {}) {
     toPage(w, r.id, page);
     at = spot(w, r, page, board) || { col: 0, row: 0 };
   }
-  r.col = at.col;
-  r.row = at.row;
+  setCell(w, id, at.col, at.row);
   return { page, from, spilled: page !== from };
 }
 
@@ -71,9 +70,10 @@ export function settle(w, page, board) {
   const taken = new Set();
   const loose = [];
   for (const r of all) {
-    const ok = r.col != null && inside(r, r.col, r.row, board) && cells(r).every(([c, rr]) => !taken.has(`${c},${rr}`));
-    if (!ok) { loose.push(r); delete r.col; delete r.row; continue; }
-    for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+    const at = cellOf(w, r.id);
+    const ok = at && inside(r, at.col, at.row, board) && cells(r, at).every(([c, rr]) => !taken.has(`${c},${rr}`));
+    if (!ok) { loose.push(r); unsetCell(w, r.id); continue; }
+    for (const [c, rr] of cells(r, at)) taken.add(`${c},${rr}`);
   }
   const spilled = [];
   for (const r of loose) {
@@ -88,9 +88,7 @@ export function settle(w, page, board) {
 export function move(w, id, col, row, board) {
   const r = room(w, id);
   if (!r || r.locked || isArchived(w, id) || !free(w, r, col, row, board)) return false;
-  r.col = col;
-  r.row = row;
-  return true;
+  return setCell(w, id, col, row);
 }
 
 // A room's size: 1 (1 × 1), 'twin' (2 × 1) or 2 (2 × 2), if the cells it would take are on the
@@ -100,7 +98,8 @@ export function resize(w, id, size, board) {
   if (!r || r.locked) return false;
   const was = r.size || 1;
   r.size = size === 2 || size === 'twin' ? size : 1;
-  if (r.col == null || free(w, r, r.col, r.row, board)) return true;
+  const at = cellOf(w, id);
+  if (!at || free(w, r, at.col, at.row, board)) return true;
   r.size = was;
   return false;
 }
@@ -114,16 +113,14 @@ export function toFloor(w, id, page, board, cell = null) {
   const at = cell && free(w, r, cell.col, cell.row, board, page) ? cell : spot(w, r, page, board);
   if (!at) return 'full';
   if (!toPage(w, id, page)) return false;
-  r.col = at.col;
-  r.row = at.row;
-  return true;
+  return setCell(w, id, at.col, at.row);
 }
 
 // The floors with a room outside `board` (none: every room fits a floor that size), counted from 0.
 export function outside(w, board) {
   const out = [];
   for (let page = 0; page < pageCount(w); page++) {
-    if (roomsOn(w, page).some((r) => r.col != null && !inside(r, r.col, r.row, board))) out.push(page);
+    if (roomsOn(w, page).some((r) => { const at = cellOf(w, r.id); return at && !inside(r, at.col, at.row, board); })) out.push(page);
   }
   return out;
 }
@@ -139,9 +136,9 @@ export function removeFloor(w, page, now = Date.now()) {
   if (on.some((r) => r.locked)) return { error: 'locked' };
   for (const r of on) archive(w, r.id, now);
   for (const r of allRooms(w)) { // (an archived room's floor is the one it would go back to)
-    const p = floorOf(w, r.id);
+    const p = floorOf(w, r.id), at = cellOf(w, r.id);
     if (p === page) toPage(w, r.id, page - 1);
-    else if (p > page) toPage(w, r.id, p - 1);
+    else if (p > page) { toPage(w, r.id, p - 1); if (at) setCell(w, r.id, at.col, at.row); } // a floor moving up keeps its rooms' cells
   }
   dropPage(w); // the last floor, empty now
   return { archived: on };

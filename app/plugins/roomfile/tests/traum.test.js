@@ -7,6 +7,7 @@ import { surface as surfaceForRussell } from '../../api/v1.js';
 import { bind as bindRussell } from '../../russell/world.js';
 bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import * as lib from '../../world/lib.js';
+const S = (w, g) => lib.model.spotOf(w, g.id) || {}; // where a group's own rule put it (a rule row)
 import { bind } from '../world.js';
 import { emptyWorld, members, groupsIn, roomItems, room, view, own, addRoom, create } from '../../world/model.js';
 import { gather } from '../../world/ontologies/index.js';
@@ -207,10 +208,10 @@ test('Joyce: trains at exact points, a thought\'s offset, a train in the tray; a
   const { w, room: r, report } = fresh(text);
   assert.deepEqual(report, []);
   const t = named(w, r.id, 'T'), u = named(w, r.id, 'U');
-  assert.deepEqual([t.x, t.y, t.hand], [120, -40, true]);
-  assert.ok(u.loose);
+  assert.deepEqual([S(w, t).x, S(w, t).y, S(w, t).hand], [120, -40, true]);
+  assert.ok(lib.model.isLooseGroup(w, u.id));
   const second = members(w, t.id)[1];
-  assert.deepEqual([second.dx, second.dy], [10, -6]);
+  assert.deepEqual([lib.model.offsetOf(w, second.id).dx, lib.model.offsetOf(w, second.id).dy], [10, -6]);
   const out = exportRoom(w, r.id, { ontologies });
   assert.match(out, /# In joyce\nat: \^4 120 -40 hand\noffset: \^2 10 -6\ntray: \^5\n/);
   const back = fresh(out);
@@ -222,10 +223,10 @@ test('Joyce: trains with no at: line start side by side; a thought in no train p
     '# In joyce', 'at: ^3 500 500'].join('\n');
   const { w, room: r } = fresh(text);
   const t = named(w, r.id, 'T'), u = named(w, r.id, 'U');
-  assert.deepEqual([t.x, t.y, u.x, u.y], [0, 0, 440, 0]);
+  assert.deepEqual([S(w, t).x, S(w, t).y, S(w, u).x, S(w, u).y], [0, 0, 440, 0]);
   const three = roomItems(w, r.id)[2];
   const train = groupsIn(w, r.id, 'joyce').find((g) => members(w, g.id).some((m) => m.id === three.id));
-  assert.deepEqual([train.x, train.y], [500, 500]);
+  assert.deepEqual([S(w, train).x, S(w, train).y], [500, 500]);
 });
 
 test('Pessoa: thoughts at points (auto: pushed clear), the rest on the spiral; and back out the same', () => {
@@ -233,8 +234,8 @@ test('Pessoa: thoughts at points (auto: pushed clear), the rest on the spiral; a
   const { w, room: r, report } = fresh(text);
   assert.deepEqual(report, []);
   const [a, b] = roomItems(w, r.id);
-  assert.deepEqual(own(w, r.id, 'pessoa')[a.id], { x: 10, y: 20 });
-  assert.deepEqual(own(w, r.id, 'pessoa')[b.id], { x: 30, y: 40, auto: true });
+  assert.deepEqual((lib.places.spot(w, r.id, a.id, 'pessoa') ?? undefined), { x: 10, y: 20 });
+  assert.deepEqual((lib.places.spot(w, r.id, b.id, 'pessoa') ?? undefined), { x: 30, y: 40, auto: true });
   const out = exportRoom(w, r.id, { ontologies });
   assert.match(out, /# In pessoa\nat: \^1 10 20\nat: \^2 30 40 auto\non canvas: \^3\n/);
   assert.equal(again(out), out);
@@ -249,7 +250,7 @@ test('Russell: chapters on canvas or placed by hand, arrows with relations and l
   const { w, room: r, report } = fresh(text);
   assert.deepEqual(report, []);
   const a = named(w, r.id, 'Arrays'), m = named(w, r.id, 'Matrices'), f = named(w, r.id, 'Fields');
-  assert.deepEqual([f.x, f.y, f.hand], [900, 0, true]);
+  assert.deepEqual([S(w, f).x, S(w, f).y, S(w, f).hand], [900, 0, true]);
   const got = russellArrows(w, r.id).map((x) => [w.things[x.from].title, w.things[x.to].title, x.rel, x.label]);
   assert.deepEqual(got, [['Arrays', 'Matrices', 'forgets', 'the individual equations'], ['Arrays', 'Fields', '', '$|v|$ kept'], ['Matrices', 'Fields', '', '']]);
   const out = exportRoom(w, r.id, { ontologies });
@@ -304,8 +305,8 @@ test('a big room writes every mode\'s section, and another mode\'s group placed 
   assert.deepEqual(report, []);
   assert.equal(r.size, 2);
   const c = named(w, r.id, 'Chapter');
-  assert.deepEqual(own(w, r.id, 'joyce')[c.id], { x: 300, y: 200 });
-  assert.deepEqual(own(w, r.id, 'pessoa')[c.id], { x: 5, y: 5 });
+  assert.deepEqual((lib.places.spot(w, r.id, c.id, 'joyce') ?? undefined), { x: 300, y: 200 });
+  assert.deepEqual((lib.places.spot(w, r.id, c.id, 'pessoa') ?? undefined), { x: 5, y: 5 });
   const out = exportRoom(w, r.id, { ontologies });
   assert.match(out, /modes: \[russell, joyce, pessoa\]/);
   assert.match(out, /# In joyce\nat: \^3 300 200\ntray: \^2\n/);
@@ -326,7 +327,7 @@ test('a Twin: each object on the side whose section places it, the rest on the l
   assert.deepEqual(roomItems(w, l.id).map((th) => th.text), ['left one', 'in no section']);
   assert.deepEqual(roomItems(w, r.id).map((th) => th.text), ['right one']);
   assert.equal(named(w, r.id, 'Chapter').of, 'russell');
-  assert.deepEqual([named(w, l.id, 'Train').x, named(w, l.id, 'Train').y], [10, 20]);
+  assert.deepEqual([S(w, named(w, l.id, 'Train')).x, S(w, named(w, l.id, 'Train')).y], [10, 20]);
   assert.equal(w.settings[l.id].joyce.tension, 0.3);
   assert.deepEqual(made, { groups: 2, thoughts: 3, pictures: 0 });
   const out = exportRoom(w, t.id, { ontologies });
@@ -342,5 +343,5 @@ test('a Twin\'s side section brought into an ordinary room is read as that mode\
   const { report } = importInto(w, r.id, parse(TWIN), { ontologies, now: NOW });
   assert.match(report.join('\n'), /"russell" isn't one of this room's modes/);
   const train = groupsIn(w, r.id, 'joyce').find((g) => g.title === 'Train');
-  assert.deepEqual([train.x, train.y], [10, 20]);
+  assert.deepEqual([S(w, train).x, S(w, train).y], [10, 20]);
 });

@@ -52,7 +52,7 @@ test('links run in loops; a link to itself, or the same link twice, is refused; 
   assert.equal(L().arrows(w, MESSY).length, 4);
   // Rows of the links table under Proust's own store, apart from its places (groups.js's spots).
   assert.ok(lib.links.get(w, lib.links.relId(LINKS, b, a)));
-  assert.equal(own(w, MESSY, 'proust', false)[b], undefined);
+  assert.equal((lib.places.spot(w, MESSY, b, 'proust') ?? undefined), undefined);
 });
 
 test('each relation has its own ends, from the room\'s list; a new link takes the first', () => {
@@ -134,7 +134,7 @@ test('throw back: a cluster waits in the tray and its links go; Ctrl+Z would bri
   L().link(w, MESSY, g.id, c.id);
   L().link(w, MESSY, a.id, b.id);
   assert.equal(throwBack(proust, w, MESSY, [g.id], clock++), 1);
-  assert.ok(g.loose);
+  assert.ok(lib.model.isLooseGroup(w, g.id));
   assert.deepEqual(ids(proust.tray(w, MESSY)), [g.id]);
   assert.deepEqual(ids(proust.units(w, MESSY)), [c.id]);
   assert.equal(L().arrows(w, MESSY).length, 0);
@@ -149,7 +149,7 @@ test('throw back: a cluster waits in the tray and its links go; Ctrl+Z would bri
   assert.ok(proust.placed(w, MESSY, c.id));
   // Dragged out again, it is back on the canvas (its links stay gone).
   proust.drop(w, MESSY, g.id, 0, 0);
-  assert.ok(!g.loose);
+  assert.ok(!lib.model.isLooseGroup(w, g.id));
   assert.ok(proust.placed(w, MESSY, a.id));
 });
 

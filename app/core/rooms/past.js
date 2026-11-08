@@ -19,7 +19,7 @@ export function pastFloor(f, cols, rows) {
     .map(([id, s]) => {
       const now = room(f.world, id);
       const r = { ...(now || {}), ...s, id, kind: 'room' };
-      for (const [c, d] of cells(r)) taken.add(`${c},${d}`);
+      for (const [c, d] of cells(r, r)) taken.add(`${c},${d}`);
       const look = squareLook(r, id === MESSY, f.prefs, f.palette);
       const { w: across, h: down } = span(r);
       const n = counts[id] || 0;

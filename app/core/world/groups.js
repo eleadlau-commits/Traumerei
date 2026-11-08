@@ -9,8 +9,9 @@
 // A group made in an ontology's tray (from loose thoughts) stays in the tray too (`loose`), until
 // it is dragged onto the canvas.
 //
-// Each ontology that places foreign groups by a point keeps it in its own data: own(w, room, of)[id]
-// = { x, y } (Pessoa does so for every thought). No screen here (tests/groups.test.js).
+// Where an ontology places a thing by a point is its rule row in the places table (places.js:
+// place:<room>:<id>:<of>, position { x, y }), never data of its own (Pessoa does so for every
+// thought). No screen here (tests/groups.test.js).
 //
 // Folding is not grouping: fold(w, room, ids) turns the chosen thoughts into ONE new thought that
 // takes their place in every group, of every ontology, that held them. The old thoughts are not
@@ -19,7 +20,8 @@
 
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
-import { parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, memberIds, move } from './model.js';
+import * as P from './places.js';
+import { parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, shut, create, remove, leave, membership, memberIds, move, unsetSpot, setSpot, isLooseGroup } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -42,15 +44,19 @@ export function inForeign(w, roomId, of) {
 
 // Where ontology `of` placed a foreign group, or null (it waits in the tray).
 export const spot = (w, roomId, of, id) => {
-  const p = own(w, roomId, of, false)[id];
+  const p = P.spot(w, roomId, id, of);
   return p && Number.isFinite(p.x) ? p : null;
 };
-// Places a thing at x, y in ontology `of` (its own data).
-export function putAt(w, roomId, of, id, x, y) {
-  if (shut(w, roomId)) return false;
-  own(w, roomId, of)[id] = { x: Math.round(x), y: Math.round(y) };
+// Places a thing at x, y in ontology `of` (its rule row). extra: more of the position (auto).
+export function putAt(w, roomId, of, id, x, y, extra = null) {
+  if (shut(w, roomId) || !w.things[id]) return false;
+  P.putSpot(w, roomId, id, of, { x: Math.round(x), y: Math.round(y), ...(extra || {}) });
   return true;
 }
+// Ontology `of` forgets where it put a thing (it lays it itself again, or it waits in its tray).
+export const unput = (w, roomId, of, id) => P.dropSpot(w, roomId, id, of);
+// Every thing ontology `of` placed by a point in a room: Map id → { x, y, … }.
+export const spotsOf = (w, roomId, of) => P.spots(w, roomId, of);
 
 // The foreign groups ontology `of` has placed, and those still in its tray.
 export const placedForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) => spot(w, roomId, of, g.id));
@@ -59,21 +65,22 @@ export const trayForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) 
 // A thought added away from the canvas (the tray's box, its +) waits in the tray: an ontology that
 // places every thought itself (Pessoa, Proust) keeps it there until it is dragged out, that is,
 // until it has a spot of its own there. (The others keep a thought in no group in their tray
-// anyway.) Kept as own(w, room, 'tray')[id]: true (it waits in every such ontology), or
-// { [of]: true } (thrown back in ontology `of`, or read from its tray in a .traum file: it waits
-// only there).
+// anyway.) Kept as a 'tray' rule row: position null (it waits in every such ontology), or
+// { in: { [of]: true } } (thrown back in ontology `of`, or read from its tray in a .traum file: it
+// waits only there).
 export const WAITS = 'tray';
 export function wait(w, roomId, id, of = null) {
   if (shut(w, roomId) || parentOf(w, id) !== roomId) return false;
-  const marks = own(w, roomId, WAITS);
-  if (!of) marks[id] = true;
-  else if (marks[id] !== true) marks[id] = { ...(marks[id] && typeof marks[id] === 'object' ? marks[id] : {}), [of]: true };
+  const has = P.hasSpot(w, roomId, id, WAITS), m = P.spot(w, roomId, id, WAITS);
+  if (!of) P.putSpot(w, roomId, id, WAITS, null);
+  else if (!has || m) P.putSpot(w, roomId, id, WAITS, { in: { ...(m?.in || {}), [of]: true } });
   return true;
 }
 // Whether thought `id` still waits in ontology `of`'s tray.
 export const waiting = (w, roomId, of, id) => {
-  const m = own(w, roomId, WAITS, false)[id];
-  return !!(m === true || m?.[of]) && !spot(w, roomId, of, id);
+  if (!P.hasSpot(w, roomId, id, WAITS)) return false;
+  const m = P.spot(w, roomId, id, WAITS);
+  return !!(!m || m.in?.[of]) && !spot(w, roomId, of, id);
 };
 
 // Moves a thought or a group to another room (Move to…, Ctrl+M) so that it lands in that room's
@@ -83,18 +90,16 @@ export const waiting = (w, roomId, of, id) => {
 export function moveLoose(w, id, into) {
   const th = w.things[id];
   if (!th || kindOf(w.things[into]) !== 'room' || !move(w, id, into, 0, 0, { loose: true })) return false;
-  if (isGroup(th)) th.loose = true;
+  if (isGroup(th)) unsetSpot(w, id);
   for (const m of [th, ...(isGroup(th) ? within(w, id) : [])]) if (isLeaf(m)) wait(w, into, m.id);
   return true;
 }
 
 // Whether a group of its own ontology waits in the tray (made there), and taking it out.
-export const isLoose = (g) => isGroup(g) && !!g.loose;
+export const isLoose = (w, id) => isLooseGroup(w, id);
 export function place(w, id) {
-  const g = w.things[id];
-  if (!isGroup(g) || !g.loose) return false;
-  delete g.loose;
-  return true;
+  if (!isLooseGroup(w, id)) return false;
+  return setSpot(w, id, {});
 }
 
 // Throw back (Ctrl+Shift+Backspace): ontology `of` takes a thing it placed back into its tray. It
@@ -113,14 +118,14 @@ export function unplace(w, roomId, of, id, { lays = false } = {}) {
   if (!mine && !theirs && lays) {
     if (waiting(w, roomId, of, id)) return false; // in the tray already
     for (const g of holders) leave(w, g.id, id);
-    delete own(w, roomId, of)[id];
+    unput(w, roomId, of, id);
     return wait(w, roomId, id, of);
   }
   const spotted = theirs && !!spot(w, roomId, of, id);
-  if (!holders.length && !spotted && !(mine && !th.loose)) return false; // in the tray already
+  if (!holders.length && !spotted && !(mine && !isLooseGroup(w, id))) return false; // in the tray already
   for (const g of holders) leave(w, g.id, id);
-  if (theirs) delete own(w, roomId, of)[id];
-  if (mine) th.loose = true;
+  if (theirs) unput(w, roomId, of, id);
+  if (mine) unsetSpot(w, id);
   return true;
 }
 
@@ -175,8 +180,6 @@ export function fold(w, roomId, ids, now = Date.now()) {
     : { kind: 'passage', title, body: leaves.filter((th) => !(title && th.title === title && !th.body)).map((th) => (th.title === title ? th.body || '' : wordsOf(th))).filter(Boolean).join('\n\n') };
   const th = create(w, roomId, fields, Math.min(...leaves.map((x) => x.at ?? now)));
   if (!th) return { why: 'Nothing here to fold.' };
-  const first = leaves[0];
-  if (Number.isFinite(first.dx)) { th.dx = first.dx; th.dy = first.dy; }
   const old = new Set(gone.map((x) => x.id));
   // In every group that held any of them (the chosen groups first): the new one in the first's place.
   const holders = [...groups, ...groupsIn(w, roomId).filter((g) => !groups.includes(g) && !old.has(g.id))];
@@ -192,12 +195,10 @@ export function fold(w, roomId, ids, now = Date.now()) {
     L.join(w, g.id, th.id, first ? first.order : null);
     if (one) placedIn.add(g.of);
   }
-  // Each ontology's own data: the first old one's place, for the new one.
-  for (const data of Object.values(w.own[roomId] || {})) {
-    if (!data || typeof data !== 'object' || data[th.id]) continue;
-    const from = leaves.find((x) => data[x.id] != null) || gone.find((x) => data[x.id] != null);
-    if (from) data[th.id] = JSON.parse(JSON.stringify(data[from.id]));
-  }
+  // Where each rule put them: the first old one's place, for the new one (its rule rows).
+  const rules = new Map();
+  for (const x of [...leaves, ...gone]) for (const r of P.of(w, x.id)) if (r.rule != null && r.context === roomId && !(isGroup(x) && r.rule === x.of) && !rules.has(r.rule)) rules.set(r.rule, r); // (a group's own spot is not a thought's)
+  for (const [rule, r] of rules) if (!P.hasSpot(w, roomId, th.id, rule)) P.putSpot(w, roomId, th.id, rule, r.position ? JSON.parse(JSON.stringify(r.position)) : null);
   // The folded thoughts: stood for by the new one, out of every group, their places forgotten.
   // The groups inside a chosen group go (their thoughts are stood for, not deleted with them).
   for (const x of gone) {
@@ -205,7 +206,7 @@ export function fold(w, roomId, ids, now = Date.now()) {
     if (isGroup(x)) { L.dropAll(w, x.id); remove(w, x.id); continue; }
     for (const r of [...L.from(w, x.id), ...L.to(w, x.id)]) if (r.kind !== 'stands for') L.drop(w, r.id); // (what it stands for itself, it keeps)
     L.set(w, L.forId(th.id, x.id), { from: th.id, to: x.id, kind: 'stands for' });
-    for (const data of Object.values(w.own[roomId] || {})) if (data && typeof data === 'object') delete data[x.id];
+    for (const r of P.of(w, x.id)) if (r.rule != null) P.drop(w, r.id);
   }
   // A group the fold left empty goes (without taking anything with it).
   for (const g of groupsIn(w, roomId)) if (!memberIds(w, g.id).length) leave(w, g.id, null);

@@ -20,7 +20,7 @@ test('a Twin has two sides, each a room with its own mode, and only they are ins
   assert.equal(t.size, 'twin');
   assert.ok(!isBig(t));
   const [l, r] = sides(w, t.id);
-  assert.deepEqual([l.side, r.side, model.parentOf(w, l.id), model.parentOf(w, r.id)], [0, 1, t.id, t.id]);
+  assert.deepEqual([model.sideOf(w, l.id), model.sideOf(w, r.id), model.parentOf(w, l.id), model.parentOf(w, r.id)], [0, 1, t.id, t.id]);
   assert.deepEqual([view(w, l.id).mode, view(w, r.id).mode], ['joyce', 'russell']);
   assert.ok(!rooms(w).some((x) => x.id === l.id));            // the sides are not on the rooms page
   assert.equal(create(w, t.id, { kind: 'line', text: 'no' }), null); // nothing else goes in the Twin

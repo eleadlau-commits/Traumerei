@@ -11,7 +11,10 @@
 // another mode made (a chapter) is one thought here: in the tray until it is dragged out, then
 // where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
-import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members } from '../model.js';
+import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members, spotOf, setSpot, unsetSpot, isLooseGroup, offsetOf, setOffset, unsetOffset } from '../model.js';
+
+// A train's corner (its rule row: places.js), and a thought's offset from it when dragged off its line.
+const corner = (w, id) => spotOf(w, id) || { x: 0, y: 0 };
 import { placedForeign, trayForeign, spot, putAt, place, inForeign, unplace } from '../groups.js';
 import * as lines from './lines.js';
 import { kindFor } from '../items/index.js';
@@ -57,10 +60,12 @@ export function trainSpots(w, trainId) {
   const t = w.things[trainId];
   const out = {};
   if (!t) return out;
-  let x = t.x, y = t.y - STEP.line;
+  const c = corner(w, trainId);
+  let x = c.x, y = c.y - STEP.line;
   let step = STEP.line;
   for (const th of trainThoughts(w, trainId)) {
-    if (Number.isFinite(th.dx)) { x = t.x + th.dx; y = t.y + th.dy; }
+    const o = offsetOf(w, th.id);
+    if (o) { x = c.x + o.dx; y = c.y + o.dy; }
     else y += step;
     out[th.id] = { x, y };
     step = stepAfter(th);
@@ -72,7 +77,7 @@ export function trainSpots(w, trainId) {
 export function nextSpot(w, trainId) {
   const all = trainThoughts(w, trainId);
   const t = w.things[trainId];
-  if (!all.length) return { x: t.x, y: t.y };
+  if (!all.length) return { ...corner(w, t.id) };
   const last = all[all.length - 1];
   const p = trainSpots(w, trainId)[last.id];
   return { x: p.x, y: p.y + stepAfter(last) };
@@ -83,8 +88,8 @@ export function nudge(w, id, x, y, now = Date.now()) {
   const th = w.things[id];
   const t = th && groupOf(w, id, 'joyce');
   if (!t || !(isLeaf(th) || isGroup(th)) || shut(w, id)) return false;
-  th.dx = Math.round(x - t.x);
-  th.dy = Math.round(y - t.y);
+  const c = corner(w, t.id);
+  setOffset(w, id, x - c.x, y - c.y);
   th.edited = now;
   return true;
 }
@@ -124,12 +129,14 @@ export function joyceBlocks(w, roomId) {
   for (const t of roomTrains(w, roomId)) {
     const all = trainThoughts(w, t.id);
     const at = (ths) => Math.max(t.at ?? 0, ...ths.map((th) => th.at ?? 0));
-    if (t.closed) { out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at(all) }); continue; }
-    let run = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
+    const hand = !!spotOf(w, t.id)?.hand;
+    if (t.closed) { out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand, at: at(all) }); continue; }
+    let run = { id: t.id, thoughts: [], group: t.id, hand };
     const runs = [run];
     for (const th of all) {
-      if (Number.isFinite(th.dx) && run.thoughts.length) runs.push(run = { id: th.id, thoughts: [], group: t.id, hand: true });
-      else if (Number.isFinite(th.dx)) { run.id = th.id; run.hand = true; }
+      const off = !!offsetOf(w, th.id);
+      if (off && run.thoughts.length) runs.push(run = { id: th.id, thoughts: [], group: t.id, hand: true });
+      else if (off) { run.id = th.id; run.hand = true; }
       run.thoughts.push(th.id);
     }
     run.tail = true;
@@ -161,22 +168,22 @@ function spots(w, ids, at = { x: 0, y: 0 }) {
   });
   return out;
 }
-const bottom = (w, g) => g.y + (g.closed ? 60 : members(w, g.id).reduce((s, th) => s + stepAfter(th), 0)) + 140;
+const bottom = (w, g) => corner(w, g.id).y + (g.closed ? 60 : members(w, g.id).reduce((s, th) => s + stepAfter(th), 0)) + 140;
 
 const traum = {
   write(w, roomId, c) {
     const out = [];
     const trains = groupsIn(w, roomId, 'joyce').filter((g) => members(w, g.id).length && c.ref(g.id));
-    for (const g of trains) if (!g.loose && !groupOf(w, g.id, 'joyce')) out.push(`at: ${c.ref(g.id)} ${g.x} ${g.y}${g.hand === true ? ' hand' : ''}`);
+    for (const g of trains) { const p = spotOf(w, g.id); if (p && !groupOf(w, g.id, 'joyce')) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}${p.hand === true ? ' hand' : ''}`); }
     for (const g of placedForeign(w, roomId, 'joyce')) { const p = spot(w, roomId, 'joyce', g.id); if (c.ref(g.id)) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}`); }
-    for (const g of trains) for (const th of members(w, g.id)) if (Number.isFinite(th.dx) && c.ref(th.id)) out.push(`offset: ${c.ref(th.id)} ${th.dx} ${th.dy}`);
+    for (const g of trains) for (const th of members(w, g.id)) { const o = offsetOf(w, th.id); if (o && c.ref(th.id)) out.push(`offset: ${c.ref(th.id)} ${o.dx} ${o.dy}`); }
     const tray = joyce.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
     if (tray.length) out.push(`tray: ${tray.join(' ')}`);
     return out;
   },
   read(w, roomId, lines, c) {
     const placed = new Set(), nudged = new Set();
-    const there = groupsIn(w, roomId, 'joyce').filter((g) => !c.fresh.has(g.id) && !g.loose && members(w, g.id).length);
+    const there = groupsIn(w, roomId, 'joyce').filter((g) => !c.fresh.has(g.id) && !isLooseGroup(w, g.id) && members(w, g.id).length);
     const num = (v) => (v?.t === 'num' ? v.v : null);
     for (const l of lines) {
       if (l.key === 'at' || l.key === 'offset') {
@@ -184,36 +191,34 @@ const traum = {
         if (!id) continue;
         if (x == null || y == null) { c.report(l.line, `${l.key}: needs a ^reference and two numbers.`); continue; }
         const th = w.things[id];
-        if (l.key === 'offset') { th.dx = Math.round(x); th.dy = Math.round(y); nudged.add(id); continue; }
+        if (l.key === 'offset') { setOffset(w, id, x, y); nudged.add(id); continue; }
         if (placed.has(id)) { c.report(l.line, 'Joyce places a thing once; this second at: was left out.'); continue; }
         placed.add(id);
         const hand = l.values.slice(3).some((v) => v.t === 'word' && v.v === 'hand');
         if (isGroup(th) && th.of === 'joyce') {
-          Object.assign(th, { x: Math.round(x), y: Math.round(y) });
-          if (hand) th.hand = true;
-          delete th.loose;
+          setSpot(w, id, { x, y, ...(hand ? { hand: true } : {}) });
         } else if (isGroup(th)) putAt(w, roomId, 'joyce', id, x, y);
         else if (!groupOf(w, id, 'joyce')) {
           const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
-          if (t) { join(w, t.id, id); if (hand) t.hand = true; }
+          if (t) { join(w, t.id, id); if (hand) setSpot(w, t.id, { hand: true }); }
         } else c.report(l.line, 'that thought is in a train already, so its train\'s at: places it.');
       } else if (l.key === 'tray') {
         for (const v of l.values) {
           const id = c.thing(v, l.line);
           const g = id && w.things[id];
-          if (isGroup(g) && g.of === 'joyce') { g.loose = true; placed.add(id); }
+          if (isGroup(g) && g.of === 'joyce') { unsetSpot(w, id); placed.add(id); }
         }
       } else c.keep(l);
     }
     // Editing (c.scope: the ids the text holds): a thought it holds with no offset: line sits where
     // its train puts it.
-    if (c.scope) for (const id of c.scope) { const th = w.things[id]; if (th && Number.isFinite(th.dx) && !nudged.has(id)) { delete th.dx; delete th.dy; } }
+    if (c.scope) for (const id of c.scope) { const th = w.things[id]; if (th && offsetOf(w, id) && !nudged.has(id)) unsetOffset(w, id); }
     // New trains with no place: side by side in clear space, below what was there.
-    const fresh = groupsIn(w, roomId, 'joyce').filter((g) => c.fresh.has(g.id) && !placed.has(g.id) && !g.loose && !groupOf(w, g.id, 'joyce'));
+    const fresh = groupsIn(w, roomId, 'joyce').filter((g) => c.fresh.has(g.id) && !placed.has(g.id) && !isLooseGroup(w, g.id) && !groupOf(w, g.id, 'joyce'));
     if (!fresh.length) return;
     const below = Math.max(0, ...there.map((g) => bottom(w, g)));
     const where = spots(w, fresh.map((g) => g.id), c.at || { x: 0, y: below });
-    for (const g of fresh) Object.assign(g, where[g.id]);
+    for (const g of fresh) setSpot(w, g.id, where[g.id]);
   },
 };
 
@@ -234,10 +239,11 @@ const joyce = {
   point(w, roomId, id) {
     const th = w.things[id];
     if (isGroup(th) && th.of !== 'joyce' && !groupOf(w, id, 'joyce')) return spot(w, roomId, 'joyce', id);
-    if (isGroup(th) && !groupOf(w, id, 'joyce')) return { x: th.x, y: th.y };
+    if (isGroup(th) && !groupOf(w, id, 'joyce')) { const p = corner(w, id); return { x: p.x, y: p.y }; }
     const t = groupOf(w, id, 'joyce');
     if (!t) return null;
-    return t.closed ? { x: t.x, y: t.y } : trainSpots(w, t.id)[id] || null;
+    if (t.closed) { const p = corner(w, t.id); return { x: p.x, y: p.y }; }
+    return trainSpots(w, t.id)[id] || null;
   },
 
   // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
@@ -247,10 +253,10 @@ const joyce = {
     if (!th || shut(w, id)) return;
     if (isGroup(th) && groupOf(w, id, 'joyce')) nudge(w, id, x, y); // a group in a train moves in it, as a thought does
     else if (isGroup(th) && th.of !== 'joyce') putAt(w, roomId, 'joyce', id, x, y);
-    else if (isGroup(th)) { Object.assign(th, { x, y, hand: true }); place(w, id); }
+    else if (isGroup(th)) { setSpot(w, id, { x, y, hand: true }); place(w, id); }
     else if (isLeaf(th) && !groupOf(w, id, 'joyce')) {
       const t = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(x), y: Math.round(y) }, th.at);
-      if (t) { join(w, t.id, id); t.hand = true; }
+      if (t) { join(w, t.id, id); setSpot(w, t.id, { hand: true }); }
     } else nudge(w, id, x, y);
   },
 
@@ -261,9 +267,9 @@ const joyce = {
     for (const th of items) {
       const t = groupOf(w, th.id, 'joyce');
       if (!t || trainThoughts(w, t.id).length < 2) continue;
-      const at = trainSpots(w, t.id)[th.id] || { x: t.x, y: t.y };
+      const at = trainSpots(w, t.id)[th.id] || corner(w, t.id);
       const own = create(w, roomId, { kind: 'group', of: 'joyce', x: Math.round(at.x), y: Math.round(at.y) }, now);
-      if (own && join(w, own.id, th.id)) { own.hand = true; n++; }
+      if (own && join(w, own.id, th.id)) { setSpot(w, own.id, { hand: true }); n++; }
     }
     return n;
   },
@@ -275,7 +281,7 @@ const joyce = {
     const inside = inForeign(w, roomId, 'joyce');
     return [
       ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, 'joyce')),
-      ...groupsIn(w, roomId, 'joyce').filter((g) => g.loose && members(w, g.id).length),
+      ...groupsIn(w, roomId, 'joyce').filter((g) => isLooseGroup(w, g.id) && members(w, g.id).length),
       ...trayForeign(w, roomId, 'joyce'),
     ].filter((th) => !inside(th.id)).sort(byTime);
   },
@@ -283,7 +289,7 @@ const joyce = {
   unplace: (w, roomId, id) => unplace(w, roomId, 'joyce', id),
   placed(w, roomId, id) {
     const th = w.things[id];
-    if (isGroup(th)) return th.of === 'joyce' ? !th.loose : !!spot(w, roomId, 'joyce', id);
+    if (isGroup(th)) return th.of === 'joyce' ? !isLooseGroup(w, id) : !!spot(w, roomId, 'joyce', id);
     return !!groupOf(w, id, 'joyce');
   },
 
@@ -299,15 +305,17 @@ const joyce = {
   shift(w, roomId, id, dx, dy) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th) && groupOf(w, id, 'joyce')) { if (Number.isFinite(th.dx)) { th.dx += dx; th.dy += dy; } } // in a train: as a thought
+    const o = offsetOf(w, id);
+    if (isGroup(th) && groupOf(w, id, 'joyce')) { if (o) setOffset(w, id, o.dx + dx, o.dy + dy); } // in a train: as a thought
     else if (isGroup(th) && th.of !== 'joyce') {
       const p = spot(w, roomId, 'joyce', id);
       if (p) putAt(w, roomId, 'joyce', id, p.x + dx, p.y + dy);
     } else if (isGroup(th)) {
-      th.x += dx; th.y += dy;
+      const p = corner(w, id);
+      setSpot(w, id, { x: p.x + dx, y: p.y + dy });
       // Thoughts dragged on their own stay where they are.
-      for (const m of trainThoughts(w, id)) if (Number.isFinite(m.dx)) { m.dx -= dx; m.dy -= dy; }
-    } else if (Number.isFinite(th.dx)) { th.dx += dx; th.dy += dy; }
+      for (const m of trainThoughts(w, id)) { const mo = offsetOf(w, m.id); if (mo) setOffset(w, m.id, mo.dx - dx, mo.dy - dy); }
+    } else if (o) setOffset(w, id, o.dx + dx, o.dy + dy);
   },
 
   // A thought's tag in the room's Timeline: its train.
@@ -330,7 +338,7 @@ const joyce = {
       if (t.closed) {
         nodes.push(el('div', {
           class: 'room-bead room-closed' + (chosen ? ' selected' : ''), 'data-group': t.id,
-          style: `left:${t.x}px;top:${t.y}px`,
+          style: `left:${corner(w, t.id).x}px;top:${corner(w, t.id).y}px`,
         }, c.thoughtNode(t)));
         continue;
       }

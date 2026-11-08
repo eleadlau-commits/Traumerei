@@ -79,8 +79,8 @@ test('a file in: places, the spiral, a cluster, links with every kind of end, a 
   assert.deepEqual(report, []);
   const t = byText(w, r.id);
   assert.deepEqual(point(w, r.id, t['the madeleine']), { x: 0, y: 0 });
-  assert.deepEqual(own(w, r.id, 'proust')[t['the church']], { x: 320, y: 120, auto: true });
-  assert.equal(own(w, r.id, 'proust', false)[t.Swann], undefined); // on the spiral
+  assert.deepEqual(lib.places.spot(w, r.id, t['the church'], 'proust'), { x: 320, y: 120, auto: true });
+  assert.equal((lib.places.spot(w, r.id, t.Swann, 'proust') ?? undefined), undefined); // on the spiral
   const c = groupsIn(w, r.id, 'proust')[0];
   assert.deepEqual(members(w, c.id).map((m) => m.text), ['Combray', 'the church']);
   assert.deepEqual(linksBy(w, r.id), [
@@ -158,7 +158,7 @@ test('clusters: one in the tray, clusters in clusters, links to a cluster whole;
   const { w, room: r, first } = roundTrip(text);
   const g = (t) => groupsIn(w, r.id).find((x) => x.title === t);
   assert.deepEqual(members(w, g('Outer').id).map((m) => m.title || m.text), ['Inner', 'c']);
-  assert.ok(g('Waiting').loose);
+  assert.ok(lib.model.isLooseGroup(w, g('Waiting').id));
   assert.deepEqual(proust.tray(w, r.id).map((x) => x.id), [g('Waiting').id]);
   assert.deepEqual(linksBy(w, r.id), ['Inner leads to Outer', 'Outer · e', 'e is equivalent to a']);
   assert.ok(section(first).some((l) => /^tray: \^\d+$/.test(l)));

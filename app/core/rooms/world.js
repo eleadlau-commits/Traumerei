@@ -5,7 +5,7 @@
 
 export let
   room, parentOf, floorOf, isArchived, archivedAt, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
-  search, cells, roomAt, lock, archive, archived, restore, peek,
+  search, cells, cellOf, roomAt, lock, archive, archived, restore, peek,
   DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
   tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
   allTags, groupNames, copyRoom, span, addTwin, sides, pageLook, roomLook, rgb, squareLook, toOklch, light;
@@ -14,7 +14,7 @@ export let
 export function bind(lib) {
   ({
     room, parentOf, floorOf, isArchived, archivedAt, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
-    search, cells, roomAt, lock, archive, archived, restore, peek,
+    search, cells, cellOf, roomAt, lock, archive, archived, restore, peek,
     DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
     tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
     allTags, groupNames, copyRoom, span,

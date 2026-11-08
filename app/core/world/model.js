@@ -39,7 +39,8 @@
 //   links:  { [id]: { from, to, kind, … } }         the links table (links.js): part of, stands for, relation
 //   places: { [id]: { mark, context, rule?, position? } }   the places table (places.js): where each thought is
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
-//   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
+//   own:    { [room]: { [store]: { … } } }        a plugin's data in a room that is not a position (own()); where a
+//                                                 rule puts a thing is a rule row of places, never here (phase 4)
 //   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
 //   tagGroups: { [tag]: group }                   the group each tag is in (tag in lower case)
 //   tagsMade: [tag], groupsMade: [group]          tags and groups made with + (they show with no rooms)
@@ -83,7 +84,7 @@ export function uid(prefix = 'x') {
   return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-const messyRoom = (now) => ({ id: MESSY, kind: 'room', at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
+const messyRoom = (now) => ({ id: MESSY, kind: 'room', at: now, name: 'Messy thoughts', size: 2 });
 
 // The contexts of the top: the rooms page's floors and the Archive, marks of kind context.
 export const ARCHIVE = 'archive';
@@ -96,6 +97,7 @@ export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 export function emptyWorld(now = Date.now()) {
   const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
   P.setHome(w, MESSY, FLOOR(0));
+  P.putSpot(w, FLOOR(0), MESSY, CELL, { col: 0, row: 0 }); // its four squares at the top left
   return w;
 }
 
@@ -175,7 +177,22 @@ export function loadWorld(saved, now = Date.now()) {
   for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
   const messy = w.things[MESSY];
   messy.size = 2;
-  if (messy.col == null) { messy.col = 0; messy.row = 0; }
+  for (const th of Object.values(w.things)) if (th && !isContext(th)) placeFields(w, th, { ...th }); // phase 4: positions were fields once
+  for (const [roomId, stores] of Object.entries(w.own)) { // …and rules' own data: { [thing]: { x, y } }, and the tray's { [thing]: true }
+    for (const [store, data] of Object.entries(stores || {})) {
+      if (!w.things[roomId] || !data || typeof data !== 'object') continue;
+      for (const [id, v] of Object.entries(data)) {
+        if (!w.things[id] || P.home(w, id) !== roomId) continue;
+        if (store === 'tray' && v) P.putSpot(w, roomId, id, 'tray', v === true ? null : { in: { ...v } });
+        else if (v && Number.isFinite(v.x) && Number.isFinite(v.y)) P.putSpot(w, roomId, id, store, { ...v });
+        else continue;
+        delete data[id];
+      }
+      if (!Object.keys(data).length) delete stores[store];
+    }
+    if (!Object.keys(stores || {}).length) delete w.own[roomId];
+  }
+  if (!cellOf(w, MESSY)) setCell(w, MESSY, 0, 0);
   // Rooms without a cell, or outside the floor size, are placed by the floors feature (floors.settle).
   return w;
 }
@@ -318,6 +335,8 @@ export function setOrder(w, groupId, ids) {
 export function replaceIn(w, was, now) {
   if (!w.things[now] || !(isLeaf(w.things[now]) || isGroup(w.things[now]))) return false;
   L.replace(w, was, now);
+  const at = P.home(w, now); // and where every rule put it, in the room they share
+  for (const r of P.of(w, was)) if (r.rule != null && r.context === at && !P.hasSpot(w, at, now, r.rule)) P.putSpot(w, at, now, r.rule, r.position ?? null);
   return true;
 }
 
@@ -334,7 +353,7 @@ export function leave(w, groupId, id) {
 export const trainThoughts = members;
 // (A train held by another train is drawn inside it, so it is not one of the room's trains.)
 export const roomTrains = (w, roomId) => groupsIn(w, roomId, 'joyce')
-  .filter((g) => !g.loose && members(w, g.id).length && !groupsOf(w, g.id, 'joyce').length);
+  .filter((g) => !isLooseGroup(w, g.id) && members(w, g.id).length && !groupsOf(w, g.id, 'joyce').length);
 
 // Every line, passage and picture in a room, in time order.
 // A room's thoughts; a Twin's are its two sides'.
@@ -356,7 +375,8 @@ export function view(w, roomId) {
   return w.views[roomId];
 }
 
-// An ontology's own data in a room: a plain object it keeps what it likes in, saved with the world.
+// A plugin's own data in a room (the roomfile's lines it kept): a plain object, saved with the world.
+// Never a position: where a rule puts a thing is its rule row (places.js: spot, putSpot).
 // What it keeps under a thought's id is forgotten when that thought is removed or moved out.
 // make: false only reads it (an empty object when there is none yet, not saved).
 export function own(w, roomId, of, make = true) {
@@ -445,10 +465,8 @@ function tidyTags(list) {
 }
 const clamp01 = (v, d) => (Number.isFinite(+v) ? Math.min(1, Math.max(0, +v)) : d);
 
-// An item keeps where it was dragged to in its train (dx, dy from the train's corner), and when it
-// was last changed.
+// When a thought was last changed. (Where it sits is never a field of it: rule rows, below.)
 function spot(f, out) {
-  if (Number.isFinite(f.dx) && Number.isFinite(f.dy)) { out.dx = Math.round(f.dx); out.dy = Math.round(f.dy); }
   if (Number.isFinite(f.edited)) out.edited = f.edited;
   return out;
 }
@@ -461,10 +479,8 @@ function tidy(f) {
     return own ? spot(f, { kind, ...own }) : null;
   }
   if (kind === 'group') {
-    const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE,
-      x: Math.round(+f.x || 0), y: Math.round(+f.y || 0), title: oneLine(f.title) });
+    const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE, title: oneLine(f.title) });
     if (f.closed) out.closed = true;
-    if (f.loose) out.loose = true;
     if (f.shared) out.shared = true; // made on purpose (Ctrl+G, the tray): one object in every mode (groups.js)
     return out;
   }
@@ -472,15 +488,66 @@ function tidy(f) {
   if (typeof f.tint === 'string' && /^#[0-9a-f]{6}$/i.test(f.tint)) out.tint = f.tint;
   if (f.light != null) out.light = clamp01(f.light, 0.5);
   if (f.opacity != null) out.opacity = clamp01(f.opacity, 1);
-  if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0) { out.col = f.col; out.row = f.row; }
   out.size = f.size === 2 || f.size === 'twin' ? f.size : 1;
   const desc = lines(f.desc).slice(0, DESC);
   if (desc) out.desc = desc;
   const tags = tidyTags(f.tags);
   if (tags.length) out.tags = tags;
   if (f.locked) out.locked = true;
-  if (f.side === 0 || f.side === 1) out.side = f.side; // one side of a Twin (twin.js)
   return out;
+}
+
+// ---- Where the rules put things (phase 4) ----
+// A rule keeps no state of its own: where it puts a thing is a rule row of the places table
+// (places.js: spot, putSpot), never a field of the thing nor data the rule keeps. A group's own
+// rule's row is where it sits ({ x, y, hand? }; no row: it waits in that rule's tray, `loose`); a
+// train's thought dragged off its line has a 'joyce' row { dx, dy }; a room's cell on its floor is
+// a 'borges' row { col, row } (no row: the floors feature gives it one); a Twin's side, 'twin' { side }.
+export const CELL = 'borges', SIDE = 'twin', OFFSET = 'joyce';
+const ruleSpot = (w, id, rule) => { const at = P.home(w, id); return at == null ? null : P.spot(w, at, id, rule); };
+const putRuleSpot = (w, id, rule, position) => { const at = P.home(w, id); if (at == null) return false; P.putSpot(w, at, id, rule, position); return true; };
+const dropRuleSpot = (w, id, rule) => { const at = P.home(w, id); return at != null && P.dropSpot(w, at, id, rule); };
+// A room's cell { col, row } on its floor, or null.
+export const cellOf = (w, id) => ruleSpot(w, id, CELL);
+export const setCell = (w, id, col, row) => putRuleSpot(w, id, CELL, { col, row });
+export const unsetCell = (w, id) => dropRuleSpot(w, id, CELL);
+// A Twin side's side (0 or 1), or null.
+export const sideOf = (w, id) => ruleSpot(w, id, SIDE)?.side ?? null;
+export const setSide = (w, id, side) => putRuleSpot(w, id, SIDE, { side });
+// A train's thought dragged off its line: { dx, dy } from the train's corner, or null.
+export const offsetOf = (w, id) => ruleSpot(w, id, OFFSET);
+export const setOffset = (w, id, dx, dy) => putRuleSpot(w, id, OFFSET, { dx: Math.round(dx), dy: Math.round(dy) });
+export const unsetOffset = (w, id) => dropRuleSpot(w, id, OFFSET);
+// Where a group's own rule put it ({ x, y, hand? }), or null: it waits in that rule's tray.
+export const spotOf = (w, id) => (isGroup(w.things[id]) ? ruleSpot(w, id, w.things[id].of) : null);
+export const isLooseGroup = (w, id) => isGroup(w.things[id]) && !spotOf(w, id);
+// Puts a group where its rule shows it (out of the tray): `patch` goes over what its row had.
+export function setSpot(w, id, patch = {}) {
+  const g = w.things[id];
+  if (!isGroup(g)) return false;
+  const was = spotOf(w, id) || { x: 0, y: 0 };
+  const next = { ...was, ...patch };
+  for (const k of Object.keys(next)) if (next[k] == null) delete next[k];
+  if (Number.isFinite(next.x)) next.x = Math.round(next.x);
+  if (Number.isFinite(next.y)) next.y = Math.round(next.y);
+  return putRuleSpot(w, id, g.of, next);
+}
+// The group goes back to its rule's tray (loose).
+export const unsetSpot = (w, id) => (isGroup(w.things[id]) ? dropRuleSpot(w, id, w.things[id].of) : false);
+// The fields that once said where a thing was, put as rule rows (a saved world of before phase 4,
+// a thing made with them, an update that gives them). Takes them off `f`.
+function placeFields(w, th, f) {
+  const at = P.home(w, th.id);
+  if (at == null) return;
+  if (kindOf(th) === 'room') {
+    if (Number.isInteger(f.col) && Number.isInteger(f.row) && f.col >= 0 && f.row >= 0 && isFloor(at)) P.putSpot(w, at, th.id, CELL, { col: f.col, row: f.row });
+    if ((f.side === 0 || f.side === 1) && isTwin(w.things[at])) P.putSpot(w, at, th.id, SIDE, { side: f.side });
+  } else if (isGroup(th)) {
+    const patch = {};
+    for (const k of ['x', 'y', 'hand']) if (k in f) patch[k] = k === 'hand' ? f.hand : Math.round(+f[k] || 0);
+    if (!f.loose && Object.keys(patch).length) setSpot(w, th.id, patch);
+  } else if (Number.isFinite(f.dx) && Number.isFinite(f.dy)) setOffset(w, th.id, f.dx, f.dy);
+  for (const k of ['x', 'y', 'hand', 'loose', 'col', 'row', 'side', 'dx', 'dy']) delete th[k];
 }
 
 // A Twin room (on the rooms page, size 'twin') holds its two sides, each a room of its own with its
@@ -510,6 +577,7 @@ export function create(w, parent, fields, now = Date.now()) {
   Object.assign(th, { id: uid(th.kind[0]), at: now });
   w.things[th.id] = th;
   P.setHome(w, th.id, into ?? FLOOR(0));
+  placeFields(w, th, isGroup(th) && !('x' in fields) && !fields.loose ? { ...fields, x: 0, y: 0 } : fields);
   if (group) join(w, group.id, th.id);
   return th;
 }
@@ -524,10 +592,10 @@ export function update(w, id, fields, now = Date.now()) {
   if (isGroup(th)) {
     next.of = th.of;
     if (!next.closed) delete th.closed;
-    if (!next.loose) delete th.loose;
   }
-  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'col', 'row']) if (!(k in next)) delete th[k];
+  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
+  placeFields(w, th, fields);
   return th;
 }
 
@@ -588,7 +656,7 @@ export function move(w, id, into, x = 0, y = 0, { loose = false } = {}) {
       forget(w, m.id, from);
     }
     for (const m of going) P.setHome(w, m.id, into);
-    Object.assign(th, { x: Math.round(x), y: Math.round(y) });
+    setSpot(w, id, { x, y });
     return true;
   }
   if (!isLeaf(th)) return false; // a room never goes inside anything
@@ -640,17 +708,18 @@ export function addRoom(w, text = 'Untitled', now, where = {}, kind = DEFAULT_MO
 
 // ---- The rooms page's grid ----
 
-// The cells a room covers.
-export function cells(r) {
+// The cells a room covers with its corner at `at` ({ col, row }).
+export function cells(r, at) {
   const out = [];
+  if (!at) return out;
   const { w, h } = span(r);
-  for (let dc = 0; dc < w; dc++) for (let dr = 0; dr < h; dr++) out.push([r.col + dc, r.row + dr]);
+  for (let dc = 0; dc < w; dc++) for (let dr = 0; dr < h; dr++) out.push([at.col + dc, at.row + dr]);
   return out;
 }
 
 // The room at a cell of a page (other than `except`), or null.
 export function roomAt(w, col, row, except = null, page = 0) {
-  return roomsOn(w, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr]) => c === col && rr === row)) || null;
+  return roomsOn(w, page).find((r) => r.id !== except && cells(r, cellOf(w, r.id)).some(([c, rr]) => c === col && rr === row)) || null;
 }
 
 // ---- Pages ----
@@ -735,8 +804,6 @@ export function archive(w, id, now = Date.now()) {
   const r = room(w, id);
   if (!r || id === MESSY || r.locked || !isFloor(P.home(w, id))) return false;
   P.setHome(w, id, ARCHIVE, { at: now, floor: floorOf(w, id) });
-  delete r.col;
-  delete r.row;
   return true;
 }
 
@@ -746,8 +813,6 @@ export function restore(w, id) {
   const r = room(w, id);
   if (!r || !isArchived(w, id)) return false;
   P.setHome(w, id, FLOOR(Math.min(floorOf(w, id), pageCount(w) - 1)));
-  delete r.col;
-  delete r.row;
   return true;
 }
 
@@ -782,7 +847,7 @@ export function copyRoom(w, id, now = Date.now()) {
   for (const [lid, row] of Object.entries(L.copyFor(w, ids))) L.set(w, lid, row);
   const fresh = renamed(copy(r), ids);
   Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || 'Untitled'} copy` });
-  for (const k of ['locked', 'col', 'row', 'edited']) delete fresh[k];
+  for (const k of ['locked', 'edited']) delete fresh[k];
   if (id === MESSY) fresh.size = 2;
   w.things[fresh.id] = fresh;
   P.setHome(w, fresh.id, FLOOR(floorOf(w, id)));
@@ -792,6 +857,9 @@ export function copyRoom(w, id, now = Date.now()) {
     w.things[c.id] = c;
     P.setHome(w, c.id, ids[P.home(w, th.id)]);
     for (const store of ['views', 'own', 'settings']) if (w[store]?.[th.id]) w[store][c.id] = renamed(copy(w[store][th.id]), ids); // a side's
+  }
+  for (const th of inner) for (const r of P.of(w, th.id)) { // where every rule put each thing inside, the same in the copy
+    if (r.rule != null && ids[r.context]) P.putSpot(w, ids[r.context], ids[th.id], r.rule, r.position ? renamed(copy(r.position), ids) : null);
   }
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);
   if (w.own[id]) w.own[fresh.id] = renamed(copy(w.own[id]), ids);

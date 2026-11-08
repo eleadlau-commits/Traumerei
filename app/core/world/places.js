@@ -1,5 +1,5 @@
 // The places table: the kernel's second table (KERNEL.md). A row says that a mark sits in a
-// context, and (from phase 4) where a rule puts it there:
+// context, and where a rule puts it there (phase 4: rules keep no state of their own):
 //
 //   { mark, context, rule?, position?, pinned? }
 //
@@ -74,6 +74,26 @@ export function countIn(w, context) {
   for (const id of index(w).context.get(context) || []) if (t[id]?.rule == null) n++;
   return n;
 }
+
+// ---- Where a rule puts a mark (phase 4: rules keep no state of their own) ----
+// A rule's position for a mark in a context: Pessoa's and Proust's { x, y } (auto: laid by the
+// rule, not by hand), a Joyce train's { x, y, hand? }, a train's thought's { dx, dy } off its
+// line, a room's cell { col, row } under 'borges', a Twin's side { side } under 'twin', and
+// 'tray': a thought that waits in the tray of every rule that lays thoughts itself. A rule reads
+// these rows and proposes new ones; it never keeps a copy (Law 3: tests/rules.test.js).
+
+export const spot = (w, context, mark, rule) => table(w)[ruleId(context, mark, rule)]?.position ?? null;
+export const hasSpot = (w, context, mark, rule) => !!table(w)[ruleId(context, mark, rule)];
+export const putSpot = (w, context, mark, rule, position = null) => set(w, { mark, context, rule, position });
+export const dropSpot = (w, context, mark, rule) => drop(w, ruleId(context, mark, rule));
+// Every mark a rule has a row for in a context: Map mark → position (null for a row without one).
+export function spots(w, context, rule) {
+  const t = table(w), out = new Map();
+  for (const id of index(w).context.get(context) || []) { const r = t[id]; if (r && r.rule === rule) out.set(r.mark, r.position ?? null); }
+  return out;
+}
+// Every row of one rule, anywhere (a rule renamed or gone).
+export const ofRule = (w, rule) => all(w).filter((r) => r.rule === rule);
 
 // ---- Writing ----
 

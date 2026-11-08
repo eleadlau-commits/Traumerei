@@ -11,7 +11,7 @@
 
 
 
-import { MESSY, room, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
+import { MESSY, room, cellOf, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
 import { el, MAC } from './shared.js';
 
 export class RoomsVerbs {
@@ -23,7 +23,7 @@ export class RoomsVerbs {
     const c = copyRoom(this.world, id);
     if (!c) return null;
     if (page != null && page !== floorOf(this.world, c.id) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
-    const out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
+    const out = this.floors.place(c.id, cell || cellOf(this.world, id), { near: true });
     return { copy: c, page: out ? out.page : floorOf(this.world, c.id) };
   }
 

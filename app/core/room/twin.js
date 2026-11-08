@@ -12,7 +12,7 @@
 // Double-click it for half and half again.
 
 import { el } from './shared.js';
-import { room, parentOf, view, twinOf, otherSide, across } from './world.js';
+import { room, parentOf, view, twinOf, otherSide, across, sideOf } from './world.js';
 
 export const SIDE_MIN = 280; // each half is at least this wide, in pixels
 
@@ -91,7 +91,7 @@ export class Twin {
     const other = this.otherSide;
     const me = this.roomId && room(this.world, this.roomId);
     this.roomPage.classList.toggle('twin', !!other);
-    this.roomPage.classList.toggle('twin-right', !!other && me?.side === 1);
+    this.roomPage.classList.toggle('twin-right', !!other && !!me && sideOf(this.world, me.id) === 1);
     this.otherEl.hidden = this.dividerEl.hidden = !other;
     if (!other) { this.otherWorld.replaceChildren(); this.roomPage.style.removeProperty('--twin-split'); return; }
     this.roomPage.style.setProperty('--twin-split', String(this.twinSplit));
@@ -124,14 +124,14 @@ export class Twin {
   twinRail() {
     const t = this.roomId && twinOf(this.world, this.roomId);
     if (!t) return [];
-    const all = [this.roomId, this.otherSide?.id].map((id) => room(this.world, id)).filter(Boolean).sort((a, b) => (a.side || 0) - (b.side || 0));
+    const all = [this.roomId, this.otherSide?.id].map((id) => room(this.world, id)).filter(Boolean).sort((a, b) => (sideOf(this.world, a.id) || 0) - (sideOf(this.world, b.id) || 0));
     return [el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Sides'),
       ...all.map((s) => {
         const on = s.id === this.roomId;
         const o = this.ontology(view(this.world, s.id).mode);
         return el('button', { type: 'button', class: 'rail-item', 'aria-current': String(on), title: on ? 'You are working here' : 'Work on this side',
           onclick: () => { if (!on) this.switchSide(s.id); } },
-        el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, s.side ? 'R' : 'L'), el('span', { class: 'rail-word' }, `${s.name} · ${o.name}`));
+        el('span', { class: 'rail-icon rail-num', 'aria-hidden': 'true' }, sideOf(this.world, s.id) ? 'R' : 'L'), el('span', { class: 'rail-word' }, `${s.name} · ${o.name}`));
       })];
   }
 
