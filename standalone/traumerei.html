@@ -7210,10 +7210,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         );
       });
       const off = features2.filter((f2) => f2.status !== "active").length;
-      const fold4 = el(
+      const fold5 = el(
         "details",
         { class: "advanced features-fold", open: this.featuresOpen, ontoggle: () => {
-          this.featuresOpen = fold4.open;
+          this.featuresOpen = fold5.open;
         } },
         el("summary", {}, "Features", el("small", {}, off ? `${features2.length - off} on, ${off} off` : `All ${features2.length} on`)),
         hint("Switch off anything you don't use. Features that need a switched-off feature are switched off too.", { small: true }),
@@ -7222,7 +7222,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return el(
         "section",
         { class: "settings-section" },
-        fold4,
+        fold5,
         this.restartNeeded && el("button", { type: "button", class: "btn primary", onclick: () => location.reload() }, "Restart the app to apply")
       );
     }
@@ -7418,10 +7418,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!view9) return false;
         slot.run(view9, (x) => x.open?.(id));
       }
-      const changed3 = this.currentId !== view9.id;
+      const changed4 = this.currentId !== view9.id;
       this.currentId = view9.id;
       if (!quiet) {
-        if (changed3) window.scrollTo(0, 0);
+        if (changed4) window.scrollTo(0, 0);
         this.render();
       }
       return true;
@@ -7619,29 +7619,29 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       );
       this.modules = new Map(this.registry.map((f2, i2) => [f2.id, modules[i2]]));
       for (const [i2, manifest] of this.registry.entries()) {
-        const record = { manifest, status: "skipped", reason: "", problem: null, instance: null };
-        this.features.set(manifest.id, record);
+        const record2 = { manifest, status: "skipped", reason: "", problem: null, instance: null };
+        this.features.set(manifest.id, record2);
         if (!(manifest.platforms || ["web", "android", "ios"]).includes(this.platform.name)) {
-          record.status = "not-for-platform";
-          record.reason = `Only in the ${manifest.platforms.join(" and ")} version`;
+          record2.status = "not-for-platform";
+          record2.reason = `Only in the ${manifest.platforms.join(" and ")} version`;
           continue;
         }
         if (disabled.has(manifest.id)) {
-          record.status = "disabled";
+          record2.status = "disabled";
           continue;
         }
         if (this.safe && manifest.plugin) {
-          record.status = "safe";
-          record.reason = "Off in safe mode";
+          record2.status = "safe";
+          record2.reason = "Off in safe mode";
           continue;
         }
         const missing4 = (manifest.requires || []).find((id) => this.features.get(id)?.status !== "active");
         if (missing4) {
           const dep = this.features.get(missing4);
-          record.reason = dep ? `Needs ${dep.manifest.name}, which is ${STATUS_WORDS[dep.status] || "not running"}` : `Needs "${missing4}", which isn't installed`;
+          record2.reason = dep ? `Needs ${dep.manifest.name}, which is ${STATUS_WORDS[dep.status] || "not running"}` : `Needs "${missing4}", which isn't installed`;
           continue;
         }
-        await this.run(record, modules[i2]);
+        await this.run(record2, modules[i2]);
       }
       html.dataset.folioActive = [...this.features.values()].filter((f2) => f2.status === "active").map((f2) => f2.manifest.id).join(",");
       this.listenToDevice();
@@ -7652,26 +7652,26 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       html.dataset.folio = "ready";
     }
     // Starts one feature from its loaded code. True when it runs.
-    async run(record, loaded2) {
-      const { manifest } = record;
+    async run(record2, loaded2) {
+      const { manifest } = record2;
       if (loaded2.status === "rejected") {
-        this.fail(record, loaded2.reason, "loading its code");
+        this.fail(record2, loaded2.reason, "loading its code");
         return false;
       }
       const FeatureClass = loaded2.value.default;
       if (typeof FeatureClass !== "function" || !(FeatureClass.prototype instanceof Feature)) {
-        this.fail(record, new Error("its main file must export a class that extends Feature"), "loading its code");
+        this.fail(record2, new Error("its main file must export a class that extends Feature"), "loading its code");
         return false;
       }
       try {
-        record.instance = new FeatureClass(this, manifest);
-        record.problem = null;
-        record.reason = "";
-        await record.instance.start();
-        record.status = "active";
+        record2.instance = new FeatureClass(this, manifest);
+        record2.problem = null;
+        record2.reason = "";
+        await record2.instance.start();
+        record2.status = "active";
         return true;
       } catch (err) {
-        this.fail(record, err, "starting");
+        this.fail(record2, err, "starting");
         return false;
       }
     }
@@ -7711,8 +7711,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Switches a running feature off (and every running feature that needs it, last started first),
     // and remembers it is off. Its data stays. Returns the ids switched off.
     stopFeature(id) {
-      const record = this.features.get(id);
-      if (!record || record.status !== "active") return [];
+      const record2 = this.features.get(id);
+      if (!record2 || record2.status !== "active") return [];
       const order = [id, ...this.dependents(id)].reverse();
       for (const fid of order) {
         const f2 = this.features.get(fid);
@@ -7733,7 +7733,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           f2.reason = "";
         } else {
           f2.status = "skipped";
-          f2.reason = `Needs ${record.manifest.name}, which is switched off`;
+          f2.reason = `Needs ${record2.manifest.name}, which is switched off`;
         }
         this.removeEverythingFrom(fid);
         f2.instance = null;
@@ -7749,11 +7749,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     async startFeature(id) {
       this.setOff(id, false);
       const started = [];
-      const record = this.features.get(id);
-      if (!record || record.status === "active") return started;
-      if (record.status === "disabled" || record.status === "safe") {
-        record.status = "skipped";
-        record.reason = "";
+      const record2 = this.features.get(id);
+      if (!record2 || record2.status === "active") return started;
+      if (record2.status === "disabled" || record2.status === "safe") {
+        record2.status = "skipped";
+        record2.reason = "";
       }
       const off = new Set(this.storage.area("folio").get("disabled", []));
       for (const manifest of this.registry) {
@@ -7787,17 +7787,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.documentElement.dataset.folioActive = [...this.features.values()].filter((f2) => f2.status === "active").map((f2) => f2.manifest.id).join(",");
       this.emit("app:features");
     }
-    fail(record, err, where) {
-      const id = record.manifest.id;
-      for (const fn of (record.instance?.folioStops || []).splice(0)) {
+    fail(record2, err, where) {
+      const id = record2.manifest.id;
+      for (const fn of (record2.instance?.folioStops || []).splice(0)) {
         try {
           fn();
         } catch {
         }
       }
       this.removeEverythingFrom(id);
-      record.status = "failed";
-      record.reason = err?.message || String(err);
+      record2.status = "failed";
+      record2.reason = err?.message || String(err);
       this.report(id, err, where);
     }
     // Removes every slot item, listener and service a feature added (used when it fails to start).
@@ -7855,8 +7855,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const message = err?.message || String(err);
       console.error(`[${owner || "app"}] ${message}${where ? ` (${where})` : ""}`, err);
       this.problems.push({ feature: owner, message, where, at: Date.now() });
-      const record = owner && this.features.get(owner);
-      if (record && record.status === "active") record.problem = message;
+      const record2 = owner && this.features.get(owner);
+      if (record2 && record2.status === "active") record2.problem = message;
       document.documentElement.dataset.folioProblems = String(this.problems.length);
     }
     catchStrayErrors() {
@@ -9572,8 +9572,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     let cells4 = [];
     for (let i2 = 0; i2 < m2; i2++) for (let j = 0; j < n; j++) cells4.push([xs[i2], ys[j], xs[i2 + 1], ys[j + 1]]);
     const merge = stream(seed, ":planar:net:merge");
-    const same3 = (a, b) => Math.abs(a - b) < EPS;
-    const joins = (a, b) => (same3(a[2], b[0]) || same3(b[2], a[0])) && same3(a[1], b[1]) && same3(a[3], b[3]) || (same3(a[3], b[1]) || same3(b[3], a[1])) && same3(a[0], b[0]) && same3(a[2], b[2]);
+    const same4 = (a, b) => Math.abs(a - b) < EPS;
+    const joins = (a, b) => (same4(a[2], b[0]) || same4(b[2], a[0])) && same4(a[1], b[1]) && same4(a[3], b[3]) || (same4(a[3], b[1]) || same4(b[3], a[1])) && same4(a[0], b[0]) && same4(a[2], b[2]);
     const target = Math.max(1, Math.round(m2 * n * (1 - P.netMu)));
     for (let tries = 0; cells4.length > target && tries < 50 * m2 * n; tries++) {
       const a = cells4[Math.floor(merge.U() * cells4.length)];
@@ -9978,14 +9978,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const { seed, X: X2, Y: Y2, W: W2, H: H2 } = e.image;
     const c = e.patternCache ||= { parts: {} };
     const t02 = performance.now();
-    let changed3 = !c.Dw;
+    let changed4 = !c.Dw;
     for (const [name5, keys] of Object.entries(PARTS)) {
       const key = keys.map((k2) => P[k2]).join();
       if (c.parts[name5]?.key === key) continue;
       c.parts[name5] = { key, ...part(name5, seed, X2, Y2, W2, H2, P) };
-      changed3 = true;
+      changed4 = true;
     }
-    if (changed3) Object.assign(c, combine(c.parts), { ms: performance.now() - t02 });
+    if (changed4) Object.assign(c, combine(c.parts), { ms: performance.now() - t02 });
     return c;
   }
   function view(e, name5, P, r) {
@@ -10508,8 +10508,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var d2 = (lab, c, k2) => (lab[3 * c] - k2[0]) ** 2 + (lab[3 * c + 1] - k2[1]) ** 2 + (lab[3 * c + 2] - k2[2]) ** 2;
   function kmeans(lab, n, seed) {
     const { U: U2 } = stream(seed, ":planar:palette");
-    const first = Math.floor(U2() * n);
-    const centres = [[lab[3 * first], lab[3 * first + 1], lab[3 * first + 2]]];
+    const first2 = Math.floor(U2() * n);
+    const centres = [[lab[3 * first2], lab[3 * first2 + 1], lab[3 * first2 + 2]]];
     const best = new Float64Array(n).fill(Infinity);
     while (centres.length < K) {
       let total = 0;
@@ -10829,13 +10829,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function sliders(params, values2, onChange) {
     const rows2 = [];
     const groups = /* @__PURE__ */ new Map();
-    const changed3 = (key, v2) => {
+    const changed4 = (key, v2) => {
       for (const r of rows2) if (r.p.key === key) r.show(v2);
       onChange(key, v2);
     };
     for (const p of params) {
       if (!groups.has(p.group)) groups.set(p.group, el3("fieldset", { class: "renderer-group" }, el3("legend", {}, p.group)));
-      const row2 = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values2[p.key], changed3);
+      const row2 = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values2[p.key], changed4);
       rows2.push(row2);
       groups.get(p.group).append(row2.node);
     }
@@ -10847,7 +10847,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     };
   }
-  function slider(p, value, changed3) {
+  function slider(p, value, changed4) {
     const out = el3("output", { class: "renderer-value" }, shown(p, value));
     const input = el3("input", {
       type: "range",
@@ -10856,7 +10856,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       step: p.step,
       value,
       "aria-label": p.label,
-      oninput: (e) => changed3(p.key, Number(e.target.value))
+      oninput: (e) => changed4(p.key, Number(e.target.value))
     });
     return {
       p,
@@ -10867,12 +10867,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     };
   }
-  function colour(p, value, changed3) {
+  function colour(p, value, changed4) {
     const input = el3("input", {
       type: "color",
       value,
       "aria-label": p.aria || p.label,
-      oninput: (e) => changed3(p.key, e.target.value)
+      oninput: (e) => changed4(p.key, e.target.value)
     });
     return {
       p,
@@ -10882,12 +10882,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     };
   }
-  function choice(p, value, changed3) {
+  function choice(p, value, changed4) {
     const buttons = p.options.map(([id, label3]) => el3("button", {
       type: "button",
       role: "radio",
       "data-value": id,
-      onclick: () => changed3(p.key, id)
+      onclick: () => changed4(p.key, id)
     }, label3));
     const show = (v2) => {
       for (const b of buttons) {
@@ -10987,12 +10987,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Settings → Colour: the one tint everything takes its colour from.
     colourPane() {
-      const set = (tint) => {
+      const set2 = (tint) => {
         this.change("tint", tint);
         this.controls?.set(this.P);
         if (this.tintInput) this.tintInput.value = tint;
       };
-      this.tintInput = el4("input", { type: "color", value: this.P.tint, "aria-label": "Tint", oninput: (e) => set(e.target.value) });
+      this.tintInput = el4("input", { type: "color", value: this.P.tint, "aria-label": "Tint", oninput: (e) => set2(e.target.value) });
       return el4(
         "div",
         { class: "renderer-colour-pane" },
@@ -11003,10 +11003,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { class: "renderer-buttons" },
           el4("button", { type: "button", class: "btn small", onclick: () => {
             const found = this.engine.rgba && tintFromPicture(this.engine.rgba, this.engine.image.W, this.engine.image.H, this.P.tint);
-            if (found) set(found);
+            if (found) set2(found);
             else ui_exports.toast(this.source ? "This picture has almost no colour to take." : "Choose an image first (Advanced → Picture).");
           } }, "From the picture"),
-          el4("button", { type: "button", class: "btn small", onclick: () => set(DEFAULT_TINT) }, "Back to defaults")
+          el4("button", { type: "button", class: "btn small", onclick: () => set2(DEFAULT_TINT) }, "Back to defaults")
         )
       );
     }
@@ -11091,13 +11091,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.seedLine = el4("p", { class: "renderer-seed" });
       this.report = el4("div", { class: "renderer-report" });
       this.controls = sliders(PARAMS, this.P, (key, value) => this.change(key, value));
-      const fold4 = (title, ...kids) => el4(
+      const fold5 = (title, ...kids) => el4(
         "details",
         { class: "advanced renderer-fold" },
         el4("summary", {}, title),
         el4("div", { class: "renderer-fold-body" }, ...kids)
       );
-      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold4(
+      this.folds = new Map(MODES.map((m2) => [m2.id, m2.folds.map(([title, groups]) => fold5(
         title,
         el4("div", { class: "renderer-sliders", "data-own-swipe": true }, groups.map((g2) => this.controls.groups.get(g2)))
       ))]));
@@ -11105,7 +11105,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "div",
         { class: "renderer-advanced" },
         ui_exports.hint("The tools behind the page. Changes show on the picture straight away.", { small: true }),
-        fold4(
+        fold5(
           "Picture",
           el4(
             "div",
@@ -11116,7 +11116,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ui_exports.hint("A chosen image stays on this device.", { small: true }),
           this.seedLine
         ),
-        fold4(
+        fold5(
           "View",
           ...this.tabs.values(),
           el4(
@@ -11127,7 +11127,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           )
         ),
         ...[...this.folds.values()].flat(),
-        fold4("Report", this.report),
+        fold5("Report", this.report),
         el4("button", { type: "button", class: "btn small", onclick: () => this.reset() }, "Back to defaults")
       );
       this.marksRow = this.panel.querySelector(".renderer-marks");
@@ -11704,6 +11704,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     look: () => look_exports,
     maths: () => maths_exports,
     model: () => model_exports,
+    moments: () => moments_exports,
     ontologies: () => ontologies_exports,
     pessoa: () => pessoa_exports,
     picture: () => picture_exports,
@@ -11944,15 +11945,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var isItem = isLeaf;
   var isGroup = (th) => kindOf(th) === "group";
   var MEMBERSHIP = { joyce: "one" };
-  function declareGroups(of, groups) {
-    if (groups?.membership === "many" || groups?.membership === "one") MEMBERSHIP[of] = groups.membership;
-    declareOrder(of, groups);
+  function declareGroups(of2, groups) {
+    if (groups?.membership === "many" || groups?.membership === "one") MEMBERSHIP[of2] = groups.membership;
+    declareOrder(of2, groups);
   }
-  var membership = (of) => MEMBERSHIP[of] || "one";
+  var membership = (of2) => MEMBERSHIP[of2] || "one";
   var KEPT = /* @__PURE__ */ new Set();
-  function declareOrder(of, groups) {
-    if (groups?.order === "kept") KEPT.add(of);
-    else KEPT.delete(of);
+  function declareOrder(of2, groups) {
+    if (groups?.order === "kept") KEPT.add(of2);
+    else KEPT.delete(of2);
   }
   var counter = 0;
   function uid(prefix = "x") {
@@ -12074,13 +12075,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     seen.add(a);
     return g2.members.includes(id) || g2.members.some((m2) => holds(w2, m2, id, seen));
   }
-  var groupsIn = (w2, roomId, of = null) => children(w2, roomId).filter((th) => isGroup(th) && (of == null || th.of === of));
-  function groupsOf(w2, id, of = null) {
+  var groupsIn = (w2, roomId, of2 = null) => children(w2, roomId).filter((th) => isGroup(th) && (of2 == null || th.of === of2));
+  function groupsOf(w2, id, of2 = null) {
     const by = holders(w2);
-    if (!by) return Object.values(w2.things).filter((g2) => isGroup(g2) && g2.members.includes(id) && (of == null || g2.of === of)).sort(byTime);
-    return (by.get(id) || []).filter((g2) => w2.things[g2.id] === g2 && g2.members.includes(id) && (of == null || g2.of === of));
+    if (!by) return Object.values(w2.things).filter((g2) => isGroup(g2) && g2.members.includes(id) && (of2 == null || g2.of === of2)).sort(byTime);
+    return (by.get(id) || []).filter((g2) => w2.things[g2.id] === g2 && g2.members.includes(id) && (of2 == null || g2.of === of2));
   }
-  var groupOf = (w2, id, of = DEFAULT_MODE) => groupsOf(w2, id, of)[0] || null;
+  var groupOf = (w2, id, of2 = DEFAULT_MODE) => groupsOf(w2, id, of2)[0] || null;
   var roomItems = (w2, roomId) => children(w2, roomId).filter(isLeaf);
   function join(w2, groupId, id) {
     const g2 = w2.things[groupId], th = w2.things[id];
@@ -12123,10 +12124,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!w2.views[roomId]) w2.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
     return w2.views[roomId];
   }
-  function own(w2, roomId, of, make = true) {
-    if (!make) return w2.own[roomId]?.[of] || {};
+  function own(w2, roomId, of2, make = true) {
+    if (!make) return w2.own[roomId]?.[of2] || {};
     const r = w2.own[roomId] ||= {};
-    return r[of] ||= {};
+    return r[of2] ||= {};
   }
   function forget(w2, id, roomId = null) {
     for (const [r, mine] of Object.entries(w2.own)) {
@@ -12135,18 +12136,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   var copy = (o2) => JSON.parse(JSON.stringify(o2 || {}));
-  function roomSetting(w2, roomId, of, s, globals = {}) {
-    const mine = w2.settings?.[roomId]?.[of]?.[s.key];
+  function roomSetting(w2, roomId, of2, s, globals = {}) {
+    const mine = w2.settings?.[roomId]?.[of2]?.[s.key];
     if (mine !== void 0) return mine;
-    const global = globals?.[of]?.[s.key];
+    const global = globals?.[of2]?.[s.key];
     return global !== void 0 ? global : s.default;
   }
-  function setRoomSetting(w2, roomId, of, key, value) {
+  function setRoomSetting(w2, roomId, of2, key, value) {
     const r = (w2.settings ||= {})[roomId] ||= {};
-    (r[of] ||= {})[key] = value;
+    (r[of2] ||= {})[key] = value;
   }
-  function resetRoomSettings(w2, roomId, of) {
-    if (w2.settings?.[roomId]) delete w2.settings[roomId][of];
+  function resetRoomSettings(w2, roomId, of2) {
+    if (w2.settings?.[roomId]) delete w2.settings[roomId][of2];
   }
   function seedRoomSettings(w2, roomId, globals = {}) {
     (w2.settings ||= {})[roomId] = copy(globals);
@@ -12159,8 +12160,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const g2 = w2.things[id];
     if (!g2) return "";
     if (g2.title) return g2.title;
-    const first = members(w2, id)[0];
-    const words = first ? thoughtText(w2, first).split(/\s+/).slice(0, 3).join(" ") : "";
+    const first2 = members(w2, id)[0];
+    const words = first2 ? thoughtText(w2, first2).split(/\s+/).slice(0, 3).join(" ") : "";
     return words || none;
   }
   function thoughtText(w2, th) {
@@ -12594,34 +12595,34 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const shared = groupsIn(w2, roomId).filter((g2) => g2.shared && itemsIn(w2, g2.id).length);
     return shared.filter((g2) => !shared.some((o2) => o2 !== g2 && holds(w2, o2.id, g2.id)));
   }
-  var foreign = (w2, roomId, of) => outermost(w2, roomId).filter((g2) => g2.of !== of);
-  function inForeign(w2, roomId, of) {
+  var foreign = (w2, roomId, of2) => outermost(w2, roomId).filter((g2) => g2.of !== of2);
+  function inForeign(w2, roomId, of2) {
     const inside4 = /* @__PURE__ */ new Set();
-    for (const g2 of foreign(w2, roomId, of)) for (const th of within(w2, g2.id)) inside4.add(th.id);
+    for (const g2 of foreign(w2, roomId, of2)) for (const th of within(w2, g2.id)) inside4.add(th.id);
     return (id) => inside4.has(id);
   }
-  var spot2 = (w2, roomId, of, id) => {
-    const p = own(w2, roomId, of, false)[id];
+  var spot2 = (w2, roomId, of2, id) => {
+    const p = own(w2, roomId, of2, false)[id];
     return p && Number.isFinite(p.x) ? p : null;
   };
-  function putAt(w2, roomId, of, id, x, y) {
+  function putAt(w2, roomId, of2, id, x, y) {
     if (shut(w2, roomId)) return false;
-    own(w2, roomId, of)[id] = { x: Math.round(x), y: Math.round(y) };
+    own(w2, roomId, of2)[id] = { x: Math.round(x), y: Math.round(y) };
     return true;
   }
-  var placedForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => spot2(w2, roomId, of, g2.id));
-  var trayForeign = (w2, roomId, of) => foreign(w2, roomId, of).filter((g2) => !spot2(w2, roomId, of, g2.id));
+  var placedForeign = (w2, roomId, of2) => foreign(w2, roomId, of2).filter((g2) => spot2(w2, roomId, of2, g2.id));
+  var trayForeign = (w2, roomId, of2) => foreign(w2, roomId, of2).filter((g2) => !spot2(w2, roomId, of2, g2.id));
   var WAITS = "tray";
-  function wait(w2, roomId, id, of = null) {
+  function wait(w2, roomId, id, of2 = null) {
     if (shut(w2, roomId) || w2.things[id]?.parent !== roomId) return false;
     const marks = own(w2, roomId, WAITS);
-    if (!of) marks[id] = true;
-    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of]: true };
+    if (!of2) marks[id] = true;
+    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of2]: true };
     return true;
   }
-  var waiting2 = (w2, roomId, of, id) => {
+  var waiting2 = (w2, roomId, of2, id) => {
     const m2 = own(w2, roomId, WAITS, false)[id];
-    return !!(m2 === true || m2?.[of]) && !spot2(w2, roomId, of, id);
+    return !!(m2 === true || m2?.[of2]) && !spot2(w2, roomId, of2, id);
   };
   function moveLoose(w2, id, into) {
     const th = w2.things[id];
@@ -12637,23 +12638,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete g2.loose;
     return true;
   }
-  function unplace(w2, roomId, of, id, { lays = false } = {}) {
+  function unplace(w2, roomId, of2, id, { lays = false } = {}) {
     const th = w2.things[id];
     if (!th || th.parent !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
-    if (inForeign(w2, roomId, of)(id)) return false;
-    const mine = isGroup(th) && th.of === of;
+    if (inForeign(w2, roomId, of2)(id)) return false;
+    const mine = isGroup(th) && th.of === of2;
     const theirs = isGroup(th) && !mine;
-    const holders2 = groupsOf(w2, id, of);
+    const holders2 = groupsOf(w2, id, of2);
     if (!mine && !theirs && lays) {
-      if (waiting2(w2, roomId, of, id)) return false;
+      if (waiting2(w2, roomId, of2, id)) return false;
       for (const g2 of holders2) leave(w2, g2.id, id);
-      delete own(w2, roomId, of)[id];
-      return wait(w2, roomId, id, of);
+      delete own(w2, roomId, of2)[id];
+      return wait(w2, roomId, id, of2);
     }
-    const spotted = theirs && !!spot2(w2, roomId, of, id);
+    const spotted = theirs && !!spot2(w2, roomId, of2, id);
     if (!holders2.length && !spotted && !(mine && !th.loose)) return false;
     for (const g2 of holders2) leave(w2, g2.id, id);
-    if (theirs) delete own(w2, roomId, of)[id];
+    if (theirs) delete own(w2, roomId, of2)[id];
     if (mine) th.loose = true;
     return true;
   }
@@ -12688,10 +12689,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const fields = lines4 ? { kind: "line", text: leaves.map(wordsOf).join("\n") } : { kind: "passage", title, body: leaves.filter((th2) => !(title && th2.title === title && !th2.body)).map((th2) => th2.title === title ? th2.body || "" : wordsOf(th2)).filter(Boolean).join("\n\n") };
     const th = create(w2, roomId, fields, Math.min(...leaves.map((x) => x.at ?? now)));
     if (!th) return { why: "Nothing here to fold." };
-    const first = leaves[0];
-    if (Number.isFinite(first.dx)) {
-      th.dx = first.dx;
-      th.dy = first.dy;
+    const first2 = leaves[0];
+    if (Number.isFinite(first2.dx)) {
+      th.dx = first2.dx;
+      th.dy = first2.dy;
     }
     const old = new Set(gone.map((x) => x.id));
     const holders2 = [...groups, ...groupsIn(w2, roomId).filter((g2) => !groups.includes(g2) && !old.has(g2.id))];
@@ -12976,6 +12977,271 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
 
+  // dist/web/features/world/moments.js
+  var moments_exports = {};
+  __export(moments_exports, {
+    CHANGES: () => CHANGES,
+    COMPACT: () => COMPACT,
+    DAY: () => DAY2,
+    KINDS: () => KINDS,
+    MOST_VISITS: () => MOST_VISITS,
+    STEPS: () => STEPS2,
+    VERSION: () => VERSION,
+    VISIT_GAP: () => VISIT_GAP,
+    changed: () => changed2,
+    changedOn: () => changedOn,
+    compact: () => compact,
+    day: () => day,
+    dayOf: () => dayOf,
+    diff: () => diff,
+    emptyLog: () => emptyLog,
+    first: () => first,
+    fold: () => fold2,
+    loadLog: () => loadLog2,
+    of: () => of,
+    record: () => record,
+    same: () => same2,
+    since: () => since,
+    stateAt: () => stateAt,
+    stateOf: () => stateOf,
+    undo: () => undo,
+    visit: () => visit2,
+    visits: () => visits
+  });
+  var VERSION = 1;
+  var DAY2 = 864e5;
+  var COMPACT = 30;
+  var STEPS2 = 400;
+  var VISIT_GAP = 6e4;
+  var MOST_VISITS = 40;
+  var KINDS = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged", "floors", "visited", "undone", "redone"]);
+  var CHANGES = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged", "floors"]);
+  var PLACE = /* @__PURE__ */ new Set(["x", "y", "parent", "page", "col", "row", "side", "loose", "size"]);
+  var LINK = /* @__PURE__ */ new Set(["members"]);
+  var clone = (v2) => v2 === void 0 ? void 0 : JSON.parse(JSON.stringify(v2));
+  var canon = (v2) => v2 && typeof v2 === "object" && !Array.isArray(v2) ? Object.keys(v2).sort().map((k2) => `${JSON.stringify(k2)}:${canon(v2[k2])}`).join(",").replace(/^/, "{").concat("}") : Array.isArray(v2) ? `[${v2.map(canon).join(",")}]` : JSON.stringify(v2) ?? "undefined";
+  var same2 = (a, b) => canon(a) === canon(b);
+  var dayOf = (ms) => {
+    const d = new Date(ms);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  var keyOf = (r) => r.mark != null ? `m:${r.mark}` : `c:${r.context}`;
+  var emptyLog = (now = Date.now(), state = null) => ({ v: VERSION, seq: 0, base: state ? { time: now, state: clone(state) } : null, rows: [], undo: [], redo: [], keep: 365, made: now });
+  function loadLog2(saved, now = Date.now()) {
+    if (!saved || typeof saved !== "object" || saved.v !== VERSION || !Array.isArray(saved.rows)) return emptyLog(now);
+    const log = { ...emptyLog(now), ...saved };
+    log.rows = log.rows.filter((r) => r && Number.isFinite(r.seq) && Number.isFinite(r.time) && KINDS.includes(r.kind));
+    const steps = new Set(log.rows.filter((r) => r.step != null && CHANGES.includes(r.kind)).map((r) => r.step));
+    log.undo = (Array.isArray(log.undo) ? log.undo : []).filter((s) => steps.has(s));
+    log.redo = (Array.isArray(log.redo) ? log.redo : []).filter((s) => steps.has(s));
+    log.seq = Math.max(+log.seq || 0, ...log.rows.map((r) => r.seq));
+    if (!Number.isFinite(log.keep) || log.keep < 0) log.keep = 365;
+    return log;
+  }
+  var stateOf = (w2) => ({ things: w2.things, own: w2.own || {}, pages: w2.pages || 1 });
+  function kindOfChange(before, after) {
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)].filter((k2) => !same2(before[k2], after[k2])));
+    keys.delete("edited");
+    if (!keys.size) return null;
+    if ([...keys].every((k2) => PLACE.has(k2))) return "moved";
+    if ([...keys].every((k2) => LINK.has(k2))) return "linked";
+    return "edited";
+  }
+  var TABLE = { made: "marks", edited: "marks", removed: "marks", moved: "places", linked: "links", arranged: "links", floors: "places", visited: "moments", undone: "moments", redone: "moments" };
+  function diff(prev, next) {
+    const out = [];
+    const things = /* @__PURE__ */ new Set([...Object.keys(prev.things), ...Object.keys(next.things)]);
+    for (const id of things) {
+      const a = prev.things[id], b = next.things[id];
+      if (!a) out.push({ kind: "made", table: "marks", mark: id, after: clone(b) });
+      else if (!b) out.push({ kind: "removed", table: "marks", mark: id, before: clone(a), after: null });
+      else {
+        const kind = kindOfChange(a, b);
+        if (kind) out.push({ kind, table: TABLE[kind], mark: id, before: clone(a), after: clone(b) });
+      }
+    }
+    for (const id of /* @__PURE__ */ new Set([...Object.keys(prev.own || {}), ...Object.keys(next.own || {})])) {
+      const a = prev.own?.[id], b = next.own?.[id];
+      if (!same2(a, b)) out.push({ kind: "arranged", table: "links", context: id, before: clone(a) ?? null, after: clone(b) ?? null });
+    }
+    if ((prev.pages || 1) !== (next.pages || 1)) out.push({ kind: "floors", table: "places", context: "floors", before: prev.pages || 1, after: next.pages || 1 });
+    return out;
+  }
+  function push(log, row2, now) {
+    row2.seq = ++log.seq;
+    row2.time = now;
+    log.rows.push(row2);
+    return row2;
+  }
+  function record(log, prev, next, now = Date.now()) {
+    const rows2 = diff(prev, next);
+    if (!rows2.length) return rows2;
+    const step2 = log.seq + 1;
+    for (const r of rows2) push(log, { ...r, step: step2 }, now);
+    log.undo.push(step2);
+    if (log.undo.length > STEPS2) log.undo.shift();
+    log.redo = [];
+    return rows2;
+  }
+  function fold2(log, prev, next, now = Date.now()) {
+    if (!log.undo.length || log.redo.length) return record(log, prev, next, now);
+    const step2 = log.undo[log.undo.length - 1];
+    const rows2 = diff(prev, next);
+    for (const r of rows2) push(log, { ...r, step: step2 }, now);
+    return rows2;
+  }
+  function visit2(log, roomId, now = Date.now()) {
+    for (let i2 = log.rows.length - 1; i2 >= 0; i2--) {
+      const r = log.rows[i2];
+      if (r.kind === "visited" && r.context === roomId) {
+        if (now - r.time < VISIT_GAP) return null;
+        break;
+      }
+      if (now - r.time >= VISIT_GAP) break;
+    }
+    return push(log, { kind: "visited", table: "moments", context: roomId }, now);
+  }
+  function set(state, r, value) {
+    if (r.mark != null) {
+      if (value == null) delete state.things[r.mark];
+      else state.things[r.mark] = clone(value);
+      return;
+    }
+    if (r.kind === "floors") {
+      state.pages = value || 1;
+      return;
+    }
+    if (value == null) delete state.own[r.context];
+    else state.own[r.context] = clone(value);
+  }
+  var apply = (state, rows2) => {
+    for (const r of rows2) set(state, r, r.after);
+  };
+  var revert = (state, rows2) => {
+    for (let i2 = rows2.length - 1; i2 >= 0; i2--) set(state, rows2[i2], rows2[i2].before);
+  };
+  var stepRows = (log, step2) => log.rows.filter((r) => r.step === step2 && CHANGES.includes(r.kind));
+  function undo(log, state, back = true, now = Date.now()) {
+    const from = back ? log.undo : log.redo, to = back ? log.redo : log.undo;
+    if (!from.length) return null;
+    const step2 = from.pop();
+    const rows2 = stepRows(log, step2);
+    if (back) revert(state, rows2);
+    else apply(state, rows2);
+    to.push(step2);
+    push(log, { kind: back ? "undone" : "redone", table: "moments", step: step2 }, now);
+    return rows2;
+  }
+  function stateAt(log, time = Infinity) {
+    const state = log.base ? clone(log.base.state) : { things: {}, own: {}, pages: 1 };
+    const steps = /* @__PURE__ */ new Map();
+    for (const r of log.rows) {
+      if (r.time > time) break;
+      if (CHANGES.includes(r.kind)) {
+        apply(state, [r]);
+        if (r.step != null) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r);
+      } else if (r.kind === "undone") revert(state, steps.get(r.step) || []);
+      else if (r.kind === "redone") apply(state, steps.get(r.step) || []);
+    }
+    return state;
+  }
+  var of = (log, mark) => log.rows.filter((r) => r.mark === mark || r.kind === "visited" && r.context === mark);
+  function changed2(log, mark) {
+    for (let i2 = log.rows.length - 1; i2 >= 0; i2--) {
+      const r = log.rows[i2];
+      if (r.mark === mark) return r.time;
+    }
+    return null;
+  }
+  var since = (log, time) => log.rows.filter((r) => r.time >= time);
+  function day(log, date) {
+    const start2 = dayOf(+date);
+    return log.rows.filter((r) => r.time >= start2 && r.time < start2 + DAY2);
+  }
+  function visits(log) {
+    const out = {};
+    for (const r of log.rows) if (r.kind === "visited") (out[r.context] ||= []).push(r.time);
+    for (const id of Object.keys(out)) if (out[id].length > MOST_VISITS) out[id] = out[id].slice(-MOST_VISITS);
+    return out;
+  }
+  function changedOn(log, date) {
+    const seen = /* @__PURE__ */ new Map();
+    for (const r of day(log, date)) if (r.mark != null && r.kind !== "removed") seen.set(r.mark, r.after?.parent ?? null);
+    return seen;
+  }
+  var first = (log) => log.base?.time ?? log.rows[0]?.time ?? null;
+  var squashKind = (madeToday, last, after) => after == null ? "removed" : madeToday ? "made" : last;
+  var inverse = (kind) => kind === "made" ? "removed" : kind === "removed" ? "made" : kind;
+  function compact(log, now = Date.now()) {
+    const horizon = dayOf(now - COMPACT * DAY2);
+    const floor = log.keep ? dayOf(now - log.keep * DAY2) : -Infinity;
+    const old = log.rows.filter((r) => r.time < horizon);
+    const oldSteps = new Set(old.map((r) => r.step).filter((s) => s != null));
+    const ties = new Set(log.rows.filter((r) => r.time >= horizon && (r.kind === "undone" || r.kind === "redone") && oldSteps.has(r.step)));
+    if (!old.length && !ties.size) return false;
+    const state = log.base ? clone(log.base.state) : { things: {}, own: {}, pages: 1 };
+    const steps = /* @__PURE__ */ new Map();
+    const squashed = [];
+    let touched = /* @__PURE__ */ new Map();
+    let dayStart2 = null, baseState = null, folded = false;
+    const flush = () => {
+      if (dayStart2 == null) return;
+      for (const { row: row2, madeToday, last } of touched.values()) {
+        const after = row2.mark != null ? state.things[row2.mark] : row2.kind === "floors" ? state.pages : state.own[row2.context];
+        const out = { seq: row2.seq, time: row2.time, kind: squashKind(madeToday, last, after), table: row2.table, after: clone(after) ?? null };
+        if (row2.mark != null) out.mark = row2.mark;
+        else out.context = row2.context;
+        if (dayStart2 >= floor) squashed.push(out);
+      }
+      if (dayStart2 < floor) {
+        baseState = clone(state);
+        folded = true;
+      }
+      touched = /* @__PURE__ */ new Map();
+    };
+    const land = (r, kind, seq, time) => {
+      const key = keyOf(r), was = touched.get(key);
+      touched.set(key, { row: { ...r, seq, time }, madeToday: was ? was.madeToday : kind === "made", last: kind });
+    };
+    for (const r of old) {
+      const d = dayOf(r.time);
+      if (d !== dayStart2) {
+        flush();
+        dayStart2 = d;
+      }
+      if (CHANGES.includes(r.kind)) {
+        set(state, r, r.after);
+        if (r.step != null) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r);
+        land(r, r.kind, r.seq, r.time);
+      } else if (r.kind === "undone" || r.kind === "redone") {
+        const rows2 = steps.get(r.step) || [];
+        if (r.kind === "undone") revert(state, rows2);
+        else apply(state, rows2);
+        for (const s of rows2) land(s, r.kind === "undone" ? inverse(s.kind) : s.kind, r.seq, r.time);
+      }
+    }
+    flush();
+    const kept = log.rows.filter((r) => r.time >= horizon).flatMap((r) => {
+      if (!ties.has(r)) return [r];
+      const back = r.kind === "undone";
+      return (steps.get(r.step) || []).map((s) => ({
+        seq: r.seq,
+        time: r.time,
+        kind: back ? inverse(s.kind) : s.kind,
+        table: s.table,
+        ...s.mark != null ? { mark: s.mark } : { context: s.context },
+        before: clone(back ? s.after : s.before) ?? null,
+        after: clone(back ? s.before : s.after) ?? null
+      }));
+    });
+    log.rows = [...squashed, ...kept];
+    if (folded) log.base = { time: floor, state: baseState };
+    log.undo = log.undo.filter((s) => !oldSteps.has(s));
+    log.redo = log.redo.filter((s) => !oldSteps.has(s));
+    return true;
+  }
+
   // dist/web/features/world/picture.js
   var picture_exports = {};
   __export(picture_exports, {
@@ -13175,16 +13441,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var LINE = 29;
   var HEIGHTS = /* @__PURE__ */ new Map();
   function setHeights(sizes) {
-    let changed3 = false;
+    let changed4 = false;
     for (const [id, { h }] of sizes) {
       const was = HEIGHTS.get(id);
       if (!(h > 0)) continue;
       if (was == null || Math.abs(was - h) > 1) {
         HEIGHTS.set(id, h);
-        changed3 = true;
+        changed4 = true;
       }
     }
-    return changed3;
+    return changed4;
   }
   var clearHeights = () => HEIGHTS.clear();
   function stepAfter(th) {
@@ -13236,8 +13502,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const t = w2.things[trainId];
     if (!t) return "";
     if (t.title) return t.title;
-    const first = trainThoughts(w2, trainId)[0];
-    const words = first ? thoughtText(w2, first).split(/\s+/).slice(0, 3).join(" ") : "";
+    const first2 = trainThoughts(w2, trainId)[0];
+    const words = first2 ? thoughtText(w2, first2).split(/\s+/).slice(0, 3).join(" ") : "";
     return words || "A train";
   }
   function joyceBlocks(w2, roomId) {
@@ -13869,12 +14135,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return t && !list2.some((n) => relationEntry(n).name.toLowerCase() === t.toLowerCase()) ? [...list2, t] : list2;
   }
   var tidy2 = (text2) => String(text2 ?? "").replace(/\s+/g, " ").trim();
-  function arrowsOf({ of, isNode: isNode2, nodes: nodes2, word = "node", loops = false, changed: changed3 = () => {
-  }, store = of, setting = RELATIONS, words = {}, noun = "arrow" }) {
+  function arrowsOf({ of: of2, isNode: isNode2, nodes: nodes2, word = "node", loops = false, changed: changed4 = () => {
+  }, store = of2, setting = RELATIONS, words = {}, noun = "arrow" }) {
     const put = (w2, roomId, child, { parents, labels, rel }) => {
       own(w2, roomId, store)[child] = { parents, labels, rel };
     };
-    const relations2 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of, setting, globals), setting.default);
+    const relations2 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of2, setting, globals), setting.default);
     function renameRelations2(w2, roomId, before, after) {
       const a = cleanRelations(before, setting.default), b = cleanRelations(after, setting.default);
       if (a.length !== b.length) return 0;
@@ -13939,7 +14205,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (tidy2(label3)) a.labels[parent] = tidy2(label3);
       a.rel[parent] = relation == null ? relations2(w2, roomId)[0] : relationName(relation) ?? "";
       put(w2, roomId, child, a);
-      changed3(w2, roomId);
+      changed4(w2, roomId);
       return "";
     }
     function unlink2(w2, roomId, parent, child) {
@@ -13949,7 +14215,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       delete labels[parent];
       delete rel[parent];
       put(w2, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
-      changed3(w2, roomId);
+      changed4(w2, roomId);
       return true;
     }
     function setLabel2(w2, roomId, parent, child, text2) {
@@ -14153,13 +14419,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           commit(list2.map((x, j) => j === i2 ? { ...x, name: n } : x), { i: i2 });
         }
       });
-      const set = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
+      const set2 = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
       const select2 = (k2, options, now, label3) => el19("select", {
         class: `room-rel-${k2}`,
         "aria-label": `${e.name}: ${label3}`,
         "data-part": k2,
         onkeydown: (ev) => ev.stopPropagation(),
-        onchange: (ev) => set(k2, ev.target.value)
+        onchange: (ev) => set2(k2, ev.target.value)
       }, ...options.map(([v2, w2]) => el19("option", { value: v2, selected: v2 === now }, w2)));
       const swatches = el19(
         "span",
@@ -14172,7 +14438,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-checked": String((e.colour || "ink") === k2),
           "aria-label": k2,
           "data-part": k2 === (e.colour || "ink") ? "colour" : null,
-          onclick: () => set("colour", k2 === "ink" ? null : k2)
+          onclick: () => set2("colour", k2 === "ink" ? null : k2)
         }))
       );
       const r = el19(
@@ -14286,7 +14552,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/world/ontologies/arrowview.js
   var arrowKey = (from, to) => `${from}>${to}`;
-  function arrowView({ of, net: net2, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
+  function arrowView({ of: of2, net: net2, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
     const { arrows: arrows3, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, unlink: unlink2, setLabel: setLabel2, setRelation: setRelation2 } = net2;
     const box = ({ at: at2, size }) => ({ x: at2.x, y: at2.y, w: size.w, h: size.h });
     let editing = null;
@@ -14370,7 +14636,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           const next = withRelation(c.setting(setting.key), n, setting.default);
           if (!c.locked && next.length !== names.length) {
-            setRoomSetting(c.world, c.roomId, of, setting.key, next);
+            setRoomSetting(c.world, c.roomId, of2, setting.key, next);
             c.save();
           }
           chosen(cleanRelations(next, setting.default).find((x) => x.toLowerCase() === n.toLowerCase()));
@@ -14439,7 +14705,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (own4) return own4;
       const n = at2?.closest?.("[data-group]");
       const g2 = n && c.world.things[n.dataset.group];
-      if (g2 && g2.of === of) return g2.id;
+      if (g2 && g2.of === of2) return g2.id;
       const p = c.toWorld(ev.clientX, ev.clientY);
       return nodeAt(c.world, c.roomId, p.x, p.y);
     }
@@ -14447,8 +14713,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const layer2 = c.world$?.querySelector(".room-lines");
       if (!layer2) return;
       const line2 = c.setting("line") || "straight";
-      const first = cleanRelations(c.setting(setting.key), setting.default)[0] || "";
-      const [drawn] = line("", { ends: ends(first, c), cls: "room-arrow room-arrow-drawing" });
+      const first2 = cleanRelations(c.setting(setting.key), setting.default)[0] || "";
+      const [drawn] = line("", { ends: ends(first2, c), cls: "room-arrow room-arrow-drawing" });
       layer2.append(drawn);
       const move5 = (ev) => {
         const q = c.toWorld(ev.clientX, ev.clientY);
@@ -14634,7 +14900,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     };
     const forFile = (file) => all().find((f2) => ask(f2, () => f2.accepts(file) === true, false)) || null;
-    const first = (what) => all().find(has(what)) || null;
+    const first2 = (what) => all().find(has(what)) || null;
     const editor = () => all().find((f2) => has("canEdit")(f2) && ask(f2, () => f2.canEdit(), false)) || null;
     return Object.freeze({
       get any() {
@@ -14645,18 +14911,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       isRoomFile: (file) => !!forFile(file),
       importRoom: async (o2 = {}) => {
-        const f2 = o2.file ? forFile(o2.file) : first("importRoom");
+        const f2 = o2.file ? forFile(o2.file) : first2("importRoom");
         return f2 && has("importRoom")(f2) ? await wait4(f2, () => f2.importRoom(o2), null) ?? null : null;
       },
       importInto: async (roomId, o2 = {}) => {
-        const f2 = o2.file ? forFile(o2.file) : first("importInto");
+        const f2 = o2.file ? forFile(o2.file) : first2("importInto");
         return f2 && has("importInto")(f2) ? !!await wait4(f2, () => f2.importInto(roomId, o2), false) : false;
       },
       get canExport() {
-        return !!first("exportRoom");
+        return !!first2("exportRoom");
       },
       exportRoom: (id) => {
-        const f2 = first("exportRoom");
+        const f2 = first2("exportRoom");
         if (f2) ask(f2, () => f2.exportRoom(id));
       },
       get canEdit() {
@@ -14678,12 +14944,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/world/World.js
   var KEY = "world3";
-  var UNDO = 60;
+  var LOG = "moments";
   var World = class extends Feature {
     start() {
-      if (this.storage.has("world")) this.storage.set("world", null);
+      for (const old of ["world", "attention"]) if (this.storage.has(old)) this.storage.set(old, null);
       this.world = loadWorld(this.storage.get(KEY));
+      this.log = loadLog2(this.storage.get(LOG));
       this.begin();
+      if (compact(this.log, Date.now())) this.storage.set(LOG, this.log);
       this.backdrop = this.use("backdrop");
       this.prefs = lookPrefs(this.storage.get("look"));
       this.globals = this.storage.get("ontologies") || {};
@@ -14692,7 +14960,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.palette = e.detail;
         this.emit("world:palette", this.palette);
       });
-      this.log = loadLog(this.storage.get("attention"));
       this.defineSlot("world.ontologies", "A way of seeing a room's thoughts: { id, name, note, groups, units, point, drop, … } (see world/ontologies/index.js).").watch(() => this.emit("world:modes"));
       const kinds = this.defineSlot("world.items", "A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el), traum? } (see world/items/index.js).");
       kinds.watch((slot) => {
@@ -14713,16 +14980,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // the world itself (model.js)
         load: () => {
           w2.world = loadWorld(w2.storage.get(KEY));
+          w2.log = loadLog2(w2.storage.get(LOG));
           return w2.world;
         },
         begin: () => w2.begin(),
         save: () => w2.save(),
         settled: () => w2.snap() === w2.lastSnap,
-        fold: () => {
-          w2.lastSnap = w2.snap();
-        },
+        fold: () => w2.fold(),
         writeSoon: (say3 = true) => w2.writeSoon(say3),
-        write: () => w2.storage.set(KEY, w2.world),
+        write: () => w2.write(),
         undo: (back = true) => w2.undo(back),
         get ontologies() {
           return w2.ontologies;
@@ -14740,8 +15006,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         get globals() {
           return w2.globals;
         },
-        setGlobal: (of, key, value) => {
-          (w2.globals[of] ||= {})[key] = value;
+        setGlobal: (of2, key, value) => {
+          (w2.globals[of2] ||= {})[key] = value;
           w2.storage.set("ontologies", w2.globals);
         },
         resetGlobals: () => {
@@ -14756,62 +15022,127 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return w2.palette;
         },
         get attention() {
+          return w2.visits();
+        },
+        visit: (roomId) => w2.visit(roomId),
+        moments: this.momentsService()
+      });
+    }
+    // The moments log read: the world's history, for Timeline, the daily record, the scrub, sync
+    // and the API's moments table. Every read gives rows or states of its own; nothing here writes.
+    momentsService() {
+      const w2 = this;
+      return Object.freeze({
+        get log() {
           return w2.log;
         },
-        visit: (roomId) => {
-          w2.log = loadLog(w2.storage.get("attention"));
-          visit(w2.log, roomId);
-          w2.storage.set("attention", w2.log);
+        // the log itself (moments.js), read only
+        of: (mark) => of(w2.log, mark),
+        // a mark's rows, oldest first
+        changed: (mark) => changed2(w2.log, mark),
+        // when a mark last changed, or null
+        since: (time) => since(w2.log, time),
+        // every row from a time on
+        day: (date) => day(w2.log, date),
+        // a day's rows
+        changedOn: (date) => changedOn(w2.log, date),
+        // marks changed on a day → their context then
+        at: (time) => stateAt(w2.log, time),
+        // { things, own, pages } as they were at a time
+        first: () => first(w2.log),
+        // the first time the log knows of
+        get keep() {
+          return w2.log.keep;
+        },
+        // days of history kept (0: forever)
+        setKeep: (days2) => {
+          w2.log.keep = days2;
+          compact(w2.log, Date.now());
+          w2.storage.set(LOG, w2.log);
         }
       });
     }
-    // A fresh undo history.
+    // The log and the world agree: what the log does not know of (the world's first state, or a
+    // world that arrived without its log) lands as one step. Undo starts from here.
     begin() {
-      this.undoStack = [];
-      this.redoStack = [];
+      const now = Date.now();
+      const state = stateOf(this.world);
+      if (!this.log.base && !this.log.rows.length) this.log = emptyLog(now, state);
+      else this.land(record(this.log, stateAt(this.log), state, now));
       this.lastSnap = this.snap();
+      this.last = JSON.parse(this.lastSnap);
+      this.lit = null;
     }
     snap() {
-      const w2 = this.world;
-      return JSON.stringify({ things: w2.things, own: w2.own, pages: w2.pages });
+      return JSON.stringify(stateOf(this.world));
+    }
+    // Rows that landed in the log: anyone listening to the moments table hears of them.
+    land(rows2, undone) {
+      if (!rows2?.length) return rows2;
+      this.lit = null;
+      this.emit("world:moments", { rows: rows2, undone: !!undone });
+      return rows2;
     }
     // After a change: a change to the thoughts or rooms (not just where the view is) is a step Ctrl+Z
-    // can take back. The world is written down soon. True when it was a step.
+    // can take back, and its rows land in the log. The world is written down soon. True when it was
+    // a step.
     save() {
-      const now = this.snap();
+      const snap2 = this.snap();
       let step2 = false;
-      if (now !== this.lastSnap) {
-        this.undoStack.push(this.lastSnap);
-        if (this.undoStack.length > UNDO) this.undoStack.shift();
-        this.redoStack = [];
-        this.lastSnap = now;
-        step2 = true;
+      if (snap2 !== this.lastSnap) {
+        const next = JSON.parse(snap2);
+        step2 = this.land(record(this.log, this.last, next, Date.now())).length > 0;
+        this.lastSnap = snap2;
+        this.last = next;
       }
       this.writeSoon(true);
       return step2;
+    }
+    // The change since the last step joins that step (a push from clear space goes with what caused
+    // it): its rows land under the same step.
+    fold() {
+      const snap2 = this.snap();
+      if (snap2 === this.lastSnap) return;
+      const next = JSON.parse(snap2);
+      this.land(fold2(this.log, this.last, next, Date.now()));
+      this.lastSnap = snap2;
+      this.last = next;
+    }
+    write() {
+      this.storage.set(KEY, this.world);
+      this.storage.set(LOG, this.log);
     }
     // Written down in a moment; a later call takes the place of an earlier one. say: then sends
     // 'world:saved' (a quiet "Saved" shows).
     writeSoon(say3) {
       clearTimeout(this.saveTimer);
       this.saveTimer = setTimeout(() => {
-        this.storage.set(KEY, this.world);
+        this.write();
         if (say3) this.emit("world:saved");
       }, 250);
     }
-    // A step back (or forward). False when there is none; otherwise the world is as it was, written
-    // down, and 'world:changed' is sent.
+    // A step back (or forward), read off the log. False when there is none; otherwise the world is
+    // as it was, written down, and 'world:changed' is sent.
     undo(back) {
-      const from = back ? this.undoStack : this.redoStack, to = back ? this.redoStack : this.undoStack;
-      if (!from.length) return false;
-      to.push(this.lastSnap);
-      this.lastSnap = from.pop();
-      const { things, own: own4 = {}, pages = 1 } = JSON.parse(this.lastSnap);
-      Object.assign(this.world, { things, own: own4, pages });
+      const rows2 = undo(this.log, this.world, back, Date.now());
+      if (!rows2) return false;
+      this.lastSnap = this.snap();
+      this.last = JSON.parse(this.lastSnap);
       clearTimeout(this.saveTimer);
-      this.storage.set(KEY, this.world);
+      this.write();
+      this.land([...rows2, this.log.rows[this.log.rows.length - 1]], back);
       this.emit("world:changed", { undone: back });
       return true;
+    }
+    // Going into a room is a moment; the attention log ({ [roomId]: [times] }) is read off the log.
+    visit(roomId) {
+      const row2 = visit2(this.log, roomId, Date.now());
+      if (!row2) return;
+      this.land([row2]);
+      this.storage.set(LOG, this.log);
+    }
+    visits() {
+      return this.lit ||= visits(this.log);
     }
     // The ontologies there are (ontologies/index.js), and the one a room is seen through: a room
     // whose ontology is missing (its feature switched off, say) is seen through Pessoa.
@@ -15958,7 +16289,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "RELATIONS"
   ];
   var TRAINS = ["stepAfter", "setHeights", "STEP"];
-  var KINDS = ["ITEMS", "kindFor", "isKnown"];
+  var KINDS2 = ["ITEMS", "kindFor", "isKnown"];
   var TWINS = ["isTwin", "twinOf", "sides", "addTwin"];
   var LINES2 = [
     "svg",
@@ -15989,7 +16320,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       lines: pick(lib.lines, LINES2, "lines"),
       arrows: pick(lib.arrowview, ["arrowView"], "arrowview"),
       maths: pick(lib.maths, ["maths", "broken"], "maths"),
-      kinds: pick(lib.items, KINDS, "items"),
+      kinds: pick(lib.items, KINDS2, "items"),
       twins: pick(lib.twin, TWINS, "twin"),
       pictures: pick(lib.picture, ["shrinkPicture", "keepOrShrink"], "picture"),
       layout: pick(lib.pessoa, ["spiralPoint"], "pessoa"),
@@ -16151,8 +16482,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const on = (table) => (fn) => {
       if (!events) return () => {
       };
-      const tell = (data) => fn(row({ table, undone: !!data?.undone }));
-      const offs = [events.on("world:saved", tell), events.on("world:changed", tell)];
+      const tell = (data) => {
+        if (!data?.rows) {
+          fn(row({ table, rows: rows([]), undone: !!data?.undone }));
+          return;
+        }
+        const mine = data.rows.filter((r) => r.table === table || table === "moments" && r.kind !== void 0);
+        if (mine.length) fn(row({ table, rows: rows(mine.map((r) => ({ ...r }))), undone: !!data.undone }));
+      };
+      const offs = world.moments ? [events.on("world:moments", tell)] : [events.on("world:saved", tell), events.on("world:changed", tell)];
       const off = () => {
         for (const o2 of offs) o2();
       };
@@ -16316,16 +16654,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       reopen: () => later("Reopening a gap", 5),
       on: on("gaps")
     });
-    function momentsOf(th) {
+    const log = () => world.moments;
+    const momentRow = (r) => ({ time: r.time, kind: r.kind, ...r.mark != null ? { mark: r.mark } : { context: r.context }, ...r.step != null ? { step: r.step } : {} });
+    function fallback(th) {
       const out = [{ time: th.at, kind: "made", mark: th.id }];
       if (th.edited) out.push({ time: th.edited, kind: "edited", mark: th.id });
-      if (kindOf4(th) === "room") for (const t of world.attention?.[th.id] || []) out.push({ time: t, kind: "visited", mark: th.id });
+      if (!log() && kindOf4(th) === "room") for (const t of world.attention?.[th.id] || []) out.push({ time: t, kind: "visited", context: th.id });
       return out;
     }
-    const byTime4 = (a, b) => a.time - b.time;
-    const all = () => Object.values(w2().things).flatMap(momentsOf).sort(byTime4);
+    const byTime4 = (a, b) => a.time - b.time || (a.seq || 0) - (b.seq || 0);
+    function momentsOf(id) {
+      const th = thing2(id);
+      const known = log() ? log().of(id).map(momentRow) : [];
+      if (!th) return known;
+      return known.some((m2) => m2.kind === "made") ? known : [...fallback(th).filter((m2) => !known.length || m2.kind === "made"), ...known];
+    }
+    const all = () => (log() ? log().since(0).map(momentRow) : Object.values(w2().things).flatMap(fallback)).sort(byTime4);
     const moments = Object.freeze({
-      of: (mark) => thing2(mark) ? rows(momentsOf(thing2(mark)).sort(byTime4)) : rows([]),
+      of: (mark) => rows(momentsOf(mark).sort(byTime4)),
       since: (time) => rows(all().filter((m2) => m2.time >= +time)),
       day: (date) => {
         const start2 = new Date(date);
@@ -17122,8 +17468,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const th = w2.things[id];
     if (!th) return "";
     if (isGroup2(th) && th.title) return th.title;
-    const first = isGroup2(th) ? itemsIn2(w2, id)[0] : th;
-    const words = first ? thoughtText2(w2, first).split(/\s+/).slice(0, 4).join(" ") : "";
+    const first2 = isGroup2(th) ? itemsIn2(w2, id)[0] : th;
+    const words = first2 ? thoughtText2(w2, first2).split(/\s+/).slice(0, 4).join(" ") : "";
     return words || (isGroup2(th) ? "A cluster" : "A thought");
   }
   var net = null;
@@ -17139,20 +17485,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     words: { self: "A thought can't be linked to itself.", join: "Links join two things on the canvas." }
   });
   function cut(w2, roomId, ids) {
-    const set = new Set(ids);
+    const set2 = new Set(ids);
     const data = own2(w2, roomId, LINKS, false);
     let n = 0;
     for (const [to, a] of Object.entries(data)) {
       if (!a || !Array.isArray(a.parents)) continue;
-      if (set.has(to)) {
+      if (set2.has(to)) {
         n += a.parents.length;
         delete data[to];
         continue;
       }
-      const keep3 = a.parents.filter((p) => !set.has(p));
+      const keep3 = a.parents.filter((p) => !set2.has(p));
       if (keep3.length === a.parents.length) continue;
       n += a.parents.length - keep3.length;
-      for (const p of a.parents) if (set.has(p)) {
+      for (const p of a.parents) if (set2.has(p)) {
         delete a.labels?.[p];
         delete a.rel?.[p];
       }
@@ -17162,16 +17508,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var SIZES2 = /* @__PURE__ */ new Map();
   function setSizes(sizes) {
-    let changed3 = false;
+    let changed4 = false;
     for (const [id, { w: wd, h }] of sizes) {
       if (!(wd > 0) || !(h > 0)) continue;
       const was = SIZES2.get(id);
       if (!was || Math.abs(was.w - wd) > 2 || Math.abs(was.h - h) > 2) {
         SIZES2.set(id, { w: wd, h });
-        changed3 = true;
+        changed4 = true;
       }
     }
-    return changed3;
+    return changed4;
   }
   function sizeOf(w2, id) {
     const s = SIZES2.get(id);
@@ -17484,7 +17830,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/proust/centre.js
   var RING = 210;
-  var LINK = 150;
+  var LINK2 = 150;
   var TURN = 0.03;
   var SPRING = 0.05;
   var PUSH = 5200;
@@ -17542,9 +17888,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const list2 of rings.values()) {
         const angle = (n) => Math.atan2(n.y - c.y, n.x - c.x);
         list2.sort((p, q) => angle(p) - angle(q));
-        const first = angle(list2[0]);
+        const first2 = angle(list2[0]);
         list2.forEach((n, i2) => {
-          n.angle = first + 2 * Math.PI * i2 / list2.length;
+          n.angle = first2 + 2 * Math.PI * i2 / list2.length;
         });
       }
     }
@@ -17555,7 +17901,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const [i2, j] of L.edges) {
       const p = ns[i2], q = ns[j];
       const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-      const rest = LINK + (p.r + q.r) * 0.5;
+      const rest = LINK2 + (p.r + q.r) * 0.5;
       const f2 = SPRING * (d - rest) / d * a;
       p.vx += dx * f2;
       p.vy += dy * f2;
@@ -17854,9 +18200,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const other = a.from === th.id ? a.to : a.from;
       const ends = endsOf(list2, a.rel);
       const entry = { id: other, rel: a.rel, label: a.label, links: [[a.from, a.to]] };
-      const same3 = ends === "arrow" ? null : with_.find((x) => x.id === other);
+      const same4 = ends === "arrow" ? null : with_.find((x) => x.id === other);
       if (ends === "arrow") (a.from === th.id ? out : into).push(entry);
-      else if (same3) same3.links.push([a.from, a.to]);
+      else if (same4) same4.links.push([a.from, a.to]);
       else with_.push(entry);
     }
     const go = (x) => c.el("button", {
@@ -18008,7 +18354,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       fileName: fileName2 = "source.md",
       options = [],
       check = () => ({}),
-      apply: apply3 = null,
+      apply: apply4 = null,
       full = (t) => t,
       reset = null,
       draft = null
@@ -18022,7 +18368,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const sum = el13("div", { class: "source-sum", "aria-live": "polite" });
         const lists = el13("div", { class: "source-lists" });
         const opts = el13("div", { class: "source-options" });
-        const changed3 = () => box.value !== base2;
+        const changed4 = () => box.value !== base2;
         const say3 = (msg) => {
           sum.dataset.note = msg;
           sum.classList.add("noted");
@@ -18042,7 +18388,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           } catch (err) {
             r = { report: [`The text couldn't be checked: ${err.message}`] };
           }
-          sum.textContent = [r.summary, changed3() ? "changed" : ""].filter(Boolean).join(" · ");
+          sum.textContent = [r.summary, changed4() ? "changed" : ""].filter(Boolean).join(" · ");
           lists.replaceChildren(...[
             list2(readOnly ? "In it" : "Apply will", r.changes, "source-changes"),
             list2("Couldn't be read", r.report, "source-report")
@@ -18069,7 +18415,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             box.setRangeText("  ", box.selectionStart, box.selectionEnd, "end");
             soon();
           }
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !readOnly && apply3) {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !readOnly && apply4) {
             e.preventDefault();
             doApply();
           }
@@ -18117,11 +18463,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           say3("Back to what it holds now");
         };
         const doApply = async () => {
-          if (!apply3 || go.disabled) return;
+          if (!apply4 || go.disabled) return;
           go.disabled = true;
           let ok = false;
           try {
-            ok = await apply3(unfence(box.value), { ...chosen });
+            ok = await apply4(unfence(box.value), { ...chosen });
           } catch (err) {
             console.warn("Source: apply", err);
             say3("That couldn't be applied");
@@ -18134,9 +18480,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           applied = true;
           handle?.close(true);
         };
-        const go = readOnly || !apply3 ? null : word("Apply", doApply, "source-go");
+        const go = readOnly || !apply4 ? null : word("Apply", doApply, "source-go");
         const beforeClose = () => {
-          if (draft && !readOnly) this.keepDraft(draft, !applied && changed3() ? { text: box.value, base: base2 } : null);
+          if (draft && !readOnly) this.keepDraft(draft, !applied && changed4() ? { text: box.value, base: base2 } : null);
           return true;
         };
         const body = el13(
@@ -18561,8 +18907,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (r.tags?.length) out.push(["tags", writeFront(r.tags)]);
       for (const k2 of ["tint", "light", "opacity"]) if (r[k2] != null) out.push([k2, writeFront(r[k2])]);
     }
-    for (const [of, set] of Object.entries(w2.settings?.[roomId] || {})) {
-      for (const [k2, v2] of Object.entries(set || {})) if (v2 !== void 0) out.push([`${prefix}${of}.${k2}`, writeFront(v2)]);
+    for (const [of2, set2] of Object.entries(w2.settings?.[roomId] || {})) {
+      for (const [k2, v2] of Object.entries(set2 || {})) if (v2 !== void 0) out.push([`${prefix}${of2}.${k2}`, writeFront(v2)]);
     }
     return out;
   }
@@ -18577,27 +18923,27 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function objectOrder(w2, roomId) {
     const items = roomItems3(w2, roomId);
     const groups = groupsIn3(w2, roomId).filter((g2) => members3(w2, g2.id).length);
-    const keyOf = /* @__PURE__ */ new Map();
+    const keyOf2 = /* @__PURE__ */ new Map();
     const depth2 = /* @__PURE__ */ new Map();
-    const visit2 = (g2, seen = /* @__PURE__ */ new Set()) => {
-      if (keyOf.has(g2.id)) return keyOf.get(g2.id);
+    const visit3 = (g2, seen = /* @__PURE__ */ new Set()) => {
+      if (keyOf2.has(g2.id)) return keyOf2.get(g2.id);
       if (seen.has(g2.id)) return g2.at;
       seen.add(g2.id);
       let k2 = g2.at, d = 0;
       for (const m2 of members3(w2, g2.id)) {
         if (isGroup3(m2)) {
-          k2 = Math.max(k2, visit2(m2, seen));
+          k2 = Math.max(k2, visit3(m2, seen));
           d = Math.max(d, depth2.get(m2.id) + 1);
         } else k2 = Math.max(k2, m2.at);
       }
-      keyOf.set(g2.id, k2);
+      keyOf2.set(g2.id, k2);
       depth2.set(g2.id, d);
       return k2;
     };
-    groups.forEach((g2) => visit2(g2));
+    groups.forEach((g2) => visit3(g2));
     return [
       ...items.map((th) => ({ th, key: th.at, rank: -1 })),
-      ...groups.map((g2) => ({ th: g2, key: keyOf.get(g2.id), rank: depth2.get(g2.id) }))
+      ...groups.map((g2) => ({ th: g2, key: keyOf2.get(g2.id), rank: depth2.get(g2.id) }))
     ].sort((a, b) => a.key - b.key || a.rank - b.rank || byTime3(a.th, b.th)).map((e) => e.th);
   }
   function writeObject(w2, roomId, th, ids, pictures) {
@@ -18715,8 +19061,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         let line2 = obj.line;
         for (const k2 of keys) {
           if (k2.key === "made in") {
-            const of = String(k2.values[0]?.v ?? "").toLowerCase();
-            if (of) fields2.of = of;
+            const of2 = String(k2.values[0]?.v ?? "").toLowerCase();
+            if (of2) fields2.of = of2;
           } else if (k2.key === "holds") {
             holds2.push(...k2.values);
             line2 = k2.line;
@@ -18961,7 +19307,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const k2 of ["tint", "light", "opacity"]) if (meta[k2] != null) fields[k2] = meta[k2];
     update2(w2, roomId, fields, now);
     seedRoomSettings2(w2, roomId, globals);
-    for (const [of, set] of Object.entries(meta.settings)) for (const [k2, v2] of Object.entries(set)) setRoomSetting3(w2, roomId, of, k2, v2);
+    for (const [of2, set2] of Object.entries(meta.settings)) for (const [k2, v2] of Object.entries(set2)) setRoomSetting3(w2, roomId, of2, k2, v2);
   }
   function importTwin(w2, parts, meta, report, { ontologies, now, page, globals, name: name5, fetched, read, known, unknown }) {
     const modes = [0, 1].map((k2) => {
@@ -19031,8 +19377,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const k2 of [0, 1]) {
       const s = both[k2];
       seedRoomSettings2(w2, s.id, globals);
-      for (const [of, set] of Object.entries({ ...meta.settings[modes[k2]] ? { [modes[k2]]: meta.settings[modes[k2]] } : {}, ...meta.sideSettings[k2] })) {
-        for (const [key, v2] of Object.entries(set)) setRoomSetting3(w2, s.id, of, key, v2);
+      for (const [of2, set2] of Object.entries({ ...meta.settings[modes[k2]] ? { [modes[k2]]: meta.settings[modes[k2]] } : {}, ...meta.sideSettings[k2] })) {
+        for (const [key, v2] of Object.entries(set2)) setRoomSetting3(w2, s.id, of2, key, v2);
       }
       const mine = { ...parts, objects: parts.objects.filter((o2) => side.get(o2.id) === k2), sections: sectionsOf[k2] };
       const got = bringObjects(w2, s.id, mine, { modes: [modes[k2]], ontologies, now: at2, report, fetched });
@@ -19118,17 +19464,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = room3(w2, roomId);
     const out = [];
     const say3 = (v2) => v2 == null || v2 === "" ? "nothing" : Array.isArray(v2) ? v2.length ? v2.join(", ") : "nothing" : JSON.stringify(v2);
-    const diff = (k2, label3, from, to) => {
+    const diff2 = (k2, label3, from, to) => {
       if (JSON.stringify(from ?? null) !== JSON.stringify(to ?? null)) out.push({ key: k2, from, to, text: `${label3}: ${say3(from)} → ${say3(to)}` });
     };
-    if (meta.room != null) diff("name", "Name", r.name, oneLine2(meta.room) || "Untitled");
-    diff("desc", "Description", r.desc || "", meta.description ? tidyLines(meta.description) : "");
-    diff("tags", "Tags", r.tags || [], meta.tags || []);
-    for (const k2 of ["tint", "light", "opacity"]) diff(k2, k2[0].toUpperCase() + k2.slice(1), r[k2] ?? null, meta[k2] ?? null);
-    for (const [of, set] of Object.entries(meta.settings)) {
-      for (const [k2, v2] of Object.entries(set)) {
-        const now = w2.settings?.[roomId]?.[of]?.[k2];
-        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${of}.${k2}`, of, k: k2, from: now, to: v2, text: `${of}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
+    if (meta.room != null) diff2("name", "Name", r.name, oneLine2(meta.room) || "Untitled");
+    diff2("desc", "Description", r.desc || "", meta.description ? tidyLines(meta.description) : "");
+    diff2("tags", "Tags", r.tags || [], meta.tags || []);
+    for (const k2 of ["tint", "light", "opacity"]) diff2(k2, k2[0].toUpperCase() + k2.slice(1), r[k2] ?? null, meta[k2] ?? null);
+    for (const [of2, set2] of Object.entries(meta.settings)) {
+      for (const [k2, v2] of Object.entries(set2)) {
+        const now = w2.settings?.[roomId]?.[of2]?.[k2];
+        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${of2}.${k2}`, of: of2, k: k2, from: now, to: v2, text: `${of2}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
       }
     }
     const mode = view6(w2, roomId).mode;
@@ -19142,7 +19488,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const t = oneLine2(kindFor2(kindOf2(th)).text(th) || "");
     return `"${t.length > 30 ? t.slice(0, 29) + "…" : t}"`;
   };
-  function apply(w2, roomId, session, parts, { ontologies = [], pictures = null, now = Date.now(), removeMissing = false } = {}) {
+  function apply2(w2, roomId, session, parts, { ontologies = [], pictures = null, now = Date.now(), removeMissing = false } = {}) {
     const report = [...parts.report];
     const changes = [];
     const counts2 = { kept: 0, changed: 0, made: 0, deleted: 0 };
@@ -19397,19 +19743,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const objects = [];
     const add = (kind, title, body, line2) => objects.push({ id: String(objects.length + 1), kind, title, lines: body ? body.split("\n") : [], line: line2, first: line2 });
     for (const b of blocks) {
-      const [first, ...rest] = b.lines;
-      const pic = b.lines.length === 1 && PICTURE.exec(first);
+      const [first2, ...rest] = b.lines;
+      const pic = b.lines.length === 1 && PICTURE.exec(first2);
       if (pic) {
         add("picture", pic[1], pic[2], b.line);
         continue;
       }
-      const h = HEADING.exec(first);
+      const h = HEADING.exec(first2);
       if (h) {
         if (rest.length) add("passage", h[1], rest.join("\n"), b.line);
         else add("line", null, h[1], b.line);
         continue;
       }
-      if (ITEM.test(first)) {
+      if (ITEM.test(first2)) {
         let item = null;
         b.lines.forEach((l2, k2) => {
           const m2 = ITEM.exec(l2);
@@ -19420,7 +19766,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         continue;
       }
-      if (b.lines.length === 1) add("line", null, first, b.line);
+      if (b.lines.length === 1) add("line", null, first2, b.line);
       else add("passage", "", b.lines.join("\n"), b.line);
     }
     return { front: [], objects, sections: [], report };
@@ -19562,7 +19908,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const check = (text2, chosen = {}) => {
         const parts = parse2(text2);
         const n = summary(parts);
-        const r = apply(copyWorld(w2()), roomId, session, parts, opts(chosen));
+        const r = apply2(copyWorld(w2()), roomId, session, parts, opts(chosen));
         const c = r.counts;
         const doing = !readOnly ? [c.kept && `${c.kept} kept`, c.changed && `${c.changed} changed`, c.made && `${c.made} new`, c.deleted && `${c.deleted} deleted`].filter(Boolean).join(", ") : "";
         const report = [...r.report, ...badMaths(parts).map((b) => `Line ${b.line}: KaTeX can't draw ${b.tex.length > 50 ? b.tex.slice(0, 47) + "…" : b.tex}`)];
@@ -19577,13 +19923,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const applyText = async (text2, chosen = {}) => {
         const parts = await this.fetchObjectPictures(parse2(text2));
         if (!ok() || shut3(w2(), roomId)) return false;
-        const dry = apply(copyWorld(w2()), roomId, session, parts, opts(chosen));
+        const dry = apply2(copyWorld(w2()), roomId, session, parts, opts(chosen));
         if (dry.blocked) {
           this.toast(dry.report.at(-1) || "That couldn't be applied.");
           return false;
         }
         before();
-        apply(w2(), roomId, session, parts, opts(chosen));
+        apply2(w2(), roomId, session, parts, opts(chosen));
         return true;
       };
       const reset = () => {
@@ -19672,14 +20018,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   };
 
   // dist/web/features/time/days.js
-  var changed2 = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
-  function dayOf(ms) {
+  var changed3 = (th) => Math.max(th.at ?? 0, th.edited ?? 0);
+  function dayOf2(ms) {
     const d = new Date(ms);
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   }
   function timeline2(m2, w2, roomId) {
-    return m2.roomThoughts(w2, roomId).slice().sort((a, b) => changed2(a) - changed2(b) || a.at - b.at);
+    return m2.roomThoughts(w2, roomId).slice().sort((a, b) => changed3(a) - changed3(b) || a.at - b.at);
   }
   function squareOf(w2, th) {
     const r = w2.things[th?.parent];
@@ -19693,30 +20039,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!m2.isLeaf(th)) continue;
       const r = squareOf(w2, th);
       if (!r) continue;
-      const day = dayOf(changed2(th));
-      if (!by.has(day)) by.set(day, /* @__PURE__ */ new Map());
-      const d = by.get(day);
+      const day2 = dayOf2(changed3(th));
+      if (!by.has(day2)) by.set(day2, /* @__PURE__ */ new Map());
+      const d = by.get(day2);
       d.set(r.id, (d.get(r.id) || 0) + 1);
     }
-    return [...by].sort((a, b) => b[0] - a[0]).map(([day, rooms4]) => ({ day, rooms: [...rooms4].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n) }));
+    return [...by].sort((a, b) => b[0] - a[0]).map(([day2, rooms4]) => ({ day: day2, rooms: [...rooms4].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n) }));
   }
-  var DAY2 = 864e5;
-  function roomBoard(m2, w2, roomId, day) {
-    const end = day + DAY2 - 1, later2 = [], lit = [];
+  var DAY3 = 864e5;
+  function roomBoard(m2, w2, roomId, day2) {
+    const end = day2 + DAY3 - 1, later2 = [], lit = [];
     for (const th of m2.roomThoughts(w2, roomId)) {
       if ((th.at ?? 0) > end) later2.push(th.id);
-      else if (dayOf(th.at) === day || dayOf(changed2(th)) === day) lit.push(th.id);
+      else if (dayOf2(th.at) === day2 || dayOf2(changed3(th)) === day2) lit.push(th.id);
     }
-    return { day, later: later2, lit };
+    return { day: day2, later: later2, lit };
   }
   function roomFirst(m2, w2, roomId, when = Date.now()) {
-    let first = w2.things[roomId]?.at || when;
-    for (const th of m2.roomThoughts(w2, roomId)) if (th.at > 0 && th.at < first) first = th.at;
-    return dayOf(first);
+    let first2 = w2.things[roomId]?.at || when;
+    for (const th of m2.roomThoughts(w2, roomId)) if (th.at > 0 && th.at < first2) first2 = th.at;
+    return dayOf2(first2);
   }
 
   // dist/web/features/time/record.js
-  var DAY3 = 864e5;
+  var DAY4 = 864e5;
   var KEEP2 = [{ days: 30, words: "1 month" }, { days: 365, words: "1 year" }, { days: 0, words: "Forever" }];
   var KEEP_DEFAULT = 365;
   var emptyRecord = () => ({ base: null, days: {} });
@@ -19738,33 +20084,33 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return rooms4;
   }
-  var same2 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  var same3 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   var sortedDays = (rec) => Object.keys(rec.days).map(Number).sort((a, b) => a - b);
-  function apply2(rooms4, d) {
+  function apply3(rooms4, d) {
     for (const id of d.gone || []) delete rooms4[id];
     Object.assign(rooms4, d.set || {});
     return rooms4;
   }
-  function stateAt(rec, day = Infinity) {
+  function stateAt2(rec, day2 = Infinity) {
     const rooms4 = { ...rec.base?.rooms || {} };
-    for (const d of sortedDays(rec)) if (d <= day) apply2(rooms4, rec.days[d]);
+    for (const d of sortedDays(rec)) if (d <= day2) apply3(rooms4, rec.days[d]);
     return rooms4;
   }
-  var writtenOn = (rec, day) => rec.days[dayOf(day)]?.written || [];
+  var writtenOn = (rec, day2) => rec.days[dayOf2(day2)]?.written || [];
   function firstDay(rec) {
     const all = sortedDays(rec);
     return rec.base ? rec.base.day : all.length ? all[0] : null;
   }
   function note2(rec, now, written = [], when = Date.now()) {
-    const today = dayOf(when);
-    const before = stateAt(rec, today - 1);
-    const set = {}, gone = [];
-    for (const [id, r] of Object.entries(now)) if (!same2(before[id], r)) set[id] = r;
+    const today = dayOf2(when);
+    const before = stateAt2(rec, today - 1);
+    const set2 = {}, gone = [];
+    for (const [id, r] of Object.entries(now)) if (!same3(before[id], r)) set2[id] = r;
     for (const id of Object.keys(before)) if (!(id in now)) gone.push(id);
     const was = rec.days[today]?.written || [];
     const all = [.../* @__PURE__ */ new Set([...was, ...written])];
     const d = {};
-    if (Object.keys(set).length) d.set = set;
+    if (Object.keys(set2).length) d.set = set2;
     if (gone.length) d.gone = gone;
     if (all.length) d.written = all;
     if (Object.keys(d).length) rec.days[today] = d;
@@ -19773,41 +20119,41 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function prune(rec, keep3, when = Date.now()) {
     if (!keep3) return rec;
-    const from = dayOf(when - (keep3 - 1) * DAY3);
+    const from = dayOf2(when - (keep3 - 1) * DAY4);
     const old = sortedDays(rec).filter((d) => d < from);
     if (!old.length) return rec;
     const rooms4 = { ...rec.base?.rooms || {} };
     for (const d of old) {
-      apply2(rooms4, rec.days[d]);
+      apply3(rooms4, rec.days[d]);
       delete rec.days[d];
     }
     rec.base = { day: from, rooms: rooms4 };
     return rec;
   }
   function earliest(w2, rec, when = Date.now()) {
-    let first = firstDay(rec) ?? dayOf(when);
-    for (const th of Object.values(w2.things)) if (th?.at > 0 && th.at < first) first = th.at;
-    return dayOf(first);
+    let first2 = firstDay(rec) ?? dayOf2(when);
+    for (const th of Object.values(w2.things)) if (th?.at > 0 && th.at < first2) first2 = th.at;
+    return dayOf2(first2);
   }
-  function pastBoard(m2, w2, rec, day) {
-    const end = day + DAY3 - 1;
-    const first = firstDay(rec);
+  function pastBoard(m2, w2, rec, day2) {
+    const end = day2 + DAY4 - 1;
+    const first2 = firstDay(rec);
     let rooms4;
-    if (first != null && day >= first) rooms4 = stateAt(rec, day);
+    if (first2 != null && day2 >= first2) rooms4 = stateAt2(rec, day2);
     else {
       rooms4 = {};
       for (const [id, r] of Object.entries(snapshot(w2))) if ((w2.things[id].at ?? 0) <= end) rooms4[id] = r;
     }
-    const written = new Set(writtenOn(rec, day));
+    const written = new Set(writtenOn(rec, day2));
     const counts2 = {};
     for (const th of Object.values(w2.things)) {
       if (!m2.isLeaf(th)) continue;
       const sq = squareOf(w2, th);
       if (!sq) continue;
       if ((th.at ?? 0) <= end) counts2[sq.id] = (counts2[sq.id] || 0) + 1;
-      if (dayOf(changed2(th)) === day) written.add(sq.id);
+      if (dayOf2(changed3(th)) === day2) written.add(sq.id);
     }
-    return { day, rooms: rooms4, written: [...written].filter((id) => rooms4[id]), counts: counts2 };
+    return { day: day2, rooms: rooms4, written: [...written].filter((id) => rooms4[id]), counts: counts2 };
   }
 
   // dist/web/features/time/keys.js
@@ -20024,24 +20370,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return dayStart(Date.now());
     }
     // Goes back to `day` (a time on it; null, or today or later, is now) and has the place show it.
-    setDay(day) {
+    setDay(day2) {
       const p = this.place();
-      if (!p?.showDay || day == null) {
+      if (!p?.showDay || day2 == null) {
         this.toNow();
         this.draw();
         return;
       }
-      day = dayStart(Math.max(this.firstFor(p), Math.min(day, Date.now())));
-      if (day >= this.today()) {
+      day2 = dayStart(Math.max(this.firstFor(p), Math.min(day2, Date.now())));
+      if (day2 >= this.today()) {
         this.toNow();
         this.draw();
         return;
       }
       this.writeRecord();
-      this.day = day;
+      this.day = day2;
       this.pastFor = p;
       const roomId = p.room?.();
-      p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day) : pastBoard(this.m, this.world, this.record, day));
+      p.showDay(roomId ? roomBoard(this.m, this.world, roomId, day2) : pastBoard(this.m, this.world, this.record, day2));
       this.draw();
     }
     // Back to now: the place shows the present again.
@@ -20058,7 +20404,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // A day earlier (-1) or later (+1), or a week with Shift.
     step(by) {
-      this.setDay((this.day ?? this.today()) + by * DAY3 + DAY3 / 2);
+      this.setDay((this.day ?? this.today()) + by * DAY4 + DAY4 / 2);
     }
     // In the dock: ↑ a day later, ↓ a day earlier, with Shift a week; Escape (the dock's) closes
     // Time and so comes back to now.
@@ -20072,8 +20418,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // the left, today at the right. Made once while the dock shows and kept up to date.
     scrubFor(p) {
       if (!p.showDay) return null;
-      const first = this.firstFor(p);
-      const n = Math.max(0, Math.round((this.today() - first) / DAY3));
+      const first2 = this.firstFor(p);
+      const n = Math.max(0, Math.round((this.today() - first2) / DAY4));
       let s = this.shown?.scrub;
       if (!s) {
         s = { el: null };
@@ -20086,7 +20432,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-label": "Go back to a day",
           oninput: () => {
             const at3 = this.place();
-            if (at3) this.setDay(this.firstFor(at3) + +s.slider.value * DAY3 + DAY3 / 2);
+            if (at3) this.setDay(this.firstFor(at3) + +s.slider.value * DAY4 + DAY4 / 2);
           }
         });
         s.from = el15("span", { class: "time-when" });
@@ -20100,10 +20446,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         );
       }
       s.slider.max = String(n);
-      const at2 = this.day == null ? n : Math.round((this.day - first) / DAY3);
+      const at2 = this.day == null ? n : Math.round((this.day - first2) / DAY4);
       if (document.activeElement !== s.slider || this.day == null) s.slider.value = String(at2);
       s.label.textContent = this.day == null ? "Now" : longDate(this.day);
-      s.from.textContent = shortDate(first);
+      s.from.textContent = shortDate(first2);
       s.now.hidden = this.day == null;
       s.el.classList.toggle("past", this.day != null);
       return s;
@@ -20112,10 +20458,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // its end, those written that day lit.
     roomList(p, roomId) {
       const w2 = this.world, m2 = this.m;
-      const day = this.pastFor === p ? this.day : null;
-      const end = day == null ? Infinity : day + DAY3 - 1;
+      const day2 = this.pastFor === p ? this.day : null;
+      const end = day2 == null ? Infinity : day2 + DAY4 - 1;
       const items = timeline2(m2, w2, roomId).filter((th) => (th.at ?? 0) <= end);
-      if (!items.length) return el15("p", { class: "time-none" }, day == null ? "Nothing written here yet" : "Nothing written here by then");
+      if (!items.length) return el15("p", { class: "time-none" }, day2 == null ? "Nothing written here yet" : "Nothing written here by then");
       const ont = this.t.modes.get(m2.view(w2, roomId).mode);
       const sel = p.chosen?.() || null;
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -20125,14 +20471,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "button",
           {
             type: "button",
-            class: "pick time-item" + (sel && (sel === th.id || sel === tag?.id) ? " on" : "") + (day != null && (dayOf(th.at) === day || dayOf(changed2(th)) === day) ? " lit" : ""),
+            class: "pick time-item" + (sel && (sel === th.id || sel === tag?.id) ? " on" : "") + (day2 != null && (dayOf2(th.at) === day2 || dayOf2(changed3(th)) === day2) ? " lit" : ""),
             style: tag ? `--tag:hsl(${m2.hash(tag.id) % 360} 32% 46%)` : "",
             onclick: () => p.go({ id: th.id, kind: m2.kindOf(th), room: roomId })
           },
           el15(
             "span",
             { class: "time-meta" },
-            el15("span", { class: "time-when" }, when(changed2(th))),
+            el15("span", { class: "time-when" }, when(changed3(th))),
             tag ? el15("span", { class: "time-tag" }, tag.name) : null
           ),
           el15("span", { class: "time-text" }, m2.thoughtText(w2, th))
@@ -20153,7 +20499,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           class: "word time-date" + (this.day === d.day ? " on" : ""),
           "aria-pressed": String(this.day === d.day),
           title: "See the rooms page as it was that day",
-          onclick: () => this.setDay(this.day === d.day ? null : d.day + DAY3 / 2)
+          onclick: () => this.setDay(this.day === d.day ? null : d.day + DAY4 / 2)
         }, longDate(d.day)) : el15("div", { class: "sub-head time-date" }, longDate(d.day)),
         ...d.rooms.map(({ id, n }) => el15(
           "button",
@@ -20186,7 +20532,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var name3;
   var update3;
   var move3;
-  var fold2;
+  var fold3;
   var roomThoughts2;
   var search2;
   var cells3;
@@ -20237,7 +20583,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       name: name3,
       update: update3,
       move: move3,
-      fold: fold2,
+      fold: fold3,
       roomThoughts: roomThoughts2,
       search: search2,
       cells: cells3,
@@ -20326,7 +20672,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return [...empty, ...tiles2];
   }
-  var pastWords = (day) => `As on ${new Date(day).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
+  var pastWords = (day2) => `As on ${new Date(day2).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
 
   // dist/web/features/rooms/grid.js
   var RoomsGrid = class {
@@ -20607,8 +20953,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Twin…: the menu asks for the mode of each side (the same or not), then makes it.
     pickTwin(c) {
-      const first = this.ontologies[0]?.id || DEFAULT_MODE3;
-      this.making = { col: c.col, row: c.row, twin: [first, first] };
+      const first2 = this.ontologies[0]?.id || DEFAULT_MODE3;
+      this.making = { col: c.col, row: c.row, twin: [first2, first2] };
       this.drawRooms();
       this.grid.querySelector(".rooms-twin-make")?.focus({ preventScroll: true });
     }
@@ -20873,7 +21219,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.tagsBtn.classList.toggle("on", !!this.tagLight);
       this.tagsList.hidden = !this.tagsOpen;
       if (!this.tagsOpen) return;
-      const keyOf = (g2) => (g2.group || "").toLowerCase();
+      const keyOf2 = (g2) => (g2.group || "").toLowerCase();
       if (this.tagLight && this.openGroup == null) this.openGroup = (tagGroup2(this.world, this.tagLight, onts) || "").toLowerCase();
       const pick2 = (t) => {
         const on = this.tagLight?.toLowerCase() === t.tag.toLowerCase();
@@ -20940,7 +21286,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }, "None"),
         ...grouped.map((g2) => {
-          const key = keyOf(g2), open2 = this.openGroup === key;
+          const key = keyOf2(g2), open2 = this.openGroup === key;
           const lit = this.tagLight && (tagGroup2(this.world, this.tagLight, onts) || "").toLowerCase() === key;
           return el16(
             "div",
@@ -21156,13 +21502,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
     // (roomRows) or in folding sections in the dock (roomDockRows).
     roomParts(r) {
-      const set = (fields) => {
+      const set2 = (fields) => {
         update3(this.world, r.id, fields);
         this.save();
         this.drawRoomsSoon();
       };
       const look = this.lookOf(r);
-      const lightness2 = el16("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set({ light: +e.target.value }) });
+      const lightness2 = el16("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set2({ light: +e.target.value }) });
       const p = {};
       p.name = el16("input", {
         class: "pop-name",
@@ -21202,11 +21548,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       p.tags = this.tagsRow(r);
       p.colour = el16("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
         const L = toOklch2(rgb2(e.target.value))[0];
-        set({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
+        set2({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
         lightness2.value = L;
       } });
       p.lightness = lightness2;
-      p.opacity = el16("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set({ opacity: +e.target.value }) });
+      p.opacity = el16("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set2({ opacity: +e.target.value }) });
       p.sizes = r.locked ? null : [1, 2].map((n) => el16("button", {
         type: "button",
         class: "word",
@@ -23352,12 +23698,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingsOf(o2) {
       return [...o2?.settings || [], OVERLAP];
     }
-    globalSetting(of, st) {
-      const v2 = this.ontPrefs[of]?.[st.key];
+    globalSetting(of2, st) {
+      const v2 = this.ontPrefs[of2]?.[st.key];
       return v2 !== void 0 ? v2 : st.default;
     }
-    setOntPref(of, key, value) {
-      this.w.setGlobal(of, key, value);
+    setOntPref(of2, key, value) {
+      this.w.setGlobal(of2, key, value);
     }
     // Every room takes the global settings.
     applyToAllRooms() {
@@ -23504,7 +23850,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows2) => el18(
+      const fold5 = (title, ...rows2) => el18(
         "details",
         { class: "advanced renderer-fold" },
         el18("summary", {}, title),
@@ -23513,7 +23859,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return el18(
         "div",
         { class: "room-settings" },
-        fold4(
+        fold5(
           "The rooms page",
           slider2("Mask opacity", "mask", 0, 0.6),
           slider2("Square strength", "square", 0, 1.5),
@@ -23533,7 +23879,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             )
           )
         ),
-        fold4(
+        fold5(
           "Inside a room",
           slider2("Thought size", "size", 14, 28, 1),
           // Some words in a thought bigger or smaller: chosen while writing, Ctrl+Shift+. or Ctrl+Shift+,.
@@ -23968,7 +24314,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (depth2 < 2) this.clearRoom(depth2 + 1);
     }
   };
-  var pastWords2 = (day) => `As on ${new Date(day).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
+  var pastWords2 = (day2) => `As on ${new Date(day2).toLocaleDateString(void 0, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
 
   // dist/web/features/room/writing.js
   var Writing = class {
@@ -24459,7 +24805,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     c.pasteUnits(units);
   }
-  function fold3(c, e) {
+  function fold4(c, e) {
     if (typing(e) || c.editing || !c.sel) return;
     if (c.locked) {
       c.toast("This room is locked.");
@@ -26160,16 +26506,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.closeSheet();
         }
       };
-      let fields = [], values2 = () => ({}), first = null, multiline = false, label3;
+      let fields = [], values2 = () => ({}), first2 = null, multiline = false, label3;
       if (kind === "group") {
         this.sheetTitle = el18("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
         fields = [this.sheetTitle, el18("div", { class: "room-sheet-preview" }, thoughtText3(this.world, th))];
-        first = this.sheetTitle;
+        first2 = this.sheetTitle;
         label3 = `A closed ${this.groupName(th).toLowerCase()}`;
       } else {
         const k2 = kindFor3(kind);
         if (!k2.fields?.length) return;
-        ({ nodes: fields, values: values2, first, multiline } = this.sheetFields(k2, th, preset2, keys));
+        ({ nodes: fields, values: values2, first: first2, multiline } = this.sheetFields(k2, th, preset2, keys));
         label3 = k2.name;
       }
       this.editing = { kind, id, values: values2, loose: loose && !th };
@@ -26180,7 +26526,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el18("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
         el18("span", { class: "sheet-keys" }, multiline ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
-      const focus = () => (first || words.querySelector("button")).focus();
+      const focus = () => (first2 || words.querySelector("button")).focus();
       if (this.panel) {
         this.dockSheet(label3, th, [...fields, words], focus);
         return;
@@ -26191,7 +26537,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The sheet in the right dock's Editor tab (in place of the content editor, if it showed). The
     // dock's × or Escape is Cancel.
-    dockSheet(label3, th, parts, first) {
+    dockSheet(label3, th, parts, first2) {
       const ed = this.editing;
       const title = th ? th.title || th.text || label3 : `A new ${label3.toLowerCase()}`;
       const body = el18("div", { class: "room-sheet room-sheet-docked" }, ...parts);
@@ -26213,7 +26559,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.editing = null;
           return;
         }
-        first();
+        first2();
       });
     }
     keepSheet() {
@@ -26682,7 +27028,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // The same verbs as on the rooms page (verbs.js).
         "room.rename": (e) => rename(this, e),
         "room.duplicate": (e) => duplicate(this, e),
-        "room.fold": (e) => fold3(this, e),
+        "room.fold": (e) => fold4(this, e),
         "room.close": (e) => close(this, e),
         "room.group": (e) => group2(this, e),
         "room.ungroup": (e) => ungroup(this, e),
@@ -27283,16 +27629,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var WIDTHS = /* @__PURE__ */ new Map();
   function setWidths(sizes) {
-    let changed3 = false;
+    let changed4 = false;
     for (const [id, { w: wd }] of sizes) {
       const was = WIDTHS.get(id);
       if (!(wd > 0)) continue;
       if (was == null || Math.abs(was - wd) > 2) {
         WIDTHS.set(id, wd);
-        changed3 = true;
+        changed4 = true;
       }
     }
-    return changed3;
+    return changed4;
   }
   var widest = (w2, id) => Math.max(0, ...members5(w2, id).map((th) => WIDTHS.get(th.id) || 0));
   var headOf = (g2) => g2?.title && !g2.closed ? LAYOUT.title : 0;
