@@ -3,6 +3,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
+import { surface } from '../../api/api.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY, own, members, setRoomSetting, closeGroup } from '../../world/model.js';
 import { gather, missing, groupChosen, throwBack } from '../../world/ontologies/index.js';
@@ -12,7 +13,7 @@ import pessoa from '../../world/ontologies/pessoa.js';
 import { proust, links, endsOf, point, shownAs, clusterOf, RELATIONS, LINKS } from '../rules.js';
 import { draw } from '../draw.js';
 
-bind(lib); // the world's rules, as Proust gets them from the world service
+bind(surface(lib)); // the world's rules, as Proust gets them from the plugin API
 
 let clock = 10;
 const line = (w, text, parent = MESSY) => create(w, parent, { kind: 'line', text }, clock++);

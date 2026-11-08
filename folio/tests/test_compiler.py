@@ -70,11 +70,13 @@ def make_plugin_app(tmp: Path, folders: dict, app_extra=None) -> Path:
     (app / 'app.json').write_text(json.dumps(config), 'utf-8')
     for group, features in folders.items():
         (app / group).mkdir()
-        for fid, manifest in features.items():
+        for fid, spec in features.items():
+            manifest, body = spec if isinstance(spec, tuple) else (spec, '')
             folder = app / group / fid
             folder.mkdir()
             (folder / 'feature.json').write_text(json.dumps(manifest), 'utf-8')
-            (folder / 'Main.js').write_text("import { Feature } from 'folio';\nexport default class X extends Feature {}\n", 'utf-8')
+            (folder / 'Main.js').write_text("import { Feature } from 'folio';\n"
+                                            f"export default class X extends Feature {{ start() {{ {body} }} }}\n", 'utf-8')
     return app
 
 
@@ -417,7 +419,9 @@ class CompilerTests(unittest.TestCase):
     def test_mistakes_in_app_json_folders_and_plugins(self):
         for extra in ({'folders': 'core'}, {'folders': []}, {'folders': ['Core']}, {'folders': ['a', 'a']},
                       {'plugins': {'folder': 'elsewhere', 'api': 1}}, {'plugins': {'folder': 'plugins', 'api': 0}},
-                      {'plugins': {'folder': 'plugins', 'api': 1, 'x': 1}}, {'version': '1.0'}):
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'x': 1}}, {'version': '1.0'},
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'service': ''}},
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'exempt': 'time'}}):
             tmp = Path(tempfile.mkdtemp(prefix='folio-compiler-test-'))
             project = Project(ROOT, make_plugin_app(tmp, {'core': {}, 'plugins': {}}, extra))
             self.assertIsNone(project.load_app(Log(quiet=True)), extra)
@@ -440,6 +444,35 @@ class CompilerTests(unittest.TestCase):
         self.assertIn('"pluginApi": 2', start)
         self.assertTrue((out / 'web' / 'features' / 'world' / 'Main.js').exists())
         self.assertIn('plugins/mode', (out / 'report.html').read_text('utf-8'))
+
+
+    def test_plugins_reach_the_core_only_through_the_plugin_service(self):
+        core = {
+            'world': (feature(), "this.provide('world', {}); this.defineSlot('world.modes', 'a mode');"),
+            'api': (feature(requires=['world']), "this.provide('app-api', {});"),
+        }
+        plugins = {
+            'good': (plugin(requires=['api']), "this.use('app-api'); this.use('mine'); this.add('settings', {}); this.add('mine.things', {});"),
+            'mine': (plugin(), "this.provide('mine', {}); this.defineSlot('mine.things', 'a thing');"),
+            'sneaky': (plugin(), "this.use('world').lib;"),
+            'adder': (plugin(), "this.add('world.modes', {});"),
+            'old': (plugin(), "this.use('world');"),
+        }
+        project, found, by_id = self.discover_plugins({'core': core, 'plugins': plugins},
+                                                      {'plugins': {'folder': 'plugins', 'api': 2, 'service': 'app-api', 'exempt': ['old']}})
+        order = [f.id for f in project.resolve(found)]
+        self.assertIn('good', order)
+        self.assertIn('old', order)  # exempt while it is moved onto the service
+        self.assertEqual(by_id['sneaky'].kind, 'mistake')
+        self.assertIn('uses the service "world" of world; plugins reach the app only through the "app-api" service', by_id['sneaky'].reason)
+        self.assertIn('adds to the slot "world.modes" of world', by_id['adder'].reason)
+
+    def test_without_a_plugin_service_plugins_may_use_anything(self):
+        project, found, _ = self.discover_plugins({
+            'core': {'world': (feature(), "this.provide('world', {});")},
+            'plugins': {'p': (plugin(), "this.use('world');")},
+        })
+        self.assertIn('p', [f.id for f in project.resolve(found)])
 
     def test_deep_merge(self):
         base = {'a': {'b': 1, 'list': [1, 2]}, 'c': 1}

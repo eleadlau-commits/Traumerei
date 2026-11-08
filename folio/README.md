@@ -146,6 +146,13 @@ elsewhere has one:
 The block reaches the app in its registry entry (`plugin`, with `kind` and `load` filled in), and
 the app's config has `pluginApi`.
 
+**One way in.** When `"plugins"` also names a `service` (`{ "folder": "plugins", "api": 1, "service":
+"my-app" }`), a plugin reaches the rest of the app only through that service: one that uses
+another service a feature outside the plugins folder provides, or adds to a slot one of them
+defines, is left out with the reason. Folio's own slots (`settings`, …) and other plugins'
+services and slots are always fine. `"exempt": ["old-plugin"]` lets named plugins through while
+they are being moved onto the service.
+
 ## 4. Writing a feature
 
 ```js
@@ -359,4 +366,4 @@ Folio's version is in `folio/VERSION`. When the framework changes in a way featu
 
 **1.11.0:** app.json can fix the appearance with `"appearance": "auto"`, `"light"` or `"dark"`. Settings then leaves out the Appearance choice, and the app always uses that mode, whatever was saved before. The default, `"choose"`, keeps the choice in Settings as before.
 
-**1.12.0:** features can live in several folders (app.json's `"folders"`, such as `["core", "plugins"]`), and one of them can hold plugins (`"plugins": { "folder", "api" }`), each with a `plugin` block in its feature.json: the plugin API version it was written for, the oldest app version it works with, what it adds and when it loads (see §3). The compiler checks the block and leaves out a plugin that needs a newer API or app. `python build.py list` and the report show each feature's folder. app.json's `version` must now look like `1.0.0`. Apps with only `app/features/` keep working unchanged.
+**1.12.0:** features can live in several folders (app.json's `"folders"`, such as `["core", "plugins"]`), and one of them can hold plugins (`"plugins": { "folder", "api" }`), each with a `plugin` block in its feature.json: the plugin API version it was written for, the oldest app version it works with, what it adds and when it loads (see §3). The compiler checks the block and leaves out a plugin that needs a newer API or app, or (with `plugins.service`) reaches past the app's plugin service. `python build.py list` and the report show each feature's folder. app.json's `version` must now look like `1.0.0`. Apps with only `app/features/` keep working unchanged.

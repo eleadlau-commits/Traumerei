@@ -1,6 +1,6 @@
-// Proust: a way of seeing a room (rules.js, drawn by draw.js), added to the world's slot
-// 'world.ontologies', so switching this feature off takes the mode away. It uses only the world
-// service's lib (world.js lists what), and keeps nothing of its own outside the world.
+// Proust: a way of seeing a room (rules.js, drawn by draw.js), a plugin. It reaches the app only
+// through the plugin API (app/core/API.md; world.js lists what it uses) and adds itself as a
+// mode, so switching it off takes the mode away. It keeps nothing of its own outside the world.
 
 import { Feature } from 'folio';
 import { bind } from './world.js';
@@ -9,7 +9,9 @@ import { draw, press, join, props, centreWeb, escape } from './draw.js';
 
 export default class Proust extends Feature {
   start() {
-    bind(this.use('world').lib);
-    this.add('world.ontologies', { ...proust, draw, press, join, props, centre: centreWeb, escape });
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Proust needs the plugin API');
+    bind(t);
+    t.modes.add({ ...proust, draw, press, join, props, centre: centreWeb, escape });
   }
 }

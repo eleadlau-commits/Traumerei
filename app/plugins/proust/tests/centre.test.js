@@ -4,13 +4,14 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
+import { surface } from '../../api/api.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY, own } from '../../world/model.js';
 import { distances, start, settle, RING } from '../centre.js';
 import { proust, links, point, centred } from '../rules.js';
 import { centreWeb as centre, escape, keepCentred, draw } from '../draw.js';
 
-bind(lib);
+bind(surface(lib));
 
 let clock = 10;
 const line = (w, text) => create(w, MESSY, { kind: 'line', text }, clock++);

@@ -4,6 +4,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
+import { surface } from '../../api/api.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, MESSY } from '../../world/model.js';
 import { groupChosen } from '../../world/ontologies/index.js';
@@ -11,7 +12,7 @@ import { arrowKey } from '../../world/ontologies/arrowview.js';
 import { proust, links } from '../rules.js';
 import { draw, join, props, press } from '../draw.js';
 
-bind(lib);
+bind(surface(lib));
 
 let clock = 10;
 const line = (w, text) => create(w, MESSY, { kind: 'line', text }, clock++);
