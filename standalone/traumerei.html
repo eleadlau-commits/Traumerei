@@ -3338,7 +3338,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     featuresSection() {
       const disabled = new Set(this.prefs.get("disabled", []));
       const features2 = [...this.app.features.values()].filter((f2) => f2.status !== "not-for-platform");
-      const rows = features2.map((f2) => {
+      const rows2 = features2.map((f2) => {
         const on = !disabled.has(f2.manifest.id);
         const note2 = {
           active: f2.problem ? `Had a problem: ${f2.problem}` : f2.manifest.description,
@@ -3371,7 +3371,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         } },
         el("summary", {}, "Features", el("small", {}, off ? `${features2.length - off} on, ${off} off` : `All ${features2.length} on`)),
         hint("Switch off anything you don't use. Features that need a switched-off feature are switched off too.", { small: true }),
-        el("div", { class: "feature-list" }, rows)
+        el("div", { class: "feature-list" }, rows2)
       );
       return el(
         "section",
@@ -3672,7 +3672,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
         { label: "About", icon: "info", order: 80, onClick: () => this.openAbout() }
       ];
       const theirs = slot.items.filter((b) => slot.run(b, (x) => x.visible ? x.visible() : true, false)).map((b) => ({ ...b, order: b.order ?? 50, onClick: () => slot.run(b, (x) => x.onClick()), busy: slot.run(b, (x) => !!x.busy?.(), false) }));
-      const rows = [...own4, ...theirs].sort((a, b) => a.order - b.order).map((r) => el("button", {
+      const rows2 = [...own4, ...theirs].sort((a, b) => a.order - b.order).map((r) => el("button", {
         type: "button",
         class: `word menu-row${r.busy ? " spin" : ""}`,
         onclick: () => {
@@ -3696,7 +3696,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
           el("span", { class: "menu-avatar" }, icon("account")),
           el("span", { class: "menu-who" }, el("b", {}, who || "Not signed in"), this.statusText && el("small", {}, this.statusText))
         ),
-        el("div", { class: "menu-list" }, rows)
+        el("div", { class: "menu-list" }, rows2)
       );
     }
     // ---- Account: the 'account' item, if a feature offers accounts ----
@@ -6847,23 +6847,23 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   var { el: el3 } = ui_exports;
   var shown = (p, v2) => p.step >= 1 ? String(v2) : Number(v2).toFixed(Math.max(0, -Math.floor(Math.log10(p.step))));
   function sliders(params, values2, onChange) {
-    const rows = [];
+    const rows2 = [];
     const groups = /* @__PURE__ */ new Map();
     const changed3 = (key, v2) => {
-      for (const r of rows) if (r.p.key === key) r.show(v2);
+      for (const r of rows2) if (r.p.key === key) r.show(v2);
       onChange(key, v2);
     };
     for (const p of params) {
       if (!groups.has(p.group)) groups.set(p.group, el3("fieldset", { class: "renderer-group" }, el3("legend", {}, p.group)));
-      const row = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values2[p.key], changed3);
-      rows.push(row);
-      groups.get(p.group).append(row.node);
+      const row2 = (p.kind === "colour" ? colour : p.kind === "choice" ? choice : slider)(p, values2[p.key], changed3);
+      rows2.push(row2);
+      groups.get(p.group).append(row2.node);
     }
     return {
       node: el3("div", { class: "renderer-sliders", "data-own-swipe": true }, ...groups.values()),
       groups,
       set(next) {
-        for (const r of rows) r.show(next[r.p.key]);
+        for (const r of rows2) r.show(next[r.p.key]);
       }
     };
   }
@@ -12136,8 +12136,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (let dc = 0; dc < w2; dc++) for (let dr2 = 0; dr2 < h; dr2++) out.push([r.col + dc, r.row + dr2]);
     return out;
   }
-  function roomAt(w2, col, row, except = null, page = 0) {
-    return roomsOn(w2, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr2]) => c === col && rr2 === row)) || null;
+  function roomAt(w2, col, row2, except = null, page = 0) {
+    return roomsOn(w2, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr2]) => c === col && rr2 === row2)) || null;
   }
   var pageCount = (w2) => Math.max(w2.pages || 1, ...rooms(w2).map((r) => (r.page || 0) + 1));
   function addPage(w2) {
@@ -13865,7 +13865,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       svg3.append(ln);
       return svg3;
     }
-    function row(e, i2) {
+    function row2(e, i2) {
       if (asking?.i === i2) {
         const others = list2.filter((_2, j) => j !== i2);
         const into = el18(
@@ -13961,11 +13961,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           onkeydown: (ev) => {
             if (ev.target !== r) return;
             ev.stopPropagation();
-            const rows = [...box.querySelectorAll(".room-rel-row")];
+            const rows2 = [...box.querySelectorAll(".room-rel-row")];
             if (ev.key === "ArrowUp" || ev.key === "ArrowDown") {
               ev.preventDefault();
               if (ev.altKey) move5(i2, ev.key === "ArrowUp" ? -1 : 1);
-              else rows[i2 + (ev.key === "ArrowUp" ? -1 : 1)]?.focus();
+              else rows2[i2 + (ev.key === "ArrowUp" ? -1 : 1)]?.focus();
             } else if (ev.key === "Enter") {
               ev.preventDefault();
               name5.focus();
@@ -14040,7 +14040,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
     function draw3() {
-      box.replaceChildren(...list2.map(row), adder());
+      box.replaceChildren(...list2.map(row2), adder());
       const f2 = focus;
       focus = null;
       if (!f2) return;
@@ -14253,12 +14253,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const bs = Object.values(all);
       if (!bs.length) return null;
       const x = Math.min(...bs.map((b) => b.at.x)), y = Math.min(...bs.map((b) => b.at.y)) - 30;
-      const rows = names.map((n) => {
+      const rows2 = names.map((n) => {
         const svg3 = svg("svg", { width: 30, height: 10, viewBox: "0 0 30 10", "aria-hidden": "true" });
         svg3.append(line("M2 5 L28 5", { ends: ends(n, c), cls: `room-arrow ${lookClass(looks[n])}` })[0]);
         return c.el("div", { class: "room-arrow-legend-row" }, svg3, c.el("span", {}, n));
       });
-      return c.el("div", { class: "panel room-arrow-legend", style: `left:${Math.round(x)}px;top:${Math.round(y)}px` }, ...rows);
+      return c.el("div", { class: "panel room-arrow-legend", style: `left:${Math.round(x)}px;top:${Math.round(y)}px` }, ...rows2);
     }
     return {
       pick: pick2,
@@ -14753,12 +14753,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The ? list: every key live here, from the map.
     show() {
-      const rows = this.live().map((k2) => [k2.shows || (k2.keys || []).map((c) => label2(c, MAC)).join(" · "), k2.words]).filter(([a]) => a);
+      const rows2 = this.live().map((k2) => [k2.shows || (k2.keys || []).map((c) => label2(c, MAC)).join(" · "), k2.words]).filter(([a]) => a);
       this.box.replaceChildren(el5(
         "div",
         { class: "panel top-sheet keys-sheet" },
         el5("div", { class: "label" }, "Keys"),
-        el5("dl", { class: "keys-list" }, rows.flatMap(([a, b]) => [el5("dt", {}, a), el5("dd", {}, b)]))
+        el5("dl", { class: "keys-list" }, rows2.flatMap(([a, b]) => [el5("dt", {}, a), el5("dd", {}, b)]))
       ));
       this.box.hidden = false;
     }
@@ -15175,25 +15175,25 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (page > 0) r.page = page;
     else delete r.page;
   };
-  var inside3 = (r, col, row, board) => {
+  var inside3 = (r, col, row2, board) => {
     const { w: w2, h } = span2(r);
-    return col >= 0 && row >= 0 && col + w2 <= board.cols && row + h <= board.rows;
+    return col >= 0 && row2 >= 0 && col + w2 <= board.cols && row2 + h <= board.rows;
   };
-  function free(w2, r, col, row, board, page = r.page || 0) {
-    return inside3(r, col, row, board) && cells2({ ...r, col, row }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
+  function free(w2, r, col, row2, board, page = r.page || 0) {
+    return inside3(r, col, row2, board) && cells2({ ...r, col, row: row2 }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
   }
   function spot3(w2, r, page, board) {
-    for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
-      if (free(w2, r, col, row, board, page)) return { col, row };
+    for (let row2 = 0; row2 < board.rows; row2++) for (let col = 0; col < board.cols; col++) {
+      if (free(w2, r, col, row2, board, page)) return { col, row: row2 };
     }
     return null;
   }
   function nearest(w2, r, page, board, cell) {
     let best = null, far = Infinity;
-    for (let row = 0; row < board.rows; row++) for (let col = 0; col < board.cols; col++) {
-      const d = 4 * (Math.abs(col - cell.col) + Math.abs(row - cell.row)) + (row !== cell.row ? 2 : 0) + (col < cell.col ? 1 : 0);
-      if (d < far && free(w2, r, col, row, board, page)) {
-        best = { col, row };
+    for (let row2 = 0; row2 < board.rows; row2++) for (let col = 0; col < board.cols; col++) {
+      const d = 4 * (Math.abs(col - cell.col) + Math.abs(row2 - cell.row)) + (row2 !== cell.row ? 2 : 0) + (col < cell.col ? 1 : 0);
+      if (d < far && free(w2, r, col, row2, board, page)) {
+        best = { col, row: row2 };
         far = d;
       }
     }
@@ -15237,11 +15237,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return spilled;
   }
-  function move2(w2, id, col, row, board) {
+  function move2(w2, id, col, row2, board) {
     const r = room2(w2, id);
-    if (!r || r.locked || r.archived || !free(w2, r, col, row, board)) return false;
+    if (!r || r.locked || r.archived || !free(w2, r, col, row2, board)) return false;
     r.col = col;
-    r.row = row;
+    r.row = row2;
     return true;
   }
   function resize2(w2, id, size, board) {
@@ -15314,9 +15314,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       drop: (w2, page, id, x, y) => {
         const r = room2(w2, id);
         if (!r) return false;
-        const col = Math.round(x), row = Math.round(y);
-        if ((r.page || 0) === page) return move2(w2, id, col, row, board());
-        return toFloor(w2, id, page, board(), { col, row }) === true;
+        const col = Math.round(x), row2 = Math.round(y);
+        if ((r.page || 0) === page) return move2(w2, id, col, row2, board());
+        return toFloor(w2, id, page, board(), { col, row: row2 }) === true;
       }
     };
   }
@@ -15339,7 +15339,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         // its floor, else a new one (with a note)
         settle: (page) => this.settle(page),
         // places a floor's rooms that have no cell
-        move: (id, col, row) => move2(this.world, id, col, row, board()),
+        move: (id, col, row2) => move2(this.world, id, col, row2, board()),
         resize: (id, size) => resize2(this.world, id, size, board()),
         toFloor: (id, page, cell = null) => toFloor(this.world, id, page, board(), cell),
         fits: (size) => !outside(this.world, size).length,
@@ -15819,11 +15819,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     floors = null,
     service = () => null,
     gone = () => {
-    }
+    },
+    offers = API_VERSION
   }) {
-    const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
-    if (wanted > API_VERSION) {
-      throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
+    const wanted = plugin.manifest?.plugin?.api ?? offers;
+    if (wanted > offers) {
+      throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${offers}`);
     }
     const owner = plugin.id;
     const add = (slot) => (item) => app.slot(slot).add(item, owner);
@@ -15849,7 +15850,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
     if (frame2) gone(() => frame2.hide(plugin));
     return Object.freeze({
-      version: API_VERSION,
+      version: offers,
       app: Object.freeze({ name: app.config.name, version: app.config.version }),
       plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
       get world() {
@@ -15891,6 +15892,240 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
   }
 
+  // dist/web/features/api/v2.js
+  var API_VERSION2 = 2;
+  var TABLES = Object.freeze(["marks", "places", "links", "distance", "gaps", "moments"]);
+  var READERS = Object.freeze(["me now", "me later", "others", "machine"]);
+  var DIRECTIONS = Object.freeze(["to world", "from world", "to maker"]);
+  var LINK_KINDS = Object.freeze(["part of", "relation"]);
+  var row = (o2) => Object.freeze(o2);
+  var rows = (list2) => Object.freeze(list2.map(row));
+  var landed = (id) => row({ ok: true, id });
+  var refuse = (reason) => row({ ok: false, reason });
+  var later = (what, phase) => refuse(`${what} arrives in kernel phase ${phase}; until then this is a name, not a table`);
+  var FLOOR = (n) => `floor:${n || 0}`;
+  var ARCHIVE = "archive";
+  function kernel({ lib, world, events = null, gone = () => {
+  } }) {
+    const { model, groups } = lib;
+    const w2 = () => world.world;
+    const rules = () => world.ontologies?.length ? world.ontologies.map((o2) => o2.id) : ["joyce", "pessoa"];
+    const lays = (rule) => !!world.ontologies?.find((o2) => o2.id === rule)?.lays;
+    const thing2 = (id) => w2().things[id] || null;
+    const kindOf4 = (th) => model.kindOf(th);
+    const save = () => {
+      world.save?.();
+    };
+    const land = (ok, id, why) => {
+      if (!ok) return refuse(why);
+      save();
+      return landed(id);
+    };
+    const on = (table) => (fn) => {
+      if (!events) return () => {
+      };
+      const tell = (data) => fn(row({ table, undone: !!data?.undone }));
+      const offs = [events.on("world:saved", tell), events.on("world:changed", tell)];
+      const off = () => {
+        for (const o2 of offs) o2();
+      };
+      gone(off);
+      return off;
+    };
+    const marks = Object.freeze({
+      get: (id) => thing2(id) ? row({ ...thing2(id) }) : null,
+      in: (context) => rows(model.children(w2(), context ?? null).map((th) => ({ ...th }))),
+      ofKind: (kind) => rows(Object.values(w2().things).filter((th) => kindOf4(th) === kind).map((th) => ({ ...th }))),
+      text: (id) => thing2(id) ? model.thoughtText(w2(), thing2(id)) : "",
+      search: (words, most) => rows(model.search(w2(), words, most).map((th) => ({ ...th }))),
+      make: ({ kind = "line", content = "", in: context = null, at: at2 = {} } = {}) => {
+        if (context == null && kind !== "room") return refuse("A mark needs a context to be made in");
+        const made3 = kind === "room" ? model.addRoom(w2(), content, void 0, at2) : model.create(w2(), context, { kind, text: content, title: at2.title, x: at2.x, y: at2.y });
+        return land(!!made3, made3?.id, "The context is locked, cannot hold this kind, or the mark would be empty");
+      },
+      edit: (id, fields = {}) => {
+        if (!thing2(id)) return refuse("No such mark");
+        if (["kind", "parent", "members", "id"].some((k2) => k2 in fields)) return refuse("A mark's kind, context, members and id change only through places and links");
+        if (model.update(w2(), id, fields)) return land(true, id);
+        if (!thing2(id)) {
+          save();
+          return row({ ok: true, id, removed: true });
+        }
+        return refuse("The mark is locked");
+      },
+      delete: (id) => {
+        if (!thing2(id)) return refuse("No such mark");
+        if (id === model.MESSY) return refuse("Messy thoughts stays");
+        model.remove(w2(), id);
+        return land(!thing2(id), id, "The mark is locked");
+      },
+      on: on("marks")
+    });
+    function placesOf(id) {
+      const th = thing2(id);
+      if (!th) return [];
+      const out = [];
+      if (kindOf4(th) === "room") {
+        if (th.parent != null) out.push({ mark: id, context: th.parent, rule: "twin", position: { side: th.side ?? 0 } });
+        else if (th.archived) out.push({ mark: id, context: ARCHIVE, rule: null, position: null });
+        else out.push({ mark: id, context: FLOOR(th.page), rule: "borges", position: th.col == null ? null : { col: th.col, row: th.row } });
+        return out;
+      }
+      const context = th.parent;
+      for (const rule of rules()) {
+        if (model.isGroup(th) && th.of === rule) {
+          if (!th.loose) out.push({ mark: id, context, rule, position: Number.isFinite(th.x) ? { x: th.x, y: th.y } : null });
+          continue;
+        }
+        const g2 = model.groupOf(w2(), id, rule);
+        if (g2) {
+          out.push({ mark: id, context, rule, position: { group: g2.id, index: model.members(w2(), g2.id).findIndex((m2) => m2.id === id) } });
+          continue;
+        }
+        const spot5 = groups.spot(w2(), context, rule, id);
+        if (spot5) out.push({ mark: id, context, rule, position: { x: spot5.x, y: spot5.y } });
+      }
+      return out;
+    }
+    const places = Object.freeze({
+      of: (mark) => rows(placesOf(mark)),
+      in: (context, rule = null) => rows(model.children(w2(), context).flatMap((th) => placesOf(th.id).filter((p) => p.context === context && (rule == null || p.rule === rule)))),
+      loose: (context) => rows(model.children(w2(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context)).map((th) => ({ ...th }))),
+      position: (mark, context, rule) => placesOf(mark).find((p) => p.context === context && p.rule === rule)?.position ?? null,
+      put: (mark, context, rule = null, position = null) => {
+        const th = thing2(mark);
+        if (!th || !thing2(context)) return refuse("No such mark or context");
+        if (kindOf4(th) === "room") return refuse("Rooms are placed on floors by the rooms page until phase 3");
+        if (th.parent !== context && !model.move(w2(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse("The mark cannot go into that context: one of them is locked, or it would go inside itself");
+        if (rule && position && Number.isFinite(position.x)) {
+          if (!groups.putAt(w2(), context, rule, mark, position.x, position.y)) return refuse("The context is locked");
+        }
+        return land(true, mark);
+      },
+      move: (mark, from, to) => {
+        const th = thing2(mark);
+        if (!th || th.parent !== from) return refuse("The mark is not in that context");
+        return land(groups.moveLoose(w2(), mark, to), mark, "The mark cannot go to that context: it is locked, missing, or a Twin itself");
+      },
+      unplace: (mark, context) => {
+        const th = thing2(mark);
+        if (!th || th.parent !== context) return refuse("The mark is not in that context");
+        let any = false;
+        for (const rule of rules()) any = groups.unplace(w2(), context, rule, mark, { lays: lays(rule) }) || any;
+        return land(any || groups.wait(w2(), context, mark), mark, "The context is locked");
+      },
+      on: on("places")
+    });
+    function linkRows(roomId) {
+      const out = [];
+      for (const g2 of model.groupsIn(w2(), roomId)) {
+        model.members(w2(), g2.id).forEach((m2, i2) => out.push({ id: `part:${g2.id}:${m2.id}`, from: m2.id, to: g2.id, kind: "part of", order: i2 }));
+      }
+      for (const [store, data] of Object.entries(w2().own[roomId] || {})) {
+        for (const [child, arrows3] of Object.entries(data || {})) {
+          if (!Array.isArray(arrows3?.parents)) continue;
+          for (const parent of arrows3.parents) {
+            out.push({ id: `rel:${store}:${child}:${parent}`, from: child, to: parent, kind: "relation", label: arrows3.rel?.[parent] || "", note: arrows3.labels?.[parent] || "", rule: store });
+          }
+        }
+      }
+      return out;
+    }
+    const roomOf2 = (id) => {
+      const th = thing2(id);
+      return th && kindOf4(th) !== "room" ? th.parent : null;
+    };
+    const pick2 = (mark, kind, side) => {
+      const r = roomOf2(mark);
+      return r == null ? [] : linkRows(r).filter((l2) => l2[side] === mark && (kind == null || l2.kind === kind));
+    };
+    const links2 = Object.freeze({
+      from: (mark, kind = null) => rows(pick2(mark, kind, "from")),
+      to: (mark, kind = null) => rows(pick2(mark, kind, "to")),
+      members: (group3) => Object.freeze(model.members(w2(), group3).map((th) => th.id)),
+      holders: (mark) => Object.freeze(model.groupsOf(w2(), mark).map((g2) => g2.id)),
+      kinds: () => LINK_KINDS,
+      link: (from, to, kind, label3 = "") => {
+        if (kind === "part of") {
+          if (!model.isGroup(thing2(to))) return refuse("Only a group can hold a part");
+          return land(model.join(w2(), to, from), `part:${to}:${from}`, "The part cannot join: it is in another context, locked, or would hold its own group");
+        }
+        if (kind === "relation") return later("Drawing a relation through the API", 2);
+        return refuse(`No such kind of link: ${kind}`);
+      },
+      unlink: (id) => {
+        const [kind, ...parts] = String(id).split(":");
+        if (kind === "part") {
+          const [group3, member] = parts;
+          if (!model.isGroup(thing2(group3))) return refuse("No such group");
+          return land(model.leave(w2(), group3, member), id, "Not a part of that group");
+        }
+        if (kind === "rel") return later("Removing a relation through the API", 2);
+        return refuse("No such link");
+      },
+      order: (group3, ids) => land(model.setOrder(w2(), group3, ids), group3, "Not a group, or not its parts"),
+      on: on("links")
+    });
+    const distance = Object.freeze({
+      of: (context) => {
+        const r = model.room(w2(), context);
+        return r ? r.locked ? "others" : "me now" : null;
+      },
+      declare: (context, reader) => {
+        if (!READERS.includes(reader)) return refuse(`A reader is one of ${READERS.join(", ")}`);
+        if (!model.room(w2(), context)) return refuse("Only a room can be declared for a reader until phase 6");
+        if (reader === "me later" || reader === "machine") return later(`Declaring a room for ${reader}`, 6);
+        return land(model.lock(w2(), context, reader === "others"), context, "No such room");
+      },
+      on: on("distance")
+    });
+    const gaps = Object.freeze({
+      of: () => null,
+      opened: () => rows([]),
+      oldest: () => null,
+      progress: () => row({ open: 0, resolved: 0, of: 0 }),
+      open: (mark, direction) => DIRECTIONS.includes(direction) ? later("Opening a gap", 5) : refuse(`A direction is one of ${DIRECTIONS.join(", ")}`),
+      resolve: () => later("Resolving a gap", 5),
+      reopen: () => later("Reopening a gap", 5),
+      on: on("gaps")
+    });
+    function momentsOf(th) {
+      const out = [{ time: th.at, kind: "made", mark: th.id }];
+      if (th.edited) out.push({ time: th.edited, kind: "edited", mark: th.id });
+      if (kindOf4(th) === "room") for (const t of world.attention?.[th.id] || []) out.push({ time: t, kind: "visited", mark: th.id });
+      return out;
+    }
+    const byTime4 = (a, b) => a.time - b.time;
+    const all = () => Object.values(w2().things).flatMap(momentsOf).sort(byTime4);
+    const moments = Object.freeze({
+      of: (mark) => thing2(mark) ? rows(momentsOf(thing2(mark)).sort(byTime4)) : rows([]),
+      since: (time) => rows(all().filter((m2) => m2.time >= +time)),
+      day: (date) => {
+        const start2 = new Date(date);
+        start2.setHours(0, 0, 0, 0);
+        const end = start2.getTime() + 24 * 36e5;
+        return rows(all().filter((m2) => m2.time >= start2.getTime() && m2.time < end));
+      },
+      ahead: () => rows([]),
+      due: () => later("A due moment", 7),
+      revisit: () => later("A return", 7),
+      note: () => later("A note on a mark", 7),
+      on: on("moments")
+    });
+    return Object.freeze({ marks, places, links: links2, distance, gaps, moments });
+  }
+  function connect2(o2) {
+    const base2 = connect({ ...o2, offers: API_VERSION2 });
+    const tables = kernel({ lib: o2.lib || o2.world.lib, world: o2.world, events: o2.events || null, gone: o2.gone });
+    return Object.freeze({
+      ...base2,
+      ...tables,
+      // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
+      slots: Object.freeze({ rules: base2.modes, kinds: base2.items, commands: base2.commands, more: base2.more, editor: base2.editor, formats: base2.formats }),
+      ui: Object.freeze({ toast: base2.toast })
+    });
+  }
+
   // dist/web/features/api/Api.js
   var Api = class extends Feature {
     start() {
@@ -15902,14 +16137,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const frame2 = this.use("frame");
       const floors = this.use("floors");
       const service = (name5) => app.use(name5);
+      const events = { on: (name5, fn) => this.on(name5, fn) };
       this.leaving = /* @__PURE__ */ new Map();
       const gone = (id) => (fn) => {
         if (!this.leaving.has(id)) this.leaving.set(id, []);
         this.leaving.get(id).push(fn);
       };
       this.provide("traumerei", Object.freeze({
-        version: API_VERSION,
-        connect: (plugin) => connect({ app, world, plugin, parts, toast: ui_exports.toast, docks, keys, frame: frame2, floors, service, gone: gone(plugin.id) }),
+        version: API_VERSION2,
+        connect: (plugin) => connect2({ app, world, plugin, parts, lib: world.lib, events, toast: ui_exports.toast, docks, keys, frame: frame2, floors, service, gone: gone(plugin.id) }),
         // For the app, not plugins: closes what a plugin opened, once it is switched off.
         release: (id) => this.release(id)
       }));
@@ -16312,21 +16548,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.root.open) this.frame?.update(this, { idle: p.idle });
     }
     goTo(id) {
-      const row = this.panel.querySelector(`.pages-row[data-sec="${id}"]`);
-      if (!row) return;
-      this.canvas.scrollTo({ top: row.offsetTop - this.panel.offsetTop, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      const row2 = this.panel.querySelector(`.pages-row[data-sec="${id}"]`);
+      if (!row2) return;
+      this.canvas.scrollTo({ top: row2.offsetTop - this.panel.offsetTop, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       this.current = id;
       this.picked = Date.now();
       this.markRail();
     }
     // The section at the top of the canvas is the one marked in the rail (the last, at the foot).
     markCurrent() {
-      const rows = [...this.panel.children];
-      if (!rows.length || Date.now() - (this.picked || 0) < 900) return;
+      const rows2 = [...this.panel.children];
+      if (!rows2.length || Date.now() - (this.picked || 0) < 900) return;
       const atFoot = this.canvas.scrollTop + this.canvas.clientHeight >= this.canvas.scrollHeight - 2;
-      let id = rows[0].dataset.sec;
-      for (const r of rows) if (r.offsetTop - this.panel.offsetTop <= this.canvas.scrollTop + 24) id = r.dataset.sec;
-      this.current = atFoot && this.canvas.scrollTop > 0 ? rows[rows.length - 1].dataset.sec : id;
+      let id = rows2[0].dataset.sec;
+      for (const r of rows2) if (r.offsetTop - this.panel.offsetTop <= this.canvas.scrollTop + 24) id = r.dataset.sec;
+      this.current = atFoot && this.canvas.scrollTop > 0 ? rows2[rows2.length - 1].dataset.sec : id;
       this.markRail();
     }
     markRail() {
@@ -17197,8 +17433,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     });
     const name5 = (x) => c.el("span", { class: "room-proust-name" }, go(x), cut2(x));
-    const row = (label3, xs) => xs.length ? c.el("div", { class: "kv room-proust-links" }, c.el("span", {}, label3), c.el("span", { class: "room-proust-names" }, ...xs.map(name5))) : null;
-    return [row("Points to", out), row("Pointed to by", into), row("Linked with", with_)].filter(Boolean);
+    const row2 = (label3, xs) => xs.length ? c.el("div", { class: "kv room-proust-links" }, c.el("span", {}, label3), c.el("span", { class: "room-proust-names" }, ...xs.map(name5))) : null;
+    return [row2("Points to", out), row2("Pointed to by", into), row2("Linked with", with_)].filter(Boolean);
   }
   function draw2(c) {
     const w2 = c.world, el18 = c.el, roomId = c.roomId;
@@ -19011,12 +19247,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var DAY2 = 864e5;
   function roomBoard(m2, w2, roomId, day) {
-    const end = day + DAY2 - 1, later = [], lit = [];
+    const end = day + DAY2 - 1, later2 = [], lit = [];
     for (const th of m2.roomThoughts(w2, roomId)) {
-      if ((th.at ?? 0) > end) later.push(th.id);
+      if ((th.at ?? 0) > end) later2.push(th.id);
       else if (dayOf(th.at) === day || dayOf(changed2(th)) === day) lit.push(th.id);
     }
-    return { day, later, lit };
+    return { day, later: later2, lit };
   }
   function roomFirst(m2, w2, roomId, when = Date.now()) {
     let first = w2.things[roomId]?.at || when;
@@ -19599,7 +19835,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/rooms/past.js
-  function pastFloor(f2, cols, rows) {
+  function pastFloor(f2, cols, rows2) {
     const { rooms: rooms4, written, counts: counts2 } = f2.past;
     const lit = new Set(written);
     const taken = /* @__PURE__ */ new Set();
@@ -19624,8 +19860,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ));
     });
     const empty = [];
-    for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-      if (!taken.has(`${col},${row}`)) empty.push(el15("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row + 1}` }));
+    for (let row2 = 0; row2 < rows2; row2++) for (let col = 0; col < cols; col++) {
+      if (!taken.has(`${col},${row2}`)) empty.push(el15("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row2 + 1}` }));
     }
     return [...empty, ...tiles2];
   }
@@ -19639,7 +19875,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // cell stops shrinking, and then it does). A dock opening never shrinks the squares: the board
     // keeps its size and slides sideways under the dock instead (keepInView).
     gridSize() {
-      const { cols, rows } = this.floors.size;
+      const { cols, rows: rows2 } = this.floors.size;
       const wrap = this.grid.parentElement;
       const css2 = wrap && getComputedStyle(wrap);
       const pad = (a, b) => css2 ? (parseFloat(css2[a]) || 0) + (parseFloat(css2[b]) || 0) : 0;
@@ -19647,8 +19883,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const left = wrap ? Math.max(0, wrap.getBoundingClientRect().left) : 0;
       const width = window.innerWidth - left - (css2 ? pad("paddingLeft", "paddingRight") : 2 * GRID.pad + rail);
       const height = (wrap?.clientHeight || window.innerHeight) - (css2 ? pad("paddingTop", "paddingBottom") : GRID.pad + 64);
-      const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows - 1)) / rows);
-      return { cols, rows, cell: Math.max(56, Math.floor(fit)) };
+      const fit = Math.min((width - GRID.gap * (cols - 1)) / cols, (height - GRID.gap * (rows2 - 1)) / rows2);
+      return { cols, rows: rows2, cell: Math.max(56, Math.floor(fit)) };
     }
     // The board slides sideways (its floor scrolls) to keep the chosen room in view beside a dock;
     // otherwise it stays where it was (`left`, the scroll before the floor was drawn again).
@@ -19694,7 +19930,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.moreBox.replaceChildren(...more ? [more] : []);
       const now = Date.now();
       this.page = Math.min(this.page, pageCount3(this.world) - 1);
-      const { cols, rows, cell } = this.gridSize();
+      const { cols, rows: rows2, cell } = this.gridSize();
       if (this.floors.settle(this.page).length) this.save();
       const all = roomsOn3(this.world, this.page);
       const shelved = archived2(this.world);
@@ -19744,37 +19980,37 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const scrolled = this.grid.closest(".rooms-floor")?.scrollLeft || 0;
       this.strip.show(Array.from(
         { length: pageCount3(this.world) },
-        (_2, i2) => i2 === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i2, cols, rows, cell, now)
+        (_2, i2) => i2 === this.page ? [this.shelfHead, this.grid] : this.floorCopy(i2, cols, rows2, cell, now)
       ), this.page, { slide });
       this.grid.style.setProperty("--cols", cols);
       this.grid.style.setProperty("--cell", cell + "px");
       this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
       this.roomsPage.classList.toggle("past", !!this.past);
       if (this.past) {
-        this.grid.replaceChildren(...pastFloor(this, cols, rows));
+        this.grid.replaceChildren(...pastFloor(this, cols, rows2));
         this.keepInView(scrolled);
         return;
       }
       const taken = /* @__PURE__ */ new Set();
       for (const r of all) for (const [c, d] of cells3(r)) taken.add(`${c},${d}`);
       const empty = [];
-      for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-        if (taken.has(`${col},${row}`)) continue;
-        const making = this.making?.col === col && this.making?.row === row;
+      for (let row2 = 0; row2 < rows2; row2++) for (let col = 0; col < cols; col++) {
+        if (taken.has(`${col},${row2}`)) continue;
+        const making = this.making?.col === col && this.making?.row === row2;
         empty.push(el15("button", {
           type: "button",
           class: "rooms-cell" + (making ? " target" : ""),
           "aria-label": "New room here",
-          style: `grid-column:${col + 1};grid-row:${row + 1}`,
+          style: `grid-column:${col + 1};grid-row:${row2 + 1}`,
           "data-col": col,
-          "data-row": row,
-          onclick: () => this.onCell(col, row),
+          "data-row": row2,
+          onclick: () => this.onCell(col, row2),
           // A right-click offers a room from a file here instead (without the roomfile feature, the
           // kinds of room, as a left click).
           oncontextmenu: (e) => {
             e.preventDefault();
             this.roomSel = this.roomPick = this.floorSel = null;
-            this.making = this.files.any ? { col, row, import: true } : { col, row };
+            this.making = this.files.any ? { col, row: row2, import: true } : { col, row: row2 };
             this.drawRooms();
             this.grid.querySelector(".rooms-kinds button")?.focus({ preventScroll: true });
           }
@@ -19797,13 +20033,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Another floor, as it is, for the strip: its squares on its empty cells, not to be pressed
     // (it becomes the drawn floor when the strip comes to rest on it).
-    floorCopy(page, cols, rows, cell, now) {
+    floorCopy(page, cols, rows2, cell, now) {
       const all = roomsOn3(this.world, page).filter((r) => r.col != null);
       const taken = /* @__PURE__ */ new Set();
       for (const r of all) for (const [c, rr2] of cells3(r)) taken.add(`${c},${rr2}`);
       const empty = [];
-      for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-        if (!taken.has(`${col},${row}`)) empty.push(el15("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row + 1}` }));
+      for (let row2 = 0; row2 < rows2; row2++) for (let col = 0; col < cols; col++) {
+        if (!taken.has(`${col},${row2}`)) empty.push(el15("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row2 + 1}` }));
       }
       const g2 = el15(
         "div",
@@ -19819,15 +20055,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // A click on an empty cell: it lets go of what was chosen, or (if nothing was) shows the kinds
     // of room to make there. With the menu open, another empty cell moves it there in one click;
     // the same cell again closes it.
-    onCell(col, row) {
-      if (this.making && (this.making.col !== col || this.making.row !== row || this.making.import)) this.making = null;
+    onCell(col, row2) {
+      if (this.making && (this.making.col !== col || this.making.row !== row2 || this.making.import)) this.making = null;
       else if (this.roomSel || this.making || this.floorSel != null) {
         this.roomSel = this.making = this.floorSel = null;
         this.drawRooms();
         return;
       }
       this.roomPick = null;
-      this.making = { col, row };
+      this.making = { col, row: row2 };
       this.drawRooms();
       this.grid.querySelector(".rooms-kinds button")?.focus({ preventScroll: true });
     }
@@ -20068,9 +20304,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.grid.style.setProperty("--cell", cell + "px");
       this.grid.style.setProperty("--cell-gap", GRID.gap + "px");
       const height = this.grid.parentElement?.clientHeight || window.innerHeight;
-      const rows = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)), Math.ceil(shelved.length / cols) + 1);
+      const rows2 = Math.max(Math.floor((height - GRID.pad - 64 + GRID.gap) / (cell + GRID.gap)), Math.ceil(shelved.length / cols) + 1);
       const empty = [];
-      for (let i2 = shelved.length; i2 < rows * cols; i2++) {
+      for (let i2 = shelved.length; i2 < rows2 * cols; i2++) {
         empty.push(el15("div", { class: "rooms-cell inert", "aria-hidden": "true", style: `grid-column:${i2 % cols + 1};grid-row:${Math.floor(i2 / cols) + 1}`, onclick: () => {
           if (this.roomSel || this.roomPick) {
             this.roomSel = this.roomPick = null;
@@ -20093,8 +20329,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       this.grid.replaceChildren(...empty, ...tiles2, ...panel ? [panel] : []);
     }
-    shelfOptions(r, col, row, cell, cols) {
-      return el15("div", this.beside({ col, row }, cell, cols), el15("div", { class: "label" }, r.name), ...this.shelfRows(r));
+    shelfOptions(r, col, row2, cell, cols) {
+      return el15("div", this.beside({ col, row: row2 }, cell, cols), el15("div", { class: "label" }, r.name), ...this.shelfRows(r));
     }
     // What an archived room offers: Restore and Delete (Enter goes in).
     shelfRows(r) {
@@ -20124,8 +20360,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         return;
       }
-      const rows = (shelf ? [el15("div", { class: "title-field" }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
-      this.fillDock(r.id, shelf ? "Archived room" : "Room", rows, () => {
+      const rows2 = (shelf ? [el15("div", { class: "title-field" }, r.name), ...this.shelfRows(r)] : this.roomDockRows(r)).filter(Boolean);
+      this.fillDock(r.id, shelf ? "Archived room" : "Room", rows2, () => {
         if (!this.roomSel) return;
         this.roomSel = null;
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
@@ -20133,16 +20369,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // The dock's Editor tab, showing `rows` for `id` (a room, or 'many'): filled in place while it is
     // open, else opened. letGo: the dock's × or Escape closed it.
-    fillDock(id, kind, rows, letGo) {
+    fillDock(id, kind, rows2, letGo) {
       const open2 = this.propsDock;
       if (open2 && this.panel.isOpen("room")) {
         open2.id = id;
         open2.letGo = letGo;
-        open2.body.replaceChildren(...rows);
+        open2.body.replaceChildren(...rows2);
         open2.handle?.setKind(kind);
         return;
       }
-      const body = el15("div", { class: "rooms-props" }, ...rows);
+      const body = el15("div", { class: "rooms-props" }, ...rows2);
       const now = this.propsDock = { id, body, handle: null, letGo };
       this.panel.open({
         key: "room",
@@ -20671,8 +20907,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     cellAt(x, y, grid2 = this.grid) {
       const box = grid2.getBoundingClientRect();
       const step2 = parseFloat(grid2.style.getPropertyValue("--cell")) + GRID.gap;
-      const col = Math.floor((x - box.left) / step2), row = Math.floor((y - box.top) / step2);
-      return col >= 0 && row >= 0 && col < this.cols && row < this.floors.size.rows ? { col, row } : null;
+      const col = Math.floor((x - box.left) / step2), row2 = Math.floor((y - box.top) / step2);
+      return col >= 0 && row2 >= 0 && col < this.cols && row2 < this.floors.size.rows ? { col, row: row2 } : null;
     }
     // What is under a point while a square is dragged: a page number, or the Archive.
     dropAt(x, y) {
@@ -21063,15 +21299,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.closeSheet();
         this.moveRoomsTo(rs.map((r) => r.id), page);
       };
-      const rows = Array.from({ length: pageCount3(this.world) }, (_2, i2) => el15("button", {
+      const rows2 = Array.from({ length: pageCount3(this.world) }, (_2, i2) => el15("button", {
         type: "button",
         class: "pick",
         disabled: i2 === here,
         onclick: () => pick2(i2)
       }, `Floor ${i2 + 1}`, el15("span", { class: "pick-note" }, i2 === here ? "here" : String(i2 + 1))));
-      rows.push(el15("button", { type: "button", class: "pick", onclick: () => pick2("new") }, "New floor", el15("span", { class: "pick-note" }, "N")));
+      rows2.push(el15("button", { type: "button", class: "pick", onclick: () => pick2("new") }, "New floor", el15("span", { class: "pick-note" }, "N")));
       const what = rs.length === 1 ? rs[0].name : `${rs.length} rooms`;
-      this.openSheet(`Move ${what} to`, rows, (ev) => {
+      this.openSheet(`Move ${what} to`, rows2, (ev) => {
         const n = ev.key.toLowerCase() === "n" ? "new" : /^[1-9]$/.test(ev.key) ? +ev.key - 1 : null;
         if (n === "new" || n != null && n < pageCount3(this.world) && n !== here) {
           ev.preventDefault();
@@ -21223,7 +21459,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const btn = (label3, fn, id = null, extra = "") => el15("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label3, id ? key(id) : "");
       const all = () => rs.map((r) => r.id);
       const locked = rs.every((r) => r.locked);
-      const rows = [
+      const rows2 = [
         el15("div", { class: "title-field" }, `${rs.length} rooms`),
         el15("p", { class: "pop-note" }, rs.map((r) => r.name).join(", ")),
         el15("details", { class: "sec", open: "" }, el15("summary", {}, "Actions"), el15("div", { class: "sec-body" }, el15(
@@ -21234,7 +21470,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           btn("Delete", () => this.deleteMany(), "rooms.delete", "danger pop-delete")
         )))
       ].filter(Boolean);
-      this.fillDock("many", shelf ? "Archived rooms" : "Rooms", rows, () => {
+      this.fillDock("many", shelf ? "Archived rooms" : "Rooms", rows2, () => {
         if (!this.manyShown) return;
         this.manyShown = false;
         if (!this.inRoom && !this.root.hidden) this.drawRooms();
@@ -21337,15 +21573,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The chosen floor's properties in the right dock (the same place, and the same dock entry, as
     // a room's), switched in place when they show already.
     dockFloor(i2) {
-      const rows = this.floorRows(i2);
+      const rows2 = this.floorRows(i2);
       const open2 = this.propsDock;
       if (open2 && this.panel.isOpen("room")) {
         open2.id = "floor";
-        open2.body.replaceChildren(...rows);
+        open2.body.replaceChildren(...rows2);
         open2.handle?.setKind("Floor");
         return;
       }
-      const body = el15("div", { class: "rooms-props" }, ...rows);
+      const body = el15("div", { class: "rooms-props" }, ...rows2);
       const now = this.propsDock = { id: "floor", body, handle: null };
       this.panel.open({
         key: "room",
@@ -22618,9 +22854,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function clearSpot(box, rects, size, random = Math.random, { gap = GAP2, tries = 80 } = {}) {
     const hits = (p) => rects.some((r) => p.x < r.x + r.w + gap && r.x < p.x + size.w + gap && p.y < r.y + r.h + gap && r.y < p.y + size.h + gap);
     const spots2 = [];
-    const cols = 5, rows = 5;
+    const cols = 5, rows2 = 5;
     for (let i2 = 0; i2 < tries; i2++) {
-      const p = i2 < cols * rows ? { x: box.x + (i2 % cols + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i2 / cols) + random()) / rows * Math.max(0, box.h - size.h) } : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
+      const p = i2 < cols * rows2 ? { x: box.x + (i2 % cols + random()) / cols * Math.max(0, box.w - size.w), y: box.y + (Math.floor(i2 / cols) + random()) / rows2 * Math.max(0, box.h - size.h) } : { x: box.x + random() * Math.max(0, box.w - size.w), y: box.y + random() * Math.max(0, box.h - size.h) };
       spots2.push(p);
     }
     const order = spots2.map((p, i2) => [random(), i2]).sort((a, b) => a[0] - b[0]).map(([, i2]) => spots2[i2]);
@@ -22809,11 +23045,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })
         );
       };
-      const fold4 = (title, ...rows) => el17(
+      const fold4 = (title, ...rows2) => el17(
         "details",
         { class: "advanced renderer-fold" },
         el17("summary", {}, title),
-        el17("div", { class: "renderer-fold-body" }, el17("div", { class: "renderer-sliders" }, ...rows))
+        el17("div", { class: "renderer-fold-body" }, el17("div", { class: "renderer-sliders" }, ...rows2))
       );
       return el17(
         "div",
@@ -23182,10 +23418,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // where it is now, but those made after that day fade, and those written that day glow.
     markPast() {
       const p = this.past;
-      const later = new Set(p?.later || []), lit = new Set(p?.lit || []);
+      const later2 = new Set(p?.later || []), lit = new Set(p?.lit || []);
       this.world$.classList.toggle("room-past", !!p);
       for (const n of this.world$.querySelectorAll("[data-thought]")) {
-        n.classList.toggle("room-later", later.has(n.dataset.thought));
+        n.classList.toggle("room-later", later2.has(n.dataset.thought));
         n.classList.toggle("room-lit-day", lit.has(n.dataset.thought));
       }
     }
@@ -24705,10 +24941,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.save();
         this.drawWorld();
       };
-      const rows = [];
+      const rows2 = [];
       const gname = kind === "group" ? this.groupName(th) : "Train";
       const title = kind === "group" ? th.closed ? `A closed ${gname.toLowerCase()}` : gname : kindFor3(kind).name;
-      if (!inPanel) rows.push(el17("div", { class: "label" }, title));
+      if (!inPanel) rows2.push(el17("div", { class: "label" }, title));
       if (kind === "line") {
         const text2 = el17("textarea", {
           class: `room-edit-text room-edit-lines${inPanel ? " title-field" : ""}`,
@@ -24736,11 +24972,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         });
         text2.value = th.text || "";
-        rows.push(text2);
+        rows2.push(text2);
         requestAnimationFrame(() => grow(text2));
       }
       if (kind === "passage") {
-        rows.push(field3(th.title, "Title", (e) => {
+        rows2.push(field3(th.title, "Title", (e) => {
           update4(this.world, th.id, { title: e.target.value });
           done();
         }, inPanel ? "pop-name title-field" : "pop-name"));
@@ -24755,20 +24991,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         });
         body.value = th.body || "";
-        rows.push(body, word("Open it large", () => this.openSheet(null, th.id)));
+        rows2.push(body, word("Open it large", () => this.openSheet(null, th.id)));
       }
-      if (kind === "picture") rows.push(field3(th.text, "A caption", (e) => {
+      if (kind === "picture") rows2.push(field3(th.text, "A caption", (e) => {
         update4(this.world, th.id, { text: e.target.value });
         done();
       }, inPanel ? "room-edit-text title-field" : "room-edit-text"));
-      if (kind === "group" && inPanel) rows.push(field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
+      if (kind === "group" && inPanel) rows2.push(field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
         name4(this.world, th.id, e.target.value);
         done();
       }, "pop-name title-field"));
-      if (inPanel) return [...rows, ...this.dockSections(th, kind, gname, done)];
+      if (inPanel) return [...rows2, ...this.dockSections(th, kind, gname, done)];
       if (kind === "group") {
         const n = trainThoughts2(this.world, th.id).length;
-        rows.push(
+        rows2.push(
           field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
             name4(this.world, th.id, e.target.value);
             done();
@@ -24782,7 +25018,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         );
       }
       try {
-        rows.push(...this.ont.props?.(this, th) || []);
+        rows2.push(...this.ont.props?.(this, th) || []);
       } catch (err) {
         console.warn("Room: props", err);
       }
@@ -24793,7 +25029,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return false;
         }
       });
-      if (moves.length) rows.push(el17("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
+      if (moves.length) rows2.push(el17("div", { class: "pop-row room-moves" }, ...moves.map((m2) => word(m2.label, () => this.runMove(m2)))));
       const others = this.moveRooms();
       const pick2 = el17(
         "select",
@@ -24810,7 +25046,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...others.map((r) => el17("option", { value: r.id }, r.name)),
         el17("option", { value: "+" }, "A new room")
       );
-      rows.push(
+      rows2.push(
         el17("div", { class: "pop-row" }, pick2),
         el17(
           "div",
@@ -24828,7 +25064,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }, "pop-delete")
         )
       );
-      return rows;
+      return rows2;
     }
     // What is chosen, in the dock (the content editor): under its one title, folding sections of
     // label/value rows (Folio's .sec and .kv) and real buttons that name their keys (.box-btn).
@@ -25030,9 +25266,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.drawTray();
         }
       }, `Loose · ${items.length}`);
-      const row = open2 ? el17("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => this.looseCard(th))) : null;
+      const row2 = open2 ? el17("div", { class: "panel room-tray-row", role: "list" }, items.map((th) => this.looseCard(th))) : null;
       this.trayEl.hidden = false;
-      this.trayEl.replaceChildren(...row ? [row] : [], word);
+      this.trayEl.replaceChildren(...row2 ? [row2] : [], word);
     }
     // The loose thoughts in the left dock: always there in a room, empty or not ("Loose · 0"), and
     // kept up to date while it shows (or is hidden), so switching mode (Tab) changes what it lists
@@ -25232,9 +25468,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     placeMany(ids, at2) {
       const SIZE = { w: 300, h: 60 }, GAP_X = 30, GAP_Y = 24;
       const cols = Math.ceil(Math.sqrt(ids.length));
-      const rows = Math.ceil(ids.length / cols);
+      const rows2 = Math.ceil(ids.length / cols);
       const left = at2.x - (cols * SIZE.w + (cols - 1) * GAP_X) / 2;
-      const top = at2.y - (rows * SIZE.h + (rows - 1) * GAP_Y) / 2;
+      const top = at2.y - (rows2 * SIZE.h + (rows2 - 1) * GAP_Y) / 2;
       const taken = [...this.drawnRects().values()];
       let n = 0;
       ids.forEach((id, i2) => {
@@ -26505,12 +26741,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const kids = Object.fromEntries(all.map((g2) => [g2.id, []]));
     for (const g2 of all) if (ps[g2.id].length === 1) kids[ps[g2.id][0]].push(g2.id);
     const span4 = {};
-    const row = (ks) => ks.reduce((s, k2, i2) => s + spanOf(k2) + (i2 ? gapX(ks[i2 - 1], k2) : 0), 0);
-    const spanOf = (id) => span4[id] ??= Math.max(sz[id].w, row(kids[id]));
+    const row2 = (ks) => ks.reduce((s, k2, i2) => s + spanOf(k2) + (i2 ? gapX(ks[i2 - 1], k2) : 0), 0);
+    const spanOf = (id) => span4[id] ??= Math.max(sz[id].w, row2(kids[id]));
     const off = {};
     for (const g2 of all) {
       const ks = kids[g2.id];
-      let x = -row(ks) / 2;
+      let x = -row2(ks) / 2;
       ks.forEach((k2, i2) => {
         if (i2) x += gapX(ks[i2 - 1], k2);
         off[k2] = x + spanOf(k2) / 2;
@@ -26985,9 +27221,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "framework": "1.12.0",
     "appearance": "light",
     "test": false,
-    "pluginApi": 1
+    "pluginApi": 2
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "1.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }];
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "2.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }, { ...features[16], path: url16 }, { ...features[17], path: url17 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
