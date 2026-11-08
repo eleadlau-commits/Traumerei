@@ -63,6 +63,7 @@ export default class Room extends Feature {
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
+    this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
     this.files = this.use('roomfile');    // a room in and out as a .traum file (the roomfile feature), or null
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null

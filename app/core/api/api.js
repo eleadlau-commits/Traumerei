@@ -44,14 +44,38 @@ export function surface(lib) {
 export const PLACES = {
   modes: 'world.ontologies', // a way of seeing a room (world/ontologies/index.js says its shape)
   items: 'world.items',      // a kind of item: a passage, a picture, a PDF page (world/items/index.js)
-  keys: 'keys',              // a key and what it does (keys/README.md)
+  commands: 'keys',          // a named action, with its keys if it has any (keys/README.md)
   more: 'rail.more',         // an entry under ⋯ More (frame/README.md)
+  editor: 'room.editor',     // a section in the Editor for the chosen thing (room/README.md)
 };
+
+const DOCK = ['open', 'close', 'show', 'isOpen', 'isShowing'];
+
+// One dock (the docks service's left or right) for one plugin: what it opens is noted, so it
+// can all be closed when the plugin is switched off (gone(fn) is told how).
+function dockFor(dock, gone) {
+  if (!dock) return null;
+  const mine = new Set();
+  gone(() => { for (const key of mine) dock.close(key, true); mine.clear(); });
+  return Object.freeze({
+    open: async (o = {}) => {
+      if (!o.key) throw new Error('A dock tab needs a key');
+      const handle = await dock.open({ ...o, onClose: () => { mine.delete(o.key); o.onClose?.(); } });
+      if (handle) mine.add(o.key);
+      return handle;
+    },
+    close: (key, force) => dock.close(key, force),
+    show: (key) => dock.show(key),
+    isOpen: (key) => dock.isOpen(key),
+    isShowing: (key) => dock.isShowing(key),
+  });
+}
 
 // The API one plugin gets. app: the Folio app; world: the world service; plugin: the Feature
 // asking (its id owns what it adds); parts: surface(world.lib), made once; toast: Folio's
-// ui.toast (passed in, so this file imports nothing and runs in Node too).
-export function connect({ app, world, plugin, parts, toast = () => {} }) {
+// ui.toast (passed in, so this file imports nothing and runs in Node too); docks: the docks
+// service ({ left, right }), or null; gone(fn): fn runs when the plugin is switched off.
+export function connect({ app, world, plugin, parts, toast = () => {}, docks = null, gone = () => {} }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) {
     throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
@@ -71,6 +95,7 @@ export function connect({ app, world, plugin, parts, toast = () => {} }) {
     data: (roomId) => parts.model.own(world.world, roomId, owner),
     ...parts,
     ...places,
+    docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
     toast: (text) => toast(text),
   });
 }

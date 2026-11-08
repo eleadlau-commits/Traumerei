@@ -5,5 +5,8 @@
   "main": "Api.js",
   "requires": [
     "world"
+  ],
+  "uses": [
+    "docks"
   ]
 }
