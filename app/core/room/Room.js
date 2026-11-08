@@ -38,6 +38,7 @@ import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
 import { Twin } from './twin.js';
+import { Kinds } from './kinds.js';
 import { ROOM_KEYS } from './keys.js';
 import * as verbs from './verbs.js';
 
@@ -58,9 +59,8 @@ export default class Room extends Feature {
     this.renaming = null; // the open room, while its name is being edited
     this.barFor = null;   // what the properties pop-up is open for (selKey)
     this.editor = null;   // the content editor in the side panel (editor.js), while it shows
-    this.editing = null;  // the Passage / Picture sheet: { kind, id | null, src? }
+    this.editing = null;  // the sheet (bars.js): { kind, id | null, values(), loose }
     this.past = null;     // a day gone back to in the Time dock: { day, later, lit }, or null
-    this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
     this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
@@ -90,6 +90,7 @@ export default class Room extends Feature {
     // the focus but the room's canvas; elsewhere Tab keeps its usual job.
     const when = { 'room.mode': () => live() && this.tabSwaps(), 'room.join': () => live() && !!this.ont?.join };
     for (const k of ROOM_KEYS) this.add('keys', { ...k, zone: 'room', when: when[k.id] || live, ...(run[k.id] ? { run: run[k.id] } : {}) });
+    this.drawKindKeys(live); // each kind's own keys (a passage's Alt+P), for the ? list (kinds.js)
     // Editor, Export, Edit as text and Keys under ⋯ More, at the foot of the room's rail (the
     // frame feature's slot rail.more), shown only inside a room.
     if (this.frame) {
@@ -113,7 +114,7 @@ export default class Room extends Feature {
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
     this.on('world:maths', () => { if (this.roomId) this.drawWorld(); }); // KaTeX has loaded: formulas draw as mathematics
-    this.on('world:kinds', () => { if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
+    this.on('world:kinds', () => { this.drawKindKeys(live); if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone
       this.sel = null;
@@ -333,12 +334,7 @@ export default class Room extends Feature {
       this.dividerEl,
       this.modes,
       el('div', { class: 'room-add' },
-        this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' },
-          this.addItem('Thought', 'Just type', () => this.beginWriting()),
-          this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
-          this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
-          ...(this.files.any ? [el('div', { class: 'pick-rule' }),
-            this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : []))),
+        this.addMenu = el('div', { class: 'panel room-add-menu', hidden: true, role: 'menu' })),
       this.trayEl,
       this.bar,
       this.sheet = el('div', { class: 'panel sheet room-sheet', hidden: true }),
@@ -402,17 +398,32 @@ export default class Room extends Feature {
 
   // ---- Room files (.traum): the roomfile feature does the work; this feature says where ----
 
-  // A room file (.traum, or plain .md) dropped on a room: its groups and thoughts join it.
+  // A file dropped on a room: a room file (.traum, or plain .md) brings its groups and thoughts
+  // in; a file a kind of item takes (a picture) becomes one (kinds.js).
   listenForFiles() {
-    const files = (e) => this.files.any && [...(e.dataTransfer?.types || [])].includes('Files');
+    const files = (e) => !!this.roomId && [...(e.dataTransfer?.types || [])].includes('Files');
     this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
     this.root.addEventListener('drop', (e) => {
       if (!files(e)) return;
       e.preventDefault();
-      const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
-      if (!file) { this.toast('Only a room file (.traum) or a Markdown file (.md) can be dropped here.'); return; }
-      if (this.roomId) this.importIntoRoom(file);
+      const all = [...e.dataTransfer.files];
+      const roomFile = this.files.any ? all.find(this.files.isRoomFile) : null;
+      if (roomFile) { this.importIntoRoom(roomFile); return; }
+      const made = all.find((f) => this.kindForFile(f));
+      if (made) { this.addAt = this.toWorld(e.clientX, e.clientY); this.takeFile(made); return; }
+      const can = [...(this.files.any ? ['a room file (.traum) or a Markdown file (.md)'] : []), ...this.addable().filter((k) => k.takes).map((k) => `a ${k.name.toLowerCase()}`)];
+      this.toast(can.length ? `Only ${can.join(' or ')} can be dropped here.` : 'Nothing can be dropped here.');
     });
+  }
+
+  // Add's menu (right-click the canvas), made afresh each time it opens, so it lists the kinds
+  // and file formats there are now.
+  fillAddMenu() {
+    this.addMenu.replaceChildren(
+      this.addItem('Thought', 'Just type', () => this.beginWriting()),
+      ...this.addable().map((k) => this.addItem(k.name, [...(k.add.keys || []), k.takes ? 'or paste' : ''].filter(Boolean).join(', ') || k.add.note || '', () => this.addKind(k))),
+      ...(this.files.any ? [el('div', { class: 'pick-rule' }),
+        this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : []));
   }
 
   // In a room: the file's groups and thoughts join it, as its own mode sees them.
@@ -462,4 +473,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Room, RoomView, Writing, Gestures, Bars, Twin);
+mixIn(Room, RoomView, Writing, Gestures, Bars, Twin, Kinds);

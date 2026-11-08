@@ -1509,6 +1509,15 @@ html:not(.rooms-open) .pages-canvas { background: none; }
 .pages-label { margin: 0; padding-top: 6px; }
 .pages-value { display: grid; gap: var(--s-3); min-width: 0; }
 
+/* ---- feature: picture (style.css) ---- */
+/* Pictures (layout only; the look is Folio's base.css). A picture on a canvas: the image, at most
+   240px a side, and its caption under it. */
+.room-picture { display: block; margin: 12px 0; text-shadow: none; }
+.room-picture img { display: block; max-width: 240px; max-height: 240px; width: auto; height: auto; opacity: .92; pointer-events: none; }
+.room-picture figcaption { margin-top: 6px; font-size: 13px; opacity: .7; }
+.room-bead .room-picture { margin: 0; }
+.room-float .room-picture { margin: 0; display: grid; justify-items: center; }
+
 /* ---- feature: proust (style.css) ---- */
 /* Proust: the layout of its canvas. The look of lines and labels is the room's (.room-line,
    .room-arrow-*) and Folio's (.label); here only how strong a cluster's box is and where its title sits. */
@@ -2140,7 +2149,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   transition: text-shadow .3s;
 }
 .room-bead:hover, .room-float:hover { background: color-mix(in srgb, var(--room-ink) 5%, transparent); box-shadow: 0 0 0 7px color-mix(in srgb, var(--room-ink) 5%, transparent); }
-.room-bead .room-passage, .room-bead .room-picture { margin: 0; }
+.room-bead .room-passage { margin: 0; }
 .room-bead.selected, .room-float.selected { outline: var(--sel-line); outline-offset: 7px; background: var(--sel-fill); box-shadow: 0 0 0 7px var(--sel-fill); }
 .room-bead.found, .room-float.found { animation: room-found 2.4s ease both; }
 @keyframes room-found { 0%, 60% { background: color-mix(in srgb, var(--room-ink) 12%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--room-ink) 12%, transparent); } }
@@ -2192,7 +2201,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-page.dark :is(.room-bead, .room-float) { text-shadow: 0 0 16px rgb(var(--glow-rgb) / .3); }
 
 /* Bigger thoughts. In a Joyce train they stand as blocks between the lines of words. */
-.room-passage, .room-picture { display: block; margin: 12px 0; text-shadow: none; }
+.room-passage { display: block; margin: 12px 0; text-shadow: none; }
 .room-passage {
   max-width: 380px;
   padding: 2px 0 2px 14px;
@@ -2204,17 +2213,14 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-passage-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .85; margin-bottom: 4px; }
 .room-passage-body { white-space: pre-line; opacity: .9; max-height: 22em; overflow: hidden; }
 .room-passage.closed { border-left-style: dotted; }
-.room-picture img { display: block; max-width: 240px; max-height: 240px; width: auto; height: auto; opacity: .92; pointer-events: none; }
-.room-picture figcaption { margin-top: 6px; font-size: 13px; opacity: .7; }
 .room-float .room-passage { margin: 0; }
-.room-float .room-picture { margin: 0; display: grid; justify-items: center; }
 
-/* The sheet for writing a passage or captioning a picture. */
+/* The sheet for writing a new thing of a kind (a passage, a picture's caption): its fields. */
 .room-sheet-title, .room-sheet-body { padding: 8px 0; }
 .room-sheet-title { font-size: 18px; letter-spacing: .04em; }
 .room-sheet-body { font-size: 15px; line-height: 1.6; min-height: 9em; }
 :is(.room-sheet-title, .room-sheet-body)::placeholder { color: inherit; opacity: .4; }
-.room-sheet-picture { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
+.room-sheet-image { display: block; max-width: 100%; max-height: 320px; margin: 0 auto; }
 .room-sheet-preview { white-space: pre-line; font-size: 15px; line-height: 1.6; opacity: .7; max-height: 14em; overflow: auto; }
 
 /* Settings → Rooms */
@@ -6086,7 +6092,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
       mask: { keys: MASK_KEYS, make: (e, P, anchor) => mask(e, P, anchor) }
     },
     view: (e, name5, P, { anchor }) => view(e, name5, P, e.stage(washiMode, "mask", P, anchor)),
-    living: (e, P, picture) => ({ kind: "pixels", ...pixels(living(e, P, picture.rgba)) }),
+    living: (e, P, picture2) => ({ kind: "pixels", ...pixels(living(e, P, picture2.rgba)) }),
     report(e, P, name5, { anchor }) {
       const r = describe(e.stage(washiMode, "mask", P, anchor));
       return {
@@ -6797,8 +6803,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
     render(mode, name5, P, ctx = {}) {
       return mode.view(this, name5, P, ctx);
     }
-    animate(mode, P, picture, ctx = {}) {
-      return mode.living(this, P, picture, ctx);
+    animate(mode, P, picture2, ctx = {}) {
+      return mode.living(this, P, picture2, ctx);
     }
     report(mode, P, name5, ctx = {}) {
       return mode.report(this, P, name5, ctx);
@@ -11604,6 +11610,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return title || body ? { title, body } : null;
     },
     text: (th) => [th.title, th.body].filter(Boolean).join(" — "),
+    fields: [
+      { key: "title", type: "line", label: "Title" },
+      { key: "body", type: "text", label: "A paragraph, or a small article" }
+    ],
+    add: { note: "a title and a body", keys: ["Alt+P"] },
+    step: 190,
     // In a .traum file (the roomfile feature): ## ^id passage: its title, then its body as written.
     traum: {
       read: ({ title, body }) => ({ kind: "passage", title: title || "", body }),
@@ -11614,32 +11626,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       { class: "room-passage", "data-id": th.id },
       th.title ? el18("div", { class: "room-passage-title" }, maths(th.title)) : null,
       th.body ? el18("div", { class: "room-passage-body" }, maths(th.body)) : null
-    )
-  };
-
-  // dist/web/features/world/items/picture.js
-  var picture_default = {
-    kind: "picture",
-    name: "Picture",
-    tidy(f2, h) {
-      const src = typeof f2.src === "string" && f2.src.startsWith("data:image/") ? f2.src : "";
-      return src ? { src, text: h.oneLine(f2.text) } : null;
-    },
-    text: (th) => th.text ? `[${th.text}]` : "[picture]",
-    // In a .traum file (the roomfile feature): ## ^id picture: its caption, then its address on one
-    // line: a data:image/… URL, or https://… (kept as url until the room fetches it).
-    traum: {
-      read: ({ title, body }) => {
-        const at2 = String(body || "").trim();
-        return at2.startsWith("data:") ? { kind: "picture", src: at2, text: title || "" } : { kind: "picture", url: at2, text: title || "" };
-      },
-      write: (th) => ({ title: th.text || "", body: th.src })
-    },
-    node: (th, el18) => el18(
-      "figure",
-      { class: "room-picture", "data-id": th.id },
-      el18("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
-      th.text ? el18("figcaption", {}, maths(th.text)) : null
     )
   };
 
@@ -11677,7 +11663,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
 
   // dist/web/features/world/items/index.js
-  var BUILT_IN = [line_default, passage_default, picture_default];
+  var BUILT_IN = [line_default, passage_default];
   var NAME = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
   var NEEDS = ["kind", "name", "tidy", "text", "node"];
   var ITEMS = Object.fromEntries(BUILT_IN.map((k2) => [k2.kind, k2]));
@@ -12450,7 +12436,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     for (const g2 of groups) gone.delete(g2.id);
     if (leaves.length < 2) return { why: leaves.length ? "One thought: nothing to fold." : "Nothing here to fold." };
-    if (leaves.some((th) => kindOf(th) === "picture")) return { why: "Pictures can't be folded yet." };
+    const other = leaves.find((th) => kindOf(th) !== "line" && kindOf(th) !== "passage");
+    if (other) return { why: `${kindFor(kindOf(other)).name}s can't be folded yet.` };
     if (shut(w2, roomId)) return { why: "This room is locked." };
     return { leaves, gone: [...gone.values()], groups };
   }
@@ -12945,7 +12932,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/world/ontologies/joyce.js
   var byTime2 = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
-  var STEP2 = { line: 58, passage: 190, picture: 270, group: 190 };
+  var STEP2 = { line: 58, group: 190 };
+  var stepOf = (kind) => STEP2[kind] ?? kindFor(kind).step ?? STEP2.group;
   var LINE = 29;
   var HEIGHTS = /* @__PURE__ */ new Map();
   function setHeights(sizes) {
@@ -12963,9 +12951,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var clearHeights = () => HEIGHTS.clear();
   function stepAfter(th) {
     const kind = kindOf(th);
-    const guess = kind !== "line" ? STEP2[kind] : STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
+    const guess = kind !== "line" ? stepOf(kind) : STEP2.line + LINE * (String(th.text || "").match(/\n/g) || []).length;
     const h = HEIGHTS.get(th.id);
-    return h > 0 ? Math.max(STEP2[kind] ?? STEP2.line, Math.ceil(h) + LINE) : guess;
+    return h > 0 ? Math.max(stepOf(kind), Math.ceil(h) + LINE) : guess;
   }
   function trainSpots(w2, trainId) {
     const t = w2.things[trainId];
@@ -15764,7 +15752,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       maths: pick(lib.maths, ["maths", "broken"], "maths"),
       kinds: pick(lib.items, KINDS, "items"),
       twins: pick(lib.twin, TWINS, "twin"),
-      pictures: pick(lib.picture, ["keepOrShrink"], "picture"),
+      pictures: pick(lib.picture, ["shrinkPicture", "keepOrShrink"], "picture"),
       layout: pick(lib.pessoa, ["spiralPoint"], "pessoa"),
       trains: pick(lib.joyce, TRAINS, "joyce")
     };
@@ -16567,6 +16555,54 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     markRail() {
       for (const b of this.rail.querySelectorAll(".rail-item")) b.setAttribute("aria-current", String(b.dataset.sec === this.current));
+    }
+  };
+
+  // dist/web/features/picture/item.js
+  var ACCEPT = "image/*";
+  function picture({ maths: maths5, shrinkPicture: shrinkPicture2 }) {
+    return {
+      kind: "picture",
+      name: "Picture",
+      tidy(f2, h) {
+        const src = typeof f2.src === "string" && f2.src.startsWith("data:image/") ? f2.src : "";
+        return src ? { src, text: h.oneLine(f2.text) } : null;
+      },
+      text: (th) => th.text ? `[${th.text}]` : "[picture]",
+      label: (th) => th.text || "A picture",
+      // In a .traum file (the roomfile plugin): ## ^id picture: its caption, then its address on one
+      // line: a data:image/… URL, or https://… (kept as url until the room fetches it).
+      traum: {
+        read: ({ title, body }) => {
+          const at2 = String(body || "").trim();
+          return at2.startsWith("data:") ? { kind: "picture", src: at2, text: title || "" } : { kind: "picture", url: at2, text: title || "" };
+        },
+        write: (th) => ({ title: th.text || "", body: th.src })
+      },
+      node: (th, el18) => el18(
+        "figure",
+        { class: "room-picture", "data-id": th.id },
+        el18("img", { src: th.src, alt: th.text || "A picture", draggable: "false" }),
+        th.text ? el18("figcaption", {}, maths5(th.text)) : null
+      ),
+      // Made from a file: picked from Add (Alt+I), or pasted or dropped on the room; then captioned.
+      fields: [
+        { key: "src", type: "image", label: "The picture" },
+        { key: "text", type: "line", label: "A caption (optional)" }
+      ],
+      add: { note: "a file, with a caption", keys: ["Alt+I"], file: ACCEPT },
+      takes: (file) => !!file?.type?.startsWith("image/"),
+      fromFile: async (file) => ({ src: await shrinkPicture2(file), text: "" }),
+      step: 270
+    };
+  }
+
+  // dist/web/features/picture/Picture.js
+  var Picture = class extends Feature {
+    start() {
+      const t = this.use("traumerei")?.connect(this);
+      if (!t) throw new Error("Picture needs the plugin API");
+      t.items.add(picture({ maths: t.maths.maths, shrinkPicture: t.pictures.shrinkPicture }));
     }
   };
 
@@ -18318,7 +18354,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         const id = ids.get(v2.id);
         if (!id) {
-          report.push(`Line ${line2}: ^${obj.id} holds ^${v2.id}, which isn't in the file.`);
+          if (!kept.objects.some((o2) => o2.id === v2.id)) report.push(`Line ${line2}: ^${obj.id} holds ^${v2.id}, which isn't in the file.`);
           continue;
         }
         if (join4(w2, g2.id, id)) order.push(id);
@@ -18388,6 +18424,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       (byMode[mode] ||= []).push(...s.lines);
     }
     const fresh = freshIds || new Set(ids.values());
+    const unknown = new Set(parts.objects.filter((o2) => o2.kind !== "group" && o2.kind !== "relation" && !ITEMS2[o2.kind]?.traum?.read).map((o2) => o2.id));
     const helpers = (mode) => {
       const say3 = (line2, words) => report.push(`Line ${line2}: ${words}`);
       const thing2 = (v2, line2) => {
@@ -18397,7 +18434,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         const id = ids.get(v2.id);
         if (!id) {
-          say3(line2, `^${v2.id} isn't in the file.`);
+          if (!unknown.has(v2.id)) say3(line2, `^${v2.id} isn't in the file.`);
           return null;
         }
         if (v2.occ || v2.span != null) say3(line2, `${mode} doesn't use occurrences or spans; ${writeValue(v2)} was read as ^${v2.id}.`);
@@ -22507,7 +22544,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var maths3;
   var roomLook3;
   var light3;
-  var shrinkPicture2;
   var groupChosen2;
   var ungroupChosen2;
   var throwBack2;
@@ -22571,7 +22607,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ({ maths: maths3, showSizes: showSizes2, resize: resize3 } = lib.maths);
     ({ roomLook: roomLook3 } = lib.look);
     ({ light: light3 } = lib.attention);
-    ({ shrinkPicture: shrinkPicture2 } = lib.picture);
     ({ groupChosen: groupChosen2, ungroupChosen: ungroupChosen2, throwBack: throwBack2 } = lib.ontologies);
     ({ fold: foldInto, foldPlan: foldPlan2, wait: wait3, moveLoose: moveLoose2 } = lib.groups);
     ({ sides: sides4, twinOf: twinOf2, otherSide: otherSide2, across: across2, placeName: placeName2, moveTargets: moveTargets2 } = lib.twin);
@@ -23625,10 +23660,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if (this.editing) return;
       if (this.shortcut(e, mod)) return;
-      if (this.roomId && e.altKey && !e.ctrlKey && !e.metaKey && (e.code === "KeyP" || e.code === "KeyI")) {
+      const kind = this.roomId && this.kindForKey(e);
+      if (kind) {
         e.preventDefault();
-        if (e.code === "KeyP") this.openSheet("passage");
-        else this.choosePicture();
+        this.addKind(kind);
         return;
       }
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && this.roomId) {
@@ -23944,6 +23979,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.sel = null;
       this.drawWorld();
       this.addAt = this.toWorld(x, y);
+      this.fillAddMenu();
       this.addMenu.hidden = false;
       this.addMenu.classList.add("at");
       const w2 = this.addMenu.offsetWidth || 300, h = this.addMenu.offsetHeight || 220;
@@ -24915,7 +24951,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     kindName(th) {
       return kindFor3(kindOf3(th)).name;
     }
-    // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
+    // The rows of a thing's properties: its words (a line's, its kind's fields (kinds.js), a
     // group's name), the ontology's own rows and moves, Move to and Delete. inPanel: for the
     // content editor, which shows a group's thoughts itself and has Source at its foot.
     propRows(th, inPanel = false) {
@@ -24923,7 +24959,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.locked) {
         return [
           el17("div", { class: "label" }, "Locked"),
-          kind === "group" && inPanel ? null : el17("p", { class: "room-edit-read" }, kind === "picture" ? th.text || "A picture" : thoughtText3(this.world, th)),
+          kind === "group" && inPanel ? null : el17("p", { class: "room-edit-read" }, this.kindLabel(th, thoughtText3(this.world, th))),
           kind === "group" && !inPanel && this.files.canEdit ? el17("button", { type: "button", class: "word", onclick: () => this.editAsMarkdown(th.id) }, "Read as Markdown") : null
         ].filter(Boolean);
       }
@@ -24975,28 +25011,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         rows2.push(text2);
         requestAnimationFrame(() => grow(text2));
       }
-      if (kind === "passage") {
-        rows2.push(field3(th.title, "Title", (e) => {
-          update4(this.world, th.id, { title: e.target.value });
-          done();
-        }, inPanel ? "pop-name title-field" : "pop-name"));
-        const body = el17("textarea", {
-          class: "room-edit-body",
-          rows: 5,
-          "aria-label": "Passage",
-          onkeydown: (e) => e.stopPropagation(),
-          onchange: (e) => {
-            update4(this.world, th.id, { body: e.target.value });
-            done();
-          }
-        });
-        body.value = th.body || "";
-        rows2.push(body, word("Open it large", () => this.openSheet(null, th.id)));
-      }
-      if (kind === "picture") rows2.push(field3(th.text, "A caption", (e) => {
-        update4(this.world, th.id, { text: e.target.value });
-        done();
-      }, inPanel ? "room-edit-text title-field" : "room-edit-text"));
+      if (kind !== "line" && kind !== "group") rows2.push(...this.fieldRows(th, inPanel, field3, (id, f2) => update4(this.world, id, f2), done));
       if (kind === "group" && inPanel) rows2.push(field3(th.title, `Name this ${gname.toLowerCase()}`, (e) => {
         name4(this.world, th.id, e.target.value);
         done();
@@ -25186,7 +25201,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The words a loose card shows, which the tray's search box looks in.
     looseWords(th) {
       if (isGroup4(th)) return th.title || thoughtText3(this.world, th);
-      return kindOf3(th) === "picture" ? th.text || "A picture" : thoughtText3(this.world, th);
+      return this.kindLabel(th, thoughtText3(this.world, th));
     }
     // The loose cards the search box lets through: every word typed must be in the card (any case).
     looseFilter(items) {
@@ -25396,15 +25411,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }
           }
         },
-        this.looseItem("Passage", "a title and a body", () => this.openSheet("passage", null, null, true)),
-        this.looseItem("Picture", "a file, with a caption", () => this.choosePicture(true)),
+        ...this.addable().map((k2) => this.looseItem(k2.name, k2.add.note || "", () => this.addKind(k2, true))),
         ...this.files.any ? [this.looseItem("Import…", "objects from a file", () => this.importIntoRoom())] : []
       );
       const plus = el17("button", {
         type: "button",
         class: "word room-loose-plus",
         "aria-label": "Add something else",
-        title: "A passage, a picture, or objects from a file",
+        title: [...this.addable().map((k2) => `a ${k2.name.toLowerCase()}`), ...this.files.any ? ["objects from a file"] : []].join(", ").replace(/^a/, "A"),
         "aria-haspopup": "menu",
         "aria-expanded": "false",
         onclick: () => this.toggleLooseMenu()
@@ -25645,7 +25659,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.save();
       this.drawWorld();
     }
-    // ---- Passage and Picture: the two templates for bigger thoughts ----
+    // ---- Where a new thing goes ----
     // Where a new thought goes: on with the current train, or a new train at a free spot.
     target() {
       if (this.addAt) {
@@ -25666,18 +25680,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.fresh = false;
       return { train: null, x: Math.round(spot5.x), y: Math.round(spot5.y) };
     }
-    // loose: from the loose dock's +, so the picture is kept loose (in the tray).
-    async choosePicture(loose = false) {
-      const file = await this.picker.pick();
-      if (file) this.takePicture(file, loose);
-      else this.addAt = null;
-    }
     onPaste(e) {
       if (this.root.hidden || !this.roomId || this.editing) return;
-      const file = [...e.clipboardData?.files || []].find((f2) => f2.type.startsWith("image/"));
+      const file = [...e.clipboardData?.files || []].find((f2) => this.kindForFile(f2));
       if (file) {
         e.preventDefault();
-        this.takePicture(file);
+        this.takeFile(file);
         return;
       }
       if (e.target === this.input || e.target.matches?.("input, textarea, select, [contenteditable]")) return;
@@ -25691,19 +25699,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e.preventDefault();
       this.beginWriting(text2);
     }
-    async takePicture(file, loose = false) {
-      try {
-        const src = await shrinkPicture2(file);
-        this.openSheet("picture", null, src, loose);
-      } catch {
-        this.toast("That file couldn't be read as a picture.");
-      }
-    }
-    // The sheet: to write a passage, caption a picture or name a closed group, new (kind) or an
-    // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
-    // room). Keep (Enter) saves it; Escape or Cancel leaves it. loose: a new one is kept loose, in no
-    // group (from the loose dock's +), so it waits in the tray.
-    openSheet(kind, id = null, src = null, loose = false) {
+    // The sheet: to write a new thing of a kind (its fields, kinds.js: a passage's title and body, a
+    // picture's caption) or open one large (id), or name a closed group, in the right dock's Editor
+    // tab (without docks, a quiet panel over the room). preset: fields a new one starts with (a
+    // picture's, from its file). Keep (Enter) saves it; Escape or Cancel leaves it. loose: a new one
+    // is kept loose, in no group (from the loose dock's +), so it waits in the tray.
+    openSheet(kind, id = null, preset2 = null, loose = false) {
       if (!this.roomId) return;
       if (this.locked) {
         this.toast("This room is locked.");
@@ -25712,7 +25713,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.draft) this.commit();
       const th = id ? this.world.things[id] : null;
       kind = th ? kindOf3(th) : kind;
-      this.editing = { kind, id, src: src || th?.src || null, loose: loose && !th };
       const keep3 = () => this.keepSheet();
       const keys = (e) => {
         e.stopPropagation();
@@ -25722,35 +25722,34 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.closeSheet();
         }
       };
-      const fields = [];
+      let fields = [], values2 = () => ({}), first = null, multiline = false, label3;
       if (kind === "group") {
         this.sheetTitle = el17("input", { class: "room-sheet-title", placeholder: `Name this ${this.groupName(th).toLowerCase()}`, "aria-label": "Name", value: th.title || "", onkeydown: keys });
-        fields.push(this.sheetTitle, el17("div", { class: "room-sheet-preview" }, thoughtText3(this.world, th)));
-      } else if (kind === "passage") {
-        this.sheetTitle = el17("input", { class: "room-sheet-title", placeholder: "Title", "aria-label": "Title", value: th?.title || "", onkeydown: keys });
-        this.sheetBody = el17("textarea", { class: "room-sheet-body", placeholder: "A paragraph, or a small article", "aria-label": "Passage", rows: 9, onkeydown: keys });
-        this.sheetBody.value = th?.body || "";
-        fields.push(this.sheetTitle, this.sheetBody);
+        fields = [this.sheetTitle, el17("div", { class: "room-sheet-preview" }, thoughtText3(this.world, th))];
+        first = this.sheetTitle;
+        label3 = `A closed ${this.groupName(th).toLowerCase()}`;
       } else {
-        this.sheetCaption = el17("input", { class: "room-sheet-title", placeholder: "A caption (optional)", "aria-label": "Caption", value: th?.text || "", onkeydown: keys });
-        fields.push(el17("img", { class: "room-sheet-picture", src: this.editing.src, alt: "" }), this.sheetCaption);
+        const k2 = kindFor3(kind);
+        if (!k2.fields?.length) return;
+        ({ nodes: fields, values: values2, first, multiline } = this.sheetFields(k2, th, preset2, keys));
+        label3 = k2.name;
       }
-      const label3 = { passage: "Passage", picture: "Picture", group: `A closed ${this.groupName(th).toLowerCase()}` }[kind];
+      this.editing = { kind, id, values: values2, loose: loose && !th };
       const words = el17(
         "div",
         { class: "sheet-words" },
         el17("button", { type: "button", class: "word", onclick: keep3 }, "Keep"),
         el17("button", { type: "button", class: "word", onclick: () => this.closeSheet() }, "Cancel"),
-        el17("span", { class: "sheet-keys" }, kind === "passage" ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
+        el17("span", { class: "sheet-keys" }, multiline ? "Enter keeps it · Ctrl+Enter a new line · Esc cancels" : "Enter keeps it · Esc cancels")
       );
-      const first = () => kind === "picture" ? this.sheetCaption : kind === "passage" && th ? this.sheetBody : this.sheetTitle;
+      const focus = () => (first || words.querySelector("button")).focus();
       if (this.panel) {
-        this.dockSheet(label3, th, [...fields, words], first);
+        this.dockSheet(label3, th, [...fields, words], focus);
         return;
       }
       this.sheet.replaceChildren(el17("div", { class: "label" }, label3), ...fields, words);
       this.sheet.hidden = false;
-      first().focus();
+      focus();
     }
     // The sheet in the right dock's Editor tab (in place of the content editor, if it showed). The
     // dock's × or Escape is Cancel.
@@ -25776,7 +25775,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.editing = null;
           return;
         }
-        first().focus();
+        first();
       });
     }
     keepSheet() {
@@ -25784,7 +25783,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!ed) return;
       if (ed.kind === "group") name4(this.world, ed.id, this.sheetTitle.value);
       else {
-        const fields = ed.kind === "passage" ? { kind: "passage", title: this.sheetTitle.value, body: this.sheetBody.value } : { kind: "picture", src: ed.src, text: this.sheetCaption.value };
+        const fields = { kind: ed.kind, ...ed.values() };
         if (ed.id) update4(this.world, ed.id, fields);
         else if (ed.loose) {
           const th = create4(this.world, this.roomId, fields);
@@ -26032,12 +26031,150 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
+  // dist/web/features/room/kinds.js
+  var Kinds = class {
+    // The kinds Add offers, in the order they came (the built-in ones first).
+    addable() {
+      return Object.values(ITEMS3).filter((k2) => k2.add && k2.fields?.length);
+    }
+    // The kind a pasted or dropped file becomes, or null.
+    kindForFile(file) {
+      return Object.values(ITEMS3).find((k2) => {
+        try {
+          return !!k2.takes?.(file) && !!k2.fromFile;
+        } catch {
+          return false;
+        }
+      }) || null;
+    }
+    // The kind an Alt+letter starts (its add.keys), or null.
+    kindForKey(e) {
+      if (!e.altKey || e.ctrlKey || e.metaKey || !/^Key[A-Z]$/.test(e.code)) return null;
+      const key = `Alt+${e.code.slice(3)}`;
+      return this.addable().find((k2) => (k2.add.keys || []).includes(key)) || null;
+    }
+    // The ? list's lines for each kind's keys ("Alt+P  a passage"), drawn again when kinds come or go.
+    drawKindKeys(live) {
+      for (const off of this.kindKeyOffs || []) off();
+      this.kindKeyOffs = this.addable().filter((k2) => k2.add.keys?.length).map((k2) => this.add("keys", {
+        id: `room.add.${k2.kind}`,
+        keys: [...k2.add.keys],
+        words: `a ${k2.name.toLowerCase()}`,
+        zone: "room",
+        when: live
+      }));
+    }
+    // A new thing of kind k, from Add, its keys or the loose tray's + (loose: kept in the tray).
+    // A kind made from a file asks for one first.
+    async addKind(k2, loose = false) {
+      if (this.locked) {
+        this.toast("This room is locked.");
+        return;
+      }
+      if (!k2.add.file) {
+        this.openSheet(k2.kind, null, null, loose);
+        return;
+      }
+      this.pickers ||= {};
+      this.pickers[k2.add.file] ||= ui_exports.filePicker(k2.add.file);
+      const file = await this.pickers[k2.add.file].pick();
+      if (file) this.takeFile(file, loose, k2);
+      else this.addAt = null;
+    }
+    // A file made into a thing of kind k (the kind that takes it, when none is given), then shown
+    // in the sheet to finish (a caption). True when a kind took it.
+    async takeFile(file, loose = false, k2 = this.kindForFile(file)) {
+      if (!k2) return false;
+      if (this.locked) {
+        this.toast("This room is locked.");
+        return true;
+      }
+      try {
+        const fields = await k2.fromFile(file);
+        this.openSheet(k2.kind, null, fields, loose);
+      } catch {
+        this.toast(`That file couldn't be read as a ${k2.name.toLowerCase()}.`);
+      }
+      return true;
+    }
+    // The sheet's fields for kind k: { nodes, values(), first }. th: the thing (when it exists);
+    // preset: fields made from a file. keys: their keydown.
+    sheetFields(k2, th, preset2, keys) {
+      const at2 = (f2) => preset2?.[f2.key] ?? th?.[f2.key] ?? "";
+      const parts = [];
+      const editable = [];
+      let lines4 = 0;
+      for (const f2 of k2.fields || []) {
+        if (f2.type === "image") {
+          parts.push({ f: f2, node: el17("img", { class: "room-sheet-image", src: at2(f2), alt: "" }) });
+          continue;
+        }
+        const node = f2.type === "text" ? el17("textarea", { class: "room-sheet-body", placeholder: f2.label, "aria-label": f2.label, rows: 9, onkeydown: keys }) : el17("input", { class: lines4++ ? "room-sheet-title room-sheet-line" : "room-sheet-title", placeholder: f2.label, "aria-label": f2.label, onkeydown: keys });
+        node.value = at2(f2);
+        parts.push({ f: f2, node });
+        editable.push(node);
+      }
+      return {
+        nodes: parts.map((p) => p.node),
+        // Its fields as they are now: what is written, and what came with it (a picture).
+        values: () => Object.fromEntries(parts.map(({ f: f2, node }) => [f2.key, f2.type === "image" ? at2(f2) : node.value])),
+        // A new one starts at the first field to write in; one opened again at the last (a
+        // passage's body, a picture's caption).
+        first: (th ? editable.at(-1) : editable[0]) || null,
+        multiline: parts.some((p) => p.f.type === "text")
+      };
+    }
+    // The Editor's rows for a thing's fields (not a line's: the room writes those itself). done():
+    // after a change. field(value, label, onchange, cls): one line, as the Editor's other names.
+    fieldRows(th, inPanel, field3, update5, done) {
+      const k2 = kindFor3(kindOf3(th));
+      const rows2 = [];
+      let lines4 = 0;
+      for (const f2 of k2.fields || []) {
+        if (f2.type === "image") continue;
+        if (f2.type === "text") {
+          const body = el17("textarea", {
+            class: "room-edit-body",
+            rows: 5,
+            "aria-label": f2.label,
+            placeholder: f2.label,
+            onkeydown: (e) => e.stopPropagation(),
+            onchange: (e) => {
+              update5(th.id, { [f2.key]: e.target.value });
+              done();
+            }
+          });
+          body.value = th[f2.key] || "";
+          rows2.push(body);
+          continue;
+        }
+        const cls = lines4++ || !inPanel ? "pop-name" : "pop-name title-field";
+        rows2.push(field3(th[f2.key], f2.label, (e) => {
+          update5(th.id, { [f2.key]: e.target.value });
+          done();
+        }, cls));
+      }
+      if ((k2.fields || []).some((f2) => f2.type === "text")) {
+        rows2.push(el17("button", { type: "button", class: "word", onclick: () => this.openSheet(null, th.id) }, "Open it large"));
+      }
+      return rows2;
+    }
+    // What the Editor calls a thing it can't write in (a locked room's): a picture's caption, or its words.
+    kindLabel(th, words) {
+      const k2 = kindFor3(kindOf3(th));
+      try {
+        return k2.label?.(th) || words;
+      } catch {
+        return words;
+      }
+    }
+  };
+
   // dist/web/features/room/keys.js
   var ROOM_KEYS = [
     { id: "room.write", shows: "Type anywhere", words: "write a thought" },
     { id: "room.keep", shows: "Enter", words: "keep it, and go on with the train" },
     { id: "room.train", keys: ["Ctrl+Enter"], words: "a new train" },
-    { id: "room.passage", keys: ["Alt+P", "Alt+I"], words: "a passage · a picture" },
     { id: "room.choose", shows: "Click · double-click", words: "choose a thought · its whole train" },
     { id: "room.write-in", shows: "Triple-click", words: "write in a thought, where it is" },
     { id: "room.properties", keys: ["Enter", "ContextMenu", "Shift+F10"], shows: "Right-click · Enter", words: "the properties of what is chosen" },
@@ -26092,7 +26229,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.editor = null;
       this.editing = null;
       this.past = null;
-      this.picker = ui_exports.filePicker("image/*");
       this.drafts = this.storage.get("drafts", {}) || {};
       this.defineSlot("room.editor", "A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).");
       this.files = this.w.formats;
@@ -26119,6 +26255,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const live = () => !this.root.hidden && !!this.roomId;
       const when = { "room.mode": () => live() && this.tabSwaps(), "room.join": () => live() && !!this.ont?.join };
       for (const k2 of ROOM_KEYS) this.add("keys", { ...k2, zone: "room", when: when[k2.id] || live, ...run2[k2.id] ? { run: run2[k2.id] } : {} });
+      this.drawKindKeys(live);
       if (this.frame) {
         if (this.panel) {
           this.add("rail.more", {
@@ -26171,6 +26308,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.on("world:palette", () => this.repaint());
       this.on("world:look", () => this.repaint());
       this.on("world:kinds", () => {
+        this.drawKindKeys(live);
         if (this.roomId) this.drawWorld();
       });
       this.on("world:saved", () => {
@@ -26422,17 +26560,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el17(
           "div",
           { class: "room-add" },
-          this.addMenu = el17(
-            "div",
-            { class: "panel room-add-menu", hidden: true, role: "menu" },
-            this.addItem("Thought", "Just type", () => this.beginWriting()),
-            this.addItem("Passage", "Alt+P", () => this.openSheet("passage")),
-            this.addItem("Picture", "Alt+I, or paste", () => this.choosePicture()),
-            ...this.files.any ? [
-              el17("div", { class: "pick-rule" }),
-              this.addItem("Import into this room…", "or drop a .traum or .md file", () => this.importIntoRoom(), false)
-            ] : []
-          )
+          this.addMenu = el17("div", { class: "panel room-add-menu", hidden: true, role: "menu" })
         ),
         this.trayEl,
         this.bar,
@@ -26530,9 +26658,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.openProps(this.sel);
     }
     // ---- Room files (.traum): the roomfile feature does the work; this feature says where ----
-    // A room file (.traum, or plain .md) dropped on a room: its groups and thoughts join it.
+    // A file dropped on a room: a room file (.traum, or plain .md) brings its groups and thoughts
+    // in; a file a kind of item takes (a picture) becomes one (kinds.js).
     listenForFiles() {
-      const files = (e) => this.files.any && [...e.dataTransfer?.types || []].includes("Files");
+      const files = (e) => !!this.roomId && [...e.dataTransfer?.types || []].includes("Files");
       this.root.addEventListener("dragover", (e) => {
         if (files(e)) {
           e.preventDefault();
@@ -26542,13 +26671,33 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.root.addEventListener("drop", (e) => {
         if (!files(e)) return;
         e.preventDefault();
-        const file = [...e.dataTransfer.files].find(this.files.isRoomFile);
-        if (!file) {
-          this.toast("Only a room file (.traum) or a Markdown file (.md) can be dropped here.");
+        const all = [...e.dataTransfer.files];
+        const roomFile = this.files.any ? all.find(this.files.isRoomFile) : null;
+        if (roomFile) {
+          this.importIntoRoom(roomFile);
           return;
         }
-        if (this.roomId) this.importIntoRoom(file);
+        const made3 = all.find((f2) => this.kindForFile(f2));
+        if (made3) {
+          this.addAt = this.toWorld(e.clientX, e.clientY);
+          this.takeFile(made3);
+          return;
+        }
+        const can = [...this.files.any ? ["a room file (.traum) or a Markdown file (.md)"] : [], ...this.addable().filter((k2) => k2.takes).map((k2) => `a ${k2.name.toLowerCase()}`)];
+        this.toast(can.length ? `Only ${can.join(" or ")} can be dropped here.` : "Nothing can be dropped here.");
       });
+    }
+    // Add's menu (right-click the canvas), made afresh each time it opens, so it lists the kinds
+    // and file formats there are now.
+    fillAddMenu() {
+      this.addMenu.replaceChildren(
+        this.addItem("Thought", "Just type", () => this.beginWriting()),
+        ...this.addable().map((k2) => this.addItem(k2.name, [...k2.add.keys || [], k2.takes ? "or paste" : ""].filter(Boolean).join(", ") || k2.add.note || "", () => this.addKind(k2))),
+        ...this.files.any ? [
+          el17("div", { class: "pick-rule" }),
+          this.addItem("Import into this room…", "or drop a .traum or .md file", () => this.importIntoRoom(), false)
+        ] : []
+      );
     }
     // In a room: the file's groups and thoughts join it, as its own mode sees them.
     async importIntoRoom(file = null) {
@@ -26600,7 +26749,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
   }
-  mixIn(Room, RoomView, Writing, Gestures, Bars, Twin);
+  mixIn(Room, RoomView, Writing, Gestures, Bars, Twin, Kinds);
 
   // dist/web/features/russell/world.js
   var groupsIn4;
@@ -27196,22 +27345,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var url8 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature8;"], { type: "text/javascript" }));
   globalThis.__folioFeature9 = Pages;
   var url9 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature9;"], { type: "text/javascript" }));
-  globalThis.__folioFeature10 = Proust;
+  globalThis.__folioFeature10 = Picture;
   var url10 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature10;"], { type: "text/javascript" }));
-  globalThis.__folioFeature11 = Source;
+  globalThis.__folioFeature11 = Proust;
   var url11 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature11;"], { type: "text/javascript" }));
-  globalThis.__folioFeature12 = Roomfile;
+  globalThis.__folioFeature12 = Source;
   var url12 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature12;"], { type: "text/javascript" }));
-  globalThis.__folioFeature13 = Time;
+  globalThis.__folioFeature13 = Roomfile;
   var url13 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature13;"], { type: "text/javascript" }));
-  globalThis.__folioFeature14 = Rooms;
+  globalThis.__folioFeature14 = Time;
   var url14 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature14;"], { type: "text/javascript" }));
-  globalThis.__folioFeature15 = Search;
+  globalThis.__folioFeature15 = Rooms;
   var url15 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature15;"], { type: "text/javascript" }));
-  globalThis.__folioFeature16 = Room;
+  globalThis.__folioFeature16 = Search;
   var url16 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature16;"], { type: "text/javascript" }));
-  globalThis.__folioFeature17 = Russell;
+  globalThis.__folioFeature17 = Room;
   var url17 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature17;"], { type: "text/javascript" }));
+  globalThis.__folioFeature18 = Russell;
+  var url18 = URL.createObjectURL(new Blob(["export default globalThis.__folioFeature18;"], { type: "text/javascript" }));
   var config = {
     "id": "traumerei",
     "name": "Träumerei",
@@ -27223,8 +27374,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "test": false,
     "pluginApi": 2
   };
-  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "2.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }];
-  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }, { ...features[16], path: url16 }, { ...features[17], path: url17 }]).start();
+  var features = [{ "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "2.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "picture", "name": "Pictures", "description": "Pictures in a room: a small copy of the file, kept with the room, and its caption. Add it from Add, Alt+I, or by pasting or dropping a picture.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/picture/Picture.js", "plugin": { "kind": ["item"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }];
+  new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }, { ...features[16], path: url16 }, { ...features[17], path: url17 }, { ...features[18], path: url18 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
 </script>
