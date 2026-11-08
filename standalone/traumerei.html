@@ -7910,6 +7910,33 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/account/sync.js
   var LOCAL_AREAS = ["account", "folio"];
+  var WORLD_KEYS = ["world.world3", "world.moments"];
+  function settingsOf(snapshot2) {
+    const out = {};
+    for (const [k2, v2] of Object.entries(snapshot2)) if (!WORLD_KEYS.includes(k2)) out[k2] = v2;
+    return out;
+  }
+  function incoming(batches, since2, device) {
+    return batches.filter((b) => b && b.at > since2 && b.device !== device && Array.isArray(b.rows)).sort((a, b) => a.at - b.at);
+  }
+  var LIMIT = 7e5;
+  function batchesOf(rows2, device, at2 = Date.now()) {
+    const out = [];
+    let rows_ = [], size = 0;
+    const cut2 = () => {
+      if (rows_.length) out.push({ at: at2 + out.length, device, from: rows_[0].seq, to: rows_[rows_.length - 1].seq, rows: rows_ });
+      rows_ = [];
+      size = 0;
+    };
+    for (const r of rows2) {
+      const n = JSON.stringify(r).length;
+      if (size + n > LIMIT) cut2();
+      rows_.push(r);
+      size += n;
+    }
+    cut2();
+    return out;
+  }
   function pack(settings) {
     const sorted = {};
     for (const k2 of Object.keys(settings).sort()) sorted[k2] = settings[k2];
@@ -7948,6 +7975,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.synced = false;
       this.guarded = false;
       this.add("account", { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
+      this.moments = this.use("traumerei")?.connect(this).moments || null;
+      if (!this.storage.get("device")) this.storage.set("device", Math.random().toString(36).slice(2, 10));
       this.app.storage.watch(() => this.changed());
       this.listenTo(window, "pagehide", () => this.flush());
       if (firebaseConfig && this.storage.get("signedIn", false)) this.connect().catch((e) => this.fail(e));
@@ -8011,36 +8040,69 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     doc() {
       return this.sdk.doc(this.db, "users", this.user.uid);
     }
-    // Compares the account's settings with this device's, then uploads or applies them.
+    batches() {
+      return this.sdk.collection(this.db, "users", this.user.uid, "moments");
+    }
+    get device() {
+      return this.storage.get("device");
+    }
+    // Compares the account's settings with this device's and takes in the moments other devices
+    // sent since this one last looked; then uploads, or applies and reloads.
     async pull() {
       this.setState("busy");
       try {
         const snap2 = await this.sdk.getDoc(this.doc());
-        const cloud2 = snap2.exists() ? unpack(snap2.data().settings) : null;
-        const local = this.app.storage.snapshot(LOCAL_AREAS);
+        const cloud2 = snap2.exists() ? settingsOf(unpack(snap2.data().settings) || {}) : null;
+        const local = settingsOf(this.app.storage.snapshot(LOCAL_AREAS));
         const justReloaded = reloadedRecently(this.storage.get("reloadedAt", null), Date.now());
         const step2 = decide(cloud2, local, justReloaded);
         this.synced = true;
+        if (cloud2 == null) {
+          this.storage.set("sent", 0);
+          await this.push(this.moments?.outbox(null) || []);
+          return;
+        }
+        const landed2 = await this.take();
         if (step2 === "upload") {
-          this.guarded = cloud2 != null && justReloaded;
+          this.guarded = justReloaded;
           await this.push();
-        } else if (step2 === "apply") {
-          this.app.storage.restore(cloud2, LOCAL_AREAS);
+        } else if (step2 === "apply" || landed2) {
+          if (step2 === "apply") this.app.storage.restore(cloud2, LOCAL_AREAS.concat(["world"]));
           this.storage.set("reloadedAt", Date.now());
           location.reload();
-        } else this.setState("saved");
+        } else {
+          await this.push();
+        }
       } catch (e) {
         this.fail(e);
       }
     }
-    async push() {
+    // Takes in the batches other devices sent since this one last looked. True when rows landed.
+    async take() {
+      const { query, where, getDocs } = this.sdk;
+      const since2 = this.storage.get("pulledAt", 0);
+      const found = await getDocs(query(this.batches(), where("at", ">", since2)));
+      const batches = incoming(found.docs.map((d) => d.data()), since2, this.device);
+      let landed2 = 0;
+      for (const b of batches) landed2 += this.moments?.absorb(b.rows).landed || 0;
+      const last = Math.max(since2, ...found.docs.map((d) => d.data()?.at || 0));
+      this.storage.set("pulledAt", last);
+      this.storage.set("sent", this.moments?.seq() || 0);
+      return landed2 > 0;
+    }
+    // Sends this device's settings and the moments since the last push (or `rows`, given).
+    async push(rows2 = null) {
       clearTimeout(this.timer);
       this.timer = null;
       if (!this.user || !this.synced) return;
       this.setState("busy");
       try {
-        const settings = pack(this.app.storage.snapshot(LOCAL_AREAS));
+        const settings = pack(settingsOf(this.app.storage.snapshot(LOCAL_AREAS)));
         await this.sdk.setDoc(this.doc(), { settings, updated: Date.now() });
+        const seq = this.moments?.seq() || 0;
+        const out = rows2 || this.moments?.outbox(this.storage.get("sent", 0)) || [];
+        for (const b of batchesOf(out, this.device)) await this.sdk.addDoc(this.batches(), b);
+        this.storage.set("sent", seq);
         this.setState("saved");
       } catch (e) {
         this.fail(e);
@@ -12988,6 +13050,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     STEPS: () => STEPS2,
     VERSION: () => VERSION,
     VISIT_GAP: () => VISIT_GAP,
+    absorb: () => absorb,
     changed: () => changed2,
     changedOn: () => changedOn,
     compact: () => compact,
@@ -12999,6 +13062,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     fold: () => fold2,
     loadLog: () => loadLog2,
     of: () => of,
+    outbox: () => outbox,
     record: () => record,
     same: () => same2,
     since: () => since,
@@ -13006,7 +13070,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     stateOf: () => stateOf,
     undo: () => undo,
     visit: () => visit2,
-    visits: () => visits
+    visits: () => visits,
+    whole: () => whole
   });
   var VERSION = 1;
   var DAY2 = 864e5;
@@ -13027,6 +13092,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return d.getTime();
   };
   var keyOf = (r) => r.mark != null ? `m:${r.mark}` : `c:${r.context}`;
+  var inverse = (kind) => kind === "made" ? "removed" : kind === "removed" ? "made" : kind;
   var emptyLog = (now = Date.now(), state = null) => ({ v: VERSION, seq: 0, base: state ? { time: now, state: clone(state) } : null, rows: [], undo: [], redo: [], keep: 365, made: now });
   function loadLog2(saved, now = Date.now()) {
     if (!saved || typeof saved !== "object" || saved.v !== VERSION || !Array.isArray(saved.rows)) return emptyLog(now);
@@ -13171,9 +13237,56 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return seen;
   }
   var first = (log) => log.base?.time ?? log.rows[0]?.time ?? null;
+  function outbox(log, seq) {
+    const steps = /* @__PURE__ */ new Map();
+    for (const r of log.rows) if (r.step != null && CHANGES.includes(r.kind)) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r);
+    const out = [];
+    for (const r of log.rows) {
+      if (r.seq <= seq) continue;
+      if (CHANGES.includes(r.kind) || r.kind === "visited") {
+        out.push(clone(r));
+        continue;
+      }
+      const back = r.kind === "undone";
+      for (const s of steps.get(r.step) || []) {
+        out.push({
+          seq: r.seq,
+          time: r.time,
+          kind: back ? inverse(s.kind) : s.kind,
+          table: s.table,
+          ...s.mark != null ? { mark: s.mark } : { context: s.context },
+          before: clone(back ? s.after : s.before) ?? null,
+          after: clone(back ? s.before : s.after) ?? null
+        });
+      }
+    }
+    return out;
+  }
+  var whole = (state, at2) => diff({ things: {}, own: {}, pages: 1 }, state).map((r, i2) => ({ ...r, seq: i2 + 1, time: at2 }));
+  function absorb(log, state, rows2) {
+    const last = /* @__PURE__ */ new Map();
+    for (const r of log.rows) if (r.kind !== "visited" && r.kind !== "undone" && r.kind !== "redone") last.set(keyOf(r), Math.max(r.time, last.get(keyOf(r)) || 0));
+    const landed2 = [];
+    for (const r of rows2) {
+      if (r.kind === "visited") {
+        const v2 = visit2(log, r.context, r.time);
+        if (v2) landed2.push(v2);
+        continue;
+      }
+      if (!CHANGES.includes(r.kind) || !Number.isFinite(r.time)) continue;
+      const key = keyOf(r);
+      if (r.time <= (last.get(key) || 0)) continue;
+      last.set(key, r.time);
+      const before = r.mark != null ? state.things[r.mark] : r.kind === "floors" ? state.pages : state.own[r.context];
+      if (same2(before, r.after)) continue;
+      set(state, r, r.after);
+      const row2 = { kind: r.kind, table: r.table, ...r.mark != null ? { mark: r.mark } : { context: r.context }, before: clone(before) ?? null, after: clone(r.after) ?? null, from: "account" };
+      landed2.push(push(log, row2, r.time));
+    }
+    return landed2;
+  }
   var RANK = { edited: 3, linked: 2, moved: 1, arranged: 1, floors: 1 };
   var squashKind = (madeToday, best, after) => after == null ? "removed" : madeToday ? "made" : best;
-  var inverse = (kind) => kind === "made" ? "removed" : kind === "removed" ? "made" : kind;
   function compact(log, now = Date.now()) {
     const horizon = dayOf(now - COMPACT * DAY2);
     const floor = log.keep ? dayOf(now - log.keep * DAY2) : -Infinity;
@@ -15061,7 +15174,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           w2.log.keep = days2;
           compact(w2.log, Date.now());
           w2.storage.set(LOG, w2.log);
-        }
+        },
+        // For a carrier (the account's sync): the rows since a seq as another copy can take them
+        // (null: the whole world, as made now), and rows from another copy taken in (the latest
+        // word on a thing wins; written down at once).
+        outbox: (seq) => seq == null ? whole(stateOf(w2.world), Date.now()) : outbox(w2.log, seq),
+        absorb: (rows2) => w2.absorb(rows2)
       });
     }
     // The log and the world agree: what the log does not know of (the world's first state, or a
@@ -15135,6 +15253,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.land([...rows2, this.log.rows[this.log.rows.length - 1]], back);
       this.emit("world:changed", { undone: back });
       return true;
+    }
+    // Rows from another copy of the world land here (moments.js absorb); the world is written down.
+    // Returns the rows that landed.
+    absorb(rows2) {
+      const state = stateOf(this.world);
+      const landed2 = absorb(this.log, state, rows2);
+      if (!landed2.length) return landed2;
+      this.world.pages = state.pages;
+      this.lastSnap = this.snap();
+      this.last = JSON.parse(this.lastSnap);
+      this.write();
+      return this.land(landed2);
     }
     // Going into a room is a moment; the attention log ({ [roomId]: [times] }) is read off the log.
     visit(roomId) {
@@ -16697,6 +16827,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (![0, 30, 365].includes(days2) && !(Number.isInteger(days2) && days2 > 0)) return refuse("Days kept is a whole number, 0 for forever");
         log().setKeep(days2);
         return landed("moments");
+      },
+      // For a carrier (the account's sync; carriers proper are phase 6): the latest seq, the rows
+      // since a seq as another copy can take them (null: the whole world), and rows from another
+      // copy taken in (the latest word on a thing wins).
+      seq: () => log()?.log.seq ?? 0,
+      outbox: (seq) => log() ? rows(log().outbox(seq)) : rows([]),
+      absorb: (list2) => {
+        if (!log()) return later("Taking in moments", 1);
+        if (!Array.isArray(list2)) return refuse("Rows to take in are a list");
+        const landed2 = log().absorb(list2.map((r) => ({ ...r })));
+        return row({ ok: true, id: "moments", landed: landed2.length });
       },
       ahead: () => rows([]),
       due: () => later("A due moment", 7),
@@ -19466,10 +19607,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return inScope(refs[0].id) ? line2 : null;
   }
   function open(w2, roomId, { scope = "room", groupId = null, ontologies = [], pictures = null } = {}) {
-    const whole = roomText(w2, roomId, { ontologies, pictures });
-    const ids = whole.ids;
+    const whole2 = roomText(w2, roomId, { ontologies, pictures });
+    const ids = whole2.ids;
     const back = new Map([...ids].map(([a, b]) => [b, a]));
-    if (scope !== "group") return { text: whole.text, ids, back, scope: null, groupId: null };
+    if (scope !== "group") return { text: whole2.text, ids, back, scope: null, groupId: null };
     const held2 = scopeOf(w2, groupId);
     const things = objectOrder(w2, roomId).filter((th) => held2.has(th.id));
     const inScope = (fileId) => held2.has(back.get(fileId));
