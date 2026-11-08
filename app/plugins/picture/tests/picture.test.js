@@ -1,0 +1,105 @@
+// Tests for Pictures (item.js): a whole item kind, made from a file and written in its fields,
+// and a room with pictures that goes out as a .traum file and comes back the same whether the
+// plugin is on or off.
+
+import { test, assert } from 'folio/testing';
+import { ui } from 'folio';
+import * as lib from '../../world/lib.js';
+import { surface } from '../../api/v1.js';
+import { picture } from '../item.js';
+import { ITEMS, BUILT_IN, setKinds, lacks, kindFor } from '../../world/items/index.js';
+import { emptyWorld, create, addRoom, roomItems, thoughtText, MESSY } from '../../world/model.js';
+import { gather } from '../../world/ontologies/index.js';
+import { bind as bindRoomfile } from '../../roomfile/world.js';
+import { parse } from '../../roomfile/grammar.js';
+import { importRoom, exportRoom } from '../../roomfile/traum.js';
+
+const t = surface(lib);
+bindRoomfile(t); // Room files, to write a room out and read it back
+const shrunk = [];
+const kind = picture({ maths: t.maths.maths, shrinkPicture: async (file) => { shrunk.push(file.name); return 'data:image/jpeg;base64,SMALL'; } });
+const SRC = 'data:image/jpeg;base64,AAAA';
+const ontologies = gather([]);
+
+// Each test sets the kinds it needs, and puts back what was there (the tests share one page).
+const withKinds = (kinds, fn) => async () => {
+  const before = Object.values(ITEMS).filter((k) => !BUILT_IN.includes(k));
+  setKinds(kinds);
+  try { await fn(); } finally { setKinds(before); }
+};
+
+test('Pictures is a whole item kind, made from a file and written in its fields', withKinds([kind], async () => {
+  assert.deepEqual(lacks(kind), []);
+  assert.equal(ITEMS.picture, kind);
+  assert.deepEqual(kind.fields.map((f) => [f.key, f.type]), [['src', 'image'], ['text', 'line']]);
+  assert.deepEqual(kind.add.keys, ['Alt+I']);
+  assert.equal(kind.add.file, 'image/*');
+  assert.ok(kind.takes({ type: 'image/png' }));
+  assert.equal(kind.takes({ type: 'text/plain' }), false);
+  assert.deepEqual(await kind.fromFile({ name: 'dusk.png', type: 'image/png' }), { src: 'data:image/jpeg;base64,SMALL', text: '' });
+  assert.deepEqual(shrunk, ['dusk.png']);
+  assert.equal(kind.step, 270);
+}));
+
+test('a picture needs an image; its caption is its words', withKinds([kind], () => {
+  const w = emptyWorld(1);
+  assert.equal(create(w, MESSY, { kind: 'picture', src: 'javascript:x' }), null);
+  const th = create(w, MESSY, { kind: 'picture', src: SRC, text: '  dusk  ' }, 2);
+  assert.equal(th.text, 'dusk');
+  assert.equal(thoughtText(w, th), '[dusk]');
+  assert.equal(kind.label(th), 'dusk');
+  assert.equal(kind.label({ src: SRC }), 'A picture');
+  const node = kind.node(th, ui.el);
+  assert.equal(node.querySelector('img').getAttribute('src'), SRC);
+  assert.equal(node.querySelector('figcaption').textContent, 'dusk');
+}));
+
+// A room with a line and a picture, written out.
+function roomWithPicture() {
+  const w = emptyWorld(1);
+  const r = addRoom(w, 'Sketches', 1, {}, 'pessoa');
+  create(w, r.id, { kind: 'line', text: 'a thought' }, 2);
+  create(w, r.id, { kind: 'picture', src: SRC, text: 'dusk' }, 3);
+  return { w, r };
+}
+const readBack = (text) => {
+  const w = emptyWorld(1);
+  const out = importRoom(w, parse(text), { ontologies, now: 5 });
+  return { w, room: out.room, report: out.report };
+};
+
+test('a room with pictures goes out and comes back the same, with Pictures on', withKinds([kind], () => {
+  const { w, r } = roomWithPicture();
+  const once = exportRoom(w, r.id, { ontologies });
+  assert.match(once, /## \^\d+ picture: dusk\ndata:image\/jpeg;base64,AAAA/);
+  const back = readBack(once);
+  assert.deepEqual(back.report, []);
+  assert.equal(exportRoom(back.w, back.room.id, { ontologies }), once);
+  assert.deepEqual(roomItems(back.w, back.room.id).map((th) => th.kind), ['line', 'picture']);
+}));
+
+test('with Pictures off, a picture is kept as it is, shows as a stand-in, and goes out and back the same', withKinds([kind], () => {
+  const { w, r } = roomWithPicture();
+  const on = exportRoom(w, r.id, { ontologies });
+  setKinds([]); // Pictures is switched off
+  const pic = roomItems(w, r.id).find((th) => th.kind === 'picture');
+  assert.equal(pic.src, SRC); // nothing lost
+  assert.ok(kindFor('picture').missing);
+  assert.equal(kindFor('picture').fields, undefined); // nothing to write in: the room offers no sheet for it
+  assert.ok(kindFor('picture').node(pic, ui.el).classList.contains('st-off'));
+  const off = exportRoom(w, r.id, { ontologies });
+  assert.equal(off, on); // written out under its own kind, with its picture
+  setKinds([kind]); // on again: the same thought is a picture again
+  assert.equal(thoughtText(w, pic), '[dusk]');
+  assert.equal(exportRoom(w, r.id, { ontologies }), on);
+}));
+
+test('a file read while Pictures is off keeps its pictures as they were written, and writes them back out', withKinds([kind], () => {
+  const { w, r } = roomWithPicture();
+  const on = exportRoom(w, r.id, { ontologies });
+  setKinds([]);
+  const back = readBack(on);
+  assert.equal(back.report.length, 1, back.report.join(' | '));
+  assert.match(back.report[0], /doesn't know the kind "picture"; \^\d+ was kept and will be written back out/);
+  assert.match(exportRoom(back.w, back.room.id, { ontologies }), /## \^\d+ picture: dusk\ndata:image\/jpeg;base64,AAAA/);
+}));

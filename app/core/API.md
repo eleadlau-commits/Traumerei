@@ -70,7 +70,7 @@ Plain functions of the world (`w` first), named as in the world feature's README
 | `arrows` | `arrowView`: named arrows on the screen, edited where they are |
 | `lines` | Lines on a canvas: `svg`, `layer`, `group`, `line`, `knot`, `slack`, `strand`, `path`, `middle`, `between`, `labelSpot`, `sidePoint`, `facing`, `PAD`, `ENDS`, `ENDS_WORDS`, `cleanEnds`, `PAUSE`, `HEAD` |
 | `maths` | `maths(text)`: a thought's words with their LaTeX drawn; `broken(text)`: the LaTeX in it KaTeX can't draw |
-| `pictures` | `keepOrShrink(blob, src?)`: a picture made small enough to keep, as pasted ones are |
+| `pictures` | `shrinkPicture(file)`: a picture file made small enough to keep (a JPEG data: URL); `keepOrShrink(blob, src?)`: the same, keeping one that is already small |
 
 ## Places to plug in
 

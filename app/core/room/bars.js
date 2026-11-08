@@ -1,10 +1,10 @@
 // Part of the room feature. The pop-ups in a room: a thing's properties, the loose-thought tray, the bar for several
-// chosen things, closing groups, pictures, the Passage / Picture sheet, and moving thoughts to another room.
+// chosen things, closing groups, the sheet (a new thing of a kind, kinds.js), and moving thoughts to another room.
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
   room, name, view, create, update, remove, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, isBig, shrinkPicture, kindFor, placeName, moveTargets, wait, moveLoose,
+  thoughtText, trainThoughts, isBig, kindFor, placeName, moveTargets, wait, moveLoose,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -59,7 +59,7 @@ export class Bars {
 
   kindName(th) { return kindFor(kindOf(th)).name; }
 
-  // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
+  // The rows of a thing's properties: its words (a line's, its kind's fields (kinds.js), a
   // group's name), the ontology's own rows and moves, Move to and Delete. inPanel: for the
   // content editor, which shows a group's thoughts itself and has Source at its foot.
   propRows(th, inPanel = false) {
@@ -67,7 +67,7 @@ export class Bars {
     if (this.locked) { // read only: the words, and nothing to change
       return [
         el('div', { class: 'label' }, 'Locked'),
-        kind === 'group' && inPanel ? null : el('p', { class: 'room-edit-read' }, kind === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th)),
+        kind === 'group' && inPanel ? null : el('p', { class: 'room-edit-read' }, this.kindLabel(th, thoughtText(this.world, th))),
         kind === 'group' && !inPanel && this.files.canEdit ? el('button', { type: 'button', class: 'word', onclick: () => this.editAsMarkdown(th.id) }, 'Read as Markdown') : null,
       ].filter(Boolean);
     }
@@ -100,14 +100,7 @@ export class Bars {
       rows.push(text);
       requestAnimationFrame(() => grow(text));
     }
-    if (kind === 'passage') {
-      rows.push(field(th.title, 'Title', (e) => { update(this.world, th.id, { title: e.target.value }); done(); }, inPanel ? 'pop-name title-field' : 'pop-name'));
-      const body = el('textarea', { class: 'room-edit-body', rows: 5, 'aria-label': 'Passage', onkeydown: (e) => e.stopPropagation(),
-        onchange: (e) => { update(this.world, th.id, { body: e.target.value }); done(); } });
-      body.value = th.body || '';
-      rows.push(body, word('Open it large', () => this.openSheet(null, th.id)));
-    }
-    if (kind === 'picture') rows.push(field(th.text, 'A caption', (e) => { update(this.world, th.id, { text: e.target.value }); done(); }, inPanel ? 'room-edit-text title-field' : 'room-edit-text'));
+    if (kind !== 'line' && kind !== 'group') rows.push(...this.fieldRows(th, inPanel, field, (id, f) => update(this.world, id, f), done));
     if (kind === 'group' && inPanel) rows.push(field(th.title, `Name this ${gname.toLowerCase()}`, (e) => { name(this.world, th.id, e.target.value); done(); }, 'pop-name title-field'));
     if (inPanel) return [...rows, ...this.dockSections(th, kind, gname, done)];
     if (kind === 'group') {
@@ -229,7 +222,7 @@ export class Bars {
   // The words a loose card shows, which the tray's search box looks in.
   looseWords(th) {
     if (isGroup(th)) return th.title || thoughtText(this.world, th);
-    return kindOf(th) === 'picture' ? th.text || 'A picture' : thoughtText(this.world, th);
+    return this.kindLabel(th, thoughtText(this.world, th));
   }
 
   // The loose cards the search box lets through: every word typed must be in the card (any case).
@@ -350,10 +343,10 @@ export class Bars {
       } });
     const menu = el('div', { class: 'panel room-loose-menu', role: 'menu', hidden: true,
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); this.closeLooseMenu(); plus.focus(); } } },
-    this.looseItem('Passage', 'a title and a body', () => this.openSheet('passage', null, null, true)),
-    this.looseItem('Picture', 'a file, with a caption', () => this.choosePicture(true)),
+    ...this.addable().map((k) => this.looseItem(k.name, k.add.note || '', () => this.addKind(k, true))),
     ...(this.files.any ? [this.looseItem('Import…', 'objects from a file', () => this.importIntoRoom())] : []));
-    const plus = el('button', { type: 'button', class: 'word room-loose-plus', 'aria-label': 'Add something else', title: 'A passage, a picture, or objects from a file',
+    const plus = el('button', { type: 'button', class: 'word room-loose-plus', 'aria-label': 'Add something else',
+      title: [...this.addable().map((k) => `a ${k.name.toLowerCase()}`), ...(this.files.any ? ['objects from a file'] : [])].join(', ').replace(/^a/, 'A'),
       'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleLooseMenu() }, '+');
     return el('div', { class: 'room-loose-add', hidden: this.locked }, menu, el('div', { class: 'room-loose-bar' }, box, plus));
   }
@@ -563,7 +556,7 @@ export class Bars {
     this.drawWorld();
   }
 
-  // ---- Passage and Picture: the two templates for bigger thoughts ----
+  // ---- Where a new thing goes ----
 
   // Where a new thought goes: on with the current train, or a new train at a free spot.
   target() {
@@ -588,16 +581,11 @@ export class Bars {
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
   }
 
-  // loose: from the loose dock's +, so the picture is kept loose (in the tray).
-  async choosePicture(loose = false) {
-    const file = await this.picker.pick();
-    if (file) this.takePicture(file, loose); else this.addAt = null;
-  }
-
   onPaste(e) {
     if (this.root.hidden || !this.roomId || this.editing) return;
-    const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'));
-    if (file) { e.preventDefault(); this.takePicture(file); return; }
+    // A file a kind takes (a picture) becomes one of those (kinds.js).
+    const file = [...(e.clipboardData?.files || [])].find((f) => this.kindForFile(f));
+    if (file) { e.preventDefault(); this.takeFile(file); return; }
     // Words pasted on the canvas start a thought with them; several lines stay one thought.
     if (e.target === this.input || e.target.matches?.('input, textarea, select, [contenteditable]')) return;
     const text = (e.clipboardData?.getData('text/plain') || '').replace(/\r\n?/g, '\n');
@@ -608,55 +596,45 @@ export class Bars {
     this.beginWriting(text);
   }
 
-  async takePicture(file, loose = false) {
-    try {
-      const src = await shrinkPicture(file);
-      this.openSheet('picture', null, src, loose);
-    } catch {
-      this.toast('That file couldn\'t be read as a picture.');
-    }
-  }
-
-  // The sheet: to write a passage, caption a picture or name a closed group, new (kind) or an
-  // existing thought (id), in the right dock's Editor tab (without docks, a quiet panel over the
-  // room). Keep (Enter) saves it; Escape or Cancel leaves it. loose: a new one is kept loose, in no
-  // group (from the loose dock's +), so it waits in the tray.
-  openSheet(kind, id = null, src = null, loose = false) {
+  // The sheet: to write a new thing of a kind (its fields, kinds.js: a passage's title and body, a
+  // picture's caption) or open one large (id), or name a closed group, in the right dock's Editor
+  // tab (without docks, a quiet panel over the room). preset: fields a new one starts with (a
+  // picture's, from its file). Keep (Enter) saves it; Escape or Cancel leaves it. loose: a new one
+  // is kept loose, in no group (from the loose dock's +), so it waits in the tray.
+  openSheet(kind, id = null, preset = null, loose = false) {
     if (!this.roomId) return;
     if (this.locked) { this.toast('This room is locked.'); return; }
     if (this.draft) this.commit();
     const th = id ? this.world.things[id] : null;
     kind = th ? kindOf(th) : kind;
-    this.editing = { kind, id, src: src || th?.src || null, loose: loose && !th };
     const keep = () => this.keepSheet();
     const keys = (e) => {
       e.stopPropagation();
       if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep(); // as everywhere: Enter keeps, Ctrl+Enter a new line
       if (e.key === 'Escape') { e.preventDefault(); this.closeSheet(); }
     };
-    const fields = [];
+    let fields = [], values = () => ({}), first = null, multiline = false, label;
     if (kind === 'group') {
       this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: `Name this ${this.groupName(th).toLowerCase()}`, 'aria-label': 'Name', value: th.title || '', onkeydown: keys });
-      fields.push(this.sheetTitle, el('div', { class: 'room-sheet-preview' }, thoughtText(this.world, th)));
-    } else if (kind === 'passage') {
-      this.sheetTitle = el('input', { class: 'room-sheet-title', placeholder: 'Title', 'aria-label': 'Title', value: th?.title || '', onkeydown: keys });
-      this.sheetBody = el('textarea', { class: 'room-sheet-body', placeholder: 'A paragraph, or a small article', 'aria-label': 'Passage', rows: 9, onkeydown: keys });
-      this.sheetBody.value = th?.body || '';
-      fields.push(this.sheetTitle, this.sheetBody);
+      fields = [this.sheetTitle, el('div', { class: 'room-sheet-preview' }, thoughtText(this.world, th))];
+      first = this.sheetTitle;
+      label = `A closed ${this.groupName(th).toLowerCase()}`;
     } else {
-      this.sheetCaption = el('input', { class: 'room-sheet-title', placeholder: 'A caption (optional)', 'aria-label': 'Caption', value: th?.text || '', onkeydown: keys });
-      fields.push(el('img', { class: 'room-sheet-picture', src: this.editing.src, alt: '' }), this.sheetCaption);
+      const k = kindFor(kind);
+      if (!k.fields?.length) return; // a kind that can't be written in here (its plugin is off)
+      ({ nodes: fields, values, first, multiline } = this.sheetFields(k, th, preset, keys));
+      label = k.name;
     }
-    const label = { passage: 'Passage', picture: 'Picture', group: `A closed ${this.groupName(th).toLowerCase()}` }[kind];
+    this.editing = { kind, id, values, loose: loose && !th };
     const words = el('div', { class: 'sheet-words' },
       el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
       el('button', { type: 'button', class: 'word', onclick: () => this.closeSheet() }, 'Cancel'),
-      el('span', { class: 'sheet-keys' }, kind === 'passage' ? 'Enter keeps it · Ctrl+Enter a new line · Esc cancels' : 'Enter keeps it · Esc cancels'));
-    const first = () => (kind === 'picture' ? this.sheetCaption : kind === 'passage' && th ? this.sheetBody : this.sheetTitle);
-    if (this.panel) { this.dockSheet(label, th, [...fields, words], first); return; }
+      el('span', { class: 'sheet-keys' }, multiline ? 'Enter keeps it · Ctrl+Enter a new line · Esc cancels' : 'Enter keeps it · Esc cancels'));
+    const focus = () => (first || words.querySelector('button')).focus();
+    if (this.panel) { this.dockSheet(label, th, [...fields, words], focus); return; }
     this.sheet.replaceChildren(el('div', { class: 'label' }, label), ...fields, words);
     this.sheet.hidden = false;
-    first().focus();
+    focus();
   }
 
   // The sheet in the right dock's Editor tab (in place of the content editor, if it showed). The
@@ -671,7 +649,7 @@ export class Bars {
       .then((h) => {
         if (this.editing !== ed) return;
         if (!h) { this.editing = null; return; }
-        first().focus();
+        first();
       });
   }
 
@@ -680,9 +658,7 @@ export class Bars {
     if (!ed) return;
     if (ed.kind === 'group') name(this.world, ed.id, this.sheetTitle.value);
     else {
-      const fields = ed.kind === 'passage'
-        ? { kind: 'passage', title: this.sheetTitle.value, body: this.sheetBody.value }
-        : { kind: 'picture', src: ed.src, text: this.sheetCaption.value };
+      const fields = { kind: ed.kind, ...ed.values() };
       if (ed.id) update(this.world, ed.id, fields);
       else if (ed.loose) { const th = create(this.world, this.roomId, fields); if (th) wait(this.world, this.roomId, th.id); } // waits in the tray, as keepLoose
       else this.keepNew(this.target(), fields);
