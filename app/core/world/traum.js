@@ -223,7 +223,7 @@ export function read(text) {
       tables.places.push(r);
     } else if (section === 'Links') {
       const kind = words.slice(1, -1).join(' '), to = idOf(words.at(-1));
-      if (!first || !to || !LINKS.includes(kind)) { bad(i, 'not a link'); continue; }
+      if (!first || !to || !(LINKS.includes(kind) || /^[a-z]+( [a-z]+)*$/.test(kind))) { bad(i, 'not a link'); continue; }
       const r = { from: first, to, kind };
       for (const k of ['order', 'rule', 'label', 'note']) if (s.o[k] != null) r[k] = k === 'order' ? +s.o[k] : String(s.o[k]);
       tables.links.push(r);

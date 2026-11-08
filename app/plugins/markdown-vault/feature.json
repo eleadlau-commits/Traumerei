@@ -1,0 +1,20 @@
+{
+  "name": "Markdown vault",
+  "description": "Obsidian in and out: a .md note or a .zip vault comes in as rooms (paragraphs and list items as thoughts, headings as groups, [[wikilinks]] as \"mentions\" links); every room goes out as a vault .zip (Ctrl+Alt+M, or More), the open room as one .md.",
+  "version": "0.1.0",
+  "main": "MarkdownVault.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "format",
+      "link",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Timeline",
+  "description": "A mode that lays a room's thoughts left to right by the day each was made.",
+  "version": "0.1.0",
+  "main": "Timeline.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

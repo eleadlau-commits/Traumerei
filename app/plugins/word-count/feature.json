@@ -1,0 +1,18 @@
+{
+  "name": "Word count",
+  "description": "An Editor section counting the chosen thought's words and characters; for a group, its parts'.",
+  "version": "0.1.0",
+  "main": "WordCount.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "editor"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

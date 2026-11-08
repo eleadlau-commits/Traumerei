@@ -10,17 +10,17 @@ import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIO
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
-  top: ['app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'ui', 'version'],
+  top: ['app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'together', 'ui', 'version'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
-  links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
+  links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'named', 'on', 'order', 'standsFor', 'to', 'unlink'],
   carriers: ['check', 'land', 'list', 'read', 'replace', 'tables', 'text'],
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
-  ui: ['chosen', 'docks', 'frame', 'open', 'toast'],
+  slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'linkKinds', 'more', 'rules'],
+  ui: ['chosen', 'docks', 'download', 'frame', 'open', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.
@@ -356,7 +356,7 @@ test('links: part-of rows with order and relation rows with their names; join, l
   assert.ok(k.links.unlink(`for:${folded.id}:${b.id}`).ok); // b comes back, loose
   assert.deepEqual(k.links.standsFor(folded.id), [a.id]);
   assert.ok(k.places.loose(room.id).some((m) => m.id === b.id));
-  assert.equal(k.links.link(a.id, c.id, 'about').reason, 'No such kind of link: about');
+  assert.equal(k.links.link(a.id, c.id, 'about').reason, 'No such kind of link: about. A plugin declares one with slots.linkKinds.add({ kind, name })');
 });
 
 test('distance: a table of readers, inherited down; Lock is a room for others; every reader can be declared', () => {

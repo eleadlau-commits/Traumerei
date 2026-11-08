@@ -82,6 +82,6 @@ The `traumerei` API has one namespace per table, each with the same three shapes
 - **subscribe**: `on(fn)`, told after each change to that table.
 
 Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap · 6 distance and carriers, v1
-deleted · 7 return (done) · 8 stress corpus of thirty plugins, v2 frozen ·
+deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen (done, CORPUS.md) ·
 9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

@@ -1,0 +1,13 @@
+# Link graph
+
+A tab in the right dock (Ctrl+Alt+K) drawing the open room's thoughts on a circle and every link between them, of any kind.
+
+A corpus plugin (kernel phase 8): written against `app/core/API.md` alone, and run through the
+conformance suite (`app/core/api/tests/corpus.test.js`): the eight laws hold with it on,
+switching it off and on loses no row, a .traum round-trip is stable, and it reaches nothing past
+the API.
+
+- **What it adds:** the command Ctrl+Alt+K and a right-dock tab `link-graph`.
+- **What it needs:** the plugin API (the right dock when there is one).
+- **What it saves:** nothing.
+- **Check it:** `python build.py test` (the corpus suite), then switch it on in Settings → Plugins.

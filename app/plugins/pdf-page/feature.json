@@ -1,0 +1,18 @@
+{
+  "name": "PDF page",
+  "description": "A kind of thought that shows one page of a PDF, picked as a file or dropped on the room.",
+  "version": "0.1.0",
+  "main": "PdfPage.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "item"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

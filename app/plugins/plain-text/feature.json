@@ -1,0 +1,19 @@
+{
+  "name": "Plain text",
+  "description": "A room out as plain text, and a .txt in as a room, one thought per paragraph.",
+  "version": "0.1.0",
+  "main": "PlainText.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "format",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

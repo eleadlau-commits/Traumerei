@@ -1,0 +1,18 @@
+{
+  "name": "Example of",
+  "description": "A kind of link: this thought is a case of that one (never both ways).",
+  "version": "0.1.0",
+  "main": "ExampleOf.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "link"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

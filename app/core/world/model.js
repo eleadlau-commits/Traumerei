@@ -138,7 +138,8 @@ export function loadWorld(saved, now = Date.now()) {
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
   // A world saved before the places table says where things are on the things themselves
   // (`parent`, a room's `page` and `archived`): read into home rows once.
-  const legacy = Object.values(w.things).some((th) => th && ('parent' in th || 'page' in th || 'archived' in th));
+  // (`page` only on a room: a plugin's kind may have a field of that name, a PDF page's.)
+  const legacy = Object.values(w.things).some((th) => th && ('parent' in th || (kindOf(th) === 'room' && 'page' in th) || 'archived' in th));
   const floors = Math.max(1, Math.floor(+w.pages) || 1, ...Object.values(w.things).map((th) => (kindOf(th) === 'room' && Number.isInteger(th.page) ? th.page + 1 : 1)),
     ...Object.keys(w.things).filter(isFloor).map((id) => +id.slice(6) + 1));
   delete w.pages;
@@ -154,7 +155,8 @@ export function loadWorld(saved, now = Date.now()) {
         else if (th.archived) P.setHome(w, th.id, ARCHIVE, { at: Number.isFinite(th.archived) ? th.archived : 0, floor: th.page || 0 });
         else P.setHome(w, th.id, FLOOR(th.page || 0));
       } else if (parent != null) P.setHome(w, th.id, parent);
-      delete th.parent; delete th.page; delete th.archived;
+      delete th.parent; delete th.archived;
+      if (kindOf(th) === 'room') delete th.page;
     }
   }
   P.repair(w);

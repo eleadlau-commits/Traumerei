@@ -1,0 +1,13 @@
+# Links
+
+The hands for every kind of link a plugin declares: an Editor section lists the chosen thought's links both ways, takes one away, and links it to a thought found by its words, in any room.
+
+A corpus plugin (kernel phase 8): written against `app/core/API.md` alone, and run through the
+conformance suite (`app/core/api/tests/corpus.test.js`): the eight laws hold with it on,
+switching it off and on loses no row, a .traum round-trip is stable, and it reaches nothing past
+the API.
+
+- **What it adds:** an Editor section `links`.
+- **What it needs:** the plugin API.
+- **What it saves:** nothing.
+- **Check it:** `python build.py test` (the corpus suite), then switch it on in Settings → Plugins.

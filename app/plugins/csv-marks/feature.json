@@ -1,0 +1,19 @@
+{
+  "name": "CSV of marks",
+  "description": "The open room's marks out as a spreadsheet (id, kind, words, made, edited, gap, due), and a .csv in as a room, one thought per row.",
+  "version": "0.1.0",
+  "main": "CsvMarks.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "format",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

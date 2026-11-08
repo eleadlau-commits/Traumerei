@@ -9,9 +9,25 @@
 import { Feature, ui } from 'folio';
 import { API_VERSION, surface, connect } from './v2.js';
 
+// A file handed to the person: words or a Blob, saved under a name (the browser's download).
+function download(name, content, type) {
+  if (typeof document === 'undefined') return false;
+  const blob = content instanceof Blob ? content : new Blob([String(content ?? '')], { type: `${type};charset=utf-8` });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  return true;
+}
+
 export default class Api extends Feature {
   start() {
     const world = this.use('world');
+    // Kinds of link a plugin brings (cites, contradicts): the API reads them when a link is proposed.
+    this.defineSlot('links.kinds', 'A kind of link: { kind, name, note?, both?, admit?(from, to, reads) } (app/core/API.md).');
     const parts = surface(world.lib);
     const app = this.app;
     const docks = this.use('docks');   // the left and right docks (the docks feature), or null
@@ -28,7 +44,7 @@ export default class Api extends Feature {
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, download, docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

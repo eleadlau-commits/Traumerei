@@ -1,0 +1,19 @@
+{
+  "name": "JSON of the six tables",
+  "description": "A room (or the whole world) out as its six tables in JSON, and such a file in again as a new room.",
+  "version": "0.1.0",
+  "main": "JsonTables.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "format",
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

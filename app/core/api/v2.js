@@ -32,15 +32,24 @@ export const ARCHIVE = 'archive';
 // ---- Six tables over the world as it is ----
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
 // screen; the tests call it with the same modules.
-export function kernel({ lib, world, events = null, gone = () => {}, floors = null }) {
+export function kernel({ lib, world, events = null, gone = () => {}, floors = null, linkKinds = () => [] }) {
   const { model, groups, links: LINKS, places: PLACES_T } = lib; // (the links and places tables, world/links.js and places.js, reached as the world's rules are)
   const netFor = (rule) => lib.relations.netFor(rule);
+  const declared = () => linkKinds() || [];
+  let reads = null; // the read half, handed to a link kind's admit() (set once the tables are made)
   const w = () => world.world;
   const rules = () => (world.ontologies?.length ? world.ontologies.map((o) => o.id) : ['joyce', 'pessoa']);
   const lays = (rule) => !!world.ontologies?.find((o) => o.id === rule)?.lays;
   const thing = (id) => w().things[id] || null;
   const kindOf = (th) => model.kindOf(th);
-  const save = () => { world.save?.(); };
+  // A propose saves (one step); inside together(fn) the saves wait, and every change fn makes
+  // lands as one step when it returns.
+  let holding = 0, held = false;
+  const save = () => { if (holding) held = true; else world.save?.(); };
+  const together = (fn) => {
+    holding++;
+    try { return fn(); } finally { if (!--holding && held) { held = false; world.save?.(); } }
+  };
 
   // A propose lands as one saved step and says so, or says why not.
   const land = (ok, id, why) => { if (!ok) return refuse(why); save(); return landed(id); };
@@ -72,7 +81,7 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
       if (context == null && kind !== 'room') return refuse('A mark needs a context to be made in');
       const made = kind === 'room'
         ? model.addRoom(w(), content, undefined, at)
-        : model.create(w(), context, { kind, text: content, title: at.title, x: at.x, y: at.y });
+        : model.create(w(), context, { title: at.title, x: at.x, y: at.y, ...(content && typeof content === 'object' ? content : { text: content }), kind }); // words, or a kind's own fields
       return land(!!made, made?.id, 'The context is locked, cannot hold this kind, or the mark would be empty');
     },
     edit: (id, fields = {}) => {
@@ -164,7 +173,8 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     members: (group) => Object.freeze(model.members(w(), group).map((th) => th.id)),
     holders: (mark) => Object.freeze(model.groupsOf(w(), mark).map((g) => g.id)),
     standsFor: (mark) => Object.freeze(LINKS.from(w(), mark, 'stands for').map((r) => r.to)), // the marks a fold stands for
-    kinds: () => LINK_KINDS,
+    kinds: () => Object.freeze([...LINK_KINDS, ...declared().map((k) => k.kind).filter((k) => !LINK_KINDS.includes(k))]),
+    named: (kind) => { const k = declared().find((d) => d.kind === kind); return k ? row({ kind: k.kind, name: k.name || k.kind, note: k.note || '', both: !!k.both }) : LINK_KINDS.includes(kind) ? row({ kind, name: kind, note: '', both: false }) : null; },
     count: () => LINKS.count(w()),
     // kind 'relation' takes the rule whose arrows these are (`rule`: 'russell', 'proust-links') and
     // goes through that rule's own checks (Russell refuses a loop, Law 3); label is the relation's
@@ -183,7 +193,22 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
         return land(!why, LINKS.relId(rule, from, to), why);
       }
       if (kind === 'stands for') return refuse('A mark comes to stand for others by folding them: links.fold(context, ids)');
-      return refuse(`No such kind of link: ${kind}`);
+      // A plugin's kind (slots.linkKinds): any two marks, across rooms too, once each way; the
+      // kind's own admit() may refuse; a kind that reads both ways (`both`) is one row either way.
+      const k = declared().find((d) => d.kind === kind);
+      if (!k) return refuse(`No such kind of link: ${kind}. A plugin declares one with slots.linkKinds.add({ kind, name })`);
+      if (!thing(from) || !thing(to)) return refuse('Both ends must be marks there are');
+      if (from === to) return refuse('A mark does not link to itself');
+      if (model.shut(w(), roomOf(from))) return refuse('The context is locked');
+      const id = LINKS.kindId(kind, from, to);
+      if (LINKS.get(w(), id) || (k.both && LINKS.get(w(), LINKS.kindId(kind, to, from)))) return refuse(`These two are already linked as ${k.name || kind}`);
+      const why = k.admit?.(from, to, reads);
+      if (why && why !== true) return refuse(typeof why === 'string' ? why : why.reason || `${k.name || kind} refuses this link`);
+      const fields = { from, to, kind };
+      if (label) fields.label = String(label);
+      if (note) fields.note = String(note);
+      LINKS.set(w(), id, fields);
+      return land(true, id);
     },
     // Many marks fold into one new mark that stands for them and takes their place in every group.
     fold: (context, ids) => {
@@ -199,6 +224,11 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
         const net = netFor(r.rule);
         if (!net) return refuse(`No rule draws relations as ${r.rule}`);
         return land(net.unlink(w(), roomOf(r.from), r.to, r.from), id, 'The context is locked');
+      }
+      if (r.kind !== 'stands for') { // a plugin's kind: the row goes, the marks stay
+        if (model.shut(w(), roomOf(r.from))) return refuse('The context is locked');
+        LINKS.drop(w(), r.id);
+        return land(true, id);
       }
       // stands for: the fold no longer stands for this mark, which comes back loose in its context
       if (model.shut(w(), r.to)) return refuse('The context is locked');
@@ -338,12 +368,14 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   function check(context, got) {
     if (!got?.tables) return row({ ok: false, reason: 'Not a traum/3 text' });
     const copy = lib.model.loadWorld(JSON.parse(JSON.stringify(w())));
-    const before = new Map(lib.model.tablesOf(copy, context).marks.map((m) => [m.id, JSON.stringify(m)]));
+    // compared with keys in order, so a field written back in another order is not a change
+    const same = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]])) : x));
+    const before = new Map(lib.model.tablesOf(copy, context).marks.map((m) => [m.id, same(m)]));
     const out = lib.model.replaceTables(copy, context, got.tables, got.root);
     if (out.why) return row({ ok: false, reason: out.why });
     const after = lib.model.tablesOf(copy, context).marks;
     const n = { ok: true, kept: 0, changed: 0, made: 0, deleted: 0 };
-    for (const m of after) { if (!before.has(m.id)) n.made++; else if (before.get(m.id) === JSON.stringify(m)) n.kept++; else n.changed++; }
+    for (const m of after) { if (!before.has(m.id)) n.made++; else if (before.get(m.id) === same(m)) n.kept++; else n.changed++; }
     n.deleted = [...before.keys()].filter((id) => !after.some((m) => m.id === id)).length;
     return row(n);
   }
@@ -388,7 +420,69 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     },
   });
 
-  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers });
+  reads = readsOf({ marks, places, links, distance, gaps, moments });
+  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers, together });
+}
+
+// The read half of the tables: what a rule's arrange(), a link kind's admit() and a view are handed.
+export const READS = Object.freeze({
+  marks: ['get', 'in', 'ofKind', 'text', 'search'],
+  places: ['of', 'home', 'in', 'loose', 'position'],
+  links: ['get', 'from', 'to', 'members', 'holders', 'standsFor', 'kinds', 'named', 'count'],
+  distance: ['of', 'declared', 'all', 'shut', 'readers'],
+  gaps: ['of', 'opened', 'oldest', 'progress'],
+  moments: ['of', 'changed', 'ahead', 'returns', 'next'],
+});
+function readsOf(tables) {
+  return Object.freeze(Object.fromEntries(Object.entries(READS).map(([ns, names]) => [ns, Object.freeze(Object.fromEntries(names.map((n) => [n, tables[ns][n]])))])));
+}
+// The reads over a world handed in (a rule reads the world its layout is handed, which may be a
+// frozen one, or the world as it was at a moment of the scrub). One per world.
+const OVER = new WeakMap();
+export function readsOver(lib, w, ontologies = null) {
+  let r = OVER.get(w);
+  if (!r) OVER.set(w, (r = readsOf(kernel({ lib, world: { world: w, lib, ontologies } }))));
+  return r;
+}
+
+// A simple rule (API.md, Rules): { id, name, note?, icon?, order?, arrange(reads, context) →
+// [{ mark, x, y }] , hand? }. It reads only the tables and says where each mark of the context
+// sits; the kernel makes it a full mode: its units are the context's marks (a group as one), a
+// mark dragged keeps where it was put (a rule row of places) unless hand is false, a mark
+// arrange() leaves out sits in a row below the rest. Remembered until the tables it reads change.
+export function simpleRule(rule, lib, ontologies = () => null) {
+  const { model, groups, gaps: G, rules: R } = lib;
+  const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {}).length}`;
+  const memo = new WeakMap(); // w → Map context → { stamp, key, map }
+  const hand = rule.hand !== false;
+  const units = (w, room) => model.roomUnits(w, room);
+  const o = {
+    id: rule.id, name: rule.name || rule.id, note: rule.note || '', icon: rule.icon, order: rule.order ?? 60,
+    groups: null, settings: rule.settings,
+    units,
+    layout(w, room) {
+      let byRoom = memo.get(w); if (!byRoom) memo.set(w, (byRoom = new Map()));
+      const key = `${lib.places.version(w, room)}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
+      const had = byRoom.get(room);
+      if (had && had.key === key) return had.map;
+      const out = new Map(), own = units(w, room), ids = new Set(own.map((u) => u.id));
+      let placed = [];
+      try { placed = rule.arrange(readsOver(lib, w, ontologies()), room) || []; } catch (err) { console.warn(`Rule ${rule.id}: arrange failed`, err); }
+      for (const p of placed) if (p && ids.has(p.mark) && Number.isFinite(p.x) && Number.isFinite(p.y)) out.set(p.mark, { x: p.x, y: p.y });
+      let i = 0;
+      const below = Math.max(0, ...[...out.values()].map((p) => p.y)) + 260;
+      for (const u of own) if (!out.has(u.id)) out.set(u.id, { x: (i % 8) * 240, y: below + Math.floor(i++ / 8) * 140 });
+      if (hand) for (const [id, p] of groups.spotsOf(w, room, rule.id)) if (out.has(id) && p && Number.isFinite(p.x)) out.set(id, { x: p.x, y: p.y });
+      byRoom.set(room, { key, map: out });
+      return out;
+    },
+    point(w, room, id) { return this.layout(w, room).get(id) || null; },
+    drop(w, room, id, x, y) { if (hand && !model.shut(w, room)) groups.putAt(w, room, rule.id, id, x, y); },
+    unplace: hand ? (w, room, id) => groups.unplace(w, room, rule.id, id) : undefined,
+    placed: () => true,
+  };
+  if (rule.admit) o.admit = (w, p) => { const why = rule.admit(readsOver(lib, w, ontologies()), p); return why && why !== true ? { ok: false, reason: typeof why === 'string' ? why : why.reason } : { ok: true }; };
+  return o;
 }
 
 // ---- The parts: what a rule or a view of the tables shares ----
@@ -440,6 +534,7 @@ export function surface(lib) {
 // The places to plug in that core features own: the slot's name to a plugin → the app's slot.
 export const SLOTS = {
   rules: 'world.ontologies',   // a way of seeing a room (world/ontologies/index.js says its shape)
+  linkKinds: 'links.kinds',    // a kind of link: cites, contradicts (API.md: { kind, name, note?, both?, admit?(from, to, reads) })
   kinds: 'world.items',        // a kind of mark: a passage, a picture, a PDF page (world/items/index.js)
   commands: 'keys',            // a named action, with its keys if it has any (keys/README.md)
   more: 'rail.more',           // an entry under ⋯ More (frame/README.md)
@@ -472,19 +567,20 @@ function dockFor(dock, gone) {
 // world service; plugin: the Feature asking (its id owns what it adds, and it all goes when it is
 // switched off: gone(fn)); parts: surface(world.lib), made once; lib: world.lib; events: { on };
 // toast, docks, keys, frame, floors, service(name), room(): the app's, or null.
-export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, docks = null, keys = null,
+export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, download = () => false, docks = null, keys = null,
   frame = null, floors = null, service = () => null, room = null, gone = () => {} }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
   if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
   const owner = plugin.id;
   const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
-  const tables = kernel({ lib: lib || world.lib, world, events, gone, floors });
+  const declared = () => (app.slot(SLOTS.linkKinds)?.items || []).map((e) => (e && e.item && e.owner !== undefined ? e.item : e));
+  const tables = kernel({ lib: lib || world.lib, world, events, gone, floors, linkKinds: declared });
   if (frame) gone(() => frame.hide(plugin));
   const slots = Object.freeze({
     ...Object.fromEntries(Object.entries(SLOTS).map(([name, slot]) => [name, Object.freeze({ add: add(slot) })])),
     rules: Object.freeze({
-      add: add(SLOTS.rules),
+      add: (rule) => add(SLOTS.rules)(typeof rule?.arrange === 'function' && !rule.units ? simpleRule(rule, lib || world.lib, () => world.ontologies) : rule),
       get: (id) => world.ontology(id),          // the rule with this id (the default when it is off or unknown)
       get all() { return world.ontologies; },    // every rule there is now
       get settings() { return world.globals; },  // each rule's settings for new rooms: { [rule]: { key: value } }
@@ -501,8 +597,9 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     // mark chosen there, as ids, or null.
     ui: Object.freeze({
       toast: (text) => toast(text),
+      download: (name, content, type = 'text/plain') => download(String(name), content, type),
       chosen: () => { const r = room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); },
-      docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
+      docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone), canvasOnly: () => docks.canvasOnly?.() }) : null,
       frame: frame ? Object.freeze({
         show: (o) => frame.show(plugin, o), update: (o) => frame.update(plugin, o), hide: () => frame.hide(plugin),
         hint: (text) => frame.hint(text), clearHint: () => frame.clearHint(),

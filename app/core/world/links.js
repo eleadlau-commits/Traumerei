@@ -16,6 +16,11 @@
 // log replaying a row) says so with touched(). No screen here (tests/links.test.js).
 
 export const KINDS = Object.freeze(['part of', 'stands for', 'relation']);
+// A plugin's kind of link (cites, contradicts, …): lowercase words. Its rows are kept whether or
+// not the plugin is on (Law 2: a row needs no plugin), under the id k:<kind>:<from>:<to>.
+export const KIND_WORDS = /^[a-z]+( [a-z]+)*$/;
+export const isKind = (kind) => typeof kind === 'string' && (KINDS.includes(kind) || KIND_WORDS.test(kind));
+export const kindId = (kind, from, to) => `k:${kind.replace(/ /g, '-')}:${from}:${to}`;
 
 export const partId = (group, member) => `part:${group}:${member}`;
 export const forId = (fold, mark) => `for:${fold}:${mark}`;
@@ -159,7 +164,7 @@ export function copyFor(w, ids) {
   for (const [id, r] of Object.entries(table(w))) {
     if (!r || !(ids[r.from] && ids[r.to])) continue;
     const row = { ...r, from: ids[r.from], to: ids[r.to] };
-    const nid = r.kind === 'part of' ? partId(row.to, row.from) : r.kind === 'stands for' ? forId(row.from, row.to) : r.kind === 'relation' ? relId(r.rule, row.from, row.to) : id;
+    const nid = r.kind === 'part of' ? partId(row.to, row.from) : r.kind === 'stands for' ? forId(row.from, row.to) : r.kind === 'relation' ? relId(r.rule, row.from, row.to) : kindId(r.kind, row.from, row.to);
     out[nid] = row;
   }
   return out;
@@ -170,7 +175,7 @@ export function copyFor(w, ids) {
 export function repair(w, ok = () => true) {
   const t = table(w);
   for (const [id, r] of Object.entries(t)) {
-    if (!r || typeof r !== 'object' || !KINDS.includes(r.kind) || !w.things[r.from] || !w.things[r.to] || r.from === r.to || !ok(r)) delete t[id];
+    if (!r || typeof r !== 'object' || !isKind(r.kind) || !w.things[r.from] || !w.things[r.to] || r.from === r.to || !ok(r)) delete t[id];
     else t[id] = tidy(r);
   }
   touched(w);

@@ -1,0 +1,21 @@
+{
+  "name": "Links",
+  "description": "The hands for every kind of link a plugin declares: an Editor section lists the chosen thought's links both ways, takes one away, and links it to a thought found by its words, in any room.",
+  "version": "0.1.0",
+  "main": "Links.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "editor"
+    ],
+    "load": "start",
+    "author": "E"
+  },
+  "styles": [
+    "style.css"
+  ]
+}

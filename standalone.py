@@ -38,7 +38,9 @@ def main():
     entry.write_text('\n'.join(lines) + '\n', 'utf-8')
 
     bundle = subprocess.run(
-        ['npx', '--yes', 'esbuild@0.24.0', str(entry), '--bundle', '--format=iife', '--charset=utf8',
+        # Whitespace only is minified (names and strings stay as written, so an error still names
+        # the function it came from): the page stays well under its 2 MB budget.
+        ['npx', '--yes', 'esbuild@0.24.0', str(entry), '--bundle', '--minify-whitespace', '--format=iife', '--charset=utf8',
          f'--alias:folio={WEB / "folio" / "folio.js"}'],
         cwd=ROOT, check=True, capture_output=True, text=True).stdout
     entry.unlink()
