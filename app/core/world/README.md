@@ -34,7 +34,8 @@ list is everything it offers:
 
 **Slots:** `world.ontologies`, for a whole ontology from another feature (shape in
 `ontologies/index.js`), and `world.items`, for a kind of item from a plugin (shape in
-`items/index.js`). `world:kinds` is sent when a kind comes or goes.
+`items/index.js`). `world:kinds` is sent when a kind comes or goes, and `world:modes` when a mode
+does (a plugin switched on or off).
 
 A feature can't import this folder's files (Folio's rule), so a feature that uses many of the
 rules binds them once from `lib` into a file of its own that lists what it needs (the room's
