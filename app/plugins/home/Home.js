@@ -27,7 +27,7 @@ export default class Home extends Feature {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Home needs the plugin API');
     this.t = t;
-    this.frame = t.frame;             // the top bar and the status bar, or null
+    this.frame = t.ui.frame;             // the top bar and the status bar, or null
     this.quick = quickLine({
       listen: (target, type, fn) => this.listenTo(target, type, fn), // taken away when Home is switched off
       drop: (text) => this.drop(text),
@@ -60,10 +60,10 @@ export default class Home extends Feature {
 
   // ---- Create ----
 
-  create() { this.t.open.rooms(); }
+  create() { this.t.ui.open.rooms(); }
 
   // Into Messy thoughts: the rooms page opens, then the room.
-  goToMessy() { this.t.open.room(this.t.model.MESSY); }
+  goToMessy() { this.t.ui.open.room(this.t.parts.model.MESSY); }
 
   // Whether Home is what shows: no rooms page over it.
   showing() { return !document.documentElement.classList.contains('rooms-open'); }
@@ -71,17 +71,14 @@ export default class Home extends Feature {
   // ---- The quick thought ----
 
   // Keeps `text` as a loose thought of Messy thoughts, waiting in its tray in every mode (as a
-  // thought added from the tray does). Read afresh first (it may have come from the account), and
-  // written down at once, so the rooms page finds it. Says where it went in the status bar.
+  // thought added from the tray does), through the marks and places tables, so it lands as a moment
+  // and is written down at once. Says where it went in the status bar.
   // True when it went.
   drop(text) {
-    const { model, groups } = this.t;
-    const world = this.t.load(); // Messy thoughts is always there: a world without it is given it again
-    const th = model.create(world, model.MESSY, { kind: 'line', text });
-    if (!th) { this.frame?.hint('Messy thoughts is locked: nothing was dropped'); return false; }
-    groups.wait(world, model.MESSY, th.id);
-    this.t.save();
-    this.t.write();
+    const { MESSY } = this.t.parts.model;
+    const made = this.t.marks.make({ kind: 'line', content: text, in: MESSY }); // one step, and written down
+    if (!made.ok) { this.frame?.hint('Messy thoughts is locked: nothing was dropped'); return false; }
+    this.t.places.unplace(made.id, MESSY); // waiting in its tray in every mode
     this.frame?.hint('Dropped in Messy thoughts');
     this.drawWaiting();
     return true;
@@ -91,11 +88,11 @@ export default class Home extends Feature {
 
   // How many things wait in Messy thoughts' loose tray, in the mode it is seen in.
   waiting() {
-    const world = this.t.world;
+    const world = this.t.parts.world();
     if (!world) return 0;
-    const { model } = this.t;
+    const { model } = this.t.parts;
     try {
-      const o = this.t.modes.get(model.view(world, model.MESSY).mode);
+      const o = this.t.slots.rules.get(model.view(world, model.MESSY).mode);
       return o?.tray ? o.tray(world, model.MESSY).length : 0;
     } catch { return 0; }
   }

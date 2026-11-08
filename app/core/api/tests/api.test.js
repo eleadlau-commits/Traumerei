@@ -1,17 +1,16 @@
-// Tests for the plugin API (v2.js over v1.js): the list is exactly what app/core/API.md says,
-// every name is really there in the world, the six kernel tables read and propose as KERNEL.md
-// says, a plugin's additions are its own, and a plugin for a newer API can't connect.
+// Tests for the plugin API (v2.js): the list is exactly what app/core/API.md says, every name is
+// really there in the world, the six kernel tables read and propose as KERNEL.md says, a plugin's
+// additions are its own, and a plugin for another API can't connect. Version 1's flat names went
+// in kernel phase 6: none of them is offered.
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import * as M from '../../world/moments.js';
-import { API_VERSION, surface, connect, kernel, PLACES, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
-import { API_VERSION as V1_VERSION } from '../v1.js';
+import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
 
-// Version 2, as API.md lists it: the six tables, the slots and ui, over every v1 name. Changing
-// the API means changing this and API.md together.
+// Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
-  top: ['app', 'arrows', 'carriers', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'rules', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
+  top: ['app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'ui', 'version'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
@@ -21,11 +20,12 @@ const V2 = {
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
   slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
-  ui: ['chosen', 'toast'],
+  ui: ['chosen', 'docks', 'frame', 'open', 'toast'],
+  parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
-// Version 1's names, still offered beneath v2 until kernel phase 6.
-const V1 = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'thoughtText', 'unsetSpot', 'update', 'view', 'within'],
+// The parts rules and views share, by name.
+const PARTS = {
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'thoughtText', 'unsetSpot', 'update', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'spotsOf', 'trayForeign', 'unplace', 'unput', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
@@ -36,14 +36,6 @@ const V1 = {
   kinds: ['ITEMS', 'isKnown', 'kindFor'],
   twins: ['addTwin', 'isTwin', 'sides', 'twinOf'],
   pictures: ['keepOrShrink', 'shrinkPicture'],
-  modes: ['add', 'all', 'get', 'settings'],
-  commands: ['add', 'label'],
-  more: ['add'],
-  editor: ['add'],
-  items: ['add'],
-  formats: ['add'],
-  open: ['room', 'rooms'],
-  floors: ['place'],
 };
 
 // A small stand-in for the Folio app: slots that remember who added what.
@@ -64,21 +56,18 @@ function fakeApp() {
 const world = { world: lib.model.emptyWorld(), saved: 0, save() { this.saved++; return true; } };
 const plugin = (id, api = 2) => ({ id, manifest: { name: id[0].toUpperCase() + id.slice(1), plugin: { api, minApp: '1.0.0' } } });
 
-test('version 2 is exactly the written list, with every v1 name beneath it', () => {
+test('version 2 is exactly the written list, and no v1 name is left', () => {
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib });
   assert.equal(API_VERSION, 2);
-  assert.equal(V1_VERSION, 1);
   assert.equal(t.version, 2);
   assert.deepEqual(Object.keys(t).sort(), V2.top);
   for (const part of Object.keys(V2).filter((k) => k !== 'top')) assert.deepEqual(Object.keys(t[part]).sort(), V2[part], part);
-  for (const part of Object.keys(V1)) assert.deepEqual(Object.keys(t[part]).sort(), V1[part], part);
+  for (const part of Object.keys(PARTS)) assert.deepEqual(Object.keys(t.parts[part]).sort(), PARTS[part], part);
+  for (const gone of ['world', 'save', 'write', 'load', 'data', 'model', 'groups', 'modes', 'items', 'commands', 'toast', 'docks', 'frame', 'open', 'floors']) assert.ok(!(gone in t), gone);
   assert.deepEqual(TABLES, ['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
-  assert.equal(t.slots.rules, t.modes); // the same places, named for what they are to the kernel
-  assert.equal(t.slots.kinds, t.items);
-  assert.equal(t.ui.toast, t.toast);
   assert.equal(t.ui.chosen(), null); // no room shows in a test
-  assert.equal(t.frame, null); // no frame in this app
-  assert.deepEqual(Object.keys(PLACES).sort(), ['commands', 'editor', 'formats', 'items', 'modes', 'more']);
+  assert.equal(t.ui.frame, null); // no frame in this app
+  assert.deepEqual(Object.keys(SLOTS).sort(), V2.slots);
 });
 
 test('every name is the world\'s own, and the API can\'t be changed by a plugin', () => {
@@ -87,8 +76,8 @@ test('every name is the world\'s own, and the API can\'t be changed by a plugin'
   assert.equal(parts.arrows.arrowView, lib.arrowview.arrowView);
   assert.equal(parts.layout.spiralPoint, lib.pessoa.spiralPoint);
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts, lib });
-  assert.ok(Object.isFrozen(t) && Object.isFrozen(t.model) && Object.isFrozen(t.modes));
-  assert.throws(() => { 'use strict'; t.model.create = null; });
+  assert.ok(Object.isFrozen(t) && Object.isFrozen(t.parts.model) && Object.isFrozen(t.slots.rules));
+  assert.throws(() => { 'use strict'; t.parts.model.create = null; });
 });
 
 test('a name the world no longer has fails loudly, naming it', () => {
@@ -100,43 +89,37 @@ test('a name the world no longer has fails loudly, naming it', () => {
 test('what a plugin adds is its own, and can be taken away', () => {
   const app = fakeApp();
   const t = connect({ app, world, plugin: plugin('haiku'), parts: surface(lib), lib });
-  const remove = t.modes.add({ id: 'haiku' });
-  t.commands.add({ id: 'haiku.go', keys: ['Ctrl+Alt+H'] });
-  t.editor.add({ id: 'haiku-lines' });
-  t.more.add({ id: 'haiku-more' });
-  t.items.add({ kind: 'haiku' });
+  const remove = t.slots.rules.add({ id: 'haiku' });
+  t.slots.commands.add({ id: 'haiku.go', keys: ['Ctrl+Alt+H'] });
+  t.slots.editor.add({ id: 'haiku-lines' });
+  t.slots.more.add({ id: 'haiku-more' });
+  t.slots.kinds.add({ kind: 'haiku' });
+  t.slots.carriers.add({ id: 'haiku-cloud', name: 'Haiku cloud', moves: 'moments' });
   assert.deepEqual(app.slot('world.ontologies').items.map((e) => e.owner), ['haiku']);
-  assert.equal(app.slot('keys').items[0].owner, 'haiku');
-  assert.equal(app.slot('rail.more').items[0].owner, 'haiku');
-  assert.equal(app.slot('world.items').items[0].owner, 'haiku');
-  assert.equal(app.slot('room.editor').items[0].owner, 'haiku');
+  for (const slot of ['keys', 'rail.more', 'world.items', 'room.editor', 'world.carriers']) assert.equal(app.slot(slot).items[0].owner, 'haiku', slot);
   remove();
   assert.equal(app.slot('world.ontologies').items.length, 0);
 });
 
-test('the world, saving and the plugin\'s own data in a room', () => {
+test('the world the parts read is the one there is now; the app and the plugin say who they are', () => {
   const w = lib.model.emptyWorld();
   const own = { world: w, saved: 0, save() { this.saved++; return true; } };
   const t = connect({ app: fakeApp(), world: own, plugin: plugin('haiku'), parts: surface(lib), lib });
-  assert.equal(t.world, w);
+  assert.equal(t.parts.world(), w);
   const fresh = lib.model.emptyWorld();
   own.world = fresh; // read back from storage: a new world object
-  assert.equal(t.world, fresh); // a plugin always writes to the world there is now
-  own.world = w;
+  assert.equal(t.parts.world(), fresh); // never a stale world (the lesson of PR #194)
+  assert.ok(t.marks.make({ kind: 'line', content: 'into the fresh one', in: lib.model.MESSY }).ok);
+  assert.equal(lib.model.roomItems(fresh, lib.model.MESSY).length, 1);
   assert.deepEqual(t.app, { name: 'Träumerei', version: '1.0.0' });
   assert.deepEqual(t.plugin, { id: 'haiku', name: 'Haiku' });
-  const room = lib.model.MESSY;
-  t.data(room).lines = 3;
-  assert.equal(lib.model.own(w, room, 'haiku').lines, 3);   // kept with the room, under the plugin's id
-  assert.equal(t.data(room), t.data(room));
-  t.save();
-  assert.equal(own.saved, 1);
 });
 
-test('a plugin written for a newer API can\'t connect, and says why', () => {
+test('a plugin written for another API can\'t connect, and says why', () => {
   assert.throws(() => connect({ app: fakeApp(), world, plugin: plugin('later', 3), parts: surface(lib), lib }),
     /Later is written for plugin API 3; this app offers 2/);
-  assert.equal(connect({ app: fakeApp(), world, plugin: plugin('older', 1), parts: surface(lib), lib }).version, 2); // a v1 plugin still connects
+  assert.throws(() => connect({ app: fakeApp(), world, plugin: plugin('older', 1), parts: surface(lib), lib }),
+    /Older is written for plugin API 1, which is gone; this app offers 2/);
 });
 
 // A stand-in dock: remembers what is open, and closes it when asked.
@@ -154,13 +137,14 @@ test('a plugin\'s dock tabs are its own, and all close when it is switched off',
   const docks = { left: fakeDock(), right: fakeDock() };
   const leaving = [];
   const t = connect({ app: fakeApp(), world, plugin: plugin('time'), parts: surface(lib), lib, docks, gone: (fn) => leaving.push(fn) });
-  assert.deepEqual(Object.keys(t.docks.right).sort(), ['close', 'isOpen', 'isShowing', 'open', 'show']);
+  const d = t.ui.docks;
+  assert.deepEqual(Object.keys(d.right).sort(), ['close', 'isOpen', 'isShowing', 'open', 'show']);
   let closed = 0;
-  await t.docks.right.open({ key: 'time', body: null, onClose: () => closed++ });
-  await t.docks.left.open({ key: 'notes', body: null });
-  await t.docks.right.open({ key: 'gone-soon', body: null });
-  await t.docks.right.close('gone-soon');
-  assert.ok(t.docks.right.isOpen('time') && t.docks.left.isOpen('notes'));
+  await d.right.open({ key: 'time', body: null, onClose: () => closed++ });
+  await d.left.open({ key: 'notes', body: null });
+  await d.right.open({ key: 'gone-soon', body: null });
+  await d.right.close('gone-soon');
+  assert.ok(d.right.isOpen('time') && d.left.isOpen('notes'));
   for (const fn of leaving) fn(); // the plugin is switched off
   assert.equal(docks.right.open_.size, 0);
   assert.equal(docks.left.open_.size, 0);
@@ -169,55 +153,47 @@ test('a plugin\'s dock tabs are its own, and all close when it is switched off',
 
 test('without docks there are none, and a tab needs a key', async () => {
   const none = connect({ app: fakeApp(), world, plugin: plugin('time'), parts: surface(lib), lib });
-  assert.equal(none.docks, null);
+  assert.equal(none.ui.docks, null);
   const t = connect({ app: fakeApp(), world, plugin: plugin('time'), parts: surface(lib), lib, docks: { left: fakeDock(), right: null } });
-  assert.equal(t.docks.right, null);
+  assert.equal(t.ui.docks.right, null);
   let refused = null;
-  try { await t.docks.left.open({ body: null }); } catch (err) { refused = err.message; }
+  try { await t.ui.docks.left.open({ body: null }); } catch (err) { refused = err.message; }
   assert.equal(refused, 'A dock tab needs a key');
 });
 
-test('modes, a command\'s keys, the frame, going somewhere and placing a room, for a plugin', () => {
+test('rules, a command\'s keys, the frame and going somewhere, for a plugin', () => {
   const joyce = { id: 'joyce' }, russell = { id: 'russell' };
   const w = lib.model.emptyWorld();
-  const own = { world: w, ontologies: [joyce, russell], globals: { joyce: { gap: 2 } }, ontology: (id) => (id === 'russell' ? russell : joyce),
-    loaded: 0, begun: 0, written: 0, load() { this.loaded++; return w; }, begin() { this.begun++; }, write() { this.written++; }, save() { return true; } };
-  const shown = [], went = [], placed = [], leaving = [];
+  const own = { world: w, ontologies: [joyce, russell], globals: { joyce: { gap: 2 } }, ontology: (id) => (id === 'russell' ? russell : joyce), save() { return true; } };
+  const shown = [], went = [], leaving = [];
   const frame = { show: (o, x) => shown.push(['show', o.id, x.idle]), update: (o, x) => shown.push(['update', o.id, x.idle]),
     hide: (o) => shown.push(['hide', o.id]), hint: (s) => shown.push(['hint', s]), clearHint: () => shown.push(['clear']) };
   const keys = { label: (id) => (id === 'haiku.go' ? 'Ctrl+Alt+H' : '') };
   const services = { create: { open: () => went.push('rooms') }, rooms: { openRoom: (id) => went.push(id) } };
-  const me = plugin('haiku');
-  const t = connect({ app: fakeApp(), world: own, plugin: me, parts: surface(lib), lib, keys, frame,
-    floors: { place: (id, cell) => placed.push([id, cell]) }, service: (name) => services[name] || null, gone: (fn) => leaving.push(fn) });
-  assert.equal(t.modes.get('russell'), russell);
-  assert.equal(t.modes.get('nowhere'), joyce);
-  assert.deepEqual(t.modes.all.map((o) => o.id), ['joyce', 'russell']);
-  assert.deepEqual(t.modes.settings, { joyce: { gap: 2 } });
-  assert.equal(t.commands.label('haiku.go'), 'Ctrl+Alt+H');
-  assert.equal(t.commands.label('other'), '');
-  t.frame.show({ idle: 'Haiku' });
-  t.frame.update({ idle: 'Five' });
-  t.frame.hint('Saved a haiku');
-  t.open.rooms();
-  t.open.room('messy');
-  t.floors.place('r1', { col: 1, row: 2 });
-  assert.equal(t.load(), w);
-  t.write();
-  assert.deepEqual([own.loaded, own.begun, own.written], [1, 1, 1]);
+  const t = connect({ app: fakeApp(), world: own, plugin: plugin('haiku'), parts: surface(lib), lib, keys, frame,
+    service: (name) => services[name] || null, gone: (fn) => leaving.push(fn) });
+  assert.equal(t.slots.rules.get('russell'), russell);
+  assert.equal(t.slots.rules.get('nowhere'), joyce);
+  assert.deepEqual(t.slots.rules.all.map((o) => o.id), ['joyce', 'russell']);
+  assert.deepEqual(t.slots.rules.settings, { joyce: { gap: 2 } });
+  assert.equal(t.slots.commands.label('haiku.go'), 'Ctrl+Alt+H');
+  assert.equal(t.slots.commands.label('other'), '');
+  t.ui.frame.show({ idle: 'Haiku' });
+  t.ui.frame.update({ idle: 'Five' });
+  t.ui.frame.hint('Saved a haiku');
+  t.ui.open.rooms();
+  t.ui.open.room('messy');
   assert.deepEqual(went, ['rooms', 'rooms', 'messy']);
-  assert.deepEqual(placed, [['r1', { col: 1, row: 2 }]]);
   for (const fn of leaving) fn(); // switched off: its frame goes too
   assert.deepEqual(shown, [['show', 'haiku', 'Haiku'], ['update', 'haiku', 'Five'], ['hint', 'Saved a haiku'], ['hide', 'haiku']]);
 });
 
-test('without keys, a frame, floors or the rooms page, those parts do nothing quietly', () => {
+test('without keys, a frame or the rooms page, those parts do nothing quietly', () => {
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib });
-  assert.equal(t.commands.label('anything'), '');
-  assert.equal(t.frame, null);
-  t.open.rooms();
-  t.open.room('messy');
-  t.floors.place('r1');
+  assert.equal(t.slots.commands.label('anything'), '');
+  assert.equal(t.ui.frame, null);
+  t.ui.open.rooms();
+  t.ui.open.room('messy');
 });
 
 // ---- The six tables (v2.js's kernel), over a small world ----

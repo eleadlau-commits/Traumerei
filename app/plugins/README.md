@@ -83,8 +83,14 @@ Reads return frozen rows: hold ids, not rows. A change (`make`, `edit`, `put`, `
 `{ ok: true, id }` after it is saved as one step Ctrl+Z takes back, or `{ ok: false, reason }`
 with nothing changed. `on(fn)` on any table calls `fn` after each saved step and each undo.
 
-The older v1 names (`t.model`, `t.groups`, `t.modes`, `t.items`, `t.toast`, …) still work for now,
-but they go in kernel phase 6: new plugins use the names above. The API is not frozen yet: it
+Beside them: `t.ui` (`toast`, `chosen`, `docks`, `frame`, `open.rooms()`, `open.room(id)`),
+`t.carriers` (a room as .traum text and back) and `t.parts`, what a rule (a mode) or a view of the
+tables shares: the rule kit (`parts.model`, `parts.groups`: plain functions of a world handed to
+them), the drawing parts (`lines`, `arrows`, `maths`, `layout`, `trains`, `relations`), `kinds`,
+`twins`, `pictures`, and `parts.world()`, the tables as the world holds them now. A rule writes
+with the kit only inside its own gestures, which the room lands as one step; anything else proposes
+through the tables. Version 1's flat names (`t.model`, `t.world`, `t.save`, …) went in kernel
+phase 6, and a plugin written for API 1 no longer connects. The API is not frozen yet: it
 changes through the kernel phases (`app/core/API.md` says what is current).
 
 ## 4. Switching off

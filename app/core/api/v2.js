@@ -3,7 +3,7 @@
 // in words; tests/api.test.js holds the list, so a change here is always deliberate (change
 // API.md and the test with it).
 //
-// Phases 0 to 6 of the kernel plan: marks are a thin layer over the world as it is today
+// Version 1's flat names went in kernel phase 6: this is the one API. Phases 0 to 6 of the kernel plan: marks are a thin layer over the world as it is today
 // (world/model.js); links, places, gaps and distance read their tables (world/links.js,
 // places.js, gaps.js, distance.js) and moments the world's log (world/moments.js). Each read
 // gives frozen rows; each propose goes through the world's own checks and lands as one step in
@@ -11,7 +11,6 @@
 // moments) the read is empty and the propose refuses, naming the phase that brings it. Nothing
 // here touches the screen.
 
-import { connect as connectV1, surface, PLACES, API_VERSION as V1 } from './v1.js';
 
 export const API_VERSION = 2;
 export const TABLES = Object.freeze(['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
@@ -374,24 +373,129 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers });
 }
 
-// The API one plugin gets: v1's names (the compatibility surface) and v2's six tables beside
-// them. Same arguments as v1's connect, plus lib (world.lib) and events ({ on }, or null).
-export function connect(o) {
-  const base = connectV1({ ...o, offers: API_VERSION });
-  const tables = kernel({ lib: o.lib || o.world.lib, world: o.world, events: o.events || null, gone: o.gone, floors: o.floors || null });
+// ---- The parts: what a rule or a view of the tables shares ----
+
+// Picks names from a module, failing loudly if one is missing (a rename in world shows here).
+function pick(from, names, where) {
+  const out = {};
+  for (const name of names) {
+    if (!(name in from)) throw new Error(`Plugin API: world's ${where} has no "${name}"`);
+    out[name] = from[name];
+  }
+  return Object.freeze(out);
+}
+
+// The rule kit: plain functions of a world handed to them (a rule's layout and gestures get the
+// world from the room that asks; a view reads parts.world()). A write with them is a rule's own
+// gesture, which the room lands as one step; anything else proposes through the six tables.
+export const MODEL = ['parentOf', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
+  'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
+  'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE',
+  'leave', 'replaceIn', 'isLooseGroup', 'spotOf', 'setSpot', 'unsetSpot'];
+export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'unput', 'spotsOf', 'place', 'unplace'];
+export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
+  'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];
+export const TRAINS = ['stepAfter', 'setHeights', 'STEP'];
+export const KINDS = ['ITEMS', 'kindFor', 'isKnown'];
+export const TWINS = ['isTwin', 'twinOf', 'sides', 'addTwin'];
+export const LINES = ['svg', 'layer', 'group', 'line', 'knot', 'slack', 'strand', 'path', 'middle', 'between',
+  'labelSpot', 'sidePoint', 'facing', 'PAD', 'ENDS', 'ENDS_WORDS', 'cleanEnds', 'PAUSE', 'HEAD'];
+
+// The parts with no app behind them: the world's rules chosen from its lib (world/lib.js). A
+// plugin's tests call it with the same modules.
+export function surface(lib) {
+  return {
+    model: pick(lib.model, MODEL, 'model'),
+    groups: pick(lib.groups, GROUPS, 'groups'),
+    relations: pick(lib.relations, RELATIONS, 'relations'),
+    lines: pick(lib.lines, LINES, 'lines'),
+    arrows: pick(lib.arrowview, ['arrowView'], 'arrowview'),
+    maths: pick(lib.maths, ['maths', 'broken'], 'maths'),
+    kinds: pick(lib.items, KINDS, 'items'),
+    twins: pick(lib.twin, TWINS, 'twin'),
+    pictures: pick(lib.picture, ['shrinkPicture', 'keepOrShrink'], 'picture'),
+    layout: pick(lib.pessoa, ['spiralPoint'], 'pessoa'),
+    trains: pick(lib.joyce, TRAINS, 'joyce'),
+  };
+}
+
+// The places to plug in that core features own: the slot's name to a plugin → the app's slot.
+export const SLOTS = {
+  rules: 'world.ontologies',   // a way of seeing a room (world/ontologies/index.js says its shape)
+  kinds: 'world.items',        // a kind of mark: a passage, a picture, a PDF page (world/items/index.js)
+  commands: 'keys',            // a named action, with its keys if it has any (keys/README.md)
+  more: 'rail.more',           // an entry under ⋯ More (frame/README.md)
+  editor: 'room.editor',       // a section in the Editor for the chosen thing (room/README.md)
+  formats: 'world.formats',    // a file format: rooms in and out, and edited as text (world/formats.js)
+  carriers: 'world.carriers',  // a carrier of the six tables (the account's sync; world/README.md)
+};
+
+// One dock for one plugin: what it opens is noted, so it all closes when the plugin is switched off.
+function dockFor(dock, gone) {
+  if (!dock) return null;
+  const mine = new Set();
+  gone(() => { for (const key of mine) dock.close(key, true); mine.clear(); });
   return Object.freeze({
-    ...base,
-    // (a spread reads a getter once: the world is read afresh each time, as v1 does, since it is
-    // replaced when it is read back from storage, and a plugin writing to an old one loses it)
-    get world() { return base.world; },
-    ...tables,
-    // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
-    slots: Object.freeze({ rules: base.modes, kinds: base.items, commands: base.commands, more: base.more, editor: base.editor, formats: base.formats,
-      carriers: Object.freeze({ add: (item) => o.app.slot('world.carriers').add(item, o.plugin.id) }) }), // a carrier of the six tables (the account's sync)
-    // What the person is looking at: the open room and the one mark chosen there, as ids, or null
-    // (a command on the chosen thought reads it here; nothing else of the screen is in the API).
-    ui: Object.freeze({ toast: base.toast, chosen: () => { const r = o.room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); } }),
+    open: async (o = {}) => {
+      if (!o.key) throw new Error('A dock tab needs a key');
+      const handle = await dock.open({ ...o, onClose: () => { mine.delete(o.key); o.onClose?.(); } });
+      if (handle) mine.add(o.key);
+      return handle;
+    },
+    close: (key, force) => dock.close(key, force),
+    show: (key) => dock.show(key),
+    isOpen: (key) => dock.isOpen(key),
+    isShowing: (key) => dock.isShowing(key),
   });
 }
 
-export { surface, PLACES, V1 };
+// The API one plugin gets: the six tables, rules and carriers (kernel()), the slots it plugs into,
+// the screen it may use (ui), and the parts rules and views share. app: the Folio app; world: the
+// world service; plugin: the Feature asking (its id owns what it adds, and it all goes when it is
+// switched off: gone(fn)); parts: surface(world.lib), made once; lib: world.lib; events: { on };
+// toast, docks, keys, frame, floors, service(name), room(): the app's, or null.
+export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, docks = null, keys = null,
+  frame = null, floors = null, service = () => null, room = null, gone = () => {} }) {
+  const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
+  if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
+  if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
+  const owner = plugin.id;
+  const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
+  const tables = kernel({ lib: lib || world.lib, world, events, gone, floors });
+  if (frame) gone(() => frame.hide(plugin));
+  const slots = Object.freeze({
+    ...Object.fromEntries(Object.entries(SLOTS).map(([name, slot]) => [name, Object.freeze({ add: add(slot) })])),
+    rules: Object.freeze({
+      add: add(SLOTS.rules),
+      get: (id) => world.ontology(id),          // the rule with this id (the default when it is off or unknown)
+      get all() { return world.ontologies; },    // every rule there is now
+      get settings() { return world.globals; },  // each rule's settings for new rooms: { [rule]: { key: value } }
+    }),
+    commands: Object.freeze({ add: add(SLOTS.commands), label: (id) => keys?.label(id) || '' }),
+  });
+  return Object.freeze({
+    version: API_VERSION,
+    app: Object.freeze({ name: app.config.name, version: app.config.version }),
+    plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
+    ...tables,
+    slots,
+    // The screen a plugin may use, and what the person is looking at: the open room and the one
+    // mark chosen there, as ids, or null.
+    ui: Object.freeze({
+      toast: (text) => toast(text),
+      chosen: () => { const r = room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); },
+      docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
+      frame: frame ? Object.freeze({
+        show: (o) => frame.show(plugin, o), update: (o) => frame.update(plugin, o), hide: () => frame.hide(plugin),
+        hint: (text) => frame.hint(text), clearHint: () => frame.clearHint(),
+      }) : null,
+      open: Object.freeze({
+        rooms: () => { service('create')?.open(); },
+        room: (id) => { service('create')?.open(); service('rooms')?.openRoom(id); },
+      }),
+    }),
+    // What rules and views share: the rule kit and the drawing parts (surface()), and the world
+    // they are handed, read afresh each time (it is replaced when read back from storage).
+    parts: Object.freeze({ ...parts, world: () => world.world }),
+  });
+}

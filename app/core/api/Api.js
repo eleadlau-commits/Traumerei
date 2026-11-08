@@ -1,5 +1,5 @@
 // Plugin API: offers the `traumerei` service, the one way a plugin reaches the app (v2.js holds
-// the list, over v1.js; app/core/API.md says it in words, app/core/KERNEL.md the tables behind it). A plugin connects once, in its start():
+// the list; app/core/API.md says it in words, app/core/KERNEL.md the tables behind it). A plugin connects once, in its start():
 //
 //   const t = this.use('traumerei')?.connect(this);
 //

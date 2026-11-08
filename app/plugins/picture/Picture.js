@@ -10,6 +10,6 @@ export default class Picture extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Picture needs the plugin API');
-    t.items.add(picture({ maths: t.maths.maths, shrinkPicture: t.pictures.shrinkPicture }));
+    t.slots.kinds.add(picture({ maths: t.parts.maths.maths, shrinkPicture: t.parts.pictures.shrinkPicture }));
   }
 }
