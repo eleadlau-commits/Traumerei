@@ -2,9 +2,9 @@
 
 A way of seeing a room: every thought free on the canvas, joined by named **links** that may run
 in loops, and gathered into **clusters**. Named after Proust's memory, where any moment can call
-up any other, across time and back. It adds the ontology to the world's slot `world.ontologies`
-(as the floors feature adds Borges), so switching this feature off takes the mode away; a room
-seen through Proust is then seen through Pessoa.
+up any other, across time and back. A plugin: it adds itself as a mode through the plugin API
+(`t.modes.add`), so switching it off takes the mode away; a room seen through Proust is then seen
+through Pessoa.
 
 ## What it does
 
@@ -44,7 +44,7 @@ seen through Proust is then seen through Pessoa.
   and throw back.
 - `draw.js`: the canvas: each node, a cluster's box, the links through the world's `lines` and
   `arrowview` parts.
-- `world.js`: what it uses of the world service's `lib` (that list is all).
+- `world.js`: what it uses of the plugin API (`app/core/API.md`; that list is all).
 - `style.css`: only how strong a cluster's box is and where its title sits; the look is the
   room's and Folio's.
 
@@ -53,7 +53,7 @@ each node was placed (`{ x, y }`, the shape `groups.js` keeps for other modes' g
 `own(w, room, 'proust-links')` its links (relations.js's shape). Its settings are the room's
 (`relations`, `tension`).
 
-**Uses:** the `world` service only. It offers no service of its own.
+**Uses:** the plugin API (`traumerei`) only. It offers no service of its own.
 
 **In a .traum file** (the roomfile feature's FORMAT.md, *Ontology: proust*) its `# In proust`
 section has `at:`, `on canvas:`, `tray:` and a `link:` line for each link, its ends between its two

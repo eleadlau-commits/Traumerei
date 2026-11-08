@@ -1,7 +1,6 @@
-// What Proust uses from the world feature (app/core/world): its rules, by name. A feature
-// can't import another's files, so these are bound from the world service's `lib` when Proust
-// starts (bind, in Proust.start), and its files import them from here. This list is everything
-// Proust needs of the world's rules.
+// What Proust uses of the app: the plugin API's rules and shared parts (app/core/API.md), by
+// name. They are bound from the API when Proust starts (bind, in Proust.start), and its files
+// import them from here. This list is everything Proust needs.
 
 export let
   own, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view, // model
@@ -9,13 +8,14 @@ export let
   arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, // relations: links and their relations
   lines, arrowView, maths, spiralPoint;
 
-// lib: the world service's lib (world/lib.js), or the same modules in a test.
-export function bind(lib) {
-  ({ own, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = lib.model);
-  ({ placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace } = lib.groups);
-  ({ arrowsOf, cleanRelationList, relationEntry, relationEnds, listText } = lib.relations);
-  ({ arrowView } = lib.arrowview);
-  ({ maths } = lib.maths);
-  ({ spiralPoint } = lib.pessoa); // Pessoa's spiral: where a thought not yet placed sits
-  lines = lib.lines;
+// t: the plugin API (this.use('traumerei').connect(this)), or in a test the same parts from
+// surface(lib) (app/core/api/v1.js).
+export function bind(t) {
+  ({ own, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = t.model);
+  ({ placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace } = t.groups);
+  ({ arrowsOf, cleanRelationList, relationEntry, relationEnds, listText } = t.relations);
+  ({ arrowView } = t.arrows);
+  ({ maths } = t.maths);
+  ({ spiralPoint } = t.layout); // Pessoa's spiral: where a thought not yet placed sits
+  lines = t.lines;
 }

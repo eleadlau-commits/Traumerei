@@ -401,13 +401,18 @@ class Project:
         if 'plugins' not in app:
             return ''
         plugins = app['plugins']
-        if not isinstance(plugins, dict) or any(k not in ('folder', 'api') for k in plugins):
-            return '"plugins" can only contain folder and api, like { "folder": "plugins", "api": 1 }'
+        if not isinstance(plugins, dict) or any(k not in ('folder', 'api', 'service', 'exempt') for k in plugins):
+            return '"plugins" can only contain folder, api, service and exempt, like { "folder": "plugins", "api": 1 }'
         if plugins.get('folder') not in folders:
             return f'"plugins.folder" must be one of "folders" ({", ".join(folders)})'
         api = plugins.get('api')
         if not (isinstance(api, int) and not isinstance(api, bool) and api >= 1):
             return '"plugins.api" must be a whole number, 1 or more: the plugin API version the app offers'
+        if 'service' in plugins and not (isinstance(plugins['service'], str) and plugins['service']):
+            return '"plugins.service" must be the name of the service plugins reach the app through'
+        exempt = plugins.get('exempt', [])
+        if not (isinstance(exempt, list) and all(isinstance(x, str) for x in exempt)):
+            return '"plugins.exempt" must be a list of plugin ids'
         return ''
 
     @staticmethod
@@ -503,7 +508,23 @@ class Project:
         kind, problem = self.check_plugin(f)
         if problem:
             return f.leave_out(kind, problem)
+        clash = self.case_clash(f.path)
+        if clash:
+            return f.leave_out('mistake', f'{clash[0]} and {clash[1]} differ only in capital letters, which '
+                                          'breaks on Windows and in one-file builds; rename one')
         self.scan_code(f)
+
+    @staticmethod
+    def case_clash(folder: Path):
+        """Two files in one folder whose names differ only in capitals (Api.js and api.js), or None."""
+        for here, dirs, files in os.walk(folder):
+            seen = {}
+            for name in sorted(dirs + files):
+                other = seen.setdefault(name.lower(), name)
+                if other != name:
+                    rel = Path(here).relative_to(folder)
+                    return (rel / other).as_posix(), (rel / name).as_posix()
+        return None
 
     def check_plugin(self, f: FeatureInfo) -> tuple[str, str]:
         """Checks a plugin's block: every feature in the plugins folder has one, and only they do.
@@ -635,8 +656,34 @@ class Project:
 
     # ---- Deciding what's in and in what order ----
 
+    def check_plugin_boundary(self, features: list[FeatureInfo]):
+        """With app.json's "plugins.service", a plugin reaches the app only through that service:
+        using any other service a core feature provides, or adding to a slot a core feature
+        defines, leaves it out. Plugins in "plugins.exempt" are let through (for plugins still
+        being moved onto the service; the list should end up empty)."""
+        cfg = self.plugins_config
+        folder, service = cfg.get('folder'), cfg.get('service')
+        if not folder or not service:
+            return
+        core = [f for f in features if f.folder != folder and not f.reason]
+        core_services = {s: f.id for f in core for s in f.scan.get('provides', []) if s != service}
+        core_slots = {s: f.id for f in core for s in f.scan.get('defines', [])}
+        exempt = set(cfg.get('exempt', []))
+        for f in features:
+            if f.folder != folder or f.reason or f.id in exempt:
+                continue
+            used = sorted(set(f.scan.get('uses', [])) & set(core_services))
+            added = sorted(set(f.scan.get('adds', [])) & set(core_slots))
+            if used or added:
+                what = [f'uses the service "{s}" of {core_services[s]}' for s in used]
+                what += [f'adds to the slot "{s}" of {core_slots[s]}' for s in added]
+                said = what[0] if len(what) == 1 else ', '.join(what[:-1]) + ' and ' + what[-1]
+                f.leave_out('mistake', f'it {said}; plugins reach the app only through the '
+                                       f'"{service}" service')
+
     def resolve(self, features: list[FeatureInfo], without=()) -> list[FeatureInfo]:
         by_id = {f.id: f for f in features}
+        self.check_plugin_boundary(features)
         for f in features:
             if f.id in without:
                 f.leave_out('off', 'left out of this build')

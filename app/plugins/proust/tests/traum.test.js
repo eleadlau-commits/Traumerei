@@ -5,6 +5,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
+import { surface } from '../../api/v1.js';
 import { bind } from '../world.js';
 import { bind as bindRoomfile } from '../../roomfile/world.js';
 import { emptyWorld, members, groupsIn, roomItems, own, setRoomSetting } from '../../world/model.js';
@@ -14,7 +15,7 @@ import { importRoom, exportRoom } from '../../roomfile/traum.js';
 import { open, apply } from '../../roomfile/edit.js';
 import { proust, links, point, endsOf } from '../rules.js';
 
-bind(lib);
+bind(surface(lib));
 bindRoomfile(lib);
 const ontologies = gather([proust]);
 const L = () => links();

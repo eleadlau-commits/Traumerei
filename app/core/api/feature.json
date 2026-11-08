@@ -1,0 +1,9 @@
+{
+  "name": "Plugin API",
+  "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.",
+  "version": "1.0.0",
+  "main": "Api.js",
+  "requires": [
+    "world"
+  ]
+}

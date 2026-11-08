@@ -9,7 +9,9 @@ Features live in two folders (app.json's `folders`). `app/core/` holds what ever
 (world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds everything that can be
 switched off without breaking the app; each plugin's `feature.json` has a `plugin` block (the plugin
 API version it was written for, the oldest app version it works with, what it adds, when it
-loads). See `folio/README.md` §3.
+loads). See `folio/README.md` §3. A plugin reaches the app only through the `traumerei` service,
+the plugin API (`app/core/API.md`); the compiler leaves out a plugin that reaches past it (app.json's
+`plugins.exempt` lists the plugins still being moved onto it).
 
 ## The splitting rule
 
