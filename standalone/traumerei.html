@@ -2523,9 +2523,9 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   var __esm = (fn, res) => function __init() {
     return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
-  var __export = (target, all2) => {
-    for (var name5 in all2)
-      __defProp(target, name5, { get: all2[name5], enumerable: true });
+  var __export = (target, all3) => {
+    for (var name5 in all3)
+      __defProp(target, name5, { get: all3[name5], enumerable: true });
   };
 
   // dist/web/features/world/vendor/katex.js
@@ -6528,7 +6528,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var PULL_DECIDE = 8;
   var PULL_CLOSE = 110;
   function pullToClose(dialog2) {
-    let pull2 = null;
+    let pull3 = null;
     const reset = () => {
       dialog2.classList.remove("pulling");
       dialog2.style.transform = "";
@@ -6536,21 +6536,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     dialog2.addEventListener("touchstart", (e) => {
       const t = e.changedTouches[0];
       const atTop = dialog2.scrollTop <= 0;
-      pull2 = atTop && !e.target.closest?.("input, textarea, select") ? { x: t.clientX, y: t.clientY, dy: 0, down: null } : null;
+      pull3 = atTop && !e.target.closest?.("input, textarea, select") ? { x: t.clientX, y: t.clientY, dy: 0, down: null } : null;
     }, { passive: true });
     dialog2.addEventListener("touchmove", (e) => {
-      if (!pull2) return;
+      if (!pull3) return;
       const t = e.changedTouches[0];
-      const dx = t.clientX - pull2.x;
-      pull2.dy = t.clientY - pull2.y;
-      if (pull2.down === null && Math.hypot(dx, pull2.dy) > PULL_DECIDE) pull2.down = pull2.dy > 0 && pull2.dy > Math.abs(dx);
-      if (!pull2.down) return;
+      const dx = t.clientX - pull3.x;
+      pull3.dy = t.clientY - pull3.y;
+      if (pull3.down === null && Math.hypot(dx, pull3.dy) > PULL_DECIDE) pull3.down = pull3.dy > 0 && pull3.dy > Math.abs(dx);
+      if (!pull3.down) return;
       dialog2.classList.add("pulling");
-      dialog2.style.transform = `translateY(${Math.max(0, pull2.dy)}px)`;
+      dialog2.style.transform = `translateY(${Math.max(0, pull3.dy)}px)`;
     }, { passive: true });
     const end = () => {
-      const p = pull2;
-      pull2 = null;
+      const p = pull3;
+      pull3 = null;
       if (!p?.down) return reset();
       if (p.dy > PULL_CLOSE) {
         dialog2.close();
@@ -7778,10 +7778,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     setOff(id, off) {
       const area = this.storage.area("folio");
-      const all2 = new Set(area.get("disabled", []));
-      if (off) all2.add(id);
-      else all2.delete(id);
-      area.set("disabled", [...all2]);
+      const all3 = new Set(area.get("disabled", []));
+      if (off) all3.add(id);
+      else all3.delete(id);
+      area.set("disabled", [...all3]);
     }
     changedFeatures() {
       document.documentElement.dataset.folioActive = [...this.features.values()].filter((f2) => f2.status === "active").map((f2) => f2.manifest.id).join(",");
@@ -8634,7 +8634,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (label3[start2] || Fp[start2] < T) continue;
       next++;
       let top = 0;
-      let count2 = 0;
+      let count3 = 0;
       let sx = 0;
       let sy = 0;
       stack[top++] = start2;
@@ -8643,7 +8643,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const p = stack[--top];
         const i2 = p % gw;
         const j = (p - i2) / gw;
-        count2++;
+        count3++;
         sx += i2;
         sy += j;
         for (let dj = -1; dj <= 1; dj++) {
@@ -8660,9 +8660,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }
       }
-      const area = count2 * cell;
+      const area = count3 * cell;
       if (area >= Amin) {
-        found.push({ area, x: (sx / count2 + 0.5) * G.hx, y: (sy / count2 + 0.5) * G.hy });
+        found.push({ area, x: (sx / count3 + 0.5) * G.hx, y: (sy / count3 + 0.5) * G.hy });
       }
     }
     return found.sort((p, q) => q.area - p.area);
@@ -8872,10 +8872,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function strokes(rng, K3, canvas, D2) {
     const { X: X2, Y: Y2, W: W2, px } = canvas;
     const n = simplex(rng.U);
-    const count2 = poisson(rng, K3.lambda * (X2 + 2 * MARGIN) * (Y2 + 2 * MARGIN));
+    const count3 = poisson(rng, K3.lambda * (X2 + 2 * MARGIN) * (Y2 + 2 * MARGIN));
     const tau = Math.sqrt(2 / K3.lp);
     const scratch = canvas.scratch;
-    for (let f2 = 0; f2 < count2; f2++) {
+    for (let f2 = 0; f2 < count3; f2++) {
       const x0 = -MARGIN + rng.U() * (X2 + 2 * MARGIN);
       const y0 = -MARGIN + rng.U() * (Y2 + 2 * MARGIN);
       const L = logNormal(rng, K3.muL, K3.sL);
@@ -8920,7 +8920,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       scratch.touched.length = 0;
     }
-    return count2;
+    return count3;
     function rasterStroke(xs, ys, vw, vb, va2, cv, sc) {
       for (let k2 = 0; k2 + 1 < xs.length; k2++) {
         const reach3 = Math.max(vw[k2], vw[k2 + 1]) / 2 + 3 * Math.max(vb[k2], vb[k2 + 1]);
@@ -8958,8 +8958,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function flakes(rng, P, canvas, D2) {
     const { X: X2, Y: Y2, W: W2, H: H2, px } = canvas;
     const n = simplex(rng.U);
-    const count2 = poisson(rng, P.lambdaK * (X2 + 2 * MARGIN) * (Y2 + 2 * MARGIN));
-    for (let f2 = 0; f2 < count2; f2++) {
+    const count3 = poisson(rng, P.lambdaK * (X2 + 2 * MARGIN) * (Y2 + 2 * MARGIN));
+    for (let f2 = 0; f2 < count3; f2++) {
       const cx = -MARGIN + rng.U() * (X2 + 2 * MARGIN);
       const cy = -MARGIN + rng.U() * (Y2 + 2 * MARGIN);
       const phi = rng.U() * Math.PI;
@@ -8999,7 +8999,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       }
     }
-    return count2;
+    return count3;
   }
   function sampled(f2, W2, H2, px, step2) {
     const gw = Math.ceil((W2 - 1) / step2) + 1;
@@ -9684,15 +9684,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }
     const raw = [...seen.values()].sort((e, f2) => e.horizontal - f2.horizontal || (e.horizontal ? e.A[1] - f2.A[1] || e.A[0] - f2.A[0] : e.A[0] - f2.A[0] || e.A[1] - f2.A[1]));
-    const index2 = /* @__PURE__ */ new Map();
+    const index3 = /* @__PURE__ */ new Map();
     const nodes2 = [];
     const node = ([x, y]) => {
       const k2 = key(x, y);
-      if (!index2.has(k2)) {
-        index2.set(k2, nodes2.length);
+      if (!index3.has(k2)) {
+        index3.set(k2, nodes2.length);
         nodes2.push({ x, y, deg: 0 });
       }
-      return index2.get(k2);
+      return index3.get(k2);
     };
     const edges = raw.map((e) => {
       const a = node(e.A);
@@ -10236,7 +10236,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const psi = new Float32Array(gw * gh);
     const U2 = [];
     let sum2 = 0;
-    let count2 = 0;
+    let count3 = 0;
     for (let s = 0; s < SLICES; s++) {
       const t = s / (SLICES - 1) * P.nu;
       for (let j = 0; j < gh; j++) {
@@ -10258,12 +10258,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           u[2 * (j * gw + i2)] = dy;
           u[2 * (j * gw + i2) + 1] = -dx;
           sum2 += dx * dx + dy * dy;
-          count2++;
+          count3++;
         }
       }
       U2.push(u);
     }
-    const rms = Math.sqrt(sum2 / count2) || 1;
+    const rms = Math.sqrt(sum2 / count3) || 1;
     for (const u of U2) for (let i2 = 0; i2 < u.length; i2++) u[i2] /= rms;
     return { U: U2, x0, y0, gw, gh, cell };
   }
@@ -10317,7 +10317,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const side = 2.4 * lb;
       const soft = lb * (0.04 + 0.5 * P.dyeSoft);
       const cells4 = /* @__PURE__ */ new Map();
-      const drop2 = (ci, cj) => {
+      const drop3 = (ci, cj) => {
         const key = `${ci},${cj}`;
         if (!cells4.has(key)) {
           const R = mulberry32(cyrb53(`${seed}:plain:dye:${key}`) >>> 0);
@@ -10331,7 +10331,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         let v2 = 0;
         for (let a = -1; a <= 1; a++) {
           for (let b = -1; b <= 1; b++) {
-            const [cx, cy, r, on] = drop2(ci + a, cj + b);
+            const [cx, cy, r, on] = drop3(ci + a, cj + b);
             if (!on) continue;
             const q = (r - Math.hypot(x - cx, y - cy)) / soft;
             v2 = Math.max(v2, q <= -1 ? 0 : q >= 1 ? 1 : 0.5 + 0.5 * Math.sin(q * Math.PI / 2));
@@ -10536,7 +10536,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const sw = Math.max(2, Math.round(W2 / s * SAMPLE_SHORT));
     const sh = Math.max(2, Math.round(H2 / s * SAMPLE_SHORT));
     const lin2 = new Float64Array(3 * sw * sh);
-    const count2 = new Float64Array(sw * sh);
+    const count3 = new Float64Array(sw * sh);
     for (let y = 0; y < H2; y++) {
       const j = Math.min(sh - 1, Math.floor(y * sh / H2));
       for (let x = 0; x < W2; x++) {
@@ -10546,13 +10546,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         lin2[3 * c] += LINEAR_BYTE[rgba[q]];
         lin2[3 * c + 1] += LINEAR_BYTE[rgba[q + 1]];
         lin2[3 * c + 2] += LINEAR_BYTE[rgba[q + 2]];
-        count2[c]++;
+        count3[c]++;
       }
     }
     const lab = new Float32Array(3 * sw * sh);
     let sumC = 0;
     for (let c = 0; c < sw * sh; c++) {
-      const n = count2[c] || 1;
+      const n = count3[c] || 1;
       const [L, a, b] = linearToOklab([lin2[3 * c] / n, lin2[3 * c + 1] / n, lin2[3 * c + 2] / n]);
       lab.set([L, a, b], 3 * c);
       sumC += Math.hypot(a, b);
@@ -11049,12 +11049,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Settings → Colour: the one tint everything takes its colour from.
     colourPane() {
-      const set3 = (tint) => {
+      const set4 = (tint) => {
         this.change("tint", tint);
         this.controls?.set(this.P);
         if (this.tintInput) this.tintInput.value = tint;
       };
-      this.tintInput = el4("input", { type: "color", value: this.P.tint, "aria-label": "Tint", oninput: (e) => set3(e.target.value) });
+      this.tintInput = el4("input", { type: "color", value: this.P.tint, "aria-label": "Tint", oninput: (e) => set4(e.target.value) });
       return el4(
         "div",
         { class: "renderer-colour-pane" },
@@ -11065,10 +11065,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           { class: "renderer-buttons" },
           el4("button", { type: "button", class: "btn small", onclick: () => {
             const found = this.engine.rgba && tintFromPicture(this.engine.rgba, this.engine.image.W, this.engine.image.H, this.P.tint);
-            if (found) set3(found);
+            if (found) set4(found);
             else ui_exports.toast(this.source ? "This picture has almost no colour to take." : "Choose an image first (Advanced → Picture).");
           } }, "From the picture"),
-          el4("button", { type: "button", class: "btn small", onclick: () => set3(DEFAULT_TINT) }, "Back to defaults")
+          el4("button", { type: "button", class: "btn small", onclick: () => set4(DEFAULT_TINT) }, "Back to defaults")
         )
       );
     }
@@ -11712,9 +11712,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const words2 = s.slice(mark.inner[0], mark.inner[1]);
       const next = SIZES[Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(mark.size) + dir))];
       if (next === mark.size) return { text: s, select: mark.inner };
-      const put2 = next ? `[${words2}]{size=${next}}` : words2;
+      const put3 = next ? `[${words2}]{size=${next}}` : words2;
       const from2 = mark.start + (next ? 1 : 0);
-      return { text: s.slice(0, mark.start) + put2 + s.slice(mark.end), select: [from2, from2 + words2.length] };
+      return { text: s.slice(0, mark.start) + put3 + s.slice(mark.end), select: [from2, from2 + words2.length] };
     }
     if (a === b) return null;
     const words = s.slice(a, b);
@@ -11771,6 +11771,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ontologies: () => ontologies_exports,
     pessoa: () => pessoa_exports,
     picture: () => picture_exports,
+    places: () => places_exports,
     relations: () => relations_exports,
     relationsview: () => relationsview_exports,
     twin: () => twin_exports
@@ -11779,8 +11780,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/world/model.js
   var model_exports = {};
   __export(model_exports, {
+    ARCHIVE: () => ARCHIVE,
     DEFAULT_MODE: () => DEFAULT_MODE,
     DESC: () => DESC,
+    FLOOR: () => FLOOR,
     MESSY: () => MESSY,
     ONTOLOGY: () => ONTOLOGY,
     SHAPES: () => SHAPES,
@@ -11793,16 +11796,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     applySettingsToAll: () => applySettingsToAll,
     archive: () => archive,
     archived: () => archived,
+    archivedAt: () => archivedAt,
     canHold: () => canHold,
     cells: () => cells,
     changed: () => changed,
     children: () => children,
     closeGroup: () => closeGroup,
+    contextOf: () => contextOf,
     copyRoom: () => copyRoom,
     create: () => create,
     declareGroups: () => declareGroups,
     declareOrder: () => declareOrder,
+    dropPage: () => dropPage,
     emptyWorld: () => emptyWorld,
+    floorIds: () => floorIds,
+    floorOf: () => floorOf,
     foldedAway: () => foldedAway,
     groupLabel: () => groupLabel,
     groupNames: () => groupNames,
@@ -11814,7 +11822,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     holds: () => holds,
     holdsDirectly: () => holdsDirectly,
     inside: () => inside2,
+    isArchived: () => isArchived,
     isBig: () => isBig,
+    isContext: () => isContext,
+    isFloor: () => isFloor,
     isGroup: () => isGroup,
     isItem: () => isItem,
     isLeaf: () => isLeaf,
@@ -11823,7 +11834,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     join: () => join2,
     kindOf: () => kindOf,
     lastWritten: () => lastWritten,
-    leave: () => leave2,
+    leave: () => leave3,
     loadWorld: () => loadWorld,
     lock: () => lock,
     makeGroup: () => makeGroup,
@@ -11836,6 +11847,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     openGroup: () => openGroup,
     own: () => own,
     pageCount: () => pageCount,
+    parentOf: () => parentOf,
     peek: () => peek,
     randomSpot: () => randomSpot,
     reading: () => reading,
@@ -11870,6 +11882,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     thing: () => thing,
     thoughtText: () => thoughtText,
     tidyTag: () => tidyTag,
+    toPage: () => toPage,
     topRoom: () => topRoom,
     trainThoughts: () => trainThoughts,
     uid: () => uid,
@@ -12178,6 +12191,173 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return t;
   }
 
+  // dist/web/features/world/places.js
+  var places_exports = {};
+  __export(places_exports, {
+    all: () => all2,
+    count: () => count2,
+    countIn: () => countIn,
+    drop: () => drop2,
+    dropMark: () => dropMark,
+    get: () => get2,
+    has: () => has2,
+    home: () => home,
+    homeId: () => homeId,
+    homeRow: () => homeRow,
+    idOf: () => idOf,
+    inContext: () => inContext,
+    marksIn: () => marksIn,
+    of: () => of,
+    repair: () => repair2,
+    ruleId: () => ruleId,
+    set: () => set2,
+    setHome: () => setHome,
+    setHomePosition: () => setHomePosition,
+    table: () => table2,
+    touched: () => touched2
+  });
+  var homeId = (context, mark) => `place:${context}:${mark}`;
+  var ruleId = (context, mark, rule) => `place:${context}:${mark}:${rule}`;
+  var idOf = (r) => r.rule == null ? homeId(r.context, r.mark) : ruleId(r.context, r.mark, r.rule);
+  var table2 = (w2) => w2.places ||= {};
+  var INDEX2 = /* @__PURE__ */ new WeakMap();
+  var put2 = (map, key, id) => {
+    let s = map.get(key);
+    if (!s) map.set(key, s = /* @__PURE__ */ new Set());
+    s.add(id);
+  };
+  var pull2 = (map, key, id) => {
+    const s = map.get(key);
+    if (s) {
+      s.delete(id);
+      if (!s.size) map.delete(key);
+    }
+  };
+  var enter2 = (ix, id, r) => {
+    put2(ix.mark, r.mark, id);
+    put2(ix.context, r.context, id);
+    if (r.rule == null) ix.home.set(r.mark, id);
+  };
+  var leave2 = (ix, id, r) => {
+    pull2(ix.mark, r.mark, id);
+    pull2(ix.context, r.context, id);
+    if (r.rule == null && ix.home.get(r.mark) === id) ix.home.delete(r.mark);
+  };
+  function index2(w2) {
+    const t = table2(w2);
+    let ix = INDEX2.get(t);
+    if (!ix) {
+      ix = { mark: /* @__PURE__ */ new Map(), context: /* @__PURE__ */ new Map(), home: /* @__PURE__ */ new Map() };
+      for (const [id, r] of Object.entries(t)) if (r) enter2(ix, id, r);
+      INDEX2.set(t, ix);
+    }
+    return ix;
+  }
+  var touched2 = (w2) => {
+    if (w2.places) INDEX2.delete(w2.places);
+  };
+  var withId2 = (t, id) => ({ id, ...t[id] });
+  var get2 = (w2, id) => table2(w2)[id] ? withId2(table2(w2), id) : null;
+  var has2 = (w2, id) => !!table2(w2)[id];
+  var all2 = (w2) => Object.keys(table2(w2)).map((id) => withId2(table2(w2), id));
+  var count2 = (w2) => Object.keys(table2(w2)).length;
+  var of = (w2, mark) => [...index2(w2).mark.get(mark) || []].map((id) => withId2(table2(w2), id));
+  var inContext = (w2, context, rule = void 0) => {
+    const t = table2(w2), out = [];
+    for (const id of index2(w2).context.get(context) || []) {
+      const r = t[id];
+      if (r && (rule === void 0 || (r.rule ?? null) === rule)) out.push(withId2(t, id));
+    }
+    return out;
+  };
+  var home = (w2, mark) => {
+    const id = index2(w2).home.get(mark);
+    return id ? table2(w2)[id].context : null;
+  };
+  var homeRow = (w2, mark) => {
+    const id = index2(w2).home.get(mark);
+    return id ? withId2(table2(w2), id) : null;
+  };
+  function marksIn(w2, context) {
+    const t = table2(w2), out = [];
+    for (const id of index2(w2).context.get(context) || []) {
+      const r = t[id];
+      if (r && r.rule == null) out.push(r.mark);
+    }
+    return out;
+  }
+  function countIn(w2, context) {
+    let n = 0;
+    const t = table2(w2);
+    for (const id of index2(w2).context.get(context) || []) if (t[id]?.rule == null) n++;
+    return n;
+  }
+  var tidy2 = (r) => {
+    const out = { mark: String(r.mark), context: String(r.context) };
+    if (r.rule != null) out.rule = String(r.rule);
+    if (r.position != null && typeof r.position === "object") out.position = { ...r.position };
+    if (r.pinned) out.pinned = true;
+    return out;
+  };
+  function set2(w2, row2) {
+    const r = tidy2(row2);
+    const id = idOf(r), t = table2(w2), ix = index2(w2);
+    if (t[id]) leave2(ix, id, t[id]);
+    t[id] = r;
+    enter2(ix, id, r);
+    return withId2(t, id);
+  }
+  function drop2(w2, id) {
+    const t = table2(w2);
+    if (!t[id]) return false;
+    leave2(index2(w2), id, t[id]);
+    delete t[id];
+    return true;
+  }
+  function setHome(w2, mark, context, position = null) {
+    const was = homeRow(w2, mark);
+    if (was && was.context !== context) {
+      for (const r of of(w2, mark)) if (r.context === was.context) drop2(w2, r.id);
+    }
+    return set2(w2, { mark, context, position: position ?? (was?.context === context ? was.position : null) });
+  }
+  function setHomePosition(w2, mark, position) {
+    const r = homeRow(w2, mark);
+    if (!r) return false;
+    set2(w2, { ...r, position });
+    return true;
+  }
+  function dropMark(w2, mark) {
+    const ix = index2(w2);
+    const ids = /* @__PURE__ */ new Set([...ix.mark.get(mark) || [], ...[...ix.context.get(mark) || []].filter((id) => table2(w2)[id]?.rule != null)]);
+    for (const id of ids) drop2(w2, id);
+    return ids.size;
+  }
+  function repair2(w2, ok = () => true) {
+    const t = table2(w2);
+    const homes2 = /* @__PURE__ */ new Set();
+    for (const [id, r] of Object.entries(t)) {
+      if (!r || typeof r !== "object" || !w2.things[r.mark] || !w2.things[r.context] || r.mark === r.context || !ok(r)) {
+        delete t[id];
+        continue;
+      }
+      const row2 = tidy2(r), want = idOf(row2);
+      if (row2.rule == null) {
+        if (homes2.has(row2.mark)) {
+          delete t[id];
+          continue;
+        }
+        homes2.add(row2.mark);
+      }
+      if (want !== id) {
+        delete t[id];
+        t[want] = row2;
+      } else t[id] = row2;
+    }
+    touched2(w2);
+    return t;
+  }
+
   // dist/web/features/world/model.js
   var MESSY = "messy";
   var DEFAULT_MODE = "joyce";
@@ -12185,43 +12365,95 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var kindOf = (th) => typeof th?.kind === "string" && ITEM_KIND.test(th.kind) ? th.kind : "line";
   var isLeaf = (th) => {
     const k2 = kindOf(th);
-    return k2 !== "group" && k2 !== "room";
+    return k2 !== "group" && k2 !== "room" && k2 !== "context";
   };
   var isItem = isLeaf;
   var isGroup = (th) => kindOf(th) === "group";
   var MEMBERSHIP = { joyce: "one" };
-  function declareGroups(of2, groups) {
-    if (groups?.membership === "many" || groups?.membership === "one") MEMBERSHIP[of2] = groups.membership;
-    declareOrder(of2, groups);
+  function declareGroups(of3, groups) {
+    if (groups?.membership === "many" || groups?.membership === "one") MEMBERSHIP[of3] = groups.membership;
+    declareOrder(of3, groups);
   }
-  var membership = (of2) => MEMBERSHIP[of2] || "one";
+  var membership = (of3) => MEMBERSHIP[of3] || "one";
   var KEPT = /* @__PURE__ */ new Set();
-  function declareOrder(of2, groups) {
-    if (groups?.order === "kept") KEPT.add(of2);
-    else KEPT.delete(of2);
+  function declareOrder(of3, groups) {
+    if (groups?.order === "kept") KEPT.add(of3);
+    else KEPT.delete(of3);
   }
   var counter = 0;
   function uid(prefix = "x") {
     counter = (counter + 1) % 1e6;
     return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   }
-  var messyRoom = (now) => ({ id: MESSY, kind: "room", parent: null, at: now, name: "Messy thoughts", col: 0, row: 0, size: 2 });
+  var messyRoom = (now) => ({ id: MESSY, kind: "room", at: now, name: "Messy thoughts", col: 0, row: 0, size: 2 });
+  var ARCHIVE = "archive";
+  var FLOOR = (n) => `floor:${n || 0}`;
+  var floorThing = (n, now) => ({ id: FLOOR(n), kind: "context", at: now, name: `Floor ${n + 1}`, holds: "rooms", n });
+  var archiveThing = (now) => ({ id: ARCHIVE, kind: "context", at: now, name: "Archive", holds: "rooms" });
+  var isContext = (th) => kindOf(th) === "context";
+  var isFloor = (id) => typeof id === "string" && /^floor:\d+$/.test(id);
   function emptyWorld(now = Date.now()) {
-    return { v: 3, things: { [MESSY]: messyRoom(now) }, links: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
+    const w2 = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+    setHome(w2, MESSY, FLOOR(0));
+    return w2;
   }
+  var contextOf = (w2, id) => home(w2, id);
+  var parentOf = (w2, id) => {
+    const c = home(w2, id);
+    return c != null && kindOf(w2.things[c]) === "room" ? c : null;
+  };
+  function floorOf(w2, id) {
+    const r = homeRow(w2, id);
+    if (!r) return 0;
+    if (r.context === ARCHIVE) return r.position?.floor || 0;
+    return isFloor(r.context) ? +r.context.slice(6) : 0;
+  }
+  var archivedAt = (w2, id) => {
+    const r = homeRow(w2, id);
+    return r?.context === ARCHIVE ? r.position?.at ?? 0 : null;
+  };
+  var isArchived = (w2, id) => home(w2, id) === ARCHIVE;
   function loadWorld(saved, now = Date.now()) {
     const w2 = Object.assign(emptyWorld(now), saved && typeof saved === "object" && saved.v === 3 ? saved : {});
-    for (const key of ["things", "links", "views", "own", "settings", "tagGroups"]) if (!w2[key] || typeof w2[key] !== "object") w2[key] = {};
+    for (const key of ["things", "links", "places", "views", "own", "settings", "tagGroups"]) if (!w2[key] || typeof w2[key] !== "object") w2[key] = {};
     for (const key of ["tagsMade", "groupsMade"]) w2[key] = Array.isArray(w2[key]) ? w2[key].map(tidyTag).filter(Boolean) : [];
-    w2.pages = Math.max(1, Math.floor(+w2.pages) || 1);
+    touched2(w2);
+    touched(w2);
     if (!w2.things[MESSY]) w2.things[MESSY] = messyRoom(now);
-    for (const th of Object.values(w2.things)) {
-      if (kindOf(th) === "room") {
-        if (!isTwin(w2.things[th.parent])) th.parent = null;
-        continue;
+    const legacy = Object.values(w2.things).some((th) => th && ("parent" in th || "page" in th || "archived" in th));
+    const floors = Math.max(
+      1,
+      Math.floor(+w2.pages) || 1,
+      ...Object.values(w2.things).map((th) => kindOf(th) === "room" && Number.isInteger(th.page) ? th.page + 1 : 1),
+      ...Object.keys(w2.things).filter(isFloor).map((id) => +id.slice(6) + 1)
+    );
+    delete w2.pages;
+    for (let n = 0; n < floors; n++) if (!isContext(w2.things[FLOOR(n)])) w2.things[FLOOR(n)] = floorThing(n, now);
+    if (!isContext(w2.things[ARCHIVE])) w2.things[ARCHIVE] = archiveThing(now);
+    for (const [id, th] of Object.entries(w2.things)) if (isContext(th) && id !== ARCHIVE && !isFloor(id)) delete w2.things[id];
+    if (legacy) {
+      for (const th of Object.values(w2.things)) {
+        if (!th || isContext(th)) continue;
+        const parent = th.parent;
+        if (kindOf(th) === "room") {
+          if (parent != null && isTwin(w2.things[parent])) setHome(w2, th.id, parent);
+          else if (th.archived) setHome(w2, th.id, ARCHIVE, { at: Number.isFinite(th.archived) ? th.archived : 0, floor: th.page || 0 });
+          else setHome(w2, th.id, FLOOR(th.page || 0));
+        } else if (parent != null) setHome(w2, th.id, parent);
+        delete th.parent;
+        delete th.page;
+        delete th.archived;
       }
-      if (kindOf(w2.things[th.parent]) !== "room") th.parent = MESSY;
     }
+    repair2(w2);
+    for (const th of Object.values(w2.things)) {
+      if (!th || isContext(th)) continue;
+      const at2 = home(w2, th.id), there = w2.things[at2];
+      if (kindOf(th) === "room") {
+        if (!(isContext(there) || isTwin(there) && !isTwin(th))) setHome(w2, th.id, FLOOR(0));
+      } else if (kindOf(there) !== "room" || isTwin(there)) setHome(w2, th.id, MESSY);
+    }
+    if (home(w2, MESSY) !== FLOOR(0)) setHome(w2, MESSY, FLOOR(0));
     for (const g2 of Object.values(w2.things)) {
       if (!isGroup(g2)) continue;
       if (typeof g2.of !== "string" || !g2.of) g2.of = DEFAULT_MODE;
@@ -12243,13 +12475,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if (!Object.keys(stores || {}).length) delete w2.own[roomId];
     }
-    repair(w2, (r) => r.kind === "part of" ? isGroup(w2.things[r.to]) && (isLeaf(w2.things[r.from]) || isGroup(w2.things[r.from])) && w2.things[r.from].parent === w2.things[r.to].parent : true);
+    repair(w2, (r) => r.kind === "part of" ? isGroup(w2.things[r.to]) && (isLeaf(w2.things[r.from]) || isGroup(w2.things[r.from])) && home(w2, r.from) === home(w2, r.to) : true);
     for (const g2 of Object.values(w2.things)) if (isGroup(g2) && holds(w2, g2.id, g2.id)) {
       for (const r of to(w2, g2.id, "part of")) if (holds(w2, r.from, g2.id)) drop(w2, r.id);
     }
     const messy = w2.things[MESSY];
     messy.size = 2;
-    delete messy.page;
     if (messy.col == null) {
       messy.col = 0;
       messy.row = 0;
@@ -12263,23 +12494,31 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var shapeOf = (r) => r.id === MESSY || r.size === 2 ? "all" : r.size === "twin" ? "twin" : "one";
   var span = (r) => SHAPES[shapeOf(r)];
   var isBig = (th) => kindOf(th) === "room" && shapeOf(th) === "all";
-  var children = (w2, id) => Object.values(w2.things).filter((th) => th.parent === id && !stoodFor(w2, th.id)).sort(byTime);
+  var marksAt = (w2, ids) => {
+    const out = [];
+    for (const m2 of ids) {
+      const th = w2.things[m2];
+      if (th && !stoodFor(w2, m2)) out.push(th);
+    }
+    return out;
+  };
+  var children = (w2, id) => (id == null ? [...floorIds(w2), ARCHIVE].flatMap((c) => marksAt(w2, marksIn(w2, c))) : marksAt(w2, marksIn(w2, id))).sort(byTime);
   var foldedAway = (w2, id) => stoodFor(w2, id);
-  var rooms = (w2) => children(w2, null).filter((th) => kindOf(th) === "room" && !th.archived);
-  var archived = (w2) => children(w2, null).filter((th) => kindOf(th) === "room" && th.archived).sort((a, b) => (+a.archived || 0) - (+b.archived || 0) || a.at - b.at);
-  var roomsOn = (w2, page = 0) => rooms(w2).filter((th) => (th.page || 0) === page);
+  var rooms = (w2) => floorIds(w2).flatMap((c) => marksAt(w2, marksIn(w2, c))).filter((th) => kindOf(th) === "room").sort(byTime);
+  var archived = (w2) => marksAt(w2, marksIn(w2, ARCHIVE)).filter((th) => kindOf(th) === "room").sort((a, b) => archivedAt(w2, a.id) - archivedAt(w2, b.id) || a.at - b.at);
+  var roomsOn = (w2, page = 0) => marksAt(w2, marksIn(w2, FLOOR(page))).filter((th) => kindOf(th) === "room").sort(byTime);
   function shut(w2, id) {
-    for (let th = w2.things[id]; th; th = w2.things[th.parent]) if (kindOf(th) === "room" && th.locked) return true;
+    for (let th = w2.things[id]; th; th = w2.things[home(w2, th.id)]) if (kindOf(th) === "room" && th.locked) return true;
     return false;
   }
   function topRoom(w2, id) {
     let top = null;
-    for (let th = w2.things[id]; th; th = w2.things[th.parent]) if (kindOf(th) === "room") top = th;
+    for (let th = w2.things[id]; th; th = w2.things[home(w2, th.id)]) if (kindOf(th) === "room") top = th;
     return top;
   }
   function roomOf(w2, id) {
     let th = w2.things[id];
-    while (th && kindOf(th) !== "room") th = w2.things[th.parent];
+    while (th && kindOf(th) !== "room") th = w2.things[home(w2, th.id)];
     return th || null;
   }
   function reading(w2, fn) {
@@ -12322,17 +12561,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return ids.includes(id) || ids.some((m2) => holds(w2, m2, id, seen));
   }
   var holdsDirectly = (w2, a, id) => has(w2, partId(a, id));
-  var groupsIn = (w2, roomId, of2 = null) => children(w2, roomId).filter((th) => isGroup(th) && (of2 == null || th.of === of2));
-  function groupsOf(w2, id, of2 = null) {
-    return holders(w2, id).map((g2) => w2.things[g2]).filter((g2) => isGroup(g2) && (of2 == null || g2.of === of2)).sort(byTime);
+  var groupsIn = (w2, roomId, of3 = null) => children(w2, roomId).filter((th) => isGroup(th) && (of3 == null || th.of === of3));
+  function groupsOf(w2, id, of3 = null) {
+    return holders(w2, id).map((g2) => w2.things[g2]).filter((g2) => isGroup(g2) && (of3 == null || g2.of === of3)).sort(byTime);
   }
-  var groupOf = (w2, id, of2 = DEFAULT_MODE) => groupsOf(w2, id, of2)[0] || null;
+  var groupOf = (w2, id, of3 = DEFAULT_MODE) => groupsOf(w2, id, of3)[0] || null;
   var roomItems = (w2, roomId) => children(w2, roomId).filter(isLeaf);
   function join2(w2, groupId, id) {
     const g2 = w2.things[groupId], th = w2.things[id];
-    if (!isGroup(g2) || !(isLeaf(th) || isGroup(th)) || th.parent !== g2.parent || holdsDirectly(w2, groupId, id)) return false;
+    if (!isGroup(g2) || !(isLeaf(th) || isGroup(th)) || home(w2, id) !== home(w2, groupId) || holdsDirectly(w2, groupId, id)) return false;
     if (id === groupId || holds(w2, id, groupId)) return false;
-    if (membership(g2.of) === "one") for (const o2 of groupsOf(w2, id, g2.of)) leave2(w2, o2.id, id);
+    if (membership(g2.of) === "one") for (const o2 of groupsOf(w2, id, g2.of)) leave3(w2, o2.id, id);
     const after = KEPT.has(g2.of) ? memberIds(w2, groupId).find((m2) => (w2.things[m2]?.at ?? 0) > (th.at ?? 0)) : null;
     join(w2, groupId, id, after == null ? null : rankBefore(w2, groupId, after));
     return true;
@@ -12347,13 +12586,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     replace(w2, was, now);
     return true;
   }
-  function leave2(w2, groupId, id) {
+  function leave3(w2, groupId, id) {
     const g2 = w2.things[groupId];
     if (!isGroup(g2)) return false;
     drop(w2, partId(groupId, id));
     if (!parts(w2, groupId).length) {
       delete w2.things[groupId];
       dropAll(w2, groupId);
+      dropMark(w2, groupId);
       forget(w2, groupId);
     }
     return true;
@@ -12363,17 +12603,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var roomThoughts = (w2, roomId) => isTwin(w2.things[roomId]) ? children(w2, roomId).filter((th) => kindOf(th) === "room").flatMap((s) => roomItems(w2, s.id)).sort(byTime) : roomItems(w2, roomId);
   var roomUnits = (w2, roomId) => roomItems(w2, roomId);
   function lastWritten(w2, roomId) {
-    const all2 = roomThoughts(w2, roomId);
-    return all2.length ? Math.max(...all2.map((th) => th.at)) : null;
+    const all3 = roomThoughts(w2, roomId);
+    return all3.length ? Math.max(...all3.map((th) => th.at)) : null;
   }
   function view3(w2, roomId) {
     if (!w2.views[roomId]) w2.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
     return w2.views[roomId];
   }
-  function own(w2, roomId, of2, make = true) {
-    if (!make) return w2.own[roomId]?.[of2] || {};
+  function own(w2, roomId, of3, make = true) {
+    if (!make) return w2.own[roomId]?.[of3] || {};
     const r = w2.own[roomId] ||= {};
-    return r[of2] ||= {};
+    return r[of3] ||= {};
   }
   function forget(w2, id, roomId = null) {
     for (const [r, mine] of Object.entries(w2.own)) {
@@ -12382,18 +12622,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   var copy = (o2) => JSON.parse(JSON.stringify(o2 || {}));
-  function roomSetting(w2, roomId, of2, s, globals = {}) {
-    const mine = w2.settings?.[roomId]?.[of2]?.[s.key];
+  function roomSetting(w2, roomId, of3, s, globals = {}) {
+    const mine = w2.settings?.[roomId]?.[of3]?.[s.key];
     if (mine !== void 0) return mine;
-    const global = globals?.[of2]?.[s.key];
+    const global = globals?.[of3]?.[s.key];
     return global !== void 0 ? global : s.default;
   }
-  function setRoomSetting(w2, roomId, of2, key, value) {
+  function setRoomSetting(w2, roomId, of3, key, value) {
     const r = (w2.settings ||= {})[roomId] ||= {};
-    (r[of2] ||= {})[key] = value;
+    (r[of3] ||= {})[key] = value;
   }
-  function resetRoomSettings(w2, roomId, of2) {
-    if (w2.settings?.[roomId]) delete w2.settings[roomId][of2];
+  function resetRoomSettings(w2, roomId, of3) {
+    if (w2.settings?.[roomId]) delete w2.settings[roomId][of3];
   }
   function seedRoomSettings(w2, roomId, globals = {}) {
     (w2.settings ||= {})[roomId] = copy(globals);
@@ -12439,7 +12679,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (Number.isFinite(f2.edited)) out.edited = f2.edited;
     return out;
   }
-  function tidy2(f2) {
+  function tidy3(f2) {
     const kind = kindOf(f2);
     if (isLeaf(f2)) {
       const own4 = kindFor(kind).tidy(f2, { oneLine, lines });
@@ -12472,39 +12712,34 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const tags = tidyTags(f2.tags);
     if (tags.length) out.tags = tags;
     if (f2.locked) out.locked = true;
-    if (f2.archived) {
-      out.archived = Number.isFinite(f2.archived) ? f2.archived : true;
-      delete out.col;
-      delete out.row;
-    }
-    if (Number.isInteger(f2.page) && f2.page > 0) out.page = f2.page;
     if (f2.side === 0 || f2.side === 1) out.side = f2.side;
     return out;
   }
-  var isTwin = (th) => kindOf(th) === "room" && th.parent == null && th.size === "twin";
+  var isTwin = (th) => kindOf(th) === "room" && th.size === "twin";
   function canHold(w2, parent, kind) {
     const p = parent == null ? null : w2.things[parent];
     if (parent != null && !p) return false;
     if (isLeaf({ kind }) || kind === "group") return p != null && kindOf(p) === "room" && !isTwin(p);
-    if (kind === "room") return p == null || isTwin(p);
+    if (kind === "room") return p == null || isContext(p) || isTwin(p);
     return false;
   }
   function create(w2, parent, fields, now = Date.now()) {
-    const th = tidy2(fields);
+    const th = tidy3(fields);
     if (!th) return null;
     const p = parent == null ? null : w2.things[parent];
     const group3 = isLeaf(th) && isGroup(p) ? p : null;
-    const at2 = group3 ? group3.parent : parent;
-    if (!canHold(w2, at2, th.kind) || at2 != null && shut(w2, at2)) return null;
-    Object.assign(th, { id: uid(th.kind[0]), parent: at2 ?? null, at: now });
+    const into = group3 ? home(w2, group3.id) : parent;
+    if (!canHold(w2, into, th.kind) || into != null && shut(w2, into)) return null;
+    Object.assign(th, { id: uid(th.kind[0]), at: now });
     w2.things[th.id] = th;
+    setHome(w2, th.id, into ?? FLOOR(0));
     if (group3) join2(w2, group3.id, th.id);
     return th;
   }
   function update(w2, id, fields, now = Date.now()) {
     const th = w2.things[id];
     if (!th || kindOf(th) !== "room" && shut(w2, id)) return null;
-    const next = tidy2({ ...th, ...fields, kind: th.kind, edited: now });
+    const next = tidy3({ ...th, ...fields, kind: th.kind, edited: now });
     if (!next) {
       remove(w2, id);
       return null;
@@ -12515,7 +12750,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!next.loose) delete th.loose;
     }
     if (kindOf(th) === "room") {
-      for (const k2 of ["desc", "tags", "locked", "archived", "page", "col", "row"]) if (!(k2 in next)) delete th[k2];
+      for (const k2 of ["desc", "tags", "locked", "col", "row"]) if (!(k2 in next)) delete th[k2];
     }
     Object.assign(th, next);
     return th;
@@ -12528,12 +12763,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const stoodFor2 = from(w2, id, "stands for").map((r) => r.to);
     const holders2 = groupsOf(w2, id);
     dropAll(w2, id);
-    for (const c of Object.values(w2.things).filter((x) => x.parent === id)) remove(w2, c.id);
+    for (const c of marksIn(w2, id)) remove(w2, c);
+    dropMark(w2, id);
     for (const m2 of inside4) remove(w2, m2);
     for (const m2 of stoodFor2) remove(w2, m2);
     for (const g2 of holders2) if (w2.things[g2.id] && !parts(w2, g2.id).length) {
       delete w2.things[g2.id];
       dropAll(w2, g2.id);
+      dropMark(w2, g2.id);
       forget(w2, g2.id);
     }
     forget(w2, id);
@@ -12541,36 +12778,36 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete w2.own[id];
   }
   function inside2(w2, id, ancestor) {
-    for (let th = w2.things[id]; th; th = w2.things[th.parent]) if (th.id === ancestor) return true;
+    for (let th = w2.things[id]; th; th = w2.things[home(w2, th.id)]) if (th.id === ancestor) return true;
     return false;
   }
   function rehome(w2, th, to2) {
-    const from2 = th.parent;
-    for (const g2 of groupsOf(w2, th.id)) if (g2.parent === from2) leave2(w2, g2.id, th.id);
+    const from2 = home(w2, th.id);
+    for (const g2 of groupsOf(w2, th.id)) if (home(w2, g2.id) === from2) leave3(w2, g2.id, th.id);
     forget(w2, th.id, from2);
-    th.parent = to2;
+    setHome(w2, th.id, to2);
   }
   function move(w2, id, into, x = 0, y = 0, { loose = false } = {}) {
     const th = w2.things[id], to2 = w2.things[into];
-    if (!th || !to2 || th.parent === into && !isLeaf(th) || inside2(w2, into, id) || shut(w2, id) || shut(w2, into)) return false;
+    if (!th || !to2 || home(w2, id) === into && !isLeaf(th) || inside2(w2, into, id) || shut(w2, id) || shut(w2, into)) return false;
     if (isTwin(to2)) return false;
     if (isGroup(th)) {
       if (kindOf(to2) !== "room") return false;
-      const from2 = th.parent;
+      const from2 = home(w2, id);
       const going = [th, ...within(w2, id)];
       const ids = new Set(going.map((m2) => m2.id));
       for (const m2 of going) {
-        for (const g2 of groupsOf(w2, m2.id)) if (!ids.has(g2.id) && g2.parent === from2) leave2(w2, g2.id, m2.id);
+        for (const g2 of groupsOf(w2, m2.id)) if (!ids.has(g2.id) && home(w2, g2.id) === from2) leave3(w2, g2.id, m2.id);
         forget(w2, m2.id, from2);
       }
-      for (const m2 of going) m2.parent = into;
-      Object.assign(th, { parent: into, x: Math.round(x), y: Math.round(y) });
+      for (const m2 of going) setHome(w2, m2.id, into);
+      Object.assign(th, { x: Math.round(x), y: Math.round(y) });
       return true;
     }
     if (!isLeaf(th)) return false;
     if (isGroup(to2)) {
       if (holdsDirectly(w2, into, id)) return false;
-      if (th.parent !== to2.parent) rehome(w2, th, to2.parent);
+      if (home(w2, id) !== home(w2, into)) rehome(w2, th, home(w2, into));
       return join2(w2, into, id);
     }
     if (kindOf(to2) !== "room") return false;
@@ -12599,8 +12836,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return true;
   }
   function addRoom(w2, text2 = "Untitled", now, where = {}, kind = DEFAULT_MODE) {
-    const page = where.page || 0;
-    const r = create(w2, null, { kind: "room", name: text2, ...page ? { page } : {} }, now);
+    const page = Math.max(0, Math.floor(where.page) || 0);
+    while (pageCount(w2) <= page) addPage(w2, now);
+    const r = create(w2, FLOOR(page), { kind: "room", name: text2 }, now);
     if (!r) return null;
     if (typeof kind === "string" && kind) view3(w2, r.id).mode = kind;
     return r;
@@ -12614,10 +12852,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function roomAt(w2, col, row2, except = null, page = 0) {
     return roomsOn(w2, page).find((r) => r.id !== except && r.col != null && cells(r).some(([c, rr2]) => c === col && rr2 === row2)) || null;
   }
-  var pageCount = (w2) => Math.max(w2.pages || 1, ...rooms(w2).map((r) => (r.page || 0) + 1));
-  function addPage(w2) {
-    w2.pages = pageCount(w2) + 1;
-    return w2.pages - 1;
+  var floorIds = (w2) => {
+    const out = [];
+    for (let n = 0; w2.things[FLOOR(n)]; n++) out.push(FLOOR(n));
+    return out;
+  };
+  var pageCount = (w2) => Math.max(1, floorIds(w2).length);
+  function addPage(w2, now = Date.now()) {
+    const n = pageCount(w2);
+    w2.things[FLOOR(n)] = floorThing(n, now);
+    return n;
+  }
+  function dropPage(w2) {
+    const n = pageCount(w2) - 1;
+    if (n < 1 || countIn(w2, FLOOR(n))) return false;
+    delete w2.things[FLOOR(n)];
+    dropMark(w2, FLOOR(n));
+    return true;
+  }
+  function toPage(w2, id, page) {
+    const home2 = homeRow(w2, id);
+    if (!room(w2, id) || !w2.things[FLOOR(page)] || !home2 || isTwin(w2.things[home2.context])) return false;
+    if (home2.context === ARCHIVE) setHomePosition(w2, id, { ...home2.position, floor: page });
+    else setHome(w2, id, FLOOR(page));
+    return true;
   }
   var startTrain = (w2, roomId, x, y, now) => create(w2, roomId, { kind: "group", of: "joyce", x, y }, now);
   var addThought = (w2, trainId, text2, now) => create(w2, trainId, { kind: "line", text: text2 }, now);
@@ -12644,7 +12902,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!q) return [];
     const out = [];
     for (const th of Object.values(w2.things).sort(byTime).reverse()) {
-      if (stoodFor(w2, th.id)) continue;
+      if (stoodFor(w2, th.id) || isContext(th)) continue;
       const kind = kindOf(th);
       const text2 = kind === "group" ? th.title || "" : kind === "room" ? th.name || "" : thoughtText(w2, th);
       if (!oneLine(text2).toLowerCase().includes(q)) continue;
@@ -12663,16 +12921,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function archive(w2, id, now = Date.now()) {
     const r = room(w2, id);
-    if (!r || id === MESSY || r.locked || r.archived) return false;
-    r.archived = now;
+    if (!r || id === MESSY || r.locked || !isFloor(home(w2, id))) return false;
+    setHome(w2, id, ARCHIVE, { at: now, floor: floorOf(w2, id) });
     delete r.col;
     delete r.row;
     return true;
   }
   function restore(w2, id) {
     const r = room(w2, id);
-    if (!r || !r.archived) return false;
-    delete r.archived;
+    if (!r || !isArchived(w2, id)) return false;
+    setHome(w2, id, FLOOR(Math.min(floorOf(w2, id), pageCount(w2) - 1)));
     delete r.col;
     delete r.row;
     return true;
@@ -12689,24 +12947,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function copyRoom(w2, id, now = Date.now()) {
     const r = room(w2, id);
-    if (!r || r.archived) return null;
+    if (!r || isArchived(w2, id)) return null;
     const inner = Object.values(w2.things).filter((th) => th.id !== id && topRoom(w2, th.id)?.id === id);
     const ids = { [id]: uid("r") };
     for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
     for (const [lid, row2] of Object.entries(copyFor(w2, ids))) set(w2, lid, row2);
     const fresh = renamed(copy(r), ids);
-    Object.assign(fresh, { id: ids[id], parent: null, at: now, name: `${r.name || "Untitled"} copy` });
-    for (const k2 of ["locked", "archived", "col", "row", "edited"]) delete fresh[k2];
-    if (id === MESSY) {
-      fresh.size = 2;
-      delete fresh.page;
-    }
+    Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || "Untitled"} copy` });
+    for (const k2 of ["locked", "col", "row", "edited"]) delete fresh[k2];
+    if (id === MESSY) fresh.size = 2;
     w2.things[fresh.id] = fresh;
+    setHome(w2, fresh.id, FLOOR(floorOf(w2, id)));
     for (const th of inner) {
       const c = renamed(copy(th), ids);
       c.id = ids[th.id];
-      c.parent = ids[th.parent];
       w2.things[c.id] = c;
+      setHome(w2, c.id, ids[home(w2, th.id)]);
       for (const store of ["views", "own", "settings"]) if (w2[store]?.[th.id]) w2[store][c.id] = renamed(copy(w2[store][th.id]), ids);
     }
     if (w2.views[id]) w2.views[fresh.id] = copy(w2.views[id]);
@@ -12744,8 +13000,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function allTags(w2, ontologies = [], shelf = false) {
     const counts2 = /* @__PURE__ */ new Map();
-    const all2 = shelf ? [...rooms(w2), ...archived(w2)] : rooms(w2);
-    for (const r of all2) {
+    const all3 = shelf ? [...rooms(w2), ...archived(w2)] : rooms(w2);
+    for (const r of all3) {
       for (const { tag } of roomTags(w2, r.id, ontologies)) {
         const key = tag.toLowerCase();
         const had = counts2.get(key);
@@ -12779,7 +13035,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     else delete groups[key];
     return true;
   }
-  var groupNames = (w2) => [ONTOLOGY, ...[.../* @__PURE__ */ new Set([...Object.values(w2.tagGroups || {}), ...w2.groupsMade || []])].filter((g2, i2, all2) => all2.findIndex((x) => same(x, g2)) === i2).sort((a, b) => a.localeCompare(b))];
+  var groupNames = (w2) => [ONTOLOGY, ...[.../* @__PURE__ */ new Set([...Object.values(w2.tagGroups || {}), ...w2.groupsMade || []])].filter((g2, i2, all3) => all3.findIndex((x) => same(x, g2)) === i2).sort((a, b) => a.localeCompare(b))];
   function tagsByGroup(w2, ontologies = [], shelf = false) {
     const out = /* @__PURE__ */ new Map();
     for (const g2 of w2.groupsMade || []) if (!same(g2, ONTOLOGY) && !out.has(g2.toLowerCase())) out.set(g2.toLowerCase(), { group: g2, tags: [] });
@@ -12846,34 +13102,34 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const shared = groupsIn(w2, roomId).filter((g2) => g2.shared && itemsIn(w2, g2.id).length);
     return shared.filter((g2) => !shared.some((o2) => o2 !== g2 && holds(w2, o2.id, g2.id)));
   }
-  var foreign = (w2, roomId, of2) => outermost(w2, roomId).filter((g2) => g2.of !== of2);
-  function inForeign(w2, roomId, of2) {
+  var foreign = (w2, roomId, of3) => outermost(w2, roomId).filter((g2) => g2.of !== of3);
+  function inForeign(w2, roomId, of3) {
     const inside4 = /* @__PURE__ */ new Set();
-    for (const g2 of foreign(w2, roomId, of2)) for (const th of within(w2, g2.id)) inside4.add(th.id);
+    for (const g2 of foreign(w2, roomId, of3)) for (const th of within(w2, g2.id)) inside4.add(th.id);
     return (id) => inside4.has(id);
   }
-  var spot2 = (w2, roomId, of2, id) => {
-    const p = own(w2, roomId, of2, false)[id];
+  var spot2 = (w2, roomId, of3, id) => {
+    const p = own(w2, roomId, of3, false)[id];
     return p && Number.isFinite(p.x) ? p : null;
   };
-  function putAt(w2, roomId, of2, id, x, y) {
+  function putAt(w2, roomId, of3, id, x, y) {
     if (shut(w2, roomId)) return false;
-    own(w2, roomId, of2)[id] = { x: Math.round(x), y: Math.round(y) };
+    own(w2, roomId, of3)[id] = { x: Math.round(x), y: Math.round(y) };
     return true;
   }
-  var placedForeign = (w2, roomId, of2) => foreign(w2, roomId, of2).filter((g2) => spot2(w2, roomId, of2, g2.id));
-  var trayForeign = (w2, roomId, of2) => foreign(w2, roomId, of2).filter((g2) => !spot2(w2, roomId, of2, g2.id));
+  var placedForeign = (w2, roomId, of3) => foreign(w2, roomId, of3).filter((g2) => spot2(w2, roomId, of3, g2.id));
+  var trayForeign = (w2, roomId, of3) => foreign(w2, roomId, of3).filter((g2) => !spot2(w2, roomId, of3, g2.id));
   var WAITS = "tray";
-  function wait(w2, roomId, id, of2 = null) {
-    if (shut(w2, roomId) || w2.things[id]?.parent !== roomId) return false;
+  function wait(w2, roomId, id, of3 = null) {
+    if (shut(w2, roomId) || parentOf(w2, id) !== roomId) return false;
     const marks = own(w2, roomId, WAITS);
-    if (!of2) marks[id] = true;
-    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of2]: true };
+    if (!of3) marks[id] = true;
+    else if (marks[id] !== true) marks[id] = { ...marks[id] && typeof marks[id] === "object" ? marks[id] : {}, [of3]: true };
     return true;
   }
-  var waiting2 = (w2, roomId, of2, id) => {
+  var waiting2 = (w2, roomId, of3, id) => {
     const m2 = own(w2, roomId, WAITS, false)[id];
-    return !!(m2 === true || m2?.[of2]) && !spot2(w2, roomId, of2, id);
+    return !!(m2 === true || m2?.[of3]) && !spot2(w2, roomId, of3, id);
   };
   function moveLoose(w2, id, into) {
     const th = w2.things[id];
@@ -12889,30 +13145,30 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     delete g2.loose;
     return true;
   }
-  function unplace(w2, roomId, of2, id, { lays = false } = {}) {
+  function unplace(w2, roomId, of3, id, { lays = false } = {}) {
     const th = w2.things[id];
-    if (!th || th.parent !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
-    if (inForeign(w2, roomId, of2)(id)) return false;
-    const mine = isGroup(th) && th.of === of2;
+    if (!th || parentOf(w2, th.id) !== roomId || shut(w2, roomId) || !(isLeaf(th) || isGroup(th))) return false;
+    if (inForeign(w2, roomId, of3)(id)) return false;
+    const mine = isGroup(th) && th.of === of3;
     const theirs = isGroup(th) && !mine;
-    const holders2 = groupsOf(w2, id, of2);
+    const holders2 = groupsOf(w2, id, of3);
     if (!mine && !theirs && lays) {
-      if (waiting2(w2, roomId, of2, id)) return false;
-      for (const g2 of holders2) leave2(w2, g2.id, id);
-      delete own(w2, roomId, of2)[id];
-      return wait(w2, roomId, id, of2);
+      if (waiting2(w2, roomId, of3, id)) return false;
+      for (const g2 of holders2) leave3(w2, g2.id, id);
+      delete own(w2, roomId, of3)[id];
+      return wait(w2, roomId, id, of3);
     }
-    const spotted = theirs && !!spot2(w2, roomId, of2, id);
+    const spotted = theirs && !!spot2(w2, roomId, of3, id);
     if (!holders2.length && !spotted && !(mine && !th.loose)) return false;
-    for (const g2 of holders2) leave2(w2, g2.id, id);
-    if (theirs) delete own(w2, roomId, of2)[id];
+    for (const g2 of holders2) leave3(w2, g2.id, id);
+    if (theirs) delete own(w2, roomId, of3)[id];
     if (mine) th.loose = true;
     return true;
   }
   var kindTag = (th, names = {}) => isGroup(th) ? names[th.of] || "Group" : "";
   var wordsOf = (th) => kindOf(th) === "passage" ? [th.title, th.body].filter(Boolean).join("\n") : th.text || "";
   function foldPlan(w2, roomId, ids) {
-    const chosen = [...new Set(ids)].map((id) => w2.things[id]).filter((th) => th && th.parent === roomId && (isLeaf(th) || isGroup(th))).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+    const chosen = [...new Set(ids)].map((id) => w2.things[id]).filter((th) => th && parentOf(w2, th.id) === roomId && (isLeaf(th) || isGroup(th))).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     const groups = chosen.filter(isGroup);
     const leaves = [], gone = /* @__PURE__ */ new Map();
     for (const th of chosen) {
@@ -12975,7 +13231,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       set(w2, forId(th.id, x.id), { from: th.id, to: x.id, kind: "stands for" });
       for (const data of Object.values(w2.own[roomId] || {})) if (data && typeof data === "object") delete data[x.id];
     }
-    for (const g2 of groupsIn(w2, roomId)) if (!memberIds(w2, g2.id).length) leave2(w2, g2.id, null);
+    for (const g2 of groupsIn(w2, roomId)) if (!memberIds(w2, g2.id).length) leave3(w2, g2.id, null);
     return th;
   }
 
@@ -13007,7 +13263,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var twinOf = (w2, id) => {
     const r = room(w2, id);
-    const t = r && w2.things[r.parent];
+    const t = r && w2.things[parentOf(w2, r.id)];
     return isTwin(t) ? t : null;
   };
   function otherSide(w2, id) {
@@ -13031,7 +13287,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function across(w2, id, x = 0, y = 0) {
     const th = w2.things[id];
     if (!th || !(isLeaf(th) || isGroup(th))) return false;
-    const to2 = otherSide(w2, th.parent);
+    const to2 = otherSide(w2, parentOf(w2, th.id));
     if (!to2 || !move(w2, id, to2.id, x, y)) return false;
     if (isGroup(th) && th.of !== view3(w2, to2.id).mode) th.shared = true;
     return true;
@@ -13257,7 +13513,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     first: () => first,
     fold: () => fold2,
     loadLog: () => loadLog2,
-    of: () => of,
+    of: () => of2,
     outbox: () => outbox,
     record: () => record,
     same: () => same2,
@@ -13269,15 +13525,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     visits: () => visits,
     whole: () => whole
   });
-  var VERSION = 1;
+  var VERSION = 2;
   var DAY2 = 864e5;
   var COMPACT = 30;
   var STEPS2 = 400;
   var VISIT_GAP = 6e4;
   var MOST_VISITS = 40;
-  var KINDS2 = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged", "floors", "visited", "undone", "redone"]);
-  var CHANGES = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged", "floors"]);
-  var PLACE = /* @__PURE__ */ new Set(["x", "y", "parent", "page", "col", "row", "side", "loose", "size"]);
+  var KINDS2 = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged", "visited", "undone", "redone"]);
+  var CHANGES = Object.freeze(["made", "edited", "moved", "linked", "removed", "arranged"]);
+  var PLACE = /* @__PURE__ */ new Set(["x", "y", "col", "row", "side", "loose", "size"]);
   var clone = (v2) => v2 === void 0 ? void 0 : JSON.parse(JSON.stringify(v2));
   var canon = (v2) => v2 && typeof v2 === "object" && !Array.isArray(v2) ? Object.keys(v2).sort().map((k2) => `${JSON.stringify(k2)}:${canon(v2[k2])}`).join(",").replace(/^/, "{").concat("}") : Array.isArray(v2) ? `[${v2.map(canon).join(",")}]` : JSON.stringify(v2) ?? "undefined";
   var same2 = (a, b) => canon(a) === canon(b);
@@ -13286,10 +13542,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   };
-  var keyOf = (r) => r.mark != null ? `m:${r.mark}` : r.link != null ? `l:${r.link}` : `c:${r.context}`;
-  var who = (r) => r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : { context: r.context };
-  var valueIn = (state, r) => r.mark != null ? state.things[r.mark] : r.link != null ? state.links?.[r.link] : r.kind === "floors" ? state.pages : state.own[r.context];
-  var empty = () => ({ things: {}, links: {}, own: {}, pages: 1 });
+  var keyOf = (r) => r.mark != null ? `m:${r.mark}` : r.link != null ? `l:${r.link}` : r.place != null ? `p:${r.place}` : `c:${r.context}`;
+  var who = (r) => r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : { context: r.context };
+  var valueIn = (state, r) => r.mark != null ? state.things[r.mark] : r.link != null ? state.links?.[r.link] : r.place != null ? state.places?.[r.place] : state.own[r.context];
+  var empty = () => ({ things: {}, links: {}, places: {}, own: {} });
   var inverse = (kind) => kind === "made" ? "removed" : kind === "removed" ? "made" : kind;
   var emptyLog = (now = Date.now(), state = null) => ({ v: VERSION, seq: 0, base: state ? { time: now, state: clone(state) } : null, rows: [], undo: [], redo: [], keep: 365, made: now });
   function loadLog2(saved, now = Date.now()) {
@@ -13303,7 +13559,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (!Number.isFinite(log.keep) || log.keep < 0) log.keep = 365;
     return log;
   }
-  var stateOf = (w2) => ({ things: w2.things, links: w2.links || {}, own: w2.own || {}, pages: w2.pages || 1 });
+  var stateOf = (w2) => ({ things: w2.things, links: w2.links || {}, places: w2.places || {}, own: w2.own || {} });
   function kindOfChange(before, after) {
     const keys = new Set([...Object.keys(before), ...Object.keys(after)].filter((k2) => !same2(before[k2], after[k2])));
     keys.delete("edited");
@@ -13311,7 +13567,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if ([...keys].every((k2) => PLACE.has(k2))) return "moved";
     return "edited";
   }
-  var TABLE = { made: "marks", edited: "marks", removed: "marks", moved: "places", linked: "links", arranged: "links", floors: "places", visited: "moments", undone: "moments", redone: "moments" };
+  var TABLE = { made: "marks", edited: "marks", removed: "marks", moved: "places", linked: "links", arranged: "links", visited: "moments", undone: "moments", redone: "moments" };
   function diff(prev, next) {
     const out = [];
     const things = /* @__PURE__ */ new Set([...Object.keys(prev.things), ...Object.keys(next.things)]);
@@ -13328,11 +13584,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const a = prev.links?.[id], b = next.links?.[id];
       if (!same2(a, b)) out.push({ kind: "linked", table: "links", link: id, before: clone(a) ?? null, after: clone(b) ?? null });
     }
+    for (const id of /* @__PURE__ */ new Set([...Object.keys(prev.places || {}), ...Object.keys(next.places || {})])) {
+      const a = prev.places?.[id], b = next.places?.[id];
+      if (!same2(a, b)) out.push({ kind: "moved", table: "places", place: id, before: clone(a) ?? null, after: clone(b) ?? null });
+    }
     for (const id of /* @__PURE__ */ new Set([...Object.keys(prev.own || {}), ...Object.keys(next.own || {})])) {
       const a = prev.own?.[id], b = next.own?.[id];
       if (!same2(a, b)) out.push({ kind: "arranged", table: "links", context: id, before: clone(a) ?? null, after: clone(b) ?? null });
     }
-    if ((prev.pages || 1) !== (next.pages || 1)) out.push({ kind: "floors", table: "places", context: "floors", before: prev.pages || 1, after: next.pages || 1 });
     return out;
   }
   function push(log, row2, now) {
@@ -13369,7 +13628,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return push(log, { kind: "visited", table: "moments", context: roomId }, now);
   }
-  function set2(state, r, value) {
+  function set3(state, r, value) {
     if (r.mark != null) {
       if (value == null) delete state.things[r.mark];
       else state.things[r.mark] = clone(value);
@@ -13382,18 +13641,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       touched(state);
       return;
     }
-    if (r.kind === "floors") {
-      state.pages = value || 1;
+    if (r.place != null) {
+      const t = state.places ||= {};
+      if (value == null) delete t[r.place];
+      else t[r.place] = clone(value);
+      touched2(state);
       return;
     }
     if (value == null) delete state.own[r.context];
     else state.own[r.context] = clone(value);
   }
   var apply = (state, rows2) => {
-    for (const r of rows2) set2(state, r, r.after);
+    for (const r of rows2) set3(state, r, r.after);
   };
   var revert = (state, rows2) => {
-    for (let i2 = rows2.length - 1; i2 >= 0; i2--) set2(state, rows2[i2], rows2[i2].before);
+    for (let i2 = rows2.length - 1; i2 >= 0; i2--) set3(state, rows2[i2], rows2[i2].before);
   };
   var stepRows = (log, step2) => log.rows.filter((r) => r.step === step2 && CHANGES.includes(r.kind));
   function undo(log, state, back = true, now = Date.now()) {
@@ -13420,8 +13682,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return state;
   }
-  var touches = (r, mark) => r.link != null && [r.before, r.after].some((v2) => v2 && (v2.from === mark || v2.to === mark));
-  var of = (log, mark) => log.rows.filter((r) => r.mark === mark || r.kind === "visited" && r.context === mark || touches(r, mark));
+  var touches = (r, mark) => r.link != null && [r.before, r.after].some((v2) => v2 && (v2.from === mark || v2.to === mark)) || r.place != null && [r.before, r.after].some((v2) => v2 && v2.mark === mark);
+  function of2(log, mark) {
+    const rows2 = log.rows.filter((r) => r.mark === mark || r.kind === "visited" && r.context === mark || touches(r, mark));
+    const born = new Set(rows2.filter((r) => r.mark === mark && (r.kind === "made" || r.kind === "removed")).map((r) => r.step ?? r.seq));
+    return rows2.filter((r) => !(r.place != null && (r.before == null || r.after == null) && born.has(r.step ?? r.seq)));
+  }
   function changed2(log, mark) {
     for (let i2 = log.rows.length - 1; i2 >= 0; i2--) {
       const r = log.rows[i2];
@@ -13441,9 +13707,22 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function changedOn(log, date) {
-    const seen = /* @__PURE__ */ new Map();
-    for (const r of day(log, date)) if (r.mark != null && r.kind !== "removed") seen.set(r.mark, r.after?.parent ?? null);
-    return seen;
+    const start2 = dayOf(+date), end = start2 + DAY2;
+    const home2 = /* @__PURE__ */ new Map(), seen = /* @__PURE__ */ new Set();
+    for (const r of Object.values(log.base?.state?.places || {})) if (r && r.rule == null) home2.set(r.mark, r.context);
+    for (const r of log.rows) {
+      if (r.time >= end) break;
+      const v2 = r.place != null ? r.after ?? r.before : null;
+      if (v2 && v2.rule == null) {
+        if (r.after) home2.set(v2.mark, v2.context);
+        else if (home2.get(v2.mark) === v2.context) home2.delete(v2.mark);
+      }
+      if (r.time < start2 || !CHANGES.includes(r.kind)) continue;
+      const m2 = r.mark ?? v2?.mark;
+      if (m2 != null && r.kind !== "removed") seen.add(m2);
+    }
+    const roomish = (c) => c == null || c === "archive" || /^floor:\d+$/.test(c) ? null : c;
+    return new Map([...seen].map((m2) => [m2, roomish(home2.get(m2))]));
   }
   var first = (log) => log.base?.time ?? log.rows[0]?.time ?? null;
   function outbox(log, seq) {
@@ -13488,13 +13767,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       last.set(key, r.time);
       const before = valueIn(state, r);
       if (same2(before, r.after)) continue;
-      set2(state, r, r.after);
+      set3(state, r, r.after);
       const row2 = { kind: r.kind, table: r.table, ...who(r), before: clone(before) ?? null, after: clone(r.after) ?? null, from: "account" };
       landed2.push(push(log, row2, r.time));
     }
     return landed2;
   }
-  var RANK = { edited: 3, linked: 2, moved: 1, arranged: 1, floors: 1 };
+  var RANK = { edited: 3, linked: 2, moved: 1, arranged: 1 };
   var squashKind = (madeToday, best, after) => after == null ? "removed" : madeToday ? "made" : best;
   function compact(log, now = Date.now()) {
     const horizon = dayOf(now - COMPACT * DAY2);
@@ -13506,11 +13785,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const state = log.base ? { ...empty(), ...clone(log.base.state) } : empty();
     const steps = /* @__PURE__ */ new Map();
     const squashed = [];
-    let touched2 = /* @__PURE__ */ new Map();
+    let touched3 = /* @__PURE__ */ new Map();
     let dayStart2 = null, baseState = null, folded = false;
     const flush = () => {
       if (dayStart2 == null) return;
-      for (const { row: row2, madeToday, best } of touched2.values()) {
+      for (const { row: row2, madeToday, best } of touched3.values()) {
         const after = valueIn(state, row2);
         const out = { seq: row2.seq, time: row2.time, kind: squashKind(madeToday, best, after), table: row2.table, after: clone(after) ?? null, ...who(row2) };
         if (dayStart2 >= floor) squashed.push(out);
@@ -13519,12 +13798,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         baseState = clone(state);
         folded = true;
       }
-      touched2 = /* @__PURE__ */ new Map();
+      touched3 = /* @__PURE__ */ new Map();
     };
     const land = (r, kind, seq, time) => {
-      const key = keyOf(r), was = touched2.get(key);
+      const key = keyOf(r), was = touched3.get(key);
       const best = was && (RANK[was.best] || 0) >= (RANK[kind] || 0) ? was.best : kind;
-      touched2.set(key, { row: { ...r, seq, time }, madeToday: was ? was.madeToday : kind === "made", best: best === "made" || best === "removed" ? kind : best });
+      touched3.set(key, { row: { ...r, seq, time }, madeToday: was ? was.madeToday : kind === "made", best: best === "made" || best === "removed" ? kind : best });
     };
     for (const r of old) {
       const d = dayOf(r.time);
@@ -13533,7 +13812,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         dayStart2 = d;
       }
       if (CHANGES.includes(r.kind)) {
-        set2(state, r, r.after);
+        set3(state, r, r.after);
         if (r.step != null) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r);
         land(r, r.kind, r.seq, r.time);
       } else if (r.kind === "undone" || r.kind === "redone") {
@@ -13798,10 +14077,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function nextSpot(w2, trainId) {
-    const all2 = trainThoughts(w2, trainId);
+    const all3 = trainThoughts(w2, trainId);
     const t = w2.things[trainId];
-    if (!all2.length) return { x: t.x, y: t.y };
-    const last = all2[all2.length - 1];
+    if (!all3.length) return { x: t.x, y: t.y };
+    const last = all3[all3.length - 1];
     const p = trainSpots(w2, trainId)[last.id];
     return { x: p.x, y: p.y + stepAfter(last) };
   }
@@ -13831,15 +14110,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function joyceBlocks(w2, roomId) {
     const out = [];
     for (const t of roomTrains(w2, roomId)) {
-      const all2 = trainThoughts(w2, t.id);
+      const all3 = trainThoughts(w2, t.id);
       const at2 = (ths) => Math.max(t.at ?? 0, ...ths.map((th) => th.at ?? 0));
       if (t.closed) {
-        out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at2(all2) });
+        out.push({ id: t.id, thoughts: [], group: t.id, tail: true, hand: !!t.hand, at: at2(all3) });
         continue;
       }
       let run2 = { id: t.id, thoughts: [], group: t.id, hand: !!t.hand };
       const runs = [run2];
-      for (const th of all2) {
+      for (const th of all3) {
         if (Number.isFinite(th.dx) && run2.thoughts.length) runs.push(run2 = { id: th.id, thoughts: [], group: t.id, hand: true });
         else if (Number.isFinite(th.dx)) {
           run2.id = th.id;
@@ -14264,8 +14543,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
   }
-  var forRooms = (all2) => all2.filter((o2) => !o2.roomsPage);
-  var forPage = (all2) => all2.find((o2) => o2.roomsPage) || null;
+  var forRooms = (all3) => all3.filter((o2) => !o2.roomsPage);
+  var forPage = (all3) => all3.find((o2) => o2.roomsPage) || null;
   function throwBack(o2, w2, roomId, ids, now = Date.now()) {
     if (!o2?.unplace || shut(w2, roomId)) return 0;
     const chosen = [...new Set(ids)].filter((id) => w2.things[id]);
@@ -14284,7 +14563,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const id of ids) {
       const th = w2.things[id];
       if (isGroup(th)) for (const m2 of itemsIn(w2, id)) out.set(m2.id, m2);
-      else if (isLeaf(th) && th.parent === roomId) out.set(id, th);
+      else if (isLeaf(th) && parentOf(w2, th.id) === roomId) out.set(id, th);
     }
     return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   }
@@ -14292,7 +14571,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const out = /* @__PURE__ */ new Map();
     for (const id of ids) {
       const th = w2.things[id];
-      if ((isGroup(th) || isLeaf(th)) && th.parent === roomId) out.set(id, th);
+      if ((isGroup(th) || isLeaf(th)) && parentOf(w2, th.id) === roomId) out.set(id, th);
     }
     for (const id of [...out.keys()]) if ([...out.keys()].some((o2) => o2 !== id && holds(w2, o2, id))) out.delete(id);
     return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
@@ -14334,11 +14613,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     let freed = 0;
     for (const id of ids) {
       const g2 = w2.things[id];
-      if (!isGroup(g2) || g2.of !== o2.id || g2.parent !== roomId) continue;
+      if (!isGroup(g2) || g2.of !== o2.id || parentOf(w2, g2.id) !== roomId) continue;
       const inner = members(w2, id).filter(isGroup);
       if (!inner.length) continue;
       for (const m2 of inner) {
-        leave2(w2, id, m2.id);
+        leave3(w2, id, m2.id);
         freed++;
       }
     }
@@ -14347,8 +14626,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (o2.ungroup) return o2.ungroup(w2, roomId, items, now) || 0;
     let n = 0;
     for (const th of items) {
-      const gs = groupsOf(w2, th.id, o2.id).filter((g2) => g2.parent === roomId);
-      for (const g2 of gs) leave2(w2, g2.id, th.id);
+      const gs = groupsOf(w2, th.id, o2.id).filter((g2) => parentOf(w2, g2.id) === roomId);
+      for (const g2 of gs) leave3(w2, g2.id, th.id);
       if (gs.length) n++;
     }
     return n;
@@ -14459,19 +14738,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const list2 = cleanRelationList(names, fallback);
     return t && !list2.some((n) => relationEntry(n).name.toLowerCase() === t.toLowerCase()) ? [...list2, t] : list2;
   }
-  var tidy3 = (text2) => String(text2 ?? "").replace(/\s+/g, " ").trim();
-  function arrowsOf({ of: of2, isNode: isNode2, nodes: nodes2, word = "node", loops = false, changed: changed4 = () => {
-  }, store = of2, setting = RELATIONS, words = {}, noun = "arrow" }) {
+  var tidy4 = (text2) => String(text2 ?? "").replace(/\s+/g, " ").trim();
+  function arrowsOf({ of: of3, isNode: isNode2, nodes: nodes2, word = "node", loops = false, changed: changed4 = () => {
+  }, store = of3, setting = RELATIONS, words = {}, noun = "arrow" }) {
     const rowsInto = (w2, roomId, child) => from(w2, child, "relation").filter((r) => r.rule === store && r.to !== child && isNode2(w2, roomId, r.to));
     const rowsIn = (w2, roomId) => ofRule(w2, store).filter((r) => r.kind === "relation" && roomOf(w2, r.from)?.id === roomId);
     const rowOf = (w2, parent, child) => get(w2, relId(store, child, parent));
-    const relations2 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of2, setting, globals), setting.default);
+    const relations2 = (w2, roomId, globals = {}) => cleanRelations(roomSetting(w2, roomId, of3, setting, globals), setting.default);
     function renameRelations2(w2, roomId, before, after) {
       const a = cleanRelations(before, setting.default), b = cleanRelations(after, setting.default);
       if (a.length !== b.length) return 0;
       const low = (list2) => new Set(list2.map((x) => x.toLowerCase()));
-      const had = low(a), has2 = low(b);
-      const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y && !has2.has(x.toLowerCase()) && !had.has(y.toLowerCase())));
+      const had = low(a), has3 = low(b);
+      const map = new Map(a.map((x, i2) => [x, b[i2]]).filter(([x, y]) => x !== y && !has3.has(x.toLowerCase()) && !had.has(y.toLowerCase())));
       let n = 0;
       for (const [from2, to2] of map) n += retag2(w2, roomId, from2, to2);
       return n;
@@ -14523,7 +14802,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const why = whyNot2(w2, roomId, parent, child);
       if (why || shut(w2, roomId)) return why || "This room is locked.";
       const rel = relation == null ? relations2(w2, roomId)[0] : relationName(relation) ?? "";
-      set(w2, relId(store, child, parent), { from: child, to: parent, kind: "relation", rule: store, label: rel, note: tidy3(label3) });
+      set(w2, relId(store, child, parent), { from: child, to: parent, kind: "relation", rule: store, label: rel, note: tidy4(label3) });
       changed4(w2, roomId);
       return "";
     }
@@ -14535,7 +14814,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     function setLabel2(w2, roomId, parent, child, text2) {
       if (shut(w2, roomId) || !rowOf(w2, parent, child)) return false;
-      return amend(w2, relId(store, child, parent), { note: tidy3(text2) });
+      return amend(w2, relId(store, child, parent), { note: tidy4(text2) });
     }
     function setRelation2(w2, roomId, parent, child, relation) {
       if (shut(w2, roomId) || !rowOf(w2, parent, child)) return false;
@@ -14562,7 +14841,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           want.delete(`${a.from}>${a.to}`);
           if ((x.rel ?? "") !== a.rel && setRelation2(w2, roomId, a.from, a.to, x.rel ?? "")) c.change?.(`${name5(a.from)} → ${name5(a.to)}: ${a.rel || "no relation"} becomes ${x.rel || "no relation"}`);
-          if (tidy3(x.label) !== a.label && setLabel2(w2, roomId, a.from, a.to, x.label || "")) c.change?.(`${name5(a.from)} → ${name5(a.to)}: label ${a.label ? `"${a.label}"` : "none"} becomes ${tidy3(x.label) ? `"${tidy3(x.label)}"` : "none"}`);
+          if (tidy4(x.label) !== a.label && setLabel2(w2, roomId, a.from, a.to, x.label || "")) c.change?.(`${name5(a.from)} → ${name5(a.to)}: label ${a.label ? `"${a.label}"` : "none"} becomes ${tidy4(x.label) ? `"${tidy4(x.label)}"` : "none"}`);
         }
         fresh = [...want.values()];
       }
@@ -14728,13 +15007,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           commit(list2.map((x, j) => j === i2 ? { ...x, name: n } : x), { i: i2 });
         }
       });
-      const set3 = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
+      const set4 = (k2, v2) => commit(list2.map((x, j) => j === i2 ? { ...x, [k2]: v2 } : x), { i: i2, part: k2 });
       const select2 = (k2, options, now, label3) => el19("select", {
         class: `room-rel-${k2}`,
         "aria-label": `${e.name}: ${label3}`,
         "data-part": k2,
         onkeydown: (ev) => ev.stopPropagation(),
-        onchange: (ev) => set3(k2, ev.target.value)
+        onchange: (ev) => set4(k2, ev.target.value)
       }, ...options.map(([v2, w2]) => el19("option", { value: v2, selected: v2 === now }, w2)));
       const swatches = el19(
         "span",
@@ -14747,7 +15026,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "aria-checked": String((e.colour || "ink") === k2),
           "aria-label": k2,
           "data-part": k2 === (e.colour || "ink") ? "colour" : null,
-          onclick: () => set3("colour", k2 === "ink" ? null : k2)
+          onclick: () => set4("colour", k2 === "ink" ? null : k2)
         }))
       );
       const r = el19(
@@ -14861,7 +15140,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/world/ontologies/arrowview.js
   var arrowKey = (from2, to2) => `${from2}>${to2}`;
-  function arrowView({ of: of2, net: net2, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
+  function arrowView({ of: of3, net: net2, boxes: boxes3, pads: pads2, nodeAt, name: name5, ends = () => "arrow", route: route2 = null, onNode = null, setting = RELATIONS, word = "arrow", quiet = false }) {
     const { arrows: arrows3, arrowsInto: arrowsInto2, parentsOf: parentsOf2, childrenOf: childrenOf2, link: link2, unlink: unlink2, setLabel: setLabel2, setRelation: setRelation2 } = net2;
     const box = ({ at: at2, size }) => ({ x: at2.x, y: at2.y, w: size.w, h: size.h });
     let editing = null;
@@ -14945,7 +15224,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           const next = withRelation(c.setting(setting.key), n, setting.default);
           if (!c.locked && next.length !== names.length) {
-            setRoomSetting(c.world, c.roomId, of2, setting.key, next);
+            setRoomSetting(c.world, c.roomId, of3, setting.key, next);
             c.save();
           }
           chosen(cleanRelations(next, setting.default).find((x) => x.toLowerCase() === n.toLowerCase()));
@@ -15014,7 +15293,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (own4) return own4;
       const n = at2?.closest?.("[data-group]");
       const g2 = n && c.world.things[n.dataset.group];
-      if (g2 && g2.of === of2) return g2.id;
+      if (g2 && g2.of === of3) return g2.id;
       const p = c.toWorld(ev.clientX, ev.clientY);
       return nodeAt(c.world, c.roomId, p.x, p.y);
     }
@@ -15050,8 +15329,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       document.addEventListener("pointerup", up);
       document.addEventListener("pointercancel", up);
     }
-    function legend(c, all2, names, looks) {
-      const bs = Object.values(all2);
+    function legend(c, all3, names, looks) {
+      const bs = Object.values(all3);
       if (!bs.length) return null;
       const x = Math.min(...bs.map((b) => b.at.x)), y = Math.min(...bs.map((b) => b.at.y)) - 30;
       const rows2 = names.map((n) => {
@@ -15099,14 +15378,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       // Each arrow on the canvas, into `layer` (lines.layer): from the side of the parent that faces
       // the child to the child's facing side, its label at its middle. Returns the label nodes.
-      draw(c, layer2, all2 = boxes3(c.world, c.roomId)) {
+      draw(c, layer2, all3 = boxes3(c.world, c.roomId)) {
         const w2 = c.world, roomId = c.roomId, el19 = c.el;
         const nodes2 = [];
         const line2 = c.setting("line") || "straight";
         const names = cleanRelations(c.setting(setting.key), setting.default);
         const looks = relationLooks(c.setting(setting.key));
         for (const { from: from2, to: to2, label: label3, rel } of arrows3(w2, roomId)) {
-          const a = all2[from2], b = all2[to2];
+          const a = all3[from2], b = all3[to2];
           if (!a || !b) continue;
           const arrow = route2 ? null : between(box(a), box(b), pads2(w2, from2, to2));
           const routed = route2 ? route2(c, a, b, from2, to2) : null;
@@ -15144,7 +15423,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }
         if (c.setting("legend")) {
-          const l2 = legend(c, all2, names, looks);
+          const l2 = legend(c, all3, names, looks);
           if (l2) nodes2.push(l2);
         }
         return nodes2;
@@ -15197,8 +15476,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/world/formats.js
   function formatsOf(slot) {
-    const all2 = () => slot.items;
-    const has2 = (what) => (f2) => typeof f2[what] === "function";
+    const all3 = () => slot.items;
+    const has3 = (what) => (f2) => typeof f2[what] === "function";
     const ask = (f2, fn, fallback) => slot.run(f2, fn, fallback);
     const wait4 = async (f2, fn, fallback) => {
       try {
@@ -15208,24 +15487,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return fallback;
       }
     };
-    const forFile = (file) => all2().find((f2) => ask(f2, () => f2.accepts(file) === true, false)) || null;
-    const first2 = (what) => all2().find(has2(what)) || null;
-    const editor = () => all2().find((f2) => has2("canEdit")(f2) && ask(f2, () => f2.canEdit(), false)) || null;
+    const forFile = (file) => all3().find((f2) => ask(f2, () => f2.accepts(file) === true, false)) || null;
+    const first2 = (what) => all3().find(has3(what)) || null;
+    const editor = () => all3().find((f2) => has3("canEdit")(f2) && ask(f2, () => f2.canEdit(), false)) || null;
     return Object.freeze({
       get any() {
-        return all2().length > 0;
+        return all3().length > 0;
       },
       get list() {
-        return all2().map((f2) => ({ id: f2.id, name: f2.name }));
+        return all3().map((f2) => ({ id: f2.id, name: f2.name }));
       },
       isRoomFile: (file) => !!forFile(file),
       importRoom: async (o2 = {}) => {
         const f2 = o2.file ? forFile(o2.file) : first2("importRoom");
-        return f2 && has2("importRoom")(f2) ? await wait4(f2, () => f2.importRoom(o2), null) ?? null : null;
+        return f2 && has3("importRoom")(f2) ? await wait4(f2, () => f2.importRoom(o2), null) ?? null : null;
       },
       importInto: async (roomId, o2 = {}) => {
         const f2 = o2.file ? forFile(o2.file) : first2("importInto");
-        return f2 && has2("importInto")(f2) ? !!await wait4(f2, () => f2.importInto(roomId, o2), false) : false;
+        return f2 && has3("importInto")(f2) ? !!await wait4(f2, () => f2.importInto(roomId, o2), false) : false;
       },
       get canExport() {
         return !!first2("exportRoom");
@@ -15239,14 +15518,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       editRoom: async (roomId, o2) => {
         const f2 = editor();
-        return f2 && has2("editRoom")(f2) ? !!await wait4(f2, () => f2.editRoom(roomId, o2), false) : false;
+        return f2 && has3("editRoom")(f2) ? !!await wait4(f2, () => f2.editRoom(roomId, o2), false) : false;
       },
       editGroup: async (roomId, groupId, o2) => {
         const f2 = editor();
-        return f2 && has2("editGroup")(f2) ? !!await wait4(f2, () => f2.editGroup(roomId, groupId, o2), false) : false;
+        return f2 && has3("editGroup")(f2) ? !!await wait4(f2, () => f2.editGroup(roomId, groupId, o2), false) : false;
       },
       cancel: () => {
-        for (const f2 of all2()) if (has2("cancel")(f2)) ask(f2, () => f2.cancel());
+        for (const f2 of all3()) if (has3("cancel")(f2)) ask(f2, () => f2.cancel());
       }
     });
   }
@@ -15315,8 +15594,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         get globals() {
           return w2.globals;
         },
-        setGlobal: (of2, key, value) => {
-          (w2.globals[of2] ||= {})[key] = value;
+        setGlobal: (of3, key, value) => {
+          (w2.globals[of3] ||= {})[key] = value;
           w2.storage.set("ontologies", w2.globals);
         },
         resetGlobals: () => {
@@ -15346,7 +15625,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return w2.log;
         },
         // the log itself (moments.js), read only
-        of: (mark) => of(w2.log, mark),
+        of: (mark) => of2(w2.log, mark),
         // a mark's rows, oldest first
         changed: (mark) => changed2(w2.log, mark),
         // when a mark last changed, or null
@@ -15357,7 +15636,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         changedOn: (date) => changedOn(w2.log, date),
         // marks changed on a day → their context then
         at: (time) => stateAt(w2.log, time),
-        // { things, own, pages } as they were at a time
+        // { things, links, places, own } as they were at a time
         first: () => first(w2.log),
         // the first time the log knows of
         get keep() {
@@ -15454,7 +15733,6 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const state = stateOf(this.world);
       const landed2 = absorb(this.log, state, rows2);
       if (!landed2.length) return landed2;
-      this.world.pages = state.pages;
       this.lastSnap = this.snap();
       this.last = JSON.parse(this.lastSnap);
       this.write();
@@ -15480,8 +15758,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return forRooms(this.all);
     }
     ontology(id) {
-      const all2 = this.ontologies;
-      return all2.find((o2) => o2.id === id) || all2.find((o2) => o2.id === FALLBACK);
+      const all3 = this.ontologies;
+      return all3.find((o2) => o2.id === id) || all3.find((o2) => o2.id === FALLBACK);
     }
     setLook(prefs) {
       this.prefs = lookPrefs(prefs);
@@ -16031,6 +16309,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/floors/world.js
   var room2;
+  var floorOf2;
+  var isArchived2;
+  var archivedAt2;
+  var toPage2;
+  var dropPage2;
   var roomsOn2;
   var cells2;
   var roomAt2;
@@ -16042,7 +16325,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var MESSY2;
   var allRooms;
   function bind(lib) {
-    ({ room: room2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, archive: archive2, span: span2, shapeOf: shapeOf2, MESSY: MESSY2 } = lib.model);
+    ({ room: room2, floorOf: floorOf2, isArchived: isArchived2, archivedAt: archivedAt2, toPage: toPage2, dropPage: dropPage2, roomsOn: roomsOn2, cells: cells2, roomAt: roomAt2, addPage: addPage2, pageCount: pageCount2, archive: archive2, span: span2, shapeOf: shapeOf2, MESSY: MESSY2 } = lib.model);
     allRooms = (w2) => [...lib.model.rooms(w2), ...lib.model.archived(w2)];
   }
 
@@ -16055,15 +16338,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var DEFAULT = "medium";
   var preset = (id) => PRESETS.find((p) => p.id === id) || PRESETS.find((p) => p.id === DEFAULT);
   var sizeName = (board) => `${board.cols} × ${board.rows}`;
-  var setPage = (r, page) => {
-    if (page > 0) r.page = page;
-    else delete r.page;
-  };
   var inside3 = (r, col, row2, board) => {
     const { w: w2, h } = span2(r);
     return col >= 0 && row2 >= 0 && col + w2 <= board.cols && row2 + h <= board.rows;
   };
-  function free(w2, r, col, row2, board, page = r.page || 0) {
+  function free(w2, r, col, row2, board, page = floorOf2(w2, r.id)) {
     return inside3(r, col, row2, board) && cells2({ ...r, col, row: row2 }).every(([c, rr2]) => !roomAt2(w2, c, rr2, r.id, page));
   }
   function spot3(w2, r, page, board) {
@@ -16085,15 +16364,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function place2(w2, id, board, cell = null, { near = false } = {}) {
     const r = room2(w2, id);
-    if (!r || r.archived) return null;
-    const from2 = r.page || 0;
+    if (!r || isArchived2(w2, id)) return null;
+    const from2 = floorOf2(w2, id);
     delete r.col;
     delete r.row;
     let at2 = cell && free(w2, r, cell.col, cell.row, board, from2) ? cell : near && cell ? nearest(w2, r, from2, board, cell) : spot3(w2, r, from2, board);
     let page = from2;
     if (!at2) {
       page = addPage2(w2);
-      setPage(r, page);
+      toPage2(w2, r.id, page);
       at2 = spot3(w2, r, page, board) || { col: 0, row: 0 };
     }
     r.col = at2.col;
@@ -16101,10 +16380,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return { page, from: from2, spilled: page !== from2 };
   }
   function settle(w2, page, board) {
-    const all2 = roomsOn2(w2, page).sort((a, b) => (b.id === MESSY2) - (a.id === MESSY2));
+    const all3 = roomsOn2(w2, page).sort((a, b) => (b.id === MESSY2) - (a.id === MESSY2));
     const taken = /* @__PURE__ */ new Set();
     const loose = [];
-    for (const r of all2) {
+    for (const r of all3) {
       const ok = r.col != null && inside3(r, r.col, r.row, board) && cells2(r).every(([c, rr2]) => !taken.has(`${c},${rr2}`));
       if (!ok) {
         loose.push(r);
@@ -16123,7 +16402,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function move2(w2, id, col, row2, board) {
     const r = room2(w2, id);
-    if (!r || r.locked || r.archived || !free(w2, r, col, row2, board)) return false;
+    if (!r || r.locked || isArchived2(w2, id) || !free(w2, r, col, row2, board)) return false;
     r.col = col;
     r.row = row2;
     return true;
@@ -16139,10 +16418,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function toFloor(w2, id, page, board, cell = null) {
     const r = room2(w2, id);
-    if (!r || id === MESSY2 || r.locked || r.archived || (r.page || 0) === page) return false;
+    if (!r || id === MESSY2 || r.locked || isArchived2(w2, id) || floorOf2(w2, id) === page) return false;
     const at2 = cell && free(w2, r, cell.col, cell.row, board, page) ? cell : spot3(w2, r, page, board);
     if (!at2) return "full";
-    setPage(r, page);
+    if (!toPage2(w2, id, page)) return false;
     r.col = at2.col;
     r.row = at2.row;
     return true;
@@ -16159,14 +16438,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     if (page < 0 || page >= pageCount2(w2)) return { error: "none" };
     const on = roomsOn2(w2, page);
     if (on.some((r) => r.locked)) return { error: "locked" };
-    const count2 = pageCount2(w2);
     for (const r of on) archive2(w2, r.id, now);
     for (const r of allRooms(w2)) {
-      const p = r.page || 0;
-      if (p === page) setPage(r, page - 1);
-      else if (p > page) setPage(r, p - 1);
+      const p = floorOf2(w2, r.id);
+      if (p === page) toPage2(w2, r.id, page - 1);
+      else if (p > page) toPage2(w2, r.id, p - 1);
     }
-    w2.pages = Math.max(1, count2 - 1);
+    dropPage2(w2);
     return { archived: on };
   }
 
@@ -16199,7 +16477,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const r = room2(w2, id);
         if (!r) return false;
         const col = Math.round(x), row2 = Math.round(y);
-        if ((r.page || 0) === page) return move2(w2, id, col, row2, board());
+        if (floorOf2(w2, id) === page) return move2(w2, id, col, row2, board());
         return toFloor(w2, id, page, board(), { col, row: row2 }) === true;
       }
     };
@@ -16570,6 +16848,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   var MODEL = [
     "own",
+    "parentOf",
     "shut",
     "hash",
     "roomSetting",
@@ -16789,11 +17068,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var landed = (id) => row({ ok: true, id });
   var refuse = (reason) => row({ ok: false, reason });
   var later = (what, phase) => refuse(`${what} arrives in kernel phase ${phase}; until then this is a name, not a table`);
-  var FLOOR = (n) => `floor:${n || 0}`;
-  var ARCHIVE = "archive";
+  var ARCHIVE2 = "archive";
   function kernel({ lib, world, events = null, gone = () => {
   } }) {
-    const { model, groups, links: LINKS2 } = lib;
+    const { model, groups, links: LINKS2, places: PLACES_T } = lib;
     const netFor2 = (rule) => lib.relations.netFor(rule);
     const w2 = () => world.world;
     const rules = () => world.ontologies?.length ? world.ontologies.map((o2) => o2.id) : ["joyce", "pessoa"];
@@ -16808,16 +17086,16 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       save();
       return landed(id);
     };
-    const on = (table2) => (fn) => {
+    const on = (table3) => (fn) => {
       if (!events) return () => {
       };
       const tell = (data) => {
         if (!data?.rows) {
-          fn(row({ table: table2, rows: rows([]), undone: !!data?.undone }));
+          fn(row({ table: table3, rows: rows([]), undone: !!data?.undone }));
           return;
         }
-        const mine = data.rows.filter((r) => r.table === table2 || table2 === "moments" && r.kind !== void 0);
-        if (mine.length) fn(row({ table: table2, rows: rows(mine.map((r) => ({ ...r }))), undone: !!data.undone }));
+        const mine = data.rows.filter((r) => r.table === table3 || table3 === "moments" && r.kind !== void 0);
+        if (mine.length) fn(row({ table: table3, rows: rows(mine.map((r) => ({ ...r }))), undone: !!data.undone }));
       };
       const offs = world.moments ? [events.on("world:moments", tell)] : [events.on("world:saved", tell), events.on("world:changed", tell)];
       const off = () => {
@@ -16858,14 +17136,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     function placesOf(id) {
       const th = thing2(id);
       if (!th) return [];
-      const out = [];
+      const out = PLACES_T.of(w2(), id).map((r) => ({ mark: r.mark, context: r.context, rule: r.rule ?? null, position: r.position ?? null, ...r.pinned ? { pinned: true } : {} }));
+      const context = PLACES_T.home(w2(), id);
+      if (context == null) return out;
       if (kindOf4(th) === "room") {
-        if (th.parent != null) out.push({ mark: id, context: th.parent, rule: "twin", position: { side: th.side ?? 0 } });
-        else if (th.archived) out.push({ mark: id, context: ARCHIVE, rule: null, position: null });
-        else out.push({ mark: id, context: FLOOR(th.page), rule: "borges", position: th.col == null ? null : { col: th.col, row: th.row } });
+        if (model.isTwin(thing2(context))) out.push({ mark: id, context, rule: "twin", position: { side: th.side ?? 0 } });
+        else if (context !== ARCHIVE2) out.push({ mark: id, context, rule: "borges", position: th.col == null ? null : { col: th.col, row: th.row } });
         return out;
       }
-      const context = th.parent;
       for (const rule of rules()) {
         if (model.isGroup(th) && th.of === rule) {
           if (!th.loose) out.push({ mark: id, context, rule, position: Number.isFinite(th.x) ? { x: th.x, y: th.y } : null });
@@ -16884,13 +17162,20 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const places = Object.freeze({
       of: (mark) => rows(placesOf(mark)),
       in: (context, rule = null) => rows(model.children(w2(), context).flatMap((th) => placesOf(th.id).filter((p) => p.context === context && (rule == null || p.rule === rule)))),
-      loose: (context) => rows(model.children(w2(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context)).map((th) => ({ ...th }))),
+      // Loose in a context: at home there, with no rule placing it (Law 2: never lost, only unplaced).
+      loose: (context) => rows(model.children(w2(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context && p.rule != null)).map((th) => ({ ...th }))),
+      home: (mark) => PLACES_T.home(w2(), mark),
       position: (mark, context, rule) => placesOf(mark).find((p) => p.context === context && p.rule === rule)?.position ?? null,
       put: (mark, context, rule = null, position = null) => {
         const th = thing2(mark);
         if (!th || !thing2(context)) return refuse("No such mark or context");
-        if (kindOf4(th) === "room") return refuse("Rooms are placed on floors by the rooms page until phase 3");
-        if (th.parent !== context && !model.move(w2(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse("The mark cannot go into that context: one of them is locked, or it would go inside itself");
+        if (kindOf4(th) === "room") {
+          if (context === ARCHIVE2) return land(model.archive(w2(), mark), mark, "Messy thoughts, a locked room, a Twin's side or an archived room cannot be archived");
+          if (!model.isFloor(context)) return refuse("A room sits on a floor or in the Archive");
+          if (model.isArchived(w2(), mark)) model.restore(w2(), mark);
+          return land(model.toPage(w2(), mark, +context.slice(6)), mark, "The room cannot go to that floor");
+        }
+        if (PLACES_T.home(w2(), mark) !== context && !model.move(w2(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse("The mark cannot go into that context: one of them is locked, or it would go inside itself");
         if (rule && position && Number.isFinite(position.x)) {
           if (!groups.putAt(w2(), context, rule, mark, position.x, position.y)) return refuse("The context is locked");
         }
@@ -16898,12 +17183,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       },
       move: (mark, from2, to2) => {
         const th = thing2(mark);
-        if (!th || th.parent !== from2) return refuse("The mark is not in that context");
+        if (!th || PLACES_T.home(w2(), mark) !== from2) return refuse("The mark is not in that context");
         return land(groups.moveLoose(w2(), mark, to2), mark, "The mark cannot go to that context: it is locked, missing, or a Twin itself");
       },
       unplace: (mark, context) => {
         const th = thing2(mark);
-        if (!th || th.parent !== context) return refuse("The mark is not in that context");
+        if (!th || PLACES_T.home(w2(), mark) !== context) return refuse("The mark is not in that context");
         let any = false;
         for (const rule of rules()) any = groups.unplace(w2(), context, rule, mark, { lays: lays(rule) }) || any;
         return land(any || groups.wait(w2(), context, mark), mark, "The context is locked");
@@ -16917,7 +17202,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
     const roomOf2 = (id) => {
       const th = thing2(id);
-      return th ? kindOf4(th) === "room" ? th.id : th.parent : null;
+      return th ? kindOf4(th) === "room" ? th.id : model.parentOf(w2(), id) : null;
     };
     const links2 = Object.freeze({
       get: (id) => {
@@ -16997,7 +17282,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       on: on("gaps")
     });
     const log = () => world.moments;
-    const momentRow = (r) => ({ time: r.time, kind: r.kind, ...r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : { context: r.context }, ...r.step != null ? { step: r.step } : {} });
+    const momentRow = (r) => ({ time: r.time, kind: r.kind, ...r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : { context: r.context }, ...r.step != null ? { step: r.step } : {} });
     function fallback(th) {
       const out = [{ time: th.at, kind: "made", mark: th.id }];
       if (th.edited) out.push({ time: th.edited, kind: "edited", mark: th.id });
@@ -17011,15 +17296,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!th) return known;
       return known.some((m2) => m2.kind === "made") ? known : [...fallback(th).filter((m2) => !known.length || m2.kind === "made"), ...known];
     }
-    const all2 = () => (log() ? log().since(0).map(momentRow) : Object.values(w2().things).flatMap(fallback)).sort(byTime4);
+    const all3 = () => (log() ? log().since(0).map(momentRow) : Object.values(w2().things).flatMap(fallback)).sort(byTime4);
     const moments = Object.freeze({
       of: (mark) => rows(momentsOf(mark).sort(byTime4)),
-      since: (time) => rows(all2().filter((m2) => m2.time >= +time)),
+      since: (time) => rows(all3().filter((m2) => m2.time >= +time)),
       day: (date) => {
         const start2 = new Date(date);
         start2.setHours(0, 0, 0, 0);
         const end = start2.getTime() + 24 * 36e5;
-        return rows(all2().filter((m2) => m2.time >= start2.getTime() && m2.time < end));
+        return rows(all3().filter((m2) => m2.time >= start2.getTime() && m2.time < end));
       },
       changed: (mark) => log()?.changed(mark) ?? (thing2(mark) ? thing2(mark).edited || thing2(mark).at : null),
       // when a mark was last written
@@ -17028,6 +17313,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return rows(Object.values((s || w2()).things));
       },
       // the marks as they were then
+      placesAt: (time) => {
+        const s = log()?.at(time);
+        return rows(Object.values((s || w2()).places || {}));
+      },
+      // and where they were
       first: () => log()?.first() ?? null,
       // the first time the log knows of
       kept: () => log()?.keep ?? 0,
@@ -17171,7 +17461,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/home/quick.js
   var { el: el9 } = ui_exports;
   var FADE_MS = 420;
-  function quickLine({ drop: drop2, live, listen = (t, type, fn) => t.addEventListener(type, fn) }) {
+  function quickLine({ drop: drop3, live, listen = (t, type, fn) => t.addEventListener(type, fn) }) {
     const field3 = el9("textarea", {
       class: "home-quick",
       rows: 1,
@@ -17195,7 +17485,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         const text2 = field3.value.trim();
-        if (!text2 || field3.classList.contains("dropping") || !drop2(text2)) return;
+        if (!text2 || field3.classList.contains("dropping") || !drop3(text2)) return;
         field3.classList.add("dropping");
         setTimeout(() => {
           field3.value = "";
@@ -17660,8 +17950,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Settings → Plugins ----
     page() {
-      const all2 = plugins(this.app.features);
-      const on = all2.filter(isOn).length;
+      const all3 = plugins(this.app.features);
+      const on = all3.filter(isOn).length;
       const safe = !!this.app.safe;
       return el12(
         "div",
@@ -17672,8 +17962,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           el12("p", { class: "hint" }, "Safe mode: every plugin is off this time, whatever was chosen. Nothing is lost."),
           el12("button", { type: "button", class: "word", onclick: () => this.app.restart(false) }, "Start normally")
         ) : null,
-        el12("p", { class: "hint" }, `${on} of ${all2.length} on. A plugin switched off keeps its data, and comes back as it was.`),
-        el12("div", { class: "feature-list plugins-list", role: "list" }, all2.map((f2) => this.row(f2, safe))),
+        el12("p", { class: "hint" }, `${on} of ${all3.length} on. A plugin switched off keeps its data, and comes back as it was.`),
+        el12("div", { class: "feature-list plugins-list", role: "list" }, all3.map((f2) => this.row(f2, safe))),
         safe ? null : el12(
           "div",
           { class: "plugins-foot" },
@@ -17738,6 +18028,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/proust/world.js
   var own2;
+  var parentOf2;
   var shut2;
   var hash2;
   var roomSetting2;
@@ -17773,7 +18064,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var maths2;
   var spiralPoint2;
   function bind2(t) {
-    ({ own: own2, shut: shut2, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting2, isGroup: isGroup2, isLeaf: isLeaf2, create: create2, join: join3, members: members2, itemsIn: itemsIn2, within: within2, groupOf: groupOf2, groupsIn: groupsIn2, roomItems: roomItems2, thoughtText: thoughtText2, view: view4 } = t.model);
+    ({ own: own2, parentOf: parentOf2, shut: shut2, hash: hash2, roomSetting: roomSetting2, setRoomSetting: setRoomSetting2, isGroup: isGroup2, isLeaf: isLeaf2, create: create2, join: join3, members: members2, itemsIn: itemsIn2, within: within2, groupOf: groupOf2, groupsIn: groupsIn2, roomItems: roomItems2, thoughtText: thoughtText2, view: view4 } = t.model);
     ({ placedForeign: placedForeign2, trayForeign: trayForeign2, inForeign: inForeign2, waiting: waiting3, wait: wait2, spot: spot4, putAt: putAt2, place: place3, unplace: unplace2 } = t.groups);
     ({ arrowsOf: arrowsOf2, cleanRelationList: cleanRelationList2, relationEntry: relationEntry2, relationEnds: relationEnds2, listText: listText2 } = t.relations);
     ({ arrowView: arrowView2 } = t.arrows);
@@ -17814,7 +18105,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const self = ownGroup(w2, id);
     if (self?.loose) return "tray";
     const th = w2.things[id];
-    if (out === id && isLeaf2(th) && !clusterOf(w2, id) && waiting3(w2, th.parent, ID, id)) return "tray";
+    if (out === id && isLeaf2(th) && !clusterOf(w2, id) && waiting3(w2, parentOf2(w2, th.id), ID, id)) return "tray";
     return out;
   }
   function clusters(w2, roomId) {
@@ -17823,7 +18114,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function isNode(w2, roomId, id, inside4 = null) {
     const th = w2.things[id];
-    if (!th || th.parent !== roomId) return false;
+    if (!th || parentOf2(w2, th.id) !== roomId) return false;
     if ((inside4 || inForeign2(w2, roomId, ID))(id)) return false;
     if (isLeaf2(th)) return shownAs(w2, id) !== "tray";
     if (!isGroup2(th)) return false;
@@ -17855,9 +18146,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     words: { self: "A thought can't be linked to itself.", join: "Links join two things on the canvas." }
   });
   function cut(w2, roomId, ids) {
-    const set3 = new Set(ids);
+    const set4 = new Set(ids);
     let n = 0;
-    for (const a of links().arrows(w2, roomId)) if (set3.has(a.from) || set3.has(a.to)) {
+    for (const a of links().arrows(w2, roomId)) if (set4.has(a.from) || set4.has(a.to)) {
       links().unlink(w2, roomId, a.from, a.to);
       n++;
     }
@@ -17898,15 +18189,15 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function point(w2, roomId, id) {
     const th = w2.things[id];
-    if (!th || th.parent !== roomId) return null;
+    if (!th || parentOf2(w2, th.id) !== roomId) return null;
     const shown3 = VIEWS.get(roomId)?.at[id];
     if (shown3) return { x: shown3.x, y: shown3.y };
     const placed = own2(w2, roomId, ID, false)[id];
     if (isLeaf2(th)) {
       if (placed && Number.isFinite(placed.x)) return { x: placed.x, y: placed.y };
-      const all2 = roomItems2(w2, roomId);
-      const i2 = all2.findIndex((u) => u.id === id);
-      return spiralPoint2(i2 < 0 ? all2.length : i2, id);
+      const all3 = roomItems2(w2, roomId);
+      const i2 = all3.findIndex((u) => u.id === id);
+      return spiralPoint2(i2 < 0 ? all3.length : i2, id);
     }
     if (!isGroup2(th)) return null;
     if (th.of !== ID) return spot4(w2, roomId, ID, id);
@@ -17940,7 +18231,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const at2 = point(w2, roomId, id);
     if (!at2) return false;
     const dx = x - at2.x, dy = y - at2.y;
-    const ids = view9.at[id] ? [id] : itemsIn2(w2, id).map((m2) => shownAs(w2, m2.id)).filter((m2, i2, all2) => view9.at[m2] && all2.indexOf(m2) === i2);
+    const ids = view9.at[id] ? [id] : itemsIn2(w2, id).map((m2) => shownAs(w2, m2.id)).filter((m2, i2, all3) => view9.at[m2] && all3.indexOf(m2) === i2);
     if (!ids.length) return false;
     for (const m2 of ids) {
       const p = view9.at[m2];
@@ -18147,7 +18438,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // After `id`: the next thought goes just below it, in its cluster, linked on from it.
     goOn(w2, roomId, id) {
       const th = w2.things[id];
-      if (!th || th.parent !== roomId || !isNode(w2, roomId, id)) return null;
+      if (!th || parentOf2(w2, th.id) !== roomId || !isNode(w2, roomId, id)) return null;
       const c = isLeaf2(th) ? clusterOf(w2, id) : null;
       return { train: c && !c.closed ? c.id : null, after: id, ...below(w2, roomId, id) };
     },
@@ -18215,8 +18506,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function start(nodes2, links2, chosen = [], reach3 = null) {
-    const ids = nodes2.map((n) => n.id), index2 = new Map(ids.map((id, i2) => [id, i2]));
-    const pairs = links2.filter(([a, b]) => index2.has(a) && index2.has(b) && a !== b);
+    const ids = nodes2.map((n) => n.id), index3 = new Map(ids.map((id, i2) => [id, i2]));
+    const pairs = links2.filter(([a, b]) => index3.has(a) && index3.has(b) && a !== b);
     const dist = distances2(ids, pairs, chosen);
     const far = Math.max(0, ...[...dist.values()].filter(Number.isFinite));
     const out = nodes2.map((n) => {
@@ -18251,7 +18542,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
       }
     }
-    return { nodes: out, edges: pairs.map(([a, b]) => [index2.get(a), index2.get(b)]), c, alpha: 1, centred: !!sources.length };
+    return { nodes: out, edges: pairs.map(([a, b]) => [index3.get(a), index3.get(b)]), c, alpha: 1, centred: !!sources.length };
   }
   function step(L) {
     const ns = L.nodes, a = L.alpha;
@@ -18345,8 +18636,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const inner = members2(w2, id).filter((g2) => isGroup2(g2) && g2.of === ID && !g2.closed);
     return inner.length ? 1 + Math.max(...inner.map((g2) => depth(w2, g2.id, seen))) : 0;
   }
-  function hull(w2, roomId, id, all2) {
-    const bs = itemsIn2(w2, id).map((m2) => all2[shownAs(w2, m2.id)]).filter(Boolean);
+  function hull(w2, roomId, id, all3) {
+    const bs = itemsIn2(w2, id).map((m2) => all3[shownAs(w2, m2.id)]).filter(Boolean);
     if (!bs.length) return null;
     const pad = HULL + depth(w2, id) * 12;
     const x0 = Math.min(...bs.map((b) => b.at.x)) - pad - 6, y0 = Math.min(...bs.map((b) => b.at.y)) - pad;
@@ -18449,14 +18740,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function centreWeb(c) {
     const w2 = c.world, roomId = c.roomId;
-    const all2 = boxes(w2, roomId);
-    const list2 = proust.units(w2, roomId).filter((u) => all2[u.id]);
+    const all3 = boxes(w2, roomId);
+    const list2 = proust.units(w2, roomId).filter((u) => all3[u.id]);
     if (!list2.length) {
       c.toast("Nothing on the canvas to centre.");
       return true;
     }
     const units = new Set(list2.map((u) => u.id));
-    const nodes2 = list2.map((u) => ({ id: u.id, x: all2[u.id].at.x, y: all2[u.id].at.y, w: all2[u.id].size.w, h: all2[u.id].size.h }));
+    const nodes2 = list2.map((u) => ({ id: u.id, x: all3[u.id].at.x, y: all3[u.id].at.y, w: all3[u.id].size.w, h: all3[u.id].size.h }));
     const pairs = [];
     for (const a of links().arrows(w2, roomId)) for (const p of shownUnits(w2, a.from, units)) for (const q of shownUnits(w2, a.to, units)) pairs.push([p, q]);
     for (const g2 of clusters(w2, roomId)) {
@@ -18533,8 +18824,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     c.drawWorld();
     c.toast("Kept: every thought stays where it is now. Ctrl+Z undoes.");
   }
-  function centreBar(c, view9, all2) {
-    const bs = Object.keys(view9.at).map((id) => all2[id]).filter(Boolean);
+  function centreBar(c, view9, all3) {
+    const bs = Object.keys(view9.at).map((id) => all3[id]).filter(Boolean);
     if (!bs.length) return null;
     const x = (Math.min(...bs.map((b) => b.at.x)) + Math.max(...bs.map((b) => b.at.x + b.size.w))) / 2;
     const y = Math.min(...bs.map((b) => b.at.y)) - 28;
@@ -18591,7 +18882,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function draw2(c) {
     const w2 = c.world, el19 = c.el, roomId = c.roomId;
-    const all2 = boxes(w2, roomId);
+    const all3 = boxes(w2, roomId);
     const layer2 = lines2.layer("room-proust-links");
     const nodes2 = [];
     const chosenGroup = (id) => c.sel?.kind === "train" && c.sel.id === id || c.isSel(id);
@@ -18600,7 +18891,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const dot = (id, style) => c.locked ? null : el19("span", { class: "room-proust-dot", "data-dot": id, title: "Drag onto another thing to link them", ...style ? { style } : {} });
     for (const g2 of clusters(w2, roomId)) {
       if (g2.closed || shownAs(w2, g2.id) !== g2.id) continue;
-      const h = hull(w2, roomId, g2.id, all2);
+      const h = hull(w2, roomId, g2.id, all3);
       if (!h) continue;
       layer2.append(lines2.svg("rect", {
         x: h.at.x,
@@ -18617,9 +18908,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         nodes2.push(d);
       }
     }
-    nodes2.push(...arrows().draw(c, layer2, all2));
+    nodes2.push(...arrows().draw(c, layer2, all3));
     for (const u of proust.units(w2, roomId)) {
-      const b = all2[u.id];
+      const b = all3[u.id];
       if (!b) continue;
       const style = `left:${b.at.x}px;top:${b.at.y}px`;
       if (isGroup2(u)) {
@@ -18640,12 +18931,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }, c.thoughtNode(u), dot(u.id)));
     }
     if (view9) {
-      const bar = centreBar(c, view9, all2);
+      const bar = centreBar(c, view9, all3);
       if (bar) nodes2.push(bar);
     }
     if (c.draft && !c.draft.edit) {
       const at2 = { x: c.draft.x ?? 0, y: c.draft.y ?? 0 };
-      const from2 = c.draft.after && all2[c.draft.after];
+      const from2 = c.draft.after && all3[c.draft.after];
       if (from2) {
         const box = { at: at2, size: { w: 120, h: 26 } };
         const [ln] = lines2.line(lines2.strand(edge(from2, centre2(box)), edge(box, centre2(from2)), 0), { cls: "room-arrow room-arrow-drawing" });
@@ -18694,11 +18985,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return this.storage.get("drafts", {}) || {};
     }
     keepDraft(name5, d) {
-      const all2 = this.drafts();
-      if (d) all2[name5] = d;
-      else if (name5 in all2) delete all2[name5];
+      const all3 = this.drafts();
+      if (d) all3[name5] = d;
+      else if (name5 in all3) delete all3[name5];
       else return;
-      this.storage.set("drafts", all2);
+      this.storage.set("drafts", all3);
     }
     // Opens the editor in the panel. Resolves once it closes: true when Apply was used, else false.
     // draft: a name for what is edited ("room:<id>"): closed with changes not applied, the text is
@@ -18885,6 +19176,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/roomfile/world.js
   var room3;
+  var parentOf3;
   var shut3;
   var view6;
   var create3;
@@ -18913,11 +19205,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var isTwin2;
   var addTwin2;
   var sides2;
-  var leave3;
+  var leave4;
   var replaceIn2;
   function bind3(t) {
     ({
       room: room3,
+      parentOf: parentOf3,
       shut: shut3,
       view: view6,
       create: create3,
@@ -18939,7 +19232,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       join: join5,
       within: within3,
       groupLabel: groupLabel2,
-      leave: leave3,
+      leave: leave4,
       replaceIn: replaceIn2
     } = t.model);
     ({ ITEMS: ITEMS2, kindFor: kindFor2 } = t.kinds);
@@ -19268,8 +19561,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (r.tags?.length) out.push(["tags", writeFront(r.tags)]);
       for (const k2 of ["tint", "light", "opacity"]) if (r[k2] != null) out.push([k2, writeFront(r[k2])]);
     }
-    for (const [of2, set3] of Object.entries(w2.settings?.[roomId] || {})) {
-      for (const [k2, v2] of Object.entries(set3 || {})) if (v2 !== void 0) out.push([`${prefix}${of2}.${k2}`, writeFront(v2)]);
+    for (const [of3, set4] of Object.entries(w2.settings?.[roomId] || {})) {
+      for (const [k2, v2] of Object.entries(set4 || {})) if (v2 !== void 0) out.push([`${prefix}${of3}.${k2}`, writeFront(v2)]);
     }
     return out;
   }
@@ -19422,8 +19715,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         let line2 = obj.line;
         for (const k2 of keys) {
           if (k2.key === "made in") {
-            const of2 = String(k2.values[0]?.v ?? "").toLowerCase();
-            if (of2) fields2.of = of2;
+            const of3 = String(k2.values[0]?.v ?? "").toLowerCase();
+            if (of3) fields2.of = of3;
           } else if (k2.key === "holds") {
             holds2.push(...k2.values);
             line2 = k2.line;
@@ -19489,7 +19782,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const { g: g2, obj } of groups) {
       if (!w2.things[g2.id]) continue;
       if (!members3(w2, g2.id).length) {
-        delete w2.things[g2.id];
+        remove2(w2, g2.id);
         ids.delete(obj.id);
         delete kept.keys[g2.id];
         report.push(`Line ${obj.line}: ${obj.title ? `"${obj.title}"` : `^${obj.id}`} holds nothing, so it was left out.`);
@@ -19506,8 +19799,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const sections = unread?.sections;
     kept.objects.push(...unread?.objects || []);
     const modeLines = unread?.modeLines || {};
-    const has2 = kept.objects.length || Object.keys(kept.keys).length || meta?.kept?.length || sections?.length || Object.keys(modeLines).length;
-    if (!has2) return;
+    const has3 = kept.objects.length || Object.keys(kept.keys).length || meta?.kept?.length || sections?.length || Object.keys(modeLines).length;
+    if (!has3) return;
     const data = own3(w2, roomId, KEPT2);
     if (meta?.kept?.length) data.front = [.../* @__PURE__ */ new Set([...data.front || [], ...meta.kept])];
     if (kept.objects.length) data.objects = [...data.objects || [], ...kept.objects];
@@ -19668,7 +19961,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const k2 of ["tint", "light", "opacity"]) if (meta[k2] != null) fields[k2] = meta[k2];
     update2(w2, roomId, fields, now);
     seedRoomSettings2(w2, roomId, globals);
-    for (const [of2, set3] of Object.entries(meta.settings)) for (const [k2, v2] of Object.entries(set3)) setRoomSetting3(w2, roomId, of2, k2, v2);
+    for (const [of3, set4] of Object.entries(meta.settings)) for (const [k2, v2] of Object.entries(set4)) setRoomSetting3(w2, roomId, of3, k2, v2);
   }
   function importTwin(w2, parts2, meta, report, { ontologies, now, page, globals, name: name5, fetched, read, known, unknown }) {
     const modes = [0, 1].map((k2) => {
@@ -19738,8 +20031,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     for (const k2 of [0, 1]) {
       const s = both[k2];
       seedRoomSettings2(w2, s.id, globals);
-      for (const [of2, set3] of Object.entries({ ...meta.settings[modes[k2]] ? { [modes[k2]]: meta.settings[modes[k2]] } : {}, ...meta.sideSettings[k2] })) {
-        for (const [key, v2] of Object.entries(set3)) setRoomSetting3(w2, s.id, of2, key, v2);
+      for (const [of3, set4] of Object.entries({ ...meta.settings[modes[k2]] ? { [modes[k2]]: meta.settings[modes[k2]] } : {}, ...meta.sideSettings[k2] })) {
+        for (const [key, v2] of Object.entries(set4)) setRoomSetting3(w2, s.id, of3, key, v2);
       }
       const mine = { ...parts2, objects: parts2.objects.filter((o2) => side.get(o2.id) === k2), sections: sectionsOf[k2] };
       const got = bringObjects(w2, s.id, mine, { modes: [modes[k2]], ontologies, now: at2, report, fetched });
@@ -19832,10 +20125,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     diff2("desc", "Description", r.desc || "", meta.description ? tidyLines(meta.description) : "");
     diff2("tags", "Tags", r.tags || [], meta.tags || []);
     for (const k2 of ["tint", "light", "opacity"]) diff2(k2, k2[0].toUpperCase() + k2.slice(1), r[k2] ?? null, meta[k2] ?? null);
-    for (const [of2, set3] of Object.entries(meta.settings)) {
-      for (const [k2, v2] of Object.entries(set3)) {
-        const now = w2.settings?.[roomId]?.[of2]?.[k2];
-        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${of2}.${k2}`, of: of2, k: k2, from: now, to: v2, text: `${of2}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
+    for (const [of3, set4] of Object.entries(meta.settings)) {
+      for (const [k2, v2] of Object.entries(set4)) {
+        const now = w2.settings?.[roomId]?.[of3]?.[k2];
+        if (JSON.stringify(now ?? null) !== JSON.stringify(v2 ?? null)) out.push({ key: `setting:${of3}.${k2}`, of: of3, k: k2, from: now, to: v2, text: `${of3}.${k2}: ${say3(now)} → ${say3(v2)} (Ctrl+Z doesn't take settings back)` });
       }
     }
     const mode = view6(w2, roomId).mode;
@@ -19876,7 +20169,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const existing = (fileId) => {
       const id = session.back.get(fileId);
       const th = id && w2.things[id];
-      return th && th.parent === roomId ? id : null;
+      return th && parentOf3(w2, th.id) === roomId ? id : null;
     };
     const fresh = /* @__PURE__ */ new Set();
     const kept = { objects: [], keys: {} };
@@ -20008,19 +20301,19 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         continue;
       }
       const gone = members3(w2, g2.id).map((m2) => m2.id).filter((m2) => !want.includes(m2));
-      for (const m2 of gone) leave3(w2, g2.id, m2);
+      for (const m2 of gone) leave4(w2, g2.id, m2);
       if (gone.length && !fresh.has(g2.id)) changes.push(`${plural2(gone.length, "thing")} ${gone.length === 1 ? "leaves" : "leave"} ${named(w2, g2.id)}`);
       setOrder2(w2, g2.id, want);
     }
     const inText = new Set(ids.values());
     const was = session.scope || new Set(session.back.values());
-    out.missing = [...was].filter((id) => w2.things[id] && !inText.has(id) && w2.things[id].parent === roomId);
+    out.missing = [...was].filter((id) => w2.things[id] && !inText.has(id) && parentOf3(w2, id) === roomId);
     if (session.scope || removeMissing) {
       const missing4 = out.missing.map((id) => w2.things[id]);
       for (const g2 of missing4.filter(isGroup3)) {
         if (!w2.things[g2.id]) continue;
         changes.push(`${named(w2, g2.id)} is deleted (what it holds stays, unless it is gone from the text too)`);
-        for (const m2 of members3(w2, g2.id)) leave3(w2, g2.id, m2.id);
+        for (const m2 of members3(w2, g2.id)) leave4(w2, g2.id, m2.id);
         remove2(w2, g2.id);
       }
       for (const th of missing4.filter(isLeaf3)) {
@@ -20388,17 +20681,18 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function timeline2(m2, w2, roomId, moments = null) {
     return m2.roomThoughts(w2, roomId).slice().sort((a, b) => changed3(a, moments) - changed3(b, moments) || a.at - b.at);
   }
-  function squareOf(w2, th) {
-    const r = w2.things[th?.parent];
+  function squareOf(w2, th, up) {
+    const r = w2.things[up(th?.id)];
     if (r?.kind !== "room") return null;
-    const up = w2.things[r.parent];
-    return up?.kind === "room" ? up : r;
+    const t = w2.things[up(r.id)];
+    return t?.kind === "room" ? t : r;
   }
   function days(m2, w2, moments = null) {
     const by = /* @__PURE__ */ new Map();
+    const up = (id) => m2.parentOf(w2, id);
     for (const th of Object.values(w2.things)) {
       if (!m2.isLeaf(th)) continue;
-      const r = squareOf(w2, th);
+      const r = squareOf(w2, th, up);
       if (!r) continue;
       const day2 = dayOf2(changed3(th, moments));
       if (!by.has(day2)) by.set(day2, /* @__PURE__ */ new Map());
@@ -20425,17 +20719,23 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   // dist/web/features/time/record.js
   var DAY4 = 864e5;
   var KEEP2 = [{ days: 30, words: "1 month" }, { days: 365, words: "1 year" }, { days: 0, words: "Forever" }];
-  function snapshot(things) {
+  var homes = (places) => {
+    const out = /* @__PURE__ */ new Map();
+    for (const p of places) if (p?.rule == null) out.set(p.mark, p.context);
+    return out;
+  };
+  function snapshot(things, home2 = /* @__PURE__ */ new Map()) {
     const rooms4 = {};
     for (const r of Object.values(things)) {
-      if (r?.kind !== "room" || r.parent) continue;
+      const at2 = home2.get(r?.id);
+      if (r?.kind !== "room" || !(at2 === "archive" || /^floor:\d+$/.test(at2 ?? ""))) continue;
       rooms4[r.id] = {
         name: r.name || "",
-        page: r.page || 0,
+        page: at2 === "archive" ? 0 : +at2.slice(6),
         col: r.col ?? null,
         row: r.row ?? null,
         size: r.size || 1,
-        archived: !!r.archived,
+        archived: at2 === "archive",
         tint: r.tint ?? null,
         light: r.light ?? null,
         opacity: r.opacity ?? null
@@ -20453,12 +20753,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const things = {};
     for (const th of moments.at(end)) things[th.id] = th;
     const then = { things };
-    const rooms4 = snapshot(things);
+    const home2 = homes(moments.placesAt(end));
+    const up = (id) => home2.get(id);
+    const rooms4 = snapshot(things, home2);
     const written = /* @__PURE__ */ new Set();
     const counts2 = {};
     for (const th of Object.values(things)) {
       if (!m2.isLeaf(th)) continue;
-      const sq = squareOf(then, th);
+      const sq = squareOf(then, th, up);
       if (!sq) continue;
       counts2[sq.id] = (counts2[sq.id] || 0) + 1;
       if (dayOf2(moments.changed(th.id) ?? th.at ?? 0) === day2) written.add(sq.id);
@@ -20771,10 +21073,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // On the rooms page: the days something was written, newest first, and where.
     dayList(p) {
       const w2 = this.world, m2 = this.m;
-      const all2 = days(m2, w2, this.t.moments);
-      if (!all2.length) return el15("p", { class: "time-none" }, "Nothing written yet");
+      const all3 = days(m2, w2, this.t.moments);
+      if (!all3.length) return el15("p", { class: "time-none" }, "Nothing written yet");
       const sel = p.chosen?.() || null;
-      return el15("ol", { class: "time-list time-days" }, all2.map((d) => el15(
+      return el15("ol", { class: "time-list time-days" }, all3.map((d) => el15(
         "li",
         { class: "time-day" },
         p.showDay ? el15("button", {
@@ -20807,6 +21109,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/rooms/world.js
   var room4;
+  var parentOf4;
+  var floorOf3;
+  var isArchived3;
+  var archivedAt3;
   var MESSY3;
   var remove3;
   var shut4;
@@ -20858,6 +21164,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function bind4(lib) {
     ({
       room: room4,
+      parentOf: parentOf4,
+      floorOf: floorOf3,
+      isArchived: isArchived3,
+      archivedAt: archivedAt3,
       MESSY: MESSY3,
       remove: remove3,
       shut: shut4,
@@ -21004,7 +21314,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return out;
       }
       for (const f2 of search2(this.world, query, Infinity)) {
-        for (let th = this.world.things[f2.id]; th; th = this.world.things[th.parent]) {
+        for (let th = this.world.things[f2.id]; th; th = this.world.things[parentOf4(this.world, th.id)]) {
           if (ids.has(th.id)) {
             out[th.id] = (out[th.id] || 0) + 1;
             break;
@@ -21022,14 +21332,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.page = Math.min(this.page, pageCount3(this.world) - 1);
       const { cols, rows: rows2, cell } = this.gridSize();
       if (this.floors.settle(this.page).length) this.save();
-      const all2 = roomsOn3(this.world, this.page);
+      const all3 = roomsOn3(this.world, this.page);
       const shelved = archived2(this.world);
       this.shelfBtn.setAttribute("aria-current", String(this.shelf));
       this.shelfHead.hidden = !this.shelf;
       this.roomsPage.classList.toggle("shelf", this.shelf);
       this.drawPages();
       this.grid.classList.toggle("peek-always", this.prefs.peek >= 0.5);
-      const shown3 = new Set((this.shelf ? shelved : all2).map((r) => r.id));
+      const shown3 = new Set((this.shelf ? shelved : all3).map((r) => r.id));
       if (!shown3.has(this.roomPick)) this.roomPick = null;
       if (!shown3.has(this.roomSel)) this.roomSel = null;
       this.picks = (this.picks || []).filter((id) => shown3.has(id));
@@ -21082,7 +21392,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       }
       const taken = /* @__PURE__ */ new Set();
-      for (const r of all2) for (const [c, d] of cells3(r)) taken.add(`${c},${d}`);
+      for (const r of all3) for (const [c, d] of cells3(r)) taken.add(`${c},${d}`);
       const empty2 = [];
       for (let row2 = 0; row2 < rows2; row2++) for (let col = 0; col < cols; col++) {
         if (taken.has(`${col},${row2}`)) continue;
@@ -21106,9 +21416,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }));
       }
-      const tiles2 = all2.map((r) => this.tile(r, now, hits));
+      const tiles2 = all3.map((r) => this.tile(r, now, hits));
       const panels = [];
-      const chosen = this.roomSel && all2.find((r) => r.id === this.roomSel);
+      const chosen = this.roomSel && all3.find((r) => r.id === this.roomSel);
       if (chosen && !this.panel) panels.push(this.roomOptions(chosen, cell, cols));
       if (this.panel) {
         if (this.manyShown) this.dockMany(this.picks);
@@ -21124,9 +21434,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Another floor, as it is, for the strip: its squares on its empty cells, not to be pressed
     // (it becomes the drawn floor when the strip comes to rest on it).
     floorCopy(page, cols, rows2, cell, now) {
-      const all2 = roomsOn3(this.world, page).filter((r) => r.col != null);
+      const all3 = roomsOn3(this.world, page).filter((r) => r.col != null);
       const taken = /* @__PURE__ */ new Set();
-      for (const r of all2) for (const [c, rr2] of cells3(r)) taken.add(`${c},${rr2}`);
+      for (const r of all3) for (const [c, rr2] of cells3(r)) taken.add(`${c},${rr2}`);
       const empty2 = [];
       for (let row2 = 0; row2 < rows2; row2++) for (let col = 0; col < cols; col++) {
         if (!taken.has(`${col},${row2}`)) empty2.push(el16("div", { class: "rooms-cell", style: `grid-column:${col + 1};grid-row:${row2 + 1}` }));
@@ -21135,7 +21445,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "div",
         { class: "rooms-grid rooms-grid-copy", "aria-hidden": "true", inert: "", "data-floor": page },
         ...empty2,
-        ...all2.map((r) => this.tile(r, now, null))
+        ...all3.map((r) => this.tile(r, now, null))
       );
       g2.style.setProperty("--cols", cols);
       g2.style.setProperty("--cell", cell + "px");
@@ -21307,7 +21617,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     tile(r, now = Date.now(), hits = null) {
       const look = squareLook2(r, r.id === MESSY3, this.prefs, this.palette);
       const written = roomThoughts2(this.world, r.id);
-      const count2 = written.length;
+      const count3 = written.length;
       const glow2 = light2(this.attention, r.id, written.slice(-40).map((th) => th.at), now);
       const lit = glow2 > 0.04;
       const name5 = this.renaming === r.id ? this.nameField(r, () => {
@@ -21324,7 +21634,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           role: "button",
           tabindex: 0,
           style: `--lit:${glow2.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${across3};grid-row:${r.row + 1} / span ${down}`,
-          "aria-label": `${r.name}, ${count2} thought${count2 === 1 ? "" : "s"}`,
+          "aria-label": `${r.name}, ${count3} thought${count3 === 1 ? "" : "s"}`,
           "aria-selected": String(this.roomPick === r.id),
           "data-room": r.id,
           "aria-expanded": String(this.roomSel === r.id),
@@ -21373,7 +21683,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           "div",
           { class: "rooms-tile-label" },
           name5,
-          el16("span", { class: "rooms-tile-count" }, count2 ? String(count2) : "")
+          el16("span", { class: "rooms-tile-count" }, count3 ? String(count3) : "")
         )
       );
       return tile;
@@ -21785,13 +22095,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
     // (roomRows) or in folding sections in the dock (roomDockRows).
     roomParts(r) {
-      const set3 = (fields) => {
+      const set4 = (fields) => {
         update3(this.world, r.id, fields);
         this.save();
         this.drawRoomsSoon();
       };
       const look = this.lookOf(r);
-      const lightness2 = el16("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set3({ light: +e.target.value }) });
+      const lightness2 = el16("input", { type: "range", min: 0.05, max: 0.98, step: 0.01, value: look.light, "aria-label": "Lightness", oninput: (e) => set4({ light: +e.target.value }) });
       const p = {};
       p.name = el16("input", {
         class: "pop-name",
@@ -21831,11 +22141,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       p.tags = this.tagsRow(r);
       p.colour = el16("input", { type: "color", value: look.colour, "aria-label": "Colour", oninput: (e) => {
         const L = toOklch2(rgb2(e.target.value))[0];
-        set3({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
+        set4({ tint: e.target.value, light: Math.round(L * 1e3) / 1e3 });
         lightness2.value = L;
       } });
       p.lightness = lightness2;
-      p.opacity = el16("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set3({ opacity: +e.target.value }) });
+      p.opacity = el16("input", { type: "range", min: 0.3, max: 1, step: 0.01, value: look.opacity, "aria-label": "Opacity", oninput: (e) => set4({ opacity: +e.target.value }) });
       p.sizes = r.locked ? null : [1, 2].map((n) => el16("button", {
         type: "button",
         class: "word",
@@ -22037,21 +22347,21 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const at2 = g2 && this.cellAt(ev.clientX, ev.clientY, g2);
         return at2 && { col: at2.col - offset.col, row: at2.row - offset.row };
       };
-      const drop2 = el16("div", { class: "rooms-drop", hidden: true });
-      this.grid.append(drop2);
+      const drop3 = el16("div", { class: "rooms-drop", hidden: true });
+      this.grid.append(drop3);
       const mark = (c) => {
         if (!c) {
-          drop2.hidden = true;
+          drop3.hidden = true;
           return;
         }
         const { w: across3, h: down } = span3(r);
         const free2 = c.col >= 0 && c.row >= 0 && c.col + across3 <= this.cols && c.row + down <= this.floors.size.rows && cells3({ ...r, col: c.col, row: c.row }).every(([cc, rr2]) => !roomAt3(this.world, cc, rr2, r.id, floor));
         const g2 = gridOf(floor);
-        if (g2 && drop2.parentElement !== g2) g2.append(drop2);
-        drop2.hidden = false;
-        drop2.classList.toggle("taken", !free2);
-        drop2.style.gridColumn = `${c.col + 1} / span ${across3}`;
-        drop2.style.gridRow = `${c.row + 1} / span ${down}`;
+        if (g2 && drop3.parentElement !== g2) g2.append(drop3);
+        drop3.hidden = false;
+        drop3.classList.toggle("taken", !free2);
+        drop3.style.gridColumn = `${c.col + 1} / span ${across3}`;
+        drop3.style.gridRow = `${c.row + 1} / span ${down}`;
       };
       const lit = (n) => {
         for (const x of this.root.querySelectorAll(".drop-on")) if (x !== n) x.classList.remove("drop-on");
@@ -22095,7 +22405,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const dx = ev.clientX - start2.x, dy = ev.clientY - start2.y;
         if (!dragging && Math.hypot(dx, dy) < 5) return;
         clearTimeout(hold2);
-        if (r.archived || r.locked && !ev.altKey) return;
+        if (isArchived3(this.world, r.id) || r.locked && !ev.altKey) return;
         if (!dragging) {
           dragging = true;
           tile.classList.add("dragging");
@@ -22106,7 +22416,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         follow();
         atEdge(ev);
         over = this.dropAt(ev.clientX, ev.clientY);
-        if (over?.page === (r.page || 0)) over = null;
+        if (over?.page === floorOf3(this.world, r.id)) over = null;
         if ((over?.archive || over?.page != null) && r.id === MESSY3) over = null;
         lit(over?.el);
         target = over ? null : spot5(ev);
@@ -22120,7 +22430,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         window.removeEventListener("pointerup", up);
         window.removeEventListener("pointercancel", up);
         mark(null);
-        drop2.remove();
+        drop3.remove();
         lit(null);
         tile.classList.remove("dragging");
         this.grid.classList.remove("dragging");
@@ -22137,7 +22447,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         tile.style.transform = "";
-        if (ev.altKey && !r.archived && !over?.archive) {
+        if (ev.altKey && !isArchived3(this.world, r.id) && !over?.archive) {
           this.page = floor;
           this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
           return;
@@ -22168,7 +22478,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ont = this.w.roomsPage;
       if (ont) return ont.drop(this.world, page, id, cell.col, cell.row);
       const r = room4(this.world, id);
-      if ((r?.page || 0) !== page) return this.floors.toFloor(id, page, cell) === true;
+      if ((r ? floorOf3(this.world, r.id) : 0) !== page) return this.floors.toFloor(id, page, cell) === true;
       return this.floors.move(id, cell.col, cell.row);
     }
     // A new room of a kind (its mode), in the cell asked for (or the first free one), with
@@ -22248,12 +22558,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // original's cell), with no saving: the world changes only. Returns { copy, page } or null.
     copyBeside(id, { cell = null, page = null } = {}) {
       const r = room4(this.world, id);
-      if (!r || r.archived) return null;
+      if (!r || isArchived3(this.world, r.id)) return null;
       const c = copyRoom2(this.world, id);
       if (!c) return null;
-      if (page != null && page !== (c.page || 0) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
+      if (page != null && page !== floorOf3(this.world, c.id) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
       const out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
-      return { copy: c, page: out ? out.page : c.page || 0 };
+      return { copy: c, page: out ? out.page : floorOf3(this.world, c.id) };
     }
     // Duplicates rooms (one step for them all) and chooses the copies. `at`: where one was dropped.
     duplicateRooms(ids, at2 = {}) {
@@ -22319,7 +22629,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Takes rooms to the Archive (not Messy thoughts, nor a locked room): one step.
     archiveRooms(ids) {
-      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && !r.archived);
+      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && !isArchived3(this.world, r.id));
       const ok = rs.filter((r) => r.id !== MESSY3 && !r.locked);
       if (!ok.length) {
         if (rs.length) this.toast("Messy thoughts and locked rooms stay.");
@@ -22335,7 +22645,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // Brings archived rooms back, each to its old floor (else a new one): one step.
     restoreRooms(ids) {
-      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && r.archived);
+      const rs = ids.map((id) => room4(this.world, id)).filter((r) => r && isArchived3(this.world, r.id));
       if (!rs.length) return;
       let spilled = false;
       for (const r of rs) {
@@ -22366,14 +22676,14 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       else this.archiveRooms(rs.map((r) => r.id));
     }
     duplicateChosen(e) {
-      const rs = this.chosenFor(e).filter((r) => !r.archived);
+      const rs = this.chosenFor(e).filter((r) => !isArchived3(this.world, r.id));
       if (rs.length) this.duplicateRooms(rs.map((r) => r.id));
     }
     // Ctrl+M: a short list of the floors to move the chosen rooms to, and a new floor.
     moveChosen(e) {
       const rs = this.chosenFor(e);
       if (!rs.length) return;
-      const movable = rs.filter((r) => r.id !== MESSY3 && !r.locked && !r.archived);
+      const movable = rs.filter((r) => r.id !== MESSY3 && !r.locked && !isArchived3(this.world, r.id));
       if (!movable.length) {
         this.toast(rs.length === 1 && rs[0].id === MESSY3 ? "Messy thoughts stays on Floor 1." : "A locked room keeps its place.");
         return;
@@ -22384,7 +22694,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // floor; Escape or a click elsewhere lets go.
     floorPicker(rs) {
       rs = [].concat(rs);
-      const here = rs.length === 1 ? rs[0].page || 0 : -1;
+      const here = rs.length === 1 ? floorOf3(this.world, rs[0].id) : -1;
       const pick2 = (page) => {
         this.closeSheet();
         this.moveRoomsTo(rs.map((r) => r.id), page);
@@ -22547,7 +22857,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const rs = ids.map((id) => room4(this.world, id)).filter(Boolean);
       const key = (id) => el16("span", { class: "key" }, this.keyMap?.label?.(id) || "");
       const btn = (label3, fn, id = null, extra = "") => el16("button", { type: "button", class: "box-btn " + extra, onclick: fn }, label3, id ? key(id) : "");
-      const all2 = () => rs.map((r) => r.id);
+      const all3 = () => rs.map((r) => r.id);
       const locked = rs.every((r) => r.locked);
       const rows2 = [
         el16("div", { class: "title-field" }, `${rs.length} rooms`),
@@ -22555,8 +22865,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         el16("details", { class: "sec", open: "" }, el16("summary", {}, "Actions"), el16("div", { class: "sec-body" }, el16(
           "div",
           { class: "box-btns" },
-          shelf ? btn("Restore", () => this.restoreRooms(all2()), "rooms.archive") : btn(locked ? "Unlock" : "Lock", () => this.lockRooms(all2()), "rooms.lock"),
-          shelf ? null : btn("Archive", () => this.archiveRooms(all2()), "rooms.archive"),
+          shelf ? btn("Restore", () => this.restoreRooms(all3()), "rooms.archive") : btn(locked ? "Unlock" : "Lock", () => this.lockRooms(all3()), "rooms.lock"),
+          shelf ? null : btn("Archive", () => this.archiveRooms(all3()), "rooms.archive"),
           btn("Delete", () => this.deleteMany(), "rooms.delete", "danger pop-delete")
         )))
       ].filter(Boolean);
@@ -23125,7 +23435,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     openRoom(id, seed = "") {
       const r = room4(this.world, id);
       if (!r || !this.room) return;
-      if (!this.shelf) this.page = r.page || 0;
+      if (!this.shelf) this.page = floorOf3(this.world, r.id);
       this.closeLights();
       this.w.visit(id);
       this.lastRoom = id;
@@ -23147,8 +23457,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     showRoom(id) {
       const r = room4(this.world, id);
       if (!r || this.inRoom) return;
-      if (!!r.archived !== this.shelf) this.toggleShelf();
-      if (!r.archived && (r.page || 0) !== this.page) this.showPage(r.page || 0);
+      if (!!isArchived3(this.world, r.id) !== this.shelf) this.toggleShelf();
+      if (!isArchived3(this.world, r.id) && floorOf3(this.world, r.id) !== this.page) this.showPage(floorOf3(this.world, r.id));
       this.roomPick = id;
       this.drawRooms();
     }
@@ -23355,7 +23665,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const page = this.shelf ? 0 : this.page;
       const r = await this.files.importRoom({ file, cell, page, ok: () => !this.root.hidden });
       if (!r) return;
-      const at2 = r.page || 0;
+      const at2 = floorOf3(this.world, r.id);
       this.making = this.roomSel = null;
       this.roomPick = r.id;
       this.save();
@@ -23559,6 +23869,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/room/world.js
   var room5;
+  var parentOf5;
+  var floorOf4;
+  var isArchived4;
   var view7;
   var shut5;
   var MESSY4;
@@ -23619,6 +23932,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function bind5(lib) {
     ({
       room: room5,
+      parentOf: parentOf5,
+      floorOf: floorOf4,
+      isArchived: isArchived4,
       view: view7,
       shut: shut5,
       MESSY: MESSY4,
@@ -23981,12 +24297,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingsOf(o2) {
       return [...o2?.settings || [], OVERLAP];
     }
-    globalSetting(of2, st) {
-      const v2 = this.ontPrefs[of2]?.[st.key];
+    globalSetting(of3, st) {
+      const v2 = this.ontPrefs[of3]?.[st.key];
       return v2 !== void 0 ? v2 : st.default;
     }
-    setOntPref(of2, key, value) {
-      this.w.setGlobal(of2, key, value);
+    setOntPref(of3, key, value) {
+      this.w.setGlobal(of3, key, value);
     }
     // Every room takes the global settings.
     applyToAllRooms() {
@@ -24007,7 +24323,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     settingRow(st, value, onChange) {
       if (st.type === "relations") return relationsRow2(st, { el: el18, value, onChange, c: this.roomId ? this : null, toast: (t) => this.toast(t) });
       if (st.type === "list") {
-        const plain2 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all2) => x && (!st.word || st.word.test(x)) && all2.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
+        const plain2 = (v2) => (Array.isArray(v2) ? v2 : String(v2 ?? "").replace(/^\s*\[(.*)\]\s*$/s, "$1").split(",")).map((x) => String(x).trim()).filter((x, i2, all3) => x && (!st.word || st.word.test(x)) && all3.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i2);
         const words = st.clean || plain2;
         const write2 = st.text || ((list2) => list2.join(", "));
         const shown3 = () => write2(words(value).length ? words(value) : st.default);
@@ -25322,17 +25638,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const at2 = this.offsetAt(e.clientX, e.clientY);
         const box = this.input;
         const now = Date.now(), last = this.lastPress;
-        const count2 = last && now - last.at < 500 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6 ? last.count % 3 + 1 : 1;
-        this.lastPress = { at: now, x: e.clientX, y: e.clientY, count: count2 };
+        const count3 = last && now - last.at < 500 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6 ? last.count % 3 + 1 : 1;
+        this.lastPress = { at: now, x: e.clientX, y: e.clientY, count: count3 };
         this.gesture = { kind: "text", x0: e.clientX, y0: e.clientY, moved: false };
         this.listen(e);
-        if (count2 === 2) {
+        if (count3 === 2) {
           const [a, b] = this.wordAround(box.value, at2);
           this.gesture.anchor = a;
           this.selectText(a, b);
           return;
         }
-        if (count2 === 3) {
+        if (count3 === 3) {
           this.gesture.anchor = 0;
           this.selectText(0, box.value.length);
           return;
@@ -26177,8 +26493,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const gn = this.ont.groups?.name || "Group";
       let inGroup = null;
       if (g2) {
-        const all2 = trainThoughts2(this.world, g2.id);
-        const at2 = all2.findIndex((x) => x.id === th.id);
+        const all3 = trainThoughts2(this.world, g2.id);
+        const at2 = all3.findIndex((x) => x.id === th.id);
         inGroup = el18(
           "button",
           {
@@ -26190,7 +26506,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               this.openProps(this.sel);
             }
           },
-          `${g2.title || "Untitled"}${at2 >= 0 ? ` · ${at2 + 1} of ${all2.length}` : ""}`
+          `${g2.title || "Untitled"}${at2 >= 0 ? ` · ${at2 + 1} of ${all3.length}` : ""}`
         );
       }
       const n = kind === "group" ? trainThoughts2(this.world, th.id).length : 0;
@@ -26605,7 +26921,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const over = document.elementFromPoint(ev.clientX, ev.clientY);
         if (ev.type !== "pointerup" || !over || !this.world.things[id]) return;
         const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
-        if (there && this.world.things[id].parent === there.id) {
+        if (there && parentOf5(this.world, id) === there.id) {
           this.ontology(view7(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
           this.save();
           this.drawWorld();
@@ -26615,9 +26931,9 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           this.dropAcross(id, ev.clientX - off.x, ev.clientY - off.y);
           return;
         }
-        const all2 = this.trayGroup(id);
-        if (all2.length > 1 && this.stage.contains(over)) {
-          this.placeMany(all2, this.toWorld(ev.clientX, ev.clientY));
+        const all3 = this.trayGroup(id);
+        if (all3.length > 1 && this.stage.contains(over)) {
+          this.placeMany(all3, this.toWorld(ev.clientX, ev.clientY));
           return;
         }
         if (!this.stage.contains(over) || !this.fromOtherSide(id)) return;
@@ -26737,12 +27053,12 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const cur = this.current[this.roomId];
       const t = this.world.things[cur];
       if (this.writer.goOn && !this.fresh) {
-        const chosen = this.sel && this.sel.kind !== "many" && this.world.things[this.sel.id]?.parent === this.roomId ? this.sel.id : null;
-        const from2 = chosen || (t?.parent === this.roomId ? cur : null);
+        const chosen = this.sel && this.sel.kind !== "many" && parentOf5(this.world, this.sel.id) === this.roomId ? this.sel.id : null;
+        const from2 = chosen || (t && parentOf5(this.world, t.id) === this.roomId ? cur : null);
         const next = from2 && this.writer.goOn(this.world, this.roomId, from2);
         if (next) return next;
       }
-      if (!this.fresh && t?.parent === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
+      if (!this.fresh && t && parentOf5(this.world, t.id) === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
       const spot5 = this.freeSpot();
       this.fresh = false;
       return { train: null, x: Math.round(spot5.x), y: Math.round(spot5.y) };
@@ -26938,10 +27254,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!keep3) return;
       const t = this.roomId && twinOf2(this.world, this.roomId);
       if (!t) return;
-      const all2 = { ...this.storage.get("twinSplits", {}) || {} };
-      if (f2 === 0.5) delete all2[t.id];
-      else all2[t.id] = f2;
-      this.storage.set("twinSplits", all2);
+      const all3 = { ...this.storage.get("twinSplits", {}) || {} };
+      if (f2 === 0.5) delete all3[t.id];
+      else all3[t.id] = f2;
+      this.storage.set("twinSplits", all3);
     }
     // Dragging the divider: both halves follow the pointer, and where it is let go is kept.
     dragSplit(e) {
@@ -27014,10 +27330,10 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     twinRail() {
       const t = this.roomId && twinOf2(this.world, this.roomId);
       if (!t) return [];
-      const all2 = [this.roomId, this.otherSide?.id].map((id) => room5(this.world, id)).filter(Boolean).sort((a, b) => (a.side || 0) - (b.side || 0));
+      const all3 = [this.roomId, this.otherSide?.id].map((id) => room5(this.world, id)).filter(Boolean).sort((a, b) => (a.side || 0) - (b.side || 0));
       return [
         el18("div", { class: "rail-head", "aria-hidden": "true" }, "Sides"),
-        ...all2.map((s) => {
+        ...all3.map((s) => {
           const on = s.id === this.roomId;
           const o2 = this.ontology(view7(this.world, s.id).mode);
           return el18(
@@ -27093,7 +27409,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     fromOtherSide(id) {
       const th = this.world.things[id];
       const other = this.otherSide;
-      if (!th || !other || th.parent !== other.id) return true;
+      if (!th || !other || parentOf5(this.world, th.id) !== other.id) return true;
       return across2(this.world, id);
     }
   };
@@ -27537,7 +27853,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // Where you are, for the frame's breadcrumb: Rooms › Floor 1 › the room (or Rooms › Archive › …).
     crumbs() {
       const r = twinOf2(this.world, this.roomId) || room5(this.world, this.roomId);
-      const floor = r?.archived ? { label: "Archive", onClick: () => this.rooms.showArchive?.() } : { label: `Floor ${(r?.page || 0) + 1}`, onClick: () => this.rooms.showFloor?.(r?.page || 0) };
+      const floor = r && isArchived4(this.world, r.id) ? { label: "Archive", onClick: () => this.rooms.showArchive?.() } : { label: `Floor ${(r ? floorOf4(this.world, r.id) : 0) + 1}`, onClick: () => this.rooms.showFloor?.(r ? floorOf4(this.world, r.id) : 0) };
       return [{ label: "Rooms", title: "Back to the rooms", onClick: () => this.back() }, floor, { node: this.crumb }];
     }
     // Into another room (from search, say): the rooms page goes in.
@@ -27587,7 +27903,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.storage.set("drafts", this.drafts);
       if (this.locked) return;
       const t = d.train && this.world.things[d.train];
-      this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...d.for ? { for: d.for } : {} };
+      this.draft = t && parentOf5(this.world, t.id) === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...d.for ? { for: d.for } : {} };
       this.input.value = d.text;
       this.input.focus({ preventScroll: true });
       this.drawWorld();
@@ -27748,13 +28064,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.root.addEventListener("drop", (e) => {
         if (!files(e)) return;
         e.preventDefault();
-        const all2 = [...e.dataTransfer.files];
-        const roomFile = this.files.any ? all2.find(this.files.isRoomFile) : null;
+        const all3 = [...e.dataTransfer.files];
+        const roomFile = this.files.any ? all3.find(this.files.isRoomFile) : null;
         if (roomFile) {
           this.importIntoRoom(roomFile);
           return;
         }
-        const made3 = all2.find((f2) => this.kindForFile(f2));
+        const made3 = all3.find((f2) => this.kindForFile(f2));
         if (made3) {
           this.addAt = this.toWorld(e.clientX, e.clientY);
           this.takeFile(made3);
@@ -27830,6 +28146,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 
   // dist/web/features/russell/world.js
   var groupsIn4;
+  var parentOf6;
   var members5;
   var groupOf4;
   var isGroup5;
@@ -27861,7 +28178,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var arrowView3;
   var maths4;
   function bind6(t) {
-    ({ groupsIn: groupsIn4, members: members5, groupOf: groupOf4, isGroup: isGroup5, isLeaf: isLeaf5, shut: shut6, thoughtText: thoughtText4, roomItems: roomItems4, create: create5, join: join7, setOrder: setOrder4, groupLabel: groupLabel3 } = t.model);
+    ({ groupsIn: groupsIn4, parentOf: parentOf6, members: members5, groupOf: groupOf4, isGroup: isGroup5, isLeaf: isLeaf5, shut: shut6, thoughtText: thoughtText4, roomItems: roomItems4, create: create5, join: join7, setOrder: setOrder4, groupLabel: groupLabel3 } = t.model);
     ({ trayForeign: trayForeign3, place: place4, inForeign: inForeign3, unplace: unplace3 } = t.groups);
     ({ stepAfter: stepAfter2, setHeights: setHeights2, STEP: STEP3 } = t.trains);
     ({ relationName: relationName2, splitList: splitList2, listText: listText3, cleanRelations: cleanRelations2, relationShown: relationShown2, withRelation: withRelation2, RELATIONS: RELATIONS4, arrowsOf: arrowsOf3 } = t.relations);
@@ -27878,7 +28195,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   var chapters = (w2, roomId) => groupsIn4(w2, roomId, ID2).filter((g2) => !g2.loose && members5(w2, g2.id).length && !groupOf4(w2, g2.id, ID2));
   var isChapter = (w2, roomId, id) => {
     const g2 = w2.things[id];
-    return isGroup5(g2) && g2.of === ID2 && g2.parent === roomId && !groupOf4(w2, id, ID2);
+    return isGroup5(g2) && g2.of === ID2 && parentOf6(w2, g2.id) === roomId && !groupOf4(w2, id, ID2);
   };
   var made2 = null;
   var arrowNet = () => made2 ||= arrowsOf3({ of: ID2, isNode: isChapter, nodes: (w2, roomId) => chapters(w2, roomId), word: "chapter", loops: false, changed: (w2, roomId) => settle3(w2, roomId) });
@@ -27953,24 +28270,24 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return out;
   }
   function layout(w2, roomId, size = (id) => chapterSize(w2, id)) {
-    const all2 = chapters(w2, roomId);
+    const all3 = chapters(w2, roomId);
     const lv = levels(w2, roomId);
-    const sz = Object.fromEntries(all2.map((g2) => [g2.id, size(g2.id)]));
-    const ps = Object.fromEntries(all2.map((g2) => [g2.id, parentsOf(w2, roomId, g2.id).filter((p) => sz[p])]));
+    const sz = Object.fromEntries(all3.map((g2) => [g2.id, size(g2.id)]));
+    const ps = Object.fromEntries(all3.map((g2) => [g2.id, parentsOf(w2, roomId, g2.id).filter((p) => sz[p])]));
     const names = relations(w2, roomId);
-    const lab = Object.fromEntries(all2.map((g2) => {
+    const lab = Object.fromEntries(all3.map((g2) => {
       const { parents, labels, rel } = arrowsInto(w2, roomId, g2.id);
       const ls = parents.filter((p) => labels[p] || relationShown2(names, rel[p])).map((p) => labelSize(`${relationShown2(names, rel[p])} ${labels[p] || ""}`.trim()));
       return [g2.id, { w: Math.max(0, ...ls.map((l2) => l2.w)), h: Math.max(0, ...ls.map((l2) => l2.h)) }];
     }));
     const gapX = (a, b) => snap(Math.max(LAYOUT.gapX, Math.max(lab[a].w, lab[b].w) / 2 + PAD3));
-    const kids = Object.fromEntries(all2.map((g2) => [g2.id, []]));
-    for (const g2 of all2) if (ps[g2.id].length === 1) kids[ps[g2.id][0]].push(g2.id);
+    const kids = Object.fromEntries(all3.map((g2) => [g2.id, []]));
+    for (const g2 of all3) if (ps[g2.id].length === 1) kids[ps[g2.id][0]].push(g2.id);
     const span4 = {};
     const row2 = (ks) => ks.reduce((s, k2, i2) => s + spanOf(k2) + (i2 ? gapX(ks[i2 - 1], k2) : 0), 0);
     const spanOf = (id) => span4[id] ??= Math.max(sz[id].w, row2(kids[id]));
     const off = {};
-    for (const g2 of all2) {
+    for (const g2 of all3) {
       const ks = kids[g2.id];
       let x = -row2(ks) / 2;
       ks.forEach((k2, i2) => {
@@ -27982,8 +28299,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const deepest = Math.max(-1, ...Object.values(lv));
     const top = [0];
     for (let l2 = 0; l2 < deepest; l2++) {
-      const h = Math.max(0, ...all2.filter((g2) => lv[g2.id] === l2).map((g2) => sz[g2.id].h));
-      const next = all2.filter((g2) => lv[g2.id] === l2 + 1).map((g2) => g2.id);
+      const h = Math.max(0, ...all3.filter((g2) => lv[g2.id] === l2).map((g2) => sz[g2.id].h));
+      const next = all3.filter((g2) => lv[g2.id] === l2 + 1).map((g2) => g2.id);
       const label3 = Math.max(0, ...next.map((id) => lab[id].h));
       const fan = Math.min(LAYOUT.fan, Math.max(0, ...next.map((id) => Math.abs(off[id] || 0) * 0.6)));
       top.push(top[l2] + h + snap(Math.max(LAYOUT.gapY, FOOT + PAD3 * 2 + label3 + 2 * PAD3, fan)));
@@ -27992,7 +28309,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const out = {};
     let rootX = 0;
     for (let l2 = 0; l2 <= deepest; l2++) {
-      const rowOf = all2.filter((g2) => lv[g2.id] === l2).map((g2) => {
+      const rowOf = all3.filter((g2) => lv[g2.id] === l2).map((g2) => {
         const id = g2.id, p = ps[id];
         let want;
         if (!p.length) {
@@ -28163,7 +28480,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     point(w2, roomId, id) {
       const th = w2.things[id];
       const g2 = isGroup5(th) && th.of === ID2 && !groupOf4(w2, id, ID2) ? th : groupOf4(w2, id, ID2);
-      if (!g2 || g2.parent !== roomId) return null;
+      if (!g2 || parentOf6(w2, g2.id) !== roomId) return null;
       const at2 = layout(w2, roomId)[g2.id];
       if (!at2) return null;
       return g2 === th || g2.closed ? at2 : chapterSpots(w2, g2.id, at2)[id] || null;
@@ -28326,13 +28643,13 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // arrows down to its children with their labels, and the thought being written.
     draw(c) {
       const w2 = c.world, el19 = c.el, roomId = c.roomId;
-      const all2 = boxes2(w2, roomId);
+      const all3 = boxes2(w2, roomId);
       const layer2 = lines3.layer("room-russell-arrows");
       const nodes2 = [];
       const picking = pending && pending.room === roomId;
-      nodes2.push(...view8().draw(c, layer2, all2));
+      nodes2.push(...view8().draw(c, layer2, all3));
       for (const g2 of chapters(w2, roomId)) {
-        const box = all2[g2.id];
+        const box = all3[g2.id];
         if (!box) continue;
         const { at: at2, size } = box;
         const chosen = c.sel?.kind === "train" && c.sel.id === g2.id || c.isSel(g2.id);
