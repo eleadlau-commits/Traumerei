@@ -1,7 +1,7 @@
 # World
 
 The saved world of rooms and thoughts, and everything true of it without a screen: its rules,
-saving and undo, the ontologies, the rooms' look and the attention log. The rooms page (the rooms
+saving and undo, the ontologies, the rooms' look and the moments log. The rooms page (the rooms
 feature) and an open room (the room feature) draw it; this feature never touches the screen, except that
 an ontology draws its own canvas when the room asks it to.
 
@@ -17,19 +17,20 @@ list is everything it offers:
 | `lib.model.reading(w, fn)` | Runs `fn` with a fast "which groups hold this?" (`groupsOf`, `groupOf`): who holds what is listed once, not looked up across the whole world per thought. For drawing a big room (the room wraps each redraw in it). `join`, `leave`, `create` and `remove` keep the list true; code that sets a group's `members` itself must call `lib.model.changed()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
 | `begin()` | A fresh undo history. |
-| `save()` | After a change: a change to the thoughts or rooms (not just a view) is a step Ctrl+Z can take back. Written down soon, then `world:saved` is sent. True when it was a step. |
+| `save()` | After a change: a change to the thoughts or rooms (not just a view) is a step Ctrl+Z can take back, and its rows land in the moments log (`world:moments`). Written down soon, then `world:saved` is sent. True when it was a step. |
 | `settled()`, `fold()` | Nothing waits to become its own step; the change since the last step becomes part of it (so a push from clear space goes with what caused it). |
 | `writeSoon(say)`, `write()` | Written down in a moment (one timer; `say`: then `world:saved`), or now. |
-| `undo(back)` | A step back (`true`) or forward (`false`). False when there is none; otherwise sends `world:changed`. |
+| `undo(back)` | A step back (`true`) or forward (`false`), read off the moments log (it reaches 30 days back, across reloads). False when there is none; otherwise sends `world:changed` and `world:moments`. |
 | `ontologies`, `ontology(id)` | Every ontology a room can be seen through, in order, and one by id (a missing one is Pessoa). The rooms page's own is never among them. |
 | `roomsPage` | The rooms page's own ontology (Borges, from the floors feature), or `null`: rooms on the floors' cells. |
 | `prefs`, `setLook(key, value)`, `resetLook()` | Settings → Rooms' look (`look.js`: `LOOK`), saved as 'look'. |
 | `globals`, `setGlobal(of, key, value)`, `resetGlobals()` | The global ontology settings, `{ [ontology]: { key: value } }`: what a new room starts with. Saved as 'ontologies'. |
 | `palette`, `refreshPalette()` | The app's colours (Renderer's `backdrop`, Settings → Colour), or `look.js`'s `PALETTE`. |
-| `attention`, `visit(roomId)` | The attention log (`attention.js`), and going into a room. Saved as 'attention'. |
+| `attention`, `visit(roomId)` | The attention log `{ [roomId]: [times] }`, read off the moments log's visits (`attention.js` says how it lights a room), and going into a room (a *visited* moment). |
+| `moments` | The moments log read (`moments.js`): `log`, `of(mark)`, `changed(mark)`, `since(time)`, `day(date)`, `changedOn(date)`, `at(time)` (the things, relations and floor count as they were then), `first()`, `keep`, `setKeep(days)`. Saved as 'moments'; every change to the world is a row in it (Law 6 of `../KERNEL.md`), and it is compacted on start. |
 
 **Events:** `world:saved` (the world was written down after a `save()`), `world:changed`
-(`{ undone }`, after `undo()`), `world:palette` (the app's colours changed), `world:look`
+(`{ undone }`, after `undo()`), `world:moments` (`{ rows, undone }`: rows landed in the log), `world:palette` (the app's colours changed), `world:look`
 (Settings → Rooms' look changed).
 
 **Slots:** `world.ontologies`, for a whole ontology from another feature (shape in

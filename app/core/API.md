@@ -46,10 +46,10 @@ stay offered beneath v2 until phase 6.
 A **row** is a frozen plain object. In phase 0 a mark row is today's thought object
 (`app/core/world/model.js`: `id`, `kind`, `text`, `parent`, `at`, `edited`, …), a place row is
 `{ mark, context, rule, position }`, a link row `{ id, from, to, kind, order? | label?, note?, rule? }`,
-a moment `{ time, kind, mark }`. Read them freely; hold ids, not rows.
+a moment `{ time, kind, mark | context, step? }`. Read them freely; hold ids, not rows.
 
-A **propose** returns `{ ok: true, id }` after the change was made and saved as one step Ctrl+Z
-can take back (the moment, until the log lands in phase 1), or `{ ok: false, reason }` with the
+A **propose** returns `{ ok: true, id }` after the change was made and landed in the moments
+log as one step Ctrl+Z can take back, or `{ ok: false, reason }` with the
 reason in words and nothing changed. Where a table does not exist yet, the propose refuses and
 names the phase that brings it, and the read is empty. A refusal is never a step.
 
@@ -75,14 +75,17 @@ group under its own rule at its `{ x, y }`; a room on `floor:<n>` under `borges`
 group's members are *part of* rows with `order`; every arrow of Russell or Proust is a *relation*
 row with its relation as `label`, its short label as `note` and its store as `rule`. Distance:
 a locked room reads *others*, any other *me now*; `declare(context, 'others')` locks it,
-`'me now'` unlocks it. Moments: made, edited and visited times. Gaps and the moments ahead:
-empty, until phases 5 and 7.
+`'me now'` unlocks it. Moments: the world's log (`world/moments.js`): *made*, *edited*, *moved*,
+*linked*, *removed* of a mark, *arranged* and *visited* of a context, *undone* and *redone* of a
+step; rows of one save share a `step`. A mark older than the history kept still reads its *made*
+and *edited* times. Gaps and the moments ahead: empty, until phases 5 and 7.
 
 **Words.** Readers: `me now`, `me later`, `others`, `machine`. Directions: `to world` (check),
 `from world` (do), `to maker` (judge). Link kinds now: `part of`, `relation`.
 
-**Subscribing.** `on(fn)` gives `fn({ table, undone })` after each saved step and after each undo
-(the moments log in phase 1 tells the tables apart), and returns a function that stops listening.
+**Subscribing.** `on(fn)` gives `fn({ table, rows, undone })` each time rows of that table land
+in the moments log (a save, an undo, a visit), with those rows, and returns a function that stops
+listening. `moments.on` hears every landing.
 Everything a plugin listens to stops when it is switched off.
 
 ## Slots, ui, plugin and app

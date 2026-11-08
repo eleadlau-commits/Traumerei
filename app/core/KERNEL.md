@@ -18,7 +18,7 @@ API offers the name over today's world (`world/model.js`), as a thin layer.
 | **links** | `from`, `to`, `kind`, `label?`, `order?` | `from` and `to` are marks. Kinds are a slot: *part of*, *stands for*, *relates to*, *about*, *answers*, *resolves*. Groups, trains, folds and arrows are all rows here. *(Today: part of and relation, read off groups and arrows. Its own table in phase 2.)* |
 | **distance** | `context`, `reader` | Reader is one of *me now*, *me later*, *others*, *machine*. Declared per context, inherited by its marks. Lock sets it to others. *(Today: Lock. Its own table in phase 6.)* |
 | **gaps** | `mark`, `direction`, `state`, `openedAt`, `resolvedBy?` | Direction: *to world* (check), *from world* (do), *to maker* (judge). `resolvedBy` is a link id or the word *judgement*. One open gap per mark at most. *(Phase 5.)* |
-| **moments** | `time`, `kind`, `mark` or `context`, `payload?` | An append-only log: made, moved, linked, visited, resolved, due, return. Timeline, the daily record, the time scrub and undo are all reads of this table. *(Today: made, edited and visited times. The log in phase 1; due and return in phase 7.)* |
+| **moments** | `time`, `kind`, `mark` or `context`, `payload?` | An append-only log: made, moved, linked, visited, resolved, due, return. Timeline, the daily record, the time scrub and undo are all reads of this table. *(Phase 1: `world/moments.js`, saved beside the world as 'moments'; rows carry `before` and `after` so undo and replay read the log; squashed to a row per thing per day after 30 days, folded into a base after the days kept. Due and return in phase 7.)* |
 
 A context (a room, a floor, the tray) is a mark of kind `context`, so Borges, the rooms page's
 ontology, is a rule over context marks like any other rule. A group is a mark of kind `group`
@@ -75,7 +75,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
   returns `{ ok: false, reason }` with the reason in words. No propose writes directly.
 - **subscribe**: `on(fn)`, told after each change to that table.
 
-Phases: 0 names (this layer) · 1 moments · 2 links · 3 places · 4 rules · 5 gap ·
+Phases: 0 names · 1 moments (done) · 2 links · 3 places · 4 rules · 5 gap ·
 6 distance and carriers, v1 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen ·
 9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

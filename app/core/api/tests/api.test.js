@@ -4,6 +4,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
+import * as M from '../../world/moments.js';
 import { API_VERSION, surface, connect, kernel, PLACES, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
 import { API_VERSION as V1_VERSION } from '../v1.js';
 
@@ -228,8 +229,13 @@ function smallWorld() {
   lib.model.own(w, room.id, 'proust-links')[a.id] = { parents: [c.id], rel: { [c.id]: 'calls up' }, labels: { [c.id]: 'why' } };
   const locked = lib.model.addRoom(w, 'Vault', 8000);
   lib.model.lock(w, locked.id);
-  const service = { world: w, lib, saved: 0, save() { this.saved++; return true; }, ontologies: [{ id: 'joyce' }, { id: 'pessoa', lays: true }, { id: 'proust', lays: true }], attention: { [room.id]: [9000, 9500] } };
-  return { w, room, train, a, b, c, loose, locked, service };
+  // The moments log begins on this world, and knows of two visits (as the world service reads it).
+  const log = M.emptyLog(1000, M.stateOf(w));
+  M.visit(log, room.id, 9000);
+  M.visit(log, room.id, 99000);
+  const moments = { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id) };
+  const service = { world: w, lib, saved: 0, save() { this.saved++; return true; }, ontologies: [{ id: 'joyce' }, { id: 'pessoa', lays: true }, { id: 'proust', lays: true }], moments };
+  return { w, room, train, a, b, c, loose, locked, service, log };
 }
 const ids = (list) => list.map((r) => r.mark ?? r.id);
 
@@ -350,22 +356,25 @@ test('gaps: empty reads and refusals that name the phase, until the table exists
   assert.equal(service.saved, 0);
 });
 
-test('moments: made, edited and visited times read as one log, by mark, since a time and by day', () => {
-  const { w, room, a, service } = smallWorld();
+test('moments: the log read by mark, since a time and by day; a mark older than the log keeps its made and edited times', () => {
+  const { w, room, a, service, log } = smallWorld();
   const k = kernel({ lib, world: service });
   assert.deepEqual(k.moments.of(a.id), [{ time: 4000, kind: 'made', mark: a.id }]);
+  const before = M.stateOf(JSON.parse(JSON.stringify(w)));
   lib.model.update(w, a.id, { text: 'first, again' }, 4500);
-  assert.deepEqual(k.moments.of(a.id).map((m) => m.kind), ['made', 'edited']);
-  assert.deepEqual(k.moments.of(room.id).map((m) => [m.kind, m.time]), [['made', 2000], ['visited', 9000], ['visited', 9500]]);
-  assert.deepEqual(k.moments.since(9000).map((m) => m.time), [9000, 9500]);
+  M.record(log, before, M.stateOf(w), 4500); // as the world service does on save()
+  assert.deepEqual(k.moments.of(a.id).map((m) => [m.kind, m.time, m.step]), [['made', 4000, undefined], ['edited', 4500, 3]]);
+  assert.deepEqual(k.moments.of(room.id).map((m) => [m.kind, m.time]), [['made', 2000], ['visited', 9000], ['visited', 99000]]);
+  assert.deepEqual(k.moments.since(9000).map((m) => m.time), [9000, 99000]);
   assert.equal(k.moments.day(new Date(5000)).length, k.moments.since(0).length); // all on the day of the epoch, locally
+  assert.ok(k.moments.since(0).every(Object.isFrozen));
   assert.deepEqual(k.moments.ahead(), []);
   assert.match(k.moments.due(a.id, 10000).reason, /phase 7/);
   assert.match(k.moments.revisit(a.id, 10000).reason, /phase 7/);
 });
 
-test('subscribing to a table hears saves and undos, and stops when the plugin is switched off', () => {
-  const { service } = smallWorld();
+test('subscribing to a table hears the rows that land in its table, and stops when the plugin is switched off', () => {
+  const { service, a, room } = smallWorld();
   const listeners = new Map();
   const events = { on: (name, fn) => { listeners.set(name, [...(listeners.get(name) || []), fn]); return () => listeners.set(name, listeners.get(name).filter((f) => f !== fn)); } };
   const leaving = [];
@@ -373,13 +382,16 @@ test('subscribing to a table hears saves and undos, and stops when the plugin is
   const heard = [];
   const off = k.marks.on((change) => heard.push(change));
   k.links.on((change) => heard.push(change));
-  for (const fn of listeners.get('world:saved')) fn();
-  for (const fn of listeners.get('world:changed')) fn({ undone: true });
-  assert.deepEqual(heard, [{ table: 'marks', undone: false }, { table: 'links', undone: false }, { table: 'marks', undone: true }, { table: 'links', undone: true }]);
+  const landed = (rows, undone = false) => { for (const fn of listeners.get('world:moments')) fn({ rows, undone }); };
+  landed([{ seq: 1, time: 1, kind: 'edited', table: 'marks', mark: a.id, step: 1 }, { seq: 2, time: 1, kind: 'linked', table: 'links', mark: room.id, step: 1 }]);
+  landed([{ seq: 3, time: 2, kind: 'moved', table: 'places', mark: a.id, step: 3 }]); // nobody listens to places
+  landed([{ seq: 4, time: 3, kind: 'edited', table: 'marks', mark: a.id, step: 1 }, { seq: 5, time: 3, kind: 'undone', table: 'moments', step: 1 }], true);
+  assert.deepEqual(heard.map((h) => [h.table, h.undone, h.rows.map((r) => r.kind)]), [['marks', false, ['edited']], ['links', false, ['linked']], ['marks', true, ['edited']]]);
+  assert.ok(Object.isFrozen(heard[0]) && Object.isFrozen(heard[0].rows[0]));
   off();
-  for (const fn of listeners.get('world:saved')) fn();
-  assert.equal(heard.length, 5); // only links is still listening
+  landed([{ seq: 6, time: 4, kind: 'edited', table: 'marks', mark: a.id, step: 6 }, { seq: 7, time: 4, kind: 'arranged', table: 'links', context: room.id, step: 6 }]);
+  assert.equal(heard.length, 4); // only links is still listening
   for (const fn of leaving) fn();
-  assert.equal(listeners.get('world:saved').length, 0);
+  assert.equal(listeners.get('world:moments').length, 0);
   assert.equal(kernel({ lib, world: service }).marks.on(() => {})(), undefined); // no events: nothing to hear, quietly
 });

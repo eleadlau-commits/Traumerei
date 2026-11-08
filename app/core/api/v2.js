@@ -3,10 +3,10 @@
 // in words; tests/api.test.js holds the list, so a change here is always deliberate (change
 // API.md and the test with it).
 //
-// Phase 0 of the kernel plan: these six namespaces are a thin layer over the world as it is
-// today (v1.js, world/model.js). Each read gives frozen rows made from today's things; each
-// propose goes through the world's own checks and lands as one undo step (the moment, for now),
-// or returns a refusal with its reason in words. Where a table does not exist yet (gaps, forward
+// Phases 0 and 1 of the kernel plan: five namespaces are a thin layer over the world as it is
+// today (v1.js, world/model.js), and moments reads the world's log (world/moments.js). Each read
+// gives frozen rows; each propose goes through the world's own checks and lands as one step in
+// the log (its rows are the moments), or returns a refusal with its reason in words. Where a table does not exist yet (gaps, forward
 // moments) the read is empty and the propose refuses, naming the phase that brings it. Nothing
 // here touches the screen.
 
@@ -45,12 +45,17 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   // A propose lands as one saved step and says so, or says why not.
   const land = (ok, id, why) => { if (!ok) return refuse(why); save(); return landed(id); };
 
-  // Changes to any table are heard as world saves and undos, until the moments log (phase 1)
-  // tells them apart.
+  // Changes to a table are heard from the moments log ('world:moments': the rows that landed):
+  // a listener is told once per landing with the rows of its table, and whether it was an undo.
+  // Without a log (an older world service) every save and undo is heard instead.
   const on = (table) => (fn) => {
     if (!events) return () => {};
-    const tell = (data) => fn(row({ table, undone: !!data?.undone }));
-    const offs = [events.on('world:saved', tell), events.on('world:changed', tell)];
+    const tell = (data) => {
+      if (!data?.rows) { fn(row({ table, rows: rows([]), undone: !!data?.undone })); return; }
+      const mine = data.rows.filter((r) => r.table === table || (table === 'moments' && r.kind !== undefined));
+      if (mine.length) fn(row({ table, rows: rows(mine.map((r) => ({ ...r }))), undone: !!data.undone }));
+    };
+    const offs = world.moments ? [events.on('world:moments', tell)] : [events.on('world:saved', tell), events.on('world:changed', tell)];
     const off = () => { for (const o of offs) o(); };
     gone(off);
     return off;
@@ -211,17 +216,26 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('gaps'),
   });
 
-  // -- moments: made and edited times, and a room's visits, read as one log. --
-  function momentsOf(th) {
+  // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
+  // not know of (older than the history kept) still has its made and edited times. --
+  const log = () => world.moments;
+  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });
-    if (kindOf(th) === 'room') for (const t of world.attention?.[th.id] || []) out.push({ time: t, kind: 'visited', mark: th.id });
+    if (!log() && kindOf(th) === 'room') for (const t of world.attention?.[th.id] || []) out.push({ time: t, kind: 'visited', context: th.id });
     return out;
   }
-  const byTime = (a, b) => a.time - b.time;
-  const all = () => Object.values(w().things).flatMap(momentsOf).sort(byTime);
+  const byTime = (a, b) => a.time - b.time || (a.seq || 0) - (b.seq || 0);
+  function momentsOf(id) {
+    const th = thing(id);
+    const known = log() ? log().of(id).map(momentRow) : [];
+    if (!th) return known;
+    return known.some((m) => m.kind === 'made') ? known : [...fallback(th).filter((m) => !known.length || m.kind === 'made'), ...known];
+  }
+  const all = () => (log() ? log().since(0).map(momentRow) : Object.values(w().things).flatMap(fallback)).sort(byTime);
   const moments = Object.freeze({
-    of: (mark) => (thing(mark) ? rows(momentsOf(thing(mark)).sort(byTime)) : rows([])),
+    of: (mark) => rows(momentsOf(mark).sort(byTime)),
     since: (time) => rows(all().filter((m) => m.time >= +time)),
     day: (date) => {
       const start = new Date(date); start.setHours(0, 0, 0, 0);
