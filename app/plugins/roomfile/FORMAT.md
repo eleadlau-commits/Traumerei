@@ -14,7 +14,7 @@ A Russell room with one Joyce train also in it (a big room, so it has both modes
 ```
 ---
 format: room/2
-guide: https://github.com/eleadlau-commits/traumerei/blob/main/app/features/roomfile/FORMAT.md
+guide: https://github.com/eleadlau-commits/traumerei/blob/main/app/plugins/roomfile/FORMAT.md
 room: Linear algebra
 modes: [russell, joyce]
 description: A book where each chapter abstracts the last
@@ -187,7 +187,7 @@ point at the wrong thing.)
 ## Kinds of object
 
 Each kind of thought reads and writes its own body (the `traum` member in
-`app/features/world/items/`).
+`app/core/world/items/`).
 
 ### Kind: line
 
@@ -277,7 +277,7 @@ label: "the square ones"
 ## Ontologies
 
 Each ontology reads and writes its own section (the `traum` member in
-`app/features/world/ontologies/`).
+`app/core/world/ontologies/`).
 
 ### Ontology: joyce
 
@@ -458,15 +458,15 @@ another chapter). Apply is one step: one Ctrl+Z takes it back.
 ## Adding an ontology or a kind of thought
 
 1. **Code.** A kind of thought: `traum: { read({ title, body }) → fields, write(th) → { title, body } }`
-   in its file in `app/features/world/items/`. An ontology: `traum: { write(w, room, c) → lines,
+   in its file in `app/core/world/items/`. An ontology: `traum: { write(w, room, c) → lines,
    read(w, room, lines, c) }` in its file (or its feature's slot entry); `index.js` in
-   `app/features/world/ontologies/` lists what `c` gives (references, reports, keeping lines it
+   `app/core/world/ontologies/` lists what `c` gives (references, reports, keeping lines it
    doesn't know, its arrows). An ontology that joins its groups with arrows uses `relations.js`'s
    `traumLines` and `traumArrows` for the `arrow:` line.
 2. **This file.** A section `### Kind: <kind>` or `### Ontology: <id>`, with its lines and an
-   example. A check (`node app/features/roomfile/tests/guide.mjs`, run on every pull request) fails
+   example. A check (`node app/plugins/roomfile/tests/guide.mjs`, run on every pull request) fails
    when one is missing.
-3. **A test.** A round trip in `app/features/roomfile/tests/traum.test.js`: a file in, the room out,
+3. **A test.** A round trip in `app/plugins/roomfile/tests/traum.test.js`: a file in, the room out,
    the same file again.
 
 The grammar never changes for a new ontology: it only adds its own lines here and its own code.

@@ -9,9 +9,10 @@ check run on GitHub and download **traumerei-preview** from the summary; unzip i
 `traumerei.html`.
 
 Everything for it is in this folder: a copy of Folio (`folio/`, version in `folio/VERSION`,
-from the Mobile Durham repository), `build.py`, and the app in `app/`. The page itself is the
-feature in `app/features/renderer/`, and its rendering engine is in
-`app/features/renderer/engine/`. See that folder's README for how it works.
+from the Mobile Durham repository), `build.py`, and the app in `app/`: what every room needs in
+`app/core/`, and everything that can be switched off in `app/plugins/`. The picture behind the
+page is the plugin in `app/plugins/renderer/`, and its rendering engine is in
+`app/plugins/renderer/engine/`. See that folder's README for how it works.
 
 ## Open it
 

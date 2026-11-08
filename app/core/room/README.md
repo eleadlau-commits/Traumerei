@@ -1,7 +1,7 @@
 # Room
 
 An open room of thoughts: a canvas to write in, seen through an ontological mode. The rooms page,
-where rooms are made and gone into, is the **rooms** feature's (`app/features/rooms`); it says
+where rooms are made and gone into, is the **rooms** feature's (`app/core/rooms`); it says
 which room to open, and this feature shows it and writes in it.
 
 ## How it talks to the rooms page
@@ -77,7 +77,7 @@ It offers no service of its own.
     into it. In a .traum file an arrow is an `arrow: ^from -> ^to | relation | label` line in its
     `# In russell` section (roomfile's FORMAT.md). Enter
     goes on with the same chapter; a thought written with no chapter chosen waits in the tray.
-  - **Proust** (the proust feature's, `app/features/proust`). Every thought free on the canvas,
+  - **Proust** (the proust feature's, `app/plugins/proust`). Every thought free on the canvas,
     joined by named links that may run in loops, and gathered into clusters; its README says how.
     The room writes into it through the ontology's `goOn` (where the thought after the last one
     goes: Enter links on from it) and `kept` (a new thought was kept: place it, link it), and
@@ -143,7 +143,7 @@ It offers no service of its own.
   storage): a way of looking, never part of the world or a .traum file.
 
 **The code.** The saved world, its rules (`model.js`, items, maths, ontologies, look, attention),
-saving and undo are the **world** feature's (`app/features/world`, see its README); the room
+saving and undo are the **world** feature's (`app/core/world`, see its README); the room
 reaches them through the `world` service (`this.w`), and `world.js` here binds the rules it
 uses, so every file imports them from there. It goes back to the rooms page, or into another
 room, through the `rooms` service. The `Room` class is written across several files:
@@ -153,7 +153,7 @@ rail and settings, clear space), `writing.js` (thoughts, the draft, the caret),
 sheets, pictures) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
-A room in and out as a `.traum` file is the **roomfile** feature's (`app/features/roomfile`); the room
+A room in and out as a `.traum` file is the **roomfile** feature's (`app/plugins/roomfile`); the room
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
 
 ## Editing, the line, the timeline
@@ -208,7 +208,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   text in the source editor on the right) are under ⋯ More at the foot of the rail. A group's
   pop-up has *Source* for just that group.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
-  panel (`app/features/search`), which searches every room; a find opened there (`search:found`)
+  panel (`app/plugins/search`), which searches every room; a find opened there (`search:found`)
   brings the view to it, in its room. With no search feature the bar isn't there.
 - **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A quiet *Saved* shows in the corner,
   and a line of help the first time a room is seen.

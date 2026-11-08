@@ -13,5 +13,14 @@
     "docks",
     "keys",
     "frame"
-  ]
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "dock"
+    ],
+    "load": "start",
+    "author": "E"
+  }
 }

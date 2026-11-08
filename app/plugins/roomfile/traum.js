@@ -21,7 +21,7 @@ import {
 } from './world.js';
 
 export const FORMAT = 'room/2';
-export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/features/roomfile/FORMAT.md';
+export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/plugins/roomfile/FORMAT.md';
 export const KEPT = 'traum'; // where what wasn't understood is kept with the room: own(w, room, KEPT)
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);

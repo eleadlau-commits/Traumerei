@@ -1,4 +1,4 @@
-// What Proust uses from the world feature (app/features/world): its rules, by name. A feature
+// What Proust uses from the world feature (app/core/world): its rules, by name. A feature
 // can't import another's files, so these are bound from the world service's `lib` when Proust
 // starts (bind, in Proust.start), and its files import them from here. This list is everything
 // Proust needs of the world's rules.
