@@ -8,8 +8,9 @@
 // parent in them. Each room keeps its own list of relations (a 'list' setting of the ontology,
 // RELATIONS); the first is the one a new arrow gets. A node has any number of parents.
 //
-// The arrows are the ontology's own data in the room: own(w, room, of)[child] = { parents, labels,
-// rel }, where labels is { [parent]: text } and rel { [parent]: relation } ('' or missing: unnamed).
+// The arrows are rows of the links table (links.js): kind 'relation', from the child to its parent,
+// `rule` the store named below, `label` the relation ('' unnamed) and `note` the arrow's own label.
+// arrowsInto(w, room, child) still reads them as { parents, labels, rel } for the screens.
 //
 // arrowsOf({ of, isNode, nodes, word, loops }) gives the functions for one ontology:
 //   of                 the ontology's id (where its arrows are kept, and its settings)
@@ -27,7 +28,13 @@
 //                      why one from a node to itself can't, in the ontology's own words
 //   noun               (optional) what an arrow is called in its words ('arrow'; Proust: 'link')
 
-import { own, roomSetting, shut } from '../model.js';
+import { roomSetting, shut, roomOf } from '../model.js';
+import * as L from '../links.js';
+
+// Every arrows object made, by its store: the API's links table draws and takes away relation
+// rows through the ontology that owns them (its loops rule, its words).
+const NETS = new Map();
+export const netFor = (store) => NETS.get(store) || null;
 
 // ---- Names ----
 
@@ -155,7 +162,11 @@ export function withRelation(names, name, fallback = RELATIONS.default) {
 const tidy = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
 
 export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, changed = () => {}, store = of, setting = RELATIONS, words = {}, noun = 'arrow' }) {
-  const put = (w, roomId, child, { parents, labels, rel }) => { own(w, roomId, store)[child] = { parents, labels, rel }; };
+  // The relation rows of this store into `child`, each from a node of the room.
+  const rowsInto = (w, roomId, child) => L.from(w, child, 'relation').filter((r) => r.rule === store && r.to !== child && isNode(w, roomId, r.to));
+  // The relation rows of this store in a room.
+  const rowsIn = (w, roomId) => L.ofRule(w, store).filter((r) => r.kind === 'relation' && roomOf(w, r.from)?.id === roomId);
+  const rowOf = (w, parent, child) => L.get(w, L.relId(store, child, parent));
 
   // A room's relations, the first the one a new arrow gets (globals: the global settings, for a
   // room with none).
@@ -179,24 +190,21 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   // Every arrow with relation `from` takes `to` instead ('' for unnamed). Returns how many.
   function retag(w, roomId, from, to) {
     let n = 0;
-    for (const data of Object.values(own(w, roomId, store, false))) {
-      for (const [p, r] of Object.entries(data?.rel || {})) if (r === from) { data.rel[p] = to; n++; }
-    }
+    for (const r of rowsIn(w, roomId)) if ((r.label || '') === from) { L.amend(w, r.id, { label: to }); n++; }
     return n;
   }
 
   // How many arrows have relation `name`.
-  const uses = (w, roomId, name) => Object.values(own(w, roomId, store, false)).reduce((n, d) => n + Object.values(d?.rel || {}).filter((r) => r === name).length, 0);
+  const uses = (w, roomId, name) => rowsIn(w, roomId).filter((r) => (r.label || '') === name).length;
 
   // The arrows into a node: { parents, labels, rel }, only from nodes still there. rel has every
   // parent ('' for an unnamed arrow); labels only those with one.
   function arrowsInto(w, roomId, id) {
-    const a = own(w, roomId, store, false)[id];
-    const parents = (a?.parents || []).filter((p) => p !== id && isNode(w, roomId, p));
-    const labels = {}, rel = {};
-    for (const p of parents) {
-      if (a.labels?.[p]) labels[p] = a.labels[p];
-      rel[p] = typeof a.rel?.[p] === 'string' ? a.rel[p] : '';
+    const rows = rowsInto(w, roomId, id);
+    const parents = rows.map((r) => r.to), labels = {}, rel = {};
+    for (const r of rows) {
+      if (r.note) labels[r.to] = r.note;
+      rel[r.to] = r.label || '';
     }
     return { parents, labels, rel };
   }
@@ -239,51 +247,36 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
   function link(w, roomId, parent, child, label = '', relation) {
     const why = whyNot(w, roomId, parent, child);
     if (why || shut(w, roomId)) return why || 'This room is locked.';
-    const a = arrowsInto(w, roomId, child);
-    a.parents.push(parent);
-    if (tidy(label)) a.labels[parent] = tidy(label);
-    a.rel[parent] = relation == null ? relations(w, roomId)[0] : relationName(relation) ?? '';
-    put(w, roomId, child, a);
+    const rel = relation == null ? relations(w, roomId)[0] : relationName(relation) ?? '';
+    L.set(w, L.relId(store, child, parent), { from: child, to: parent, kind: 'relation', rule: store, label: rel, note: tidy(label) });
     changed(w, roomId);
     return '';
   }
 
   function unlink(w, roomId, parent, child) {
-    if (shut(w, roomId)) return false;
-    const { parents, labels, rel } = arrowsInto(w, roomId, child);
-    if (!parents.includes(parent)) return false;
-    delete labels[parent];
-    delete rel[parent];
-    put(w, roomId, child, { parents: parents.filter((p) => p !== parent), labels, rel });
+    if (shut(w, roomId) || !rowOf(w, parent, child)) return false;
+    L.drop(w, L.relId(store, child, parent));
     changed(w, roomId);
     return true;
   }
 
   // An arrow's label ('' takes it away).
   function setLabel(w, roomId, parent, child, text) {
-    if (shut(w, roomId)) return false;
-    const a = arrowsInto(w, roomId, child);
-    if (!a.parents.includes(parent)) return false;
-    const t = tidy(text);
-    if (t) a.labels[parent] = t; else delete a.labels[parent];
-    put(w, roomId, child, a);
-    return true;
+    if (shut(w, roomId) || !rowOf(w, parent, child)) return false;
+    return L.amend(w, L.relId(store, child, parent), { note: tidy(text) });
   }
 
   // An arrow's relation ('' for an unnamed arrow). A name with [[ or ]] in it is refused (false).
   function setRelation(w, roomId, parent, child, relation) {
-    if (shut(w, roomId)) return false;
-    const a = arrowsInto(w, roomId, child);
+    if (shut(w, roomId) || !rowOf(w, parent, child)) return false;
     const name = relationName(relation);
-    if (!a.parents.includes(parent) || name == null) return false;
-    a.rel[parent] = name;
-    put(w, roomId, child, a);
-    return true;
+    if (name == null) return false;
+    return L.amend(w, L.relId(store, child, parent), { label: name });
   }
 
   // A node just made, given its first parent (no checks: it has no arrows yet).
   function adopt(w, roomId, child, parent) {
-    put(w, roomId, child, { parents: [parent], labels: {}, rel: { [parent]: relations(w, roomId)[0] } });
+    L.set(w, L.relId(store, child, parent), { from: child, to: parent, kind: 'relation', rule: store, label: relations(w, roomId)[0] });
   }
 
   // In a .traum file (the roomfile feature): the arrow: lines of any ontology that uses these
@@ -318,8 +311,10 @@ export function arrowsOf({ of, isNode, nodes, word = 'node', loops = false, chan
     }
   }
 
-  return {
-    relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
+  const net = {
+    store, relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
     link, unlink, setLabel, setRelation, adopt, traumLines, traumArrows,
   };
+  NETS.set(store, net);
+  return net;
 }

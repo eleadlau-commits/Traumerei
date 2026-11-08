@@ -50,8 +50,8 @@ test('links run in loops; a link to itself, or the same link twice, is refused; 
   assert.equal(L().link(w, MESSY, a, b), 'That link is already there.');
   assert.equal(L().link(w, MESSY, b, a), ''); // back the other way
   assert.equal(L().arrows(w, MESSY).length, 4);
-  // Kept apart from Proust's places, so groups.js's spots stay its own.
-  assert.ok(own(w, MESSY, LINKS)[b]);
+  // Rows of the links table under Proust's own store, apart from its places (groups.js's spots).
+  assert.ok(lib.links.get(w, lib.links.relId(LINKS, b, a)));
   assert.equal(own(w, MESSY, 'proust', false)[b], undefined);
 });
 

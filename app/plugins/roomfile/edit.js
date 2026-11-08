@@ -17,7 +17,7 @@ import {
 import { write as writeParts } from './grammar.js';
 import {
   room, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, kindFor, join, setOrder,
-  groupsOf, remove, setRoomSetting, groupLabel, broken, within,
+  groupsOf, remove, setRoomSetting, groupLabel, broken, within, leave, replaceIn,
 } from './world.js';
 
 const oneLine = (x) => String(x ?? '').replace(/\s+/g, ' ').trim();
@@ -195,7 +195,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
     const made = create(w, roomId, fields, th ? th.at : t++);
     if (!made) { report.push(`Line ${obj.line}: ^${obj.id} is empty, so it was left out.`); continue; }
     if (th) { // a thought of another kind now: the new one takes its place everywhere
-      for (const g of groupsOf(w, th.id)) g.members = g.members.map((m) => (m === th.id ? made.id : m));
+      replaceIn(w, th.id, made.id);
       for (const data of Object.values(w.own[roomId] || {})) if (data && typeof data === 'object' && data[th.id] != null) data[made.id] = data[th.id];
       if (Number.isFinite(th.dx)) { made.dx = th.dx; made.dy = th.dy; }
       remove(w, th.id);
@@ -213,12 +213,12 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
     for (const v of f.holds) {
       const id = resolve(v);
       if (!id) { report.push(`Line ${f.line}: ${v.t === 'ref' ? `^${obj.id} holds ^${v.id}, which isn't in the room` : `"${v.v}" in ^${obj.id}'s holds isn't a ^reference`}.`); continue; }
-      if (g.members.includes(id) || join(w, g.id, id)) want.push(id);
+      if (members(w, g.id).some((m) => m.id === id) || join(w, g.id, id)) want.push(id);
       else report.push(`Line ${f.line}: ^${obj.id} can't hold ^${v.id} (a group can't hold itself, or a group that holds it).`);
     }
     if (!want.length) { report.push(`Line ${obj.line}: ${named(w, g.id)} holds nothing, so it was left as it was.`); continue; }
-    const gone = g.members.filter((m) => !want.includes(m));
-    g.members = want;
+    const gone = members(w, g.id).map((m) => m.id).filter((m) => !want.includes(m));
+    for (const m of gone) leave(w, g.id, m);
     if (gone.length && !fresh.has(g.id)) changes.push(`${plural(gone.length, 'thing')} ${gone.length === 1 ? 'leaves' : 'leave'} ${named(w, g.id)}`);
     setOrder(w, g.id, want);
   }
@@ -232,7 +232,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
     for (const g of missing.filter(isGroup)) {
       if (!w.things[g.id]) continue;
       changes.push(`${named(w, g.id)} is deleted (what it holds stays, unless it is gone from the text too)`);
-      g.members = [];
+      for (const m of members(w, g.id)) leave(w, g.id, m.id); // (the last to leave takes the empty group with it)
       remove(w, g.id);
     }
     for (const th of missing.filter(isLeaf)) {

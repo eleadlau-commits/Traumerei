@@ -273,7 +273,7 @@ export function bringObjects(w, roomId, parts, { modes = [], ontologies = [], no
         continue;
       }
       if (join(w, g.id, id)) order.push(id);
-      else if (!w.things[g.id]?.members.includes(id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v.id} (a group can't hold itself, or a group that holds it).`);
+      else if (!members(w, g.id).some((m) => m.id === id)) report.push(`Line ${line}: ^${obj.id} can't hold ^${v.id} (a group can't hold itself, or a group that holds it).`);
     }
     if (w.things[g.id]) { setOrder(w, g.id, order); keepHeldOrder(w, g.id, order); }
   }

@@ -46,11 +46,11 @@ test('the rows that take one state to another name what changed, and nothing els
   const d = state(w);
   const g = model.create(w, model.MESSY, { kind: 'group', of: 'pessoa' }, 4000);
   model.join(w, g.id, th.id);
-  assert.deepEqual(diff(d, state(w)).map((r) => [r.kind, r.table, r.mark]), [['made', 'marks', g.id]]); // the thought itself is unchanged: the group holds it
+  assert.deepEqual(diff(d, state(w)).map((r) => [r.kind, r.table, r.mark ?? r.link]), [['made', 'marks', g.id], ['linked', 'links', `part:${g.id}:${th.id}`]]); // the thought itself is unchanged: a part-of row holds it
   const e = state(w);
   model.join(w, g.id, model.create(w, model.MESSY, { kind: 'line', text: 'three' }, 4500).id);
   const rows = diff(e, state(w));
-  assert.deepEqual(rows.filter((r) => r.mark === g.id).map((r) => [r.kind, r.table]), [['linked', 'links']]);
+  assert.deepEqual(rows.filter((r) => r.link).map((r) => [r.kind, r.table, r.after.to]), [['linked', 'links', g.id]]); // a part-of row made: a links row, not a change to the group
   const f = state(w);
   model.own(w, model.MESSY, 'russell').x = 1;
   w.pages = 3;
@@ -181,7 +181,7 @@ test('compaction keeps the replay exact at now and at the end of every past day,
   const horizon = L.dayOf(now - COMPACT * DAY);
   const old = log.rows.filter((r) => r.time < horizon);
   assert.ok(old.length && old.every((r) => r.before === undefined && r.step === undefined && r.kind !== 'visited' && r.kind !== 'undone'));
-  const perDay = new Set(old.map((r) => `${L.dayOf(r.time)}:${r.mark ?? r.context}`));
+  const perDay = new Set(old.map((r) => `${L.dayOf(r.time)}:${r.mark ?? r.link ?? r.context}`));
   assert.equal(perDay.size, old.length);
   assert.ok(same(log.rows.filter((r) => r.time >= horizon && !['undone', 'redone'].includes(r.kind)), before.rows.filter((r) => r.time >= horizon && !['undone', 'redone'].includes(r.kind))));
   // undo reaches only into the kept rows, and still works

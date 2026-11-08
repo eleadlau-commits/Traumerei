@@ -3,6 +3,7 @@
 // an ontology's drawing and lines.js, which make the canvas's nodes when a room asks.
 
 export * as model from './model.js';          // the world: rooms, items, groups, tags, pages
+export * as links from './links.js';          // the links table: part of, stands for, relation (Law 4)
 export * as groups from './groups.js';        // groups as shared objects: outermost, foreign, trays
 export * as twin from './twin.js';            // a Twin: two sides, each a room, side by side
 export * as items from './items/index.js';    // ITEMS: the kinds of item (line, passage, picture)

@@ -4,7 +4,7 @@
 
 import {
   room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
-  trainThoughts, rooms,
+  trainThoughts, rooms, members,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 import * as verbs from './verbs.js';
@@ -357,7 +357,7 @@ export class Gestures {
       const th = w.things[id];
       if (!th) continue;
       const train = isGroup(th) ? th : null;
-      if (!train && ids.some((o) => o !== id && isGroup(w.things[o]) && w.things[o].members?.includes(id))) continue; // its train is copied whole
+      if (!train && ids.some((o) => o !== id && isGroup(w.things[o]) && members(w, o).some((m) => m.id === id))) continue; // its train is copied whole
       if (train && train.of !== 'joyce') continue;
       if (!train && !isLeaf(th)) continue;
       const p = this.ont.point(w, this.roomId, id) || { x: train?.x ?? 0, y: train?.y ?? 0 };

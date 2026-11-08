@@ -3,8 +3,9 @@
 // in words; tests/api.test.js holds the list, so a change here is always deliberate (change
 // API.md and the test with it).
 //
-// Phases 0 and 1 of the kernel plan: five namespaces are a thin layer over the world as it is
-// today (v1.js, world/model.js), and moments reads the world's log (world/moments.js). Each read
+// Phases 0 to 2 of the kernel plan: four namespaces are a thin layer over the world as it is
+// today (v1.js, world/model.js), links reads the links table (world/links.js) and moments the
+// world's log (world/moments.js). Each read
 // gives frozen rows; each propose goes through the world's own checks and lands as one step in
 // the log (its rows are the moments), or returns a refusal with its reason in words. Where a table does not exist yet (gaps, forward
 // moments) the read is empty and the propose refuses, naming the phase that brings it. Nothing
@@ -19,8 +20,8 @@ export const TABLES = Object.freeze(['marks', 'places', 'links', 'distance', 'ga
 export const READERS = Object.freeze(['me now', 'me later', 'others', 'machine']);
 // The directions a gap can have (KERNEL.md: gaps).
 export const DIRECTIONS = Object.freeze(['to world', 'from world', 'to maker']);
-// The kinds of link there are now; more kinds are a slot in phase 2.
-export const LINK_KINDS = Object.freeze(['part of', 'relation']);
+// The kinds of link there are (world/links.js says the same): part of, stands for, relation.
+export const LINK_KINDS = Object.freeze(['part of', 'stands for', 'relation']);
 
 const row = (o) => Object.freeze(o);
 const rows = (list) => Object.freeze(list.map(row));
@@ -34,7 +35,8 @@ export const ARCHIVE = 'archive';
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
 // screen; the tests call it with the same modules.
 export function kernel({ lib, world, events = null, gone = () => {} }) {
-  const { model, groups } = lib;
+  const { model, groups, links: LINKS } = lib; // (the links table, world/links.js, reached as the world's rules are)
+  const netFor = (rule) => lib.relations.netFor(rule);
   const w = () => world.world;
   const rules = () => (world.ontologies?.length ? world.ontologies.map((o) => o.id) : ['joyce', 'pessoa']);
   const lays = (rule) => !!world.ontologies?.find((o) => o.id === rule)?.lays;
@@ -145,48 +147,63 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('places'),
   });
 
-  // -- links: part of (a member to its group, with order) and relation (an arrow, with its name). --
-  function linkRows(roomId) {
-    const out = [];
-    for (const g of model.groupsIn(w(), roomId)) {
-      // order: as the group reads (a train by time; a rule that keeps its order, as given)
-      model.members(w(), g.id).forEach((m, i) => out.push({ id: `part:${g.id}:${m.id}`, from: m.id, to: g.id, kind: 'part of', order: i }));
-    }
-    for (const [store, data] of Object.entries(w().own[roomId] || {})) {
-      for (const [child, arrows] of Object.entries(data || {})) {
-        if (!Array.isArray(arrows?.parents)) continue;
-        for (const parent of arrows.parents) {
-          out.push({ id: `rel:${store}:${child}:${parent}`, from: child, to: parent, kind: 'relation', label: arrows.rel?.[parent] || '', note: arrows.labels?.[parent] || '', rule: store });
-        }
-      }
-    }
-    return out;
-  }
-  const roomOf = (id) => { const th = thing(id); return th && kindOf(th) !== 'room' ? th.parent : null; };
-  const pick = (mark, kind, side) => { const r = roomOf(mark); return r == null ? [] : linkRows(r).filter((l) => l[side] === mark && (kind == null || l.kind === kind)); };
+  // -- links: the links table itself (world/links.js). part of: a member to its group, `order`
+  // as the group reads (a train by time, a rule that keeps its order as given). stands for: a
+  // fold to each mark it folded away. relation: a child to its parent under a rule's arrows, with
+  // `label` the relation's name and `note` the arrow's words. --
+  const asRead = (r) => { // a part-of row's order, as the group reads
+    if (r.kind !== 'part of') return { ...r };
+    const i = model.members(w(), r.to).findIndex((th) => th.id === r.from);
+    return { ...r, order: i < 0 ? r.order : i };
+  };
+  const roomOf = (id) => { const th = thing(id); return th ? (kindOf(th) === 'room' ? th.id : th.parent) : null; };
   const links = Object.freeze({
-    from: (mark, kind = null) => rows(pick(mark, kind, 'from')),
-    to: (mark, kind = null) => rows(pick(mark, kind, 'to')),
+    get: (id) => { const r = LINKS.get(w(), id); return r ? row(asRead(r)) : null; },
+    from: (mark, kind = null) => rows(LINKS.from(w(), mark, kind).map(asRead)),
+    to: (mark, kind = null) => rows(LINKS.to(w(), mark, kind).map(asRead).sort((a, b) => a.order - b.order)),
     members: (group) => Object.freeze(model.members(w(), group).map((th) => th.id)),
     holders: (mark) => Object.freeze(model.groupsOf(w(), mark).map((g) => g.id)),
+    standsFor: (mark) => Object.freeze(LINKS.from(w(), mark, 'stands for').map((r) => r.to)), // the marks a fold stands for
     kinds: () => LINK_KINDS,
-    link: (from, to, kind, label = '') => {
+    count: () => LINKS.count(w()),
+    // kind 'relation' takes the rule whose arrows these are (`rule`: 'russell', 'proust-links') and
+    // goes through that rule's own checks (Russell refuses a loop, Law 3); label is the relation's
+    // name (left out: the room's first), note the arrow's words.
+    link: (from, to, kind, label = null, { rule = null, note = '' } = {}) => {
       if (kind === 'part of') {
         if (!model.isGroup(thing(to))) return refuse('Only a group can hold a part');
-        return land(model.join(w(), to, from), `part:${to}:${from}`, 'The part cannot join: it is in another context, locked, or would hold its own group');
+        return land(model.join(w(), to, from), LINKS.partId(to, from), 'The part cannot join: it is in another context, locked, or would hold its own group');
       }
-      if (kind === 'relation') return later('Drawing a relation through the API', 2);
+      if (kind === 'relation') {
+        const net = rule && netFor(rule);
+        if (!net) return refuse(rule ? `No rule draws relations as ${rule}` : 'A relation needs the rule whose arrows these are: link(from, to, \'relation\', label, { rule })');
+        const r = roomOf(from);
+        if (r == null || roomOf(to) !== r) return refuse('A relation joins two marks of one context');
+        const why = net.link(w(), r, to, from, note, label == null ? undefined : label);
+        return land(!why, LINKS.relId(rule, from, to), why);
+      }
+      if (kind === 'stands for') return refuse('A mark comes to stand for others by folding them: links.fold(context, ids)');
       return refuse(`No such kind of link: ${kind}`);
     },
+    // Many marks fold into one new mark that stands for them and takes their place in every group.
+    fold: (context, ids) => {
+      if (!thing(context)) return refuse('No such context');
+      const made = groups.fold(w(), context, Array.isArray(ids) ? ids : []);
+      return land(!made.why, made.id, made.why || 'Nothing here to fold');
+    },
     unlink: (id) => {
-      const [kind, ...parts] = String(id).split(':');
-      if (kind === 'part') {
-        const [group, member] = parts;
-        if (!model.isGroup(thing(group))) return refuse('No such group');
-        return land(model.leave(w(), group, member), id, 'Not a part of that group');
+      const r = LINKS.get(w(), String(id));
+      if (!r) return refuse('No such link');
+      if (r.kind === 'part of') return land(model.leave(w(), r.to, r.from), id, 'Not a part of that group');
+      if (r.kind === 'relation') {
+        const net = netFor(r.rule);
+        if (!net) return refuse(`No rule draws relations as ${r.rule}`);
+        return land(net.unlink(w(), roomOf(r.from), r.to, r.from), id, 'The context is locked');
       }
-      if (kind === 'rel') return later('Removing a relation through the API', 2);
-      return refuse('No such link');
+      // stands for: the fold no longer stands for this mark, which comes back loose in its context
+      if (model.shut(w(), r.to)) return refuse('The context is locked');
+      LINKS.drop(w(), r.id);
+      return land(true, id);
     },
     order: (group, ids) => land(model.setOrder(w(), group, ids), group, 'Not a group, or not its parts'),
     on: on('links'),
@@ -219,7 +236,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
   // not know of (older than the history kept) still has its made and edited times. --
   const log = () => world.moments;
-  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
   function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });
