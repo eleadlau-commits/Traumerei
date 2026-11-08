@@ -25,7 +25,7 @@
 // (relations.js: { [to]: { parents, labels, rel } }).
 
 import {
-  own, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
+  own, parentOf, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
   placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
 } from './world.js';
 
@@ -67,7 +67,7 @@ export function shownAs(w, id) {
   if (self?.loose) return 'tray';
   // A thought added away from the canvas, in no cluster, waits in the tray until it is dragged out.
   const th = w.things[id];
-  if (out === id && isLeaf(th) && !clusterOf(w, id) && waiting(w, th.parent, ID, id)) return 'tray';
+  if (out === id && isLeaf(th) && !clusterOf(w, id) && waiting(w, parentOf(w, th.id), ID, id)) return 'tray';
   return out;
 }
 
@@ -84,7 +84,7 @@ export function clusters(w, roomId) {
 // it (one card). inside: inForeign's test, when it is already made.
 export function isNode(w, roomId, id, inside = null) {
   const th = w.things[id];
-  if (!th || th.parent !== roomId) return false;
+  if (!th || parentOf(w, th.id) !== roomId) return false;
   if ((inside || inForeign(w, roomId, ID))(id)) return false;
   if (isLeaf(th)) return shownAs(w, id) !== 'tray';
   if (!isGroup(th)) return false;
@@ -166,7 +166,7 @@ export function keep(w, roomId) {
 // While centred: where Centre shows it.
 export function point(w, roomId, id) {
   const th = w.things[id];
-  if (!th || th.parent !== roomId) return null;
+  if (!th || parentOf(w, th.id) !== roomId) return null;
   const shown = VIEWS.get(roomId)?.at[id];
   if (shown) return { x: shown.x, y: shown.y };
   const placed = own(w, roomId, ID, false)[id];
@@ -424,7 +424,7 @@ export const proust = {
   // After `id`: the next thought goes just below it, in its cluster, linked on from it.
   goOn(w, roomId, id) {
     const th = w.things[id];
-    if (!th || th.parent !== roomId || !isNode(w, roomId, id)) return null;
+    if (!th || parentOf(w, th.id) !== roomId || !isNode(w, roomId, id)) return null;
     const c = isLeaf(th) ? clusterOf(w, id) : null;
     return { train: c && !c.closed ? c.id : null, after: id, ...below(w, roomId, id) };
   },

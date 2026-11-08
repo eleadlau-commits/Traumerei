@@ -4,7 +4,7 @@
 // a thought or group can be moved across (`across`), and then it belongs to the other side alone.
 // The sides are the only rooms inside a room (model.js: canHold, isTwin).
 
-import { addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
+import { parentOf, addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
 
 export { isTwin };
 
@@ -28,7 +28,7 @@ export function sides(w, id) {
 }
 
 // The Twin a side belongs to, or null (any other room).
-export const twinOf = (w, id) => { const r = room(w, id); const t = r && w.things[r.parent]; return isTwin(t) ? t : null; };
+export const twinOf = (w, id) => { const r = room(w, id); const t = r && w.things[parentOf(w, r.id)]; return isTwin(t) ? t : null; };
 
 // The other side of a Twin's side, or null.
 export function otherSide(w, id) {
@@ -64,7 +64,7 @@ export function moveTargets(w, from) {
 export function across(w, id, x = 0, y = 0) {
   const th = w.things[id];
   if (!th || !(isLeaf(th) || isGroup(th))) return false;
-  const to = otherSide(w, th.parent);
+  const to = otherSide(w, parentOf(w, th.id));
   if (!to || !move(w, id, to.id, x, y)) return false;
   if (isGroup(th) && th.of !== view(w, to.id).mode) th.shared = true;
   return true;

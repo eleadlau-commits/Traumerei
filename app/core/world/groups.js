@@ -19,7 +19,7 @@
 
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
-import { groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, memberIds, move } from './model.js';
+import { parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, own, shut, create, remove, leave, membership, memberIds, move } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -64,7 +64,7 @@ export const trayForeign = (w, roomId, of) => foreign(w, roomId, of).filter((g) 
 // only there).
 export const WAITS = 'tray';
 export function wait(w, roomId, id, of = null) {
-  if (shut(w, roomId) || w.things[id]?.parent !== roomId) return false;
+  if (shut(w, roomId) || parentOf(w, id) !== roomId) return false;
   const marks = own(w, roomId, WAITS);
   if (!of) marks[id] = true;
   else if (marks[id] !== true) marks[id] = { ...(marks[id] && typeof marks[id] === 'object' ? marks[id] : {}), [of]: true };
@@ -105,7 +105,7 @@ export function place(w, id) {
 // there and waits in `of`'s tray (wait), as one added from the tray does, until dragged out.
 export function unplace(w, roomId, of, id, { lays = false } = {}) {
   const th = w.things[id];
-  if (!th || th.parent !== roomId || shut(w, roomId) || !(isLeaf(th) || isGroup(th))) return false;
+  if (!th || parentOf(w, th.id) !== roomId || shut(w, roomId) || !(isLeaf(th) || isGroup(th))) return false;
   if (inForeign(w, roomId, of)(id)) return false;
   const mine = isGroup(th) && th.of === of;
   const theirs = isGroup(th) && !mine;
@@ -137,7 +137,7 @@ const wordsOf = (th) => (kindOf(th) === 'passage' ? [th.title, th.body].filter(B
 // folded, in order; gone: every thought that goes; groups: the chosen groups, which stay and hold
 // the new thought), or { why } when it can't be folded.
 export function foldPlan(w, roomId, ids) {
-  const chosen = [...new Set(ids)].map((id) => w.things[id]).filter((th) => th && th.parent === roomId && (isLeaf(th) || isGroup(th)))
+  const chosen = [...new Set(ids)].map((id) => w.things[id]).filter((th) => th && parentOf(w, th.id) === roomId && (isLeaf(th) || isGroup(th)))
     .sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   const groups = chosen.filter(isGroup);
   const leaves = [], gone = new Map();

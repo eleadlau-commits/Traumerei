@@ -6,6 +6,7 @@ import * as libForRussell from '../lib.js';
 import { surface as surfaceForRussell } from '../../api/v1.js';
 import { bind as bindRussell } from '../../russell/world.js';
 bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
+import * as model from '../model.js';
 import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom, join, roomItems, foldedAway } from '../model.js';
 import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting, moveLoose } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
@@ -251,7 +252,7 @@ test('moved to another room (Move to…): it lands in that room\'s loose tray in
   const c = create(w, MESSY, { kind: 'line', text: 'c' }, 4);
   const t = groupChosen(joyce, w, MESSY, [b.id, c.id], 5);
   assert.ok(moveLoose(w, a.id, other.id));
-  assert.equal(a.parent, other.id);
+  assert.equal(model.parentOf(w, a.id), other.id);
   assert.ok(ids(joyce.tray(w, other.id)).includes(a.id));   // no train of its own
   assert.ok(ids(pessoa.tray(w, other.id)).includes(a.id));  // waits until dragged out
   assert.ok(ids(russell.tray(w, other.id)).includes(a.id));

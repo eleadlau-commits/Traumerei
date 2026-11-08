@@ -4,7 +4,7 @@
 
 import {
   room, name, view, create, update, remove, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, isBig, kindFor, placeName, moveTargets, wait, moveLoose,
+  thoughtText, trainThoughts, isBig, kindFor, placeName, moveTargets, wait, moveLoose, parentOf,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -457,7 +457,7 @@ export class Bars {
       if (ev.type !== 'pointerup' || !over || !this.world.things[id]) return;
       // A Twin: let go over its other side, it goes there (or stays there, if it came from there).
       const there = this.overOther(ev.clientX - off.x, ev.clientY - off.y);
-      if (there && this.world.things[id].parent === there.id) {
+      if (there && parentOf(this.world, id) === there.id) {
         this.ontology(view(this.world, there.id).mode).drop(this.world, there.id, id, there.x, there.y);
         this.save();
         this.drawWorld();
@@ -570,12 +570,12 @@ export class Bars {
     // An ontology that goes on from a thought (Proust): the next one links on from the one chosen,
     // or else from the last.
     if (this.writer.goOn && !this.fresh) {
-      const chosen = this.sel && this.sel.kind !== 'many' && this.world.things[this.sel.id]?.parent === this.roomId ? this.sel.id : null;
-      const from = chosen || (t?.parent === this.roomId ? cur : null);
+      const chosen = this.sel && this.sel.kind !== 'many' && parentOf(this.world, this.sel.id) === this.roomId ? this.sel.id : null;
+      const from = chosen || (t && parentOf(this.world, t.id) === this.roomId ? cur : null);
       const next = from && this.writer.goOn(this.world, this.roomId, from);
       if (next) return next;
     }
-    if (!this.fresh && t?.parent === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
+    if (!this.fresh && t && parentOf(this.world, t.id) === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
     const spot = this.freeSpot();
     this.fresh = false;
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };

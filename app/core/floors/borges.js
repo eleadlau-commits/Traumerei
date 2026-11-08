@@ -5,7 +5,7 @@
 // units are the rooms on that floor; a point is a room's cell; drop() moves a room to a cell, by
 // the floor rule (rule.js). The floors feature adds it to the slot 'world.ontologies'.
 
-import { room, roomsOn, span, shapeOf } from './world.js';
+import { room, floorOf, roomsOn, span, shapeOf } from './world.js';
 import { move, toFloor } from './rule.js';
 
 // board(): every floor's { cols, rows } (the preset chosen in Settings → Floors).
@@ -37,7 +37,7 @@ export function borges(board) {
       const r = room(w, id);
       if (!r) return false;
       const col = Math.round(x), row = Math.round(y);
-      if ((r.page || 0) === page) return move(w, id, col, row, board());
+      if (floorOf(w, id) === page) return move(w, id, col, row, board());
       return toFloor(w, id, page, board(), { col, row }) === true;
     },
   };

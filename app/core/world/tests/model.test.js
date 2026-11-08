@@ -11,6 +11,7 @@ import {
   roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
   roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells, copyRoom,
 } from '../model.js';
+import * as model from '../model.js';
 import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
 import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
 
@@ -28,7 +29,7 @@ test('a new world has only Messy thoughts, seen in Joyce', () => {
 
 test('a world saved in an older shape is not kept: it starts afresh', () => {
   const w = loadWorld({ v: 2, things: { t: { id: 't', kind: 'train', parent: 'messy', at: 1 } }, places: {} });
-  assert.deepEqual(Object.keys(w.things), [MESSY]);
+  assert.deepEqual(Object.keys(w.things).sort(), [model.ARCHIVE, model.FLOOR(0), MESSY].sort()); // the contexts of the top, and Messy
   assert.equal(w.v, 3);
 });
 
@@ -47,7 +48,7 @@ test('what can sit inside what: items and groups in rooms, rooms at the top', ()
   assert.ok(canHold(w, null, 'room'));
   assert.ok(!canHold(w, t.id, 'room'));
   const a = addThought(w, t.id, 'a');
-  assert.equal(a.parent, MESSY);
+  assert.equal(model.parentOf(w, a.id), MESSY);
   assert.deepEqual(memberIds(w, t.id), [a.id]);
 });
 
@@ -93,7 +94,7 @@ test('moving one thought into a room gives it a train there; the rest stays join
   assert.deepEqual(trainThoughts(w, t.id).map((th) => th.text), ['a', 'c']);
   assert.equal(roomThoughts(w, r.id)[0].text, 'b');
   assert.equal(own(w, MESSY, 'pessoa')[b.id], undefined);
-  assert.equal(groupOf(w, b.id).parent, r.id);
+  assert.equal(model.parentOf(w, groupOf(w, b.id).id), r.id);
 });
 
 test('a train left empty by a move is removed', () => {
@@ -118,7 +119,7 @@ test('pages: rooms on the rooms page sit on one page each, with grids of their o
   const p = addPage(w);
   assert.equal(p, 1);
   const r = addRoom(w, 'Two', 1, { page: 1 });
-  assert.equal(r.page, 1);
+  assert.equal(model.floorOf(w, r.id), 1);
   assert.equal(r.col, undefined); // the floors feature places it
   Object.assign(r, { col: 0, row: 0 }); // Messy's cells are on page 0
   assert.equal(roomAt(w, 0, 0, null, 1).id, r.id);
@@ -325,7 +326,8 @@ test('an archived room leaves the grid for the Archive, and comes back with no c
   assert.equal(search(w, 'washi').length, 1); // still found
   assert.equal(archive(w, MESSY), false);
   assert.ok(restore(w, r.id));
-  assert.equal(r.archived, undefined);
+  assert.equal(model.isArchived(w, r.id), false);
+  assert.equal(model.archivedAt(w, r.id), null);
   assert.equal(r.col, undefined);
   lock(w, r.id);
   assert.equal(archive(w, r.id), false); // unlock it first
@@ -400,7 +402,7 @@ test('a group can hold groups: a train of trains, never itself or a group holdin
   // Moved, everything inside goes with it; removed, so does everything inside (trains hold one each).
   const r = addRoom(w, 'Elsewhere');
   assert.ok(move(w, outer.id, r.id));
-  assert.ok(within(w, outer.id).every((th) => th.parent === r.id));
+  assert.ok(within(w, outer.id).every((th) => model.parentOf(w, th.id) === r.id));
   remove(w, outer.id);
   assert.equal(w.things[a.id], undefined);
   assert.equal(children(w, r.id).length, 0);
@@ -415,7 +417,7 @@ test('moving a group takes its thoughts to the other room, and they leave groups
   const s = create(w, MESSY, { kind: 'group', of: 'sets' });
   join(w, s.id, a.id);
   assert.ok(move(w, t.id, r.id, 1, 2));
-  assert.equal(a.parent, r.id);
+  assert.equal(model.parentOf(w, a.id), r.id);
   assert.equal(w.things[s.id], undefined);
 });
 
@@ -533,7 +535,7 @@ test('a copied room has everything in it copied, with new ids, and shares nothin
   assert.equal(c.name, 'Algebra copy');
   assert.equal(c.desc, 'Groups');
   assert.deepEqual(c.tags, ['maths']);
-  assert.equal(c.page, 1);
+  assert.equal(model.floorOf(w, c.id), 1);
   assert.ok(!c.locked && c.col == null && c.row == null, 'unlocked, with no cell yet');
   assert.equal(roomThoughts(w, c.id).map((th) => th.text).join(), 'one,two');
   const [ct] = roomTrains(w, c.id);

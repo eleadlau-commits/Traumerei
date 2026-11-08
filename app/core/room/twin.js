@@ -12,7 +12,7 @@
 // Double-click it for half and half again.
 
 import { el } from './shared.js';
-import { room, view, twinOf, otherSide, across } from './world.js';
+import { room, parentOf, view, twinOf, otherSide, across } from './world.js';
 
 export const SIDE_MIN = 280; // each half is at least this wide, in pixels
 
@@ -189,7 +189,7 @@ export class Twin {
   fromOtherSide(id) {
     const th = this.world.things[id];
     const other = this.otherSide;
-    if (!th || !other || th.parent !== other.id) return true;
+    if (!th || !other || parentOf(this.world, th.id) !== other.id) return true;
     return across(this.world, id);
   }
 }

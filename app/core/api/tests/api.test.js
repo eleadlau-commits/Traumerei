@@ -13,17 +13,17 @@ import { API_VERSION as V1_VERSION } from '../v1.js';
 const V2 = {
   top: ['app', 'arrows', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
-  places: ['in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
+  places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
   distance: ['declare', 'of', 'on'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
-  moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'revisit', 'seq', 'since'],
+  moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'placesAt', 'revisit', 'seq', 'since'],
   slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
   ui: ['toast'],
 };
 // Version 1's names, still offered beneath v2 until kernel phase 6.
 const V1 = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'update', 'view', 'within'],
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'update', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
@@ -272,31 +272,39 @@ test('marks: frozen rows read off the world; make, edit and delete land as saved
   assert.equal(service.saved, steps); // a refusal is not a step
 });
 
-test('places: a row per context and rule, rooms on floors or in the archive, loose means no row', () => {
+test('places: a home row per mark and a row per rule, rooms on floors or in the archive, loose means no rule row', () => {
   const { w, room, train, a, b, c, loose, locked, service } = smallWorld();
   const k = kernel({ lib, world: service });
-  assert.deepEqual(k.places.of(a.id), [{ mark: a.id, context: room.id, rule: 'joyce', position: { group: train.id, index: 0 } }]);
-  assert.deepEqual(k.places.of(c.id), [{ mark: c.id, context: room.id, rule: 'pessoa', position: { x: 300, y: 400 } }]);
-  assert.deepEqual(k.places.of(train.id), [{ mark: train.id, context: room.id, rule: 'joyce', position: { x: 10, y: 20 } }]);
-  assert.deepEqual(k.places.of(loose.id), []);
+  const home = (mark, context = room.id, position = null) => ({ mark, context, rule: null, position });
+  assert.deepEqual(k.places.of(a.id), [home(a.id), { mark: a.id, context: room.id, rule: 'joyce', position: { group: train.id, index: 0 } }]);
+  assert.deepEqual(k.places.of(c.id), [home(c.id), { mark: c.id, context: room.id, rule: 'pessoa', position: { x: 300, y: 400 } }]);
+  assert.deepEqual(k.places.of(train.id), [home(train.id), { mark: train.id, context: room.id, rule: 'joyce', position: { x: 10, y: 20 } }]);
+  assert.deepEqual(k.places.of(loose.id), [home(loose.id)]);
+  assert.equal(k.places.home(loose.id), room.id);
   assert.deepEqual(ids(k.places.loose(room.id)), [loose.id]);
   assert.deepEqual(ids(k.places.in(room.id, 'joyce')).sort(), [train.id, a.id, b.id].sort());
-  assert.equal(k.places.in(room.id).length, 4);
+  assert.equal(k.places.in(room.id).filter((p) => p.rule != null).length, 4);
+  assert.equal(k.places.in(room.id).filter((p) => p.rule == null).length, lib.model.children(w, room.id).length);
   assert.deepEqual(k.places.position(a.id, room.id, 'joyce'), { group: train.id, index: 0 });
   assert.equal(k.places.position(a.id, room.id, 'pessoa'), null);
-  assert.deepEqual(k.places.of(room.id), [{ mark: room.id, context: 'floor:0', rule: 'borges', position: null }]);
+  assert.deepEqual(k.places.of(room.id), [home(room.id, 'floor:0'), { mark: room.id, context: 'floor:0', rule: 'borges', position: null }]);
   lib.model.archive(w, room.id, 9999);
-  assert.deepEqual(k.places.of(room.id), [{ mark: room.id, context: ARCHIVE, rule: null, position: null }]);
+  assert.deepEqual(k.places.of(room.id), [home(room.id, ARCHIVE, { at: 9999, floor: 0 })]);
   lib.model.restore(w, room.id);
+  // A room is put on a floor or in the Archive, nowhere else.
+  assert.equal(k.places.put(room.id, locked.id).ok, false);
+  assert.ok(k.places.put(room.id, ARCHIVE).ok);
+  assert.ok(k.places.put(room.id, 'floor:0').ok);
+  assert.equal(k.places.home(room.id), 'floor:0');
   // Proposals: lay the loose thought under Pessoa; unplace it again; move it to another room.
   assert.ok(k.places.put(loose.id, room.id, 'pessoa', { x: 1, y: 2 }).ok);
   assert.deepEqual(k.places.position(loose.id, room.id, 'pessoa'), { x: 1, y: 2 });
   assert.ok(k.places.unplace(loose.id, room.id).ok);
-  assert.deepEqual(k.places.of(loose.id), []);
+  assert.deepEqual(k.places.of(loose.id), [home(loose.id)]); // unplaced, never lost (Law 2)
   assert.equal(k.places.put(loose.id, locked.id).ok, false);
   assert.equal(k.places.move(loose.id, locked.id, 'messy').reason, 'The mark is not in that context');
   assert.ok(k.places.move(loose.id, room.id, 'messy').ok);
-  assert.equal(w.things[loose.id].parent, 'messy');
+  assert.equal(lib.model.parentOf(w, loose.id), 'messy');
   assert.ok(w.things[loose.id]); // Law 2: moving never loses a mark
 });
 
@@ -405,7 +413,7 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   // a carrier: the rows since a seq, the whole world, and rows taken in
   assert.equal(k.moments.seq(), 3);
   assert.deepEqual(k.moments.outbox(2).map((m) => [m.kind, m.mark]), [['edited', a.id]]);
-  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'linked' || m.kind === 'arranged'));
+  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'linked' || m.kind === 'moved' || m.kind === 'arranged'));
   assert.ok(k.moments.outbox(null).some((m) => m.kind === 'linked' && m.link), 'the whole world carries its links as rows');
   const taken = k.moments.absorb([{ kind: 'edited', table: 'marks', mark: a.id, time: 6000, after: { ...w.things[a.id], text: 'from afar' } }]);
   assert.deepEqual(taken, { ok: true, id: 'moments', landed: 1 });

@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
+import { room, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -14,13 +14,12 @@ export const DEFAULT = 'medium';
 export const preset = (id) => PRESETS.find((p) => p.id === id) || PRESETS.find((p) => p.id === DEFAULT);
 export const sizeName = (board) => `${board.cols} × ${board.rows}`;
 
-const setPage = (r, page) => { if (page > 0) r.page = page; else delete r.page; };
 // Whether room `r`, at (col, row), lies on the board: its whole shape (1 × 1, a Twin 2 × 1, or 2 × 2).
 const inside = (r, col, row, board) => { const { w, h } = span(r); return col >= 0 && row >= 0 && col + w <= board.cols && row + h <= board.rows; };
 
 // Whether room `r` could sit at (col, row) of floor `page` (its own by default): on the board and
 // clear of every other room there.
-export function free(w, r, col, row, board, page = r.page || 0) {
+export function free(w, r, col, row, board, page = floorOf(w, r.id)) {
   return inside(r, col, row, board) && cells({ ...r, col, row }).every(([c, rr]) => !roomAt(w, c, rr, r.id, page));
 }
 
@@ -49,14 +48,14 @@ export function nearest(w, r, page, board, cell) {
 // archived).
 export function place(w, id, board, cell = null, { near = false } = {}) {
   const r = room(w, id);
-  if (!r || r.archived) return null;
-  const from = r.page || 0;
+  if (!r || isArchived(w, id)) return null;
+  const from = floorOf(w, id);
   delete r.col; delete r.row; // so its old cell doesn't hold its own place
   let at = cell && free(w, r, cell.col, cell.row, board, from) ? cell : near && cell ? nearest(w, r, from, board, cell) : spot(w, r, from, board);
   let page = from;
   if (!at) {
     page = addPage(w);
-    setPage(r, page);
+    toPage(w, r.id, page);
     at = spot(w, r, page, board) || { col: 0, row: 0 };
   }
   r.col = at.col;
@@ -88,7 +87,7 @@ export function settle(w, page, board) {
 // archived room). Returns whether it moved.
 export function move(w, id, col, row, board) {
   const r = room(w, id);
-  if (!r || r.locked || r.archived || !free(w, r, col, row, board)) return false;
+  if (!r || r.locked || isArchived(w, id) || !free(w, r, col, row, board)) return false;
   r.col = col;
   r.row = row;
   return true;
@@ -111,10 +110,10 @@ export function resize(w, id, size, board) {
 // 'full' when that floor has no spot of its size.
 export function toFloor(w, id, page, board, cell = null) {
   const r = room(w, id);
-  if (!r || id === MESSY || r.locked || r.archived || (r.page || 0) === page) return false;
+  if (!r || id === MESSY || r.locked || isArchived(w, id) || floorOf(w, id) === page) return false;
   const at = cell && free(w, r, cell.col, cell.row, board, page) ? cell : spot(w, r, page, board);
   if (!at) return 'full';
-  setPage(r, page);
+  if (!toPage(w, id, page)) return false;
   r.col = at.col;
   r.row = at.row;
   return true;
@@ -138,13 +137,12 @@ export function removeFloor(w, page, now = Date.now()) {
   if (page < 0 || page >= pageCount(w)) return { error: 'none' };
   const on = roomsOn(w, page);
   if (on.some((r) => r.locked)) return { error: 'locked' };
-  const count = pageCount(w);
   for (const r of on) archive(w, r.id, now);
-  for (const r of allRooms(w)) {
-    const p = r.page || 0;
-    if (p === page) setPage(r, page - 1);
-    else if (p > page) setPage(r, p - 1);
+  for (const r of allRooms(w)) { // (an archived room's floor is the one it would go back to)
+    const p = floorOf(w, r.id);
+    if (p === page) toPage(w, r.id, page - 1);
+    else if (p > page) toPage(w, r.id, p - 1);
   }
-  w.pages = Math.max(1, count - 1);
+  dropPage(w); // the last floor, empty now
   return { archived: on };
 }

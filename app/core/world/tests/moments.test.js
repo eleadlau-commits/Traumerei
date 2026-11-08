@@ -36,7 +36,7 @@ test('the rows that take one state to another name what changed, and nothing els
   const w = model.emptyWorld(1000);
   const a = state(w);
   const th = model.create(w, model.MESSY, { kind: 'line', text: 'one' }, 2000);
-  assert.deepEqual(diff(a, state(w)).map((r) => [r.kind, r.table, r.mark]), [['made', 'marks', th.id]]);
+  assert.deepEqual(diff(a, state(w)).map((r) => [r.kind, r.table, r.mark ?? r.place]), [['made', 'marks', th.id], ['moved', 'places', `place:${model.MESSY}:${th.id}`]]); // made, and its home row
   const b = state(w);
   model.update(w, th.id, { text: 'two' }, 3000);
   assert.deepEqual(diff(b, state(w)).map((r) => r.kind), ['edited']);
@@ -46,15 +46,19 @@ test('the rows that take one state to another name what changed, and nothing els
   const d = state(w);
   const g = model.create(w, model.MESSY, { kind: 'group', of: 'pessoa' }, 4000);
   model.join(w, g.id, th.id);
-  assert.deepEqual(diff(d, state(w)).map((r) => [r.kind, r.table, r.mark ?? r.link]), [['made', 'marks', g.id], ['linked', 'links', `part:${g.id}:${th.id}`]]); // the thought itself is unchanged: a part-of row holds it
+  assert.deepEqual(diff(d, state(w)).filter((r) => !r.place).map((r) => [r.kind, r.table, r.mark ?? r.link]), [['made', 'marks', g.id], ['linked', 'links', `part:${g.id}:${th.id}`]]); // the thought itself is unchanged: a part-of row holds it
   const e = state(w);
   model.join(w, g.id, model.create(w, model.MESSY, { kind: 'line', text: 'three' }, 4500).id);
   const rows = diff(e, state(w));
   assert.deepEqual(rows.filter((r) => r.link).map((r) => [r.kind, r.table, r.after.to]), [['linked', 'links', g.id]]); // a part-of row made: a links row, not a change to the group
   const f = state(w);
   model.own(w, model.MESSY, 'russell').x = 1;
-  w.pages = 3;
-  assert.deepEqual(diff(f, state(w)).map((r) => [r.kind, r.table, r.context]), [['arranged', 'links', model.MESSY], ['floors', 'places', 'floors']]);
+  model.addPage(w, 5000);
+  assert.deepEqual(diff(f, state(w)).map((r) => [r.kind, r.table, r.mark ?? r.context]), [['made', 'marks', model.FLOOR(1)], ['arranged', 'links', model.MESSY]]); // a floor is a mark
+  const g2 = state(w);
+  const r2 = model.addRoom(w, 'Up', 6000, { page: 1 });
+  model.archive(w, r2.id, 7000);
+  assert.deepEqual(diff(g2, state(w)).map((r) => [r.kind, r.table, r.mark ?? r.place]), [['made', 'marks', r2.id], ['moved', 'places', `place:${model.ARCHIVE}:${r2.id}`]]); // where a room is: a place row
   assert.deepEqual(diff(state(w), state(w)), []);
 });
 
@@ -109,7 +113,7 @@ test('undo round-trips 1,000 random edits: all the way back is the start, all th
   assert.ok(same(stateAt(log), end));
   // a new change after undoing forgets the redo
   undo(log, s, true, 4e6);
-  s.things.fresh = { id: 'fresh', kind: 'line', text: 'x', parent: model.MESSY, at: 4e6 };
+  s.things.fresh = { id: 'fresh', kind: 'line', text: 'x', at: 4e6 };
   record(log, stateAt(log), s, 4e6 + 1);
   assert.deepEqual(log.redo, []);
   assert.ok(same(stateAt(log), s));
@@ -181,7 +185,7 @@ test('compaction keeps the replay exact at now and at the end of every past day,
   const horizon = L.dayOf(now - COMPACT * DAY);
   const old = log.rows.filter((r) => r.time < horizon);
   assert.ok(old.length && old.every((r) => r.before === undefined && r.step === undefined && r.kind !== 'visited' && r.kind !== 'undone'));
-  const perDay = new Set(old.map((r) => `${L.dayOf(r.time)}:${r.mark ?? r.link ?? r.context}`));
+  const perDay = new Set(old.map((r) => `${L.dayOf(r.time)}:${r.mark ?? r.link ?? r.place ?? r.context}`));
   assert.equal(perDay.size, old.length);
   assert.ok(same(log.rows.filter((r) => r.time >= horizon && !['undone', 'redone'].includes(r.kind)), before.rows.filter((r) => r.time >= horizon && !['undone', 'redone'].includes(r.kind))));
   // undo reaches only into the kept rows, and still works
@@ -257,7 +261,7 @@ test('the outbox carries the rows since a seq, with undos turned into plain chan
   assert.ok(batch.every((r) => L.CHANGES.includes(r.kind) || r.kind === 'visited'), 'no undone or redone rows travel');
   assert.ok(batch.some((r) => r.kind === 'visited'));
   const landed = L.absorb(copyLog, copy, batch);
-  assert.ok(same(state(copy), state(w)), 'the copy ends as the original');
+  assert.ok(same(state(copy), state(w)), `the copy ends as the original ${JSON.stringify(diff(state(w), state(copy))).slice(0, 300)}`);
   assert.ok(landed.every((r) => r.step === undefined), 'absorbed rows are not the copy\'s to undo');
   assert.deepEqual(copyLog.undo, []);
   assert.ok(same(stateAt(copyLog), state(copy)), 'the copy\'s log replays to its world');
@@ -269,11 +273,11 @@ test('the outbox carries the rows since a seq, with undos turned into plain chan
   const prev = state(copy);
   model.create(copy, model.MESSY, { kind: 'line', text: 'from the copy' }, now);
   record(copyLog, prev, state(copy), now);
-  const back = L.outbox(copyLog, copyLog.seq - 1);
-  assert.equal(back.length, 1);
+  const back = L.outbox(copyLog, copyLog.seq - 2);
+  assert.deepEqual(back.map((r) => r.table), ['marks', 'places']); // the thought, and where it is
   L.absorb(log, w, back);
-  assert.ok(same(state(copy), state(w)));
-  assert.ok(same(stateAt(log), state(w)));
+  assert.ok(same(state(copy), state(w)), 'back: the same');
+  assert.ok(same(stateAt(log), state(w)), 'back: replays');
   // on one thing, the latest word wins: an older row from elsewhere changes nothing
   const id = back[0].mark;
   assert.deepEqual(L.absorb(log, w, [{ ...back[0], time: now - 1, after: { ...back[0].after, text: 'stale' } }]), []);

@@ -6,6 +6,7 @@ import * as libForRussell from '../lib.js';
 import { surface as surfaceForRussell } from '../../api/v1.js';
 import { bind as bindRussell } from '../../russell/world.js';
 bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
+import * as model from '../model.js';
 import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig, join } from '../model.js';
 import russell from '../../russell/rules.js';
 import { addTwin, sides, twinOf, otherSide, across, isTwin, placeName, moveTargets } from '../twin.js';
@@ -19,7 +20,7 @@ test('a Twin has two sides, each a room with its own mode, and only they are ins
   assert.equal(t.size, 'twin');
   assert.ok(!isBig(t));
   const [l, r] = sides(w, t.id);
-  assert.deepEqual([l.side, r.side, l.parent, r.parent], [0, 1, t.id, t.id]);
+  assert.deepEqual([l.side, r.side, model.parentOf(w, l.id), model.parentOf(w, r.id)], [0, 1, t.id, t.id]);
   assert.deepEqual([view(w, l.id).mode, view(w, r.id).mode], ['joyce', 'russell']);
   assert.ok(!rooms(w).some((x) => x.id === l.id));            // the sides are not on the rooms page
   assert.equal(create(w, t.id, { kind: 'line', text: 'no' }), null); // nothing else goes in the Twin
@@ -38,8 +39,8 @@ test('nothing is shared: a thought moved across belongs to the other side alone'
   assert.deepEqual(roomThoughts(w, t.id).map((x) => x.text), ['a', 'b']); // the Twin's square counts both
   assert.equal(topRoom(w, a.id).id, t.id);
   assert.ok(across(w, a.id, 10, 20));
-  assert.equal(a.parent, r.id);
-  assert.ok(groupsOf(w, a.id).every((g) => g.parent === r.id));
+  assert.equal(model.parentOf(w, a.id), r.id);
+  assert.ok(groupsOf(w, a.id).every((g) => model.parentOf(w, g.id) === r.id));
   assert.equal(move(w, a.id, t.id), false);                // never into the Twin itself
 });
 
@@ -57,7 +58,7 @@ test('a Twin survives a reload, copies with its sides, and goes with them', () =
   assert.equal(view(w, cs[1].id).mode, 'russell');
   assert.deepEqual(roomThoughts(w, c.id).map((x) => x.text), ['kept']);
   remove(w, t.id);
-  assert.equal(Object.values(w.things).filter((x) => x.parent === l.id).length, 0);
+  assert.equal(Object.values(w.things).filter((x) => model.parentOf(w, x.id) === l.id).length, 0);
 });
 
 test('Move to lists a Twin as its two sides, the other side first from inside one', () => {
@@ -82,7 +83,7 @@ test('a group moved across to a side in another mode is one object there: its th
   join(w, g.id, a.id);
   assert.ok(!g.shared); // a train made by writing on: layout only
   assert.ok(across(w, g.id, 10, 20));
-  assert.equal(a.parent, r.id);
+  assert.equal(model.parentOf(w, a.id), r.id);
   assert.ok(g.shared);
   assert.deepEqual(russell.tray(w, r.id).map((x) => x.id), [g.id]); // the train, not its thought as well
   // Across to a side in its own mode, a group stays layout only.

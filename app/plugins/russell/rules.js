@@ -16,7 +16,7 @@
 // Thoughts stay shared with every other mode.
 
 import {
-  groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, groupLabel, // model
+  groupsIn, parentOf, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, groupLabel, // model
   trayForeign, place, inForeign, unplace, // groups of other modes, as one thing here
   stepAfter, setHeights, STEP, // a train's rhythm (Joyce's), which a chapter reads by too
   maths, lines, PAD, arrowsOf, arrowView,
@@ -40,7 +40,7 @@ export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !g.
 
 const isChapter = (w, roomId, id) => {
   const g = w.things[id];
-  return isGroup(g) && g.of === ID && g.parent === roomId && !groupOf(w, id, ID);
+  return isGroup(g) && g.of === ID && parentOf(w, g.id) === roomId && !groupOf(w, id, ID);
 };
 
 // ---- Arrows and relations (relations.js, shared with any ontology that joins its groups) ----
@@ -367,7 +367,7 @@ const russell = {
   point(w, roomId, id) {
     const th = w.things[id];
     const g = isGroup(th) && th.of === ID && !groupOf(w, id, ID) ? th : groupOf(w, id, ID);
-    if (!g || g.parent !== roomId) return null;
+    if (!g || parentOf(w, g.id) !== roomId) return null;
     const at = layout(w, roomId)[g.id];
     if (!at) return null;
     return g === th || g.closed ? at : chapterSpots(w, g.id, at)[id] || null;

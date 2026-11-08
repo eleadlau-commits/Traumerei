@@ -44,9 +44,11 @@ stay offered beneath v2 until phase 6.
 ## Rows, proposals and what they mean today
 
 A **row** is a frozen plain object. In phase 0 a mark row is today's thought object
-(`app/core/world/model.js`: `id`, `kind`, `text`, `parent`, `at`, `edited`, …), a place row is
-`{ mark, context, rule, position }`, a link row `{ id, from, to, kind, order? | label?, note?, rule? }`,
-a moment `{ time, kind, mark | context, step? }`. Read them freely; hold ids, not rows.
+(`app/core/world/model.js`: `id`, `kind`, `text`, `at`, `edited`, …; a floor or the Archive is a
+mark of kind `context`), a place row is `{ mark, context, rule, position }` (since phase 3 every
+mark but a floor or the Archive has one home row, `rule: null`, saying which context it is in;
+the rows with a rule say where that rule puts it), a link row `{ id, from, to, kind, order? | label?, note?, rule? }`,
+a moment `{ time, kind, mark | link | place | context, step? }`. Read them freely; hold ids, not rows.
 
 A **propose** returns `{ ok: true, id }` after the change was made and landed in the moments
 log as one step Ctrl+Z can take back, or `{ ok: false, reason }` with the
@@ -58,11 +60,11 @@ names the phase that brings it, and the read is empty. A refusal is never a step
 | Namespace | read | propose | subscribe |
 |---|---|---|---|
 | `marks` | `get(id)` · `in(context)` (the marks a context holds; `null` for the rooms) · `ofKind(kind)` · `text(id)` · `search(words, most?)` | `make({ kind?, content, in, at? })` (`kind` line by default, or room; `at`: `x`, `y`, `title`) · `edit(id, fields)` (never kind, context, members or id; a mark left empty is removed, `{ ok, id, removed: true }`) · `delete(id)` | `on(change)` |
-| `places` | `of(mark)` · `in(context, rule?)` · `loose(context)` (marks with no place row there) · `position(mark, context, rule)` | `put(mark, context, rule?, position?)` (into a context, laid under a rule when given) · `move(mark, from, to)` (lands loose in `to`) · `unplace(mark, context)` (loose there, under every rule) | `on(change)` |
+| `places` | `of(mark)` · `home(mark)` (the context it is in) · `in(context, rule?)` · `loose(context)` (marks at home there that no rule places) · `position(mark, context, rule)` | `put(mark, context, rule?, position?)` (into a context, laid under a rule when given; a room onto a floor `floor:<n>` or into the Archive `archive`) · `move(mark, from, to)` (lands loose in `to`) · `unplace(mark, context)` (loose there, under every rule) | `on(change)` |
 | `links` | `get(id)` · `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `standsFor(fold)` (the marks it folded) · `kinds()` (part of, stands for, relation) · `count()` | `link(from, to, kind, label?, { rule, note }?)` (a relation needs the `rule` whose arrows these are and goes through its checks) · `fold(context, ids)` (one new mark stands for them) · `unlink(id)` (a stands-for row undone brings the mark back loose) · `order(group, ids)` | `on(change)` |
 | `distance` | `of(context)` (a reader, or `null`) | `declare(context, reader)` | `on(change)` |
 | `gaps` | `of(mark)` · `opened(context?)` · `oldest(context?)` · `progress(group)` | `open(mark, direction)` · `resolve(mark, by?)` · `reopen(mark)` | `on(change)` |
-| `moments` | `of(mark)` · `changed(mark)` (when last written) · `since(time)` · `day(date)` · `at(time)` (the marks as they were then) · `first()` · `kept()` (days of history kept) · `ahead(context?)` (due and return moments to come) · `seq()` · `outbox(seq)` (the rows since a seq as another copy of the world can take them; `null` for the whole world) | `keep(days)` (0: forever) · `absorb(rows)` (rows from another copy; the latest word on a thing wins) · `due(mark, time)` · `revisit(mark, time)` · `note(mark, text)` | `on(change)` |
+| `moments` | `of(mark)` · `changed(mark)` (when last written) · `since(time)` · `day(date)` · `at(time)` (the marks as they were then) · `placesAt(time)` (the place rows as they were then) · `first()` · `kept()` (days of history kept) · `ahead(context?)` (due and return moments to come) · `seq()` · `outbox(seq)` (the rows since a seq as another copy of the world can take them; `null` for the whole world) | `keep(days)` (0: forever) · `absorb(rows)` (rows from another copy; the latest word on a thing wins) · `due(mark, time)` · `revisit(mark, time)` · `note(mark, text)` | `on(change)` |
 
 Two names differ from the plan's table so that a read and a propose never share one word:
 the open gaps are `gaps.opened(context?)` (the propose is `gaps.open(mark, direction)`), and the
@@ -135,7 +137,7 @@ should not use them; existing ones move to the tables phase by phase. `modes`, `
 | `version` | 2 |
 | `world` | The world itself (`app/core/world/model.js`). Read it freely; change it only through proposes or the calls below. |
 | `save()`, `write()`, `load()` | A step Ctrl+Z can take back; written down now; read afresh with a fresh undo history. |
-| `model` | `own`, `shut`, `hash`, `roomSetting`, `setRoomSetting`, `isGroup`, `isLeaf`, `create`, `join`, `members`, `itemsIn`, `within`, `groupOf`, `groupsIn`, `roomItems`, `thoughtText`, `view`, `setOrder`, `groupLabel`, `room`, `roomThoughts`, `kindOf`, `update`, `remove`, `groupsOf`, `addRoom`, `seedRoomSettings`, `search`, `MESSY`, `DEFAULT_MODE`, `leave`, `replaceIn` |
+| `model` | `own`, `parentOf`, `shut`, `hash`, `roomSetting`, `setRoomSetting`, `isGroup`, `isLeaf`, `create`, `join`, `members`, `itemsIn`, `within`, `groupOf`, `groupsIn`, `roomItems`, `thoughtText`, `view`, `setOrder`, `groupLabel`, `room`, `roomThoughts`, `kindOf`, `update`, `remove`, `groupsOf`, `addRoom`, `seedRoomSettings`, `search`, `MESSY`, `DEFAULT_MODE`, `leave`, `replaceIn` |
 | `groups` | `placedForeign`, `trayForeign`, `inForeign`, `waiting`, `wait`, `spot`, `putAt`, `place`, `unplace` |
 | `layout` | `spiralPoint` |
 | `trains` | `stepAfter`, `setHeights`, `STEP` |

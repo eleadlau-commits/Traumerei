@@ -19,7 +19,7 @@
 // Saved data: 'lastRoom' (its square glows), 'note' (the comment for next time), 'hinted'.
 
 import { Feature } from 'folio';
-import { bind, room, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
+import { bind, room, floorOf, isArchived, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
 import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { RoomsVerbs } from './verbs.js';
@@ -265,7 +265,7 @@ export default class Rooms extends Feature {
   openRoom(id, seed = '') {
     const r = room(this.world, id);
     if (!r || !this.room) return;
-    if (!this.shelf) this.page = r.page || 0;
+    if (!this.shelf) this.page = floorOf(this.world, r.id);
     this.closeLights();
     this.w.visit(id);
     this.lastRoom = id;
@@ -284,8 +284,8 @@ export default class Rooms extends Feature {
   showRoom(id) {
     const r = room(this.world, id);
     if (!r || this.inRoom) return;
-    if (!!r.archived !== this.shelf) this.toggleShelf();
-    if (!r.archived && (r.page || 0) !== this.page) this.showPage(r.page || 0);
+    if (!!isArchived(this.world, r.id) !== this.shelf) this.toggleShelf();
+    if (!isArchived(this.world, r.id) && floorOf(this.world, r.id) !== this.page) this.showPage(floorOf(this.world, r.id));
     this.roomPick = id;
     this.drawRooms();
   }
@@ -465,7 +465,7 @@ export default class Rooms extends Feature {
     const page = this.shelf ? 0 : this.page;
     const r = await this.files.importRoom({ file, cell, page, ok: () => !this.root.hidden });
     if (!r) return;
-    const at = r.page || 0; // a full floor sends it to a new one (the floors feature says so)
+    const at = floorOf(this.world, r.id); // a full floor sends it to a new one (the floors feature says so)
     this.making = this.roomSel = null;
     this.roomPick = r.id;
     this.save();

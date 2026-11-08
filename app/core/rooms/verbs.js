@@ -11,7 +11,7 @@
 
 
 
-import { MESSY, room, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
+import { MESSY, room, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore } from './world.js';
 import { el, MAC } from './shared.js';
 
 export class RoomsVerbs {
@@ -19,12 +19,12 @@ export class RoomsVerbs {
   // original's cell), with no saving: the world changes only. Returns { copy, page } or null.
   copyBeside(id, { cell = null, page = null } = {}) {
     const r = room(this.world, id);
-    if (!r || r.archived) return null;
+    if (!r || isArchived(this.world, r.id)) return null;
     const c = copyRoom(this.world, id);
     if (!c) return null;
-    if (page != null && page !== (c.page || 0) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
+    if (page != null && page !== floorOf(this.world, c.id) && this.floors.toFloor(c.id, page, cell) === true) return { copy: c, page };
     const out = this.floors.place(c.id, cell || (r.col != null ? { col: r.col, row: r.row } : null), { near: true });
-    return { copy: c, page: out ? out.page : c.page || 0 };
+    return { copy: c, page: out ? out.page : floorOf(this.world, c.id) };
   }
 
   // Duplicates rooms (one step for them all) and chooses the copies. `at`: where one was dropped.
@@ -90,7 +90,7 @@ export class RoomsVerbs {
 
   // Takes rooms to the Archive (not Messy thoughts, nor a locked room): one step.
   archiveRooms(ids) {
-    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && !r.archived);
+    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && !isArchived(this.world, r.id));
     const ok = rs.filter((r) => r.id !== MESSY && !r.locked);
     if (!ok.length) { if (rs.length) this.toast('Messy thoughts and locked rooms stay.'); return; }
     for (const r of ok) archive(this.world, r.id);
@@ -104,7 +104,7 @@ export class RoomsVerbs {
 
   // Brings archived rooms back, each to its old floor (else a new one): one step.
   restoreRooms(ids) {
-    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && r.archived);
+    const rs = ids.map((id) => room(this.world, id)).filter((r) => r && isArchived(this.world, r.id));
     if (!rs.length) return;
     let spilled = false;
     for (const r of rs) {
@@ -135,7 +135,7 @@ export class RoomsVerbs {
   }
 
   duplicateChosen(e) {
-    const rs = this.chosenFor(e).filter((r) => !r.archived);
+    const rs = this.chosenFor(e).filter((r) => !isArchived(this.world, r.id));
     if (rs.length) this.duplicateRooms(rs.map((r) => r.id));
   }
 
@@ -143,7 +143,7 @@ export class RoomsVerbs {
   moveChosen(e) {
     const rs = this.chosenFor(e);
     if (!rs.length) return;
-    const movable = rs.filter((r) => r.id !== MESSY && !r.locked && !r.archived);
+    const movable = rs.filter((r) => r.id !== MESSY && !r.locked && !isArchived(this.world, r.id));
     if (!movable.length) { this.toast(rs.length === 1 && rs[0].id === MESSY ? 'Messy thoughts stays on Floor 1.' : 'A locked room keeps its place.'); return; }
     this.floorPicker(movable);
   }
@@ -152,7 +152,7 @@ export class RoomsVerbs {
   // floor; Escape or a click elsewhere lets go.
   floorPicker(rs) {
     rs = [].concat(rs);
-    const here = rs.length === 1 ? rs[0].page || 0 : -1;
+    const here = rs.length === 1 ? floorOf(this.world, rs[0].id) : -1;
     const pick = (page) => { this.closeSheet(); this.moveRoomsTo(rs.map((r) => r.id), page); };
     const rows = Array.from({ length: pageCount(this.world) }, (_, i) => el('button', {
       type: 'button', class: 'pick', disabled: i === here, onclick: () => pick(i),
