@@ -19,6 +19,7 @@ import { lookPrefs, savedLook, LOOK, PALETTE } from './look.js';
 
 const KEY = 'world3';  // where the world is saved (model.js)
 const LOG = 'moments'; // where the moments log is saved (moments.js)
+const DAY = 864e5;
 
 export default class World extends Feature {
   start() {
@@ -137,6 +138,25 @@ export default class World extends Feature {
     this.lastSnap = this.snap();
     this.last = JSON.parse(this.lastSnap);
     this.lit = null;
+    this.come(now); // what was due while the app was shut comes back now
+  }
+
+  // Moments ahead whose time has come are back (ahead.js): the world's doing, landed in the log
+  // with no step, so Ctrl+Z neither takes them back nor loses its place. `how` makes the change
+  // to the world (by default: every timed row due by `now` comes back). The next one is waited
+  // for on a timer, a day at most at a time. Returns the marks that came back.
+  come(now = Date.now(), how = (w) => lib.ahead.come(w, now)) {
+    clearTimeout(this.aheadTimer);
+    const { came, rows, last } = M.arrive(this.log, this.last, this.world, how, now);
+    if (came.length) {
+      this.land(rows);
+      this.last = last;
+      this.lastSnap = JSON.stringify(last);
+      this.writeSoon(false);
+    }
+    const at = lib.ahead.next(this.world);
+    if (at != null && typeof setTimeout === 'function') this.aheadTimer = setTimeout(() => this.come(), Math.min(Math.max(at - Date.now(), 1e3), DAY));
+    return came;
   }
 
   snap() { return JSON.stringify(M.stateOf(this.world)); }
@@ -213,11 +233,12 @@ export default class World extends Feature {
   }
 
   // Going into a room is a moment; the attention log ({ [roomId]: [times] }) is read off the log.
+  // A return waiting on the room, or on a mark in it, comes back (ahead.js).
   visit(roomId) {
-    const row = M.visit(this.log, roomId, Date.now());
-    if (!row) return;
-    this.land([row]);
-    this.storage.set(LOG, this.log);
+    const now = Date.now();
+    const row = M.visit(this.log, roomId, now);
+    if (row) { this.land([row]); this.storage.set(LOG, this.log); }
+    this.come(now, (w) => [...lib.ahead.come(w, now), ...lib.ahead.opened(w, roomId, now)]);
   }
   visits() { return (this.lit ||= M.visits(this.log)); }
 

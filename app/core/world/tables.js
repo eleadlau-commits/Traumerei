@@ -11,7 +11,10 @@
 //   links     { from, to, kind, order?, rule?, label?, note? }
 //   distance  { context, reader }
 //   gaps      { mark, direction, state, openedAt, resolvedAt?, resolvedBy? }
-//   moments   { time, kind, mark }   a mark's history: when it was made, written, moved, visited
+//   moments   { time, kind, mark }   a mark's history: when it was made, written, moved, visited,
+//             came back and was answered; and its moment ahead, if it has one (ahead.js), as
+//             { time, kind, mark, state, set, back?, answered?, note? }: time is when it comes
+//             (when it was asked for, for a return on the next visit)
 //
 // Ids are the world's; `rows(tables)` writes no ids of rows but marks', since a place's, a link's,
 // a gap's and a distance row's id is made from what it joins.
@@ -20,6 +23,7 @@ import * as L from './links.js';
 import * as P from './places.js';
 import * as G from './gaps.js';
 import * as D from './distance.js';
+import * as A from './ahead.js';
 
 export const NAMES = Object.freeze(['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
 export const MATERIAL = Object.freeze(['tint', 'light', 'opacity', 'size']);
@@ -84,6 +88,8 @@ export function scopeOf(w, root) {
 
 const byId = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const rowOut = (r) => { const { id, ...rest } = r; return rest; };
+// A moment ahead as a moments row: when it comes, what it is, and its state.
+const aheadOut = (r) => { const { id, at, mark, kind, ...rest } = r; return { time: at ?? r.set, kind, mark, ...rest }; };
 
 // The six tables of `root` (null: the whole world; a group: it and its parts, scopeOf), each a
 // list in a steady order. `log`: the moments log, for each mark's history (left out: none).
@@ -96,7 +102,8 @@ export function read(w, root = null, { log = null } = {}) {
   const links = L.all(w).filter((r) => has(r.from) && has(r.to)).sort((a, b) => byId(a.id, b.id)).map(rowOut);
   const distance = D.all(w).filter((r) => has(r.context)).sort((a, b) => byId(a.id, b.id)).map(rowOut);
   const gaps = G.all(w).filter((r) => has(r.mark)).sort((a, b) => byId(a.id, b.id)).map(rowOut);
-  return clone({ marks, places, links, distance, gaps, moments: log ? history(log, ids) : [] });
+  const ahead = A.all(w).filter((r) => has(r.mark)).sort((a, b) => byId(a.id, b.id)).map(aheadOut);
+  return clone({ marks, places, links, distance, gaps, moments: [...(log ? history(log, ids) : []), ...ahead] });
 }
 
 // What the log knows of these marks, as moments rows { time, kind, mark }, oldest first: their
@@ -106,10 +113,10 @@ export function history(log, ids) {
   const told = new Set(log.rows.filter((r) => r.kind === 'told' && ids.has(r.mark) && r.said === 'made').map((r) => r.mark));
   const out = [];
   for (const r of log.rows) {
-    const mark = r.mark ?? (r.kind === 'visited' ? r.context : null);
+    const mark = r.mark ?? (r.kind === 'visited' ? r.context : r.ahead != null ? (r.after ?? r.before)?.mark : null);
     if (mark == null || !ids.has(mark)) continue;
     if (r.kind === 'told') out.push({ time: r.time, kind: r.said, mark });
-    else if (['made', 'edited', 'moved', 'removed', 'visited'].includes(r.kind) && !(r.kind === 'made' && told.has(mark))) out.push({ time: r.time, kind: r.kind, mark });
+    else if (['made', 'edited', 'moved', 'removed', 'visited', 'returned', 'met', 'refused'].includes(r.kind) && !(r.kind === 'made' && told.has(mark))) out.push({ time: r.time, kind: r.kind, mark });
   }
   return out.sort((a, b) => a.time - b.time);
 }
@@ -162,7 +169,14 @@ export function write(w, tables, ids) {
     if (row.resolvedBy != null && row.resolvedBy !== G.JUDGEMENT) row.resolvedBy = String(row.resolvedBy).split(':').map((p) => ids[p] ?? p).join(':');
     G.set(w, row);
   }
-  return (tables.moments || []).map((r) => ({ time: +r.time, kind: String(r.kind), mark: to(r.mark) })).filter((r) => Number.isFinite(r.time) && there(r.mark));
+  const told = [];
+  for (const r of tables.moments || []) {
+    const mark = to(r.mark);
+    if (!Number.isFinite(+r.time) || !there(mark)) continue;
+    if (r.state == null) { told.push({ time: +r.time, kind: String(r.kind), mark }); continue; }
+    A.set(w, { ...clone(r), mark, at: r.kind === 'return' ? undefined : +r.time }); // a moment ahead (a broken one is not kept)
+  }
+  return told;
 }
 
 // Takes away the marks of a scope (scopeOf) and every row that is theirs alone, before the
@@ -174,6 +188,7 @@ export function clear(w, { ids }, root) {
     for (const r of [...L.from(w, id), ...L.to(w, id)]) if (ids.has(r.from) && ids.has(r.to)) L.drop(w, r.id);
     G.drop(w, id);
     D.drop(w, id);
+    A.drop(w, id);
     for (const r of P.of(w, id)) if (id !== root || ids.has(r.context)) P.drop(w, r.id);
     delete w.things[id];
   }

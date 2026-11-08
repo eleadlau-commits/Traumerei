@@ -119,7 +119,9 @@ export function write(tables, { root = null, ids = 'short' } = {}) {
   section('Links', tables.links.map((r) => `${ref(r.from)} ${r.kind} ${ref(r.to)}${seg({ order: r.order, rule: r.rule, label: r.label, note: r.note })}`));
   section('Distance', tables.distance.map((r) => `${ref(r.context)} for ${r.reader}`));
   section('Gaps', tables.gaps.map((r) => `${ref(r.mark)} ${r.state} ${r.direction}${seg({ opened: iso(r.openedAt), resolved: r.resolvedAt != null ? iso(r.resolvedAt) : undefined, by: r.resolvedBy != null ? renameIn(r.resolvedBy) : undefined })}`));
-  section('Moments', (tables.moments || []).map((r) => `${iso(r.time)} ${r.kind} ${ref(r.mark)}`), false);
+  // (a moment ahead, still to come or come back, says its state and when it was asked for)
+  const ahead = (r) => (r.state == null ? '' : seg({ state: r.state, set: iso(r.set), back: r.back != null ? iso(r.back) : undefined, answered: r.answered != null ? iso(r.answered) : undefined, note: r.note }));
+  section('Moments', (tables.moments || []).map((r) => `${iso(r.time)} ${r.kind} ${ref(r.mark)}${ahead(r)}`), false);
   return `${out.join('\n').replace(/\n+$/, '')}\n`;
 }
 
@@ -194,9 +196,17 @@ export function read(text) {
     }
     if (!line.trim()) continue;
     if (section === 'Moments') {
-      const m = new RegExp(`^(\\S+)\\s+([a-z]+)\\s+\\^(${ID})\\s*$`).exec(line.trim());
+      const s = segments(line.trim());
+      const m = s && new RegExp(`^(\\S+)\\s+([a-z]+)\\s+\\^(${ID})$`).exec(s.head);
       const t = m ? time(m[1]) : NaN;
-      if (m && Number.isFinite(t)) tables.moments.push({ time: t, kind: m[2], mark: m[3] }); else bad(i, 'not a moment');
+      if (!m || !Number.isFinite(t)) { bad(i, 'not a moment'); continue; }
+      const r = { time: t, kind: m[2], mark: m[3] };
+      if (s.o.state != null) { // a moment ahead
+        r.state = String(s.o.state); r.set = time(s.o.set);
+        for (const k of ['back', 'answered']) if (s.o[k] != null) r[k] = time(s.o[k]);
+        if (s.o.note != null) r.note = String(s.o.note);
+      }
+      tables.moments.push(r);
       continue;
     }
     const s = section && segments(line);

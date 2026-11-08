@@ -1,0 +1,12 @@
+/* Returns: the left dock's tab and the Editor section. Only layout here; the look is Folio's (base.css). */
+.returns { display: grid; gap: 10px; padding: 8px 12px 16px; }
+.returns-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.returns-item { display: grid; gap: 2px; }
+.returns-what { font-weight: 500; overflow-wrap: anywhere; }
+.returns-why, .returns-line { font-size: var(--t-small, .9em); opacity: .7; }
+.returns-note-text { font-size: var(--t-small, .9em); font-style: italic; overflow-wrap: anywhere; }
+.returns-words { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.returns-coming .returns-what { font-weight: 400; }
+.returns-note, .returns-section { display: grid; gap: 6px; }
+.returns-note input, .returns-section input[type="text"] { width: 100%; box-sizing: border-box; }
+.returns-due { font-size: var(--t-small, .9em); display: flex; align-items: center; gap: 6px; }

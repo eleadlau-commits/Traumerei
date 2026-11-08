@@ -8,7 +8,9 @@
 // links table made, changed or gone: `link`, its id; before and after the row), moved (also a row
 // of the places table made, changed or gone: `place`, its id), opened · resolved (a row of the
 // gaps table made or changed: `gap`, its id; gone with its mark: `removed`), declared (a row of
-// the distance table made, changed or gone: `dist`, its id), arranged (an
+// the distance table made, changed or gone: `dist`, its id), due · revisit · return · returned ·
+// met · refused · cleared (a moment ahead asked for, come back, answered or taken back: `ahead`,
+// its id; ahead.js), arranged (an
 // ontology's own data in a room: `context`), visited
 // (a room was gone into: `context`), told (a mark's history as a file told it: `mark`, `said` the
 // kind it was, at the time it was; it changes nothing), undone · redone (a step taken back or forward: `step`).
@@ -17,7 +19,7 @@
 // replayed (after). Rows that land together from one save share a `step` (the seq of the first).
 //
 // The log is { v, seq, base, rows, undo, redo, keep }:
-//   base  the state ({ things, links, places, gaps, distance, own }, at `time`) the rows build on, or null for nothing
+//   base  the state ({ things, links, places, gaps, distance, ahead, own }, at `time`) the rows build on, or null for nothing
 //   undo  steps that can be taken back, oldest first; redo: steps taken back, oldest first
 //   keep  days of history kept (0: forever); COMPACT days back, rows lose their `before`
 // Replaying the base and the rows, in order, gives the world as it was at any time (`stateAt`).
@@ -31,6 +33,7 @@
 import * as L from './links.js';
 import * as P from './places.js';
 import * as G from './gaps.js';
+import * as A from './ahead.js';
 
 export const VERSION = 2; // 2: the places table (a log of version 1 starts afresh)
 export const DAY = 864e5;
@@ -38,8 +41,8 @@ export const COMPACT = 30;          // days a row keeps its `before` (how far un
 export const STEPS = 400;           // steps undo reaches back, at most
 export const VISIT_GAP = 60e3;      // going into a room again within this is the same visit
 export const MOST_VISITS = 40;      // visits of a room kept in `visits`
-export const KINDS = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged', 'visited', 'told', 'undone', 'redone']);
-export const CHANGES = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged']);
+export const CHANGES = Object.freeze(['made', 'edited', 'moved', 'linked', 'removed', 'opened', 'resolved', 'declared', 'arranged', ...A.MOMENTS]);
+export const KINDS = Object.freeze([...CHANGES, 'visited', 'told', 'undone', 'redone']);
 
 // A thing's fields that say where it is (a places row).
 const PLACE = new Set(['x', 'y', 'col', 'row', 'side', 'loose', 'size']);
@@ -50,17 +53,17 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
 const canon = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',').replace(/^/, '{').concat('}') : Array.isArray(v) ? `[${v.map(canon).join(',')}]` : JSON.stringify(v) ?? 'undefined');
 export const same = (a, b) => canon(a) === canon(b);
 export const dayOf = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-const keyOf = (r) => (r.mark != null ? `m:${r.mark}` : r.link != null ? `l:${r.link}` : r.place != null ? `p:${r.place}` : r.gap != null ? `g:${r.gap}` : r.dist != null ? `d:${r.dist}` : `c:${r.context}`);
+const keyOf = (r) => (r.mark != null ? `m:${r.mark}` : r.link != null ? `l:${r.link}` : r.place != null ? `p:${r.place}` : r.gap != null ? `g:${r.gap}` : r.dist != null ? `d:${r.dist}` : r.ahead != null ? `a:${r.ahead}` : `c:${r.context}`);
 // Which thing a row speaks of, as a row's keys: { mark } | { link } | { place } | { context }.
-const who = (r) => (r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context });
+const who = (r) => (r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : r.ahead != null ? { ahead: r.ahead } : { context: r.context });
 // The value a row's thing has in `state` now.
-const valueIn = (state, r) => (r.mark != null ? state.things[r.mark] : r.link != null ? state.links?.[r.link] : r.place != null ? state.places?.[r.place] : r.gap != null ? state.gaps?.[r.gap] : r.dist != null ? state.distance?.[r.dist] : state.own[r.context]);
-const empty = () => ({ things: {}, links: {}, places: {}, gaps: {}, distance: {}, own: {} });
+const valueIn = (state, r) => (r.mark != null ? state.things[r.mark] : r.link != null ? state.links?.[r.link] : r.place != null ? state.places?.[r.place] : r.gap != null ? state.gaps?.[r.gap] : r.dist != null ? state.distance?.[r.dist] : r.ahead != null ? state.ahead?.[r.ahead] : state.own[r.context]);
+const empty = () => ({ things: {}, links: {}, places: {}, gaps: {}, distance: {}, ahead: {}, own: {} });
 // The kind a gaps row has, from what the gap became: opened, resolved, or removed with its mark.
 const gapKind = (after) => (after == null ? 'removed' : after.state === 'open' ? 'opened' : 'resolved');
 // A row's kind when the step it is in is taken back: made and removed swap; a gap's kind follows
 // what the gap becomes.
-const inverse = (s) => (s.gap != null ? gapKind(s.before) : s.kind === 'made' ? 'removed' : s.kind === 'removed' ? 'made' : s.kind);
+const inverse = (s) => (s.gap != null ? gapKind(s.before) : s.ahead != null ? A.momentOf(s.before) : s.kind === 'made' ? 'removed' : s.kind === 'removed' ? 'made' : s.kind);
 
 // A new log, building on `state` (the world as it is when the log begins) or on nothing.
 export const emptyLog = (now = Date.now(), state = null) => ({ v: VERSION, seq: 0, base: state ? { time: now, state: clone(state) } : null, rows: [], undo: [], redo: [], keep: 365, made: now });
@@ -79,7 +82,7 @@ export function loadLog(saved, now = Date.now()) {
 }
 
 // The state the log speaks of: the saved parts of the world that hold things.
-export const stateOf = (w) => ({ things: w.things, links: w.links || {}, places: w.places || {}, gaps: w.gaps || {}, distance: w.distance || {}, own: w.own || {} });
+export const stateOf = (w) => ({ things: w.things, links: w.links || {}, places: w.places || {}, gaps: w.gaps || {}, distance: w.distance || {}, ahead: w.ahead || {}, own: w.own || {} });
 
 // ---- Diffing: the rows that take `prev` to `next` ----
 
@@ -121,6 +124,10 @@ export function diff(prev, next) {
     const a = prev.distance?.[id], b = next.distance?.[id];
     if (!same(a, b)) out.push({ kind: 'declared', table: 'distance', dist: id, before: clone(a) ?? null, after: clone(b) ?? null });
   }
+  for (const id of new Set([...Object.keys(prev.ahead || {}), ...Object.keys(next.ahead || {})])) {
+    const a = prev.ahead?.[id], b = next.ahead?.[id];
+    if (!same(a, b)) out.push({ kind: A.momentOf(b), table: 'moments', ahead: id, before: clone(a) ?? null, after: clone(b) ?? null });
+  }
   for (const id of new Set([...Object.keys(prev.own || {}), ...Object.keys(next.own || {})])) {
     const a = prev.own?.[id], b = next.own?.[id];
     if (!same(a, b)) out.push({ kind: 'arranged', table: 'links', context: id, before: clone(a) ?? null, after: clone(b) ?? null });
@@ -157,6 +164,26 @@ export function fold(log, prev, next, now = Date.now()) {
   return rows;
 }
 
+// Notes the change from `prev` to `next` as the world's own doing, not the maker's: its rows land
+// with no step, so undo neither takes them back nor loses its place (a moment ahead coming back,
+// ahead.js). Returns the rows that landed.
+export function happen(log, prev, next, now = Date.now()) {
+  const rows = diff(prev, next);
+  for (const r of rows) push(log, r, now);
+  return rows;
+}
+
+// Moments ahead come back (ahead.js): `how(w)` changes the world's ahead rows and says which
+// marks came back; the change lands as the world's doing (happen), diffing only the ahead rows
+// against `last` (the state the log last saw), so a change elsewhere still to be saved stays the
+// maker's step. Returns { came, rows, last } with `last` the state the log now knows.
+export function arrive(log, last, w, how, now = Date.now()) {
+  const came = w.ahead && Object.keys(w.ahead).length ? how(w) : [];
+  if (!came.length) return { came, rows: [], last };
+  const next = { ...last, ahead: clone(w.ahead) };
+  return { came, rows: happen(log, last, next, now), last: next };
+}
+
 // Notes that a room was gone into. Returns the row, or null when it is the same visit.
 export function visit(log, roomId, now = Date.now()) {
   for (let i = log.rows.length - 1; i >= 0; i--) {
@@ -183,6 +210,7 @@ function set(state, r, value) {
   if (r.place != null) { const t = (state.places ||= {}); if (value == null) delete t[r.place]; else t[r.place] = clone(value); P.touched(state); return; }
   if (r.gap != null) { const t = (state.gaps ||= {}); if (value == null) delete t[r.gap]; else t[r.gap] = clone(value); G.touched(state); return; }
   if (r.dist != null) { const t = (state.distance ||= {}); if (value == null) delete t[r.dist]; else t[r.dist] = clone(value); return; }
+  if (r.ahead != null) { const t = (state.ahead ||= {}); if (value == null) delete t[r.ahead]; else t[r.ahead] = clone(value); return; }
   if (value == null) delete state.own[r.context]; else state.own[r.context] = clone(value);
 }
 const apply = (state, rows) => { for (const r of rows) set(state, r, r.after); };
@@ -220,7 +248,7 @@ export function stateAt(log, time = Infinity) {
 // The change rows that speak of a mark, oldest first: its own, its visits, and the links at
 // either end of which it is.
 const touches = (r, mark) => (r.link != null && [r.before, r.after].some((v) => v && (v.from === mark || v.to === mark)))
-  || ((r.place != null || r.gap != null) && [r.before, r.after].some((v) => v && v.mark === mark))
+  || ((r.place != null || r.gap != null || r.ahead != null) && [r.before, r.after].some((v) => v && v.mark === mark))
   || (r.dist != null && [r.before, r.after].some((v) => v && v.context === mark));
 // (A mark's home row made or gone with the mark itself is part of its made or removed row.)
 export function of(log, mark) {
@@ -318,7 +346,7 @@ export function absorb(log, state, rows) {
 // The kind a squashed row has for a thing, given how its day began and ended: made if it was
 // made that day, else the weightiest of the day's kinds (an edit outweighs a move).
 const RANK = { edited: 3, resolved: 3, opened: 3, declared: 3, linked: 2, moved: 1, arranged: 1 };
-const squashKind = (madeToday, best, after, row) => (row.gap != null ? gapKind(after) : row.dist != null ? 'declared' : after == null ? 'removed' : madeToday ? 'made' : best);
+const squashKind = (madeToday, best, after, row) => (row.gap != null ? gapKind(after) : row.ahead != null ? A.momentOf(after) : row.dist != null ? 'declared' : after == null ? 'removed' : madeToday ? 'made' : best);
 
 // Tidies the log at `now`: rows older than COMPACT days are squashed to one per thing per day
 // (keeping only `after`), days older than `keep` days (0: never) fold into the base, visits

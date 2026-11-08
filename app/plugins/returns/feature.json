@@ -1,0 +1,23 @@
+{
+  "name": "Returns",
+  "description": "What comes back to you: ask a thought to come back due on a day, to revisit, or with a note for the next visit; meet, put off or refuse it in the Returns tab of the left dock (Ctrl+Alt+R).",
+  "version": "0.1.0",
+  "main": "Returns.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "editor",
+      "command",
+      "view"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}
