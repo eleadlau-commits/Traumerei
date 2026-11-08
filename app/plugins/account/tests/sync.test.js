@@ -1,7 +1,7 @@
 // Tests for the account sync rules.
 
 import { test, assert } from 'folio/testing';
-import { pack, unpack, decide, reloadedRecently, RELOAD_GUARD, settingsOf, incoming, batchesOf, wholeWorld, LIMIT } from '../sync.js';
+import { pack, unpack, decide, reloadedRecently, RELOAD_GUARD, settingsOf, incoming, batchesOf, LIMIT } from '../sync.js';
 
 test('packing ignores key order', () => {
   assert.equal(pack({ b: '1', a: '2' }), pack({ a: '2', b: '1' }));
@@ -48,6 +48,5 @@ test('incoming batches are the other devices\' since the last, oldest first; a b
   const cut = batchesOf(big, 'a', 1);
   assert.ok(cut.length >= 3 && cut.every((b) => JSON.stringify(b.rows).length <= LIMIT) && cut.map((b) => b.at).join() === cut.map((_, i) => i + 1).join());
   assert.deepEqual(cut.flatMap((b) => b.rows.map((r) => r.seq)), big.map((r) => r.seq));
-  const diff = (a, b) => Object.keys(b.things).map((id) => ({ kind: 'made', mark: id, after: b.things[id] }));
-  assert.deepEqual(wholeWorld(diff, { things: { a: { id: 'a' } } }, 5), [{ kind: 'made', mark: 'a', after: { id: 'a' }, seq: 1, time: 5 }]);
+
 });

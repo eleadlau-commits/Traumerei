@@ -247,6 +247,12 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     first: () => log()?.first() ?? null, // the first time the log knows of
     kept: () => log()?.keep ?? 0,        // days of history kept (0: forever)
     keep: (days) => { if (!log()) return later('Keeping history', 1); if (![0, 30, 365].includes(days) && !(Number.isInteger(days) && days > 0)) return refuse('Days kept is a whole number, 0 for forever'); log().setKeep(days); return landed('moments'); },
+    // For a carrier (the account's sync; carriers proper are phase 6): the latest seq, the rows
+    // since a seq as another copy can take them (null: the whole world), and rows from another
+    // copy taken in (the latest word on a thing wins).
+    seq: () => log()?.log.seq ?? 0,
+    outbox: (seq) => (log() ? rows(log().outbox(seq)) : rows([])),
+    absorb: (list) => { if (!log()) return later('Taking in moments', 1); if (!Array.isArray(list)) return refuse('Rows to take in are a list'); const landed = log().absorb(list.map((r) => ({ ...r }))); return row({ ok: true, id: 'moments', landed: landed.length }); },
     ahead: () => rows([]),
     due: () => later('A due moment', 7),
     revisit: () => later('A return', 7),

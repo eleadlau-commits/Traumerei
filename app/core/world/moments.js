@@ -223,6 +223,9 @@ export function outbox(log, seq) {
   return out;
 }
 
+// The whole of a state as rows another copy can take: everything made at `at`.
+export const whole = (state, at) => diff({ things: {}, own: {}, pages: 1 }, state).map((r, i) => ({ ...r, seq: i + 1, time: at }));
+
 // Takes rows from another copy into this log and `state`, in their order: each change lands as
 // a row of its own (with this copy's `before`; no step, so it is not this copy's to undo), each
 // visit as a visit. On each thing the latest word wins, by time, so a row seen before, or older

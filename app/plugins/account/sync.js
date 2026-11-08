@@ -37,10 +37,6 @@ export function batchesOf(rows, device, at = Date.now()) {
   return out;
 }
 
-// The rows that give a new account the whole world: everything in `state` as made at `at`.
-export function wholeWorld(diff, state, at) {
-  return diff({ things: {}, own: {}, pages: 1 }, state).map((r, i) => ({ ...r, seq: i + 1, time: at }));
-}
 
 // The same settings in the same order, so two copies can be compared as text.
 export function pack(settings) {

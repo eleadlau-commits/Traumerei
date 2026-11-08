@@ -88,9 +88,10 @@ export default class World extends Feature {
       first: () => M.first(w.log),                                // the first time the log knows of
       get keep() { return w.log.keep; },                          // days of history kept (0: forever)
       setKeep: (days) => { w.log.keep = days; M.compact(w.log, Date.now()); w.storage.set(LOG, w.log); },
-      // For a carrier (the account's sync): the rows since a seq as another copy can take them,
-      // and rows from another copy taken in (the latest word on a thing wins; written down at once).
-      outbox: (seq) => M.outbox(w.log, seq),
+      // For a carrier (the account's sync): the rows since a seq as another copy can take them
+      // (null: the whole world, as made now), and rows from another copy taken in (the latest
+      // word on a thing wins; written down at once).
+      outbox: (seq) => (seq == null ? M.whole(M.stateOf(w.world), Date.now()) : M.outbox(w.log, seq)),
       absorb: (rows) => w.absorb(rows),
     });
   }

@@ -29,7 +29,7 @@
 
 import { Feature, ui } from 'folio';
 import { firebaseConfig } from './config.js';
-import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently, settingsOf, incoming, batchesOf, wholeWorld } from './sync.js';
+import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently, settingsOf, incoming, batchesOf } from './sync.js';
 
 const { el } = ui;
 const SDK = 'https://www.gstatic.com/firebasejs/11.0.2/';
@@ -44,7 +44,7 @@ export default class Account extends Feature {
     this.synced = false; // true once this device and the account agree, so changes can go up
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
-    this.world = this.use('world'); // the world service: its moments log is what travels
+    this.moments = this.use('traumerei')?.connect(this).moments || null; // the moments table: the world travels as its rows
     if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
     window.addEventListener('pagehide', () => this.flush());
@@ -131,7 +131,7 @@ export default class Account extends Feature {
       this.synced = true;
       if (cloud == null) { // a new account: this device's settings, and its whole world as the first batch
         this.storage.set('sent', 0);
-        await this.push(wholeWorld(this.world.lib.moments.diff, this.world.lib.moments.stateOf(this.world.world), Date.now()));
+        await this.push(this.moments?.outbox(null) || []);
         return;
       }
       const landed = await this.take();
@@ -157,10 +157,10 @@ export default class Account extends Feature {
     const found = await getDocs(query(this.batches(), where('at', '>', since)));
     const batches = incoming(found.docs.map((d) => d.data()), since, this.device);
     let landed = 0;
-    for (const b of batches) landed += this.world.moments.absorb(b.rows).length;
+    for (const b of batches) landed += this.moments?.absorb(b.rows).landed || 0;
     const last = Math.max(since, ...found.docs.map((d) => d.data()?.at || 0));
     this.storage.set('pulledAt', last);
-    this.storage.set('sent', this.world.moments.log.seq); // what landed is the account's already
+    this.storage.set('sent', this.moments?.seq() || 0); // what landed is the account's already
     return landed > 0;
   }
 
@@ -173,8 +173,8 @@ export default class Account extends Feature {
     try {
       const settings = pack(settingsOf(this.app.storage.snapshot(LOCAL_AREAS)));
       await this.sdk.setDoc(this.doc(), { settings, updated: Date.now() });
-      const seq = this.world.moments.log.seq;
-      const out = rows || this.world.moments.outbox(this.storage.get('sent', 0));
+      const seq = this.moments?.seq() || 0;
+      const out = rows || this.moments?.outbox(this.storage.get('sent', 0)) || [];
       for (const b of batchesOf(out, this.device)) await this.sdk.addDoc(this.batches(), b);
       this.storage.set('sent', seq);
       this.setState('saved');
