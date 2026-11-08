@@ -15,6 +15,9 @@ import { importRoom } from '../traum.js';
 import { open, apply, shortPictures, badMaths, copyWorld } from '../edit.js';
 
 bind(surfaceForRussell(lib)); // roomfile is a plugin too
+import { picture } from '../../picture/item.js';
+import { setKinds } from '../../world/items/index.js';
+setKinds([picture({ maths: lib.maths.maths, shrinkPicture: async () => '' })]); // Pictures are a plugin: their kind, as it adds it
 const ontologies = gather([russell]);
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';
 

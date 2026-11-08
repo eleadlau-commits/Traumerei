@@ -1,0 +1,7 @@
+/* Pictures (layout only; the look is Folio's base.css). A picture on a canvas: the image, at most
+   240px a side, and its caption under it. */
+.room-picture { display: block; margin: 12px 0; text-shadow: none; }
+.room-picture img { display: block; max-width: 240px; max-height: 240px; width: auto; height: auto; opacity: .92; pointer-events: none; }
+.room-picture figcaption { margin-top: 6px; font-size: 13px; opacity: .7; }
+.room-bead .room-picture { margin: 0; }
+.room-float .room-picture { margin: 0; display: grid; justify-items: center; }

@@ -1,13 +1,13 @@
 // The room's keys, for the key map (the keys feature): what the ? list says inside a room, in
 // order. Room.js adds them with zone 'room'. The room presses these itself (writing.js,
 // gestures.js); `keys` is what each is, so the map can show it and catch a clash. `shows` is
-// what the list says where a key alone doesn't say it (a click, typing).
+// what the list says where a key alone doesn't say it (a click, typing). Each kind of item's own
+// keys (a passage's Alt+P, a picture's Alt+I) are added by kinds.js, from the kind.
 
 export const ROOM_KEYS = [
   { id: 'room.write', shows: 'Type anywhere', words: 'write a thought' },
   { id: 'room.keep', shows: 'Enter', words: 'keep it, and go on with the train' },
   { id: 'room.train', keys: ['Ctrl+Enter'], words: 'a new train' },
-  { id: 'room.passage', keys: ['Alt+P', 'Alt+I'], words: 'a passage · a picture' },
   { id: 'room.choose', shows: 'Click · double-click', words: 'choose a thought · its whole train' },
   { id: 'room.write-in', shows: 'Triple-click', words: 'write in a thought, where it is' },
   { id: 'room.properties', keys: ['Enter', 'ContextMenu', 'Shift+F10'], shows: 'Right-click · Enter', words: 'the properties of what is chosen' },

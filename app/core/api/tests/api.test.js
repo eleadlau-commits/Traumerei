@@ -32,7 +32,7 @@ const V1 = {
   layout: ['spiralPoint'],
   kinds: ['ITEMS', 'isKnown', 'kindFor'],
   twins: ['addTwin', 'isTwin', 'sides', 'twinOf'],
-  pictures: ['keepOrShrink'],
+  pictures: ['keepOrShrink', 'shrinkPicture'],
   modes: ['add', 'all', 'get', 'settings'],
   commands: ['add', 'label'],
   more: ['add'],

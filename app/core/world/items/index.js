@@ -14,6 +14,21 @@
 //   node(th, el)       how it shows on a canvas (el is Folio's ui.el); words go through
 //                      maths(text) from ../maths.js, so $…$ and $$…$$ show as mathematics
 //
+// and, optionally, how the room makes and edits one (a kind without these is shown and kept, but
+// is made only by a plugin's own means, or by a file):
+//
+//   fields             what it is written in, in order: [{ key, type, label }]. type: 'line' (one
+//                      line), 'text' (several lines: Enter keeps, Ctrl+Enter a new line) or 'image'
+//                      (a picture at the key, shown, not written in). The room's sheet and Editor
+//                      show these, and keep them with update().
+//   add                how Add (right-click, the loose tray's +) offers a new one:
+//                      { note, keys?: ['Alt+I'], file?: 'image/*' }. With file, a file is picked
+//                      first and fromFile makes the fields from it.
+//   takes(file)        whether a file pasted or dropped on the room becomes one of these
+//   fromFile(file)     → Promise of its fields from a file (a picture, shrunk)
+//   step               how far down a Joyce train goes after one (px; a passage's 190)
+//   label(th)          what the Editor calls it when it can't be written in (default: text(th))
+//
 // Ontologies never look at an item's kind: they place items, and ask these for the rest.
 //
 // A thought whose kind is not here (its plugin is switched off) is never lost: kindFor() gives
@@ -22,10 +37,11 @@
 
 import line from './line.js';
 import passage from './passage.js';
-import picture from './picture.js';
 import { missing } from './missing.js';
 
-export const BUILT_IN = [line, passage, picture];
+// A line and a passage are the core's: folding writes passages, and a closed group reads as one.
+// Every other kind (a picture, a PDF page) is a plugin's.
+export const BUILT_IN = [line, passage];
 const NAME = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const NEEDS = ['kind', 'name', 'tidy', 'text', 'node'];
 
