@@ -15,6 +15,9 @@ import { importRoom } from '../traum.js';
 import { open, apply, shortPictures, badMaths, copyWorld } from '../edit.js';
 
 bind(surfaceForRussell(lib)); // roomfile is a plugin too
+import { picture } from '../../picture/item.js';
+import { setKinds } from '../../world/items/index.js';
+setKinds([picture({ maths: lib.maths.maths, shrinkPicture: async () => '' })]); // Pictures are a plugin: their kind, as it adds it
 const ontologies = gather([russell]);
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';
 
@@ -111,10 +114,11 @@ test('a thought of another kind takes the old one\'s place in its group', () => 
   assert.deepEqual(members(w, g.id).map((th) => th.kind), ['passage', 'line']);
 });
 
-test('a locked room is blocked; maths KaTeX can\'t draw is found by its line', () => {
+test('a locked room is blocked; maths KaTeX can\'t draw is found by its line', async () => {
   const { w, id } = book();
   const s = open(w, id, { scope: 'room', ontologies });
   lock(w, id);
   assert.ok(run(w, id, s, s.text).blocked);
+  await lib.maths.loadMaths(); // KaTeX loads when first needed
   assert.deepEqual(badMaths(parse('# Objects\n## ^1 line\nfine $x$\nbad $\\frac{$')), [{ line: 4, tex: '\\frac{' }]);
 });

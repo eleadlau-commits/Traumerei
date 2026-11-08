@@ -10,6 +10,11 @@
 //
 // start() runs once, after every feature this one `requires` has started. Everything a
 // feature needs is reached through `this`, so it never has to touch another feature's code.
+//
+// A feature can be switched off while the app runs (Settings, or app.stopFeature). Folio then
+// takes away its slot items, services and event listeners itself, and calls stop(). What else it
+// made is its own to undo in stop(), unless it made it through attach() (a node put on the page)
+// or listenTo() (a listener on the window, the document or a node), which are undone for it.
 
 import * as ui from './ui.js';
 import { getText } from './net.js';
@@ -25,6 +30,33 @@ export class Feature {
 
   // Override this. It may be async.
   start() {}
+
+  // Override this to undo what start() made that Folio doesn't know of (timers, say). Called when
+  // the feature is switched off while the app runs; then attach() and listenTo() are undone.
+  stop() {}
+
+  // ---- Things on the page, undone when it stops ----
+
+  // Puts `node` in `parent` (Folio's root by default) and returns it; it is taken away on stop.
+  attach(node, parent = document.getElementById('folio-root') || document.body) {
+    parent.append(node);
+    this.whenStopped(() => node.remove());
+    return node;
+  }
+
+  // target.addEventListener(type, fn, options), taken away on stop. Returns a function that takes
+  // it away now.
+  listenTo(target, type, fn, options) {
+    target.addEventListener(type, fn, options);
+    const off = () => target.removeEventListener(type, fn, options);
+    this.whenStopped(off);
+    return off;
+  }
+
+  // fn runs when the feature stops (after stop()).
+  whenStopped(fn) {
+    (this.folioStops ||= []).push(fn);
+  }
 
   // ---- Slots: places to add things ----
 

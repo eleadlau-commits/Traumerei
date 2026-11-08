@@ -1,0 +1,8 @@
+/* Settings → Plugins (layout only; the look is Folio's base.css: feature-row, word, hint). */
+.plugins-kind { font-weight: normal; color: var(--muted); }
+.plugins-problem { color: var(--text); }
+.plugins-ask { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 8px 0 12px; border-bottom: 1px solid var(--line); }
+.plugins-ask p { flex: 1 1 100%; margin: 0; font-size: 13px; }
+.plugins-safe, .plugins-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 0 0 16px; }
+.plugins-safe .hint, .plugins-foot .hint { margin: 0; flex: 1 1 260px; }
+.plugins-foot { margin: 16px 0 0; }

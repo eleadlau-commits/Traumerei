@@ -270,6 +270,9 @@ export function connect(o) {
   const tables = kernel({ lib: o.lib || o.world.lib, world: o.world, events: o.events || null, gone: o.gone });
   return Object.freeze({
     ...base,
+    // (a spread reads a getter once: the world is read afresh each time, as v1 does, since it is
+    // replaced when it is read back from storage, and a plugin writing to an old one loses it)
+    get world() { return base.world; },
     ...tables,
     // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
     slots: Object.freeze({ rules: base.modes, kinds: base.items, commands: base.commands, more: base.more, editor: base.editor, formats: base.formats }),

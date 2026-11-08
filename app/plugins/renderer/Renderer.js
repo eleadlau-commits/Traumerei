@@ -138,6 +138,14 @@ export default class Renderer extends Feature {
     return this.views[this.mode.id];
   }
 
+  // Switched off: the picture stops moving and goes.
+  stop() {
+    cancelAnimationFrame(this.tick);
+    cancelAnimationFrame(this.frame);
+    this.resizer?.disconnect();
+    this.pageEl?.remove();
+  }
+
   mount(container) {
     this.canvas = el('canvas', { class: 'renderer-canvas' });
     this.overlay = el('canvas', { class: 'renderer-overlay', 'aria-hidden': 'true' });
@@ -145,12 +153,13 @@ export default class Renderer extends Feature {
     this.stage = el('div', { class: 'renderer-stage', hidden: true, onclick: (e) => this.setAnchor(e) },
       this.canvas, this.layer, this.overlay);
     this.error = ui.errorBox();
-    container.append(el('div', { class: 'renderer-page' }, this.stage, this.error));
-    new ResizeObserver(() => {
+    container.append(this.pageEl = el('div', { class: 'renderer-page' }, this.stage, this.error));
+    this.resizer = new ResizeObserver(() => {
       this.paintOverlay();
       clearTimeout(this.resizing);
       this.resizing = setTimeout(() => this.fit(), RESIZE_MS);
-    }).observe(this.stage);
+    });
+    this.resizer.observe(this.stage);
     if (!this.seed) this.white();
   }
 

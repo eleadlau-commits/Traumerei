@@ -14,6 +14,9 @@ import { parse } from '../grammar.js';
 import { importRoom, importInto, exportRoom, summary, fileName, objectOrder, frontOf } from '../traum.js';
 
 bind(surfaceForRussell(lib)); // roomfile is a plugin too
+import { picture } from '../../picture/item.js';
+import { setKinds } from '../../world/items/index.js';
+setKinds([picture({ maths: lib.maths.maths, shrinkPicture: async () => '' })]); // Pictures are a plugin: their kind, as it adds it
 
 const ontologies = gather([russell]); // the built-in ones and Russell, their groups' rules declared
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';

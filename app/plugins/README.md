@@ -1,0 +1,114 @@
+# Make a plugin
+
+New work in Träumerei is a plugin: a folder here in `app/plugins/` that can be switched off in
+Settings → Plugins without breaking anything else. This guide takes you from nothing to a working
+plugin. The full list of what a plugin may use is `app/core/API.md`.
+
+## 1. Make the folder
+
+```
+python build.py new-plugin word-count --kind editor --author E
+```
+
+This makes `app/plugins/word-count/` from the template in `app/templates/plugin/`:
+
+| File | What it is |
+|---|---|
+| `feature.json` | Its name, what it needs (`"requires": ["api"]`) and its `plugin` block |
+| `WordCount.js` | The plugin: connects to the API and adds an Editor section |
+| `rules.js` | Plain functions that don't need the screen |
+| `tests/rules.test.js` | Tests for them |
+| `style.css` | Layout only |
+| `README.md` | What it adds, needs and saves, and how to check it |
+
+Options: `--name "Word count"`, `--description "…"`, `--requires docks` (features it needs besides
+the API), `--kind mode,editor` (what it adds), `--author`. Run `python build.py test`, then
+`python build.py serve`: the template already works (right-click a thought and the Editor says how
+many words it holds).
+
+## 2. The plugin block
+
+```json
+"plugin": { "api": 2, "minApp": "1.0.0", "kind": ["editor"], "load": "start", "author": "E" }
+```
+
+| Key | What it says |
+|---|---|
+| `api` | The plugin API version it was written for. A plugin for a newer API than the app offers is left out, with the reason on the Plugins page. |
+| `minApp` | The oldest app version it works with. |
+| `kind` | What it adds: `mode`, `item`, `command`, `editor`, `format`, `page`, … (shown on the Plugins page). |
+| `load` | `start` (the default) or `when-used`. |
+| `author` | Who made it. |
+
+The compiler checks the block, and leaves out a plugin that imports another feature's files or
+uses a core service or slot directly: a plugin reaches the app **only** through the `traumerei`
+service.
+
+## 3. Connect
+
+```js
+import { Feature } from 'folio';
+
+export default class WordCount extends Feature {
+  start() {
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Needs the plugin API');
+    // …use t here
+  }
+}
+```
+
+`t` is the plugin API, version 2. Its names follow the kernel's six tables
+(`app/core/KERNEL.md`):
+
+| Name | Use it to |
+|---|---|
+| `t.marks` | read thoughts and rooms (`get`, `in`, `text`, `search`), make, edit and delete them |
+| `t.places` | read and change where a mark sits in a room, under which rule |
+| `t.links` | read and make links: a group's members (`part of`), arrows (`relation`) |
+| `t.distance` | who a room is for (`me now`, `others`): a locked room reads `others` |
+| `t.gaps` | open questions and tasks (empty until kernel phase 5) |
+| `t.moments` | times: made, edited, visited, due (due and return come in phase 7) |
+| `t.slots.rules` | add a mode (a way of seeing a room) |
+| `t.slots.kinds` | add a kind of thought (a picture, a PDF page) |
+| `t.slots.commands` | add a named action, with keys |
+| `t.slots.more` | add an entry under ⋯ More |
+| `t.slots.editor` | add a section to the Editor |
+| `t.slots.formats` | add a file format to import and export |
+| `t.ui.toast(text)` | show a short message |
+| `t.plugin`, `t.app` | `{ id, name }` of this plugin; `{ name, version }` of the app |
+
+Reads return frozen rows: hold ids, not rows. A change (`make`, `edit`, `put`, `link`, …) returns
+`{ ok: true, id }` after it is saved as one step Ctrl+Z takes back, or `{ ok: false, reason }`
+with nothing changed. `on(fn)` on any table calls `fn` after each saved step and each undo.
+
+The older v1 names (`t.model`, `t.groups`, `t.modes`, `t.items`, `t.toast`, …) still work for now,
+but they go in kernel phase 6: new plugins use the names above. The API is not frozen yet: it
+changes through the kernel phases (`app/core/API.md` says what is current).
+
+## 4. Switching off
+
+Everything a plugin adds through `t` (slots, table listeners, dock tabs, the frame) and through
+Folio (`this.add`, `this.on`, `this.provide`) is taken away when it is switched off, and the
+plugin starts afresh when switched back on. Undo the rest yourself:
+
+- `this.attach(node, parent)` puts a node on the page and removes it on stop.
+- `this.listenTo(target, type, fn)` listens to `window` or `document` and stops on stop.
+- `this.whenStopped(fn)` runs `fn` on stop.
+- `stop()` is called last: cancel timers and animation frames there.
+
+A thought of a kind whose plugin is off is kept exactly as it is, and a room in a mode whose
+plugin is off shows in Pessoa with a "Turn on" line. Holding **Shift** while the app starts (or
+`?safe`) starts it with core only, so a broken plugin can always be switched off.
+
+## 5. Rules that keep plugins easy to change
+
+- **One owner.** Everything for the plugin lives in its folder. It talks to other features only
+  through the API, slots and events.
+- **One look.** Use Folio's classes from `folio/runtime/base.css` (`hint`, `pick`, panels, words
+  as buttons); keep only layout in `style.css`. Never copy colours or type into a plugin.
+- **Tests.** Put rules in plain modules and test them; `python build.py test` runs every
+  `tests/*.test.js`.
+- **README.** Keep its "What it adds", "What it needs" and "What it saves" lists true.
+- **Missing something?** When the API lacks what a plugin needs, add it to the API (`v2.js`,
+  `API.md` and `tests/api.test.js` together), never reach past it.

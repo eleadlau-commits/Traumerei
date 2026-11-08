@@ -47,7 +47,7 @@ export default class Account extends Feature {
     this.moments = this.use('traumerei')?.connect(this).moments || null; // the moments table: the world travels as its rows
     if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
-    window.addEventListener('pagehide', () => this.flush());
+    this.listenTo(window, 'pagehide', () => this.flush());
     if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
   }
 

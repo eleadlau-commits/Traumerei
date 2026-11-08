@@ -204,6 +204,14 @@ export class RoomView {
       }, '⚙') : null;
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
+    // Seen through Pessoa because its own mode's plugin is off: say so, with a word to turn it on.
+    const away = v.mode !== this.mode && this.plugins?.offMode(v.mode);
+    if (away) {
+      items.push(el('div', { class: 'room-mode-off rail-wide' },
+        el('span', {}, `${away.name} is off`),
+        el('button', { type: 'button', class: 'word', title: `Turn ${away.name} on again (Settings → Plugins)`,
+          onclick: () => this.plugins.turnOn(away.id) }, 'Turn on')));
+    }
     items.push(...this.twinRail()); // a Twin: its two sides (twin.js)
     const more = this.frame?.more(); // ⋯ More, holding Time (the frame feature's)
     if (more) items.push(more);
