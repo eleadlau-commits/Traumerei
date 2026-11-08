@@ -1,0 +1,10 @@
+/* Provoke: the left dock's tab, the Editor section and the suggestion mark. Only layout here; the look is Folio's (base.css). */
+.provoke, .provoke-section, .provoke-settings { display: grid; gap: 10px; }
+.provoke { padding: 8px 12px 16px; }
+.provoke-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.provoke-item { display: grid; gap: 2px; }
+.provoke-says { overflow-wrap: anywhere; }
+.provoke-why { font-size: var(--t-small, .9em); opacity: .7; }
+.provoke-words { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.provoke-kind { display: grid; gap: 4px; }
+.provoke-settings input { width: 100%; box-sizing: border-box; }

@@ -39,15 +39,18 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
   const events = { on: (name, fn) => { listeners.set(name, [...(listeners.get(name) || []), fn]); return () => listeners.set(name, (listeners.get(name) || []).filter((f) => f !== fn)); } };
   const emit = (name, o) => { for (const fn of listeners.get(name) || []) fn(o); };
 
+  // The state last written down is a copy, as World.js keeps it (the tables are changed in place:
+  // holding them would diff nothing, and the log would hear no moment).
+  const snap = () => JSON.parse(JSON.stringify(M.stateOf(w)));
   const log = M.emptyLog(clock, M.stateOf(w));
-  let last = M.stateOf(w);
+  let last = snap();
   const ontologies = () => [...CORE_RULES(), ...app.slot('world.ontologies').items];
   const world = {
     get world() { return w; },
     lib,
     saved: 0,
     save() {
-      const next = M.stateOf(w);
+      const next = snap();
       const rows = M.record(log, last, next, tick());
       last = next;
       this.saved++;

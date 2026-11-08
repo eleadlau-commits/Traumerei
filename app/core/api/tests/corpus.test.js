@@ -52,6 +52,7 @@ const nonsenseReader = await load('nonsense-reader', 'NonsenseReader.js');
 const focusMode = await load('focus-mode', 'FocusMode.js');
 const roomStats = await load('room-stats', 'RoomStats.js');
 const exportRoom = await load('export-room', 'ExportRoom.js');
+const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
 
@@ -73,7 +74,8 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'nonsense-reader': nonsenseReader,
   'focus-mode': focusMode,
   'room-stats': roomStats,
-  'export-room': exportRoom };
+  'export-room': exportRoom,
+  provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
 // A mark of each kind a plugin adds, made through the API (so its kind's fields are tried, and the
@@ -82,6 +84,7 @@ const SAMPLES = {
   checkbox: { text: 'buy bread' }, quote: { text: 'To be, or not', source: 'Hamlet' }, code: { code: 'let x = 1;\n  x++', lang: 'js' },
   'audio-note': { src: 'data:audio/ogg;base64,AAAA', text: 'hum' }, 'pdf-page': { src: 'data:application/pdf;base64,JVBE', page: '3', name: 'paper' },
   table: { text: 'a | b\n1 | 2' },
+  suggestion: { says: 'the two may speak of the same thing', act: 'link' },
 };
 
 const json = (o) => JSON.stringify(o);

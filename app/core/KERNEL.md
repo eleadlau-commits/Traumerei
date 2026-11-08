@@ -83,5 +83,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
 
 Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap · 6 distance and carriers, v1
 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen (done, CORPUS.md) ·
-9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
+9 readers (done: Provoke, `app/plugins/provoke/`; a suggestion is a mark with an open gap to
+the maker, linked by `provokes` rows to what it is about; Keep resolves the gap by the link it
+made, Refuse by judgement; it learns from those verdicts and only proposes). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

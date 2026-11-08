@@ -1,0 +1,26 @@
+{
+  "name": "Provoke",
+  "description": "A reader: reads the open room and suggests links and groups, each a mark with an open gap for you to judge; Keep makes it, Refuse turns it down, and it learns from both (Ctrl+Alt+V).",
+  "version": "0.1.0",
+  "main": "Provoke.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "reader",
+      "item",
+      "link",
+      "command",
+      "editor",
+      "view"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}
