@@ -34,7 +34,7 @@ jobs:
       - name: Run all tests
         run: python build.py test
       - name: The .traum guide covers every ontology and kind
-        run: node app/features/roomfile/tests/guide.mjs
+        run: node app/plugins/roomfile/tests/guide.mjs
       - name: Build the one-file page
         run: python standalone.py
       - name: Attach it as a download

@@ -5,6 +5,14 @@
   "version": "1.0.0",
   "lang": "en",
   "appearance": "light",
+  "folders": [
+    "core",
+    "plugins"
+  ],
+  "plugins": {
+    "folder": "plugins",
+    "api": 1
+  },
   "theme": {
     "accent": "#5c5f66",
     "accentDark": "#b4b7bd",

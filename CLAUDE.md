@@ -3,11 +3,19 @@
 Read `README.md` for building, testing and publishing, and the README of the feature you are
 changing. Never commit `standalone/traumerei.html`: an Action rebuilds it after each merge.
 
+## Core and plugins
+
+Features live in two folders (app.json's `folders`). `app/core/` holds what every room needs
+(world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds everything that can be
+switched off without breaking the app; each plugin's `feature.json` has a `plugin` block (the plugin
+API version it was written for, the oldest app version it works with, what it adds, when it
+loads). See `folio/README.md` §3.
+
 ## The splitting rule
 
 Build Träumerei so each piece can be changed by reading only that piece.
 
-- **One owner.** New work lives in the one feature (`app/features/<id>/`) that owns it, or in a
+- **One owner.** New work lives in the one feature (`app/core/<id>/` or `app/plugins/<id>/`) that owns it, or in a
   new feature of its own when it is a separate thing. Each feature has its own folder,
   `feature.json`, README, styles and saved data.
 - **Talk only through Folio.** Features reach each other only through services, slots and
@@ -22,4 +30,4 @@ Build Träumerei so each piece can be changed by reading only that piece.
   it uses, and flags any change that crosses a feature boundary before building it.
 
 The world (saved rooms and thoughts, their rules, saving and undo) is the `world` feature: other
-features use its `world` service (`app/features/world/README.md`).
+features use its `world` service (`app/core/world/README.md`).

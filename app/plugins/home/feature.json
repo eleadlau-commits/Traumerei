@@ -10,5 +10,14 @@
     "rooms",
     "world",
     "frame"
-  ]
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "page"
+    ],
+    "load": "start",
+    "author": "E"
+  }
 }

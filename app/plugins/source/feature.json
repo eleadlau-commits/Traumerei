@@ -8,5 +8,14 @@
   ],
   "requires": [
     "docks"
-  ]
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "editor"
+    ],
+    "load": "start",
+    "author": "E"
+  }
 }

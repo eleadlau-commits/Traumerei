@@ -60,6 +60,29 @@ def feature(**extra):
     return {'name': 'A feature', 'description': 'Does a thing.', 'main': 'Main.js', **extra}
 
 
+def make_plugin_app(tmp: Path, folders: dict, app_extra=None) -> Path:
+    """Like make_app, for an app whose features live in several folders: {folder: {id: spec}}.
+    app.json lists the folders and says "plugins" holds plugins (API 2), unless app_extra says otherwise."""
+    app = tmp / 'app'
+    app.mkdir(parents=True)
+    config = {'id': 'test-app', 'name': 'Test app', 'version': '1.4.0',
+              'folders': list(folders), 'plugins': {'folder': 'plugins', 'api': 2}, **(app_extra or {})}
+    (app / 'app.json').write_text(json.dumps(config), 'utf-8')
+    for group, features in folders.items():
+        (app / group).mkdir()
+        for fid, manifest in features.items():
+            folder = app / group / fid
+            folder.mkdir()
+            (folder / 'feature.json').write_text(json.dumps(manifest), 'utf-8')
+            (folder / 'Main.js').write_text("import { Feature } from 'folio';\nexport default class X extends Feature {}\n", 'utf-8')
+    return app
+
+
+def plugin(block=None, **extra):
+    """A plugin's feature.json: block is added to its plugin block, extra to the rest."""
+    return feature(plugin={'api': 1, 'minApp': '1.0.0', **(block or {})}, **extra)
+
+
 class CompilerTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix='folio-compiler-test-'))
@@ -306,6 +329,117 @@ class CompilerTests(unittest.TestCase):
         code, _ = Project(ROOT, app).build(out, Log(quiet=True))
         self.assertEqual(code, 1)
         self.assertTrue((out / 'my-file.txt').exists())
+
+
+    # ---- Feature folders and plugins (Folio 1.12) ----
+
+    def discover_plugins(self, folders, app_extra=None):
+        project = Project(ROOT, make_plugin_app(self.tmp, folders, app_extra))
+        log = Log(quiet=True)
+        self.assertIsNotNone(project.load_app(log))
+        found = project.discover(log)
+        return project, found, {f.id: f for f in found}
+
+    def test_features_are_read_from_every_folder_in_order(self):
+        project, found, by_id = self.discover_plugins({
+            'core': {'world': feature(), 'room': feature(requires=['world'])},
+            'plugins': {'mode': plugin({'kind': ['mode']}), 'extra': plugin(requires=['room'])},
+        })
+        self.assertEqual([f.id for f in found], ['room', 'world', 'extra', 'mode'])
+        self.assertEqual(by_id['world'].folder, 'core')
+        self.assertEqual(by_id['mode'].folder, 'plugins')
+        self.assertEqual([f.id for f in project.resolve(found)], ['world', 'room', 'extra', 'mode'])
+        self.assertEqual(project.features_dir.name, 'core')  # new features go in the first folder
+
+    def test_an_app_without_folders_keeps_app_features(self):
+        project = Project(ROOT, make_app(self.tmp, {'core': feature()}))
+        self.assertEqual(project.folder_names, ['features'])
+        found = project.discover(Log(quiet=True))
+        self.assertEqual([(f.id, f.folder, f.reason) for f in found], [('core', 'features', '')])
+
+    def test_the_same_id_in_two_folders_is_a_mistake(self):
+        _, found, _ = self.discover_plugins({'core': {'search': feature()}, 'plugins': {'search': plugin()}})
+        first, second = found
+        self.assertEqual((first.id, first.reason), ('search', ''))
+        self.assertEqual(second.kind, 'mistake')
+        self.assertIn('already in core/', second.reason)
+
+    def test_plugin_blocks_belong_only_in_the_plugins_folder(self):
+        _, _, by_id = self.discover_plugins({
+            'core': {'world': plugin()},
+            'plugins': {'bare': feature()},
+        })
+        self.assertIn('plugins live in plugins/', by_id['world'].reason)
+        self.assertIn('has no "plugin" block', by_id['bare'].reason)
+        self.assertEqual({by_id['world'].kind, by_id['bare'].kind}, {'mistake'})
+
+    def test_mistakes_in_plugin_blocks(self):
+        cases = {
+            'not-object': feature(plugin=1),
+            'no-api': feature(plugin={'minApp': '1.0.0'}),
+            'bad-api': plugin({'api': 0}),
+            'bool-api': plugin({'api': True}),
+            'no-min': feature(plugin={'api': 1}),
+            'bad-min': plugin({'minApp': '1.0'}),
+            'bad-kind': plugin({'kind': 'mode'}),
+            'bad-kind-word': plugin({'kind': ['Mode']}),
+            'bad-load': plugin({'load': 'later'}),
+            'bad-author': plugin({'author': ' '}),
+        }
+        _, _, by_id = self.discover_plugins({'plugins': cases})
+        for fid in cases:
+            self.assertEqual(by_id[fid].kind, 'mistake', fid)
+            self.assertIn('plugin', by_id[fid].reason, fid)
+
+    def test_a_typo_in_a_plugin_block_is_a_warning(self):
+        _, _, by_id = self.discover_plugins({'plugins': {'p': plugin({'loads': 'start'})}})
+        self.assertEqual(by_id['p'].reason, '')
+        self.assertTrue(any('"loads"' in w for w in by_id['p'].warnings))
+
+    def test_a_plugin_for_a_newer_api_or_app_is_left_out_with_the_reason(self):
+        project, found, by_id = self.discover_plugins({'plugins': {
+            'fits': plugin({'api': 2, 'minApp': '1.4.0'}),
+            'new-api': plugin({'api': 3}),
+            'new-app': plugin({'minApp': '1.10.0'}),  # 1.10 is newer than 1.4: compared as numbers
+        }})
+        self.assertEqual(by_id['fits'].reason, '')
+        self.assertEqual(by_id['new-api'].kind, 'needs')
+        self.assertIn('plugin API 3, but Test app offers API 2', by_id['new-api'].reason)
+        self.assertEqual(by_id['new-app'].kind, 'needs')
+        self.assertIn('needs Test app 1.10.0 or newer (this is 1.4.0)', by_id['new-app'].reason)
+        self.assertEqual([f.id for f in project.resolve(found)], ['fits'])
+
+    def test_plugin_blocks_need_the_app_to_have_plugins(self):
+        project = Project(ROOT, make_app(self.tmp, {'p': plugin()}))
+        found = project.discover(Log(quiet=True))
+        self.assertIn('app.json has no "plugins"', found[0].reason)
+
+    def test_mistakes_in_app_json_folders_and_plugins(self):
+        for extra in ({'folders': 'core'}, {'folders': []}, {'folders': ['Core']}, {'folders': ['a', 'a']},
+                      {'plugins': {'folder': 'elsewhere', 'api': 1}}, {'plugins': {'folder': 'plugins', 'api': 0}},
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'x': 1}}, {'version': '1.0'}):
+            tmp = Path(tempfile.mkdtemp(prefix='folio-compiler-test-'))
+            project = Project(ROOT, make_plugin_app(tmp, {'core': {}, 'plugins': {}}, extra))
+            self.assertIsNone(project.load_app(Log(quiet=True)), extra)
+
+    def test_plugins_reach_the_app_in_the_registry(self):
+        app = make_plugin_app(self.tmp, {
+            'core': {'world': feature()},
+            'plugins': {'mode': plugin({'kind': ['mode'], 'load': 'when-used', 'author': 'E'}), 'tool': plugin()},
+        })
+        out = self.tmp / 'dist'
+        code, _ = Project(ROOT, app).build(out, Log(quiet=True))
+        self.assertEqual(code, 0)
+        start = (out / 'web' / 'start.js').read_text('utf-8')
+        features = json.loads(start.split('const features = ', 1)[1].split(';\n', 1)[0])
+        by_id = {f['id']: f for f in features}
+        self.assertNotIn('plugin', by_id['world'])
+        self.assertEqual(by_id['mode']['plugin'], {'kind': ['mode'], 'load': 'when-used', 'api': 1, 'minApp': '1.0.0', 'author': 'E'})
+        self.assertEqual(by_id['tool']['plugin'], {'kind': [], 'load': 'start', 'api': 1, 'minApp': '1.0.0'})
+        self.assertEqual(by_id['mode']['path'], 'features/mode/Main.js')  # one flat folder in the app
+        self.assertIn('"pluginApi": 2', start)
+        self.assertTrue((out / 'web' / 'features' / 'world' / 'Main.js').exists())
+        self.assertIn('plugins/mode', (out / 'report.html').read_text('utf-8'))
 
     def test_deep_merge(self):
         base = {'a': {'b': 1, 'list': [1, 2]}, 'c': 1}

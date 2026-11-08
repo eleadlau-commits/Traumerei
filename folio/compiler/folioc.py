@@ -1,6 +1,7 @@
 """The Folio compiler.
 
-Reads app/app.json and every folder in app/features/, checks each feature's feature.json,
+Reads app/app.json and every feature folder (app/features/, or the folders app.json lists in
+"folders", such as core/ and plugins/), checks each feature's feature.json,
 works out which features can be included and in what order, and writes the finished app to
 dist/. Like LaTeX, it prints a log of what it did and carries on past problems: a broken or
 incomplete feature is left out with a reason, never the whole app.
@@ -48,7 +49,17 @@ FRAMEWORK_EVENTS = {'app:ready', 'app:resume', 'app:tick', 'app:online', 'app:of
 FRAMEWORK_SERVICES: set[str] = set()
 
 FEATURE_KEYS = {'name', 'description', 'version', 'main', 'styles', 'templates', 'requires', 'uses',
-                'platforms', 'enabled', 'web', 'native'}
+                'platforms', 'enabled', 'web', 'native', 'plugin'}
+# A plugin's block in feature.json (only for features in the app's plugins folder; see README §3).
+PLUGIN_KEYS = {'api', 'minApp', 'kind', 'load', 'author'}
+PLUGIN_LOADS = ('start', 'when-used')
+VERSION = re.compile(r'^\d+\.\d+\.\d+$')
+KIND_NAME = re.compile(r'^[a-z][a-z0-9-]*$')
+
+
+def version_key(text: str) -> tuple:
+    """'1.10.2' → (1, 10, 2), for comparing versions. Anything else counts as 0.0.0."""
+    return tuple(int(x) for x in text.split('.')) if VERSION.match(str(text)) else (0, 0, 0)
 NATIVE_KEYS = {'packages', 'capacitor', 'android', 'ios'}
 FOLDER_NAME = re.compile(r'^[a-z][a-z0-9]*(-[a-z0-9]+)*$')
 NOT_SHIPPED = {'tests', 'extras', 'native'}  # feature subfolders that never go into the app
@@ -192,6 +203,13 @@ class FeatureInfo:
     kind: str = ''        # 'mistake', 'off' or 'needs': the kind of reason
     warnings: list = field(default_factory=list)
     scan: dict = field(default_factory=dict)
+    folder: str = 'features'  # which of the app's feature folders it is in (e.g. 'core', 'plugins')
+
+    @property
+    def plugin(self) -> dict | None:
+        """Its plugin block from feature.json, or None for a feature that isn't a plugin."""
+        p = self.manifest.get('plugin') if isinstance(self.manifest, dict) else None
+        return p if isinstance(p, dict) else None
 
     @property
     def name(self) -> str:
@@ -267,7 +285,47 @@ class Project:
         self.framework = self.root / 'folio'
         self.runtime = self.framework / 'runtime'
         self.app_dir = absolute(app_dir) if app_dir else self.root / 'app'
-        self.features_dir = self.app_dir / 'features'
+        self.app: dict | None = None  # app.json once load_app has read it
+
+    # ---- Where features live ----
+
+    def _app_json(self) -> dict:
+        """app.json as it is on disk, or {} (load_app reports its mistakes)."""
+        if self.app is not None:
+            return self.app
+        try:
+            data = json.loads((self.app_dir / 'app.json').read_text('utf-8-sig'))
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    @property
+    def folder_names(self) -> list[str]:
+        """The app's feature folders, in the order they're read: app.json's "folders"
+        (e.g. ["core", "plugins"]), or just "features"."""
+        folders = self._app_json().get('folders')
+        if isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_NAME.match(x) for x in folders):
+            return list(folders)
+        return ['features']
+
+    @property
+    def feature_dirs(self) -> list[Path]:
+        return [self.app_dir / name for name in self.folder_names]
+
+    @property
+    def features_dir(self) -> Path:
+        """Where a new feature goes: the first feature folder."""
+        return self.feature_dirs[0]
+
+    @property
+    def plugins_config(self) -> dict:
+        """app.json's "plugins": { folder, api }, or {} for an app without plugins."""
+        p = self._app_json().get('plugins')
+        return p if isinstance(p, dict) else {}
+
+    @property
+    def plugins_folder(self) -> str | None:
+        return self.plugins_config.get('folder') or None
 
     @property
     def framework_version(self) -> str:
@@ -288,7 +346,10 @@ class Project:
         except json.JSONDecodeError as e:
             log.error(f'{self._rel(path)} has a mistake on line {e.lineno}: {e.msg}')
             return None
-        ok = True
+        ok = isinstance(app, dict)
+        if not ok:
+            log.error('app.json must be an object ({ ... }).')
+            return None
         for key in ('id', 'name'):
             if not isinstance(app.get(key), str) or not app.get(key):
                 log.error(f'app.json needs "{key}".')
@@ -299,6 +360,10 @@ class Project:
         if not ok:
             return None
         app.setdefault('version', '1.0.0')
+        problem = self.check_app_layout(app)
+        if problem:
+            log.error(f'app.json: {problem}')
+            return None
         app.setdefault('description', '')
         app.setdefault('lang', 'en')
         app.setdefault('appearance', 'choose')
@@ -319,7 +384,31 @@ class Project:
         for name in ('icon-192.png', 'icon-512.png', 'apple-touch-icon.png'):
             if not (icons / name).exists():
                 log.warn(f'app/icons/{name} is missing, so the app has no icon there.')
+        self.app = app
         return app
+
+    @staticmethod
+    def check_app_layout(app: dict) -> str:
+        """Checks "folders" (where features live) and "plugins" ({ folder, api }: which folder
+        holds plugins, and the plugin API version the app offers). Returns a problem, or ''."""
+        if not VERSION.match(str(app['version'])):
+            return '"version" must look like "1.0.0"'
+        folders = app.get('folders', ['features'])
+        if not (isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_NAME.match(x) for x in folders)):
+            return '"folders" must be a list of folder names in app/, like ["core", "plugins"]'
+        if len(set(folders)) != len(folders):
+            return '"folders" lists a folder twice'
+        if 'plugins' not in app:
+            return ''
+        plugins = app['plugins']
+        if not isinstance(plugins, dict) or any(k not in ('folder', 'api') for k in plugins):
+            return '"plugins" can only contain folder and api, like { "folder": "plugins", "api": 1 }'
+        if plugins.get('folder') not in folders:
+            return f'"plugins.folder" must be one of "folders" ({", ".join(folders)})'
+        api = plugins.get('api')
+        if not (isinstance(api, int) and not isinstance(api, bool) and api >= 1):
+            return '"plugins.api" must be a whole number, 1 or more: the plugin API version the app offers'
+        return ''
 
     @staticmethod
     def check_app_ios(ios) -> str:
@@ -339,25 +428,35 @@ class Project:
 
     def discover(self, log: Log) -> list[FeatureInfo]:
         features = []
-        if not self.features_dir.is_dir():
-            log.warn('There is no app/features folder, so the app has no features.')
+        seen: dict[str, str] = {}  # feature id → the folder it was first found in
+        dirs = [d for d in self.feature_dirs if d.is_dir()]
+        if not dirs:
+            names = ', '.join(f'app/{n}' for n in self.folder_names)
+            log.warn(f'There is no {names} folder, so the app has no features.')
             return features
-        for folder in sorted(self.features_dir.iterdir()):
-            if not folder.is_dir() or folder.name.startswith(('.', '_')):
-                continue
-            manifest_path = folder / 'feature.json'
-            if not manifest_path.exists():
-                log.warn(f'{folder.name}/ has no feature.json, so it was ignored.')
-                continue
-            feature = FeatureInfo(folder.name, folder)
-            try:
-                # utf-8-sig also accepts the invisible mark some Windows editors put at the start.
-                feature.manifest = json.loads(manifest_path.read_text('utf-8-sig'))
-            except json.JSONDecodeError as e:
-                feature.leave_out('mistake', f'feature.json has a mistake on line {e.lineno}: {e.msg}')
-            if not feature.reason:
-                self.check(feature)
-            features.append(feature)
+        for group in dirs:
+            for folder in sorted(group.iterdir()):
+                if not folder.is_dir() or folder.name.startswith(('.', '_')):
+                    continue
+                manifest_path = folder / 'feature.json'
+                if not manifest_path.exists():
+                    log.warn(f'{group.name}/{folder.name}/ has no feature.json, so it was ignored.')
+                    continue
+                feature = FeatureInfo(folder.name, folder, folder=group.name)
+                try:
+                    # utf-8-sig also accepts the invisible mark some Windows editors put at the start.
+                    feature.manifest = json.loads(manifest_path.read_text('utf-8-sig'))
+                except json.JSONDecodeError as e:
+                    feature.leave_out('mistake', f'feature.json has a mistake on line {e.lineno}: {e.msg}')
+                if folder.name in seen:
+                    feature.leave_out('mistake', f'a feature called "{folder.name}" is already in {seen[folder.name]}/; '
+                                      'every feature needs its own name')
+                    feature.id = f'{group.name}/{folder.name}'  # so it doesn't stand in for the first one
+                else:
+                    seen[folder.name] = group.name
+                if not feature.reason:
+                    self.check(feature)
+                features.append(feature)
         return features
 
     def check(self, f: FeatureInfo):
@@ -401,7 +500,49 @@ class Project:
         web = m.get('web', {})
         if not isinstance(web, dict) or any(k != 'manifest' for k in web):
             return f.leave_out('mistake', '"web" can only contain "manifest"')
+        kind, problem = self.check_plugin(f)
+        if problem:
+            return f.leave_out(kind, problem)
         self.scan_code(f)
+
+    def check_plugin(self, f: FeatureInfo) -> tuple[str, str]:
+        """Checks a plugin's block: every feature in the plugins folder has one, and only they do.
+        A plugin written for a newer plugin API, or a newer app, is left out (kind 'needs').
+        Returns (kind, problem), or ('', '')."""
+        folder = self.plugins_folder
+        has = 'plugin' in f.manifest
+        if not folder:
+            return ('mistake', 'it has a "plugin" block, but app.json has no "plugins"') if has else ('', '')
+        if f.folder != folder:
+            return ('mistake', f'it has a "plugin" block but is in {f.folder}/; plugins live in {folder}/') if has else ('', '')
+        p = f.manifest.get('plugin')
+        if not has:
+            return 'mistake', f'it is in {folder}/ but has no "plugin" block, like {{ "api": 1, "minApp": "1.0.0" }}'
+        if not isinstance(p, dict):
+            return 'mistake', '"plugin" must be an object, like { "api": 1, "minApp": "1.0.0" }'
+        for key in p:
+            if key not in PLUGIN_KEYS:
+                f.warnings.append(f'its "plugin" block has an unknown setting "{key}" (a typo?)')
+        api = p.get('api')
+        if not (isinstance(api, int) and not isinstance(api, bool) and api >= 1):
+            return 'mistake', '"plugin.api" must be the plugin API version it was written for: a whole number, 1 or more'
+        if not (isinstance(p.get('minApp'), str) and VERSION.match(p['minApp'])):
+            return 'mistake', '"plugin.minApp" must be the oldest app version it works with, like "1.0.0"'
+        kinds = p.get('kind', [])
+        if not (isinstance(kinds, list) and all(isinstance(k, str) and KIND_NAME.match(k) for k in kinds)):
+            return 'mistake', '"plugin.kind" must be a list of what it adds, like ["mode"]'
+        if p.get('load', 'start') not in PLUGIN_LOADS:
+            return 'mistake', f'"plugin.load" must be {" or ".join(PLUGIN_LOADS)}'
+        if 'author' in p and not (isinstance(p['author'], str) and p['author'].strip()):
+            return 'mistake', '"plugin.author" must be a name'
+        app = self._app_json()
+        offered = self.plugins_config.get('api', 1)
+        if api > offered:
+            return 'needs', f'it is written for plugin API {api}, but {app.get("name", "the app")} offers API {offered}'
+        version = str(app.get('version', '1.0.0'))
+        if version_key(p['minApp']) > version_key(version):
+            return 'needs', f'it needs {app.get("name", "the app")} {p["minApp"]} or newer (this is {version})'
+        return '', ''
 
     @staticmethod
     def check_android_extras(f: FeatureInfo, android) -> str:
@@ -607,10 +748,12 @@ class Project:
             'id': f.id, 'name': f.name, 'description': f.manifest['description'], 'version': f.version,
             'requires': f.requires, 'uses': f.uses, 'platforms': f.platforms,
             'path': f'features/{f.id}/{f.manifest["main"]}',
+            **({'plugin': {'kind': [], 'load': 'start', **f.plugin}} if f.plugin else {}),
         } for f in included]
         config = {'id': app['id'], 'name': app['name'], 'description': app.get('description', ''), 'version': app['version'],
                   'build': str(build_number) if build_number else '', 'framework': self.framework_version,
-                  'appearance': app['appearance'], 'test': test}
+                  'appearance': app['appearance'], 'test': test,
+                  **({'pluginApi': self.plugins_config.get('api', 1)} if self.plugins_folder else {})}
         seed = test and (self.app_dir / 'tests' / 'seed.js').is_file()
         if test and (self.app_dir / 'tests').is_dir():
             shutil.copytree(self.app_dir / 'tests', web / 'app-tests')
@@ -888,8 +1031,11 @@ fetch('/__folio_report', {{ method: 'POST', body: JSON.stringify({{ kind: 'tests
                 extras.append('packages: ' + ', '.join(native['packages']))
             if native.get('android', {}).get('permissions'):
                 extras.append('Android: ' + ', '.join(native['android']['permissions']))
+            if f.plugin:
+                status += (f' · plugin (API {f.plugin.get("api")}, needs app {f.plugin.get("minApp")}'
+                           f'{", loads when used" if f.plugin.get("load") == "when-used" else ""})')
             rows.append(
-                f'<tr class="{"in" if f.id in included_ids else "out"}"><td><b>{e(f.name)}</b><br><code>{e(f.id)}</code>'
+                f'<tr class="{"in" if f.id in included_ids else "out"}"><td><b>{e(f.name)}</b><br><code>{e(f.folder)}/{e(f.id)}</code>'
                 f' {e(f.version)}</td><td>{e(f.manifest.get("description", "") if isinstance(f.manifest, dict) else "")}'
                 f'<br><small>{e(status)}</small></td><td>{e(names(f.requires))}</td><td>{e(names(f.uses))}</td>'
                 f'<td>{e(names(f.platforms))}</td><td>{e("; ".join(extras) or "—")}</td></tr>')
@@ -952,7 +1098,7 @@ pre {{ background: #fff; padding: 12px; border-radius: 12px; overflow: auto; fon
 <p class="muted">Compiled {built} with Folio {e(self.framework_version)}{f" · build {e(str(details['build']))}" if details['build'] else ""} ·
 {len(included)} features included, {len(features) - len(included)} left out · {log.warnings} warnings</p>
 <h2>Features</h2>
-<p class="muted">In the order they start. Each feature's code, styles and README are in <code>app/features/&lt;id&gt;/</code>.</p>
+<p class="muted">In the order they start. Each feature's code, styles and README are in its folder, <code>app/&lt;folder&gt;/&lt;id&gt;/</code>.</p>
 <table><tr><th>Feature</th><th>What it does</th><th>Requires</th><th>Uses if present</th><th>Platforms</th><th>Phone app extras</th></tr>
 {"".join(rows)}</table>
 <h2>Slots</h2>
@@ -1204,10 +1350,10 @@ def cmd_list(project: Project, args) -> int:
     features = project.discover(log)
     included = project.resolve(features)
     included_ids = [f.id for f in included]
-    print(f'{"Feature":<16} {"Status":<10} {"Requires":<24} {"Uses if present":<24} Platforms')
+    print(f'{"Feature":<16} {"Folder":<10} {"Status":<10} {"Requires":<24} {"Uses if present":<24} Platforms')
     for f in included + [f for f in features if f.reason]:
         status = f'#{included_ids.index(f.id) + 1}' if f.id in included_ids else 'left out'
-        print(f'{f.id:<16} {status:<10} {", ".join(f.requires) or "-":<24} {", ".join(f.uses) or "-":<24} '
+        print(f'{f.id:<16} {f.folder:<10} {status:<10} {", ".join(f.requires) or "-":<24} {", ".join(f.uses) or "-":<24} '
               f'{", ".join(f.platforms)}')
         if f.reason:
             print(f'{"":<16} {f.reason}')
@@ -1221,8 +1367,9 @@ def cmd_new_feature(project: Project, args) -> int:
         print('Use lowercase words joined by dashes, e.g. "study-timer".')
         return 1
     target = project.features_dir / fid
-    if target.exists():
-        print(f'app/features/{fid} already exists.')
+    where = f'app/{target.parent.name}/{fid}'
+    if any((d / fid).exists() for d in project.feature_dirs):
+        print(f'A feature called "{fid}" already exists.')
         return 1
     class_name = ''.join(part.capitalize() for part in fid.split('-'))
     name = args.name or fid.replace('-', ' ').capitalize()
@@ -1240,7 +1387,7 @@ def cmd_new_feature(project: Project, args) -> int:
                 text = text.replace(key, value)
             path.write_text(text, 'utf-8')
     (target / 'Main.js').rename(target / f'{class_name}.js')
-    print(f'Created app/features/{fid}/ with {class_name}.js, style.css, README.md and tests/.')
+    print(f'Created {where}/ with {class_name}.js, style.css, README.md and tests/.')
     print('Next: describe it in feature.json and README.md, then compile with `python build.py`.')
     return 0
 

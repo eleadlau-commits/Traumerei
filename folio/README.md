@@ -34,7 +34,8 @@ app/
   theme.css              the app's own colours and fonts (optional)
   fonts/                 font files theme.css uses (optional)
   icons/                 the app's icons
-  features/              one folder per feature
+  features/              one folder per feature (or the folders app.json lists in "folders",
+                         such as core/ and plugins/: see §3)
   tests/seed.js          sample data used by the automatic tests
 dist/                    the compiled app (made by the compiler, never edited)
 ```
@@ -117,6 +118,33 @@ Make a new one with `python build.py new-feature study-timer --requires sessions
 | `native` | no | What the phone apps need: npm `packages`, Capacitor config to merge, Android permissions and features, iPhone Info.plist entries. For Android also `files` (copied into the Android project: where it goes in the project → the file in the feature's `native/` folder) and `gradle` (settings added to the project's `variables.gradle`, e.g. a plugin's switch). For iPhone also `files` (added to the app: its name in the app → the file in `native/`, e.g. Firebase's `GoogleService-Info.plist`) and `pods` (lines added to the Podfile's app target, e.g. a plugin's optional part). iPhone `plist` entries are merged: lists are added to, dictionaries combined. |
 
 The folder name is the feature's id: lowercase words joined by dashes.
+
+**Feature folders and plugins.** An app keeps its features in `app/features/`, or in several
+folders that `app.json` lists in `"folders"`, read in that order (ids must differ across them):
+
+```json
+{ "folders": ["core", "plugins"], "plugins": { "folder": "plugins", "api": 1 } }
+```
+
+`"plugins"` says which of those folders holds **plugins**, and the plugin API version the app
+offers (`api`, a whole number; the app's own service for plugins says what each version holds).
+Every feature in the plugins folder has a `plugin` block in its feature.json, and no feature
+elsewhere has one:
+
+```json
+"plugin": { "api": 1, "minApp": "1.0.0", "kind": ["mode"], "load": "start", "author": "E" }
+```
+
+| Setting | Needed? | Meaning |
+|---|---|---|
+| `api` | yes | The plugin API version it was written for. A plugin written for a newer API than the app offers is left out, with the reason. |
+| `minApp` | yes | The oldest app version (app.json's `version`) it works with. A newer one than the app is left out, with the reason. |
+| `kind` | no | What it adds, as words the app understands, like `["mode"]` or `["dock", "tool"]`. Default `[]`. |
+| `load` | no | `start` (the default: started with the app) or `when-used` (started the first time it is needed). |
+| `author` | no | Who made it. |
+
+The block reaches the app in its registry entry (`plugin`, with `kind` and `load` filled in), and
+the app's config has `pluginApi`.
 
 ## 4. Writing a feature
 
@@ -241,7 +269,7 @@ this.storage.once('import-v1', fn);    // runs fn only the first time, on each d
 The compiler only needs Python 3.9 or newer. The browser tests also need Chrome or Edge.
 
 **What it does:**
-1. **Reads** `app.json` and every `features/*/feature.json`, checking each for mistakes.
+1. **Reads** `app.json` and every `feature.json` in its feature folders, checking each for mistakes (and each plugin's block: see §3).
 2. **Checks imports:** a feature may only import `'folio'` and its own files. Anything else is a mistake.
 3. **Leaves features out** when they're switched off, have a mistake, or are missing something they `require`, and keeps doing so until nothing else changes.
 4. **Orders features** so each starts after what it requires and uses. Features that require each other in a circle are left out.
@@ -330,3 +358,5 @@ Folio's version is in `folio/VERSION`. When the framework changes in a way featu
 **1.10.0:** the iPhone app. Features' `native.ios` can now also list `files` to add to the iPhone app and `pods` (Podfile lines), alongside `plist`; app.json's `native.ios` can set the iPhone app's own `appId`, app-wide `plist` entries and `devices`. The new `python build.py ios-project` prepares the iPhone project Capacitor makes, like `android-project` does for Android, and `@capacitor/ios` is always in `dist/package.json`. Features written for 1.9 keep working.
 
 **1.11.0:** app.json can fix the appearance with `"appearance": "auto"`, `"light"` or `"dark"`. Settings then leaves out the Appearance choice, and the app always uses that mode, whatever was saved before. The default, `"choose"`, keeps the choice in Settings as before.
+
+**1.12.0:** features can live in several folders (app.json's `"folders"`, such as `["core", "plugins"]`), and one of them can hold plugins (`"plugins": { "folder", "api" }`), each with a `plugin` block in its feature.json: the plugin API version it was written for, the oldest app version it works with, what it adds and when it loads (see §3). The compiler checks the block and leaves out a plugin that needs a newer API or app. `python build.py list` and the report show each feature's folder. app.json's `version` must now look like `1.0.0`. Apps with only `app/features/` keep working unchanged.

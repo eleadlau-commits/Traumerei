@@ -1,7 +1,7 @@
 # Rooms
 
 What the home page's **Create** opens: the rooms page, a grid of rooms under the veil. Going into a
-room hands it to the **room** feature (`app/features/room`), which shows it and writes in it.
+room hands it to the **room** feature (`app/core/room`), which shows it and writes in it.
 
 ## Its services and events
 

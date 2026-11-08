@@ -1,14 +1,14 @@
 // The format guide can't fall behind the code: FORMAT.md has a section for every kind of object
 // and every ontology there is, and every example file in it reads with nothing reported.
-// Run with `node app/features/roomfile/tests/guide.mjs` (every pull request runs it: check.yml).
+// Run with `node app/plugins/roomfile/tests/guide.mjs` (every pull request runs it: check.yml).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as lib from '../../world/lib.js';
+import * as lib from '../../../core/world/lib.js';
 import { bind } from '../world.js';
-import { ITEMS } from '../../world/items/index.js';
-import { gather } from '../../world/ontologies/index.js';
-import { emptyWorld } from '../../world/model.js';
+import { ITEMS } from '../../../core/world/items/index.js';
+import { gather } from '../../../core/world/ontologies/index.js';
+import { emptyWorld } from '../../../core/world/model.js';
 import { parse } from '../grammar.js';
 import { importRoom, exportRoom } from '../traum.js';
 import { bind as bindProust } from '../../proust/world.js';

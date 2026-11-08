@@ -8,5 +8,14 @@
   ],
   "requires": [
     "world"
-  ]
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
 }
