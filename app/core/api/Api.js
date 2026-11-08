@@ -6,7 +6,7 @@
 // and gets its own copy of the API, so everything it adds is its own and goes when it is
 // switched off. No saved data.
 
-import { Feature } from 'folio';
+import { Feature, ui } from 'folio';
 import { API_VERSION, surface, connect } from './api.js';
 
 export default class Api extends Feature {
@@ -16,7 +16,7 @@ export default class Api extends Feature {
     const app = this.app;
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts }),
+      connect: (plugin) => connect({ app, world, plugin, parts, toast: ui.toast }),
     }));
   }
 }
