@@ -22,7 +22,9 @@ It is kept clean: no rail and no Search (Search and Ctrl+K are on the rooms page
   `world:saved`, `world:changed` and `room:changed`.
 - **The status bar** at the foot: its quiet line, and Saved.
 
-It uses the services `create`, `rooms` (`openRoom`), `world` (Messy thoughts) and `frame`. Settings, Account and About
+It is a plugin: it reaches the app only through the plugin API (`app/core/API.md`): `t.open` for
+Create and Messy thoughts, `t.load`/`t.save`/`t.write` for the quick thought, `t.modes.get` for what
+waits, and `t.frame` for the top bar and status bar. Settings, Account and About
 are in the menu.
 
 ## The menu ("Veil")

@@ -3,12 +3,13 @@
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
+import { surface } from '../../api/v1.js';
 import { emptyWorld, roomItems, groupsIn } from '../../world/model.js';
 import { gather } from '../../world/ontologies/index.js';
 import { plain } from '../plain.js';
 import { importRoom } from '../traum.js';
 
-bind(lib);
+bind(surface(lib)); // roomfile is a plugin: it gets the world's rules through the plugin API
 const ontologies = gather();
 
 test('list items, headings with paragraphs, paragraphs and pictures become loose thoughts', () => {

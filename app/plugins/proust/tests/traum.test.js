@@ -18,7 +18,7 @@ import russell from '../../russell/rules.js';
 import { bind as bindRussell } from '../../russell/world.js';
 
 bind(surface(lib));
-bindRoomfile(lib);
+bindRoomfile(surface(lib));
 bindRussell(surface(lib));
 const ontologies = gather([proust, russell]);
 const L = () => links();

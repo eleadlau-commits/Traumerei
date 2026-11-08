@@ -13,7 +13,7 @@ import { gather } from '../../world/ontologies/index.js';
 import { parse } from '../grammar.js';
 import { importRoom, importInto, exportRoom, summary, fileName, objectOrder, frontOf } from '../traum.js';
 
-bind(lib);
+bind(surfaceForRussell(lib)); // roomfile is a plugin too
 
 const ontologies = gather([russell]); // the built-in ones and Russell, their groups' rules declared
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';

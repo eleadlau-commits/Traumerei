@@ -4,7 +4,8 @@ A room in and out as one plain-text `.traum` file, and edited as one in the sour
 `FORMAT.md` (this folder) is the spec of the format, for whoever writes a file by hand or by
 machine. The rooms page and the room say where (a cell and floor, a room, a spot in it) and put the
 choices in their menus; this feature reads the file, shows the card, changes the world and
-downloads. The world itself is the world feature's.
+downloads. It is a plugin: it reaches the world only through the plugin API (`app/core/API.md`),
+as a file format (`t.formats`), and places new rooms with `t.floors`.
 
 ## The .traum format
 
@@ -19,7 +20,7 @@ editor feature), `editGroup(roomId, groupId, { before, ok })` and `editRoom(room
 (the group or room as `.traum` text in the source editor, read only in a locked room) and `cancel()`
 (closes the card). The caller saves (one step).
 
-It uses the `source` service (the source editor) when it is there. It offers no service and sends
+It uses the `source` service (the source editor plugin) when it is there. It offers no service and sends
 no events.
 
 ## What it does

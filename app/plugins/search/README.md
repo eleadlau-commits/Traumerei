@@ -26,5 +26,5 @@ It sends `search:found` when a find is opened, with `{ id, kind, text, room, roo
 world's `search` gives it (`kind` is `'room'`, `'group'` or a thought's kind; `room` is the room
 it is in). It has no slots.
 
-**The code.** `Search.js` is all of it; the matching is the world's `search` (through the world
-service's `lib`). `style.css` holds its look (classes start with `search-`).
+**The code.** `Search.js` is all of it; the matching is the world's `search` (`t.model.search`,
+through the plugin API: Search is a plugin). `style.css` holds its look (classes start with `search-`).

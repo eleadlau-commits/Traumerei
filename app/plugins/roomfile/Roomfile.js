@@ -1,9 +1,9 @@
 // Room files: a room in and out as one .traum file (traum.js; FORMAT.md is the spec). A file comes
 // in as a new room or into a room; before anything changes, a quiet card says what will arrive and
 // what couldn't be read, and Import brings it all in as one step. A room goes out as a download.
-// The rooms page and the room ask for all of it through the `roomfile` service below (README.md
-// lists it), and say where: which cell and floor, which room, where in it.
-// The world is the world feature's.
+// It is a file format (the plugin API's formats place): the rooms page and the room ask for it
+// through the world's formats, and say where: which cell and floor, which room, where in it.
+// It reaches the world through the plugin API.
 
 import { Feature, ui } from 'folio';
 import { bind, room, shut, keepOrShrink, groupLabel, isGroup } from './world.js';
@@ -24,12 +24,13 @@ const count = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
 export default class Roomfile extends Feature {
   start() {
-    this.w = this.use('world');
-    bind(this.w.lib);
-    this.source = this.use('source'); // the source editor, for editing as Markdown, or null
-    this.floors = this.use('floors'); // where a new room goes on the rooms page, or null
-    // Room files as a file format (the world's slot world.formats, world/formats.js).
-    this.add('world.formats', {
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Room files needs the plugin API');
+    this.t = t;
+    bind(t);
+    this.source = this.use('source'); // the source editor (the source plugin), for editing as text, or null
+    // Room files as a file format (world/formats.js says its shape).
+    t.formats.add({
       id: 'traum',
       name: 'Room file (.traum)',
       accepts: isRoomFile,
@@ -88,14 +89,14 @@ export default class Roomfile extends Feature {
     const parts = await this.read(file);
     if (!parts || !ok()) return null;
     const opts = () => ({
-      ontologies: this.w.ontologies, now: Date.now(), page,
-      globals: this.w.globals, name: file.name.replace(FILE, '') || 'Untitled',
+      ontologies: this.t.modes.all, now: Date.now(), page,
+      globals: this.t.modes.settings, name: file.name.replace(FILE, '') || 'Untitled',
     });
-    const dry = traum.importRoom(edit.copyWorld(this.w.world), parts, opts());
+    const dry = traum.importRoom(edit.copyWorld(this.t.world), parts, opts());
     if (!await this.ask('Import a room', dry.room?.name || 'A new room', dry) || !ok()) return null;
-    const out = traum.importRoom(this.w.world, parts, opts());
+    const out = traum.importRoom(this.t.world, parts, opts());
     if (!out.room) { this.toast('A room couldn\'t be made.'); return null; }
-    this.floors?.place(out.room.id, cell);
+    this.t.floors.place(out.room.id, cell);
     return out.room;
   }
 
@@ -104,17 +105,17 @@ export default class Roomfile extends Feature {
   // called just before the world changes. Resolves true once they are in the world (the caller
   // saves).
   async importInto(roomId, { file = null, at = () => null, ok = () => true, before = () => {} } = {}) {
-    if (shut(this.w.world, roomId)) { this.toast('This room is locked.'); return false; }
+    if (shut(this.t.world, roomId)) { this.toast('This room is locked.'); return false; }
     file ||= await this.pick();
     if (!file) return false;
     const parts = await this.read(file);
     if (!parts || !ok()) return false;
-    const opts = () => ({ ontologies: this.w.ontologies, now: Date.now(), at: at() });
-    const dry = traum.importInto(edit.copyWorld(this.w.world), roomId, parts, opts());
-    const name = room(this.w.world, roomId)?.name || '';
-    if (!await this.ask('Import into this room', name, dry) || !ok() || shut(this.w.world, roomId)) return false;
+    const opts = () => ({ ontologies: this.t.modes.all, now: Date.now(), at: at() });
+    const dry = traum.importInto(edit.copyWorld(this.t.world), roomId, parts, opts());
+    const name = room(this.t.world, roomId)?.name || '';
+    if (!await this.ask('Import into this room', name, dry) || !ok() || shut(this.t.world, roomId)) return false;
     before();
-    traum.importInto(this.w.world, roomId, parts, opts());
+    traum.importInto(this.t.world, roomId, parts, opts());
     return true;
   }
 
@@ -125,11 +126,11 @@ export default class Roomfile extends Feature {
   // only. before(): called just before the world changes; ok(): whether it is still wanted.
   // Resolves true once Apply has changed the world (the caller saves, as one step).
   async edit(roomId, { scope, groupId = null, before = () => {}, ok = () => true }) {
-    const w = () => this.w.world;
+    const w = () => this.t.world;
     if (!this.source) return false;
     if (!room(w(), roomId) || (scope === 'group' && !isGroup(w().things[groupId]))) return false;
     const pictures = edit.shortPictures();
-    const ontologies = () => this.w.ontologies;
+    const ontologies = () => this.t.modes.all;
     let session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures });
     const title = scope === 'group' ? groupLabel(w(), groupId) || 'Untitled' : room(w(), roomId).name;
     const readOnly = shut(w(), roomId);
@@ -203,9 +204,9 @@ export default class Roomfile extends Feature {
 
   // Downloads a room as <its name>.traum (a locked room too).
   exportRoom(id) {
-    const r = room(this.w.world, id);
+    const r = room(this.t.world, id);
     if (!r) return;
-    const text = traum.exportRoom(this.w.world, id, { ontologies: this.w.ontologies });
+    const text = traum.exportRoom(this.t.world, id, { ontologies: this.t.modes.all });
     const name = traum.fileName(r.name);
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
     const a = el('a', { href: url, download: name, hidden: true });

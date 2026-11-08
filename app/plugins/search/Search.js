@@ -5,7 +5,7 @@
 // It only finds: what a find opens is the room's to do. Opening one sends 'search:found' with
 // { id, kind, text, room, roomName } (as the world's search gives it), and the room feature goes
 // there. Other features open and close the panel through the `search` service (README.md lists
-// it). The world is the world feature's (its service).
+// it). It reaches the world through the plugin API.
 
 import { Feature, ui } from 'folio';
 
@@ -13,7 +13,9 @@ const { el } = ui;
 
 export default class Search extends Feature {
   start() {
-    this.w = this.use('world');
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Search needs the plugin API');
+    this.t = t;
     this.provide('search', {
       open: () => this.open(),      // shows the panel, the field ready for typing
       close: () => this.close(),    // hides it, if it shows
@@ -25,12 +27,12 @@ export default class Search extends Feature {
   }
 
   open() {
-    const { search } = this.w.lib.model;
+    const { search } = this.t.model;
     const field = el('input', { class: 'search-field', placeholder: 'Search every room', 'aria-label': 'Search', autocomplete: 'off', spellcheck: 'false' });
     const list = el('div', { class: 'search-list', role: 'listbox' });
     let found = [], at = 0;
     const show = () => {
-      found = search(this.w.world, field.value);
+      found = search(this.t.world, field.value);
       at = Math.min(at, Math.max(0, found.length - 1));
       list.replaceChildren(...found.map((f, i) => el('button', {
         type: 'button', class: 'pick search-item' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at),

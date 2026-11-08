@@ -7,7 +7,7 @@
     "style.css"
   ],
   "requires": [
-    "world"
+    "api"
   ],
   "plugin": {
     "api": 1,

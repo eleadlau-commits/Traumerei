@@ -14,13 +14,19 @@ export default class Api extends Feature {
     const world = this.use('world');
     const parts = surface(world.lib);
     const app = this.app;
-    const docks = this.use('docks'); // the left and right docks (the docks feature), or null
+    const docks = this.use('docks');   // the left and right docks (the docks feature), or null
+    const keys = this.use('keys');     // the key map (the keys feature), or null
+    const frame = this.use('frame');   // the top bar and status bar (the frame feature), or null
+    const floors = this.use('floors'); // where rooms sit on the rooms page (the floors feature), or null
+    // The rooms page starts after the plugins it shows (it uses Time and Search), so it is
+    // looked up when a plugin first goes somewhere, not here.
+    const service = (name) => app.use(name);
     // What to undo when a plugin is switched off, by plugin: the dock tabs it opened.
     this.leaving = new Map();
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, toast: ui.toast, docks, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, toast: ui.toast, docks, keys, frame, floors, service, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

@@ -13,13 +13,7 @@
     "folder": "plugins",
     "api": 1,
     "service": "traumerei",
-    "exempt": [
-      "home",
-      "roomfile",
-      "search",
-      "source",
-      "time"
-    ]
+    "exempt": []
   },
   "theme": {
     "accent": "#5c5f66",
