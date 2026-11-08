@@ -1,0 +1,21 @@
+{
+  "name": "Pictures",
+  "description": "Pictures in a room: a small copy of the file, kept with the room, and its caption. Add it from Add, Alt+I, or by pasting or dropping a picture.",
+  "version": "1.0.0",
+  "main": "Picture.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "item"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

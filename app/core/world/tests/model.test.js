@@ -66,13 +66,11 @@ test('an empty thought is not kept, and spaces are tidied', () => {
   assert.equal(addThought(w, t.id, '  a   b ').text, 'a b');
 });
 
-test('a passage keeps its lines; a picture needs an image', () => {
+test('a passage keeps its lines', () => {
   const w = emptyWorld();
   const t = startTrain(w, MESSY, 0, 0);
   assert.equal(create(w, t.id, { kind: 'passage', title: ' ', body: '  ' }), null);
   assert.equal(create(w, t.id, { kind: 'passage', title: 'On notes', body: 'one\nline two' }).body, 'one\nline two');
-  assert.equal(create(w, t.id, { kind: 'picture', src: 'javascript:x' }), null);
-  assert.ok(create(w, t.id, { kind: 'picture', src: 'data:image/jpeg;base64,AA', text: 'dusk' }));
 });
 
 test('moving a train takes every thought with it, in order', () => {

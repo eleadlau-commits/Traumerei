@@ -49,7 +49,7 @@ export function surface(lib) {
     maths: pick(lib.maths, ['maths', 'broken'], 'maths'),
     kinds: pick(lib.items, KINDS, 'items'),
     twins: pick(lib.twin, TWINS, 'twin'),
-    pictures: pick(lib.picture, ['keepOrShrink'], 'picture'),
+    pictures: pick(lib.picture, ['shrinkPicture', 'keepOrShrink'], 'picture'),
     layout: pick(lib.pessoa, ['spiralPoint'], 'pessoa'),
     trains: pick(lib.joyce, TRAINS, 'joyce'),
   };

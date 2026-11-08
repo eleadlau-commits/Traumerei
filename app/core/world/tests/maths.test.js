@@ -1,7 +1,9 @@
 // Tests for mathematics in a thought's words (maths.js).
 
 import { test, assert } from 'folio/testing';
-import { split, maths, broken, resize, sizeMarks } from '../maths.js';
+import { split, maths, broken, resize, sizeMarks, loadMaths } from '../maths.js';
+
+await loadMaths(); // KaTeX loads when first needed; these tests need it from the start
 
 const T = (value) => ({ type: 'text', value });
 const I = (value) => ({ type: 'inline', value });

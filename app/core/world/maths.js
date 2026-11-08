@@ -3,15 +3,43 @@
 // changes, so search, peeks and the Timeline still read the source, and writing shows the source.
 //
 // Every item's node() (and a closed group's) draws its words with maths(text), so a new kind of
-// item gets mathematics for free. KaTeX (vendor/, MIT, its fonts inside its CSS) draws them at
-// once, so whatever measures a thought after drawing (Joyce, clear.js) sees its real size.
+// item gets mathematics for free. KaTeX (vendor/, MIT, its fonts inside its CSS) draws them.
+// It is big (about 640 KB), so it loads the first time some words hold mathematics, not when the
+// app starts: until then a formula shows as its source, and once KaTeX is there, whenMathsLoads's
+// listeners run (the world says 'world:maths' and rooms draw again, measuring the real sizes).
 //
 // When does a $ open? As in Pandoc: an opening $ has something other than a space just after it,
 // and the closing $ has something other than a space just before it and no digit just after it
 // (so "$5 and $6" stays words). Inline maths stays on one line; display maths may span lines.
 // A $ that never closes, and an empty $$ $$, stay as words.
 
-import katex from './vendor/katex.js';
+let katex = null;          // KaTeX, once it has loaded
+let loading = null;        // its loading, while it loads
+const waiting = new Set(); // what runs once it has loaded
+
+// Loads KaTeX and its stylesheet, once. Resolves when formulas can be drawn.
+export function loadMaths() {
+  if (katex) return Promise.resolve(katex);
+  loading ||= Promise.all([import('./vendor/katex.js'), import('./vendor/katex-css.js')]).then(([k, css]) => {
+    if (typeof document !== 'undefined' && !document.getElementById('katex-style')) {
+      const style = document.createElement('style');
+      style.id = 'katex-style';
+      style.textContent = css.default;
+      document.head.append(style);
+    }
+    katex = k.default;
+    DRAWN.clear();
+    for (const fn of [...waiting]) { try { fn(); } catch (err) { console.warn('Maths: after loading', err); } }
+    return katex;
+  });
+  return loading;
+}
+
+// Whether KaTeX is there yet.
+export const mathsReady = () => !!katex;
+
+// fn runs once KaTeX has loaded (then formulas draw as mathematics). Returns a function that stops it.
+export function whenMathsLoads(fn) { waiting.add(fn); return () => waiting.delete(fn); }
 
 const SPACE = /\s/;
 const DIGIT = /[0-9]/;
@@ -62,9 +90,11 @@ function closing(s, from, display) {
 
 // The formulas in some words that KaTeX can't draw: [{ tex, display, line }], line counted from 0
 // within the words. (The roomfile feature's Markdown window lists them before anything changes.)
+// Until KaTeX has loaded none is known to be broken: this starts loading it.
 export function broken(text) {
   const s = String(text ?? '');
   if (!s.includes('$')) return [];
+  if (!katex) { loadMaths(); return []; }
   const out = [];
   let from = 0;
   for (const p of split(s)) {
@@ -86,6 +116,13 @@ const DRAWN = new Map();
 const KEEP = 800;
 
 function formula(tex, display) {
+  if (!katex) { // not loaded yet: its source for now, drawn again once it has
+    loadMaths();
+    const node = document.createElement('span');
+    node.className = 'room-maths pending' + (display ? ' display' : '');
+    node.textContent = display ? `$$${tex}$$` : `$${tex}$`;
+    return node;
+  }
   const key = (display ? 'D' : 'I') + tex;
   let html = DRAWN.get(key);
   if (html === undefined) {

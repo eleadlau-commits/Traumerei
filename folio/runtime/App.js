@@ -23,6 +23,7 @@ import { toast } from './ui.js';
 
 const STATUS_WORDS = {
   disabled: 'switched off',
+  safe: 'off in safe mode',
   failed: 'not working',
   skipped: 'not available',
   'not-for-platform': 'not available here',
@@ -64,9 +65,11 @@ export class App {
     }
 
     const disabled = new Set(this.storage.area('folio').get('disabled', []));
+    this.safe = this.safeMode();
     // Load every feature's code at once. A file that fails to load only affects its own feature.
     const modules = await Promise.allSettled(
       this.registry.map((f) => import(new URL(f.path, document.baseURI).href)));
+    this.modules = new Map(this.registry.map((f, i) => [f.id, modules[i]])); // for starting one again later
 
     for (const [i, manifest] of this.registry.entries()) {
       const record = { manifest, status: 'skipped', reason: '', problem: null, instance: null };
@@ -81,6 +84,11 @@ export class App {
         record.status = 'disabled';
         continue;
       }
+      if (this.safe && manifest.plugin) {
+        record.status = 'safe';
+        record.reason = 'Off in safe mode';
+        continue;
+      }
       const missing = (manifest.requires || []).find((id) => this.features.get(id)?.status !== 'active');
       if (missing) {
         const dep = this.features.get(missing);
@@ -90,23 +98,7 @@ export class App {
         continue;
       }
 
-      const loaded = modules[i];
-      if (loaded.status === 'rejected') {
-        this.fail(record, loaded.reason, 'loading its code');
-        continue;
-      }
-      const FeatureClass = loaded.value.default;
-      if (typeof FeatureClass !== 'function' || !(FeatureClass.prototype instanceof Feature)) {
-        this.fail(record, new Error('its main file must export a class that extends Feature'), 'loading its code');
-        continue;
-      }
-      try {
-        record.instance = new FeatureClass(this, manifest);
-        await record.instance.start();
-        record.status = 'active';
-      } catch (err) {
-        this.fail(record, err, 'starting');
-      }
+      await this.run(record, modules[i]);
     }
 
     html.dataset.folioActive = [...this.features.values()].filter((f) => f.status === 'active').map((f) => f.manifest.id).join(',');
@@ -118,8 +110,125 @@ export class App {
     html.dataset.folio = 'ready';
   }
 
+  // Starts one feature from its loaded code. True when it runs.
+  async run(record, loaded) {
+    const { manifest } = record;
+    if (loaded.status === 'rejected') {
+      this.fail(record, loaded.reason, 'loading its code');
+      return false;
+    }
+    const FeatureClass = loaded.value.default;
+    if (typeof FeatureClass !== 'function' || !(FeatureClass.prototype instanceof Feature)) {
+      this.fail(record, new Error('its main file must export a class that extends Feature'), 'loading its code');
+      return false;
+    }
+    try {
+      record.instance = new FeatureClass(this, manifest);
+      record.problem = null;
+      record.reason = '';
+      await record.instance.start();
+      record.status = 'active';
+      return true;
+    } catch (err) {
+      this.fail(record, err, 'starting');
+      return false;
+    }
+  }
+
+  // ---- Switching features on and off while the app runs ----
+
+  // Safe mode: every plugin (a feature with a "plugin" block) stays off for this start, whatever
+  // was chosen. Asked for by ?safe in the address, by "Start in safe mode" (startSafe), or by
+  // holding Shift while the app starts.
+  safeMode() {
+    let asked = false;
+    try { asked = sessionStorage.getItem('folio-safe') === '1'; sessionStorage.removeItem('folio-safe'); } catch { /* private window */ }
+    return asked || new URLSearchParams(location.search).has('safe') || !!window.__folioShift;
+  }
+
+  // Starts again in safe mode, or (safe false) normally.
+  restart(safe = false) {
+    try { if (safe) sessionStorage.setItem('folio-safe', '1'); } catch { /* private window */ }
+    const url = new URL(location.href);
+    url.searchParams.delete('safe');
+    if (url.href !== location.href) location.replace(url.href); else location.reload();
+  }
+
+  // The running features that need `id`, directly or through another, in the order they started.
+  dependents(id) {
+    const out = new Set([id]);
+    for (const [fid, f] of this.features) {
+      if (f.status === 'active' && (f.manifest.requires || []).some((r) => out.has(r))) out.add(fid);
+    }
+    out.delete(id);
+    return [...out];
+  }
+
+  // Switches a running feature off (and every running feature that needs it, last started first),
+  // and remembers it is off. Its data stays. Returns the ids switched off.
+  stopFeature(id) {
+    const record = this.features.get(id);
+    if (!record || record.status !== 'active') return [];
+    const order = [id, ...this.dependents(id)].reverse();
+    for (const fid of order) {
+      const f = this.features.get(fid);
+      try { f.instance?.stop(); } catch (err) { this.report(fid, err, 'stopping'); }
+      for (const fn of (f.instance?.folioStops || []).splice(0)) {
+        try { fn(); } catch (err) { this.report(fid, err, 'stopping'); }
+      }
+      // Off first, so whatever its going sets off (a slot watcher) already sees it is off.
+      if (fid === id) { f.status = 'disabled'; f.reason = ''; } else { f.status = 'skipped'; f.reason = `Needs ${record.manifest.name}, which is switched off`; }
+      this.removeEverythingFrom(fid);
+      f.instance = null;
+      f.problem = null;
+      this.emit('app:stopped', fid);
+    }
+    this.setOff(id, true);
+    this.changedFeatures();
+    return order;
+  }
+
+  // Switches a feature on again while the app runs, then every feature that was waiting for it.
+  // Returns the ids that started; a feature that fails says why (its record's reason).
+  async startFeature(id) {
+    this.setOff(id, false);
+    const started = [];
+    const record = this.features.get(id);
+    if (!record || record.status === 'active') return started;
+    if (record.status === 'disabled' || record.status === 'safe') { record.status = 'skipped'; record.reason = ''; }
+    // Everything not running that could now start, in the order of the registry (which keeps
+    // what a feature requires before it), as long as each is wanted and its needs are running.
+    const off = new Set(this.storage.area('folio').get('disabled', []));
+    for (const manifest of this.registry) {
+      const f = this.features.get(manifest.id);
+      if (!f || f.status === 'active' || f.status === 'not-for-platform') continue;
+      if (manifest.id !== id && (f.status !== 'skipped' || off.has(manifest.id))) continue; // only what was waiting
+      const missing = (manifest.requires || []).find((r) => this.features.get(r)?.status !== 'active');
+      if (missing) {
+        if (manifest.id === id) { const dep = this.features.get(missing); f.reason = `Needs ${dep?.manifest.name || missing}, which is ${STATUS_WORDS[dep?.status] || 'not running'}`; }
+        continue;
+      }
+      if (await this.run(f, this.modules.get(manifest.id))) { started.push(manifest.id); this.emit('app:started', manifest.id); }
+    }
+    this.changedFeatures();
+    return started;
+  }
+
+  setOff(id, off) {
+    const area = this.storage.area('folio');
+    const all = new Set(area.get('disabled', []));
+    if (off) all.add(id); else all.delete(id);
+    area.set('disabled', [...all]);
+  }
+
+  changedFeatures() {
+    document.documentElement.dataset.folioActive = [...this.features.values()].filter((f) => f.status === 'active').map((f) => f.manifest.id).join(',');
+    this.emit('app:features');
+  }
+
   fail(record, err, where) {
     const id = record.manifest.id;
+    for (const fn of (record.instance?.folioStops || []).splice(0)) { try { fn(); } catch { /* it failed already */ } }
     this.removeEverythingFrom(id);
     record.status = 'failed';
     record.reason = err?.message || String(err);

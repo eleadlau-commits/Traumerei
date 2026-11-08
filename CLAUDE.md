@@ -5,6 +5,10 @@ changing. Never commit `standalone/traumerei.html`: an Action rebuilds it after 
 
 ## Core and plugins
 
+**New work is a plugin.** Start it with `python build.py new-plugin <id>` and follow
+`app/plugins/README.md` (Make a plugin). Change core only for what every room needs, or to give
+the plugin API something plugins lack.
+
 Features live in two folders (app.json's `folders`). `app/core/` holds what every room needs
 (world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds everything that can be
 switched off without breaking the app; each plugin's `feature.json` has a `plugin` block (the plugin
