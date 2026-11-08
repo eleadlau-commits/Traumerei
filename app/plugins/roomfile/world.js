@@ -6,7 +6,7 @@
 
 export let
   room, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
-  seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, keepOrShrink, remove, groupsOf, setOrder, join,
+  seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, kindFor, keepOrShrink, remove, groupsOf, setOrder, join,
   within, chapterName, broken, isTwin, addTwin, sides;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
@@ -15,7 +15,7 @@ export function bind(lib) {
     room, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
     seedRoomSettings, setRoomSetting, DEFAULT_MODE, remove, groupsOf, setOrder, join, within,
   } = lib.model);
-  ({ ITEMS } = lib.items);
+  ({ ITEMS, kindFor } = lib.items);
   ({ keepOrShrink } = lib.picture);
   ({ chapterName } = lib.russell);
   ({ broken } = lib.maths);

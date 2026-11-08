@@ -28,12 +28,15 @@ export default class Roomfile extends Feature {
     bind(this.w.lib);
     this.source = this.use('source'); // the source editor, for editing as Markdown, or null
     this.floors = this.use('floors'); // where a new room goes on the rooms page, or null
-    this.provide('roomfile', {
-      isRoomFile,
+    // Room files as a file format (the world's slot world.formats, world/formats.js).
+    this.add('world.formats', {
+      id: 'traum',
+      name: 'Room file (.traum)',
+      accepts: isRoomFile,
       importRoom: (o) => this.importRoom(o),
       importInto: (roomId, o) => this.importInto(roomId, o),
       exportRoom: (id) => this.exportRoom(id),
-      canEdit: !!this.source,
+      canEdit: () => !!this.source,
       editGroup: (roomId, groupId, o) => this.edit(roomId, { scope: 'group', groupId, ...o }),
       editRoom: (roomId, o) => this.edit(roomId, { scope: 'room', ...o }),
       cancel: () => this.card?.close(),

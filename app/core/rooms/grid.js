@@ -139,7 +139,7 @@ export class RoomsGrid {
         // kinds of room, as a left click).
         oncontextmenu: (e) => {
           e.preventDefault(); this.roomSel = this.roomPick = this.floorSel = null;
-          this.making = this.files ? { col, row, import: true } : { col, row }; this.drawRooms();
+          this.making = this.files.any ? { col, row, import: true } : { col, row }; this.drawRooms();
           this.grid.querySelector('.rooms-kinds button')?.focus({ preventScroll: true });
         },
       }));
@@ -675,7 +675,7 @@ export class RoomsGrid {
     p.lock = () => this.lockRooms([r.id]);
     p.archive = r.id !== MESSY && !r.locked ? () => this.archiveRooms([r.id]) : null;
     // Taken out as a .traum file (the roomfile feature); a locked room too.
-    p.export = this.files ? () => this.exportRoomFile(r.id) : null;
+    p.export = this.files.canExport ? () => this.exportRoomFile(r.id) : null;
     p.remove = r.id !== MESSY && !r.locked ? () => {
       remove(this.world, r.id);
       this.roomSel = this.roomPick = null;

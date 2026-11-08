@@ -16,7 +16,7 @@ import {
 } from './traum.js';
 import { write as writeParts } from './grammar.js';
 import {
-  room, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, join, setOrder,
+  room, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, kindFor, join, setOrder,
   groupsOf, remove, setRoomSetting, chapterName, broken, within,
 } from './world.js';
 
@@ -115,7 +115,7 @@ const named = (w, id) => {
   const th = w.things[id];
   if (!th) return 'something';
   if (isGroup(th)) return th.title ? `"${th.title}"` : `an untitled ${th.of === 'russell' ? 'chapter' : 'group'}`;
-  const t = oneLine(ITEMS[kindOf(th)]?.text(th) || '');
+  const t = oneLine(kindFor(kindOf(th)).text(th) || '');
   return `"${t.length > 30 ? t.slice(0, 29) + '…' : t}"`;
 };
 

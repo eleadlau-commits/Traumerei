@@ -41,14 +41,16 @@
 //
 // No screen here, so it can be tested on its own (tests/model.test.js).
 
-import { ITEMS } from './items/index.js';
+import { kindFor } from './items/index.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
-export const LEAVES = Object.keys(ITEMS); // the kinds of item
-export const KINDS = [...LEAVES, 'group', 'room'];
-export const kindOf = (th) => (KINDS.includes(th?.kind) ? th.kind : 'line');
-export const isLeaf = (th) => LEAVES.includes(kindOf(th));
+// A thought's kind: 'group', 'room', or an item's kind. Any item kind counts, even one whose
+// plugin is switched off now (items/index.js: kindFor gives it a stand-in that keeps it as it is);
+// a thought with no kind, or a malformed one, is a line.
+const ITEM_KIND = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+export const kindOf = (th) => (typeof th?.kind === 'string' && ITEM_KIND.test(th.kind) ? th.kind : 'line');
+export const isLeaf = (th) => { const k = kindOf(th); return k !== 'group' && k !== 'room'; };
 export const isItem = isLeaf;
 export const isGroup = (th) => kindOf(th) === 'group';
 
@@ -348,7 +350,7 @@ export function thoughtText(w, th) {
   const kind = kindOf(th);
   if (kind === 'group') return members(w, th.id).map((x) => thoughtText(w, x)).join('\n');
   if (kind === 'room') return th.name || '';
-  return ITEMS[kind].text(th);
+  return kindFor(kind).text(th);
 }
 
 // ---- Making and changing thoughts ----
@@ -382,8 +384,8 @@ function spot(f, out) {
 // A thought's own fields, tidied; null when an item would be empty.
 function tidy(f) {
   const kind = kindOf(f);
-  if (LEAVES.includes(kind)) {
-    const own = ITEMS[kind].tidy(f, { oneLine, lines });
+  if (isLeaf(f)) {
+    const own = kindFor(kind).tidy(f, { oneLine, lines });
     return own ? spot(f, { kind, ...own }) : null;
   }
   if (kind === 'group') {
@@ -420,7 +422,7 @@ export const isTwin = (th) => kindOf(th) === 'room' && th.parent == null && th.s
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
-  if (LEAVES.includes(kind) || kind === 'group') return p != null && kindOf(p) === 'room' && !isTwin(p);
+  if (isLeaf({ kind }) || kind === 'group') return p != null && kindOf(p) === 'room' && !isTwin(p);
   if (kind === 'room') return p == null || isTwin(p);
   return false;
 }

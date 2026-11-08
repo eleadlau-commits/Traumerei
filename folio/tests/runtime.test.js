@@ -41,6 +41,25 @@ test('slot.first skips empty answers and slot.some counts errors as false', () =
   assert.equal(slot.some((i) => i.v() === 'never'), false);
 });
 
+test('a watched slot says when its items change, and a broken watcher is reported', () => {
+  const app = fakeApp();
+  const slot = new Slot(app, 'test');
+  const heard = [];
+  const stop = slot.watch((s) => heard.push(s.items.map((i) => i.id).join(',')));
+  slot.watch(() => { throw new Error('watcher broke'); });
+  const remove = slot.add({ id: 1 }, 'a');
+  slot.add({ id: 2 }, 'b');
+  remove();
+  remove(); // already gone: nothing changes, nobody is told
+  slot.removeOwner('b');
+  slot.removeOwner('nobody');
+  assert.deepEqual(heard, ['1', '1,2', '2', '']);
+  assert.equal(app.problems.length, 4);
+  stop();
+  slot.add({ id: 3 });
+  assert.equal(heard.length, 4);
+});
+
 test('removing a feature removes everything it added', () => {
   const slot = new Slot(fakeApp(), 'test');
   slot.add({ id: 1 }, 'a');

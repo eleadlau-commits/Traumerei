@@ -13,6 +13,11 @@ It fills the rooms feature's `rooms.room` slot with one item:
 | `leave()` | Leaves the open room (its sheet, the search panel and the draft put away) and hides it. Returns the room's id if it showed, else `null`. |
 | `hasDraft(id)` | Whether a thought was left half written in room `id`. |
 
+It defines the slot `room.editor`, for sections plugins add to the Editor of the chosen thing
+(the plugin API's `t.editor`): `{ id, order, when?(x), render(x) → node | null }`, where `x` is
+`{ world, roomId, mode, id, thing, locked, refresh() }`. They show between the content and the
+foot, each in its own box, and a section being typed in is not redrawn under the caret.
+
 It listens to `room:open` `{ id, from, seed }` (from the rooms page: the room, the square's
 rectangle to grow from, and a first key to write) and sends `room:changed` (the room's id) after
 each saved step. It uses the `rooms` service to go back to the rooms page or into another room.

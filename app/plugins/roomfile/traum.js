@@ -17,7 +17,7 @@
 import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow, readLink, writeLink, LINK_ENDS } from './grammar.js';
 import {
   room, view, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, isGroup,
-  addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, join, setOrder, isTwin, addTwin, sides,
+  addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, kindFor, join, setOrder, isTwin, addTwin, sides,
 } from './world.js';
 
 export const FORMAT = 'room/2';
@@ -126,11 +126,11 @@ export function writeObject(w, roomId, th, ids, pictures) {
     lines.push(...(own(w, roomId, KEPT, false).keys?.[th.id] || []));
     return { id, kind: 'group', title: th.title || '', lines };
   }
-  const kind = ITEMS[kindOf(th)];
-  const out = kind?.traum?.write ? kind.traum.write(th) : { body: kind?.text(th) || '' };
+  const kind = kindFor(kindOf(th)); // a kind whose plugin is off is written under its own kind, as it is
+  const out = kind.traum?.write ? kind.traum.write(th) : { body: kind.text(th) || '' };
   let body = String(out.body ?? '');
   if (pictures && th.src && body === th.src) body = pictures.ref(th.src);
-  return { id, kind: kind?.traum ? kindOf(th) : 'line', title: out.title || '', lines: body ? body.split('\n') : [] };
+  return { id, kind: kind.traum ? kindOf(th) : 'line', title: out.title || '', lines: body ? body.split('\n') : [] };
 }
 
 // Ids for a room's things in a file: short numbers in order, skipping any id a kept object uses.

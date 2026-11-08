@@ -32,8 +32,9 @@ list is everything it offers:
 (`{ undone }`, after `undo()`), `world:palette` (the app's colours changed), `world:look`
 (Settings → Rooms' look changed).
 
-**Slot:** `world.ontologies`, for a whole ontology from another feature (shape in
-`ontologies/index.js`).
+**Slots:** `world.ontologies`, for a whole ontology from another feature (shape in
+`ontologies/index.js`), and `world.items`, for a kind of item from a plugin (shape in
+`items/index.js`). `world:kinds` is sent when a kind comes or goes.
 
 A feature can't import this folder's files (Folio's rule), so a feature that uses many of the
 rules binds them once from `lib` into a file of its own that lists what it needs (the room's
@@ -41,8 +42,9 @@ rules binds them once from `lib` into a file of its own that lists what it needs
 
 ## The world
 
-**Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture; each
-kind is one small file in `items/`, so a new kind such as a PDF page is one new file), *groups*
+**Everything is a thought.** `model.js` has three sorts: *items* (line, passage, picture built in,
+each one small file in `items/`; a plugin adds more through `world.items`, and a thought of a kind
+whose plugin is switched off is kept exactly as it is, shown as a quiet stand-in: `items/missing.js`), *groups*
 and *rooms*. Items and groups sit in a room. A group belongs to the ontology that made it (Joyce
 makes trains) and lists what it holds: items, and other groups (a train of trains; never itself
 or a group holding it). One item can be in groups of several ontologies. `itemsIn` gives every item

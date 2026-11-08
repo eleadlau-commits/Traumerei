@@ -13,6 +13,7 @@ export default class Haiku extends Feature {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Needs the plugin API');
     t.modes.add({ id: 'haiku', name: 'Haiku', note: 'three lines at a time', /* … */ });
+    t.commands.add({ id: 'haiku.count', keys: ['Ctrl+Alt+H'], words: 'Count the syllables', zone: 'room', run: () => t.toast('5 · 7 · 5') });
   }
 }
 ```
@@ -70,9 +71,19 @@ plugin adds is taken away when it is switched off.
 | Place | A plugin adds | Its shape |
 |---|---|---|
 | `modes` | a way of seeing a room | `app/core/world/ontologies/index.js` |
-| `keys` | a key and what it does | `app/core/keys/README.md` |
+| `items` | a kind of item (a thought that isn't plain words: a PDF page, a sketch) | `app/core/world/items/index.js`. A thought of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. |
+| `commands` | a named action, with its keys if it has any (the ? list, and later a command list, read them all from here) | `{ id, keys?, words, zone, order, when?(), run?(e) }`: `app/core/keys/README.md` |
 | `more` | an entry under ⋯ More | `{ id, label, icon, order, run(), on?(), visible?(), title?() }` |
+| `editor` | a section in the Editor for the chosen thing | `{ id, order, when?(x), render(x) → node \| null }`, x: `{ world, roomId, mode, id, thing, locked, refresh() }`: `app/core/room/README.md` |
+| `formats` | a file format: rooms in and out, and edited as text | `{ id, name, accepts(file), importRoom?, importInto?, exportRoom?, canEdit?, editRoom?, editGroup?, cancel? }`: `app/core/world/formats.js` |
 | Folio's `settings` slot | a section on the Settings page | `this.add('settings', { id, title, order, render() })` |
+
+## Docks
+
+`docks` is `{ left, right }`, or `null` when the app has no docks. Each dock has `open({ key, tab,
+kind, title, label, body, beforeClose, onClose })` (resolves with a handle, or `null`), `close(key,
+force)`, `show(key)`, `isOpen(key)` and `isShowing(key)`, as in `app/core/docks/README.md`. Every
+tab a plugin opens is closed when it is switched off.
 
 ## Events a plugin may listen to
 

@@ -12,6 +12,24 @@ export class Slot {
     this.owner = null; // the feature that defined this slot, or 'folio' for the framework's own
     this.description = '';
     this.entries = []; // [{ item, owner }]
+    this.watchers = new Set();
+  }
+
+  // Calls fn(slot) after the slot's items change (an item added or removed, or a feature's
+  // items taken away when it stops). Returns a function that stops watching.
+  watch(fn) {
+    this.watchers.add(fn);
+    return () => this.watchers.delete(fn);
+  }
+
+  changed() {
+    for (const fn of [...this.watchers]) {
+      try {
+        fn(this);
+      } catch (err) {
+        this.app.report(this.owner, err, `watching "${this.name}"`);
+      }
+    }
   }
 
   // Adds an item. Items are kept in ascending `order` (default 50), then in the order added.
@@ -19,15 +37,20 @@ export class Slot {
   add(item, owner = null) {
     this.entries.push({ item, owner });
     this.entries.sort((a, b) => (a.item.order ?? 50) - (b.item.order ?? 50));
+    this.changed();
     return () => this.remove(item);
   }
 
   remove(item) {
+    const before = this.entries.length;
     this.entries = this.entries.filter((e) => e.item !== item);
+    if (this.entries.length !== before) this.changed();
   }
 
   removeOwner(owner) {
+    const before = this.entries.length;
     this.entries = this.entries.filter((e) => e.owner !== owner);
+    if (this.entries.length !== before) this.changed();
   }
 
   get items() {

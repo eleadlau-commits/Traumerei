@@ -63,7 +63,8 @@ export default class Room extends Feature {
     this.picker = ui.filePicker('image/*');
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
-    this.files = this.use('roomfile');    // a room in and out as a .traum file (the roomfile feature), or null
+    this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
+    this.files = this.w.formats;          // rooms in and out as files: the formats plugins add (Room files' .traum)
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
@@ -97,12 +98,11 @@ export default class Room extends Feature {
           on: () => this.editorShowing(), icon: '<rect x="4" y="5" width="16" height="14"/><path d="M14 5v14"/>',
           title: () => 'Show or hide the Editor: what is chosen, or this room\'s settings' });
       }
-      if (this.files) {
-        this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: live, run: () => this.exportRoomFile(),
-          icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a .traum file' });
-        this.add('rail.more', { id: 'room-text', label: 'Edit as text', order: 21, icon: 'note', run: () => this.editAsMarkdown(),
-          visible: () => live() && !!this.files.canEdit, title: () => 'Edit this room as text, in the right dock' });
-      }
+      // Export and Edit as text show while a file format plugin can (Room files).
+      this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: () => live() && this.files.canExport, run: () => this.exportRoomFile(),
+        icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a .traum file' });
+      this.add('rail.more', { id: 'room-text', label: 'Edit as text', order: 21, icon: 'note', run: () => this.editAsMarkdown(),
+        visible: () => live() && this.files.canEdit, title: () => 'Edit this room as text, in the right dock' });
       if (this.keyMap) {
         this.add('rail.more', { id: 'room-keys', label: 'Keys', order: 30, icon: 'help', visible: live, run: () => this.showKeys(),
           title: () => 'Every key · ?' });
@@ -112,6 +112,7 @@ export default class Room extends Feature {
     this.on('frame:rail', () => { if (this.roomId) this.place(); });    // the canvas starts beside the rail
     this.on('world:palette', () => this.repaint()); // the app's colours changed (Settings → Colour)
     this.on('world:look', () => this.repaint());    // Settings → Rooms changed
+    this.on('world:kinds', () => { if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone
       this.sel = null;
@@ -335,7 +336,7 @@ export default class Room extends Feature {
           this.addItem('Thought', 'Just type', () => this.beginWriting()),
           this.addItem('Passage', 'Alt+P', () => this.openSheet('passage')),
           this.addItem('Picture', 'Alt+I, or paste', () => this.choosePicture()),
-          ...(this.files ? [el('div', { class: 'pick-rule' }),
+          ...(this.files.any ? [el('div', { class: 'pick-rule' }),
             this.addItem('Import into this room…', 'or drop a .traum or .md file', () => this.importIntoRoom(), false)] : []))),
       this.trayEl,
       this.bar,
@@ -402,7 +403,7 @@ export default class Room extends Feature {
 
   // A room file (.traum, or plain .md) dropped on a room: its groups and thoughts join it.
   listenForFiles() {
-    const files = (e) => !!this.files && [...(e.dataTransfer?.types || [])].includes('Files');
+    const files = (e) => this.files.any && [...(e.dataTransfer?.types || [])].includes('Files');
     this.root.addEventListener('dragover', (e) => { if (files(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
     this.root.addEventListener('drop', (e) => {
       if (!files(e)) return;
@@ -415,7 +416,7 @@ export default class Room extends Feature {
 
   // In a room: the file's groups and thoughts join it, as its own mode sees them.
   async importIntoRoom(file = null) {
-    if (!this.roomId || !this.files) return;
+    if (!this.roomId || !this.files.any) return;
     const roomId = this.roomId;
     const done = await this.files.importInto(roomId, {
       file, at: () => this.freeSpot(), ok: () => this.roomId === roomId, before: () => { if (this.draft) this.commit(); } });
@@ -427,12 +428,12 @@ export default class Room extends Feature {
   }
 
   // Downloads a room as <its name>.traum (a locked room too).
-  exportRoomFile(id = this.roomId) { this.files?.exportRoom(id); }
+  exportRoomFile(id = this.roomId) { this.files.exportRoom(id); }
 
   // A group (or, with none, the whole room) as .traum text in the source editor, in the side
   // panel; Apply puts it back as one step (read only in a locked room).
   async editAsMarkdown(groupId = null) {
-    if (!this.roomId || !this.files?.canEdit) return;
+    if (!this.roomId || !this.files.canEdit) return;
     const roomId = this.roomId;
     const o = { ok: () => this.roomId === roomId, before: () => { if (this.draft) this.commit(); } };
     this.barFor = null; // the properties pop-up gives way to the panel
