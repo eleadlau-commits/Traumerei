@@ -55,3 +55,10 @@ step, and an Editor line) that compiled first time. It logged one defect, no who
 in the guide (it read the one `new-plugin` made), and a few guesses: the unit of times, what
 `changed` gives for a mark never edited, where `ui.el` comes from, whether `order` is needed. All
 are now said in the two docs.
+
+
+**Phase 9.** Provoke (`app/plugins/provoke/`), the reader the corpus prepared for, is held to the
+same suite (it is in `CORPUS` in `corpus.test.js`) and has its own gate, `tests/provoke.test.js`.
+It needed nothing new from v2. Writing that gate found a fault in the test host: it kept the
+tables it had last written down by reference, so the log heard no moment in any corpus test; it
+now keeps a copy, as `World.js` does.
