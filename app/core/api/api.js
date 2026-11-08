@@ -45,6 +45,7 @@ export function surface(lib) {
 // The places to plug in that core features own, by the name a plugin uses → their slot.
 export const PLACES = {
   modes: 'world.ontologies', // a way of seeing a room (world/ontologies/index.js says its shape)
+  items: 'world.items',      // a kind of item: a passage, a picture, a PDF page (world/items/index.js)
   keys: 'keys',              // a key and what it does (keys/README.md)
   more: 'rail.more',         // an entry under ⋯ More (frame/README.md)
 };

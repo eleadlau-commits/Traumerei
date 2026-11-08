@@ -70,6 +70,7 @@ plugin adds is taken away when it is switched off.
 | Place | A plugin adds | Its shape |
 |---|---|---|
 | `modes` | a way of seeing a room | `app/core/world/ontologies/index.js` |
+| `items` | a kind of item (a thought that isn't plain words: a PDF page, a sketch) | `app/core/world/items/index.js`. A thought of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. |
 | `keys` | a key and what it does | `app/core/keys/README.md` |
 | `more` | an entry under ⋯ More | `{ id, label, icon, order, run(), on?(), visible?(), title?() }` |
 | Folio's `settings` slot | a section on the Settings page | `this.add('settings', { id, title, order, render() })` |

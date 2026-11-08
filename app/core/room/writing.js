@@ -4,7 +4,7 @@
 
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
-  groupOf, thoughtText, trainThoughts, ITEMS, maths, resize,
+  groupOf, thoughtText, trainThoughts, kindFor, maths, resize,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -21,7 +21,7 @@ export class Writing {
         th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
         body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
     }
-    return (ITEMS[kind] || ITEMS.line).node(th, el);
+    return kindFor(kind).node(th, el); // a kind whose plugin is off shows as a quiet stand-in
   }
 
   draftNode() {

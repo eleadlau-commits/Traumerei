@@ -8,7 +8,7 @@ import { API_VERSION, surface, connect, PLACES } from '../api.js';
 
 // Version 1, as API.md lists it. Changing the API means changing this and API.md together.
 const V1 = {
-  top: ['app', 'arrows', 'data', 'groups', 'keys', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'version', 'world'],
+  top: ['app', 'arrows', 'data', 'groups', 'items', 'keys', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'version', 'world'],
   model: ['create', 'groupOf', 'groupsIn', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'members', 'own', 'roomItems', 'roomSetting', 'setRoomSetting', 'shut', 'thoughtText', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
   relations: ['arrowsOf', 'cleanRelationList', 'listText', 'relationEnds', 'relationEntry'],
@@ -41,7 +41,7 @@ test('version 1 is exactly the written list', () => {
   assert.equal(API_VERSION, 1);
   assert.deepEqual(Object.keys(t).sort(), V1.top);
   for (const part of Object.keys(V1).filter((k) => k !== 'top')) assert.deepEqual(Object.keys(t[part]).sort(), V1[part], part);
-  assert.deepEqual(Object.keys(PLACES).sort(), ['keys', 'modes', 'more']);
+  assert.deepEqual(Object.keys(PLACES).sort(), ['items', 'keys', 'modes', 'more']);
 });
 
 test('every name is the world\'s own, and the API can\'t be changed by a plugin', () => {
@@ -66,9 +66,11 @@ test('what a plugin adds is its own, and can be taken away', () => {
   const remove = t.modes.add({ id: 'haiku' });
   t.keys.add({ id: 'haiku.go', keys: ['Ctrl+Alt+H'] });
   t.more.add({ id: 'haiku-more' });
+  t.items.add({ kind: 'haiku' });
   assert.deepEqual(app.slot('world.ontologies').items.map((e) => e.owner), ['haiku']);
   assert.equal(app.slot('keys').items[0].owner, 'haiku');
   assert.equal(app.slot('rail.more').items[0].owner, 'haiku');
+  assert.equal(app.slot('world.items').items[0].owner, 'haiku');
   remove();
   assert.equal(app.slot('world.ontologies').items.length, 0);
 });

@@ -4,7 +4,7 @@
 
 import {
   room, name, view, create, update, remove, closeGroup, openGroup, kindOf, groupOf, isGroup,
-  thoughtText, trainThoughts, isBig, shrinkPicture, ITEMS, placeName, moveTargets, wait, moveLoose,
+  thoughtText, trainThoughts, isBig, shrinkPicture, kindFor, placeName, moveTargets, wait, moveLoose,
 } from './world.js';
 import { el, enterKeeps } from './shared.js';
 import { openEditor } from './editor.js';
@@ -57,7 +57,7 @@ export class Bars {
     this.drawHistorySoon();
   }
 
-  kindName(th) { return ITEMS[kindOf(th)]?.name || 'Thought'; }
+  kindName(th) { return kindFor(kindOf(th)).name; }
 
   // The rows of a thing's properties: its words (a passage's title and body, a picture's caption, a
   // group's name), the ontology's own rows and moves, Move to and Delete. inPanel: for the
@@ -78,7 +78,7 @@ export class Bars {
     const done = () => { this.save(); this.drawWorld(); };
     const rows = [];
     const gname = kind === 'group' ? this.groupName(th) : 'Train';
-    const title = kind === 'group' ? (th.closed ? `A closed ${gname.toLowerCase()}` : gname) : (ITEMS[kind]?.name || 'Thought');
+    const title = kind === 'group' ? (th.closed ? `A closed ${gname.toLowerCase()}` : gname) : kindFor(kind).name;
     if (!inPanel) rows.push(el('div', { class: 'label' }, title));
     if (kind === 'line') {
       // Enter keeps it; Ctrl+Enter (or Cmd+Enter) starts a new line inside the thought.
