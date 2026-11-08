@@ -62,7 +62,7 @@ names the phase that brings it, and the read is empty. A refusal is never a step
 | `links` | `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `kinds()` | `link(from, to, kind, label?)` · `unlink(id)` · `order(group, ids)` | `on(change)` |
 | `distance` | `of(context)` (a reader, or `null`) | `declare(context, reader)` | `on(change)` |
 | `gaps` | `of(mark)` · `opened(context?)` · `oldest(context?)` · `progress(group)` | `open(mark, direction)` · `resolve(mark, by?)` · `reopen(mark)` | `on(change)` |
-| `moments` | `of(mark)` · `changed(mark)` (when last written) · `since(time)` · `day(date)` · `at(time)` (the marks as they were then) · `first()` · `kept()` (days of history kept) · `ahead(context?)` (due and return moments to come) | `keep(days)` (0: forever) · `due(mark, time)` · `revisit(mark, time)` · `note(mark, text)` | `on(change)` |
+| `moments` | `of(mark)` · `changed(mark)` (when last written) · `since(time)` · `day(date)` · `at(time)` (the marks as they were then) · `first()` · `kept()` (days of history kept) · `ahead(context?)` (due and return moments to come) · `seq()` · `outbox(seq)` (the rows since a seq as another copy of the world can take them; `null` for the whole world) | `keep(days)` (0: forever) · `absorb(rows)` (rows from another copy; the latest word on a thing wins) · `due(mark, time)` · `revisit(mark, time)` · `note(mark, text)` | `on(change)` |
 
 Two names differ from the plan's table so that a read and a propose never share one word:
 the open gaps are `gaps.opened(context?)` (the propose is `gaps.open(mark, direction)`), and the

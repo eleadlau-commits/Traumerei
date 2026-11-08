@@ -94,6 +94,11 @@ export default class World extends Feature {
       first: () => M.first(w.log),                                // the first time the log knows of
       get keep() { return w.log.keep; },                          // days of history kept (0: forever)
       setKeep: (days) => { w.log.keep = days; M.compact(w.log, Date.now()); w.storage.set(LOG, w.log); },
+      // For a carrier (the account's sync): the rows since a seq as another copy can take them
+      // (null: the whole world, as made now), and rows from another copy taken in (the latest
+      // word on a thing wins; written down at once).
+      outbox: (seq) => (seq == null ? M.whole(M.stateOf(w.world), Date.now()) : M.outbox(w.log, seq)),
+      absorb: (rows) => w.absorb(rows),
     });
   }
 
@@ -167,6 +172,19 @@ export default class World extends Feature {
     this.land([...rows, this.log.rows[this.log.rows.length - 1]], back);
     this.emit('world:changed', { undone: back });
     return true;
+  }
+
+  // Rows from another copy of the world land here (moments.js absorb); the world is written down.
+  // Returns the rows that landed.
+  absorb(rows) {
+    const state = M.stateOf(this.world);
+    const landed = M.absorb(this.log, state, rows);
+    if (!landed.length) return landed;
+    this.world.pages = state.pages;
+    this.lastSnap = this.snap();
+    this.last = JSON.parse(this.lastSnap);
+    this.write();
+    return this.land(landed);
   }
 
   // Going into a room is a moment; the attention log ({ [roomId]: [times] }) is read off the log.

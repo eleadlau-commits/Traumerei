@@ -43,6 +43,7 @@ const canon = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.k
 export const same = (a, b) => canon(a) === canon(b);
 export const dayOf = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const keyOf = (r) => (r.mark != null ? `m:${r.mark}` : `c:${r.context}`);
+const inverse = (kind) => (kind === 'made' ? 'removed' : kind === 'removed' ? 'made' : kind);
 
 // A new log, building on `state` (the world as it is when the log begins) or on nothing.
 export const emptyLog = (now = Date.now(), state = null) => ({ v: VERSION, seq: 0, base: state ? { time: now, state: clone(state) } : null, rows: [], undo: [], redo: [], keep: 365, made: now });
@@ -202,13 +203,58 @@ export function changedOn(log, date) {
 // The first time the log knows of, or null for an empty log.
 export const first = (log) => log.base?.time ?? log.rows[0]?.time ?? null;
 
+// ---- Carrying rows to another copy of the world (the account's sync) ----
+
+// The rows since `seq`, as another copy can take them: change rows and visits, with an undo or
+// redo of a step turned into the plain changes it made (the other copy has its own undo).
+export function outbox(log, seq) {
+  const steps = new Map();
+  for (const r of log.rows) if (r.step != null && CHANGES.includes(r.kind)) (steps.get(r.step) || steps.set(r.step, []).get(r.step)).push(r);
+  const out = [];
+  for (const r of log.rows) {
+    if (r.seq <= seq) continue;
+    if (CHANGES.includes(r.kind) || r.kind === 'visited') { out.push(clone(r)); continue; }
+    const back = r.kind === 'undone';
+    for (const s of steps.get(r.step) || []) {
+      out.push({ seq: r.seq, time: r.time, kind: back ? inverse(s.kind) : s.kind, table: s.table, ...(s.mark != null ? { mark: s.mark } : { context: s.context }),
+        before: clone(back ? s.after : s.before) ?? null, after: clone(back ? s.before : s.after) ?? null });
+    }
+  }
+  return out;
+}
+
+// The whole of a state as rows another copy can take: everything made at `at`.
+export const whole = (state, at) => diff({ things: {}, own: {}, pages: 1 }, state).map((r, i) => ({ ...r, seq: i + 1, time: at }));
+
+// Takes rows from another copy into this log and `state`, in their order: each change lands as
+// a row of its own (with this copy's `before`; no step, so it is not this copy's to undo), each
+// visit as a visit. On each thing the latest word wins, by time, so a row seen before, or older
+// than what this copy did since, changes nothing. Returns the rows that landed.
+export function absorb(log, state, rows) {
+  const last = new Map();
+  for (const r of log.rows) if (r.kind !== 'visited' && r.kind !== 'undone' && r.kind !== 'redone') last.set(keyOf(r), Math.max(r.time, last.get(keyOf(r)) || 0));
+  const landed = [];
+  for (const r of rows) {
+    if (r.kind === 'visited') { const v = visit(log, r.context, r.time); if (v) landed.push(v); continue; }
+    if (!CHANGES.includes(r.kind) || !Number.isFinite(r.time)) continue;
+    const key = keyOf(r);
+    if (r.time <= (last.get(key) || 0)) continue;
+    last.set(key, r.time);
+    const before = r.mark != null ? state.things[r.mark] : r.kind === 'floors' ? state.pages : state.own[r.context];
+    if (same(before, r.after)) continue;
+    set(state, r, r.after);
+    const row = { kind: r.kind, table: r.table, ...(r.mark != null ? { mark: r.mark } : { context: r.context }), before: clone(before) ?? null, after: clone(r.after) ?? null, from: 'account' };
+    landed.push(push(log, row, r.time));
+  }
+  return landed;
+}
+
 // ---- Compaction ----
 
 // The kind a squashed row has for a thing, given how its day began and ended: made if it was
 // made that day, else the weightiest of the day's kinds (an edit outweighs a move).
 const RANK = { edited: 3, linked: 2, moved: 1, arranged: 1, floors: 1 };
 const squashKind = (madeToday, best, after) => (after == null ? 'removed' : madeToday ? 'made' : best);
-const inverse = (kind) => (kind === 'made' ? 'removed' : kind === 'removed' ? 'made' : kind);
 
 // Tidies the log at `now`: rows older than COMPACT days are squashed to one per thing per day
 // (keeping only `after`), days older than `keep` days (0: never) fold into the base, visits

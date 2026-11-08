@@ -27,7 +27,7 @@ list is everything it offers:
 | `globals`, `setGlobal(of, key, value)`, `resetGlobals()` | The global ontology settings, `{ [ontology]: { key: value } }`: what a new room starts with. Saved as 'ontologies'. |
 | `palette`, `refreshPalette()` | The app's colours (Renderer's `backdrop`, Settings → Colour), or `look.js`'s `PALETTE`. |
 | `attention`, `visit(roomId)` | The attention log `{ [roomId]: [times] }`, read off the moments log's visits (`attention.js` says how it lights a room), and going into a room (a *visited* moment). |
-| `moments` | The moments log read (`moments.js`): `log`, `of(mark)`, `changed(mark)`, `since(time)`, `day(date)`, `changedOn(date)`, `at(time)` (the things, relations and floor count as they were then), `first()`, `keep`, `setKeep(days)`. Saved as 'moments'; every change to the world is a row in it (Law 6 of `../KERNEL.md`), and it is compacted on start. |
+| `moments` | The moments log read (`moments.js`): `log`, `of(mark)`, `changed(mark)`, `since(time)`, `day(date)`, `changedOn(date)`, `at(time)` (the things, relations and floor count as they were then), `first()`, `keep`, `setKeep(days)`; for a carrier, `outbox(seq)` (the rows since a seq, as another copy can take them) and `absorb(rows)` (rows from another copy, the latest word on a thing winning). Saved as 'moments'; every change to the world is a row in it (Law 6 of `../KERNEL.md`), and it is compacted on start. |
 
 **Events:** `world:saved` (the world was written down after a `save()`), `world:changed`
 (`{ undone }`, after `undo()`), `world:moments` (`{ rows, undone }`: rows landed in the log), `world:palette` (the app's colours changed), `world:look`

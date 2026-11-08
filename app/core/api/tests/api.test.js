@@ -17,7 +17,7 @@ const V2 = {
   links: ['from', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'to', 'unlink'],
   distance: ['declare', 'of', 'on'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
-  moments: ['ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'revisit', 'since'],
+  moments: ['absorb', 'ahead', 'at', 'changed', 'day', 'due', 'first', 'keep', 'kept', 'note', 'of', 'on', 'outbox', 'revisit', 'seq', 'since'],
   slots: ['commands', 'editor', 'formats', 'kinds', 'more', 'rules'],
   ui: ['toast'],
 };
@@ -237,7 +237,8 @@ function smallWorld() {
   const log = M.emptyLog(1000, M.stateOf(w));
   M.visit(log, room.id, 9000);
   M.visit(log, room.id, 99000);
-  const moments = { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id), at: (t) => M.stateAt(log, t), first: () => M.first(log), get keep() { return log.keep; }, setKeep: (d) => { log.keep = d; } };
+  const moments = { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id), at: (t) => M.stateAt(log, t), first: () => M.first(log), get keep() { return log.keep; }, setKeep: (d) => { log.keep = d; },
+    outbox: (seq) => (seq == null ? M.whole(M.stateOf(w), 1) : M.outbox(log, seq)), absorb: (list) => M.absorb(log, M.stateOf(w), list) };
   const service = { world: w, lib, saved: 0, save() { this.saved++; return true; }, ontologies: [{ id: 'joyce' }, { id: 'pessoa', lays: true }, { id: 'proust', lays: true }], moments };
   return { w, room, train, a, b, c, loose, locked, service, log };
 }
@@ -381,6 +382,14 @@ test('moments: the log read by mark, since a time and by day; a mark older than 
   assert.equal(k.moments.keep(-1).ok, false);
   assert.ok(k.moments.keep(30).ok);
   assert.equal(k.moments.kept(), 30);
+  // a carrier: the rows since a seq, the whole world, and rows taken in
+  assert.equal(k.moments.seq(), 3);
+  assert.deepEqual(k.moments.outbox(2).map((m) => [m.kind, m.mark]), [['edited', a.id]]);
+  assert.ok(k.moments.outbox(null).length > 5 && k.moments.outbox(null).every((m) => m.kind === 'made' || m.kind === 'arranged'));
+  const taken = k.moments.absorb([{ kind: 'edited', table: 'marks', mark: a.id, time: 6000, after: { ...w.things[a.id], text: 'from afar' } }]);
+  assert.deepEqual(taken, { ok: true, id: 'moments', landed: 1 });
+  assert.equal(k.marks.text(a.id), 'from afar');
+  assert.equal(k.moments.absorb('no').ok, false);
   assert.deepEqual(k.moments.ahead(), []);
   assert.match(k.moments.due(a.id, 10000).reason, /phase 7/);
   assert.match(k.moments.revisit(a.id, 10000).reason, /phase 7/);
