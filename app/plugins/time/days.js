@@ -19,20 +19,22 @@ export function timeline(m, w, roomId, moments = null) {
 }
 
 // The square on the rooms page a thought sits in: its room, or that room's Twin (a side's).
-export function squareOf(w, th) {
-  const r = w.things[th?.parent];
+// up(id): the context a mark is in (its home row in the places table).
+export function squareOf(w, th, up) {
+  const r = w.things[up(th?.id)];
   if (r?.kind !== 'room') return null;
-  const up = w.things[r.parent];
-  return up?.kind === 'room' ? up : r;
+  const t = w.things[up(r.id)];
+  return t?.kind === 'room' ? t : r;
 }
 
 // Every day something was written or written in, newest first: { day, rooms: [{ id, n }] }, the
 // rooms written in most that day first.
 export function days(m, w, moments = null) {
   const by = new Map();
+  const up = (id) => m.parentOf(w, id);
   for (const th of Object.values(w.things)) {
     if (!m.isLeaf(th)) continue;
-    const r = squareOf(w, th);
+    const r = squareOf(w, th, up);
     if (!r) continue;
     const day = dayOf(changed(th, moments));
     if (!by.has(day)) by.set(day, new Map());

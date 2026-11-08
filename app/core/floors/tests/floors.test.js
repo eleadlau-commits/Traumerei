@@ -4,7 +4,7 @@
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
-import { emptyWorld, loadWorld, addRoom, addPage, pageCount, roomAt, lock, archive, restore, MESSY } from '../../world/model.js';
+import { floorOf, archivedAt, emptyWorld, loadWorld, addRoom, addPage, pageCount, roomAt, lock, archive, restore, MESSY } from '../../world/model.js';
 import { PRESETS, preset, place, settle, move, resize, toFloor, outside, spot, removeFloor } from '../rule.js';
 
 bind(lib); // the world's rules, as floors gets them from the world service
@@ -37,7 +37,7 @@ test('a full floor sends a room placed for you onto a new floor, without searchi
   const r = addRoom(w, 'Algebra', 1, { page: 0 });
   const out = place(w, r.id, M);
   assert.deepEqual(out, { page: 2, from: 0, spilled: true });
-  assert.equal(r.page, 2);
+  assert.equal(floorOf(w, r.id), 2);
   assert.deepEqual([r.col, r.row], [0, 0]);
   assert.equal(pageCount(w), 3);
 });
@@ -51,7 +51,7 @@ test('a 2 × 2 room needs a free 2 × 2 block on its floor', () => {
   const big = addRoom(w, 'Big', 1, {});
   big.size = 2;
   assert.ok(place(w, big.id, M).spilled);
-  assert.equal(big.page, 1);
+  assert.equal(floorOf(w, big.id), 1);
 });
 
 test('dragging and resizing stay on the board', () => {
@@ -77,13 +77,13 @@ test('a room dragged onto a full floor stays; onto one with space it goes to the
   const p = addPage(w);
   for (let i = 0; i < 40; i++) made(w, `F${i}`, p);
   assert.equal(toFloor(w, r.id, p, M), 'full');
-  assert.equal(r.page, undefined);
+  assert.equal(floorOf(w, r.id), 0);
   const q = addPage(w);
   assert.equal(toFloor(w, r.id, q, M), true);
-  assert.deepEqual([r.page, r.col, r.row], [q, 0, 0]);
+  assert.deepEqual([floorOf(w, r.id), r.col, r.row], [q, 0, 0]);
   assert.equal(toFloor(w, MESSY, q, M), false);
   assert.equal(toFloor(w, r.id, 0, M, { col: 5, row: 3 }), true); // in the cell asked for
-  assert.deepEqual([r.page, r.col, r.row], [undefined, 5, 3]);
+  assert.deepEqual([floorOf(w, r.id), r.col, r.row], [0, 5, 3]);
 });
 
 test('a room restored from the Archive goes back to its own floor, or a new one', () => {
@@ -154,13 +154,13 @@ test('deleting a floor archives its rooms and moves the floors below up one', ()
   const gone = made(w, 'Gone', 1); archive(w, gone.id);
   const out = removeFloor(w, 1, 5);
   assert.deepEqual(out.archived.map((r) => r.name), ['A']);
-  assert.equal(a.archived, 5);
-  assert.equal(a.page || 0, 0);        // restored, it goes to the floor above
-  assert.equal(gone.page || 0, 0);
-  assert.equal(b.page, 1);
-  assert.equal(c.page, 2);
+  assert.equal(archivedAt(w, a.id), 5);
+  assert.equal(floorOf(w, a.id), 0);        // restored, it goes to the floor above
+  assert.equal(floorOf(w, gone.id), 0);
+  assert.equal(floorOf(w, b.id), 1);
+  assert.equal(floorOf(w, c.id), 2);
   assert.equal(pageCount(w), 3);
-  assert.equal(w.pages, 3);
+  assert.equal(w.things['floor:3'], undefined); // the last floor's mark went
 });
 
 test('Floor 1, a missing floor and a floor with a locked room stay', () => {
@@ -171,7 +171,7 @@ test('Floor 1, a missing floor and a floor with a locked room stay', () => {
   assert.equal(removeFloor(w, 0).error, 'first');
   assert.equal(removeFloor(w, 5).error, 'none');
   assert.equal(removeFloor(w, 1).error, 'locked');
-  assert.equal(r.page, 1);
+  assert.equal(floorOf(w, r.id), 1);
   assert.equal(pageCount(w), 2);
 });
 
@@ -200,7 +200,7 @@ test('Borges: the rooms page ontology, rooms on cells, never a room\'s', async (
   assert.deepEqual([a.col, a.row], [6, 2]);
   assert.equal(o.drop(w, 0, a.id, 8, 0), false);      // off the board
   assert.equal(o.drop(w, 1, a.id, 2, 1), true);       // onto Floor 2
-  assert.deepEqual([a.page, a.col, a.row], [1, 2, 1]);
+  assert.deepEqual([floorOf(w, a.id), a.col, a.row], [1, 2, 1]);
 });
 
 test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and rooms never overlap', async () => {

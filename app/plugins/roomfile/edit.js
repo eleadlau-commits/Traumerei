@@ -16,7 +16,7 @@ import {
 } from './traum.js';
 import { write as writeParts } from './grammar.js';
 import {
-  room, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, kindFor, join, setOrder,
+  room, parentOf, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, kindFor, join, setOrder,
   groupsOf, remove, setRoomSetting, groupLabel, broken, within, leave, replaceIn,
 } from './world.js';
 
@@ -135,7 +135,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
 
   // The thing an id means: one the text makes, or one the session gave.
   const ids = new Map();
-  const existing = (fileId) => { const id = session.back.get(fileId); const th = id && w.things[id]; return th && th.parent === roomId ? id : null; };
+  const existing = (fileId) => { const id = session.back.get(fileId); const th = id && w.things[id]; return th && parentOf(w, th.id) === roomId ? id : null; };
   const fresh = new Set();
   const kept = { objects: [], keys: {} };
   const groups = [];
@@ -226,7 +226,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
   // What was in the text and is gone: deleted (for the whole room, only when asked).
   const inText = new Set(ids.values());
   const was = session.scope || new Set(session.back.values());
-  out.missing = [...was].filter((id) => w.things[id] && !inText.has(id) && w.things[id].parent === roomId);
+  out.missing = [...was].filter((id) => w.things[id] && !inText.has(id) && parentOf(w, id) === roomId);
   if (session.scope || removeMissing) {
     const missing = out.missing.map((id) => w.things[id]);
     for (const g of missing.filter(isGroup)) {

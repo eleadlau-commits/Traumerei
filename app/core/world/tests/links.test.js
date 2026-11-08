@@ -27,7 +27,7 @@ function lawFour(w) {
     assert.ok(L.KINDS.includes(r.kind), `${id}: no such kind`);
     if (r.kind === 'part of') {
       assert.ok(isGroup(w.things[r.to]), `${id}: a part of what is not a group`);
-      assert.equal(w.things[r.from].parent, w.things[r.to].parent, `${id}: a part in another room`);
+      assert.equal(model.parentOf(w, r.from), model.parentOf(w, r.to), `${id}: a part in another room`);
       assert.equal(id, L.partId(r.to, r.from));
       assert.ok(!model.holds(w, r.from, r.to), `${id}: a group holds itself`);
     }
@@ -37,7 +37,7 @@ function lawFour(w) {
     assert.deepEqual([...L.holders(w, th.id)].sort(), scanHolders(w, th.id), `who holds ${th.id}`);
     if (isGroup(th)) assert.deepEqual(memberIds(w, th.id), scanParts(w, th.id), `what ${th.id} holds`);
     if (L.stoodFor(w, th.id)) {
-      assert.ok(!children(w, th.parent).some((c) => c.id === th.id), `${th.id} is folded away yet shown`);
+      assert.ok(!children(w, model.parentOf(w, th.id)).some((c) => c.id === th.id), `${th.id} is folded away yet shown`);
       assert.equal(L.holders(w, th.id).length, 0, `${th.id} is folded away yet in a group`);
     }
   }
@@ -90,9 +90,9 @@ test('Law 4: after a thousand random changes, folds, moves, removals and reorder
     assert.deepEqual(back.links, w.links);
     const c = copyRoom(w, MESSY, 5000);
     lawFour(w);
-    const inRoom = (room) => Object.values(w.links).filter((r) => w.things[r.from].parent === room).length;
+    const inRoom = (room) => Object.values(w.links).filter((r) => model.parentOf(w, r.from) === room).length;
     assert.equal(inRoom(c.id), inRoom(MESSY), 'as many rows in the copy as in the room');
-    assert.ok(!Object.values(w.links).some((r) => w.things[r.from].parent === c.id && w.things[r.to].parent !== c.id), 'no row crosses from the copy');
+    assert.ok(!Object.values(w.links).some((r) => model.parentOf(w, r.from) === c.id && model.parentOf(w, r.to) !== c.id), 'no row crosses from the copy');
   }
   model.declareGroups('sets', {});
 });

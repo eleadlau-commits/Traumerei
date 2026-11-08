@@ -90,7 +90,7 @@ export default class World extends Feature {
       since: (time) => M.since(w.log, time),                      // every row from a time on
       day: (date) => M.day(w.log, date),                          // a day's rows
       changedOn: (date) => M.changedOn(w.log, date),              // marks changed on a day → their context then
-      at: (time) => M.stateAt(w.log, time),                       // { things, own, pages } as they were at a time
+      at: (time) => M.stateAt(w.log, time),                       // { things, links, places, own } as they were at a time
       first: () => M.first(w.log),                                // the first time the log knows of
       get keep() { return w.log.keep; },                          // days of history kept (0: forever)
       setKeep: (days) => { w.log.keep = days; M.compact(w.log, Date.now()); w.storage.set(LOG, w.log); },
@@ -180,7 +180,6 @@ export default class World extends Feature {
     const state = M.stateOf(this.world);
     const landed = M.absorb(this.log, state, rows);
     if (!landed.length) return landed;
-    this.world.pages = state.pages;
     this.lastSnap = this.snap();
     this.last = JSON.parse(this.lastSnap);
     this.write();

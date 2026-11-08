@@ -28,14 +28,13 @@ const rows = (list) => Object.freeze(list.map(row));
 const landed = (id) => row({ ok: true, id });
 const refuse = (reason) => row({ ok: false, reason });
 const later = (what, phase) => refuse(`${what} arrives in kernel phase ${phase}; until then this is a name, not a table`);
-const FLOOR = (n) => `floor:${n || 0}`;
 export const ARCHIVE = 'archive';
 
 // ---- Six tables over the world as it is ----
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
 // screen; the tests call it with the same modules.
 export function kernel({ lib, world, events = null, gone = () => {} }) {
-  const { model, groups, links: LINKS } = lib; // (the links table, world/links.js, reached as the world's rules are)
+  const { model, groups, links: LINKS, places: PLACES_T } = lib; // (the links and places tables, world/links.js and places.js, reached as the world's rules are)
   const netFor = (rule) => lib.relations.netFor(rule);
   const w = () => world.world;
   const rules = () => (world.ontologies?.length ? world.ontologies.map((o) => o.id) : ['joyce', 'pessoa']);
@@ -97,14 +96,16 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   function placesOf(id) {
     const th = thing(id);
     if (!th) return [];
-    const out = [];
+    // The table's own rows (a home row, rule null: the context the mark is in), then where the
+    // rules put it there, read off the rules' data until phase 4 moves those into rows too.
+    const out = PLACES_T.of(w(), id).map((r) => ({ mark: r.mark, context: r.context, rule: r.rule ?? null, position: r.position ?? null, ...(r.pinned ? { pinned: true } : {}) }));
+    const context = PLACES_T.home(w(), id);
+    if (context == null) return out;
     if (kindOf(th) === 'room') {
-      if (th.parent != null) out.push({ mark: id, context: th.parent, rule: 'twin', position: { side: th.side ?? 0 } });
-      else if (th.archived) out.push({ mark: id, context: ARCHIVE, rule: null, position: null });
-      else out.push({ mark: id, context: FLOOR(th.page), rule: 'borges', position: th.col == null ? null : { col: th.col, row: th.row } });
+      if (model.isTwin(thing(context))) out.push({ mark: id, context, rule: 'twin', position: { side: th.side ?? 0 } });
+      else if (context !== ARCHIVE) out.push({ mark: id, context, rule: 'borges', position: th.col == null ? null : { col: th.col, row: th.row } });
       return out;
     }
-    const context = th.parent;
     for (const rule of rules()) {
       if (model.isGroup(th) && th.of === rule) { // its own rule's group: where it was put, unless loose
         if (!th.loose) out.push({ mark: id, context, rule, position: Number.isFinite(th.x) ? { x: th.x, y: th.y } : null });
@@ -120,13 +121,20 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   const places = Object.freeze({
     of: (mark) => rows(placesOf(mark)),
     in: (context, rule = null) => rows(model.children(w(), context).flatMap((th) => placesOf(th.id).filter((p) => p.context === context && (rule == null || p.rule === rule)))),
-    loose: (context) => rows(model.children(w(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context)).map((th) => ({ ...th }))),
+    // Loose in a context: at home there, with no rule placing it (Law 2: never lost, only unplaced).
+    loose: (context) => rows(model.children(w(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context && p.rule != null)).map((th) => ({ ...th }))),
+    home: (mark) => PLACES_T.home(w(), mark),
     position: (mark, context, rule) => placesOf(mark).find((p) => p.context === context && p.rule === rule)?.position ?? null,
     put: (mark, context, rule = null, position = null) => {
       const th = thing(mark);
       if (!th || !thing(context)) return refuse('No such mark or context');
-      if (kindOf(th) === 'room') return refuse('Rooms are placed on floors by the rooms page until phase 3');
-      if (th.parent !== context && !model.move(w(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse('The mark cannot go into that context: one of them is locked, or it would go inside itself');
+      if (kindOf(th) === 'room') { // a room goes to a floor (no cell yet: the rooms page gives it one) or the Archive
+        if (context === ARCHIVE) return land(model.archive(w(), mark), mark, 'Messy thoughts, a locked room, a Twin\'s side or an archived room cannot be archived');
+        if (!model.isFloor(context)) return refuse('A room sits on a floor or in the Archive');
+        if (model.isArchived(w(), mark)) model.restore(w(), mark);
+        return land(model.toPage(w(), mark, +context.slice(6)), mark, 'The room cannot go to that floor');
+      }
+      if (PLACES_T.home(w(), mark) !== context && !model.move(w(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse('The mark cannot go into that context: one of them is locked, or it would go inside itself');
       if (rule && position && Number.isFinite(position.x)) {
         if (!groups.putAt(w(), context, rule, mark, position.x, position.y)) return refuse('The context is locked');
       }
@@ -134,12 +142,12 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     },
     move: (mark, from, to) => {
       const th = thing(mark);
-      if (!th || th.parent !== from) return refuse('The mark is not in that context');
+      if (!th || PLACES_T.home(w(), mark) !== from) return refuse('The mark is not in that context');
       return land(groups.moveLoose(w(), mark, to), mark, 'The mark cannot go to that context: it is locked, missing, or a Twin itself');
     },
     unplace: (mark, context) => {
       const th = thing(mark);
-      if (!th || th.parent !== context) return refuse('The mark is not in that context');
+      if (!th || PLACES_T.home(w(), mark) !== context) return refuse('The mark is not in that context');
       let any = false;
       for (const rule of rules()) any = groups.unplace(w(), context, rule, mark, { lays: lays(rule) }) || any;
       return land(any || groups.wait(w(), context, mark), mark, 'The context is locked');
@@ -156,7 +164,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     const i = model.members(w(), r.to).findIndex((th) => th.id === r.from);
     return { ...r, order: i < 0 ? r.order : i };
   };
-  const roomOf = (id) => { const th = thing(id); return th ? (kindOf(th) === 'room' ? th.id : th.parent) : null; };
+  const roomOf = (id) => { const th = thing(id); return th ? (kindOf(th) === 'room' ? th.id : model.parentOf(w(), id)) : null; };
   const links = Object.freeze({
     get: (id) => { const r = LINKS.get(w(), id); return r ? row(asRead(r)) : null; },
     from: (mark, kind = null) => rows(LINKS.from(w(), mark, kind).map(asRead)),
@@ -236,7 +244,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
   // not know of (older than the history kept) still has its made and edited times. --
   const log = () => world.moments;
-  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  const momentRow = (r) => ({ time: r.time, kind: r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
   function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });
@@ -261,6 +269,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     },
     changed: (mark) => log()?.changed(mark) ?? (thing(mark) ? thing(mark).edited || thing(mark).at : null), // when a mark was last written
     at: (time) => { const s = log()?.at(time); return rows(Object.values((s || w()).things)); }, // the marks as they were then
+    placesAt: (time) => { const s = log()?.at(time); return rows(Object.values((s || w()).places || {})); }, // and where they were
     first: () => log()?.first() ?? null, // the first time the log knows of
     kept: () => log()?.keep ?? 0,        // days of history kept (0: forever)
     keep: (days) => { if (!log()) return later('Keeping history', 1); if (![0, 30, 365].includes(days) && !(Number.isInteger(days) && days > 0)) return refuse('Days kept is a whole number, 0 for forever'); log().setKeep(days); return landed('moments'); },

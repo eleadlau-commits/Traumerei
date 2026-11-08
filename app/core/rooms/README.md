@@ -170,7 +170,7 @@ written there. With nothing in it, the rooms page works on its own.
   choose what they find without opening its properties.
 - On a Mac, Ctrl+click is a right-click; Ctrl+drag still moves the canvas.
 
-In `model.js`: a room's `page` and `archived` (when); `world.pages`. `addRoom` takes the page and
+In `model.js`: a room's floor and the Archive are its home row in the places table (`floorOf`, `archivedAt`); each floor is a mark `floor:<n>`. `addRoom` takes the page and
 the kind; `addPage`, `archive` and `restore` do the rest, and the floors feature gives it a cell. A train sits in any room, a room
 only on the rooms page.
 

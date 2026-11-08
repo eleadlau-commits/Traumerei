@@ -4,14 +4,14 @@
 // its own section of a .traum file itself, through its `traum` member: roomfile names no mode.)
 
 export let
-  room, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
+  room, parentOf, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
   seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, kindFor, keepOrShrink, remove, groupsOf, setOrder, join,
   within, groupLabel, broken, isTwin, addTwin, sides, leave, replaceIn;
 
 // t: the plugin API, or surface(lib) from app/core/api/v1.js in a test.
 export function bind(t) {
   ({
-    room, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
+    room, parentOf, shut, view, create, update, members, groupsIn, roomItems, own, kindOf, isLeaf, isGroup, addRoom,
     seedRoomSettings, setRoomSetting, DEFAULT_MODE, remove, groupsOf, setOrder, join, within, groupLabel, leave, replaceIn,
   } = t.model);
   ({ ITEMS, kindFor } = t.kinds);

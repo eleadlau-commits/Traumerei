@@ -12,15 +12,19 @@
 //            how it shows. Every group can be closed, named, moved and deleted, and is always the
 //            same group, never a copy. loose: made in its ontology's tray, and still there.
 //   room     { name, tint, light, opacity,       a thought that holds items and groups, seen
-//              col, row, size, page,             through an ontology; on the rooms page it is a
-//              desc, tags, locked, archived }    square at (col, row), its shape from size (span()).
-//                                                desc: a line or two about it. tags: words it is
-//                                                sorted by (its ontology is one too: roomTags).
-//                                                locked: nothing in it can change. archived: on
-//                                                the Archive page.
+//              col, row, size,                   through an ontology; on the rooms page it is a
+//              desc, tags, locked }              square at (col, row) of its floor, its shape from
+//                                                size (span()). desc: a line or two about it.
+//                                                tags: words it is sorted by (its ontology is one
+//                                                too: roomTags). locked: nothing in it can change.
+//   context  { name, holds: 'rooms', n? }        a context of the top: a floor of the rooms page
+//                                                (id floor:<n>) or the Archive (id archive).
 //
-// Every thought has { id, kind, parent, at }. An item's and a group's `parent` is its room; a
-// room's is null (the rooms page). An item (or a group) is in a group because a part-of link says
+// Every thought has { id, kind, at }. Where it is, is its home row in the places table
+// (places.js): an item's and a group's home is its room; a room's is a floor, the Archive (the
+// row's position says when it went and the floor it left) or, for a Twin's side, the Twin. A
+// floor and the Archive have none. `parentOf` gives the room a thought is in (null for a room on a
+// floor or in the Archive), `floorOf` a room's floor. An item (or a group) is in a group because a part-of link says
 // so, so one item can be in groups of several ontologies at once. A group never holds itself, nor a
 // group that holds it. Each ontology declares whether an item can be
 // in one of its groups (a train) or in several (later, Perec's sets): see declareGroups.
@@ -33,10 +37,10 @@
 //   v: 3,
 //   things: { [id]: thought },
 //   links:  { [id]: { from, to, kind, … } }         the links table (links.js): part of, stands for, relation
+//   places: { [id]: { mark, context, rule?, position? } }   the places table (places.js): where each thought is
 //   views:  { [room]: { mode, x, y, zoom } }      each room's ontology and where it was looked at
 //   own:    { [room]: { [ontology]: { … } } }     each ontology's own data in a room (own())
 //   settings: { [room]: { [ontology]: { key: value } } }   each room's own ontology settings
-//   pages:  n                                     how many pages the rooms page has (at least 1)
 //   tagGroups: { [tag]: group }                   the group each tag is in (tag in lower case)
 //   tagsMade: [tag], groupsMade: [group]          tags and groups made with + (they show with no rooms)
 // }
@@ -45,6 +49,7 @@
 
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
+import * as P from './places.js';
 
 export const MESSY = 'messy';
 export const DEFAULT_MODE = 'joyce';
@@ -53,7 +58,7 @@ export const DEFAULT_MODE = 'joyce';
 // a thought with no kind, or a malformed one, is a line.
 const ITEM_KIND = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 export const kindOf = (th) => (typeof th?.kind === 'string' && ITEM_KIND.test(th.kind) ? th.kind : 'line');
-export const isLeaf = (th) => { const k = kindOf(th); return k !== 'group' && k !== 'room'; };
+export const isLeaf = (th) => { const k = kindOf(th); return k !== 'group' && k !== 'room' && k !== 'context'; };
 export const isItem = isLeaf;
 export const isGroup = (th) => kindOf(th) === 'group';
 
@@ -78,11 +83,35 @@ export function uid(prefix = 'x') {
   return `${prefix}${Date.now().toString(36)}${counter.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-const messyRoom = (now) => ({ id: MESSY, kind: 'room', parent: null, at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
+const messyRoom = (now) => ({ id: MESSY, kind: 'room', at: now, name: 'Messy thoughts', col: 0, row: 0, size: 2 });
+
+// The contexts of the top: the rooms page's floors and the Archive, marks of kind context.
+export const ARCHIVE = 'archive';
+export const FLOOR = (n) => `floor:${n || 0}`;
+const floorThing = (n, now) => ({ id: FLOOR(n), kind: 'context', at: now, name: `Floor ${n + 1}`, holds: 'rooms', n });
+const archiveThing = (now) => ({ id: ARCHIVE, kind: 'context', at: now, name: 'Archive', holds: 'rooms' });
+export const isContext = (th) => kindOf(th) === 'context';
+export const isFloor = (id) => typeof id === 'string' && /^floor:\d+$/.test(id);
 
 export function emptyWorld(now = Date.now()) {
-  return { v: 3, things: { [MESSY]: messyRoom(now) }, links: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [], pages: 1 };
+  const w = { v: 3, things: { [FLOOR(0)]: floorThing(0, now), [ARCHIVE]: archiveThing(now), [MESSY]: messyRoom(now) }, links: {}, places: {}, views: {}, own: {}, settings: {}, tagGroups: {}, tagsMade: [], groupsMade: [] };
+  P.setHome(w, MESSY, FLOOR(0));
+  return w;
 }
+
+// Where a thought is (places.js): the room it is in, or null (a room on a floor or archived);
+// the context it is in, whatever it is; a room's floor (an archived room's: the one it left).
+export const contextOf = (w, id) => P.home(w, id);
+export const parentOf = (w, id) => { const c = P.home(w, id); return c != null && kindOf(w.things[c]) === 'room' ? c : null; };
+export function floorOf(w, id) {
+  const r = P.homeRow(w, id);
+  if (!r) return 0;
+  if (r.context === ARCHIVE) return r.position?.floor || 0;
+  return isFloor(r.context) ? +r.context.slice(6) : 0;
+}
+// When a room was archived, or null when it is not.
+export const archivedAt = (w, id) => { const r = P.homeRow(w, id); return r?.context === ARCHIVE ? r.position?.at ?? 0 : null; };
+export const isArchived = (w, id) => P.home(w, id) === ARCHIVE;
 
 // A saved world, repaired: the messy room always exists; every room is on the rooms page; an
 // item or group whose room is gone goes to the messy room, and a link whose end is gone goes. A
@@ -91,14 +120,40 @@ export function emptyWorld(now = Date.now()) {
 // table once.)
 export function loadWorld(saved, now = Date.now()) {
   const w = Object.assign(emptyWorld(now), saved && typeof saved === 'object' && saved.v === 3 ? saved : {});
-  for (const key of ['things', 'links', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
+  for (const key of ['things', 'links', 'places', 'views', 'own', 'settings', 'tagGroups']) if (!w[key] || typeof w[key] !== 'object') w[key] = {};
   for (const key of ['tagsMade', 'groupsMade']) w[key] = Array.isArray(w[key]) ? w[key].map(tidyTag).filter(Boolean) : [];
-  w.pages = Math.max(1, Math.floor(+w.pages) || 1);
+  P.touched(w);
+  L.touched(w);
   if (!w.things[MESSY]) w.things[MESSY] = messyRoom(now);
-  for (const th of Object.values(w.things)) {
-    if (kindOf(th) === 'room') { if (!isTwin(w.things[th.parent])) th.parent = null; continue; } // a Twin's side stays in it
-    if (kindOf(w.things[th.parent]) !== 'room') th.parent = MESSY;
+  // A world saved before the places table says where things are on the things themselves
+  // (`parent`, a room's `page` and `archived`): read into home rows once.
+  const legacy = Object.values(w.things).some((th) => th && ('parent' in th || 'page' in th || 'archived' in th));
+  const floors = Math.max(1, Math.floor(+w.pages) || 1, ...Object.values(w.things).map((th) => (kindOf(th) === 'room' && Number.isInteger(th.page) ? th.page + 1 : 1)),
+    ...Object.keys(w.things).filter(isFloor).map((id) => +id.slice(6) + 1));
+  delete w.pages;
+  for (let n = 0; n < floors; n++) if (!isContext(w.things[FLOOR(n)])) w.things[FLOOR(n)] = floorThing(n, now);
+  if (!isContext(w.things[ARCHIVE])) w.things[ARCHIVE] = archiveThing(now);
+  for (const [id, th] of Object.entries(w.things)) if (isContext(th) && id !== ARCHIVE && !isFloor(id)) delete w.things[id]; // no other context of the top
+  if (legacy) {
+    for (const th of Object.values(w.things)) {
+      if (!th || isContext(th)) continue;
+      const parent = th.parent;
+      if (kindOf(th) === 'room') {
+        if (parent != null && isTwin(w.things[parent])) P.setHome(w, th.id, parent);
+        else if (th.archived) P.setHome(w, th.id, ARCHIVE, { at: Number.isFinite(th.archived) ? th.archived : 0, floor: th.page || 0 });
+        else P.setHome(w, th.id, FLOOR(th.page || 0));
+      } else if (parent != null) P.setHome(w, th.id, parent);
+      delete th.parent; delete th.page; delete th.archived;
+    }
   }
+  P.repair(w);
+  for (const th of Object.values(w.things)) { // everything is somewhere (Law 2): a room on a floor, a thought in a room
+    if (!th || isContext(th)) continue;
+    const at = P.home(w, th.id), there = w.things[at];
+    if (kindOf(th) === 'room') { if (!(isContext(there) || (isTwin(there) && !isTwin(th)))) P.setHome(w, th.id, FLOOR(0)); }
+    else if (kindOf(there) !== 'room' || isTwin(there)) P.setHome(w, th.id, MESSY);
+  }
+  if (P.home(w, MESSY) !== FLOOR(0)) P.setHome(w, MESSY, FLOOR(0));
   for (const g of Object.values(w.things)) {
     if (!isGroup(g)) continue;
     if (typeof g.of !== 'string' || !g.of) g.of = DEFAULT_MODE;
@@ -116,11 +171,10 @@ export function loadWorld(saved, now = Date.now()) {
     }
     if (!Object.keys(stores || {}).length) delete w.own[roomId];
   }
-  L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && w.things[r.from].parent === w.things[r.to].parent : true));
+  L.repair(w, (r) => (r.kind === 'part of' ? isGroup(w.things[r.to]) && (isLeaf(w.things[r.from]) || isGroup(w.things[r.from])) && P.home(w, r.from) === P.home(w, r.to) : true));
   for (const g of Object.values(w.things)) if (isGroup(g) && holds(w, g.id, g.id)) for (const r of L.to(w, g.id, 'part of')) if (holds(w, r.from, g.id)) L.drop(w, r.id); // no group holds itself, however deep
   const messy = w.things[MESSY];
   messy.size = 2;
-  delete messy.page;
   if (messy.col == null) { messy.col = 0; messy.row = 0; }
   // Rooms without a cell, or outside the floor size, are placed by the floors feature (floors.settle).
   return w;
@@ -143,34 +197,36 @@ export const span = (r) => SHAPES[shapeOf(r)];
 export const isBig = (th) => kindOf(th) === 'room' && shapeOf(th) === 'all';
 
 // (A thought a fold stands for is folded away: it stays in the world but is nobody's child.)
-export const children = (w, id) => Object.values(w.things).filter((th) => th.parent === id && !L.stoodFor(w, th.id)).sort(byTime);
+// Read off the places table's index, so a room's thoughts cost what the room holds, not the world.
+const marksAt = (w, ids) => { const out = []; for (const m of ids) { const th = w.things[m]; if (th && !L.stoodFor(w, m)) out.push(th); } return out; };
+export const children = (w, id) => (id == null ? [...floorIds(w), ARCHIVE].flatMap((c) => marksAt(w, P.marksIn(w, c))) : marksAt(w, P.marksIn(w, id))).sort(byTime);
 export const foldedAway = (w, id) => L.stoodFor(w, id);
 
 // The rooms at the top (the rooms page, every page), oldest first; archived ones are on the Archive page.
-export const rooms = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && !th.archived);
-// The archived rooms, in the order they were archived (`archived` holds when).
-export const archived = (w) => children(w, null).filter((th) => kindOf(th) === 'room' && th.archived)
-  .sort((a, b) => (+a.archived || 0) - (+b.archived || 0) || a.at - b.at);
+export const rooms = (w) => floorIds(w).flatMap((c) => marksAt(w, P.marksIn(w, c))).filter((th) => kindOf(th) === 'room').sort(byTime);
+// The archived rooms, in the order they were archived (their Archive row says when).
+export const archived = (w) => marksAt(w, P.marksIn(w, ARCHIVE)).filter((th) => kindOf(th) === 'room')
+  .sort((a, b) => archivedAt(w, a.id) - archivedAt(w, b.id) || a.at - b.at);
 // The rooms on one page of the rooms page.
-export const roomsOn = (w, page = 0) => rooms(w).filter((th) => (th.page || 0) === page);
+export const roomsOn = (w, page = 0) => marksAt(w, P.marksIn(w, FLOOR(page))).filter((th) => kindOf(th) === 'room').sort(byTime);
 
 // True if `id` is a locked room, or is somewhere inside one: then nothing about it can change.
 export function shut(w, id) {
-  for (let th = w.things[id]; th; th = w.things[th.parent]) if (kindOf(th) === 'room' && th.locked) return true;
+  for (let th = w.things[id]; th; th = w.things[P.home(w, th.id)]) if (kindOf(th) === 'room' && th.locked) return true;
   return false;
 }
 
 // The room at the top (on the rooms page, or archived) that a thought is in.
 export function topRoom(w, id) {
   let top = null;
-  for (let th = w.things[id]; th; th = w.things[th.parent]) if (kindOf(th) === 'room') top = th;
+  for (let th = w.things[id]; th; th = w.things[P.home(w, th.id)]) if (kindOf(th) === 'room') top = th;
   return top;
 }
 
 // The room a thought is in (itself, if it is a room).
 export function roomOf(w, id) {
   let th = w.things[id];
-  while (th && kindOf(th) !== 'room') th = w.things[th.parent];
+  while (th && kindOf(th) !== 'room') th = w.things[P.home(w, th.id)];
   return th || null;
 }
 
@@ -240,7 +296,7 @@ export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
 // into a group it holds.
 export function join(w, groupId, id) {
   const g = w.things[groupId], th = w.things[id];
-  if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || th.parent !== g.parent || holdsDirectly(w, groupId, id)) return false;
+  if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || P.home(w, id) !== P.home(w, groupId) || holdsDirectly(w, groupId, id)) return false;
   if (id === groupId || holds(w, id, groupId)) return false;
   if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
   // A group that keeps its order takes a newcomer before the first item written after it (so a
@@ -270,7 +326,7 @@ export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
   L.drop(w, L.partId(groupId, id));
-  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); forget(w, groupId); }
+  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
   return true;
 }
 
@@ -423,22 +479,22 @@ function tidy(f) {
   const tags = tidyTags(f.tags);
   if (tags.length) out.tags = tags;
   if (f.locked) out.locked = true;
-  if (f.archived) { out.archived = Number.isFinite(f.archived) ? f.archived : true; delete out.col; delete out.row; }
-  if (Number.isInteger(f.page) && f.page > 0) out.page = f.page;
   if (f.side === 0 || f.side === 1) out.side = f.side; // one side of a Twin (twin.js)
   return out;
 }
 
 // A Twin room (on the rooms page, size 'twin') holds its two sides, each a room of its own with its
 // own mode and thoughts (twin.js); nothing else is ever a room inside a room.
-export const isTwin = (th) => kindOf(th) === 'room' && th.parent == null && th.size === 'twin';
+// (A side is never a Twin's shape itself.)
+export const isTwin = (th) => kindOf(th) === 'room' && th.size === 'twin';
 
-// What can sit inside what: items and groups in rooms, rooms at the top (null), and a Twin's sides.
+// What can sit inside what: items and groups in rooms, rooms on a floor or in the Archive (null:
+// the first floor), and a Twin's sides.
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
   if (isLeaf({ kind }) || kind === 'group') return p != null && kindOf(p) === 'room' && !isTwin(p);
-  if (kind === 'room') return p == null || isTwin(p);
+  if (kind === 'room') return p == null || isContext(p) || isTwin(p);
   return false;
 }
 
@@ -449,10 +505,11 @@ export function create(w, parent, fields, now = Date.now()) {
   if (!th) return null;
   const p = parent == null ? null : w.things[parent];
   const group = isLeaf(th) && isGroup(p) ? p : null;
-  const at = group ? group.parent : parent;
-  if (!canHold(w, at, th.kind) || (at != null && shut(w, at))) return null;
-  Object.assign(th, { id: uid(th.kind[0]), parent: at ?? null, at: now });
+  const into = group ? P.home(w, group.id) : parent;
+  if (!canHold(w, into, th.kind) || (into != null && shut(w, into))) return null;
+  Object.assign(th, { id: uid(th.kind[0]), at: now });
   w.things[th.id] = th;
+  P.setHome(w, th.id, into ?? FLOOR(0));
   if (group) join(w, group.id, th.id);
   return th;
 }
@@ -469,7 +526,7 @@ export function update(w, id, fields, now = Date.now()) {
     if (!next.closed) delete th.closed;
     if (!next.loose) delete th.loose;
   }
-  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'archived', 'page', 'col', 'row']) if (!(k in next)) delete th[k];
+  if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked', 'col', 'row']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   return th;
 }
@@ -486,10 +543,11 @@ export function remove(w, id) {
   const stoodFor = L.from(w, id, 'stands for').map((r) => r.to);
   const holders = groupsOf(w, id);
   L.dropAll(w, id);
-  for (const c of Object.values(w.things).filter((x) => x.parent === id)) remove(w, c.id); // (folded-away ones too)
+  for (const c of P.marksIn(w, id)) remove(w, c); // (folded-away ones too)
+  P.dropMark(w, id);
   for (const m of inside) remove(w, m);
   for (const m of stoodFor) remove(w, m);
-  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); forget(w, g.id); }
+  for (const g of holders) if (w.things[g.id] && !L.parts(w, g.id).length) { delete w.things[g.id]; L.dropAll(w, g.id); P.dropMark(w, g.id); forget(w, g.id); }
   forget(w, id);
   delete w.views[id];
   delete w.own[id];
@@ -499,17 +557,17 @@ export function remove(w, id) {
 
 // True if `id` is `ancestor`, or somewhere inside it.
 export function inside(w, id, ancestor) {
-  for (let th = w.things[id]; th; th = w.things[th.parent]) if (th.id === ancestor) return true;
+  for (let th = w.things[id]; th; th = w.things[P.home(w, th.id)]) if (th.id === ancestor) return true;
   return false;
 }
 
 // An item comes into another room: it leaves its groups in the old one, and what was kept about it
 // there is forgotten.
 function rehome(w, th, to) {
-  const from = th.parent;
-  for (const g of groupsOf(w, th.id)) if (g.parent === from) leave(w, g.id, th.id);
+  const from = P.home(w, th.id);
+  for (const g of groupsOf(w, th.id)) if (P.home(w, g.id) === from) leave(w, g.id, th.id);
   forget(w, th.id, from);
-  th.parent = to;
+  P.setHome(w, th.id, to);
 }
 
 // Moves a thought into `into` (a room, or a group). A group moves to another room with its items;
@@ -518,25 +576,25 @@ function rehome(w, th, to) {
 // itself. `loose`: an item put into a room gets no train (it is loose there: groups.js moveLoose).
 export function move(w, id, into, x = 0, y = 0, { loose = false } = {}) {
   const th = w.things[id], to = w.things[into];
-  if (!th || !to || th.parent === into && !isLeaf(th) || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
+  if (!th || !to || P.home(w, id) === into && !isLeaf(th) || inside(w, into, id) || shut(w, id) || shut(w, into)) return false;
   if (isTwin(to)) return false; // a Twin holds only its two sides: a thought goes to one of them
   if (isGroup(th)) {
     if (kindOf(to) !== 'room') return false;
-    const from = th.parent;
+    const from = P.home(w, id);
     const going = [th, ...within(w, id)];
     const ids = new Set(going.map((m) => m.id));
     for (const m of going) {
-      for (const g of groupsOf(w, m.id)) if (!ids.has(g.id) && g.parent === from) leave(w, g.id, m.id);
+      for (const g of groupsOf(w, m.id)) if (!ids.has(g.id) && P.home(w, g.id) === from) leave(w, g.id, m.id);
       forget(w, m.id, from);
     }
-    for (const m of going) m.parent = into;
-    Object.assign(th, { parent: into, x: Math.round(x), y: Math.round(y) });
+    for (const m of going) P.setHome(w, m.id, into);
+    Object.assign(th, { x: Math.round(x), y: Math.round(y) });
     return true;
   }
   if (!isLeaf(th)) return false; // a room never goes inside anything
   if (isGroup(to)) {
     if (holdsDirectly(w, into, id)) return false;
-    if (th.parent !== to.parent) rehome(w, th, to.parent);
+    if (P.home(w, id) !== P.home(w, into)) rehome(w, th, P.home(w, into));
     return join(w, into, id);
   }
   if (kindOf(to) !== 'room') return false;
@@ -572,8 +630,9 @@ export function openGroup(w, groupId) {
 // A new room on a floor of the rooms page (`where`: { page }), with no cell yet: the floors
 // feature places it (floors.place). `kind`: its ontology ('joyce', 'pessoa', …).
 export function addRoom(w, text = 'Untitled', now, where = {}, kind = DEFAULT_MODE) {
-  const page = where.page || 0;
-  const r = create(w, null, { kind: 'room', name: text, ...(page ? { page } : {}) }, now);
+  const page = Math.max(0, Math.floor(where.page) || 0);
+  while (pageCount(w) <= page) addPage(w, now); // a floor asked for is there
+  const r = create(w, FLOOR(page), { kind: 'room', name: text }, now);
   if (!r) return null;
   if (typeof kind === 'string' && kind) view(w, r.id).mode = kind;
   return r;
@@ -597,8 +656,27 @@ export function roomAt(w, col, row, except = null, page = 0) {
 // ---- Pages ----
 
 // The rooms page's pages: at least one, and enough for every room on them.
-export const pageCount = (w) => Math.max(w.pages || 1, ...rooms(w).map((r) => (r.page || 0) + 1));
-export function addPage(w) { w.pages = pageCount(w) + 1; return w.pages - 1; }
+// Each floor is a mark of kind context, floor:0 … floor:<n-1>, with no gaps.
+export const floorIds = (w) => { const out = []; for (let n = 0; w.things[FLOOR(n)]; n++) out.push(FLOOR(n)); return out; };
+export const pageCount = (w) => Math.max(1, floorIds(w).length);
+export function addPage(w, now = Date.now()) { const n = pageCount(w); w.things[FLOOR(n)] = floorThing(n, now); return n; }
+// The last floor goes (it must hold no rooms). False when it can't.
+export function dropPage(w) {
+  const n = pageCount(w) - 1;
+  if (n < 1 || P.countIn(w, FLOOR(n))) return false;
+  delete w.things[FLOOR(n)];
+  P.dropMark(w, FLOOR(n));
+  return true;
+}
+// A room goes to floor `page` (no cell yet unless it keeps its own). False when it can't.
+// (An archived room keeps the floor it will go back to.)
+export function toPage(w, id, page) {
+  const home = P.homeRow(w, id);
+  if (!room(w, id) || !w.things[FLOOR(page)] || !home || isTwin(w.things[home.context])) return false;
+  if (home.context === ARCHIVE) P.setHomePosition(w, id, { ...home.position, floor: page });
+  else P.setHome(w, id, FLOOR(page));
+  return true;
+}
 export const startTrain = (w, roomId, x, y, now) => create(w, roomId, { kind: 'group', of: 'joyce', x, y }, now);
 export const addThought = (w, trainId, text, now) => create(w, trainId, { kind: 'line', text }, now);
 
@@ -630,7 +708,7 @@ export function search(w, query, most = 30) {
   if (!q) return [];
   const out = [];
   for (const th of Object.values(w.things).sort(byTime).reverse()) {
-    if (L.stoodFor(w, th.id)) continue; // folded away: its fold speaks for it
+    if (L.stoodFor(w, th.id) || isContext(th)) continue; // folded away: its fold speaks for it
     const kind = kindOf(th);
     const text = kind === 'group' ? th.title || '' : kind === 'room' ? th.name || '' : thoughtText(w, th);
     if (!oneLine(text).toLowerCase().includes(q)) continue;
@@ -655,8 +733,8 @@ export function lock(w, id, on = true) {
 // Takes a room off the grid to the Archive page (not Messy thoughts, nor a locked room).
 export function archive(w, id, now = Date.now()) {
   const r = room(w, id);
-  if (!r || id === MESSY || r.locked || r.archived) return false;
-  r.archived = now;
+  if (!r || id === MESSY || r.locked || !isFloor(P.home(w, id))) return false;
+  P.setHome(w, id, ARCHIVE, { at: now, floor: floorOf(w, id) });
   delete r.col;
   delete r.row;
   return true;
@@ -666,8 +744,8 @@ export function archive(w, id, now = Date.now()) {
 // feature places it (floors.place).
 export function restore(w, id) {
   const r = room(w, id);
-  if (!r || !r.archived) return false;
-  delete r.archived;
+  if (!r || !isArchived(w, id)) return false;
+  P.setHome(w, id, FLOOR(Math.min(floorOf(w, id), pageCount(w) - 1)));
   delete r.col;
   delete r.row;
   return true;
@@ -696,22 +774,23 @@ function renamed(v, ids) {
 
 export function copyRoom(w, id, now = Date.now()) {
   const r = room(w, id);
-  if (!r || r.archived) return null;
+  if (!r || isArchived(w, id)) return null;
   // Everything inside it, however deep (a Twin's sides and their thoughts).
   const inner = Object.values(w.things).filter((th) => th.id !== id && topRoom(w, th.id)?.id === id);
   const ids = { [id]: uid('r') };
   for (const th of inner) ids[th.id] = uid(kindOf(th)[0]);
   for (const [lid, row] of Object.entries(L.copyFor(w, ids))) L.set(w, lid, row);
   const fresh = renamed(copy(r), ids);
-  Object.assign(fresh, { id: ids[id], parent: null, at: now, name: `${r.name || 'Untitled'} copy` });
-  for (const k of ['locked', 'archived', 'col', 'row', 'edited']) delete fresh[k];
-  if (id === MESSY) { fresh.size = 2; delete fresh.page; }
+  Object.assign(fresh, { id: ids[id], at: now, name: `${r.name || 'Untitled'} copy` });
+  for (const k of ['locked', 'col', 'row', 'edited']) delete fresh[k];
+  if (id === MESSY) fresh.size = 2;
   w.things[fresh.id] = fresh;
+  P.setHome(w, fresh.id, FLOOR(floorOf(w, id)));
   for (const th of inner) {
     const c = renamed(copy(th), ids);
     c.id = ids[th.id];
-    c.parent = ids[th.parent];
     w.things[c.id] = c;
+    P.setHome(w, c.id, ids[P.home(w, th.id)]);
     for (const store of ['views', 'own', 'settings']) if (w[store]?.[th.id]) w[store][c.id] = renamed(copy(w[store][th.id]), ids); // a side's
   }
   if (w.views[id]) w.views[fresh.id] = copy(w.views[id]);

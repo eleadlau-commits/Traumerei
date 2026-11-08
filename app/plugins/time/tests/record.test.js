@@ -1,5 +1,5 @@
 import { test, assert } from 'folio/testing';
-import { snapshot, pastBoard, earliest, DAY } from '../record.js';
+import { snapshot, homes, pastBoard, earliest, DAY } from '../record.js';
 import { dayOf } from '../days.js';
 
 const t = new Date(2026, 10, 5, 12).getTime(); // 5 Nov, noon
@@ -13,18 +13,23 @@ const things = (extra = {}) => ({
 });
 const m = { isLeaf: (th) => ['line', 'passage', 'picture'].includes(th.kind) };
 
+// The fixtures say where each thing is with `parent` (and a room's `page`), as the place rows
+// would: a home row per thing.
+const placesOf = (set) => Object.values(set).map((th) => ({ mark: th.id, context: th.parent ?? (th.archived ? 'archive' : `floor:${th.page || 0}`) }));
+
 // A stand-in for the API's moments table: the things at each day's end, and when each was written.
 function moments(byDay, written = {}, first = null) {
   const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
   return {
     at: (time) => { let s = {}; for (const d of days) if (d <= time) s = byDay[d]; return Object.values(s); },
+    placesAt: (time) => { let s = {}; for (const d of days) if (d <= time) s = byDay[d]; return placesOf(s); },
     changed: (id) => written[id] ?? null,
     first: () => first,
   };
 }
 
 test('a snapshot holds the squares on the rooms page, not the sides or thoughts', () => {
-  const s = snapshot(things());
+  const s = snapshot(things(), homes(placesOf(things())));
   assert.deepEqual(Object.keys(s).sort(), ['a', 'messy', 'tw']);
   assert.equal(s.a.col, 2);
   assert.equal(s.a.archived, false);

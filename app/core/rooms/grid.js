@@ -3,7 +3,7 @@
 // room. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 
 import {
-  MESSY, DEFAULT_MODE, room, addRoom, name, update, remove, move, fold, roomThoughts,
+  MESSY, DEFAULT_MODE, room, parentOf, floorOf, isArchived, addRoom, name, update, remove, move, fold, roomThoughts,
   search, cells, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
@@ -61,7 +61,7 @@ export class RoomsGrid {
       return out;
     }
     for (const f of search(this.world, query, Infinity)) {
-      for (let th = this.world.things[f.id]; th; th = this.world.things[th.parent]) {
+      for (let th = this.world.things[f.id]; th; th = this.world.things[parentOf(this.world, th.id)]) {
         if (ids.has(th.id)) { out[th.id] = (out[th.id] || 0) + 1; break; }
       }
     }
@@ -867,13 +867,13 @@ export class RoomsGrid {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
       if (!dragging && Math.hypot(dx, dy) < 5) return;
       clearTimeout(hold);
-      if (r.archived || (r.locked && !ev.altKey)) return; // a locked room keeps its place (Alt drags a copy of it); an archived one has none
+      if (isArchived(this.world, r.id) || (r.locked && !ev.altKey)) return; // a locked room keeps its place (Alt drags a copy of it); an archived one has none
       if (!dragging) { dragging = true; tile.classList.add('dragging'); this.grid.classList.add('dragging'); this.roomSel = null; }
       last = ev;
       follow();
       atEdge(ev);
       over = this.dropAt(ev.clientX, ev.clientY);
-      if (over?.page === (r.page || 0)) over = null; // already on that page
+      if (over?.page === floorOf(this.world, r.id)) over = null; // already on that page
       if ((over?.archive || over?.page != null) && r.id === MESSY) over = null; // Messy stays where it is
       lit(over?.el);
       target = over ? null : spot(ev);
@@ -904,7 +904,7 @@ export class RoomsGrid {
         return;
       }
       tile.style.transform = '';
-      if (ev.altKey && !r.archived && !over?.archive) {
+      if (ev.altKey && !isArchived(this.world, r.id) && !over?.archive) {
         this.page = floor;
         this.duplicateRoom(r.id, over?.page != null ? { page: over.page } : { cell: target, page: floor });
         return;
@@ -930,7 +930,7 @@ export class RoomsGrid {
     const ont = this.w.roomsPage;
     if (ont) return ont.drop(this.world, page, id, cell.col, cell.row);
     const r = room(this.world, id);
-    if ((r?.page || 0) !== page) return this.floors.toFloor(id, page, cell) === true;
+    if ((r ? floorOf(this.world, r.id) : 0) !== page) return this.floors.toFloor(id, page, cell) === true;
     return this.floors.move(id, cell.col, cell.row);
   }
 

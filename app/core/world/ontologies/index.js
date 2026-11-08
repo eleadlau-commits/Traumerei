@@ -101,7 +101,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
+import { parentOf, declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
 
@@ -173,7 +173,7 @@ function itemsOf(w, roomId, ids) {
   for (const id of ids) {
     const th = w.things[id];
     if (isGroup(th)) for (const m of itemsIn(w, id)) out.set(m.id, m);
-    else if (isLeaf(th) && th.parent === roomId) out.set(id, th);
+    else if (isLeaf(th) && parentOf(w, th.id) === roomId) out.set(id, th);
   }
   return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
 }
@@ -184,7 +184,7 @@ function unitsOf(w, roomId, ids) {
   const out = new Map();
   for (const id of ids) {
     const th = w.things[id];
-    if ((isGroup(th) || isLeaf(th)) && th.parent === roomId) out.set(id, th);
+    if ((isGroup(th) || isLeaf(th)) && parentOf(w, th.id) === roomId) out.set(id, th);
   }
   for (const id of [...out.keys()]) if ([...out.keys()].some((o) => o !== id && holds(w, o, id))) out.delete(id);
   return [...out.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
@@ -234,7 +234,7 @@ export function ungroupChosen(o, w, roomId, ids, now = Date.now()) {
   let freed = 0;
   for (const id of ids) {
     const g = w.things[id];
-    if (!isGroup(g) || g.of !== o.id || g.parent !== roomId) continue;
+    if (!isGroup(g) || g.of !== o.id || parentOf(w, g.id) !== roomId) continue;
     const inner = members(w, id).filter(isGroup);
     if (!inner.length) continue;
     for (const m of inner) { leave(w, id, m.id); freed++; }
@@ -244,7 +244,7 @@ export function ungroupChosen(o, w, roomId, ids, now = Date.now()) {
   if (o.ungroup) return o.ungroup(w, roomId, items, now) || 0;
   let n = 0;
   for (const th of items) {
-    const gs = groupsOf(w, th.id, o.id).filter((g) => g.parent === roomId);
+    const gs = groupsOf(w, th.id, o.id).filter((g) => parentOf(w, g.id) === roomId);
     for (const g of gs) leave(w, g.id, th.id);
     if (gs.length) n++;
   }

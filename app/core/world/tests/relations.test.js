@@ -1,6 +1,7 @@
 // Tests for relations.js: arrows and their relations, shared by any ontology that joins its groups.
 
 import { test, assert } from 'folio/testing';
+import * as P from '../places.js';
 import { emptyWorld, create, MESSY, groupsIn, members, isGroup, setRoomSetting, own } from '../model.js';
 import * as L from '../links.js';
 import {
@@ -117,7 +118,7 @@ test('a relation may carry its look after a |: its line and its colour; plain on
 test('renaming follows only true renames: a list put in another order renames nothing', () => {
   const w = emptyWorld(1);
   const net = arrowsOf({ of: 'russell', isNode: () => true, nodes: () => [], loops: true });
-  for (const id of ['x', 'y', 'z']) w.things[id] = { id, kind: 'group', of: 'russell', parent: MESSY, at: 1 };
+  for (const id of ['x', 'y', 'z']) { w.things[id] = { id, kind: 'group', of: 'russell', at: 1 }; P.setHome(w, id, MESSY); }
   L.set(w, L.relId('russell', 'x', 'y'), { from: 'x', to: 'y', kind: 'relation', rule: 'russell', label: 'forgets' });
   L.set(w, L.relId('russell', 'x', 'z'), { from: 'x', to: 'z', kind: 'relation', rule: 'russell', label: 'is a case of' });
   const rel = (p) => L.get(w, L.relId('russell', 'x', p)).label || '';

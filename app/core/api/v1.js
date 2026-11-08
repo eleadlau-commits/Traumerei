@@ -22,7 +22,7 @@ function pick(from, names, where) {
 
 // The rules a plugin may use, by part. Each name is a plain function of the world (or a
 // constant) from the world feature's README.
-export const MODEL = ['own', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
+export const MODEL = ['own', 'parentOf', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
   'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
   'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE',
   'leave', 'replaceIn'];

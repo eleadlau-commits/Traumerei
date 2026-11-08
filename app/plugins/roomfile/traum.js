@@ -17,7 +17,7 @@
 import { parse, keysOf, write, writeValue, writeFront, frontValue, ref, readArrow, writeArrow, readLink, writeLink, LINK_ENDS } from './grammar.js';
 import {
   room, view, create, update, members, groupsIn, roomItems, own, shut, kindOf, isLeaf, isGroup,
-  addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, kindFor, join, setOrder, isTwin, addTwin, sides,
+  addRoom, seedRoomSettings, setRoomSetting, DEFAULT_MODE, ITEMS, kindFor, join, setOrder, isTwin, addTwin, sides, remove,
 } from './world.js';
 
 export const FORMAT = 'room/2';
@@ -281,7 +281,7 @@ export function bringObjects(w, roomId, parts, { modes = [], ontologies = [], no
   for (const { g, obj } of groups) {
     if (!w.things[g.id]) continue;
     if (!members(w, g.id).length) {
-      delete w.things[g.id];
+      remove(w, g.id); // (deleted by the world, so its place row goes with it: Law 1)
       ids.delete(obj.id);
       delete kept.keys[g.id];
       report.push(`Line ${obj.line}: ${obj.title ? `"${obj.title}"` : `^${obj.id}`} holds nothing, so it was left out.`);

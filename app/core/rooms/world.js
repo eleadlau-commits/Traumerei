@@ -4,7 +4,7 @@
 // everything rooms needs of the world's rules.
 
 export let
-  room, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
+  room, parentOf, floorOf, isArchived, archivedAt, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
   search, cells, roomAt, lock, archive, archived, restore, peek,
   DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
   tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
@@ -13,7 +13,7 @@ export let
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
   ({
-    room, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
+    room, parentOf, floorOf, isArchived, archivedAt, MESSY, remove, shut, DEFAULT_MODE, addRoom, name, update, move, fold, roomThoughts,
     search, cells, roomAt, lock, archive, archived, restore, peek,
     DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
     tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,

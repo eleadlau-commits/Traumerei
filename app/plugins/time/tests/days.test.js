@@ -15,6 +15,7 @@ const world = () => ({ things: {
 } });
 const m = {
   isLeaf: (th) => ['line', 'passage', 'picture'].includes(th.kind),
+  parentOf: (w, id) => w.things[id]?.parent ?? null,
   roomThoughts: (w, id) => Object.values(w.things).filter((th) => th.parent === id && m.isLeaf(th)).sort((a, b) => a.at - b.at),
 };
 
@@ -29,9 +30,10 @@ test('a room\'s timeline is in the order things last changed', () => {
 
 test('a side\'s thoughts count for its Twin\'s square', () => {
   const w = world();
-  assert.equal(squareOf(w, w.things.z).id, 'tw');
-  assert.equal(squareOf(w, w.things.x).id, 'a');
-  assert.equal(squareOf(w, { parent: 'gone' }), null);
+  const up = (id) => m.parentOf(w, id);
+  assert.equal(squareOf(w, w.things.z, up).id, 'tw');
+  assert.equal(squareOf(w, w.things.x, up).id, 'a');
+  assert.equal(squareOf(w, { id: 'nowhere' }, up), null);
 });
 
 test('days are newest first, each with the rooms written in', () => {

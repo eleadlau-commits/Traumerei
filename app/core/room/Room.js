@@ -22,7 +22,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
+import { bind, room, parentOf, floorOf, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -231,8 +231,8 @@ export default class Room extends Feature {
   // Where you are, for the frame's breadcrumb: Rooms › Floor 1 › the room (or Rooms › Archive › …).
   crumbs() {
     const r = twinOf(this.world, this.roomId) || room(this.world, this.roomId); // a Twin's side: the Twin's floor
-    const floor = r?.archived ? { label: 'Archive', onClick: () => this.rooms.showArchive?.() }
-      : { label: `Floor ${(r?.page || 0) + 1}`, onClick: () => this.rooms.showFloor?.(r?.page || 0) };
+    const floor = (r && isArchived(this.world, r.id)) ? { label: 'Archive', onClick: () => this.rooms.showArchive?.() }
+      : { label: `Floor ${(r ? floorOf(this.world, r.id) : 0) + 1}`, onClick: () => this.rooms.showFloor?.(r ? floorOf(this.world, r.id) : 0) };
     return [{ label: 'Rooms', title: 'Back to the rooms', onClick: () => this.back() }, floor, { node: this.crumb }];
   }
 
@@ -284,7 +284,7 @@ export default class Room extends Feature {
     this.storage.set('drafts', this.drafts);
     if (this.locked) return;
     const t = d.train && this.world.things[d.train];
-    this.draft = t && t.parent === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...(d.for ? { for: d.for } : {}) };
+    this.draft = t && parentOf(this.world, t.id) === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...(d.for ? { for: d.for } : {}) };
     this.input.value = d.text;
     this.input.focus({ preventScroll: true });
     this.drawWorld();
