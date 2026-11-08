@@ -5,7 +5,7 @@
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
-import { surface } from '../../api/api.js';
+import { surface } from '../../api/v1.js';
 import { bind } from '../world.js';
 import { bind as bindRoomfile } from '../../roomfile/world.js';
 import { emptyWorld, members, groupsIn, roomItems, own, setRoomSetting } from '../../world/model.js';

@@ -1,4 +1,4 @@
-// Plugin API: offers the `traumerei` service, the one way a plugin reaches the app (api.js holds
+// Plugin API: offers the `traumerei` service, the one way a plugin reaches the app (v1.js holds
 // the list, app/core/API.md says it in words). A plugin connects once, in its start():
 //
 //   const t = this.use('traumerei')?.connect(this);
@@ -7,7 +7,7 @@
 // switched off. No saved data.
 
 import { Feature, ui } from 'folio';
-import { API_VERSION, surface, connect } from './api.js';
+import { API_VERSION, surface, connect } from './v1.js';
 
 export default class Api extends Feature {
   start() {

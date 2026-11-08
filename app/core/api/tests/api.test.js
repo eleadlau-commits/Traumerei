@@ -1,10 +1,10 @@
-// Tests for the plugin API (api.js): the list is exactly what app/core/API.md says, every name
+// Tests for the plugin API (v1.js): the list is exactly what app/core/API.md says, every name
 // is really there in the world, a plugin's additions are its own, and a plugin for a newer API
 // can't connect.
 
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
-import { API_VERSION, surface, connect, PLACES } from '../api.js';
+import { API_VERSION, surface, connect, PLACES } from '../v1.js';
 
 // Version 1, as API.md lists it. Changing the API means changing this and API.md together.
 const V1 = {
