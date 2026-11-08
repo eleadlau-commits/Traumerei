@@ -104,9 +104,11 @@
 import { declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
-import russell from './russell.js';
 
-export const BUILT_IN = [joyce, pessoa, russell];
+// Built into the core: Joyce (trains, the way thoughts are written in order, which every mode
+// without groups writes into) and Pessoa (each thought on its own: the plain view a room falls back
+// to). Every other mode is a plugin (Russell, Proust).
+export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };

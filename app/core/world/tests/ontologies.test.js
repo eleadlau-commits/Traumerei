@@ -1,13 +1,18 @@
 // Tests for the ontologies: each has the parts it needs, and the registry keeps only whole ones.
 
 import { test, assert } from 'folio/testing';
+import * as libForRussell from '../lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import { BUILT_IN, gather, missing, FALLBACK, groupChosen, ungroupChosen } from '../ontologies/index.js';
-import russell from '../ontologies/russell.js';
+import russell from '../../russell/rules.js';
 import { membership, emptyWorld, create, groupOf, MESSY, members, startTrain, addThought } from '../model.js';
 
 test('every built-in ontology has the parts it needs', () => {
   for (const o of BUILT_IN) assert.deepEqual(missing(o), [], o.id);
-  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa', 'russell']);
+  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa']); // Russell and Proust are plugins
+  assert.deepEqual(missing(russell), []);
   assert.ok(BUILT_IN.some((o) => o.id === FALLBACK));
   const joyce = BUILT_IN.find((o) => o.id === 'joyce');
   assert.equal(typeof joyce.draw, 'function'); // Joyce draws its own canvas
@@ -21,7 +26,7 @@ test('ontologies from other features join the built-in ones; broken or repeated 
   };
   const skipped = [];
   const all = gather([extra, { id: 'half', name: 'Half' }, { ...BUILT_IN[0] }], (o, lacks) => skipped.push([o.id, lacks]));
-  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'russell', 'sets']);
+  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'sets']);
   assert.deepEqual(skipped, [['half', ['note', 'units', 'point', 'drop']]]);
   assert.equal(membership('sets'), 'many');
   assert.equal(membership('joyce'), 'one');

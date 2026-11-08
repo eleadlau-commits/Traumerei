@@ -1,6 +1,11 @@
 // Tests for .traum files: a room's objects in and out (traum.js).
 
 import { test, assert } from 'folio/testing';
+import russell, { arrows as russellArrows } from '../../russell/rules.js';
+import * as libForRussell from '../../world/lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { emptyWorld, members, groupsIn, roomItems, room, view, own, addRoom, create } from '../../world/model.js';
@@ -10,7 +15,7 @@ import { importRoom, importInto, exportRoom, summary, fileName, objectOrder, fro
 
 bind(lib);
 
-const ontologies = gather(); // the built-in ones, their groups' rules declared
+const ontologies = gather([russell]); // the built-in ones and Russell, their groups' rules declared
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';
 const NOW = 1000;
 
@@ -242,7 +247,7 @@ test('Russell: chapters on canvas or placed by hand, arrows with relations and l
   assert.deepEqual(report, []);
   const a = named(w, r.id, 'Arrays'), m = named(w, r.id, 'Matrices'), f = named(w, r.id, 'Fields');
   assert.deepEqual([f.x, f.y, f.hand], [900, 0, true]);
-  const got = lib.russell.arrows(w, r.id).map((x) => [w.things[x.from].title, w.things[x.to].title, x.rel, x.label]);
+  const got = russellArrows(w, r.id).map((x) => [w.things[x.from].title, w.things[x.to].title, x.rel, x.label]);
   assert.deepEqual(got, [['Arrays', 'Matrices', 'forgets', 'the individual equations'], ['Arrays', 'Fields', '', '$|v|$ kept'], ['Matrices', 'Fields', '', '']]);
   const out = exportRoom(w, r.id, { ontologies });
   assert.match(out, /# In russell\non canvas: \^4 \^5\nat: \^6 900 0\narrow: \^4 -> \^5 \| forgets \| the individual equations\narrow: \^4 -> \^6 \| \| \$\|v\|\$ kept\narrow: \^5 -> \^6\n/);
@@ -253,7 +258,7 @@ test('Russell: chapters on canvas or placed by hand, arrows with relations and l
 test('Russell: a loop is refused and reported, the other arrows still drawn', () => {
   const text = [...BOOK, '# In russell', 'arrow: ^a -> ^m', 'arrow: ^m -> ^f', 'arrow: ^f -> ^a', 'arrow: ^a -> ^nowhere', 'arrow: not an arrow'].join('\n');
   const { w, room: r, report } = fresh(text);
-  assert.equal(lib.russell.arrows(w, r.id).length, 2);
+  assert.equal(russellArrows(w, r.id).length, 2);
   assert.match(report.join('\n'), /the arrow wasn't drawn: that arrow would make a loop/);
   assert.match(report.join('\n'), /\^nowhere isn't in the file/);
   assert.match(report.join('\n'), /an arrow is written \^from -> \^to/);
@@ -263,7 +268,7 @@ test('a relation object is an arrow; one joining more than two things is kept', 
   const text = [...BOOK, '## ^r relation: is a case of', 'from: ^a', 'to: ^m', 'label: "the square ones"',
     '## ^s relation: therefore', 'from: ^a ^m', 'to: ^f'].join('\n');
   const { w, room: r, report } = fresh(text);
-  const got = lib.russell.arrows(w, r.id);
+  const got = russellArrows(w, r.id);
   assert.equal(got.length, 1);
   assert.deepEqual([got[0].rel, got[0].label], ['is a case of', 'the square ones']);
   assert.match(report[0], /relation \^s joins more than two things/);

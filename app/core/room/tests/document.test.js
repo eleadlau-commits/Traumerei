@@ -1,10 +1,14 @@
 // Tests for a chapter open as a document: writing in its paragraphs keeps the chapter's order.
 
 import { test, assert } from 'folio/testing';
+import * as libForRussell from '../../world/lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { emptyWorld, create, members, MESSY } from '../../world/model.js';
-import { addChapter } from '../../world/ontologies/russell.js';
+import { addChapter } from '../../russell/rules.js';
 import { keepWords, between } from '../document.js';
 
 bind(lib); // the world's rules, as the room gets them from the world service

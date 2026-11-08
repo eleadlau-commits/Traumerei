@@ -14,11 +14,14 @@ import { importRoom, exportRoom } from '../traum.js';
 import { bind as bindProust } from '../../proust/world.js';
 import { surface } from '../../../core/api/v1.js';
 import { proust } from '../../proust/rules.js';
+import russell from '../../russell/rules.js';
+import { bind as bindRussell } from '../../russell/world.js';
 
 bind(lib);
 bindProust(surface(lib)); // Proust is a plugin: it gets the world's rules through the plugin API
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
-const ontologies = gather([proust]);
+bindRussell(surface(lib)); // Russell too
+const ontologies = gather([proust, russell]);
 const wrong = [];
 
 for (const kind of [...Object.keys(ITEMS), 'group', 'relation']) {

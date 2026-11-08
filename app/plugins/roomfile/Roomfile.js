@@ -6,7 +6,7 @@
 // The world is the world feature's.
 
 import { Feature, ui } from 'folio';
-import { bind, room, shut, keepOrShrink, chapterName, isGroup } from './world.js';
+import { bind, room, shut, keepOrShrink, groupLabel, isGroup } from './world.js';
 import * as edit from './edit.js';
 import * as traum from './traum.js';
 import { parse as parseTraum } from './grammar.js';
@@ -131,7 +131,7 @@ export default class Roomfile extends Feature {
     const pictures = edit.shortPictures();
     const ontologies = () => this.w.ontologies;
     let session = edit.open(w(), roomId, { scope, groupId, ontologies: ontologies(), pictures });
-    const title = scope === 'group' ? chapterName(w(), groupId) || 'Untitled' : room(w(), roomId).name;
+    const title = scope === 'group' ? groupLabel(w(), groupId) || 'Untitled' : room(w(), roomId).name;
     const readOnly = shut(w(), roomId);
     const opts = (chosen = {}) => ({ ontologies: ontologies(), pictures, removeMissing: !!chosen.remove });
     const check = (text, chosen = {}) => {

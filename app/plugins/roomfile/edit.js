@@ -17,7 +17,7 @@ import {
 import { write as writeParts } from './grammar.js';
 import {
   room, view, create, update, members, own, shut, kindOf, isLeaf, isGroup, ITEMS, kindFor, join, setOrder,
-  groupsOf, remove, setRoomSetting, chapterName, broken, within,
+  groupsOf, remove, setRoomSetting, groupLabel, broken, within,
 } from './world.js';
 
 const oneLine = (x) => String(x ?? '').replace(/\s+/g, ' ').trim();
@@ -249,7 +249,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
   for (const [a, b] of ids) sectionIds.set(a, b);
   const unread = readSections(w, roomId, parts, {
     ids: sectionIds, relations, ontologies, modes, report, fresh, scope: inText,
-    change: (words) => changes.push(words), name: (id) => (isGroup(w.things[id]) ? `"${chapterName(w, id)}"` : named(w, id)),
+    change: (words) => changes.push(words), name: (id) => (isGroup(w.things[id]) ? `"${groupLabel(w, id)}"` : named(w, id)),
   });
 
   // The front matter, for the whole room.

@@ -319,21 +319,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-loose .room-tray-item:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 .room-moves { flex-wrap: wrap; }
 
-/* Russell: chapters in a tree. Each chapter's thoughts run down a hairline; arrows go from the
-   side of a parent facing a child to the child's facing side, with their label at the middle. */
+/* Named arrows between groups (arrowview.js: Russell's, Proust's): from the side of one facing the
+   other to the other's facing side, with their label at the middle. */
 .room-arrow { opacity: .4; }
 .room-arrow-drawing { opacity: .7; stroke-dasharray: 4 4; }
-.room-russell-rule { stroke: currentColor; stroke-width: 1; opacity: .22; }
-.room-russell-rule.selected { opacity: 1; stroke: var(--amber); stroke-width: 1.5; }
-.room-russell-title {
-  position: absolute;
-  font-size: 11px;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  opacity: .6;
-  white-space: nowrap;
-  cursor: grab;
-}
 .room-arrow-label {
   position: absolute;
   max-width: 200px;
@@ -344,21 +333,6 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
   opacity: .62;
   cursor: pointer;
 }
-.room-russell-foot {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  opacity: .28;
-  cursor: crosshair;
-  touch-action: none;
-  transition: opacity .2s, transform .2s;
-}
-.room-russell-foot:hover { opacity: .8; transform: scale(1.3); }
-.room-russell-pick { cursor: copy; }
-.room-russell-pick:hover { outline: var(--drop-line); outline-offset: 7px; }
 .room-arrow-row { display: grid; gap: 4px; }
 .room-arrow-label.side-right { transform: translateY(-50%); }
 .room-arrow-label.side-left { transform: translate(-100%, -50%); text-align: right; }
@@ -367,11 +341,6 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-arrow-label.side-right-down { transform: none; }
 .room-arrow-label.side-left-up { transform: translate(-100%, -100%); text-align: right; }
 .room-arrow-label.side-left-down { transform: translateX(-100%); text-align: right; }
-
-/* Russell: a closed chapter shows only its name; a click opens it as a document. */
-.room-russell-closed { cursor: pointer; }
-.room-russell-closed .room-thought { font-size: 15px; letter-spacing: .14em; text-transform: uppercase; }
-.room-russell-closed:hover .room-thought { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
 
 /* A chapter open as a document (document.js): its name and its thoughts as flowing paragraphs. */
 .room-doc-veil {

@@ -2,8 +2,12 @@
 // stand-in for the room.
 
 import { test, assert } from 'folio/testing';
+import * as libForRussell from '../lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import { emptyWorld, create, MESSY } from '../model.js';
-import { addChapter, link, unlink, labelOf, arrows, arrowsInto, parentsOf, childrenOf, setLabel, setRelation, chapterName } from '../ontologies/russell.js';
+import { addChapter, link, unlink, labelOf, arrows, arrowsInto, parentsOf, childrenOf, setLabel, setRelation, chapterName } from '../../russell/rules.js';
 import { arrowView, arrowKey } from '../ontologies/arrowview.js';
 import { layer } from '../ontologies/lines.js';
 

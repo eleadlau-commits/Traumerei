@@ -1,12 +1,17 @@
 // Tests for Russell: chapters in a tree, joined by arrows with no loops and any number of parents.
 
 import { test, assert } from 'folio/testing';
-import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting, members, declareGroups } from '../model.js';
+import * as lib from '../../world/lib.js';
+import { surface } from '../../api/v1.js';
+import { bind } from '../world.js';
+import { emptyWorld, create, remove, MESSY, groupOf, setRoomSetting, members, declareGroups } from '../../world/model.js';
 import russell, {
   addChapter, link, unlink, setLabel, labelOf, parentsOf, childrenOf, arrows, whyNot, levels, layout,
   chapterSize, chapters, chapterName, LAYOUT, labelSize, chapterSpots, ID,
   relations, relationOf, setRelation, cleanRelations, renameRelations, RELATIONS,
-} from '../ontologies/russell.js';
+} from '../rules.js';
+
+bind(surface(lib)); // Russell's rules, as it gets them from the plugin API
 
 // A chapter with one thought in it (a chapter with no thoughts goes).
 let clock = 10;
@@ -193,4 +198,15 @@ test('relations: each room keeps a list, the first for new arrows; a renamed one
   assert.equal(relationOf(w, MESSY, a, c), '≅');
   unlink(w, MESSY, a, b);
   assert.deepEqual(arrows(w, MESSY).map((x) => x.to), [c]);
+});
+
+test('as a plugin, Russell is a whole mode, and its settings are read once the API is bound', async () => {
+  const { missing } = await import('../../world/ontologies/index.js');
+  assert.deepEqual(missing(russell), []);
+  const [line, rel, legend] = russell.settings;
+  assert.equal(line.key, 'line');
+  assert.equal(rel.key, RELATIONS.key);           // not an empty object from before the API was bound
+  assert.equal(rel.type, 'relations');
+  assert.equal(typeof rel.uses, 'function');
+  assert.equal(legend.key, 'legend');
 });

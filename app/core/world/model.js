@@ -345,6 +345,16 @@ export function applySettingsToAll(w, globals = {}) {
   for (const th of Object.values(w.things)) if (kindOf(th) === 'room') w.settings[th.id] = copy(globals);
 }
 
+// A group's name as lists show it: its title, else its first three words, else `none`.
+export function groupLabel(w, id, none = 'A group') {
+  const g = w.things[id];
+  if (!g) return '';
+  if (g.title) return g.title;
+  const first = members(w, id)[0];
+  const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(' ') : '';
+  return words || none;
+}
+
 // The words of a thought, as plain text.
 export function thoughtText(w, th) {
   const kind = kindOf(th);

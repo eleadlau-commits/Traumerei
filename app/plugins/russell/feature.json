@@ -1,0 +1,21 @@
+{
+  "name": "Russell",
+  "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.",
+  "version": "1.0.0",
+  "main": "Russell.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 1,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

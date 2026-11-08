@@ -15,14 +15,14 @@
 // (relations.js).
 // Thoughts stay shared with every other mode.
 
-import { groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder } from '../model.js';
-import { trayForeign, place, inForeign, unplace } from '../groups.js';
-import { stepAfter, setHeights, STEP } from './joyce.js';
-import { maths } from '../maths.js';
-import { sidePoint, PAD } from './arrows.js';
-import * as lines from './lines.js';
-import { arrowsOf, relationShown, RELATIONS } from './relations.js';
-import { arrowView } from './arrowview.js';
+import {
+  groupsIn, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, groupLabel, // model
+  trayForeign, place, inForeign, unplace, // groups of other modes, as one thing here
+  stepAfter, setHeights, STEP, // a train's rhythm (Joyce's), which a chapter reads by too
+  maths, lines, PAD, arrowsOf, arrowView,
+  relationName, splitList, listText, cleanRelations, relationShown, withRelation, RELATIONS,
+} from './world.js';
+const sidePoint = (...a) => lines.sidePoint(...a);
 
 export const ID = 'russell';
 // World units. width: the widest a chapter's thoughts go; title: room for an open chapter's name
@@ -45,20 +45,23 @@ const isChapter = (w, roomId, id) => {
 
 // ---- Arrows and relations (relations.js, shared with any ontology that joins its groups) ----
 
-export { relationName, splitList, listText, cleanRelations, relationShown, withRelation, RELATIONS } from './relations.js';
+export { relationName, splitList, listText, cleanRelations, relationShown, withRelation, RELATIONS };
 
-const net = arrowsOf({ of: ID, isNode: isChapter, nodes: (w, roomId) => chapters(w, roomId), word: 'chapter', loops: false, changed: (w, roomId) => settle(w, roomId) });
-export const {
-  relations, renameRelations, retag, uses, arrowsInto, parentsOf, childrenOf, labelOf, relationOf, arrows, above, whyNot,
-  link, unlink, setLabel, setRelation,
-} = net;
+// The arrows, made the first time they are asked for (the API's parts are bound by then).
+let made = null;
+const arrowNet = () => (made ||= arrowsOf({ of: ID, isNode: isChapter, nodes: (w, roomId) => chapters(w, roomId), word: 'chapter', loops: false, changed: (w, roomId) => settle(w, roomId) }));
+const fromNet = (name) => (...a) => arrowNet()[name](...a);
+export const relations = fromNet('relations'), renameRelations = fromNet('renameRelations'), retag = fromNet('retag'),
+  uses = fromNet('uses'), arrowsInto = fromNet('arrowsInto'), parentsOf = fromNet('parentsOf'), childrenOf = fromNet('childrenOf'),
+  labelOf = fromNet('labelOf'), relationOf = fromNet('relationOf'), arrows = fromNet('arrows'), above = fromNet('above'),
+  whyNot = fromNet('whyNot'), link = fromNet('link'), unlink = fromNet('unlink'), setLabel = fromNet('setLabel'), setRelation = fromNet('setRelation');
 
 // A new chapter in the room (empty until a thought joins it: an empty group goes), as a child of
 // `parent` when given. Returns it.
 export function addChapter(w, roomId, { parent = null, x = 0, y = 0 } = {}, now = Date.now()) {
   const g = create(w, roomId, { kind: 'group', of: ID, x, y }, now);
   if (!g) return null;
-  if (parent && isChapter(w, roomId, parent)) net.adopt(w, roomId, g.id, parent);
+  if (parent && isChapter(w, roomId, parent)) arrowNet().adopt(w, roomId, g.id, parent);
   return g;
 }
 
@@ -233,14 +236,7 @@ export function chapterAt(w, roomId, x, y, except = null) {
 }
 
 // A chapter as a tag, or a name in a move: its title, or its first words.
-export function chapterName(w, id) {
-  const g = w.things[id];
-  if (!g) return '';
-  if (g.title) return g.title;
-  const first = members(w, id)[0];
-  const words = first ? thoughtText(w, first).split(/\s+/).slice(0, 3).join(' ') : '';
-  return words || 'A chapter';
-}
+export const chapterName = (w, id) => groupLabel(w, id, 'A chapter');
 
 // The chapter chosen in a room: the one chosen whole, or the one a chosen thought is in.
 export function chosenChapter(c) {
@@ -257,7 +253,7 @@ export function chosenChapter(c) {
 // parent: click the parent; Remove arrow, from a junction: click the parent to cut it from).
 let pending = null;
 
-const svg = lines.svg;
+const svg = (...a) => lines.svg(...a);
 const FOOT = 16; // how far under a chapter its foot sits
 const RULE = 14; // how far left of an open chapter's thoughts its hairline runs
 
@@ -281,10 +277,12 @@ function boxes(w, roomId) {
 
 // Russell's arrows on the screen (arrowview.js): drawn, edited where they are, drawn anew from a
 // chapter's foot, and listed in a chapter's pop-up.
-const view = arrowView({
-  of: ID, net, boxes, pads, name: (w, id) => chapterName(w, id),
+// Made the first time it is needed, like the arrows.
+let shown = null;
+const view = () => (shown ||= arrowView({
+  of: ID, net: arrowNet(), boxes, pads, name: (w, id) => chapterName(w, id),
   nodeAt: (w, roomId, x, y) => chapterAt(w, roomId, x, y),
-});
+}));
 
 // ---- The ontology ----
 
@@ -308,7 +306,7 @@ const traum = {
     for (const g of tree) if (g.hand === true) out.push(`at: ${c.ref(g.id)} ${g.x} ${g.y}`);
     const tray = russell.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
     if (tray.length) out.push(`tray: ${tray.join(' ')}`);
-    out.push(...net.traumLines(w, roomId, c));
+    out.push(...arrowNet().traumLines(w, roomId, c));
     return out;
   },
   read(w, roomId, lines, c) {
@@ -336,7 +334,7 @@ const traum = {
         if (a) arrowsRead.push(a);
       } else c.keep(l);
     }
-    net.traumArrows(w, roomId, arrowsRead, c);
+    arrowNet().traumArrows(w, roomId, arrowsRead, c);
   },
   // (c.scope, when editing: the things the text holds. Arrows touching them are made to read as
   // the text does: ones not in it are taken away, ones changed are changed. c.change(words) says so.)
@@ -349,11 +347,14 @@ const russell = {
   icon: '<rect x="9" y="3" width="6" height="4"/><rect x="3" y="16" width="6" height="4"/><rect x="15" y="16" width="6" height="4"/><path d="M12 7v4.5M6 16v-4.5h12V16"/>', // a tree
   order: 30,
   groups: { form: 'chapter', name: 'Chapter', membership: 'one', order: 'kept' },
-  settings: [
-    { key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' },
-    { ...RELATIONS, uses: (c, name) => uses(c.world, c.roomId, name), retag: (c, from, to) => retag(c.world, c.roomId, from, to) },
-    { key: 'legend', label: 'Legend on the canvas', type: 'switch', default: false },
-  ],
+  // Read when asked (not when this file loads), since RELATIONS comes from the plugin API.
+  get settings() {
+    return [
+      { key: 'line', label: 'Arrows', type: 'choice', options: [['straight', 'Straight'], ['curved', 'Curved']], default: 'straight' },
+      { ...RELATIONS, uses: (c, name) => uses(c.world, c.roomId, name), retag: (c, from, to) => retag(c.world, c.roomId, from, to) },
+      { key: 'legend', label: 'Legend on the canvas', type: 'switch', default: false },
+    ];
+  },
 
   // A relation renamed in the room's list is renamed on its arrows.
   settingChanged(w, roomId, key, before, after) {
@@ -444,11 +445,11 @@ const russell = {
   press(c, e) {
     if (e.button !== 0 || c.locked) return false;
     // An arrow's own presses: its edit box, a double-click to edit it (arrowview.js).
-    if (view.press(c, e)) return true;
+    if (view().press(c, e)) return true;
     if (pending && pending.room === c.roomId) {
       const job = pending;
       pending = null;
-      const to = view.nodeUnder(c, e);
+      const to = view().nodeUnder(c, e);
       if (to) {
         if (job.kind === 'add') { const why = link(c.world, c.roomId, to, job.child); if (why) c.toast(why); }
         else if (!unlink(c.world, c.roomId, to, job.child)) c.toast('That chapter isn\'t a parent of this one.');
@@ -461,7 +462,7 @@ const russell = {
     if (!f) return false;
     e.preventDefault();
     const b = boxes(c.world, c.roomId)[f.dataset.foot];
-    if (b) view.drag(c, e, f.dataset.foot, foot(arrowBox(b)));
+    if (b) view().drag(c, e, f.dataset.foot, foot(arrowBox(b)));
     return true;
   },
 
@@ -502,7 +503,7 @@ const russell = {
   // and its label.
   props(c, th) {
     if (!isGroup(th) || th.of !== ID) return [];
-    return view.props(c, th);
+    return view().props(c, th);
   },
 
   // The canvas: each chapter's thoughts down a hairline, a foot under it to draw arrows from, the
@@ -513,7 +514,7 @@ const russell = {
     const layer = lines.layer('room-russell-arrows'); // the shared lines part (lines.js), with its arrowheads
     const nodes = [];
     const picking = pending && pending.room === roomId;
-    nodes.push(...view.draw(c, layer, all)); // the arrows, their labels, and one being edited
+    nodes.push(...view().draw(c, layer, all)); // the arrows, their labels, and one being edited
     for (const g of chapters(w, roomId)) {
       const box = all[g.id];
       if (!box) continue;
