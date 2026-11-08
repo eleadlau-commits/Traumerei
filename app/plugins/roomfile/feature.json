@@ -7,11 +7,10 @@
     "style.css"
   ],
   "requires": [
-    "world"
+    "api"
   ],
   "uses": [
-    "source",
-    "floors"
+    "source"
   ],
   "plugin": {
     "api": 1,

@@ -6,10 +6,8 @@
   "styles": [
     "style.css"
   ],
-  "uses": [
-    "rooms",
-    "world",
-    "frame"
+  "requires": [
+    "api"
   ],
   "plugin": {
     "api": 1,

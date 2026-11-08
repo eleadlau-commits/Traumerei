@@ -7,12 +7,7 @@
     "style.css"
   ],
   "requires": [
-    "world"
-  ],
-  "uses": [
-    "docks",
-    "keys",
-    "frame"
+    "api"
   ],
   "plugin": {
     "api": 1,

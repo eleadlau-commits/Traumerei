@@ -13,7 +13,9 @@ const SHOWN = 12;  // lines of a list shown before "and n more"
 
 export default class Source extends Feature {
   start() {
-    this.panel = this.use('panel');
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('The source editor needs the plugin API');
+    this.panel = t.docks.right; // the side panel (the right dock: this plugin requires the docks)
     this.provide('source', {
       open: (o) => this.open(o),
       close: () => this.handle?.close() ?? Promise.resolve(true),

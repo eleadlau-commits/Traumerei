@@ -24,10 +24,11 @@ A tab of the right dock, **Time** (Ctrl+Alt+T), the same everywhere Create shows
   `showDay`, `{ day, later, lit }` from `days.js`'s `roomBoard`) fades the thoughts made later
   and lights those written that day. Leaving the room comes back to now.
 
-Ctrl+Alt+T (or Time under ⋯ More, at the foot of both rails: the frame feature's `rail.more`) turns it on, brings its tab to the front when another is in
+Ctrl+Alt+T (or Time under ⋯ More, at the foot of both rails: the plugin API's `t.more`) turns it on, brings its tab to the front when another is in
 front, or turns it off; its × or Escape turns it off too. Whether it is on is one choice for
 everywhere, saved as 'open': going into a room or back out keeps it on, showing that place.
-Without the docks feature, Time is off and adds no key.
+Without the docks, Time is off and adds no key. It is a plugin: it reaches the app only through
+the plugin API (`app/core/API.md`), and defines its own slot `time.place` and service `time`.
 
 ## The daily record
 

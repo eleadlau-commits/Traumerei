@@ -26,9 +26,10 @@ const KEY = 'time'; // what it holds in the right dock
 
 export default class Time extends Feature {
   start() {
-    this.w = this.use('world');
-    this.panel = this.use('panel'); // the right dock (the docks feature), or null: then Time is off
-    this.keyMap = this.use('keys');
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Time needs the plugin API');
+    this.t = t;
+    this.panel = t.docks?.right || null; // the right dock, or null: then Time is off
     this.isOn = !!this.storage.get('open', false);
     this.shown = null;   // { body, handle } while it is in the dock
     this.closing = false; // its × or Escape was pressed (not another feature closing the dock)
@@ -55,17 +56,17 @@ export default class Time extends Feature {
     this.add('settings', { id: 'time-history', title: 'History', order: 31, render: () => this.settingsPane() });
     if (!this.panel) return;
     // Time under ⋯ More, at the foot of both rails (the frame feature's).
-    this.add('rail.more', { id: 'time', label: 'Time', icon: 'clock', order: 10, run: () => this.toggle(),
+    t.more.add({ id: 'time', label: 'Time', icon: 'clock', order: 10, run: () => this.toggle(),
       on: () => this.isOn, visible: () => !!this.place(),
-      title: () => (this.keyMap ? `Time · ${this.keyMap.label('time.toggle')}` : 'Time') });
-    for (const k of TIME_KEYS) this.add('keys', { ...k, zone: 'everywhere', when: () => !!this.place(), run: () => this.toggle() });
+      title: () => { const keys = t.commands.label('time.toggle'); return keys ? `Time · ${keys}` : 'Time'; } });
+    for (const k of TIME_KEYS) t.commands.add({ ...k, zone: 'everywhere', when: () => !!this.place(), run: () => this.toggle() });
     this.on('world:saved', () => this.refreshSoon());
     this.on('world:changed', () => this.refreshSoon());
     this.on('room:open', () => this.refreshSoon());
   }
 
-  get world() { return this.w.world; }
-  get m() { return this.w.lib.model; }
+  get world() { return this.t.world; }
+  get m() { return this.t.model; }
 
   // ---- The daily record ----
 
@@ -141,7 +142,7 @@ export default class Time extends Feature {
     if (this.pastFor && this.pastFor !== p) this.toNow(); // going back is for the place it was chosen in
     const roomId = p.room?.() || null;
     const r = roomId && this.m.room(this.world, roomId);
-    const twin = r && this.w.lib.twin.twinOf(this.world, roomId);
+    const twin = r && this.t.twins.twinOf(this.world, roomId);
     const title = r ? (twin ? `${twin.name} · ${r.name}` : r.name) : 'Every room';
     const kind = r ? 'Timeline' : 'Days';
     const list = r ? this.roomList(p, roomId) : this.dayList(p);
@@ -255,7 +256,7 @@ export default class Time extends Feature {
     const end = day == null ? Infinity : day + DAY - 1;
     const items = timeline(m, w, roomId).filter((th) => (th.at ?? 0) <= end);
     if (!items.length) return el('p', { class: 'time-none' }, day == null ? 'Nothing written here yet' : 'Nothing written here by then');
-    const ont = this.w.ontology(m.view(w, roomId).mode);
+    const ont = this.t.modes.get(m.view(w, roomId).mode);
     const sel = p.chosen?.() || null;
     const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return el('ol', { class: 'time-list' }, items.map((th) => {

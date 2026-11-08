@@ -1,6 +1,6 @@
 # Source editor
 
-A thing's source as plain text, in the right dock (the docks feature's `panel` service): for now the
+A thing's source as plain text, in the right dock (the plugin API's `t.docks.right`; it requires the docks): for now the
 the .traum text of a group or a whole room, which the roomfile feature gives it. It is a large
 monospace box with two quiet lists above it, and plain words below.
 

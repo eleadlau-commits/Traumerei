@@ -7,6 +7,9 @@
     "world"
   ],
   "uses": [
-    "docks"
+    "docks",
+    "keys",
+    "frame",
+    "floors"
   ]
 }

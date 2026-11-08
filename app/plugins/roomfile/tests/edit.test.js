@@ -14,7 +14,7 @@ import { parse } from '../grammar.js';
 import { importRoom } from '../traum.js';
 import { open, apply, shortPictures, badMaths, copyWorld } from '../edit.js';
 
-bind(lib);
+bind(surfaceForRussell(lib)); // roomfile is a plugin too
 const ontologies = gather([russell]);
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';
 

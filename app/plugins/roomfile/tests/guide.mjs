@@ -17,7 +17,7 @@ import { proust } from '../../proust/rules.js';
 import russell from '../../russell/rules.js';
 import { bind as bindRussell } from '../../russell/world.js';
 
-bind(lib);
+bind(surface(lib)); // roomfile is a plugin too
 bindProust(surface(lib)); // Proust is a plugin: it gets the world's rules through the plugin API
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
 bindRussell(surface(lib)); // Russell too

@@ -24,8 +24,10 @@ export default class Home extends Feature {
     this.applyFont();
     loadFont(READING); // the reading face for thoughts (--font-read in base.css), whatever the typeface
 
-    this.w = this.use('world');       // Messy thoughts, for the quick thought (the world feature), or null
-    this.frame = this.use('frame');   // the top bar and the status bar (the frame feature), or null
+    const t = this.use('traumerei')?.connect(this);
+    if (!t) throw new Error('Home needs the plugin API');
+    this.t = t;
+    this.frame = t.frame;             // the top bar and the status bar, or null
     this.quick = quickLine({
       drop: (text) => this.drop(text),
       live: () => this.showing() && !document.querySelector('dialog[open], .search:not([hidden])'),
@@ -40,9 +42,9 @@ export default class Home extends Feature {
     (document.getElementById('folio-root') || document.body).append(this.page);
     this.drawWaiting();
     for (const ev of ['world:saved', 'world:changed', 'room:changed']) this.on(ev, () => this.drawWaiting());
-    this.frame?.show(this, {
+    this.frame?.show({
       crumbs: [{ label: 'Home', current: true }],
-      idle: this.w ? 'Type anywhere to note down a messy thought · Enter drops it in Messy thoughts · Ctrl+Enter new line' : 'Create opens the rooms',
+      idle: 'Type anywhere to note down a messy thought · Enter drops it in Messy thoughts · Ctrl+Enter new line',
     });
 
     // Create is also the first word in the menu (Folio adds Account, Settings and About).
@@ -57,14 +59,10 @@ export default class Home extends Feature {
 
   // ---- Create ----
 
-  create() { this.use('create')?.open(); }
+  create() { this.t.open.rooms(); }
 
   // Into Messy thoughts: the rooms page opens, then the room.
-  goToMessy() {
-    if (!this.w) return;
-    this.create();
-    this.use('rooms')?.openRoom(this.w.lib.model.MESSY);
-  }
+  goToMessy() { this.t.open.room(this.t.model.MESSY); }
 
   // Whether Home is what shows: no rooms page over it.
   showing() { return !document.documentElement.classList.contains('rooms-open'); }
@@ -76,15 +74,13 @@ export default class Home extends Feature {
   // written down at once, so the rooms page finds it. Says where it went in the status bar.
   // True when it went.
   drop(text) {
-    if (!this.w) return false;
-    const { model, groups } = this.w.lib;
-    const world = this.w.load(); // Messy thoughts is always there: a world without it is given it again
-    this.w.begin();
+    const { model, groups } = this.t;
+    const world = this.t.load(); // Messy thoughts is always there: a world without it is given it again
     const th = model.create(world, model.MESSY, { kind: 'line', text });
     if (!th) { this.frame?.hint('Messy thoughts is locked: nothing was dropped'); return false; }
     groups.wait(world, model.MESSY, th.id);
-    this.w.save();
-    this.w.write();
+    this.t.save();
+    this.t.write();
     this.frame?.hint('Dropped in Messy thoughts');
     this.drawWaiting();
     return true;
@@ -92,13 +88,13 @@ export default class Home extends Feature {
 
   // ---- What waits in Messy thoughts ----
 
-  // How many things wait in Messy thoughts' loose tray, in the mode it is seen in (0 without the world).
+  // How many things wait in Messy thoughts' loose tray, in the mode it is seen in.
   waiting() {
-    const world = this.w?.world;
+    const world = this.t.world;
     if (!world) return 0;
-    const { model } = this.w.lib;
+    const { model } = this.t;
     try {
-      const o = this.w.ontology(model.view(world, model.MESSY).mode);
+      const o = this.t.modes.get(model.view(world, model.MESSY).mode);
       return o?.tray ? o.tray(world, model.MESSY).length : 0;
     } catch { return 0; }
   }

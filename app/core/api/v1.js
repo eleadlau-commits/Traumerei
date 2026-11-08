@@ -22,13 +22,19 @@ function pick(from, names, where) {
 // The rules a plugin may use, by part. Each name is a plain function of the world (or a
 // constant) from the world feature's README.
 export const MODEL = ['own', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
-  'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel'];
+  'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
+  'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE'];
 export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'place', 'unplace'];
 export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
   'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];
 // A train's rhythm (Joyce's, in the core): how far down the next thought goes, the measured
 // heights it reads, and the steps it starts from.
 export const TRAINS = ['stepAfter', 'setHeights', 'STEP'];
+// The kinds of item there are now (ITEMS is kept up to date as plugins add kinds), and the kind a
+// thought is drawn as (a quiet stand-in for a kind whose plugin is off).
+export const KINDS = ['ITEMS', 'kindFor', 'isKnown'];
+// A Twin: two sides, each a room, side by side.
+export const TWINS = ['isTwin', 'twinOf', 'sides', 'addTwin'];
 export const LINES = ['svg', 'layer', 'group', 'line', 'knot', 'slack', 'strand', 'path', 'middle', 'between',
   'labelSpot', 'sidePoint', 'facing', 'PAD', 'ENDS', 'ENDS_WORDS', 'cleanEnds', 'PAUSE', 'HEAD'];
 
@@ -39,7 +45,10 @@ export function surface(lib) {
     relations: pick(lib.relations, RELATIONS, 'relations'),
     lines: pick(lib.lines, LINES, 'lines'),
     arrows: pick(lib.arrowview, ['arrowView'], 'arrowview'),
-    maths: pick(lib.maths, ['maths'], 'maths'),
+    maths: pick(lib.maths, ['maths', 'broken'], 'maths'),
+    kinds: pick(lib.items, KINDS, 'items'),
+    twins: pick(lib.twin, TWINS, 'twin'),
+    pictures: pick(lib.picture, ['keepOrShrink'], 'picture'),
     layout: pick(lib.pessoa, ['spiralPoint'], 'pessoa'),
     trains: pick(lib.joyce, TRAINS, 'joyce'),
   };
@@ -80,28 +89,59 @@ function dockFor(dock, gone) {
 // The API one plugin gets. app: the Folio app; world: the world service; plugin: the Feature
 // asking (its id owns what it adds); parts: surface(world.lib), made once; toast: Folio's
 // ui.toast (passed in, so this file imports nothing and runs in Node too); docks: the docks
-// service ({ left, right }), or null; gone(fn): fn runs when the plugin is switched off.
-export function connect({ app, world, plugin, parts, toast = () => {}, docks = null, gone = () => {} }) {
+// service ({ left, right }), or null; keys, frame, floors: those core services, or null;
+// service(name): any other core service, looked up when it is needed (the rooms page starts
+// after the plugins it shows); gone(fn): fn runs when the plugin is switched off.
+export function connect({ app, world, plugin, parts, toast = () => {}, docks = null, keys = null, frame = null,
+  floors = null, service = () => null, gone = () => {} }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) {
     throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
   }
   const owner = plugin.id;
-  const place = (slot) => Object.freeze({
-    add: (item) => app.slot(slot).add(item, owner), // returns a function that takes it away again
-  });
+  const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
   const places = {};
-  for (const [name, slot] of Object.entries(PLACES)) places[name] = place(slot);
+  for (const [name, slot] of Object.entries(PLACES)) places[name] = Object.freeze({ add: add(slot) });
+  // Two places say a little more than add: the modes there are, and a command's keys as words.
+  places.modes = Object.freeze({
+    add: add(PLACES.modes),
+    get: (id) => world.ontology(id),          // the mode with this id (the default mode when it is off or unknown)
+    get all() { return world.ontologies; },    // every mode there is now
+    get settings() { return world.globals; },  // each mode's settings for new rooms: { [mode id]: { key: value } }
+  });
+  places.commands = Object.freeze({
+    add: add(PLACES.commands),
+    label: (id) => keys?.label(id) || '',      // a command's keys as words ("Ctrl+K"), or ''
+  });
+  if (frame) gone(() => frame.hide(plugin));
   return Object.freeze({
     version: API_VERSION,
     app: Object.freeze({ name: app.config.name, version: app.config.version }),
     plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
     get world() { return world.world; },
     save: () => world.save(),
+    write: () => world.write(),
+    load: () => { world.load(); world.begin(); return world.world; },
     data: (roomId) => parts.model.own(world.world, roomId, owner),
     ...parts,
     ...places,
     docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
+    // The top bar and the status bar, for a page the plugin shows (frame/README.md).
+    frame: frame ? Object.freeze({
+      show: (o) => frame.show(plugin, o),
+      update: (o) => frame.update(plugin, o),
+      hide: () => frame.hide(plugin),
+      hint: (text) => frame.hint(text),
+      clearHint: () => frame.clearHint(),
+    }) : null,
+    // Going somewhere: the rooms page, or into a room (from anywhere, Home too).
+    open: Object.freeze({
+      rooms: () => { service('create')?.open(); },
+      room: (id) => { service('create')?.open(); service('rooms')?.openRoom(id); },
+    }),
+    // Where a new room goes on the rooms page: `cell` if it is free, else its floor's first free
+    // cell, else a new floor.
+    floors: Object.freeze({ place: (id, cell = null) => floors?.place(id, cell) }),
     toast: (text) => toast(text),
   });
 }
