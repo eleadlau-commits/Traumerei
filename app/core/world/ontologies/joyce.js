@@ -246,6 +246,18 @@ const joyce = {
     return trainSpots(w, t.id)[id] || null;
   },
 
+  // The whole room at once (the kernel's rule layout): each train's steps laid once, not once per
+  // thought; the same points as point().
+  layout(w, roomId) {
+    const out = new Map();
+    for (const t of roomTrains(w, roomId)) {
+      if (t.closed) { const p = corner(w, t.id); out.set(t.id, { x: p.x, y: p.y }); continue; }
+      for (const [id, p] of Object.entries(trainSpots(w, t.id))) out.set(id, p);
+    }
+    for (const g of placedForeign(w, roomId, 'joyce')) out.set(g.id, spot(w, roomId, 'joyce', g.id));
+    return out;
+  },
+
   // A train moves whole (and counts as placed by hand); a thought moves alone, and its train
   // stays joined. A thought from the tray starts a train there.
   drop(w, roomId, id, x, y) {

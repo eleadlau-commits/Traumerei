@@ -10,6 +10,14 @@
 //                         when its items stay in the order they were put in, not time (model.js)
 //   units(w, room)        what is on its canvas: items, and groups shown as one thought
 //   point(w, room, id)    where a thought sits ({ x, y }, world units)
+//   layout(w, room)       (optional) every unit's point at once (Map id → { x, y }), for speed: the
+//                         kernel's rule layout (rules.js) uses it, else point() for each unit
+//   admit(w, proposal)    (optional) its own refusals before the shared ones (rules.js): return
+//                         { ok: false, reason } to refuse a position or a link
+// An ontology is a RULE (KERNEL.md): it keeps no state. Where it puts a thing is a rule row of the
+// places table (groups.js: spot, putAt; model.js: spotOf, setSpot, cellOf, offsetOf), what it
+// joins is a links row. rules.js gives every ontology the kernel's contract: layout, admit, moves,
+// draws (asRule).
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits
 //   draftPoint(w, room)   (optional) where a thought being written shows
 //   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. The
@@ -112,7 +120,7 @@ export const BUILT_IN = [joyce, pessoa];
 export const FALLBACK = 'pessoa';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', join: 'function', centre: 'function', escape: 'function', settingChanged: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', join: 'function', centre: 'function', escape: 'function', settingChanged: 'function', layout: 'function', admit: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {

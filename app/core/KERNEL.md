@@ -56,7 +56,7 @@ An ontology is a **rule**: a pure function of the tables with no state of its ow
 
 | A rule gives | What it is |
 |---|---|
-| `layout(places, links, context)` | where each mark sits under this rule: positions from rows, never stored by the rule *(phase 4; incremental, under 50 ms per change for 1,500 marks)* |
+| `layout(places, links, context)` | where each mark sits under this rule: positions from rows, never stored by the rule *(phase 4: `world/rules.js`, remembered per context until that context's place rows, the links or the marks change; a 1,500-thought room lays out in about 10 ms, gate 50 ms; a cold mode switch the same, gate 100 ms)* |
 | `admit(proposal)` | yes, or a refusal in words: a position it won't take, a link it won't allow |
 | `moves(mark)` | what this rule offers to do with a chosen mark |
 | `draws(context)` | the canvas parts it draws beside the marks (lines, rings, a legend) |
@@ -75,7 +75,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
   returns `{ ok: false, reason }` with the reason in words. No propose writes directly.
 - **subscribe**: `on(fn)`, told after each change to that table.
 
-Phases: 0 names · 1 moments · 2 links · 3 places (done) · 4 rules · 5 gap ·
+Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules (done) · 5 gap ·
 6 distance and carriers, v1 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen ·
 9 readers (Provoke). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

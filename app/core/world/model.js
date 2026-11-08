@@ -497,6 +497,13 @@ function tidy(f) {
   return out;
 }
 
+// The marks' version: a number from one clock, changed by every change to a thought made here
+// (and by the world's save(), for writes made by hand). A rule's layout remembers it (rules.js).
+const MARKS = new WeakMap();
+let markClock = 0;
+export const touch = (w) => { MARKS.set(w.things, ++markClock); };
+export const marksVersion = (w) => { if (!MARKS.has(w.things)) touch(w); return MARKS.get(w.things); };
+
 // ---- Where the rules put things (phase 4) ----
 // A rule keeps no state of its own: where it puts a thing is a rule row of the places table
 // (places.js: spot, putSpot), never a field of the thing nor data the rule keeps. A group's own
@@ -576,6 +583,7 @@ export function create(w, parent, fields, now = Date.now()) {
   if (!canHold(w, into, th.kind) || (into != null && shut(w, into))) return null;
   Object.assign(th, { id: uid(th.kind[0]), at: now });
   w.things[th.id] = th;
+  touch(w);
   P.setHome(w, th.id, into ?? FLOOR(0));
   placeFields(w, th, isGroup(th) && !('x' in fields) && !fields.loose ? { ...fields, x: 0, y: 0 } : fields);
   if (group) join(w, group.id, th.id);
@@ -596,6 +604,7 @@ export function update(w, id, fields, now = Date.now()) {
   if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'locked']) if (!(k in next)) delete th[k];
   Object.assign(th, next);
   placeFields(w, th, fields);
+  touch(w);
   return th;
 }
 
@@ -607,6 +616,7 @@ export function remove(w, id) {
   const th = w.things[id];
   if (!th || id === MESSY || shut(w, id)) return;
   delete w.things[id];
+  touch(w);
   const inside = isGroup(th) && membership(th.of) === 'one' ? memberIds(w, id) : [];
   const stoodFor = L.from(w, id, 'stands for').map((r) => r.to);
   const holders = groupsOf(w, id);
@@ -690,6 +700,7 @@ export function openGroup(w, groupId) {
   const g = w.things[groupId];
   if (!isGroup(g) || !g.closed || shut(w, groupId)) return false;
   delete g.closed;
+  touch(w);
   return true;
 }
 

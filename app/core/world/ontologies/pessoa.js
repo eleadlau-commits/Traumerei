@@ -101,6 +101,16 @@ export default {
     return spiralPoint(i < 0 ? units.length : i, id);
   },
 
+  // The whole room at once (rules.js), the same points as point() in one pass: each unit where it
+  // was dragged, or its place on the spiral; another mode's group where it was placed.
+  layout(w, roomId) {
+    const out = new Map(), spots = spotsOf(w, roomId, 'pessoa');
+    const units = ownUnits(w, roomId);
+    units.forEach((u, i) => { const p = spots.get(u.id); out.set(u.id, p && Number.isFinite(p.x) ? p : spiralPoint(i, u.id)); });
+    for (const g of placedForeign(w, roomId, 'pessoa')) out.set(g.id, spots.get(g.id));
+    return out;
+  },
+
   // Dragged: placed by hand.
   drop(w, roomId, id, x, y) {
     if (shut(w, roomId)) return;

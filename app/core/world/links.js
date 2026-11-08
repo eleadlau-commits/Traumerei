@@ -42,7 +42,13 @@ function index(w) {
   return ix;
 }
 // The table was written to by other hands (the log replaying rows): the index is made afresh.
-export const touched = (w) => { if (w.links) INDEX.delete(w.links); };
+export const touched = (w) => { if (w.links) { INDEX.delete(w.links); bump(w.links); } };
+// The table's version: a number from one clock that changes with every write (a rule's layout
+// remembers it, so it lays out again only after a change: rules.js).
+const VERSION = new WeakMap();
+let clock = 0;
+const bump = (t) => VERSION.set(t, ++clock);
+export const version = (w) => { const t = table(w); if (!VERSION.has(t)) bump(t); return VERSION.get(t); };
 
 const withId = (t, id) => ({ id, ...t[id] });
 const pickRows = (w, ids, kind) => {
@@ -87,6 +93,7 @@ export function set(w, id, row) {
   const r = tidy(row);
   t[id] = r;
   enter(ix, id, r);
+  bump(t);
   return withId(t, id);
 }
 // Takes a row out. True if there was one.
@@ -95,6 +102,7 @@ export function drop(w, id) {
   if (!t[id]) return false;
   leave(index(w), id, t[id]);
   delete t[id];
+  bump(t);
   return true;
 }
 // Changes a row's fields (not its ends or kind). False if there is no such row.

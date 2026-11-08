@@ -93,6 +93,25 @@ in the moments log (a save, an undo, a visit), with those rows, and returns a fu
 listening. `moments.on` hears every landing.
 Everything a plugin listens to stops when it is switched off.
 
+## Rules
+
+Every mode is a **rule** (KERNEL.md): it keeps no state. Where it puts a mark is a rule row of
+`places` (`places.of(mark)` shows them: `{ mark, context, rule, position }`), what it joins is a
+row of `links`. `t.rules` reads each mode as the kernel sees it, frozen:
+
+| Member | What it gives |
+|---|---|
+| `list()` | `[{ id, name }]`: the modes a room can be seen through |
+| `layout(rule, context)` | `[{ mark, context, rule, position: { x, y } }]`: where each unit sits under that rule, from the rows; remembered until the tables change (a 1,500-thought room lays out in under 50 ms) |
+| `admit(rule, proposal)` | `{ ok: true }` or `{ ok: false, reason }` for `{ kind: 'place', mark, context, position? }` or `{ kind: 'link', from, to, link, rule? }` (Russell refuses a loop). Changes nothing |
+| `moves(rule, context, mark)` | `[{ id, label }]`: what the rule offers for a chosen mark |
+| `draws(rule, context)` | `{ lines: [[mark…]], arrows: [{ from, to, label }] }`: what it draws beside the marks, as data |
+
+A mode a plugin adds may give `layout(w, room)` (every unit's point at once, for speed) and
+`admit(w, proposal)` (its own refusals); without them the kernel reads `point()` and the shared
+refusals. Law 3 is tested on every mode: its reads run on a frozen world, and its moves never
+take a thought or a link away (`world/tests/rules.test.js`).
+
 ## Slots, ui, plugin and app
 
 | Member | What it is |

@@ -366,6 +366,27 @@ const russell = {
   // Each chapter's thoughts, or a closed chapter as one thought.
   units: (w, roomId) => chapters(w, roomId).flatMap((g) => (g.closed ? [g] : members(w, g.id))),
 
+  // Its own refusals (the kernel's admit): an arrow that would make a loop, or join what isn't two
+  // chapters, said in words.
+  admit(w, p) {
+    if (p?.kind !== 'link' || p.link !== 'relation') return { ok: true };
+    const why = whyNot(w, parentOf(w, p.from), p.to, p.from);
+    return why ? { ok: false, reason: why } : { ok: true };
+  },
+
+  // The whole room at once (the kernel's rule layout): the tree laid out once, then each
+  // chapter's thoughts down it; the same points as point() gives one by one.
+  layout(w, roomId) {
+    const tree = layout(w, roomId), out = new Map();
+    for (const g of chapters(w, roomId)) {
+      const at = tree[g.id];
+      if (!at) continue;
+      if (g.closed) out.set(g.id, at);
+      else for (const [id, p] of Object.entries(chapterSpots(w, g.id, at))) out.set(id, p);
+    }
+    return out;
+  },
+
   point(w, roomId, id) {
     const th = w.things[id];
     const g = isGroup(th) && th.of === ID && !groupOf(w, id, ID) ? th : groupOf(w, id, ID);
