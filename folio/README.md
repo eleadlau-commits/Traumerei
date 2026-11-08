@@ -27,7 +27,7 @@ build.py                 run this: python build.py
 folio/                   the framework (knows nothing about any particular app)
   runtime/               the code that runs inside every app
   compiler/folioc.py     the compiler
-  templates/feature/     what `new-feature` copies
+  templates/feature/     what `new-feature` copies (and `new-plugin`, when the app has no template of its own)
   tests/                 the framework's own tests
 app/
   app.json               the app's name, version, colours and phone app id
@@ -267,6 +267,7 @@ this.storage.once('import-v1', fn);    // runs fn only the first time, on each d
 | `python build.py check` | Checks every feature for mistakes, without compiling. |
 | `python build.py list` | Lists features, what they need, and their start order. |
 | `python build.py new-feature ID` | Creates a feature folder from the template. Options: `--name`, `--description`, `--requires a,b`. |
+| `python build.py new-plugin ID` | Creates a plugin in the plugins folder, from the app's `app/templates/plugin/` if it has one (else the feature template), with a plugin block for today's API and app version. Options: `--name`, `--description`, `--requires a,b`, `--kind a,b`, `--author`. |
 | `python build.py serve` | Compiles, then runs the app at http://localhost:8000. Add `--test` for sample data and the tests page (`/tests.html`). |
 | `python build.py test` | Runs every test, including the delete-a-folder test (see [9](#9-tests)). `--quick` skips that one. |
 | `python build.py --without notes,maps` | Compiles without some features, to see what happens. |

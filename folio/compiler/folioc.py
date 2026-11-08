@@ -1439,6 +1439,61 @@ def cmd_new_feature(project: Project, args) -> int:
     return 0
 
 
+def cmd_new_plugin(project: Project, args) -> int:
+    """Creates a plugin in the app's plugins folder, from the app's own template (app/templates/plugin)
+    when it has one, else from Folio's feature template, with a plugin block for today's API and app."""
+    fid = args.id
+    folder = project.plugins_folder
+    if not folder:
+        print('This app has no plugins: app.json needs "plugins": { "folder": "plugins", "api": 1 }.')
+        return 1
+    if not FOLDER_NAME.match(fid):
+        print('Use lowercase words joined by dashes, e.g. "word-count".')
+        return 1
+    if any((d / fid).exists() for d in project.feature_dirs):
+        print(f'A feature called "{fid}" already exists.')
+        return 1
+    kinds = [k.strip() for k in (args.kind or '').split(',') if k.strip()]
+    if not all(KIND_NAME.match(k) for k in kinds):
+        print('--kind is a list of what it adds, like mode,editor.')
+        return 1
+    app = project._app_json()
+    own = project.app_dir / 'templates' / 'plugin'
+    template = own if own.is_dir() else project.framework / 'templates' / 'feature'
+    target = project.app_dir / folder / fid
+    class_name = ''.join(part.capitalize() for part in fid.split('-'))
+    name = args.name or fid.replace('-', ' ').capitalize()
+    service = project.plugins_config.get('service')
+    requires = [r.strip() for r in (args.requires or '').split(',') if r.strip()]
+    if own.is_dir() and 'api' not in requires and (project.app_dir / project.folder_names[0] / 'api').is_dir():
+        requires.insert(0, 'api')  # the feature that offers the plugin API, so it starts after it
+    block = {'api': project.plugins_config.get('api', 1), 'minApp': app.get('version', '1.0.0'),
+             'kind': kinds, 'load': 'start', **({'author': args.author} if args.author else {})}
+    replacements = {'__ID__': fid, '__NAME__': name, '__CLASS__': class_name,
+                    '__REQUIRES_TEXT__': ', '.join(requires) or 'nothing',
+                    '__REQUIRES__': json.dumps(requires), '__PLUGIN__': json.dumps(block),
+                    '__API__': str(block['api']), '__MIN_APP__': block['minApp'], '__SERVICE__': service or '',
+                    '__DESCRIPTION__': args.description or f'TODO: say in one sentence what {name} does.'}
+    shutil.copytree(template, target)
+    for path in sorted(target.rglob('*'), reverse=True):
+        if path.is_file():
+            text = path.read_text('utf-8')
+            for key, value in replacements.items():
+                text = text.replace(key, value)
+            path.write_text(text, 'utf-8')
+        if '__CLASS__' in path.name:
+            path.rename(path.with_name(path.name.replace('__CLASS__', class_name)))
+    if (target / 'Main.js').exists():
+        (target / 'Main.js').rename(target / f'{class_name}.js')
+    manifest_path = target / 'feature.json'
+    manifest = json.loads(manifest_path.read_text('utf-8'))
+    manifest.setdefault('plugin', block)  # Folio's feature template has no plugin block
+    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', 'utf-8')
+    print(f'Created app/{folder}/{fid}/ with {class_name}.js, README.md and tests/ (plugin API {block["api"]}).')
+    print('Next: say what it adds in feature.json\'s plugin.kind and README.md, then `python build.py test`.')
+    return 0
+
+
 def cmd_serve(project: Project, args) -> int:
     code = cmd_build(project, args)
     if code:
@@ -1623,6 +1678,13 @@ def main(argv: list[str], root: Path) -> int:
     p.add_argument('--name', help='name shown to people, e.g. "Study timer"')
     p.add_argument('--description', help='one sentence saying what it does')
     p.add_argument('--requires', help='features it needs, e.g. sessions,timetable')
+    p = sub.add_parser('new-plugin', help='create a new plugin in the plugins folder from the template')
+    p.add_argument('id', help='folder name, e.g. word-count')
+    p.add_argument('--name', help='name shown to people, e.g. "Word count"')
+    p.add_argument('--description', help='one sentence saying what it does')
+    p.add_argument('--requires', help='features it needs besides the plugin API, e.g. docks')
+    p.add_argument('--kind', help='what it adds, e.g. mode,editor')
+    p.add_argument('--author', help='who made it')
     p = sub.add_parser('serve', help='compile, then run the app on this computer')
     output_options(p)
     p.add_argument('--port', type=int, default=8000)
@@ -1647,7 +1709,7 @@ def main(argv: list[str], root: Path) -> int:
     args = parser.parse_args(argv)
     project = Project(root)
     commands = {
-        'build': cmd_build, 'check': cmd_check, 'list': cmd_list, 'new-feature': cmd_new_feature,
+        'build': cmd_build, 'check': cmd_check, 'list': cmd_list, 'new-feature': cmd_new_feature, 'new-plugin': cmd_new_plugin,
         'serve': cmd_serve, 'test': lambda p, a: run_tests(p, a), 'android-manifest': cmd_android_manifest,
         'android-project': cmd_android_project, 'ios-project': cmd_ios_project, 'version': cmd_version,
     }
