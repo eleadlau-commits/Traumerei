@@ -50,15 +50,16 @@ Plain functions of the world (`w` first), named as in the world feature's README
 
 | Part | Names |
 |---|---|
-| `model` | `own`, `shut`, `hash`, `roomSetting`, `setRoomSetting`, `isGroup`, `isLeaf`, `create`, `join`, `members`, `itemsIn`, `within`, `groupOf`, `groupsIn`, `roomItems`, `thoughtText`, `view` |
+| `model` | `own`, `shut`, `hash`, `roomSetting`, `setRoomSetting`, `isGroup`, `isLeaf`, `create`, `join`, `members`, `itemsIn`, `within`, `groupOf`, `groupsIn`, `roomItems`, `thoughtText`, `view`, `setOrder`, `groupLabel` (a group's name: its title, else its first words) |
 | `groups` | Groups of other modes as one thing here: `placedForeign`, `trayForeign`, `inForeign`, `waiting`, `wait`, `spot`, `putAt`, `place`, `unplace` |
 | `layout` | `spiralPoint`: where a thought not yet placed sits |
+| `trains` | A train's rhythm (Joyce's, in the core), for any mode that reads thoughts top to bottom: `stepAfter`, `setHeights`, `STEP` |
 
 ## Shared parts
 
 | Part | Names |
 |---|---|
-| `relations` | Named arrows between groups: `arrowsOf`, `cleanRelationList`, `relationEntry`, `relationEnds`, `listText` |
+| `relations` | Named arrows between groups: `arrowsOf`, `cleanRelationList`, `relationEntry`, `relationEnds`, `listText`, `relationName`, `splitList`, `cleanRelations`, `relationShown`, `withRelation`, `RELATIONS` |
 | `arrows` | `arrowView`: named arrows on the screen, edited where they are |
 | `lines` | Lines on a canvas: `svg`, `layer`, `group`, `line`, `knot`, `slack`, `strand`, `path`, `middle`, `between`, `labelSpot`, `sidePoint`, `facing`, `PAD`, `ENDS`, `ENDS_WORDS`, `cleanEnds`, `PAUSE`, `HEAD` |
 | `maths` | `maths(text)`: a thought's words with their LaTeX drawn |

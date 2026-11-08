@@ -22,9 +22,13 @@ function pick(from, names, where) {
 // The rules a plugin may use, by part. Each name is a plain function of the world (or a
 // constant) from the world feature's README.
 export const MODEL = ['own', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
-  'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view'];
+  'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel'];
 export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'place', 'unplace'];
-export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText'];
+export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
+  'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];
+// A train's rhythm (Joyce's, in the core): how far down the next thought goes, the measured
+// heights it reads, and the steps it starts from.
+export const TRAINS = ['stepAfter', 'setHeights', 'STEP'];
 export const LINES = ['svg', 'layer', 'group', 'line', 'knot', 'slack', 'strand', 'path', 'middle', 'between',
   'labelSpot', 'sidePoint', 'facing', 'PAD', 'ENDS', 'ENDS_WORDS', 'cleanEnds', 'PAUSE', 'HEAD'];
 
@@ -37,6 +41,7 @@ export function surface(lib) {
     arrows: pick(lib.arrowview, ['arrowView'], 'arrowview'),
     maths: pick(lib.maths, ['maths'], 'maths'),
     layout: pick(lib.pessoa, ['spiralPoint'], 'pessoa'),
+    trains: pick(lib.joyce, TRAINS, 'joyce'),
   };
 }
 

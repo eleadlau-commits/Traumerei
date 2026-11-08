@@ -12,7 +12,7 @@ list is everything it offers:
 
 | Member | What it is |
 |---|---|
-| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `russell`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below), `relationsview` (the relations editor in a mode's ⚙: below). Plain functions of a world; none touches the screen. |
+| `lib` | The rules, by module (`lib.js`): `model`, `twin`, `items`, `maths`, `look`, `attention`, `picture`, `ontologies`, `joyce`, `pessoa`, `groups` (groups as shared objects, `groups.js`), `relations` (named arrows between groups, shared by any ontology that joins its groups), `lines` (lines on a canvas, shared by any ontology that draws them: below), `arrowview` (named arrows on the screen, for any ontology that joins its groups: below), `relationsview` (the relations editor in a mode's ⚙: below). Plain functions of a world; none touches the screen. |
 | `world` | The world itself (`model.js` says its shape). Change it with `lib.model`, then `save()`. |
 | `lib.model.reading(w, fn)` | Runs `fn` with a fast "which groups hold this?" (`groupsOf`, `groupOf`): who holds what is listed once, not looked up across the whole world per thought. For drawing a big room (the room wraps each redraw in it). `join`, `leave`, `create` and `remove` keep the list true; code that sets a group's `members` itself must call `lib.model.changed()`. |
 | `load()` | Reads the world again from storage (it may have come from the account meanwhile). |
@@ -52,7 +52,9 @@ inside a group however deep, `within` everything inside it, `holds` whether it h
 ontology says whether an item can be in **one** of its groups (a train) or in **many**. Every
 group can be closed, named, moved and deleted, and is always the same group, never a copy.
 
-**Ontologies** are in `ontologies/`, one file each (Joyce, Pessoa, Russell), or come from another feature
+**Ontologies** built into the core are in `ontologies/`, one file each (Joyce: trains, the way thoughts
+are written in order; Pessoa: each thought on its own, the view a room falls back to). Every other
+mode is a plugin (Russell, Proust) and comes
 through the slot `world.ontologies`. One is special: the rooms page's own, **Borges** (the floors feature's),
 marked `roomsPage`. Its "room" is a floor, its units the rooms on it, its points their cells. It is
 never a room's mode and shows in no list inside a room (`forRooms`); the rooms page finds it

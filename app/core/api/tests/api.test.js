@@ -8,10 +8,11 @@ import { API_VERSION, surface, connect, PLACES } from '../v1.js';
 
 // Version 1, as API.md lists it. Changing the API means changing this and API.md together.
 const V1 = {
-  top: ['app', 'arrows', 'commands', 'data', 'docks', 'editor', 'formats', 'groups', 'items', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'version', 'world'],
-  model: ['create', 'groupOf', 'groupsIn', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'members', 'own', 'roomItems', 'roomSetting', 'setRoomSetting', 'shut', 'thoughtText', 'view', 'within'],
+  top: ['app', 'arrows', 'commands', 'data', 'docks', 'editor', 'formats', 'groups', 'items', 'layout', 'lines', 'maths', 'model', 'modes', 'more', 'plugin', 'relations', 'save', 'toast', 'trains', 'version', 'world'],
+  model: ['create', 'groupLabel', 'groupOf', 'groupsIn', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'members', 'own', 'roomItems', 'roomSetting', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
-  relations: ['arrowsOf', 'cleanRelationList', 'listText', 'relationEnds', 'relationEntry'],
+  relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
+  trains: ['STEP', 'setHeights', 'stepAfter'],
   lines: ['ENDS', 'ENDS_WORDS', 'HEAD', 'PAD', 'PAUSE', 'between', 'cleanEnds', 'facing', 'group', 'knot', 'labelSpot', 'layer', 'line', 'middle', 'path', 'sidePoint', 'slack', 'strand', 'svg'],
   arrows: ['arrowView'],
   maths: ['maths'],

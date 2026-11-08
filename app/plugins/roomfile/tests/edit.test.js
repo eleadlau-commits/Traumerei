@@ -1,6 +1,11 @@
 // Tests for editing a room or a group as .traum text (edit.js): written out, changed, put back.
 
 import { test, assert } from 'folio/testing';
+import russell, { arrows as russellArrows } from '../../russell/rules.js';
+import * as libForRussell from '../../world/lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { emptyWorld, members, groupsIn, roomItems, room, lock } from '../../world/model.js';
@@ -10,7 +15,7 @@ import { importRoom } from '../traum.js';
 import { open, apply, shortPictures, badMaths, copyWorld } from '../edit.js';
 
 bind(lib);
-const ontologies = gather();
+const ontologies = gather([russell]);
 const PIC = 'data:image/png;base64,iVBORw0KGgo=';
 
 const BOOK = ['---', 'room: Book', 'modes: [russell]', '---', '# Objects',
@@ -68,11 +73,11 @@ test('the heading wins: renamed, closed; an arrow changed and one taken away', (
     .replace('| forgets | the equations', '| ⊂ | the rows'));
   assert.ok(w.things[m.id].closed);
   assert.equal(w.things[m.id].title, 'Grids');
-  const a = lib.russell.arrows(w, id);
+  const a = russellArrows(w, id);
   assert.deepEqual(a.map((x) => [x.rel, x.label]), [['⊂', 'the rows']]);
   assert.ok(r.changes.some((c) => /renamed "Grids"/.test(c)));
   run(w, id, open(w, id, { scope: 'group', groupId: m.id, ontologies }), s.text.replace(/arrow:.*\n/, ''));
-  assert.equal(lib.russell.arrows(w, id).length, 0);
+  assert.equal(russellArrows(w, id).length, 0);
 });
 
 test('a thought moved to another group by holds leaves its old one and is not deleted', () => {

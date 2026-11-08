@@ -2,8 +2,12 @@
 // a thought or group can be moved across.
 
 import { test, assert } from 'folio/testing';
+import * as libForRussell from '../lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import { emptyWorld, loadWorld, create, children, view, roomThoughts, roomTags, copyRoom, remove, move, groupsOf, rooms, topRoom, isBig, join } from '../model.js';
-import russell from '../ontologies/russell.js';
+import russell from '../../russell/rules.js';
 import { addTwin, sides, twinOf, otherSide, across, isTwin, placeName, moveTargets } from '../twin.js';
 
 const ONTS = [{ id: 'joyce', name: 'Joyce' }, { id: 'pessoa', name: 'Pessoa' }, { id: 'russell', name: 'Russell' }];

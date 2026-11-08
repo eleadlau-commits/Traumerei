@@ -14,10 +14,13 @@ import { parse, readLink, writeLink } from '../../roomfile/grammar.js';
 import { importRoom, exportRoom } from '../../roomfile/traum.js';
 import { open, apply } from '../../roomfile/edit.js';
 import { proust, links, point, endsOf } from '../rules.js';
+import russell from '../../russell/rules.js';
+import { bind as bindRussell } from '../../russell/world.js';
 
 bind(surface(lib));
 bindRoomfile(lib);
-const ontologies = gather([proust]);
+bindRussell(surface(lib));
+const ontologies = gather([proust, russell]);
 const L = () => links();
 
 const head = (modes = '[proust]', more = []) => ['---', 'format: room/2', 'room: Combray', `modes: ${modes}`, ...more, '---', ''];

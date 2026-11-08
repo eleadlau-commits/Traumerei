@@ -2,12 +2,16 @@
 // modes, in their tray until placed; a group made in the tray stays there.
 
 import { test, assert } from 'folio/testing';
+import * as libForRussell from '../lib.js';
+import { surface as surfaceForRussell } from '../../api/v1.js';
+import { bind as bindRussell } from '../../russell/world.js';
+bindRussell(surfaceForRussell(libForRussell)); // Russell is a plugin: it gets the world's rules through the plugin API
 import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom } from '../model.js';
 import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting, moveLoose } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
 import joyce from '../ontologies/joyce.js';
 import pessoa from '../ontologies/pessoa.js';
-import russell, { chapters, addChapter } from '../ontologies/russell.js';
+import russell, { chapters, addChapter } from '../../russell/rules.js';
 
 const train = (w, ...texts) => {
   const t = startTrain(w, MESSY, 0, 0, 1);
