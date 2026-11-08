@@ -17434,233 +17434,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   };
 
-  // dist/web/features/api/v1.js
-  var API_VERSION = 1;
-  function pick(from2, names, where) {
-    const out = {};
-    for (const name5 of names) {
-      if (!(name5 in from2)) throw new Error(`Plugin API: world's ${where} has no "${name5}"`);
-      out[name5] = from2[name5];
-    }
-    return Object.freeze(out);
-  }
-  var MODEL = [
-    "own",
-    "parentOf",
-    "shut",
-    "hash",
-    "roomSetting",
-    "setRoomSetting",
-    "isGroup",
-    "isLeaf",
-    "create",
-    "join",
-    "members",
-    "itemsIn",
-    "within",
-    "groupOf",
-    "groupsIn",
-    "roomItems",
-    "thoughtText",
-    "view",
-    "setOrder",
-    "groupLabel",
-    "room",
-    "roomThoughts",
-    "kindOf",
-    "update",
-    "remove",
-    "groupsOf",
-    "addRoom",
-    "seedRoomSettings",
-    "search",
-    "MESSY",
-    "DEFAULT_MODE",
-    "leave",
-    "replaceIn",
-    "isLooseGroup",
-    "spotOf",
-    "setSpot",
-    "unsetSpot"
-  ];
-  var GROUPS = ["placedForeign", "trayForeign", "inForeign", "waiting", "wait", "spot", "putAt", "unput", "spotsOf", "place", "unplace"];
-  var RELATIONS2 = [
-    "arrowsOf",
-    "cleanRelationList",
-    "relationEntry",
-    "relationEnds",
-    "listText",
-    "relationName",
-    "splitList",
-    "cleanRelations",
-    "relationShown",
-    "withRelation",
-    "RELATIONS"
-  ];
-  var TRAINS = ["stepAfter", "setHeights", "STEP"];
-  var KINDS3 = ["ITEMS", "kindFor", "isKnown"];
-  var TWINS = ["isTwin", "twinOf", "sides", "addTwin"];
-  var LINES2 = [
-    "svg",
-    "layer",
-    "group",
-    "line",
-    "knot",
-    "slack",
-    "strand",
-    "path",
-    "middle",
-    "between",
-    "labelSpot",
-    "sidePoint",
-    "facing",
-    "PAD",
-    "ENDS",
-    "ENDS_WORDS",
-    "cleanEnds",
-    "PAUSE",
-    "HEAD"
-  ];
-  function surface(lib) {
-    return {
-      model: pick(lib.model, MODEL, "model"),
-      groups: pick(lib.groups, GROUPS, "groups"),
-      relations: pick(lib.relations, RELATIONS2, "relations"),
-      lines: pick(lib.lines, LINES2, "lines"),
-      arrows: pick(lib.arrowview, ["arrowView"], "arrowview"),
-      maths: pick(lib.maths, ["maths", "broken"], "maths"),
-      kinds: pick(lib.items, KINDS3, "items"),
-      twins: pick(lib.twin, TWINS, "twin"),
-      pictures: pick(lib.picture, ["shrinkPicture", "keepOrShrink"], "picture"),
-      layout: pick(lib.pessoa, ["spiralPoint"], "pessoa"),
-      trains: pick(lib.joyce, TRAINS, "joyce")
-    };
-  }
-  var PLACES = {
-    modes: "world.ontologies",
-    // a way of seeing a room (world/ontologies/index.js says its shape)
-    items: "world.items",
-    // a kind of item: a passage, a picture, a PDF page (world/items/index.js)
-    commands: "keys",
-    // a named action, with its keys if it has any (keys/README.md)
-    more: "rail.more",
-    // an entry under ⋯ More (frame/README.md)
-    editor: "room.editor",
-    // a section in the Editor for the chosen thing (room/README.md)
-    formats: "world.formats"
-    // a file format: rooms in and out, and edited as text (world/formats.js)
-  };
-  function dockFor(dock, gone) {
-    if (!dock) return null;
-    const mine = /* @__PURE__ */ new Set();
-    gone(() => {
-      for (const key of mine) dock.close(key, true);
-      mine.clear();
-    });
-    return Object.freeze({
-      open: async (o2 = {}) => {
-        if (!o2.key) throw new Error("A dock tab needs a key");
-        const handle = await dock.open({ ...o2, onClose: () => {
-          mine.delete(o2.key);
-          o2.onClose?.();
-        } });
-        if (handle) mine.add(o2.key);
-        return handle;
-      },
-      close: (key, force) => dock.close(key, force),
-      show: (key) => dock.show(key),
-      isOpen: (key) => dock.isOpen(key),
-      isShowing: (key) => dock.isShowing(key)
-    });
-  }
-  function connect({
-    app,
-    world,
-    plugin,
-    parts: parts3,
-    toast: toast2 = () => {
-    },
-    docks = null,
-    keys = null,
-    frame = null,
-    floors = null,
-    service = () => null,
-    gone = () => {
-    },
-    offers = API_VERSION
-  }) {
-    const wanted = plugin.manifest?.plugin?.api ?? offers;
-    if (wanted > offers) {
-      throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${offers}`);
-    }
-    const owner = plugin.id;
-    const add = (slot) => (item) => app.slot(slot).add(item, owner);
-    const places = {};
-    for (const [name5, slot] of Object.entries(PLACES)) places[name5] = Object.freeze({ add: add(slot) });
-    places.modes = Object.freeze({
-      add: add(PLACES.modes),
-      get: (id) => world.ontology(id),
-      // the mode with this id (the default mode when it is off or unknown)
-      get all() {
-        return world.ontologies;
-      },
-      // every mode there is now
-      get settings() {
-        return world.globals;
-      }
-      // each mode's settings for new rooms: { [mode id]: { key: value } }
-    });
-    places.commands = Object.freeze({
-      add: add(PLACES.commands),
-      label: (id) => keys?.label(id) || ""
-      // a command's keys as words ("Ctrl+K"), or ''
-    });
-    if (frame) gone(() => frame.hide(plugin));
-    return Object.freeze({
-      version: offers,
-      app: Object.freeze({ name: app.config.name, version: app.config.version }),
-      plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
-      get world() {
-        return world.world;
-      },
-      save: () => world.save(),
-      write: () => world.write(),
-      load: () => {
-        world.load();
-        world.begin();
-        return world.world;
-      },
-      data: (roomId) => parts3.model.own(world.world, roomId, owner),
-      ...parts3,
-      ...places,
-      docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
-      // The top bar and the status bar, for a page the plugin shows (frame/README.md).
-      frame: frame ? Object.freeze({
-        show: (o2) => frame.show(plugin, o2),
-        update: (o2) => frame.update(plugin, o2),
-        hide: () => frame.hide(plugin),
-        hint: (text2) => frame.hint(text2),
-        clearHint: () => frame.clearHint()
-      }) : null,
-      // Going somewhere: the rooms page, or into a room (from anywhere, Home too).
-      open: Object.freeze({
-        rooms: () => {
-          service("create")?.open();
-        },
-        room: (id) => {
-          service("create")?.open();
-          service("rooms")?.openRoom(id);
-        }
-      }),
-      // Where a new room goes on the rooms page: `cell` if it is free, else its floor's first free
-      // cell, else a new floor.
-      floors: Object.freeze({ place: (id, cell = null) => floors?.place(id, cell) }),
-      toast: (text2) => toast2(text2)
-    });
-  }
-
   // dist/web/features/api/v2.js
-  var API_VERSION2 = 2;
+  var API_VERSION = 2;
   var TABLES = Object.freeze(["marks", "places", "links", "distance", "gaps", "moments"]);
   var READERS3 = Object.freeze(["me now", "me later", "others", "machine"]);
   var DIRECTIONS3 = Object.freeze(["to world", "from world", "to maker"]);
@@ -18039,35 +17814,222 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
     return Object.freeze({ marks, places, links: links2, distance, gaps, moments, rules: ruleNs, carriers });
   }
-  function connect2(o2) {
-    const base2 = connect({ ...o2, offers: API_VERSION2 });
-    const tables = kernel({ lib: o2.lib || o2.world.lib, world: o2.world, events: o2.events || null, gone: o2.gone, floors: o2.floors || null });
+  function pick(from2, names, where) {
+    const out = {};
+    for (const name5 of names) {
+      if (!(name5 in from2)) throw new Error(`Plugin API: world's ${where} has no "${name5}"`);
+      out[name5] = from2[name5];
+    }
+    return Object.freeze(out);
+  }
+  var MODEL = [
+    "parentOf",
+    "shut",
+    "hash",
+    "roomSetting",
+    "setRoomSetting",
+    "isGroup",
+    "isLeaf",
+    "create",
+    "join",
+    "members",
+    "itemsIn",
+    "within",
+    "groupOf",
+    "groupsIn",
+    "roomItems",
+    "thoughtText",
+    "view",
+    "setOrder",
+    "groupLabel",
+    "room",
+    "roomThoughts",
+    "kindOf",
+    "update",
+    "remove",
+    "groupsOf",
+    "addRoom",
+    "seedRoomSettings",
+    "search",
+    "MESSY",
+    "DEFAULT_MODE",
+    "leave",
+    "replaceIn",
+    "isLooseGroup",
+    "spotOf",
+    "setSpot",
+    "unsetSpot"
+  ];
+  var GROUPS = ["placedForeign", "trayForeign", "inForeign", "waiting", "wait", "spot", "putAt", "unput", "spotsOf", "place", "unplace"];
+  var RELATIONS2 = [
+    "arrowsOf",
+    "cleanRelationList",
+    "relationEntry",
+    "relationEnds",
+    "listText",
+    "relationName",
+    "splitList",
+    "cleanRelations",
+    "relationShown",
+    "withRelation",
+    "RELATIONS"
+  ];
+  var TRAINS = ["stepAfter", "setHeights", "STEP"];
+  var KINDS3 = ["ITEMS", "kindFor", "isKnown"];
+  var TWINS = ["isTwin", "twinOf", "sides", "addTwin"];
+  var LINES2 = [
+    "svg",
+    "layer",
+    "group",
+    "line",
+    "knot",
+    "slack",
+    "strand",
+    "path",
+    "middle",
+    "between",
+    "labelSpot",
+    "sidePoint",
+    "facing",
+    "PAD",
+    "ENDS",
+    "ENDS_WORDS",
+    "cleanEnds",
+    "PAUSE",
+    "HEAD"
+  ];
+  function surface(lib) {
+    return {
+      model: pick(lib.model, MODEL, "model"),
+      groups: pick(lib.groups, GROUPS, "groups"),
+      relations: pick(lib.relations, RELATIONS2, "relations"),
+      lines: pick(lib.lines, LINES2, "lines"),
+      arrows: pick(lib.arrowview, ["arrowView"], "arrowview"),
+      maths: pick(lib.maths, ["maths", "broken"], "maths"),
+      kinds: pick(lib.items, KINDS3, "items"),
+      twins: pick(lib.twin, TWINS, "twin"),
+      pictures: pick(lib.picture, ["shrinkPicture", "keepOrShrink"], "picture"),
+      layout: pick(lib.pessoa, ["spiralPoint"], "pessoa"),
+      trains: pick(lib.joyce, TRAINS, "joyce")
+    };
+  }
+  var SLOTS = {
+    rules: "world.ontologies",
+    // a way of seeing a room (world/ontologies/index.js says its shape)
+    kinds: "world.items",
+    // a kind of mark: a passage, a picture, a PDF page (world/items/index.js)
+    commands: "keys",
+    // a named action, with its keys if it has any (keys/README.md)
+    more: "rail.more",
+    // an entry under ⋯ More (frame/README.md)
+    editor: "room.editor",
+    // a section in the Editor for the chosen thing (room/README.md)
+    formats: "world.formats",
+    // a file format: rooms in and out, and edited as text (world/formats.js)
+    carriers: "world.carriers"
+    // a carrier of the six tables (the account's sync; world/README.md)
+  };
+  function dockFor(dock, gone) {
+    if (!dock) return null;
+    const mine = /* @__PURE__ */ new Set();
+    gone(() => {
+      for (const key of mine) dock.close(key, true);
+      mine.clear();
+    });
     return Object.freeze({
-      ...base2,
-      // (a spread reads a getter once: the world is read afresh each time, as v1 does, since it is
-      // replaced when it is read back from storage, and a plugin writing to an old one loses it)
-      get world() {
-        return base2.world;
+      open: async (o2 = {}) => {
+        if (!o2.key) throw new Error("A dock tab needs a key");
+        const handle = await dock.open({ ...o2, onClose: () => {
+          mine.delete(o2.key);
+          o2.onClose?.();
+        } });
+        if (handle) mine.add(o2.key);
+        return handle;
       },
-      ...tables,
-      // The places to plug in, named for what they are to the kernel: rules (modes), kinds (items).
-      slots: Object.freeze({
-        rules: base2.modes,
-        kinds: base2.items,
-        commands: base2.commands,
-        more: base2.more,
-        editor: base2.editor,
-        formats: base2.formats,
-        carriers: Object.freeze({ add: (item) => o2.app.slot("world.carriers").add(item, o2.plugin.id) })
+      close: (key, force) => dock.close(key, force),
+      show: (key) => dock.show(key),
+      isOpen: (key) => dock.isOpen(key),
+      isShowing: (key) => dock.isShowing(key)
+    });
+  }
+  function connect({
+    app,
+    world,
+    plugin,
+    parts: parts3,
+    lib = null,
+    events = null,
+    toast: toast2 = () => {
+    },
+    docks = null,
+    keys = null,
+    frame = null,
+    floors = null,
+    service = () => null,
+    room: room5 = null,
+    gone = () => {
+    }
+  }) {
+    const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
+    if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
+    if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
+    const owner = plugin.id;
+    const add = (slot) => (item) => app.slot(slot).add(item, owner);
+    const tables = kernel({ lib: lib || world.lib, world, events, gone, floors });
+    if (frame) gone(() => frame.hide(plugin));
+    const slots = Object.freeze({
+      ...Object.fromEntries(Object.entries(SLOTS).map(([name5, slot]) => [name5, Object.freeze({ add: add(slot) })])),
+      rules: Object.freeze({
+        add: add(SLOTS.rules),
+        get: (id) => world.ontology(id),
+        // the rule with this id (the default when it is off or unknown)
+        get all() {
+          return world.ontologies;
+        },
+        // every rule there is now
+        get settings() {
+          return world.globals;
+        }
+        // each rule's settings for new rooms: { [rule]: { key: value } }
       }),
-      // a carrier of the six tables (the account's sync)
-      // What the person is looking at: the open room and the one mark chosen there, as ids, or null
-      // (a command on the chosen thought reads it here; nothing else of the screen is in the API).
-      ui: Object.freeze({ toast: base2.toast, chosen: () => {
-        const r = o2.room?.();
-        const context = r?.id?.() ?? null;
-        return context == null ? null : row({ context, mark: r.chosen?.() ?? null });
-      } })
+      commands: Object.freeze({ add: add(SLOTS.commands), label: (id) => keys?.label(id) || "" })
+    });
+    return Object.freeze({
+      version: API_VERSION,
+      app: Object.freeze({ name: app.config.name, version: app.config.version }),
+      plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
+      ...tables,
+      slots,
+      // The screen a plugin may use, and what the person is looking at: the open room and the one
+      // mark chosen there, as ids, or null.
+      ui: Object.freeze({
+        toast: (text2) => toast2(text2),
+        chosen: () => {
+          const r = room5?.();
+          const context = r?.id?.() ?? null;
+          return context == null ? null : row({ context, mark: r.chosen?.() ?? null });
+        },
+        docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone) }) : null,
+        frame: frame ? Object.freeze({
+          show: (o2) => frame.show(plugin, o2),
+          update: (o2) => frame.update(plugin, o2),
+          hide: () => frame.hide(plugin),
+          hint: (text2) => frame.hint(text2),
+          clearHint: () => frame.clearHint()
+        }) : null,
+        open: Object.freeze({
+          rooms: () => {
+            service("create")?.open();
+          },
+          room: (id) => {
+            service("create")?.open();
+            service("rooms")?.openRoom(id);
+          }
+        })
+      }),
+      // What rules and views share: the rule kit and the drawing parts (surface()), and the world
+      // they are handed, read afresh each time (it is replaced when read back from storage).
+      parts: Object.freeze({ ...parts3, world: () => world.world })
     });
   }
 
@@ -18090,8 +18052,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         this.leaving.get(id).push(fn);
       };
       this.provide("traumerei", Object.freeze({
-        version: API_VERSION2,
-        connect: (plugin) => connect2({ app, world, plugin, parts: parts3, lib: world.lib, events, toast: ui_exports.toast, docks, keys, frame, floors, service, room: room5, gone: gone(plugin.id) }),
+        version: API_VERSION,
+        connect: (plugin) => connect({ app, world, plugin, parts: parts3, lib: world.lib, events, toast: ui_exports.toast, docks, keys, frame, floors, service, room: room5, gone: gone(plugin.id) }),
         // For the app, not plugins: closes what a plugin opened, once it is switched off.
         release: (id) => this.release(id)
       }));
@@ -18625,7 +18587,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("Home needs the plugin API");
       this.t = t;
-      this.frame = t.frame;
+      this.frame = t.ui.frame;
       this.quick = quickLine({
         listen: (target, type, fn) => this.listenTo(target, type, fn),
         // taken away when Home is switched off
@@ -18663,11 +18625,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- Create ----
     create() {
-      this.t.open.rooms();
+      this.t.ui.open.rooms();
     }
     // Into Messy thoughts: the rooms page opens, then the room.
     goToMessy() {
-      this.t.open.room(this.t.model.MESSY);
+      this.t.ui.open.room(this.t.parts.model.MESSY);
     }
     // Whether Home is what shows: no rooms page over it.
     showing() {
@@ -18675,20 +18637,17 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
     // ---- The quick thought ----
     // Keeps `text` as a loose thought of Messy thoughts, waiting in its tray in every mode (as a
-    // thought added from the tray does). Read afresh first (it may have come from the account), and
-    // written down at once, so the rooms page finds it. Says where it went in the status bar.
+    // thought added from the tray does), through the marks and places tables, so it lands as a moment
+    // and is written down at once. Says where it went in the status bar.
     // True when it went.
     drop(text2) {
-      const { model, groups } = this.t;
-      const world = this.t.load();
-      const th = model.create(world, model.MESSY, { kind: "line", text: text2 });
-      if (!th) {
+      const { MESSY: MESSY5 } = this.t.parts.model;
+      const made3 = this.t.marks.make({ kind: "line", content: text2, in: MESSY5 });
+      if (!made3.ok) {
         this.frame?.hint("Messy thoughts is locked: nothing was dropped");
         return false;
       }
-      groups.wait(world, model.MESSY, th.id);
-      this.t.save();
-      this.t.write();
+      this.t.places.unplace(made3.id, MESSY5);
       this.frame?.hint("Dropped in Messy thoughts");
       this.drawWaiting();
       return true;
@@ -18696,11 +18655,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     // ---- What waits in Messy thoughts ----
     // How many things wait in Messy thoughts' loose tray, in the mode it is seen in.
     waiting() {
-      const world = this.t.world;
+      const world = this.t.parts.world();
       if (!world) return 0;
-      const { model } = this.t;
+      const { model } = this.t.parts;
       try {
-        const o2 = this.t.modes.get(model.view(world, model.MESSY).mode);
+        const o2 = this.t.slots.rules.get(model.view(world, model.MESSY).mode);
         return o2?.tray ? o2.tray(world, model.MESSY).length : 0;
       } catch {
         return 0;
@@ -18950,7 +18909,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("Picture needs the plugin API");
-      t.items.add(picture({ maths: t.maths.maths, shrinkPicture: t.pictures.shrinkPicture }));
+      t.slots.kinds.add(picture({ maths: t.parts.maths.maths, shrinkPicture: t.parts.pictures.shrinkPicture }));
     }
   };
 
@@ -19975,8 +19934,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("Proust needs the plugin API");
-      bind2(t);
-      t.modes.add({ ...proust, draw: draw2, press, join: join4, props, centre: centreWeb, escape: escape2 });
+      bind2(t.parts);
+      t.slots.rules.add({ ...proust, draw: draw2, press, join: join4, props, centre: centreWeb, escape: escape2 });
     }
   };
 
@@ -19995,7 +19954,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("The source editor needs the plugin API");
-      this.panel = t.docks.right;
+      this.panel = t.ui.docks?.right;
       this.provide("source", {
         open: (o2) => this.open(o2),
         close: () => this.handle?.close() ?? Promise.resolve(true),
@@ -20354,7 +20313,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (!res.ok) throw new Error(res.status);
           const blob = await res.blob();
           if (!blob.type.startsWith("image/")) throw new Error("not a picture");
-          m2.body.content.src = await this.t.pictures.keepOrShrink(blob);
+          m2.body.content.src = await this.t.parts.pictures.keepOrShrink(blob);
         } catch {
           out.report.push(`The picture at ${src} couldn't be fetched, so it came in as its address.`);
           m2.body = { kind: "line", content: { text: src } };
@@ -20625,7 +20584,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("Time needs the plugin API");
       this.t = t;
-      this.panel = t.docks?.right || null;
+      this.panel = t.ui.docks?.right || null;
       this.isOn = !!this.storage.get("open", false);
       this.shown = null;
       this.closing = false;
@@ -20655,7 +20614,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (const old of ["record", "keep"]) if (this.storage.has(old)) this.storage.set(old, null);
       this.add("settings", { id: "time-history", title: "History", order: 31, render: () => this.settingsPane() });
       if (!this.panel) return;
-      t.more.add({
+      t.slots.more.add({
         id: "time",
         label: "Time",
         icon: "clock",
@@ -20664,11 +20623,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         on: () => this.isOn,
         visible: () => !!this.place(),
         title: () => {
-          const keys = t.commands.label("time.toggle");
+          const keys = t.slots.commands.label("time.toggle");
           return keys ? `Time · ${keys}` : "Time";
         }
       });
-      for (const k2 of TIME_KEYS) t.commands.add({ ...k2, zone: "everywhere", when: () => !!this.place(), run: () => this.toggle() });
+      for (const k2 of TIME_KEYS) t.slots.commands.add({ ...k2, zone: "everywhere", when: () => !!this.place(), run: () => this.toggle() });
       this.on("world:saved", () => this.refreshSoon());
       this.on("world:changed", () => this.refreshSoon());
       this.on("room:open", () => this.refreshSoon());
@@ -20680,10 +20639,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.toNow();
     }
     get world() {
-      return this.t.world;
+      return this.t.parts.world();
     }
+    // the tables Time reads (history: t.moments)
     get m() {
-      return this.t.model;
+      return this.t.parts.model;
     }
     // ---- Settings → History: how many days the moments log keeps ----
     get keep() {
@@ -20750,7 +20710,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (this.pastFor && this.pastFor !== p) this.toNow();
       const roomId = p.room?.() || null;
       const r = roomId && this.m.room(this.world, roomId);
-      const twin = r && this.t.twins.twinOf(this.world, roomId);
+      const twin = r && this.t.parts.twins.twinOf(this.world, roomId);
       const title = r ? twin ? `${twin.name} · ${r.name}` : r.name : "Every room";
       const kind = r ? "Timeline" : "Days";
       const list = r ? this.roomList(p, roomId) : this.dayList(p);
@@ -20891,7 +20851,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const end = day2 == null ? Infinity : day2 + DAY4 - 1;
       const items = timeline2(m2, w2, roomId, this.t.moments).filter((th) => (th.at ?? 0) <= end);
       if (!items.length) return el16("p", { class: "time-none" }, day2 == null ? "Nothing written here yet" : "Nothing written here by then");
-      const ont = this.t.modes.get(m2.view(w2, roomId).mode);
+      const ont = this.t.slots.rules.get(m2.view(w2, roomId).mode);
       const sel = p.chosen?.() || null;
       const when = (ms) => new Date(ms).toLocaleString(void 0, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       return el16("ol", { class: "time-list" }, items.map((th) => {
@@ -23667,12 +23627,11 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       this.attach(box);
     }
     open() {
-      const { search: search4 } = this.t.model;
       const field3 = el18("input", { class: "search-field", placeholder: "Search every room", "aria-label": "Search", autocomplete: "off", spellcheck: "false" });
       const list = el18("div", { class: "search-list", role: "listbox" });
       let found = [], at2 = 0;
       const show = () => {
-        found = search4(this.t.world, field3.value);
+        found = this.t.marks.search(field3.value);
         at2 = Math.min(at2, Math.max(0, found.length - 1));
         list.replaceChildren(
           ...found.map((f2, i2) => el18("button", {
@@ -28577,8 +28536,8 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     start() {
       const t = this.use("traumerei")?.connect(this);
       if (!t) throw new Error("Russell needs the plugin API");
-      bind5(t);
-      t.modes.add(rules_default);
+      bind5(t.parts);
+      t.slots.rules.add(rules_default);
     }
   };
 
@@ -28636,7 +28595,7 @@ l0,-` + (t + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     "test": false,
     "pluginApi": 2
   };
-  var features = [{ "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "2.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": ["api"], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "gaps", "name": "Gaps", "description": "The checker: open a gap on a thought (something to check, do or judge), resolve it, and see a group's or a tree's progress in the Editor (Ctrl+Alt+G).", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/gaps/Gaps.js", "plugin": { "kind": ["editor", "command"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "picture", "name": "Pictures", "description": "Pictures in a room: a small copy of the file, kept with the room, and its caption. Add it from Add, Alt+I, or by pasting or dropping a picture.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/picture/Picture.js", "plugin": { "kind": ["item"], "load": "start", "api": 1, "minApp": "1.0.0", "author": "E" } }, { "id": "plugins", "name": "Plugins", "description": "Settings → Plugins: every plugin with a switch that works at once, why one isn't running, and safe mode.", "version": "1.0.0", "requires": [], "uses": ["api"], "platforms": ["web", "android", "ios"], "path": "features/plugins/Plugins.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time", "plugins"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }];
+  var features = [{ "id": "renderer", "name": "Renderer", "description": "Turns a picture into a faint monochrome, cuts it with a seeded opacity mask, and shows how the mask was made.", "version": "1.0.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/renderer/Renderer.js", "plugin": { "kind": ["look"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "world", "name": "World", "description": "The saved world of rooms and thoughts, its rules, saving and undo, the ontologies, and the rooms' look. Other features reach it through the world service.", "version": "0.1.0", "requires": [], "uses": ["renderer"], "platforms": ["web", "android", "ios"], "path": "features/world/World.js" }, { "id": "keys", "name": "Keys", "description": "One key map that every feature adds its keys to: the ? list is drawn from it, keys with an action are pressed through it, and two actions sharing a key are caught.", "version": "0.1.0", "requires": [], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/keys/Keys.js" }, { "id": "docks", "name": "Docks", "description": "A dock on the left and one on the right, each with a width set by dragging its edge and remembered, that other features open things in. Whatever is beside them moves over.", "version": "0.3.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/docks/Docks.js" }, { "id": "floors", "name": "Floors", "description": "The rooms page's floors: one fixed size for every floor (a preset in Settings), and where a room goes: its own floor, or else a new one.", "version": "0.1.0", "requires": ["world"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/floors/Floors.js" }, { "id": "frame", "name": "Frame", "description": "Create's frame around the canvas: the top bar (wordmark, where you are, Search, back), the status bar at the foot, and how wide the rail is (Ctrl+Alt+B). The rooms page and a room each say what it shows.", "version": "0.1.0", "requires": [], "uses": ["keys"], "platforms": ["web", "android", "ios"], "path": "features/frame/Frame.js" }, { "id": "api", "name": "Plugin API", "description": "The traumerei service: the one small, versioned list (API.md) through which plugins reach the world, the shared parts and the places to plug in.", "version": "2.0.0", "requires": ["world"], "uses": ["docks", "keys", "frame", "floors"], "platforms": ["web", "android", "ios"], "path": "features/api/Api.js" }, { "id": "account", "name": "Account", "description": "Sign in with Google to keep your rooms and settings on every device.", "version": "1.0.0", "requires": [], "uses": ["api"], "platforms": ["web", "android", "ios"], "path": "features/account/Account.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "gaps", "name": "Gaps", "description": "The checker: open a gap on a thought (something to check, do or judge), resolve it, and see a group's or a tree's progress in the Editor (Ctrl+Alt+G).", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/gaps/Gaps.js", "plugin": { "kind": ["editor", "command"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "home", "name": "Home", "description": "The home page over the picture, in the frame, kept clean (no rail, no Search): the name in the middle, Create, then the quick thought. Its typeface is a setting.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/home/Home.js", "plugin": { "kind": ["page"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "pages", "name": "Pages", "description": "Settings and Account as pages in the frame: a rail of sections beside label and value rows, in place of the veil windows.", "version": "0.1.0", "requires": [], "uses": ["frame"], "platforms": ["web", "android", "ios"], "path": "features/pages/Pages.js" }, { "id": "picture", "name": "Pictures", "description": "Pictures in a room: a small copy of the file, kept with the room, and its caption. Add it from Add, Alt+I, or by pasting or dropping a picture.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/picture/Picture.js", "plugin": { "kind": ["item"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "plugins", "name": "Plugins", "description": "Settings → Plugins: every plugin with a switch that works at once, why one isn't running, and safe mode.", "version": "1.0.0", "requires": [], "uses": ["api"], "platforms": ["web", "android", "ios"], "path": "features/plugins/Plugins.js" }, { "id": "proust", "name": "Proust", "description": "Proust, a way of seeing a room: every thought free on the canvas, joined by named links that may run in loops, and gathered into clusters.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/proust/Proust.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "source", "name": "Source editor", "description": "A thing's source as text in the side panel: a large monospace box, a live check of what it holds, and Copy, Download, Paste, Reset and Apply.", "version": "0.1.0", "requires": ["api", "docks"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/source/Source.js", "plugin": { "kind": ["editor"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "roomfile", "name": "Room files", "description": "A room in and out as one Markdown file: reading and writing the format, the card that says what will arrive, and the download.", "version": "0.1.0", "requires": ["api"], "uses": ["source"], "platforms": ["web", "android", "ios"], "path": "features/roomfile/Roomfile.js", "plugin": { "kind": ["file"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "time", "name": "Time", "description": "The Time dock (Ctrl+Alt+T): in a room, everything written there in time; on the rooms page, the days something was written and where.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/time/Time.js", "plugin": { "kind": ["dock"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "rooms", "name": "Rooms", "description": "The rooms page: a grid of rooms under the veil, with floors, the Archive, tags and search lights. Going in and out of rooms.", "version": "0.2.0", "requires": ["world", "floors"], "uses": ["renderer", "roomfile", "keys", "docks", "frame", "time"], "platforms": ["web", "android", "ios"], "path": "features/rooms/Rooms.js" }, { "id": "search", "name": "Search", "description": "Search every room (Ctrl+K): a quiet panel that finds thoughts, groups and rooms by their words, and says which was opened.", "version": "0.1.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/search/Search.js", "plugin": { "kind": ["tool"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }, { "id": "room", "name": "Room", "description": "An open room of thoughts: a canvas to write in, seen through an ontological mode (Joyce, Pessoa or Russell).", "version": "0.1.0", "requires": ["world", "rooms"], "uses": ["roomfile", "search", "docks", "floors", "keys", "frame", "time", "plugins"], "platforms": ["web", "android", "ios"], "path": "features/room/Room.js" }, { "id": "russell", "name": "Russell", "description": "Russell, a way of seeing a room: chapters joined into a tree, each an abstraction of the one above it, with named arrows between them.", "version": "1.0.0", "requires": ["api"], "uses": [], "platforms": ["web", "android", "ios"], "path": "features/russell/Russell.js", "plugin": { "kind": ["mode"], "load": "start", "api": 2, "minApp": "1.0.0", "author": "E" } }];
   new App(config, [{ ...features[0], path: url0 }, { ...features[1], path: url1 }, { ...features[2], path: url2 }, { ...features[3], path: url3 }, { ...features[4], path: url4 }, { ...features[5], path: url5 }, { ...features[6], path: url6 }, { ...features[7], path: url7 }, { ...features[8], path: url8 }, { ...features[9], path: url9 }, { ...features[10], path: url10 }, { ...features[11], path: url11 }, { ...features[12], path: url12 }, { ...features[13], path: url13 }, { ...features[14], path: url14 }, { ...features[15], path: url15 }, { ...features[16], path: url16 }, { ...features[17], path: url17 }, { ...features[18], path: url18 }, { ...features[19], path: url19 }, { ...features[20], path: url20 }]).start();
 })();
 /*! KaTeX 0.19.1 | MIT licence, see LICENSE-KaTeX.txt | https://katex.org | built with esbuild --minify --format=esm from dist/katex.mjs */
