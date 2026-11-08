@@ -16,7 +16,7 @@
 // Thoughts stay shared with every other mode.
 
 import {
-  groupsIn, parentOf, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, groupLabel, // model
+  groupsIn, parentOf, members, groupOf, isGroup, isLeaf, shut, thoughtText, roomItems, create, join, setOrder, groupLabel, isLooseGroup, spotOf, setSpot, unsetSpot, // model
   trayForeign, place, inForeign, unplace, // groups of other modes, as one thing here
   stepAfter, setHeights, STEP, // a train's rhythm (Joyce's), which a chapter reads by too
   maths, lines, PAD, arrowsOf, arrowView,
@@ -36,7 +36,9 @@ export const LINES = ['straight', 'curved'];
 
 // The room's chapters (those with thoughts), oldest first.
 // (A chapter held by another chapter is one thought inside it: not in the tree.)
-export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !g.loose && members(w, g.id).length && !groupOf(w, g.id, ID));
+export const chapters = (w, roomId) => groupsIn(w, roomId, ID).filter((g) => !isLooseGroup(w, g.id) && members(w, g.id).length && !groupOf(w, g.id, ID));
+// Where a chapter was put (its rule row: { x, y, hand? }; hand true: dragged, 'auto': pushed clear).
+const spotAt = (w, id) => spotOf(w, id) || {};
 
 const isChapter = (w, roomId, id) => {
   const g = w.things[id];
@@ -68,7 +70,7 @@ export function addChapter(w, roomId, { parent = null, x = 0, y = 0 } = {}, now 
 // After the tree changes, chapters pushed aside by clear space (not dragged) go back into the
 // layout.
 function settle(w, roomId) {
-  for (const g of groupsIn(w, roomId, ID)) if (g.hand === 'auto') { delete g.hand; }
+  for (const g of groupsIn(w, roomId, ID)) if (spotAt(w, g.id).hand === 'auto') setSpot(w, g.id, { hand: null });
 }
 
 // ---- Layout ----
@@ -188,7 +190,8 @@ export function layout(w, roomId, size = (id) => chapterSize(w, id)) {
     let edge = -Infinity, last = null;
     for (const r of rowOf) {
       const g = w.things[r.id], half = sz[r.id].w / 2;
-      if (g.hand) { centre[r.id] = g.x + half; out[r.id] = { x: g.x, y: g.y }; continue; }
+      const p = spotAt(w, g.id);
+      if (p.hand) { centre[r.id] = p.x + half; out[r.id] = { x: p.x, y: p.y }; continue; }
       const c = Math.max(r.want, edge + (last ? gapX(last, r.id) : 0) + half);
       edge = c + half;
       last = r.id;
@@ -301,9 +304,9 @@ const traum = {
   write(w, roomId, c) {
     const out = [];
     const tree = chapters(w, roomId).filter((g) => c.ref(g.id));
-    const auto = tree.filter((g) => g.hand !== true).map((g) => c.ref(g.id));
+    const auto = tree.filter((g) => spotAt(w, g.id).hand !== true).map((g) => c.ref(g.id));
     if (auto.length) out.push(`on canvas: ${auto.join(' ')}`);
-    for (const g of tree) if (g.hand === true) out.push(`at: ${c.ref(g.id)} ${g.x} ${g.y}`);
+    for (const g of tree) { const p = spotAt(w, g.id); if (p.hand === true) out.push(`at: ${c.ref(g.id)} ${p.x} ${p.y}`); }
     const tray = russell.tray(w, roomId).map((th) => c.ref(th.id)).filter(Boolean);
     if (tray.length) out.push(`tray: ${tray.join(' ')}`);
     out.push(...arrowNet().traumLines(w, roomId, c));
@@ -318,7 +321,7 @@ const traum = {
         for (const v of l.values) {
           const g = own(c.thing(v, l.line));
           if (!g) continue;
-          if (l.key === 'tray') g.loose = true; else { delete g.loose; if (g.hand === true) delete g.hand; }
+          if (l.key === 'tray') unsetSpot(w, g.id); else setSpot(w, g.id, spotAt(w, g.id).hand === true ? { hand: null } : {});
         }
       } else if (l.key === 'at') {
         const g = own(c.thing(l.values[0], l.line));
@@ -327,8 +330,7 @@ const traum = {
         if (x == null || y == null) { c.report(l.line, 'at: needs a ^reference and two numbers.'); continue; }
         if (placed.has(g.id)) { c.report(l.line, 'Russell places a chapter once; this second at: was left out.'); continue; }
         placed.add(g.id);
-        Object.assign(g, { x: Math.round(x), y: Math.round(y), hand: true });
-        delete g.loose;
+        setSpot(w, g.id, { x, y, hand: true });
       } else if (l.key === 'arrow') {
         const a = c.arrow(l);
         if (a) arrowsRead.push(a);
@@ -380,18 +382,18 @@ const russell = {
   drop(w, roomId, id, x, y) {
     const th = w.things[id];
     if (!th || shut(w, id)) return;
-    if (isGroup(th) && th.of === ID && !groupOf(w, id, ID)) { Object.assign(th, { x: Math.round(x), y: Math.round(y), hand: true }); place(w, id); return; }
+    if (isGroup(th) && th.of === ID && !groupOf(w, id, ID)) { setSpot(w, id, { x, y, hand: true }); return; }
     if (!isLeaf(th) && !isGroup(th)) return; // another mode's group goes where a thought would
     const was = groupOf(w, id, ID);
     const onto = chapterAt(w, roomId, x + 10, y + 10);
     if (onto && !w.things[onto].closed) { placeIn(w, roomId, onto, id, y); return; }
     if (onto) { if (onto !== was?.id) join(w, onto, id); return; }
     if (was && members(w, was.id).length === 1) {
-      Object.assign(was, { x: Math.round(x), y: Math.round(y - headOf(was)), hand: true });
+      setSpot(w, was.id, { x, y: y - headOf(was), hand: true });
       return;
     }
     const g = addChapter(w, roomId, { x: Math.round(x), y: Math.round(y) }, th.at);
-    if (g) { join(w, g.id, id); g.hand = true; }
+    if (g) { join(w, g.id, id); setSpot(w, g.id, { hand: true }); }
   },
 
   // A thought kept with no chapter to go on with: a child chapter when a move asked for one
@@ -409,7 +411,7 @@ const russell = {
     const inside = inForeign(w, roomId, ID);
     return [
       ...roomItems(w, roomId).filter((th) => !groupOf(w, th.id, ID)),
-      ...groupsIn(w, roomId, ID).filter((g) => g.loose && members(w, g.id).length),
+      ...groupsIn(w, roomId, ID).filter((g) => isLooseGroup(w, g.id) && members(w, g.id).length),
       ...trayForeign(w, roomId, ID).filter((g) => !groupOf(w, g.id, ID)),
     ].filter((th) => !inside(th.id)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   },
@@ -418,23 +420,22 @@ const russell = {
   unplace: (w, roomId, id) => unplace(w, roomId, ID, id),
   placed(w, roomId, id) {
     const th = w.things[id];
-    return isGroup(th) && th.of === ID ? !th.loose : !!groupOf(w, id, ID);
+    return isGroup(th) && th.of === ID ? !isLooseGroup(w, id) : !!groupOf(w, id, ID);
   },
 
   // Clear space (clear.js): a chapter is one block; one dragged was placed by hand. One pushed
   // aside keeps its new place until the tree changes.
   blocks: (w, roomId) => chapters(w, roomId).map((g) => ({
     id: g.id, thoughts: g.closed ? [] : members(w, g.id).map((th) => th.id), group: g.id,
-    hand: g.hand === true, at: Math.max(g.at ?? 0, ...members(w, g.id).map((th) => th.at ?? 0)),
+    hand: spotAt(w, g.id).hand === true, at: Math.max(g.at ?? 0, ...members(w, g.id).map((th) => th.at ?? 0)),
   })),
 
   shift(w, roomId, id, dx, dy) {
     const g = w.things[id];
     if (!isGroup(g) || shut(w, id)) return;
-    const at = layout(w, roomId)[id];
-    if (!at) return;
-    Object.assign(g, { x: Math.round(at.x + dx), y: Math.round(at.y + dy) });
-    if (g.hand !== true) g.hand = 'auto';
+    const p = layout(w, roomId)[id];
+    if (!p) return;
+    setSpot(w, id, { x: p.x + dx, y: p.y + dy, hand: spotAt(w, id).hand === true ? true : 'auto' });
   },
 
   // Each thought's size as drawn: the layout follows it.

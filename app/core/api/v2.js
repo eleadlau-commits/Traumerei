@@ -96,25 +96,18 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
   function placesOf(id) {
     const th = thing(id);
     if (!th) return [];
-    // The table's own rows (a home row, rule null: the context the mark is in), then where the
-    // rules put it there, read off the rules' data until phase 4 moves those into rows too.
-    const out = PLACES_T.of(w(), id).map((r) => ({ mark: r.mark, context: r.context, rule: r.rule ?? null, position: r.position ?? null, ...(r.pinned ? { pinned: true } : {}) }));
+    // The table's own rows: the home row (rule null: the context the mark is in), then where each
+    // rule put it there (phase 4: the rules keep nothing else). A mark held by a rule's group (a
+    // train, a chapter) with no row of that rule is placed by the group: { group, index }, read
+    // off the part-of links, never stored.
+    const out = PLACES_T.of(w(), id).sort((a, b) => (a.rule != null) - (b.rule != null))
+      .map((r) => ({ mark: r.mark, context: r.context, rule: r.rule ?? null, position: r.position ?? null, ...(r.pinned ? { pinned: true } : {}) }));
     const context = PLACES_T.home(w(), id);
-    if (context == null) return out;
-    if (kindOf(th) === 'room') {
-      if (model.isTwin(thing(context))) out.push({ mark: id, context, rule: 'twin', position: { side: th.side ?? 0 } });
-      else if (context !== ARCHIVE) out.push({ mark: id, context, rule: 'borges', position: th.col == null ? null : { col: th.col, row: th.row } });
-      return out;
-    }
+    if (context == null || kindOf(th) === 'room') return out;
     for (const rule of rules()) {
-      if (model.isGroup(th) && th.of === rule) { // its own rule's group: where it was put, unless loose
-        if (!th.loose) out.push({ mark: id, context, rule, position: Number.isFinite(th.x) ? { x: th.x, y: th.y } : null });
-        continue;
-      }
-      const g = model.groupOf(w(), id, rule); // held by one of the rule's groups: a train, a chapter
-      if (g) { out.push({ mark: id, context, rule, position: { group: g.id, index: model.members(w(), g.id).findIndex((m) => m.id === id) } }); continue; }
-      const spot = groups.spot(w(), context, rule, id); // laid by the rule itself
-      if (spot) out.push({ mark: id, context, rule, position: { x: spot.x, y: spot.y } });
+      if (rule === 'tray' || out.some((p) => p.rule === rule && p.context === context)) continue;
+      const g = model.groupOf(w(), id, rule);
+      if (g) out.push({ mark: id, context, rule, position: { group: g.id, index: model.members(w(), g.id).findIndex((m) => m.id === id) } });
     }
     return out;
   }
@@ -122,7 +115,7 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     of: (mark) => rows(placesOf(mark)),
     in: (context, rule = null) => rows(model.children(w(), context).flatMap((th) => placesOf(th.id).filter((p) => p.context === context && (rule == null || p.rule === rule)))),
     // Loose in a context: at home there, with no rule placing it (Law 2: never lost, only unplaced).
-    loose: (context) => rows(model.children(w(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context && p.rule != null)).map((th) => ({ ...th }))),
+    loose: (context) => rows(model.children(w(), context).filter((th) => !placesOf(th.id).some((p) => p.context === context && p.rule != null && p.rule !== 'tray')).map((th) => ({ ...th }))),
     home: (mark) => PLACES_T.home(w(), mark),
     position: (mark, context, rule) => placesOf(mark).find((p) => p.context === context && p.rule === rule)?.position ?? null,
     put: (mark, context, rule = null, position = null) => {

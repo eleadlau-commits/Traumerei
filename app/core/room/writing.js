@@ -4,7 +4,7 @@
 
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
-  groupOf, thoughtText, trainThoughts, kindFor, maths, resize,
+  groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -334,7 +334,7 @@ export class Writing {
     const prev = list[at - 1];
     if (d.edit) {
       const t = w.things[d.train];
-      const spot = { x: t.x ?? 0, y: t.y ?? 0 };
+      const was = spotOf(w, t.id), spot = { x: was?.x ?? 0, y: was?.y ?? 0 };
       remove(w, d.edit);
       this.save();
       this.draft = w.things[d.train] ? { train: d.train } : { train: null, ...spot };

@@ -11,6 +11,7 @@ bind(lib); // the world's rules, as floors gets them from the world service
 
 const M = { cols: 8, rows: 5 };
 const S = { cols: 6, rows: 4 };
+const C = (w, r) => lib.model.cellOf(w, r.id) || {}; // a room's cell: its 'borges' rule row
 const made = (w, name, page = 0, cell = null, board = M) => { const r = addRoom(w, name, 1, { page }); place(w, r.id, board, cell); return r; };
 
 test('three presets, Medium 8 × 5 by default', () => {
@@ -22,11 +23,11 @@ test('three presets, Medium 8 × 5 by default', () => {
 test('a room goes in the cell asked for, or the first free one', () => {
   const w = emptyWorld();
   const a = made(w, 'A', 0, { col: 4, row: 3 });
-  assert.deepEqual([a.col, a.row], [4, 3]);
+  assert.deepEqual([C(w, a).col, C(w, a).row], [4, 3]);
   const b = made(w, 'B', 0, { col: 1, row: 1 }); // Messy's
-  assert.deepEqual([b.col, b.row], [2, 0]);
+  assert.deepEqual([C(w, b).col, C(w, b).row], [2, 0]);
   const c = made(w, 'C', 0, { col: 8, row: 0 }); // off the board
-  assert.deepEqual([c.col, c.row], [3, 0]);
+  assert.deepEqual([C(w, c).col, C(w, c).row], [3, 0]);
 });
 
 test('a full floor sends a room placed for you onto a new floor, without searching the others', () => {
@@ -38,7 +39,7 @@ test('a full floor sends a room placed for you onto a new floor, without searchi
   const out = place(w, r.id, M);
   assert.deepEqual(out, { page: 2, from: 0, spilled: true });
   assert.equal(floorOf(w, r.id), 2);
-  assert.deepEqual([r.col, r.row], [0, 0]);
+  assert.deepEqual([C(w, r).col, C(w, r).row], [0, 0]);
   assert.equal(pageCount(w), 3);
 });
 
@@ -80,10 +81,10 @@ test('a room dragged onto a full floor stays; onto one with space it goes to the
   assert.equal(floorOf(w, r.id), 0);
   const q = addPage(w);
   assert.equal(toFloor(w, r.id, q, M), true);
-  assert.deepEqual([floorOf(w, r.id), r.col, r.row], [q, 0, 0]);
+  assert.deepEqual([floorOf(w, r.id), C(w, r).col, C(w, r).row], [q, 0, 0]);
   assert.equal(toFloor(w, MESSY, q, M), false);
   assert.equal(toFloor(w, r.id, 0, M, { col: 5, row: 3 }), true); // in the cell asked for
-  assert.deepEqual([floorOf(w, r.id), r.col, r.row], [0, 5, 3]);
+  assert.deepEqual([floorOf(w, r.id), C(w, r).col, C(w, r).row], [0, 5, 3]);
 });
 
 test('a room restored from the Archive goes back to its own floor, or a new one', () => {
@@ -108,14 +109,14 @@ test('rooms from old saved data are placed again on the board without overlaps',
   const seen = new Set();
   for (const id of ['messy', 'r1', 'r2', 'r3', 'r4']) {
     const r = w.things[id];
-    assert.ok(r.col + (r.size || 1) <= 8 && r.row + (r.size || 1) <= 5, id);
+    assert.ok(C(w, r).col + (r.size || 1) <= 8 && C(w, r).row + (r.size || 1) <= 5, id);
     for (let c = 0; c < (r.size || 1); c++) for (let d = 0; d < (r.size || 1); d++) {
-      const k = `${r.col + c},${r.row + d}`;
+      const k = `${C(w, r).col + c},${C(w, r).row + d}`;
       assert.ok(!seen.has(k), k);
       seen.add(k);
     }
   }
-  assert.deepEqual([w.things.r4.col, w.things.r4.row], [5, 2]); // a room in a good cell stays
+  assert.deepEqual([C(w, w.things.r4).col, C(w, w.things.r4).row], [5, 2]); // a room in a good cell stays
 });
 
 test('a smaller size is refused while a room sits outside it', () => {
@@ -134,8 +135,8 @@ test('near: a room placed near a cell takes the free spot nearest it, else spill
   const a = made(w, 'A', 0, { col: 5, row: 2 });
   const b = addRoom(w, 'B', 1);
   place(w, b.id, M, { col: 5, row: 2 }, { near: true });
-  assert.deepEqual([b.col, b.row], [6, 2], 'beside A, on its right');
-  assert.ok(a.col === 5);
+  assert.deepEqual([C(w, b).col, C(w, b).row], [6, 2], 'beside A, on its right');
+  assert.ok(C(w, a).col === 5);
   const S2 = { cols: 2, rows: 1 };
   const w2 = emptyWorld();
   const x = addRoom(w2, 'X', 1, { page: 1 }); place(w2, x.id, S2, { col: 0, row: 0 });
@@ -197,10 +198,10 @@ test('Borges: the rooms page ontology, rooms on cells, never a room\'s', async (
   assert.deepEqual(o.point(w, 0, a.id), { x: 4, y: 3 });
   assert.equal(o.drop(w, 0, a.id, 0, 0), false);      // Messy's cells
   assert.equal(o.drop(w, 0, a.id, 6, 2), true);
-  assert.deepEqual([a.col, a.row], [6, 2]);
+  assert.deepEqual([C(w, a).col, C(w, a).row], [6, 2]);
   assert.equal(o.drop(w, 0, a.id, 8, 0), false);      // off the board
   assert.equal(o.drop(w, 1, a.id, 2, 1), true);       // onto Floor 2
-  assert.deepEqual([floorOf(w, a.id), a.col, a.row], [1, 2, 1]);
+  assert.deepEqual([floorOf(w, a.id), C(w, a).col, C(w, a).row], [1, 2, 1]);
 });
 
 test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and rooms never overlap', async () => {
@@ -211,7 +212,7 @@ test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and roo
   const twin = addRoom(w, 'Twin', 1, { page: 0 });
   twin.size = 'twin';
   place(w, twin.id, M, { col: 3, row: 0 });            // would cover One's cell: goes to the first free spot
-  assert.deepEqual([twin.col, twin.row], [2, 0]);
+  assert.deepEqual([C(w, twin).col, C(w, twin).row], [2, 0]);
   assert.deepEqual(roomAt(w, 3, 0)?.id, twin.id);      // two cells wide, one high
   assert.equal(roomAt(w, 2, 1), null);
   assert.deepEqual(o.shape(w, one.id), { w: 1, h: 1, holds: 1 });

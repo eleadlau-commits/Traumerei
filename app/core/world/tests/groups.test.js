@@ -86,12 +86,12 @@ test('a group made in the tray stays in the tray until it is dragged out', () =>
   const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
   const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
   const g = groupChosen(russell, w, MESSY, [a.id, b.id], 3, { loose: true });
-  assert.ok(g.loose);
+  assert.ok(model.isLooseGroup(w, g.id));
   assert.deepEqual(chapters(w, MESSY), []);
   assert.deepEqual(ids(russell.tray(w, MESSY)), [g.id]);
   assert.equal(russell.placed(w, MESSY, g.id), false);
   russell.drop(w, MESSY, g.id, 10, 10);
-  assert.equal(g.loose, undefined);
+  assert.ok(!model.isLooseGroup(w, g.id));
   assert.deepEqual(ids(chapters(w, MESSY)), [g.id]);
   assert.deepEqual(russell.tray(w, MESSY), []);
 });
@@ -176,7 +176,7 @@ test('throw back: each mode takes what it placed back into its tray, at the top'
   assert.equal(throwBack(joyce, w, MESSY, [b.id], 101), 0); // loose already
   // A whole train waits in the tray (made-there), its thoughts with it.
   assert.equal(throwBack(joyce, w, MESSY, [t.id, a.id], 102), 1); // a is in the chosen train: once
-  assert.ok(w.things[t.id].loose);
+  assert.ok(model.isLooseGroup(w, t.id));
   assert.ok(!joyce.placed(w, MESSY, t.id));
   assert.deepEqual(ids(joyce.tray(w, MESSY)).sort(), [b.id, t.id].sort());
 });
@@ -206,7 +206,7 @@ test('throw back: a Russell chapter waits in the tray, its thoughts with it', ()
   russell.drop(w, MESSY, a.id, 0, 0);
   join(w, sub.id, a.id);
   assert.equal(throwBack(russell, w, MESSY, [sub.id], 5), 1);
-  assert.ok(w.things[sub.id].loose);
+  assert.ok(model.isLooseGroup(w, sub.id));
   assert.ok(!chapters(w, MESSY).some((g) => g.id === sub.id));
   assert.ok(ids(russell.tray(w, MESSY)).includes(sub.id));
   assert.ok(!ids(russell.tray(w, MESSY)).includes(a.id)); // it went with its chapter
@@ -257,7 +257,7 @@ test('moved to another room (Move to…): it lands in that room\'s loose tray in
   assert.ok(ids(pessoa.tray(w, other.id)).includes(a.id));  // waits until dragged out
   assert.ok(ids(russell.tray(w, other.id)).includes(a.id));
   assert.ok(moveLoose(w, t.id, other.id));
-  assert.ok(t.loose);
+  assert.ok(model.isLooseGroup(w, t.id));
   assert.ok(ids(joyce.tray(w, other.id)).includes(t.id));
   assert.ok(!joyce.placed(w, other.id, t.id));
   assert.ok(waiting(w, other.id, 'pessoa', b.id));

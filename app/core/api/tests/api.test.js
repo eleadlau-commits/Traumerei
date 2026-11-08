@@ -23,8 +23,8 @@ const V2 = {
 };
 // Version 1's names, still offered beneath v2 until kernel phase 6.
 const V1 = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'shut', 'thoughtText', 'update', 'view', 'within'],
-  groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'trayForeign', 'unplace', 'wait', 'waiting'],
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'own', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'thoughtText', 'unsetSpot', 'update', 'view', 'within'],
+  groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'spotsOf', 'trayForeign', 'unplace', 'unput', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
   lines: ['ENDS', 'ENDS_WORDS', 'HEAD', 'PAD', 'PAUSE', 'between', 'cleanEnds', 'facing', 'group', 'knot', 'labelSpot', 'layer', 'line', 'middle', 'path', 'sidePoint', 'slack', 'strand', 'svg'],
@@ -287,7 +287,9 @@ test('places: a home row per mark and a row per rule, rooms on floors or in the 
   assert.equal(k.places.in(room.id).filter((p) => p.rule == null).length, lib.model.children(w, room.id).length);
   assert.deepEqual(k.places.position(a.id, room.id, 'joyce'), { group: train.id, index: 0 });
   assert.equal(k.places.position(a.id, room.id, 'pessoa'), null);
-  assert.deepEqual(k.places.of(room.id), [home(room.id, 'floor:0'), { mark: room.id, context: 'floor:0', rule: 'borges', position: null }]);
+  assert.deepEqual(k.places.of(room.id), [home(room.id, 'floor:0')]); // no cell yet: no 'borges' row (loose under that rule)
+  lib.model.setCell(w, room.id, 3, 1);
+  assert.deepEqual(k.places.of(room.id), [home(room.id, 'floor:0'), { mark: room.id, context: 'floor:0', rule: 'borges', position: { col: 3, row: 1 } }]);
   lib.model.archive(w, room.id, 9999);
   assert.deepEqual(k.places.of(room.id), [home(room.id, ARCHIVE, { at: 9999, floor: 0 })]);
   lib.model.restore(w, room.id);
@@ -300,7 +302,7 @@ test('places: a home row per mark and a row per rule, rooms on floors or in the 
   assert.ok(k.places.put(loose.id, room.id, 'pessoa', { x: 1, y: 2 }).ok);
   assert.deepEqual(k.places.position(loose.id, room.id, 'pessoa'), { x: 1, y: 2 });
   assert.ok(k.places.unplace(loose.id, room.id).ok);
-  assert.deepEqual(k.places.of(loose.id), [home(loose.id)]); // unplaced, never lost (Law 2)
+  assert.deepEqual(k.places.of(loose.id).filter((p) => p.rule !== 'tray'), [home(loose.id)]); // unplaced (it waits in the tray), never lost (Law 2)
   assert.equal(k.places.put(loose.id, locked.id).ok, false);
   assert.equal(k.places.move(loose.id, locked.id, 'messy').reason, 'The mark is not in that context');
   assert.ok(k.places.move(loose.id, room.id, 'messy').ok);

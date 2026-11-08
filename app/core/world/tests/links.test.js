@@ -4,6 +4,7 @@
 // they folded; the log replays links; and a big room's reads stay within budget.
 
 import { test, assert } from 'folio/testing';
+import * as P from '../places.js';
 import * as model from '../model.js';
 import * as groups from '../groups.js';
 import * as L from '../links.js';
@@ -101,15 +102,15 @@ test('a fold stands for what it folded: the old thoughts stay, show nowhere, and
   const w = emptyWorld(1000);
   const t = create(w, MESSY, { kind: 'group', of: 'joyce' }, 1);
   const a = create(w, t.id, { kind: 'line', text: 'one' }, 2), b = create(w, t.id, { kind: 'line', text: 'two' }, 3), c = create(w, t.id, { kind: 'line', text: 'three' }, 4);
-  model.own(w, MESSY, 'pessoa')[a.id] = { x: 1, y: 2 };
+  P.putSpot(w, MESSY, a.id, 'pessoa', { x: 1, y: 2 });
   const f = groups.fold(w, MESSY, [a.id, b.id], 9);
   assert.equal(f.text, 'one\ntwo');
   assert.deepEqual(memberIds(w, t.id), [f.id, c.id]);
   assert.deepEqual(L.from(w, f.id, 'stands for').map((r) => r.to), [a.id, b.id]);
   assert.ok(w.things[a.id] && w.things[b.id], 'kept (Law 2)');
   assert.ok(!roomItems(w, MESSY).some((th) => th.id === a.id), 'shown nowhere');
-  assert.deepEqual(model.own(w, MESSY, 'pessoa')[f.id], { x: 1, y: 2 });
-  assert.equal(model.own(w, MESSY, 'pessoa')[a.id], undefined);
+  assert.deepEqual(P.spot(w, MESSY, f.id, 'pessoa'), { x: 1, y: 2 });
+  assert.equal(P.spot(w, MESSY, a.id, 'pessoa'), null);
   assert.equal(model.search(w, 'one').length, 1, 'found once: as the fold');
   // The fold itself folds again: the new fold stands for the old fold, which stands for a and b.
   const g = groups.fold(w, MESSY, [f.id, c.id], 10);
@@ -160,7 +161,8 @@ test('a world saved before the table is read into it: members become part-of row
   assert.deepEqual(memberIds(w, 'g1'), ['a', 'b']);
   assert.equal(w.things.g1.members, undefined);
   assert.deepEqual(L.get(w, L.relId('russell', 'c2', 'c1')), { id: 'rel:russell:c2:c1', from: 'c2', to: 'c1', kind: 'relation', rule: 'russell', label: 'forgets', note: 'why' });
-  assert.deepEqual(w.own[MESSY], { pessoa: { a: { x: 1, y: 1 } } }, 'the arrows left the own data');
+  assert.equal(w.own[MESSY], undefined, 'the arrows left the own data, and Pessoa\'s spots too');
+  assert.deepEqual(P.spot(w, MESSY, 'a', 'pessoa'), { x: 1, y: 1 }, 'a rule row now');
   lawFour(w);
 });
 

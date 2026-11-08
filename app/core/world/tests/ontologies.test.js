@@ -1,6 +1,7 @@
 // Tests for the ontologies: each has the parts it needs, and the registry keeps only whole ones.
 
 import { test, assert } from 'folio/testing';
+import * as model from '../model.js';
 import * as libForRussell from '../lib.js';
 import { surface as surfaceForRussell } from '../../api/v1.js';
 import { bind as bindRussell } from '../../russell/world.js';
@@ -52,7 +53,7 @@ test('Joyce: a thought in no train waits in the tray, and dragged out it starts 
   assert.deepEqual(joyce.tray(w, MESSY), []);
   const train = groupOf(w, loose.id, 'joyce');
   assert.ok(train && train.id !== t.id);
-  assert.deepEqual({ x: train.x, y: train.y }, { x: 400, y: 120 });
+  assert.deepEqual({ x: model.spotOf(w, train.id).x, y: model.spotOf(w, train.id).y }, { x: 400, y: 120 }); // its rule row
 });
 
 test('Russell has the parts it needs, and holds each thought in one chapter', () => {

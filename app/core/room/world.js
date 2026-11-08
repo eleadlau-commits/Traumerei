@@ -8,7 +8,8 @@ export let
   thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
   isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
   seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, ITEMS, kindFor, maths, roomLook, light,
-  groupChosen, ungroupChosen, throwBack, setOrder, foldInto, foldPlan, lock, sides, twinOf, otherSide, across, placeName, moveTargets, relationsRow, reading, wait, moveLoose, showSizes, resize;
+  groupChosen, ungroupChosen, throwBack, setOrder, foldInto, foldPlan, lock, sides, twinOf, otherSide, across, placeName, moveTargets, relationsRow, reading, wait, moveLoose, showSizes, resize,
+  sideOf, spotOf, setSpot;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
@@ -16,7 +17,7 @@ export function bind(lib) {
     room, parentOf, floorOf, isArchived, view, shut, MESSY, name, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
     thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
     isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
-    seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, setOrder, lock, reading,
+    seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, setOrder, lock, reading, sideOf, spotOf, setSpot,
   } = lib.model);
   ({ ITEMS, kindFor } = lib.items);
   ({ maths, showSizes, resize } = lib.maths);

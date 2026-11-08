@@ -20,13 +20,13 @@
 // the next one links on from it; Ctrl+Enter starts a new cluster, which the thoughts written on
 // with Enter then join.
 //
-// Its own data in a room: own(w, room, 'proust')[id] = { x, y } where a node was placed (the same
-// shape groups.js keeps for other modes' groups), and own(w, room, 'proust-links') its links
+// It keeps nothing of its own: where a node was placed is its 'proust' rule row in the places
+// table ({ x, y, auto? }, groups.js: spot, putAt), and its links are relation rows under 'proust-links'
 // (relations.js: { [to]: { parents, labels, rel } }).
 
 import {
-  own, parentOf, shut, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
-  placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
+  parentOf, shut, isLooseGroup, roomSetting, setRoomSetting, isGroup, isLeaf, create, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText,
+  placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, unput, spotsOf, place, unplace, arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, spiralPoint,
 } from './world.js';
 
 export const ID = 'proust';
@@ -60,11 +60,11 @@ export const clusterOf = (w, id) => groupOf(w, id, ID);
 export function shownAs(w, id) {
   let out = id;
   for (let g = clusterOf(w, id), seen = new Set(); g && !seen.has(g.id); seen.add(g.id), g = clusterOf(w, g.id)) {
-    if (g.loose) return 'tray';
+    if (isLooseGroup(w, g.id)) return 'tray';
     if (g.closed) out = g.id;
   }
   const self = ownGroup(w, id);
-  if (self?.loose) return 'tray';
+  if (self && isLooseGroup(w, self.id)) return 'tray';
   // A thought added away from the canvas, in no cluster, waits in the tray until it is dragged out.
   const th = w.things[id];
   if (out === id && isLeaf(th) && !clusterOf(w, id) && waiting(w, parentOf(w, th.id), ID, id)) return 'tray';
@@ -169,7 +169,7 @@ export function point(w, roomId, id) {
   if (!th || parentOf(w, th.id) !== roomId) return null;
   const shown = VIEWS.get(roomId)?.at[id];
   if (shown) return { x: shown.x, y: shown.y };
-  const placed = own(w, roomId, ID, false)[id];
+  const placed = spot(w, roomId, ID, id);
   if (isLeaf(th)) {
     if (placed && Number.isFinite(placed.x)) return { x: placed.x, y: placed.y };
     const all = roomItems(w, roomId);
@@ -190,8 +190,7 @@ export function moveTo(w, roomId, id, x, y, auto = false) {
   if (!th || shut(w, roomId)) return false;
   const view = VIEWS.get(roomId);
   if (view) return moveInView(w, roomId, view, id, x, y);
-  const places = own(w, roomId, ID);
-  if (isLeaf(th)) { places[id] = { x: Math.round(x), y: Math.round(y), ...(auto ? { auto: true } : {}) }; return true; }
+  if (isLeaf(th)) return putAt(w, roomId, ID, id, x, y, auto ? { auto: true } : null);
   if (!isGroup(th)) return false;
   if (th.of !== ID) return putAt(w, roomId, ID, id, x, y);
   const at = point(w, roomId, id);
@@ -199,7 +198,7 @@ export function moveTo(w, roomId, id, x, y, auto = false) {
   const dx = x - at.x, dy = y - at.y;
   for (const m of itemsIn(w, id)) {
     const p = point(w, roomId, m.id);
-    if (p) places[m.id] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy), ...(auto ? { auto: true } : {}) };
+    if (p) putAt(w, roomId, ID, m.id, p.x + dx, p.y + dy, auto ? { auto: true } : null);
   }
   place(w, id);
   return true;
@@ -287,12 +286,12 @@ function settleEnds(w, roomId, list, c) {
 
 const traum = {
   write(w, roomId, c) {
-    const places = own(w, roomId, ID, false);
+    const places = spotsOf(w, roomId, ID);
     const out = [], spiral = [];
     const inside = inForeign(w, roomId, ID);
     for (const th of roomItems(w, roomId)) {
       if (!c.ref(th.id) || inside(th.id) || shownAs(w, th.id) === 'tray') continue; // another mode's group stands for it; or it waits in the tray
-      const p = places[th.id];
+      const p = places.get(th.id);
       if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
       else spiral.push(c.ref(th.id));
     }
@@ -320,7 +319,7 @@ const traum = {
         if (placed.has(id)) { c.report(l.line, 'Proust places a thing once; this second at: was left out.'); continue; }
         placed.add(id);
         const th = w.things[id];
-        if (isLeaf(th)) own(w, roomId, ID)[id] = { x: Math.round(x), y: Math.round(y), ...(l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : {}) };
+        if (isLeaf(th)) putAt(w, roomId, ID, id, x, y, l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : null);
         else if (isGroup(th) && th.of === ID) wholes.push([id, x, y]); // after its thoughts are placed
         else moveTo(w, roomId, id, x, y);
       } else if (l.key === 'on canvas' || l.key === 'tray') {
@@ -329,11 +328,11 @@ const traum = {
           const th = id && w.things[id];
           if (!th) continue;
           if (l.key === 'on canvas') {
-            if (isLeaf(th) && !placed.has(id)) delete own(w, roomId, ID)[id]; // back on the spiral
+            if (isLeaf(th) && !placed.has(id)) unput(w, roomId, ID, id); // back on the spiral
             else if (isGroup(th) && th.of === ID) place(w, id);
-          } else if (isGroup(th) && th.of === ID) th.loose = true;
-          else if (isGroup(th) && !placed.has(id)) delete own(w, roomId, ID)[id];
-          else if (isLeaf(th) && !placed.has(id)) { delete own(w, roomId, ID)[id]; wait(w, roomId, id, ID); }
+          } else if (isGroup(th) && th.of === ID) unput(w, roomId, ID, id);
+          else if (isGroup(th) && !placed.has(id)) unput(w, roomId, ID, id);
+          else if (isLeaf(th) && !placed.has(id)) { unput(w, roomId, ID, id); wait(w, roomId, id, ID); }
         }
       } else if (l.key === 'link') {
         const a = c.link(l);
@@ -392,7 +391,7 @@ export const proust = {
   tray(w, roomId) {
     const inside = inForeign(w, roomId, ID);
     return [
-      ...groupsIn(w, roomId, ID).filter((g) => g.loose && itemsIn(w, g.id).length && !(clusterOf(w, g.id))),
+      ...groupsIn(w, roomId, ID).filter((g) => isLooseGroup(w, g.id) && itemsIn(w, g.id).length && !(clusterOf(w, g.id))),
       ...roomItems(w, roomId).filter((th) => !clusterOf(w, th.id) && shownAs(w, th.id) === 'tray'),
     ].filter((th) => !inside(th.id)).concat(trayForeign(w, roomId, ID)).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   },
@@ -433,7 +432,7 @@ export const proust = {
   kept(w, roomId, th, draft) {
     if (Number.isFinite(draft?.x) && Number.isFinite(draft?.y)) {
       const at = { x: Math.round(draft.x), y: Math.round(draft.y) };
-      own(w, roomId, ID)[th.id] = at;
+      putAt(w, roomId, ID, th.id, at.x, at.y);
       const view = VIEWS.get(roomId);
       if (view) view.at[th.id] = { ...at }; // written while centred: it shows where it was written
     }
@@ -443,16 +442,16 @@ export const proust = {
   // Clear space (clear.js): each node is a block; one dragged was placed by hand. One pushed clear
   // keeps its new place (marked auto, so it still counts as laid out by Proust).
   blocks(w, roomId) {
-    const places = own(w, roomId, ID, false);
+    const places = spotsOf(w, roomId, ID);
     return this.units(w, roomId).map((u) => {
       const ids = isGroup(u) && u.of === ID ? itemsIn(w, u.id).map((m) => m.id) : [u.id];
-      return { id: u.id, thoughts: [u.id], hand: ids.some((m) => places[m] && !places[m].auto), at: u.at ?? 0 };
+      return { id: u.id, thoughts: [u.id], hand: ids.some((m) => places.get(m) && !places.get(m).auto), at: u.at ?? 0 };
     });
   },
   shift(w, roomId, id, dx, dy) {
     const p = point(w, roomId, id);
     if (!p) return;
-    const was = own(w, roomId, ID, false)[id];
+    const was = spot(w, roomId, ID, id);
     moveTo(w, roomId, id, p.x + dx, p.y + dy, !(was && !was.auto));
   },
   measured: (sizes) => setSizes(sizes),

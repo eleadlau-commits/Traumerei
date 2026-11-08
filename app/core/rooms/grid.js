@@ -4,7 +4,7 @@
 
 import {
   MESSY, DEFAULT_MODE, room, parentOf, floorOf, isArchived, addRoom, name, update, remove, move, fold, roomThoughts,
-  search, cells, roomAt, archive, archived,
+  search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
   seedRoomSettings, allTags, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides,
@@ -125,7 +125,7 @@ export class RoomsGrid {
     if (this.past) { this.grid.replaceChildren(...pastFloor(this, cols, rows)); this.keepInView(scrolled); return; }
 
     const taken = new Set();
-    for (const r of all) for (const [c, d] of cells(r)) taken.add(`${c},${d}`);
+    for (const r of all) for (const [c, d] of cells(r, cellOf(this.world, r.id))) taken.add(`${c},${d}`);
     const empty = [];
     for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
       if (taken.has(`${col},${row}`)) continue;
@@ -164,9 +164,9 @@ export class RoomsGrid {
   // Another floor, as it is, for the strip: its squares on its empty cells, not to be pressed
   // (it becomes the drawn floor when the strip comes to rest on it).
   floorCopy(page, cols, rows, cell, now) {
-    const all = roomsOn(this.world, page).filter((r) => r.col != null);
+    const all = roomsOn(this.world, page).filter((r) => cellOf(this.world, r.id));
     const taken = new Set();
-    for (const r of all) for (const [c, rr] of cells(r)) taken.add(`${c},${rr}`);
+    for (const r of all) for (const [c, rr] of cells(r, cellOf(this.world, r.id))) taken.add(`${c},${rr}`);
     const empty = [];
     for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
       if (!taken.has(`${col},${row}`)) empty.push(el('div', { class: 'rooms-cell', style: `grid-column:${col + 1};grid-row:${row + 1}` }));
@@ -297,6 +297,7 @@ export class RoomsGrid {
       ? this.nameField(r, () => { this.renaming = null; this.drawRooms(); })
       : el('span', { class: 'rooms-tile-name', title: r.name }, r.name);
     const { w: across, h: down } = span(r);
+    const at = cellOf(this.world, r.id) || { col: 0, row: 0 };
     const lines = peek(this.world, r.id, down > 1 ? 3 : across > 1 ? 2 : 1);
     const found = hits?.[r.id] || 0;
     const tile = el('div', {
@@ -304,7 +305,7 @@ export class RoomsGrid {
         + (this.roomPick === r.id || this.picks?.includes(r.id) ? ' picked' : '')
         + (this.lastRoom === r.id || (this.leaving && this.edited?.has(r.id)) ? ' last' : '') + (r.locked ? ' locked' : '') + (hits ? (found ? ' found' : ' unlit') : ''),
       role: 'button', tabindex: 0,
-      style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${r.col + 1} / span ${across};grid-row:${r.row + 1} / span ${down}`,
+      style: `--lit:${glow.toFixed(3)};--square:${look.fill};grid-column:${at.col + 1} / span ${across};grid-row:${at.row + 1} / span ${down}`,
       'aria-label': `${r.name}, ${count} thought${count === 1 ? '' : 's'}`,
       'aria-selected': String(this.roomPick === r.id),
       'data-room': r.id,
@@ -803,7 +804,8 @@ export class RoomsGrid {
     if (e.ctrlKey && MAC) return; // a Mac's Ctrl+click is a right-click (oncontextmenu)
     const start = { x: e.clientX, y: e.clientY };
     const grab = this.cellAt(e.clientX, e.clientY);
-    const offset = grab ? { col: grab.col - r.col, row: grab.row - r.row } : { col: 0, row: 0 };
+    const at = cellOf(this.world, r.id) || { col: 0, row: 0 };
+    const offset = grab ? { col: grab.col - at.col, row: grab.row - at.row } : { col: 0, row: 0 };
     const top0 = this.grid.getBoundingClientRect().top; // the strip moves this floor's grid as it slides
     let dragging = false, target = null, over = null, last = null;
     let floor = this.page;                 // the floor the strip shows: where the room would land
@@ -824,7 +826,7 @@ export class RoomsGrid {
       if (!c) { drop.hidden = true; return; }
       const { w: across, h: down } = span(r);
       const free = c.col >= 0 && c.row >= 0 && c.col + across <= this.cols && c.row + down <= this.floors.size.rows &&
-        cells({ ...r, col: c.col, row: c.row }).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, floor));
+        cells(r, c).every(([cc, rr]) => !roomAt(this.world, cc, rr, r.id, floor));
       const g = gridOf(floor);
       if (g && drop.parentElement !== g) g.append(drop);
       drop.hidden = false;

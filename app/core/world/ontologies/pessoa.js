@@ -1,10 +1,10 @@
 // Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they were
 // written, and stays where it is dragged. Pessoa makes no groups: a group another mode made (a
 // train, a chapter) is one thought here, in the tray until it is dragged onto the canvas, and its
-// thoughts don't float on their own as well. Its own data: where each thought was dragged to.
+// thoughts don't float on their own as well. Where a thought was dragged to is its 'pessoa' rule row (places.js); Pessoa keeps nothing itself.
 
-import { roomUnits, own, shut, hash, isGroup } from '../model.js';
-import { placedForeign, trayForeign, spot, unplace, inForeign, waiting, wait } from '../groups.js';
+import { roomUnits, shut, hash, isGroup } from '../model.js';
+import { placedForeign, trayForeign, spot, putAt, unput, spotsOf, unplace, inForeign, waiting, wait } from '../groups.js';
 
 // The room's thoughts Pessoa floats on their own: all but those inside another mode's group,
 // which stands for them (one card, on the canvas once it is placed, or in the tray), and those
@@ -37,11 +37,11 @@ export function spiralPoint(i, id = '') {
 //                          added away from the canvas, waiting until it is dragged out
 const traum = {
   write(w, roomId, c) {
-    const places = own(w, roomId, 'pessoa', false);
+    const places = spotsOf(w, roomId, 'pessoa');
     const out = [];
     const spiral = [];
     for (const th of ownUnits(w, roomId)) {
-      const p = places[th.id];
+      const p = places.get(th.id);
       if (!c.ref(th.id)) continue;
       if (p && Number.isFinite(p.x)) out.push(`at: ${c.ref(th.id)} ${p.x} ${p.y}${p.auto ? ' auto' : ''}`);
       else spiral.push(c.ref(th.id));
@@ -62,12 +62,12 @@ const traum = {
         if (x == null || y == null) { c.report(l.line, 'at: needs a ^reference and two numbers.'); continue; }
         if (placed.has(id)) { c.report(l.line, 'Pessoa places a thing once; this second at: was left out.'); continue; }
         placed.add(id);
-        own(w, roomId, 'pessoa')[id] = { x: Math.round(x), y: Math.round(y), ...(l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : {}) };
+        putAt(w, roomId, 'pessoa', id, x, y, l.values.slice(3).some((v) => v.v === 'auto') ? { auto: true } : null);
       } else if (l.key === 'on canvas' || l.key === 'tray') {
         for (const v of l.values) {
           const id = c.thing(v, l.line);
-          if (id && l.key === 'on canvas' && !placed.has(id)) delete own(w, roomId, 'pessoa')[id]; // back on the spiral
-          else if (id && l.key === 'tray' && !isGroup(w.things[id]) && !placed.has(id)) { delete own(w, roomId, 'pessoa')[id]; wait(w, roomId, id, 'pessoa'); }
+          if (id && l.key === 'on canvas' && !placed.has(id)) unput(w, roomId, 'pessoa', id); // back on the spiral
+          else if (id && l.key === 'tray' && !isGroup(w.things[id]) && !placed.has(id)) { unput(w, roomId, 'pessoa', id); wait(w, roomId, id, 'pessoa'); }
         }
       } else c.keep(l);
     }
@@ -93,7 +93,7 @@ export default {
 
   // Where it was dragged to, or its place on the spiral.
   point(w, roomId, id) {
-    const placed = own(w, roomId, 'pessoa', false)[id];
+    const placed = spot(w, roomId, 'pessoa', id);
     if (placed) return placed;
     if (isGroup(w.things[id]) || waiting(w, roomId, 'pessoa', id)) return null; // in the tray
     const units = ownUnits(w, roomId);
@@ -104,22 +104,22 @@ export default {
   // Dragged: placed by hand.
   drop(w, roomId, id, x, y) {
     if (shut(w, roomId)) return;
-    own(w, roomId, 'pessoa')[id] = { x, y };
+    putAt(w, roomId, 'pessoa', id, x, y);
   },
 
   // Clear space (clear.js): each thought is a block; one dragged was placed by hand. One pushed
   // clear keeps its new place (marked auto, so it still counts as laid out by Pessoa).
   blocks(w, roomId) {
-    const places = own(w, roomId, 'pessoa', false);
-    return this.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places[u.id] && !places[u.id].auto, at: u.at ?? 0 }));
+    const places = spotsOf(w, roomId, 'pessoa');
+    return this.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: !!places.get(u.id) && !places.get(u.id).auto, at: u.at ?? 0 }));
   },
 
   shift(w, roomId, id, dx, dy) {
     if (shut(w, roomId)) return;
     const p = this.point(w, roomId, id);
     if (!p) return;
-    const places = own(w, roomId, 'pessoa');
-    places[id] = { x: Math.round(p.x + dx), y: Math.round(p.y + dy), ...(places[id] && !places[id].auto ? {} : { auto: true }) };
+    const was = spot(w, roomId, 'pessoa', id);
+    putAt(w, roomId, 'pessoa', id, p.x + dx, p.y + dy, was && !was.auto ? null : { auto: true });
   },
 
   draftPoint: (w, roomId) => spiralPoint(roomUnits(w, roomId).length, 'draft'),

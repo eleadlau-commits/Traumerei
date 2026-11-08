@@ -195,9 +195,7 @@ export function apply(w, roomId, session, parts, { ontologies = [], pictures = n
     const made = create(w, roomId, fields, th ? th.at : t++);
     if (!made) { report.push(`Line ${obj.line}: ^${obj.id} is empty, so it was left out.`); continue; }
     if (th) { // a thought of another kind now: the new one takes its place everywhere
-      replaceIn(w, th.id, made.id);
-      for (const data of Object.values(w.own[roomId] || {})) if (data && typeof data === 'object' && data[th.id] != null) data[made.id] = data[th.id];
-      if (Number.isFinite(th.dx)) { made.dx = th.dx; made.dy = th.dy; }
+      replaceIn(w, th.id, made.id); // (its links, and where every rule put it)
       remove(w, th.id);
       counts.changed++;
       changes.push(`${named(w, made.id)} is now a ${ITEMS[fields.kind]?.name.toLowerCase() || fields.kind}`);

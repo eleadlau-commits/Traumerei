@@ -1,6 +1,8 @@
 // Tests for the world: everything is a thought.
 
 import { test, assert } from 'folio/testing';
+import * as P from '../places.js';
+const withCell = (w, r, col, row) => { model.setCell(w, r.id, col, row); return r; }; // a room in a cell (a 'borges' rule row)
 import {
   MESSY, emptyWorld, loadWorld, rooms, children, create, update, remove, move, name, closeGroup, openGroup,
   canHold, addRoom, startTrain, addThought, trainThoughts, roomThoughts, roomTrains, roomUnits,
@@ -93,7 +95,7 @@ test('moving one thought into a room gives it a train there; the rest stays join
   assert.ok(move(w, b.id, r.id));
   assert.deepEqual(trainThoughts(w, t.id).map((th) => th.text), ['a', 'c']);
   assert.equal(roomThoughts(w, r.id)[0].text, 'b');
-  assert.equal(own(w, MESSY, 'pessoa')[b.id], undefined);
+  assert.equal(P.spot(w, MESSY, b.id, 'pessoa'), null);
   assert.equal(model.parentOf(w, groupOf(w, b.id).id), r.id);
 });
 
@@ -120,8 +122,8 @@ test('pages: rooms on the rooms page sit on one page each, with grids of their o
   assert.equal(p, 1);
   const r = addRoom(w, 'Two', 1, { page: 1 });
   assert.equal(model.floorOf(w, r.id), 1);
-  assert.equal(r.col, undefined); // the floors feature places it
-  Object.assign(r, { col: 0, row: 0 }); // Messy's cells are on page 0
+  assert.equal(model.cellOf(w, r.id), null); // the floors feature places it
+  model.setCell(w, r.id, 0, 0); // Messy's cells are on page 0
   assert.equal(roomAt(w, 0, 0, null, 1).id, r.id);
   assert.equal(roomAt(w, 0, 0).id, MESSY);
   assert.equal(pageCount(w), 2);
@@ -193,15 +195,15 @@ test('the spiral moves outwards as thoughts are added', () => {
   assert.ok(r(30) > r(10) && r(10) > r(1));
 });
 
-test('a dragged Pessoa thought stays where it was put, in Pessoa\'s own data', () => {
+test('a dragged Pessoa thought stays where it was put, in Pessoa\'s rule row', () => {
   const w = emptyWorld();
   const t = train(w, MESSY, 'x');
   const a = trainThoughts(w, t.id)[0];
   pessoa.drop(w, MESSY, a.id, 123, 45);
   assert.deepEqual(pessoa.point(w, MESSY, a.id), { x: 123, y: 45 });
-  assert.deepEqual(w.own[MESSY].pessoa[a.id], { x: 123, y: 45 });
+  assert.deepEqual(P.spot(w, MESSY, a.id, 'pessoa'), { x: 123, y: 45 }); // a rule row: Pessoa keeps nothing
   remove(w, a.id);
-  assert.equal(w.own[MESSY].pessoa[a.id], undefined);
+  assert.equal(P.spot(w, MESSY, a.id, 'pessoa'), null);
 });
 
 test('a random spot is inside the box', () => {
@@ -212,7 +214,7 @@ test('a random spot is inside the box', () => {
 test('Messy thoughts takes four squares at the top left of the grid', () => {
   const w = emptyWorld();
   const m = rooms(w)[0];
-  assert.deepEqual([m.col, m.row, m.size], [0, 0, 2]);
+  assert.deepEqual([model.cellOf(w, m.id).col, model.cellOf(w, m.id).row, m.size], [0, 0, 2]);
   assert.equal(roomAt(w, 1, 1).id, MESSY);
   assert.equal(roomAt(w, 2, 0), null);
 });
@@ -241,7 +243,7 @@ test('Joyce: a train\'s thoughts sit a step apart until one is dragged, and stay
   assert.deepEqual(s[c.id], { x: 400, y: 500 + STEP.line });
   assert.equal(groupOf(w, b.id).id, t.id);
   assert.deepEqual(nextSpot(w, t.id), { x: 400, y: 500 + 2 * STEP.line });
-  Object.assign(t, { x: 0, y: 0 }); // moving the train moves its dragged thoughts too
+  model.setSpot(w, t.id, { x: 0, y: 0 }); // moving the train moves its dragged thoughts too
   assert.deepEqual(trainSpots(w, t.id)[b.id], { x: 300, y: 300 });
 });
 
@@ -292,7 +294,7 @@ test('a room keeps a short description, and loses it when it is cleared', () => 
 
 test('nothing in a locked room can be written, changed, moved or deleted, and its square stays put', () => {
   const w = emptyWorld();
-  const r = Object.assign(addRoom(w, 'Done', 1), { col: 3, row: 0 });
+  const r = withCell(w, addRoom(w, 'Done', 1), 3, 0);
   const t = train(w, r.id, 'kept');
   const th = trainThoughts(w, t.id)[0];
   lock(w, r.id);
@@ -308,7 +310,7 @@ test('nothing in a locked room can be written, changed, moved or deleted, and it
   const other = train(w, MESSY, 'outside');
   assert.equal(move(w, other.id, r.id), false);
   assert.equal(nudge(w, th.id, 50, 50), false);
-  assert.equal(r.col, 3);
+  assert.equal(model.cellOf(w, r.id).col, 3);
   update(w, r.id, { name: 'Done, renamed' }); // the room itself can still be named
   assert.equal(r.name, 'Done, renamed');
   lock(w, r.id, false);
@@ -317,18 +319,18 @@ test('nothing in a locked room can be written, changed, moved or deleted, and it
 
 test('an archived room leaves the grid for the Archive, and comes back with no cell (the floors feature places it)', () => {
   const w = emptyWorld();
-  const r = Object.assign(addRoom(w, 'Old', 1), { col: 4, row: 1 });
+  const r = withCell(w, addRoom(w, 'Old', 1), 4, 1);
   train(w, r.id, 'a thought about washi');
   assert.ok(archive(w, r.id));
   assert.equal(rooms(w).some((x) => x.id === r.id), false);
   assert.deepEqual(archived(w).map((x) => x.id), [r.id]);
-  assert.equal(r.col, undefined);
+  assert.equal(model.cellOf(w, r.id), null);
   assert.equal(search(w, 'washi').length, 1); // still found
   assert.equal(archive(w, MESSY), false);
   assert.ok(restore(w, r.id));
   assert.equal(model.isArchived(w, r.id), false);
   assert.equal(model.archivedAt(w, r.id), null);
-  assert.equal(r.col, undefined);
+  assert.equal(model.cellOf(w, r.id), null);
   lock(w, r.id);
   assert.equal(archive(w, r.id), false); // unlock it first
 });
@@ -528,7 +530,7 @@ test('a copied room has everything in it copied, with new ids, and shares nothin
   const t = train(w, r.id, 'one', 'two');
   const [a, b] = trainThoughts(w, t.id);
   own(w, r.id, 'russell').arrows = [{ from: a.id, to: b.id, label: 'forgets' }];
-  own(w, r.id, 'pessoa')[a.id] = { x: 5, y: 6 };
+  P.putSpot(w, r.id, a.id, 'pessoa', { x: 5, y: 6 });
   view(w, r.id).mode = 'pessoa';
   lock(w, r.id);
   const c = copyRoom(w, r.id, 9);
@@ -536,14 +538,14 @@ test('a copied room has everything in it copied, with new ids, and shares nothin
   assert.equal(c.desc, 'Groups');
   assert.deepEqual(c.tags, ['maths']);
   assert.equal(model.floorOf(w, c.id), 1);
-  assert.ok(!c.locked && c.col == null && c.row == null, 'unlocked, with no cell yet');
+  assert.ok(!c.locked && model.cellOf(w, c.id) == null, 'unlocked, with no cell yet');
   assert.equal(roomThoughts(w, c.id).map((th) => th.text).join(), 'one,two');
   const [ct] = roomTrains(w, c.id);
   assert.ok(ct.id !== t.id);
   const [ca, cb] = trainThoughts(w, ct.id);
   assert.ok(ca.id !== a.id && cb.id !== b.id, 'new ids');
   assert.deepEqual(own(w, c.id, 'russell').arrows, [{ from: ca.id, to: cb.id, label: 'forgets' }]);
-  assert.deepEqual(own(w, c.id, 'pessoa')[ca.id], { x: 5, y: 6 });
+  assert.deepEqual(P.spot(w, c.id, ca.id, 'pessoa'), { x: 5, y: 6 });
   assert.equal(view(w, c.id).mode, 'pessoa');
   lock(w, c.id, false);
   update(w, ca.id, { text: 'changed' });

@@ -4,7 +4,7 @@
 import { test as plainTest, assert } from 'folio/testing';
 import { ui } from 'folio';
 import { ITEMS, BUILT_IN, setKinds, kindFor, isKnown, lacks } from '../items/index.js';
-import { emptyWorld, create, update, kindOf, isLeaf, thoughtText, MESSY } from '../model.js';
+import { emptyWorld, create, update, kindOf, isLeaf, thoughtText, offsetOf, MESSY } from '../model.js';
 
 // Every test here changes the kinds; the kinds other tests set (a plugin's, such as Pictures')
 // are put back after each, as the tests share one page.
@@ -58,7 +58,7 @@ test('a thought of a kind switched off is kept exactly, read, and shown as a sta
   assert.match(node.textContent, /Haiku · plugin off/);
   // Moving it (or any change) keeps every field it had.
   update(w, th.id, { dx: 12, dy: 4 }, 3);
-  assert.deepEqual([w.things[th.id].a, w.things[th.id].b, w.things[th.id].c, w.things[th.id].dx], ['old pond', 'a frog jumps in', 'the sound of water', 12]);
+  assert.deepEqual([w.things[th.id].a, w.things[th.id].b, w.things[th.id].c, offsetOf(w, th.id).dx], ['old pond', 'a frog jumps in', 'the sound of water', 12]); // (where it was dragged: a rule row)
   setKinds([haiku]); // switched on again: as it was
   assert.equal(thoughtText(w, w.things[th.id]), 'old pond / a frog jumps in / the sound of water');
   setKinds([]);

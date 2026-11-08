@@ -4,9 +4,9 @@
 // a thought or group can be moved across (`across`), and then it belongs to the other side alone.
 // The sides are the only rooms inside a room (model.js: canHold, isTwin).
 
-import { parentOf, addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
+import { parentOf, sideOf, addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
 
-export { isTwin };
+export { isTwin, sideOf };
 
 // Makes a Twin on floor `page` (where.page), its sides seen through `modes` ([left, right], e.g.
 // ['joyce', 'russell']). Returns the Twin (with no cell yet: the floors feature places it), or null.
@@ -24,7 +24,7 @@ export function addTwin(w, name = 'Untitled', now = Date.now(), where = {}, mode
 // A Twin's two sides, left then right ([] for any other room).
 export function sides(w, id) {
   if (!isTwin(room(w, id))) return [];
-  return children(w, id).filter((th) => kindOf(th) === 'room').sort((a, b) => (a.side || 0) - (b.side || 0));
+  return children(w, id).filter((th) => kindOf(th) === 'room').sort((a, b) => (sideOf(w, a.id) || 0) - (sideOf(w, b.id) || 0));
 }
 
 // The Twin a side belongs to, or null (any other room).
@@ -41,7 +41,7 @@ export function otherSide(w, id) {
 export function placeName(w, id) {
   const r = room(w, id);
   const t = twinOf(w, id);
-  return t ? `${t.name} · ${r.side ? 'Right' : 'Left'}` : r?.name ?? '';
+  return t ? `${t.name} · ${sideOf(w, id) ? 'Right' : 'Left'}` : r?.name ?? '';
 }
 
 // The rooms a thought in room `from` can be moved to, as [{ id, name }]: every room on the rooms

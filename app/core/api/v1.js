@@ -25,8 +25,8 @@ function pick(from, names, where) {
 export const MODEL = ['own', 'parentOf', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
   'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
   'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE',
-  'leave', 'replaceIn'];
-export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'place', 'unplace'];
+  'leave', 'replaceIn', 'isLooseGroup', 'spotOf', 'setSpot', 'unsetSpot'];
+export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'unput', 'spotsOf', 'place', 'unplace'];
 export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
   'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];
 // A train's rhythm (Joyce's, in the core): how far down the next thought goes, the measured

@@ -3,16 +3,16 @@
 // import them from here. This list is everything Proust needs.
 
 export let
-  own, parentOf, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view, // model
-  placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace, // groups: other modes' groups, as one thing here
+  parentOf, shut, isLooseGroup, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view, // model
+  placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, unput, spotsOf, place, unplace, // groups: other modes' groups, as one thing here
   arrowsOf, cleanRelationList, relationEntry, relationEnds, listText, // relations: links and their relations
   lines, arrowView, maths, spiralPoint;
 
 // t: the plugin API (this.use('traumerei').connect(this)), or in a test the same parts from
 // surface(lib) (app/core/api/v1.js).
 export function bind(t) {
-  ({ own, parentOf, shut, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = t.model);
-  ({ placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, place, unplace } = t.groups);
+  ({ parentOf, shut, isLooseGroup, hash, roomSetting, setRoomSetting, isGroup, isLeaf, create, join, members, itemsIn, within, groupOf, groupsIn, roomItems, thoughtText, view } = t.model);
+  ({ placedForeign, trayForeign, inForeign, waiting, wait, spot, putAt, unput, spotsOf, place, unplace } = t.groups);
   ({ arrowsOf, cleanRelationList, relationEntry, relationEnds, listText } = t.relations);
   ({ arrowView } = t.arrows);
   ({ maths } = t.maths);

@@ -10,16 +10,18 @@ export const KEEP = [{ days: 30, words: '1 month' }, { days: 365, words: '1 year
 
 // Where each mark was, from place rows: its home context (the row with no rule).
 export const homes = (places) => { const out = new Map(); for (const p of places) if (p?.rule == null) out.set(p.mark, p.context); return out; };
+// Each room's cell on its floor, from its 'borges' rule row.
+export const cellsOf = (places) => { const out = new Map(); for (const p of places) if (p?.rule === 'borges' && p.position) out.set(p.mark, p.position); return out; };
 
 // The squares on the rooms page in a set of things, with where they were (`home`: homes()): the
 // rooms on a floor or in the Archive, not a Twin's sides.
-export function snapshot(things, home = new Map()) {
+export function snapshot(things, home = new Map(), cell = new Map()) {
   const rooms = {};
   for (const r of Object.values(things)) {
     const at = home.get(r?.id);
     if (r?.kind !== 'room' || !(at === 'archive' || /^floor:\d+$/.test(at ?? ''))) continue;
     rooms[r.id] = {
-      name: r.name || '', page: at === 'archive' ? 0 : +at.slice(6), col: r.col ?? null, row: r.row ?? null, size: r.size || 1,
+      name: r.name || '', page: at === 'archive' ? 0 : +at.slice(6), col: cell.get(r.id)?.col ?? null, row: cell.get(r.id)?.row ?? null, size: r.size || 1,
       archived: at === 'archive', tint: r.tint ?? null, light: r.light ?? null, opacity: r.opacity ?? null,
     };
   }
@@ -41,9 +43,10 @@ export function pastBoard(m, w, moments, day) {
   const things = {};
   for (const th of moments.at(end)) things[th.id] = th;
   const then = { things };
-  const home = homes(moments.placesAt(end));
+  const places = moments.placesAt(end);
+  const home = homes(places);
   const up = (id) => home.get(id);
-  const rooms = snapshot(things, home);
+  const rooms = snapshot(things, home, cellsOf(places));
   const written = new Set();
   const counts = {};
   for (const th of Object.values(things)) {
