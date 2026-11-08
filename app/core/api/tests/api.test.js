@@ -11,9 +11,10 @@ import { API_VERSION as V1_VERSION } from '../v1.js';
 // Version 2, as API.md lists it: the six tables, the slots and ui, over every v1 name. Changing
 // the API means changing this and API.md together.
 const V2 = {
-  top: ['app', 'arrows', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
+  top: ['app', 'arrows', 'commands', 'data', 'distance', 'docks', 'editor', 'floors', 'formats', 'frame', 'gaps', 'groups', 'items', 'kinds', 'layout', 'lines', 'links', 'load', 'marks', 'maths', 'model', 'modes', 'moments', 'more', 'open', 'pictures', 'places', 'plugin', 'relations', 'rules', 'save', 'slots', 'toast', 'trains', 'twins', 'ui', 'version', 'world', 'write'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
+  rules: ['admit', 'draws', 'layout', 'list', 'moves'],
   links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'on', 'order', 'standsFor', 'to', 'unlink'],
   distance: ['declare', 'of', 'on'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
@@ -270,6 +271,22 @@ test('marks: frozen rows read off the world; make, edit and delete land as saved
   const steps = service.saved;
   assert.equal(k.marks.delete('nowhere').ok, false);
   assert.equal(service.saved, steps); // a refusal is not a step
+});
+
+test('rules: each mode read as the kernel sees it: layout from the rows, admit in words, moves, draws; frozen', () => {
+  const { w, room, train, a, b, c, locked, service } = smallWorld();
+  service.ontologies = lib.ontologies.BUILT_IN;
+  const k = kernel({ lib, world: service });
+  assert.deepEqual(k.rules.list().map((r) => r.id), ['joyce', 'pessoa']);
+  const at = k.rules.layout('joyce', room.id);
+  assert.ok(Object.isFrozen(at) && at.some((p) => p.mark === a.id && p.rule === 'joyce'));
+  assert.deepEqual(at.find((p) => p.mark === a.id).position, lib.ontologies.BUILT_IN[0].point(w, room.id, a.id));
+  assert.deepEqual(k.rules.admit('pessoa', { kind: 'place', mark: c.id, context: room.id, position: { x: 1, y: 2 } }), { ok: true });
+  assert.match(k.rules.admit('pessoa', { kind: 'place', mark: c.id, context: locked.id }).reason, /locked|not in that context/);
+  assert.equal(k.rules.admit('nowhere', {}).ok, false);
+  assert.ok(k.rules.moves('joyce', room.id, a.id).some((m) => m.id === 'group'));
+  assert.deepEqual(k.rules.draws('joyce', room.id).lines.find((l) => l.includes(a.id)), lib.model.members(w, train.id).map((m) => m.id));
+  assert.deepEqual(k.rules.layout('nowhere', room.id), []);
 });
 
 test('places: a home row per mark and a row per rule, rooms on floors or in the archive, loose means no rule row', () => {

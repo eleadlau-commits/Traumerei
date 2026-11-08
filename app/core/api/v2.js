@@ -279,7 +279,25 @@ export function kernel({ lib, world, events = null, gone = () => {} }) {
     on: on('moments'),
   });
 
-  return Object.freeze({ marks, places, links, distance, gaps, moments });
+  // -- rules: every mode as the kernel sees it (world/rules.js). Pure reads of the tables: where
+  // each unit sits under a rule, whether it would take a position or a link (a refusal in words),
+  // what it offers for a chosen mark, and what it draws beside the marks. No rule keeps state.
+  const ontology = (id) => world.ontologies?.find((o) => o.id === id) || null;
+  const ruleNs = Object.freeze({
+    list: () => rows((world.ontologies || []).map((o) => ({ id: o.id, name: o.name }))),
+    layout: (rule, context) => {
+      const o = ontology(rule);
+      return rows(o ? [...lib.rules.layout(o, w(), context)].map(([mark, p]) => ({ mark, context, rule, position: Object.freeze({ x: p.x, y: p.y }) })) : []);
+    },
+    admit: (rule, proposal) => { const o = ontology(rule); return row(o ? { ...lib.rules.admit(o, w(), { ...(proposal || {}) }) } : { ok: false, reason: 'No such rule' }); },
+    moves: (rule, context, mark) => { const o = ontology(rule); return rows(o ? lib.rules.moves(o, w(), context, mark) : []); },
+    draws: (rule, context) => {
+      const o = ontology(rule), d = o ? lib.rules.draws(o, w(), context) : { lines: [], arrows: [] };
+      return row({ lines: Object.freeze(d.lines.map((l) => Object.freeze([...l]))), arrows: rows(d.arrows) });
+    },
+  });
+
+  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs });
 }
 
 // The API one plugin gets: v1's names (the compatibility surface) and v2's six tables beside

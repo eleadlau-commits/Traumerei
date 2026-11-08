@@ -411,6 +411,25 @@ export const proust = {
   },
 
   point,
+  // The whole room at once (the kernel's rule layout): the same points as point(), with the
+  // spiral's order and the rule rows read once instead of for every node.
+  layout(w, roomId) {
+    const out = new Map(), view = VIEWS.get(roomId), spots = spotsOf(w, roomId, ID);
+    const all = roomItems(w, roomId), rank = new Map(all.map((u, i) => [u.id, i]));
+    const leaf = (id) => {
+      if (view?.at[id]) return { x: view.at[id].x, y: view.at[id].y };
+      const p = spots.get(id);
+      return p && Number.isFinite(p.x) ? { x: p.x, y: p.y } : spiralPoint(rank.get(id) ?? all.length, id);
+    };
+    for (const u of this.units(w, roomId)) {
+      if (view?.at[u.id]) { out.set(u.id, { x: view.at[u.id].x, y: view.at[u.id].y }); continue; }
+      if (isLeaf(u)) { out.set(u.id, leaf(u.id)); continue; }
+      if (u.of !== ID) { const p = spots.get(u.id); if (p) out.set(u.id, { x: p.x, y: p.y }); continue; }
+      const ps = itemsIn(w, u.id).map((m) => leaf(m.id));
+      if (ps.length) out.set(u.id, { x: Math.min(...ps.map((p) => p.x)), y: Math.min(...ps.map((p) => p.y)) });
+    }
+    return out;
+  },
   drop(w, roomId, id, x, y) { moveTo(w, roomId, id, x, y); },
   draftPoint: (w, roomId) => spiralPoint(roomItems(w, roomId).length, 'draft'),
 

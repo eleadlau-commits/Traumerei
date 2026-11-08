@@ -131,6 +131,7 @@ export default class World extends Feature {
     const snap = this.snap();
     let step = false;
     if (snap !== this.lastSnap) {
+      lib.model.touch(this.world); // a change: every rule lays out afresh (rules.js)
       const next = JSON.parse(snap);
       step = this.land(M.record(this.log, this.last, next, Date.now())).length > 0;
       this.lastSnap = snap;

@@ -41,7 +41,14 @@ function index(w) {
   return ix;
 }
 // The table was written to by other hands (the log replaying rows): the index is made afresh.
-export const touched = (w) => { if (w.places) INDEX.delete(w.places); };
+export const touched = (w) => { if (w.places) { INDEX.delete(w.places); VERSION.set(w.places, { base: ++clock, ctx: new Map() }); } };
+// A context's version: a number from one clock that changes with every write of a row in it (a
+// rule's layout of the context remembers it, so it lays out again only after a change: rules.js).
+const VERSION = new WeakMap();
+let clock = 0;
+const versions = (t) => { let v = VERSION.get(t); if (!v) VERSION.set(t, (v = { base: ++clock, ctx: new Map() })); return v; };
+const bump = (t, context) => versions(t).ctx.set(context, ++clock);
+export const version = (w, context) => { const v = versions(table(w)); return Math.max(v.base, v.ctx.get(context) || 0); };
 
 const withId = (t, id) => ({ id, ...t[id] });
 
@@ -109,9 +116,10 @@ const tidy = (r) => {
 export function set(w, row) {
   const r = tidy(row);
   const id = idOf(r), t = table(w), ix = index(w);
-  if (t[id]) leave(ix, id, t[id]);
+  if (t[id]) { leave(ix, id, t[id]); bump(t, t[id].context); }
   t[id] = r;
   enter(ix, id, r);
+  bump(t, r.context);
   return withId(t, id);
 }
 // Takes a row out. True if there was one. (A mark's home row goes only as it gets another, or
@@ -120,6 +128,7 @@ export function drop(w, id) {
   const t = table(w);
   if (!t[id]) return false;
   leave(index(w), id, t[id]);
+  bump(t, t[id].context);
   delete t[id];
   return true;
 }
