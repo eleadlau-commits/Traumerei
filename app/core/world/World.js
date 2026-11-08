@@ -5,6 +5,7 @@
 // ('attention'). Other features reach all of it only through the `world` service below, whose
 // list is the whole of what it offers (README.md says the same in words).
 
+import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import { loadWorld } from './model.js';
@@ -41,6 +42,8 @@ export default class World extends Feature {
     // File formats, from plugins (Room files' .traum): one thing to ask (formats.js).
     const formats = formatsOf(this.defineSlot('world.formats', 'A file format: { id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id), canEdit?(), editRoom?(roomId, o), editGroup?(roomId, groupId, o), cancel?() } (see world/formats.js).'));
 
+    // KaTeX loads the first time some words hold mathematics (maths.js): then rooms draw again.
+    whenMathsLoads(() => this.emit('world:maths'));
     const w = this;
     this.provide('world', {
       lib,                                          // the rules, by module (lib.js)
