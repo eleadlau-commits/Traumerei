@@ -46,6 +46,7 @@ A whole `feature.json`, for a plugin with no styles:
 | `kind` | What it adds: `mode`, `item`, `command`, `editor`, `format`, `page`, … (shown on the Plugins page). |
 | `load` | `start` (the default) or `when-used`. |
 | `author` | Who made it. |
+| `starts` | `on` (the default) or `off`: it waits, switched off, under More plugins in Settings → Plugins until someone switches it on (then it stays on). The stress corpus starts off. |
 
 The compiler checks the block, and leaves out a plugin that imports another feature's files or
 uses a core service or slot directly: a plugin reaches the app **only** through the `traumerei`

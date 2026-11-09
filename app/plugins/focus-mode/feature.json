@@ -13,6 +13,7 @@
       "command"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "starts": "off"
   }
 }

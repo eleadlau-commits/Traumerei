@@ -13,7 +13,8 @@
       "editor"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "starts": "off"
   },
   "styles": [
     "style.css"

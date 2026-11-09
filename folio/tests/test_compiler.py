@@ -390,6 +390,7 @@ class CompilerTests(unittest.TestCase):
             'bad-kind-word': plugin({'kind': ['Mode']}),
             'bad-load': plugin({'load': 'later'}),
             'bad-author': plugin({'author': ' '}),
+            'bad-starts': plugin({'starts': 'later'}),
         }
         _, _, by_id = self.discover_plugins({'plugins': cases})
         for fid in cases:
