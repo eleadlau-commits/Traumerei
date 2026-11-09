@@ -1,0 +1,22 @@
+{
+  "name": "Desk",
+  "description": "Where the day starts: every open gap and everything that came back, across all rooms, in one tab of the left dock (Ctrl+Alt+D); grouped by room or by floor, one click into the mark in its room.",
+  "version": "0.1.0",
+  "main": "Desk.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "command",
+      "view"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

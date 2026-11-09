@@ -607,6 +607,16 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       open: Object.freeze({
         rooms: () => { service('create')?.open(); },
         room: (id) => { service('create')?.open(); service('rooms')?.openRoom(id); },
+        // To a mark: into the room it is at home in, with the view on it and it chosen (a room: into it).
+        mark: (id) => {
+          const m = tables.marks.get(id);
+          if (!m) return false;
+          const home = m.kind === 'room' ? id : tables.places.home(id);
+          if (!home || tables.marks.get(home)?.kind !== 'room') return false;
+          service('create')?.open(); service('rooms')?.openRoom(home);
+          if (home !== id) room?.()?.go?.(id, home);
+          return true;
+        },
       }),
     }),
     // What rules and views share: the rule kit and the drawing parts (surface()), and the world

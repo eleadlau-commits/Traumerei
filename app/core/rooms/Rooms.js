@@ -79,7 +79,7 @@ export default class Rooms extends Feature {
     // In the menu, on the rooms page: a new room from a room file (the roomfile feature).
     this.add('header.buttons', { id: 'rooms-import', label: 'Import a room…', icon: 'book', order: 40,
       visible: () => this.files.any && !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
-    this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there; id() → the open room, or null; chosen() → the one thing chosen there, or null }. One item.');
+    this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there; id() → the open room, or null; chosen() → the one thing chosen there, or null; go(id, room) → into the room with the view on the mark and it chosen }. One item.');
     this.provide('create', { open: () => this.open() });
     // Where the Time dock is (the time feature): the rooms page, whose days list chooses a room.
     this.add('time.place', {

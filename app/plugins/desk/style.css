@@ -1,0 +1,15 @@
+/* Desk: the left dock's tab. Only layout here; the look is Folio's (base.css). */
+.desk { display: grid; gap: 12px; padding: 8px 12px 16px; }
+.desk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.desk-by { display: flex; gap: 10px; }
+.desk-by .word:not(.on) { opacity: .6; }
+.desk-floor { display: grid; gap: 10px; }
+.desk-floor-name { font-weight: 500; }
+.desk-room { display: grid; gap: 4px; }
+.desk-count { opacity: .6; }
+.desk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.desk-row { display: grid; gap: 1px; width: 100%; text-align: left; padding: 4px 6px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; border-radius: 4px; }
+.desk-row:hover, .desk-row:focus-visible { background: var(--hover, rgba(127, 127, 127, .12)); }
+.desk-what { overflow-wrap: anywhere; }
+.desk-row.back .desk-what { font-weight: 500; }
+.desk-why { font-size: var(--t-small, .9em); opacity: .7; }

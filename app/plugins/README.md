@@ -91,7 +91,7 @@ Reads return frozen rows: hold ids, not rows. A change (`make`, `edit`, `put`, `
 `{ ok: true, id }` after it is saved as one step Ctrl+Z takes back, or `{ ok: false, reason }`
 with nothing changed. `on(fn)` on any table calls `fn` after each saved step and each undo.
 
-Beside them: `t.ui` (`toast`, `chosen`, `docks`, `frame`, `open.rooms()`, `open.room(id)`),
+Beside them: `t.ui` (`toast`, `chosen`, `docks`, `frame`, `open.rooms()`, `open.room(id)`, `open.mark(id)`),
 `t.carriers` (a room as .traum text and back) and `t.parts`, what a rule (a mode) or a view of the
 tables shares: the rule kit (`parts.model`, `parts.groups`: plain functions of a world handed to
 them), the drawing parts (`lines`, `arrows`, `maths`, `layout`, `trains`, `relations`), `kinds`,
