@@ -6,6 +6,13 @@ The finds are listed latest first, each with its room's name (or *Room*). The ar
 them, Enter or a click opens one, and Escape or a click outside closes the panel. With no finds it
 says *Nothing yet with those words*.
 
+**The link hand.** With a mark chosen in a room, Ctrl+K opens the panel linking: it says
+*Link “…” to…*, the chosen mark is left out of the finds, and Enter or a click links the two (a
+`link`, the kind Search declares: these two belong together, read either way), in any rooms. The
+panel closes and the room stays; the room draws the link (a line, or a ↗ to follow it with Alt+L).
+Ctrl+Z takes it away. **Tab** switches between linking and only finding. `linkTo` is tested in
+`tests/link.test.js`.
+
 It only finds. What a find opens is up to whoever shows rooms (the room feature): the room, or
 the room a thought is in with the view on that thought.
 
