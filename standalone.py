@@ -46,7 +46,7 @@ def main():
         # the function it came from): the page stays well under its 2 MB budget.
         [shutil.which('npx') or 'npx', '--yes', 'esbuild@0.24.0', str(entry), '--bundle', '--minify-whitespace', '--format=iife', '--charset=utf8',
          f'--alias:folio={WEB / "folio" / "folio.js"}'],
-        cwd=ROOT, check=True, capture_output=True, text=True).stdout
+        cwd=ROOT, check=True, capture_output=True, text=True, encoding='utf-8').stdout
     entry.unlink()
 
     html = (WEB / 'index.html').read_text('utf-8')
