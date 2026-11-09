@@ -4,7 +4,9 @@ Rooms for thinking, built with **Folio**: write your thoughts, arrange them in d
 and finish what you start.
 
 Every pull request runs **Check pull request** (`.github/workflows/check.yml`): all the tests
-(`python build.py test`), then a build of the one-file page. To try a PR before merging, open its
+(`python build.py test`), then a build of the one-file page, then the speed budgets on it
+(`node tests/speed.mjs`: a 1,500-thought room opens in 0.8 s, starting a thought and Enter each
+show in 0.35 s, a key typed into a thought takes under 20 ms, the page stays under 2 MB). To try a PR before merging, open its
 check run on GitHub and download **traumerei-preview** from the summary; unzip it and double-click
 `traumerei.html`.
 

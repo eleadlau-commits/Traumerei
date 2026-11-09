@@ -37,6 +37,10 @@ jobs:
         run: node app/plugins/roomfile/tests/guide.mjs
       - name: Build the one-file page
         run: python standalone.py
+      - name: Speed budgets (a 1,500-thought room opens, Enter, typing, under 2 MB)
+        run: |
+          npm install --no-save --no-package-lock playwright-core@1.48.2
+          SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs
       - name: Attach it as a download
         id: upload
         uses: actions/upload-artifact@v4
