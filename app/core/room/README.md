@@ -230,6 +230,13 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   view moves; nothing in the room changes. A mode may take Ctrl+Shift+C for its own layout
   (ontologies/index.js: `centre`; Proust's Centre), and Esc first (`escape`: back from it). What shows is measured as drawn, so a mode needs to
   tell it nothing. A drag, a pinch or the wheel stops a glide.
+- **A plugin's links** (`linklayer.js`): every link of a kind a plugin declares (cites, Provoke's,
+  the link hand's `link`) shows in every mode, after the mode has drawn: a dashed line with the
+  kind's name between two marks that both show, and a ↗ (↗3 for three) on a mark whose other end
+  is elsewhere (another room, folded away). A click on the ↗, or **Alt+L** with the mark chosen,
+  follows the link there; Alt+L again where it landed takes the first mark's next link. Made or
+  taken away, a link is drawn at once (`world:moments`). Structure (part of, relation) stays the
+  mode's own.
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or ⋯ More → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.

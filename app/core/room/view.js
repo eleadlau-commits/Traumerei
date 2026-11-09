@@ -388,6 +388,7 @@ export class RoomView {
     if (!this.roomId) return;
     reading(this.world, () => {
       this.world$.replaceChildren(...this.canvasNodes());
+      this.drawLinks(); // a plugin's links: lines, and a ↗ where the other end is elsewhere (linklayer.js)
       this.markPast();
       this.showStatus();
       this.drawBar();

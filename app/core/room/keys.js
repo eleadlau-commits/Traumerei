@@ -34,6 +34,7 @@ export const ROOM_KEYS = [
   { id: 'room.back-into', shows: 'Backspace in an empty thought', words: 'back into the one before' },
   { id: 'room.nudge', keys: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight', 'Shift+ArrowUp', 'Shift+ArrowDown'], shows: 'Arrows · Shift+arrows', words: 'nudge what is chosen' },
   { id: 'room.search', keys: ['Ctrl+K'], words: 'search every room' },
+  { id: 'room.follow', keys: ['Alt+L'], words: 'follow a link of the chosen thought to its other end (again: the next link)' },
   { id: 'room.mode', keys: ['Tab', 'Shift+Tab'], shows: 'Tab · Shift+Tab', words: 'the next mode · the one before (a big room)' },
   { id: 'room.undo', keys: ['Ctrl+Z', 'Ctrl+Shift+Z', 'Ctrl+Y'], shows: 'Ctrl+Z · Ctrl+Shift+Z', words: 'undo · redo' },
   { id: 'room.escape', keys: ['Escape'], words: 'let go, or go back' },

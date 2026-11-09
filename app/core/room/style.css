@@ -468,3 +468,10 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* A room whose mode's plugin is off: under the mode, "Russell is off · Turn on". */
 .room-mode-off { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 16px 8px; font-size: 12px; color: var(--muted); }
+
+/* A plugin's links (linklayer.js): a dashed line between two marks here, a ↗ where the other end is elsewhere */
+.room-plinks { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.room-plink { stroke: currentColor; stroke-width: 1; stroke-dasharray: 3 4; opacity: .45; }
+.room-plink-word { fill: currentColor; font-size: 11px; opacity: .45; text-anchor: middle; letter-spacing: .04em; }
+.room-plink-stub { position: absolute; z-index: 2; padding: 0 4px; font-size: 11px; line-height: 16px; opacity: .55; background: none; border: 0; color: inherit; cursor: pointer; }
+.room-plink-stub:hover, .room-plink-stub:focus-visible { opacity: 1; }
