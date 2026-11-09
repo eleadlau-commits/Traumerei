@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Traumerei",
-  "version": "0.1.0",
+  "productName": "Träumerei",
+  "mainBinaryName": "traumerei",
+  "version": "1.0.0",
   "identifier": "app.traumerei.desktop",
   "build": {
     "frontendDist": "../dist"
@@ -38,7 +39,9 @@
         "type": "downloadBootstrapper"
       },
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false
       }
     },
     "fileAssociations": [
@@ -51,6 +54,10 @@
         "role": "Editor",
         "mimeType": "text/plain"
       }
-    ]
+    ],
+    "publisher": "Träumerei",
+    "shortDescription": "Träumerei",
+    "longDescription": "A place to finish projects: rooms of thoughts, gaps and returns.",
+    "copyright": "© 2026 Träumerei"
   }
 }
