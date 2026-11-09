@@ -10,7 +10,7 @@
 // off, as 'folio.disabled').
 
 import { Feature, ui } from 'folio';
-import { plugins, isOn, note, kindWords, dependentsWords, offMode } from './rows.js';
+import { plugins, isOn, startsOff, note, kindWords, dependentsWords, offMode } from './rows.js';
 
 const { el } = ui;
 
@@ -65,6 +65,13 @@ export default class Plugins extends Feature {
     const all = plugins(this.app.features);
     const on = all.filter(isOn).length;
     const safe = !!this.app.safe;
+    // Plugins that start off ("starts": "off": the stress corpus) wait under a fold.
+    const [main, more] = [all.filter((f) => !startsOff(f)), all.filter(startsOff)];
+    const moreOn = more.filter(isOn).length;
+    const fold = more.length ? el('details', { class: 'advanced plugins-more', open: this.moreOpen, ontoggle: () => { this.moreOpen = fold.open; } },
+      el('summary', {}, 'More plugins', el('small', {}, `${moreOn} of ${more.length} on`)),
+      ui.hint('These start off. Switch one on and it stays on.', { small: true }),
+      el('div', { class: 'feature-list plugins-list', role: 'list' }, more.map((f) => this.row(f, safe)))) : null;
     return el('div', { class: 'plugins' },
       safe
         ? el('div', { class: 'plugins-safe' },
@@ -72,7 +79,8 @@ export default class Plugins extends Feature {
           el('button', { type: 'button', class: 'word', onclick: () => this.app.restart(false) }, 'Start normally'))
         : null,
       el('p', { class: 'hint' }, `${on} of ${all.length} on. A plugin switched off keeps its data, and comes back as it was.`),
-      el('div', { class: 'feature-list plugins-list', role: 'list' }, all.map((f) => this.row(f, safe))),
+      el('div', { class: 'feature-list plugins-list', role: 'list' }, main.map((f) => this.row(f, safe))),
+      fold,
       safe ? null : el('div', { class: 'plugins-foot' },
         el('button', { type: 'button', class: 'word', onclick: () => this.app.restart(true) }, 'Start in safe mode'),
         ui.hint('Every plugin off, this time only. Holding Shift while Träumerei starts does the same.', { small: true })));

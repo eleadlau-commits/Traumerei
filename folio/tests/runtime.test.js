@@ -271,6 +271,24 @@ test('switched on again, a feature starts afresh, and what waited for it comes b
   for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
 });
 
+test('a plugin that starts off waits until switched on, then stays on; switched off, it is off again', async () => {
+  const app = liveApp();
+  const later = { id: 'later', name: 'Later', plugin: { api: 1, starts: 'off' } };
+  assert.equal(app.offTest()(later), true);       // never chosen: off
+  assert.equal(app.offTest()(app.registry[2]), false);
+  app.registry.push(later);
+  app.modules.set('later', { status: 'fulfilled', value: { default: class extends Feature { start() { app.log.push('start later'); } } } });
+  app.features.set('later', { manifest: later, status: 'disabled', reason: '', problem: null, instance: null });
+  assert.deepEqual(await app.startFeature('later'), ['later']);
+  assert.deepEqual(app.kept.enabled, ['later']);  // remembered as chosen
+  assert.equal(app.offTest()(later), false);
+  app.stopFeature('later');
+  assert.equal(app.kept.enabled, null);
+  assert.deepEqual(app.kept.disabled, ['later']);
+  assert.equal(app.offTest()(later), true);
+  for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
+});
+
 test('a feature switched on whose needs are off says so, and one that fails to start says why', async () => {
   const app = liveApp();
   app.stopFeature('notes');

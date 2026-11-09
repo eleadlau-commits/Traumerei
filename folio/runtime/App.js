@@ -64,7 +64,7 @@ export class App {
       }
     }
 
-    const disabled = new Set(this.storage.area('folio').get('disabled', []));
+    const isOff = this.offTest();
     this.safe = this.safeMode();
     // Load every feature's code at once. A file that fails to load only affects its own feature.
     const modules = await Promise.allSettled(
@@ -80,7 +80,7 @@ export class App {
         record.reason = `Only in the ${manifest.platforms.join(' and ')} version`;
         continue;
       }
-      if (disabled.has(manifest.id)) {
+      if (isOff(manifest)) {
         record.status = 'disabled';
         continue;
       }
@@ -198,11 +198,11 @@ export class App {
     if (record.status === 'disabled' || record.status === 'safe') { record.status = 'skipped'; record.reason = ''; }
     // Everything not running that could now start, in the order of the registry (which keeps
     // what a feature requires before it), as long as each is wanted and its needs are running.
-    const off = new Set(this.storage.area('folio').get('disabled', []));
+    const isOff = this.offTest();
     for (const manifest of this.registry) {
       const f = this.features.get(manifest.id);
       if (!f || f.status === 'active' || f.status === 'not-for-platform') continue;
-      if (manifest.id !== id && (f.status !== 'skipped' || off.has(manifest.id))) continue; // only what was waiting
+      if (manifest.id !== id && (f.status !== 'skipped' || isOff(manifest))) continue; // only what was waiting
       const missing = (manifest.requires || []).find((r) => this.features.get(r)?.status !== 'active');
       if (missing) {
         if (manifest.id === id) { const dep = this.features.get(missing); f.reason = `Needs ${dep?.manifest.name || missing}, which is ${STATUS_WORDS[dep?.status] || 'not running'}`; }
@@ -214,11 +214,20 @@ export class App {
     return started;
   }
 
+  // Whether a feature is switched off: the person switched it off ('disabled'), or it is a plugin
+  // that starts off ("starts": "off" in its plugin block) and they haven't switched it on ('enabled').
+  offTest() {
+    const area = this.storage.area('folio');
+    const disabled = new Set(area.get('disabled', [])), enabled = new Set(area.get('enabled', []));
+    return (m) => disabled.has(m.id) || (m.plugin?.starts === 'off' && !enabled.has(m.id));
+  }
+
   setOff(id, off) {
     const area = this.storage.area('folio');
-    const all = new Set(area.get('disabled', []));
-    if (off) all.add(id); else all.delete(id);
+    const all = new Set(area.get('disabled', [])), on = new Set(area.get('enabled', []));
+    if (off) { all.add(id); on.delete(id); } else { all.delete(id); if (this.features.get(id)?.manifest.plugin?.starts === 'off') on.add(id); }
     area.set('disabled', [...all]);
+    area.set('enabled', on.size ? [...on] : null);
   }
 
   changedFeatures() {

@@ -2,7 +2,7 @@
 // each, the question before turning off what others need, and the plugin behind a mode that is off.
 
 import { test, assert } from 'folio/testing';
-import { plugins, note, kindWords, dependentsWords, offMode, isOn } from '../rows.js';
+import { plugins, note, kindWords, dependentsWords, offMode, isOn, startsOff } from '../rows.js';
 
 const f = (id, status, o = {}) => [id, { status, reason: o.reason || '', problem: o.problem || null,
   manifest: { id, name: o.name || id[0].toUpperCase() + id.slice(1), description: `${id} things`, ...(o.core ? {} : { plugin: { api: 1, kind: o.kind || ['tool'] } }) } }];
@@ -42,4 +42,10 @@ test('a mode that is off names the plugin that gives it', () => {
   assert.equal(offMode(features, 'proust'), null); // it runs
   assert.equal(offMode(features, 'joyce'), null);  // no such plugin: a core mode
   assert.equal(offMode(features, 'time'), null);   // not a mode
+});
+
+test('a plugin that starts off is told by its plugin block', () => {
+  assert.equal(startsOff({ manifest: { plugin: { api: 2, starts: 'off' } } }), true);
+  assert.equal(startsOff({ manifest: { plugin: { api: 2 } } }), false);
+  assert.equal(startsOff({ manifest: {} }), false);
 });

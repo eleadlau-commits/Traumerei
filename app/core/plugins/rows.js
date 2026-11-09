@@ -7,6 +7,7 @@ const KIND_WORDS = { mode: 'a mode', item: 'a kind of item', dock: 'a dock', too
 
 export const isPlugin = (f) => !!f?.manifest?.plugin;
 export const isOn = (f) => f?.status === 'active';
+export const startsOff = (f) => f?.manifest?.plugin?.starts === 'off'; // "starts": "off": switched on in Settings → Plugins
 
 export function kindWords(f) {
   const kinds = [].concat(f.manifest.plugin?.kind || []);

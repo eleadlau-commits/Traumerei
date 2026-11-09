@@ -51,7 +51,7 @@ FRAMEWORK_SERVICES: set[str] = set()
 FEATURE_KEYS = {'name', 'description', 'version', 'main', 'styles', 'templates', 'requires', 'uses',
                 'platforms', 'enabled', 'web', 'native', 'plugin'}
 # A plugin's block in feature.json (only for features in the app's plugins folder; see README §3).
-PLUGIN_KEYS = {'api', 'minApp', 'kind', 'load', 'author'}
+PLUGIN_KEYS = {'api', 'minApp', 'kind', 'load', 'author', 'starts'}
 PLUGIN_LOADS = ('start', 'when-used')
 VERSION = re.compile(r'^\d+\.\d+\.\d+$')
 KIND_NAME = re.compile(r'^[a-z][a-z0-9-]*$')
@@ -554,6 +554,8 @@ class Project:
             return 'mistake', '"plugin.kind" must be a list of what it adds, like ["mode"]'
         if p.get('load', 'start') not in PLUGIN_LOADS:
             return 'mistake', f'"plugin.load" must be {" or ".join(PLUGIN_LOADS)}'
+        if p.get('starts', 'on') not in ('on', 'off'):
+            return 'mistake', '"plugin.starts" must be "on" (the default) or "off" (switched on in Settings → Plugins)'
         if 'author' in p and not (isinstance(p['author'], str) and p['author'].strip()):
             return 'mistake', '"plugin.author" must be a name'
         app = self._app_json()
