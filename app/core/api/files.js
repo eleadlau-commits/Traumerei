@@ -1,0 +1,32 @@
+// Files in and out: the one seam between the app and where it runs (t.ui.files).
+//
+// In a browser, open() is a hidden file input and save() a download. In the desktop app (Tauri,
+// seen by window.__TAURI_INTERNALS__) open() is the same input, which the webview shows as Windows'
+// Open dialog, and save() asks the shell (its save_file command, desktop/src-tauri/src/main.rs) for
+// Windows' Save dialog and writes the file where the person chose.
+
+const shell = () => (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) || null;
+
+// True inside the desktop app.
+export const desktop = () => !!shell();
+
+// download(name, content, type): the browser's download; picker(accept): Folio's ui.filePicker.
+export function files({ download, picker }) {
+  const pickers = new Map();
+  return Object.freeze({
+    // Resolves with the chosen File (name, text()), or null when none is chosen.
+    open(accept = '') {
+      if (typeof document === 'undefined') return Promise.resolve(null);
+      if (!pickers.has(accept)) pickers.set(accept, picker(accept));
+      return pickers.get(accept).pick();
+    },
+    // Hands the person a file: content words or a Blob (a zip, a picture). Resolves true once it
+    // is saved (a browser download always is), false when the person cancels or it can't be written.
+    async save(name, content, type = 'text/plain') {
+      const s = shell();
+      if (!s) return !!download(String(name), content, type);
+      const bytes = content instanceof Blob ? [...new Uint8Array(await content.arrayBuffer())] : [...new TextEncoder().encode(String(content ?? ''))];
+      try { return !!(await s.invoke('save_file', { name: String(name), bytes })); } catch { return false; }
+    },
+  });
+}

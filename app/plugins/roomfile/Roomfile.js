@@ -62,10 +62,7 @@ export default class Roomfile extends Feature {
   // Switched off: an open card goes (as Cancel).
   stop() { this.card?.close(); }
 
-  pick() {
-    this.picker ||= ui.filePicker('.traum,.md,.markdown,.txt,text/markdown,text/plain');
-    return this.picker.pick();
-  }
+  pick() { return this.t.ui.files.open('.traum,.md,.markdown,.txt,text/markdown,text/plain'); }
 
   // The file read as the six tables ({ tables, root, report }): a traum/3 file by the carrier,
   // anything else as plain Markdown. Pictures at an https address are fetched and shrunk as pasted
@@ -189,17 +186,11 @@ export default class Roomfile extends Feature {
     });
   }
 
-  // Downloads a room as <its name>.traum (a locked room too).
-  exportRoom(id) {
+  // Saves a room as <its name>.traum (a locked room too): a download, or the Save dialog in the desktop app.
+  async exportRoom(id) {
     const r = this.t.marks.get(id);
     if (!r) return;
     const name = fileName(r.name);
-    const url = URL.createObjectURL(new Blob([this.t.carriers.text(id)], { type: 'text/plain;charset=utf-8' }));
-    const a = el('a', { href: url, download: name, hidden: true });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-    this.toast(`Exported ${name}`);
+    if (await this.t.ui.files.save(name, this.t.carriers.text(id))) this.toast(`Exported ${name}`);
   }
 }

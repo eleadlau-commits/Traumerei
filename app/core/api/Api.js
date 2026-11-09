@@ -8,6 +8,7 @@
 
 import { Feature, ui } from 'folio';
 import { API_VERSION, surface, connect } from './v2.js';
+import { files as fileSeam, desktop } from './files.js';
 
 // A file handed to the person: words or a Blob, saved under a name (the browser's download).
 function download(name, content, type) {
@@ -38,13 +39,14 @@ export default class Api extends Feature {
     // looked up when a plugin first goes somewhere, not here.
     const service = (name) => app.use(name);
     const room = () => app.slot('rooms.room')?.items?.[0] || null; // the open room (the room feature's slot item), looked up when asked
+    const files = fileSeam({ download, picker: (accept) => ui.filePicker(accept) }); // open and save files, browser or desktop
     const events = { on: (name, fn) => this.on(name, fn) }; // what a plugin subscribes to, heard through this feature
     // What to undo when a plugin is switched off, by plugin: the dock tabs it opened.
     this.leaving = new Map();
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, download, docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

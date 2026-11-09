@@ -20,7 +20,7 @@ const V2 = {
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'linkKinds', 'more', 'rules'],
-  ui: ['chosen', 'docks', 'download', 'frame', 'open', 'toast'],
+  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'open', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.
@@ -111,7 +111,7 @@ test('the world the parts read is the one there is now; the app and the plugin s
   assert.equal(t.parts.world(), fresh); // never a stale world (the lesson of PR #194)
   assert.ok(t.marks.make({ kind: 'line', content: 'into the fresh one', in: lib.model.MESSY }).ok);
   assert.equal(lib.model.roomItems(fresh, lib.model.MESSY).length, 1);
-  assert.deepEqual(t.app, { name: 'Träumerei', version: '1.0.0' });
+  assert.deepEqual(t.app, { name: 'Träumerei', version: '1.0.0', desktop: false });
   assert.deepEqual(t.plugin, { id: 'haiku', name: 'Haiku' });
 });
 

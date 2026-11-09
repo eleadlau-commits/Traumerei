@@ -4,9 +4,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![save_file])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 quiet_webview(&window);
@@ -15,6 +18,20 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("Träumerei could not start");
+}
+
+/// The page's t.ui.files.save (app/core/api/files.js): Windows' Save dialog, opening on `name`,
+/// then the bytes written where the person chose. False when cancelled.
+#[tauri::command]
+async fn save_file(app: tauri::AppHandle, name: String, bytes: Vec<u8>) -> Result<bool, String> {
+    let mut dialog = app.dialog().file().set_file_name(&name);
+    if let Some((_, ext)) = name.rsplit_once('.') {
+        dialog = dialog.add_filter(ext.to_uppercase(), &[ext]);
+    }
+    let Some(path) = dialog.blocking_save_file() else { return Ok(false) };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(true)
 }
 
 /// Turns off WebView2's browser accelerator keys, its own right-click menu and its status bar.
