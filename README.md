@@ -4,7 +4,7 @@ Rooms for thinking, built with **Folio**: write your thoughts, arrange them in d
 and finish what you start.
 
 **[Download Träumerei for Windows](https://github.com/eleadlau-commits/Traumerei/releases/latest)**:
-run the `Träumerei_…_x64-setup.exe` from the latest Release. It isn't signed yet, so Windows shows
+run the `…_x64-setup.exe` file from the latest Release. It isn't signed yet, so Windows shows
 "Windows protected your PC": click **More info**, then **Run anyway**. Or use the
 [web copy](https://eleadlau-commits.github.io/Traumerei/) in Chrome.
 
