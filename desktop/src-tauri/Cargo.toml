@@ -1,0 +1,23 @@
+[package]
+name = "traumerei"
+version = "0.1.0"
+description = "Träumerei desktop app"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[target.'cfg(windows)'.dependencies]
+# The same versions Tauri uses, so its WebView2 handle has the types we call.
+webview2-com = "0.39"
+windows-core = "0.62"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

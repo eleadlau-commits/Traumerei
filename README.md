@@ -46,3 +46,11 @@ python build.py test
 ```
 
 Runs the engine's tests, Folio's own tests, and the whole-app checks (needs Chrome or Edge).
+
+## Desktop app (Windows)
+
+`desktop/` wraps the same one-file page in a Tauri 2 window. `python standalone.py --desktop`
+writes the page to `desktop/dist/index.html`; `cd desktop && npm ci && npx tauri build` makes the
+installer (needs Rust and, on Windows, WebView2). The **Desktop app** Action builds it on every PR
+that touches `desktop/` (download "traumerei-windows" from the run) and puts it on a draft Release
+for every `v*` tag.

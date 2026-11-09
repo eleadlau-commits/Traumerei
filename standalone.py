@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Makes standalone/traumerei.html: the whole page in one file that opens with a double-click
 (from file://, no server). Run `python standalone.py` after changing anything in app/.
+`python standalone.py --desktop` writes the same page to desktop/dist/index.html for the desktop app.
 
 It compiles the app with Folio (python build.py), then bundles the framework and the feature into
 one inline script with esbuild (fetched by npx, so it needs Node.js). Folio loads features with
@@ -10,6 +11,7 @@ import(); here the feature is bundled in and handed to Folio through a tiny blob
 import base64
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -17,9 +19,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / 'dist' / 'web'
 OUT = ROOT / 'standalone' / 'traumerei.html'
+DESKTOP = ROOT / 'desktop' / 'dist' / 'index.html'
 
 
 def main():
+    out = DESKTOP if '--desktop' in sys.argv else OUT
     subprocess.run([sys.executable, 'build.py'], cwd=ROOT, check=True)
     start = (WEB / 'start.js').read_text('utf-8')
     config = re.search(r'const config = (\{.*?\n\});', start, re.S).group(1)
@@ -40,7 +44,7 @@ def main():
     bundle = subprocess.run(
         # Whitespace only is minified (names and strings stay as written, so an error still names
         # the function it came from): the page stays well under its 2 MB budget.
-        ['npx', '--yes', 'esbuild@0.24.0', str(entry), '--bundle', '--minify-whitespace', '--format=iife', '--charset=utf8',
+        [shutil.which('npx') or 'npx', '--yes', 'esbuild@0.24.0', str(entry), '--bundle', '--minify-whitespace', '--format=iife', '--charset=utf8',
          f'--alias:folio={WEB / "folio" / "folio.js"}'],
         cwd=ROOT, check=True, capture_output=True, text=True).stdout
     entry.unlink()
@@ -56,10 +60,10 @@ def main():
     html = html.replace('<script type="module" src="start.js"></script>\n', '')
     script = '<script>\n' + bundle.replace('</script', '<\\/script') + '</script>\n'
     html = html.replace('</body>', script + '</body>')
-    OUT.parent.mkdir(exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
     note = "<!-- Made by standalone.py from app/. Don't edit: change app/ and run python standalone.py. -->\n"
-    OUT.write_text(html.replace('<!doctype html>\n', '<!doctype html>\n' + note, 1), 'utf-8')
-    print(f'Wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size // 1024} KB)')
+    out.write_text(html.replace('<!doctype html>\n', '<!doctype html>\n' + note, 1), 'utf-8')
+    print(f'Wrote {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KB)')
 
 
 if __name__ == '__main__':
