@@ -198,6 +198,21 @@ test('without keys, a frame or the rooms page, those parts do nothing quietly', 
 
 // ---- The six tables (v2.js's kernel), over a small world ----
 
+test('ui.open.mark goes into the room a mark is at home in and asks the room for the view on it', () => {
+  const { room, a, c, locked, service } = smallWorld();
+  const went = [], looked = [];
+  const services = { create: { open: () => went.push('rooms') }, rooms: { openRoom: (id) => went.push(id) } };
+  const t = connect({ app: fakeApp(), world: service, plugin: plugin('desk'), parts: surface(lib), lib,
+    service: (name) => services[name] || null, room: () => ({ go: (id, r) => looked.push([id, r]) }) });
+  assert.equal(t.ui.open.mark(c.id), true);
+  assert.equal(t.ui.open.mark(a.id), true); // in a train: still at home in the room
+  assert.equal(t.ui.open.mark(locked.id), true); // a room: into it, no mark to look at
+  assert.equal(t.ui.open.mark('nowhere'), false);
+  assert.deepEqual(went, ['rooms', room.id, 'rooms', room.id, 'rooms', locked.id]);
+  assert.deepEqual(looked, [[c.id, room.id], [a.id, room.id]]);
+});
+
+
 // A world with one room holding a train of two thoughts, a Pessoa-laid thought, a loose one, a
 // Proust link, and a second, locked room; and a stand-in world service around it.
 function smallWorld() {

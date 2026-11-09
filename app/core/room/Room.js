@@ -135,6 +135,7 @@ export default class Room extends Feature {
       hasDraft: (id) => !!this.drafts[id],      // a thought was left half written there
       id: () => (this.root.hidden ? null : this.roomId), // the open room, while it shows
       chosen: () => (!this.root.hidden && this.sel && this.sel.kind !== 'many' ? this.sel.id : null), // the one thing chosen there
+      go: (id, room) => { if (this.world.things[id]) this.goTo({ id, room }); }, // the view on a mark in a room, and it chosen
     });
     // Where the Time dock is (the time feature): this room's Timeline. A click there chooses what it
     // names; the Editor follows, but Time stays in front (bars.js).
