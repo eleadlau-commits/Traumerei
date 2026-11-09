@@ -55,3 +55,15 @@ test('a file opened from Windows reaches everyone hearing, as a File; never in a
     assert.equal(queue.length, 1);
   } finally { delete window.__TAURI_INTERNALS__; delete window.__traumereiOpened; }
 });
+
+test('a link opens only an https address; in the desktop app through the shell', async () => {
+  const { link } = await import('../files.js');
+  assert.equal(link('javascript:alert(1)'), false);
+  assert.equal(link('file:///C:/x'), false);
+  const calls = [];
+  window.__TAURI_INTERNALS__ = { invoke: async (cmd, args) => { calls.push([cmd, args]); } };
+  try {
+    assert.equal(link('https://github.com/eleadlau-commits/Traumerei/releases/latest'), true);
+    assert.deepEqual(calls, [['open_link', { url: 'https://github.com/eleadlau-commits/Traumerei/releases/latest' }]]);
+  } finally { delete window.__TAURI_INTERNALS__; }
+});

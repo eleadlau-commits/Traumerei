@@ -57,3 +57,11 @@ loaded from Google.
 | `extras/firestore.rules` | The database rules. |
 
 It uses the framework's `storage.snapshot()`, `restore()` and `watch()`.
+
+## In the desktop app
+
+When `t.app.desktop` is true there is no sign-in (Google's sign-in popup can't open in the app's
+window) and Firebase is never loaded: the page says the rooms are saved on this computer. Instead,
+once a day it asks GitHub for the latest Release; a newer version is said once as a toast and stays
+on the page under *Version* with a **Download** button (`t.ui.link`). Nothing installs itself.
+Saved data: `checkedAt`, `latest` (the latest Release's version), `told` (the version last said).

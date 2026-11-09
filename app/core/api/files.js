@@ -12,6 +12,18 @@ const shell = () => (typeof window !== 'undefined' && window.__TAURI_INTERNALS__
 // True inside the desktop app.
 export const desktop = () => !!shell();
 
+// Opens an https address in the person's browser: a new tab, or (the desktop app, whose window
+// shows only Träumerei) the default browser through the shell's open_link. False for any other address.
+export function link(url) {
+  url = String(url);
+  if (!/^https:\/\//.test(url)) return false;
+  const s = shell();
+  if (s) { s.invoke('open_link', { url }).catch(() => {}); return true; }
+  if (typeof window === 'undefined') return false;
+  window.open(url, '_blank', 'noopener');
+  return true;
+}
+
 // download(name, content, type): the browser's download; picker(accept): Folio's ui.filePicker.
 export function files({ download, picker }) {
   const pickers = new Map();

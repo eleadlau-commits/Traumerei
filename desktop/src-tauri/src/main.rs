@@ -6,6 +6,7 @@
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 fn main() {
     let started_with = traum_files(std::env::args());
@@ -21,8 +22,9 @@ fn main() {
             let _ = window.eval("window.__traumereiOpened && window.__traumereiOpened()");
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(Opened(Mutex::new(started_with)))
-        .invoke_handler(tauri::generate_handler![save_file, take_opened])
+        .invoke_handler(tauri::generate_handler![save_file, take_opened, open_link])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 quiet_webview(&window);
@@ -69,6 +71,15 @@ async fn save_file(app: tauri::AppHandle, name: String, bytes: Vec<u8>) -> Resul
     let path = path.into_path().map_err(|e| e.to_string())?;
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(true)
+}
+
+/// The page's t.ui.link: an https address, in the person's default browser.
+#[tauri::command]
+fn open_link(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    if !url.starts_with("https://") {
+        return Err("only https addresses".into());
+    }
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
 /// Turns off WebView2's browser accelerator keys, its own right-click menu and its status bar.
