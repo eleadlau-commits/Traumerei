@@ -601,6 +601,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       files: Object.freeze({
         open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
         save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
+        arrived: (fn) => { const off = files ? files.arrived(fn) : () => {}; gone(off); return off; },
       }),
       download: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
       chosen: () => { const r = room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); },
