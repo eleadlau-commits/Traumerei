@@ -7,6 +7,8 @@ The AI framework. Its contract, the one page everything else builds against, is
 - `service.js`: picking a provider with fallback, the privacy policy, and the three swappable
   services (scheduler, cache, budget). Pure: the tests run it as it is.
 - `exam.js`: the evaluation harness.
+- `bridges.js`: ready-made providers for a Web Worker, a local connection and an OpenAI-style server.
+- `settings.js`: Settings → AI.
 - `Ai.js`: the feature. Defines the slots `ai.providers`, `ai.engines`, `ai.services`, keeps the
   person's choices, and offers the `ai` service.
 
@@ -25,5 +27,6 @@ use it directly.
 | `service(name)`, `defaults` | the scheduler, cache or budget in use; the built-in ones |
 | `choices` | the person's choices: `chosen`/`choose(task, id)`, `cloud`/`setCloud`, `blocked`/`block(room, on)`, `allowed`/`allow(id, on)`, `memory`/`setMemory` |
 | `slots` | the slot names |
+| `bridges` | `worker(o)`, `http(o)`, `openai(o)` |
 
 Saved data: `choice`, `cloud`, `blocked`, `allowed`, `memory`.

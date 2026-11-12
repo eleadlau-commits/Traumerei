@@ -42,5 +42,7 @@ export function aiFor(ai, tables, reads) {
       return ai.exam({ provider, task, cases: list.map((c) => ({ ...c, opts: { reads, verdicts: () => verdicts(task), ...c.opts } })) });
     },
     item,
+    // Ready-made providers for the three bridges (app/core/ai/bridges.js): worker(o), http(o), openai(o).
+    bridges: ai?.bridges || Object.freeze({}),
   });
 }
