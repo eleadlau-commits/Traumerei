@@ -2,7 +2,7 @@
 // (tests/land.mjs lands every template in a world.)
 
 import { test, assert } from 'folio/testing';
-import { TEMPLATES, fresh, dayName, nineOn, todo, essay, reading, week } from '../rules.js';
+import { TEMPLATES, SAMPLE, fresh, dayName, nineOn, todo, essay, reading, week } from '../rules.js';
 
 const NOW = new Date(2026, 10, 12, 16).getTime();
 
@@ -35,4 +35,12 @@ test('the weekly plan is seven days from today, each thing due at nine on its da
 test('the essay is named after the finished text, due three weeks on', () => {
   assert.ok(essay(NOW).includes('room: Essay: its title, 3,000 words, due 3 Dec'));
   assert.equal((essay(NOW).match(/open to maker/g) || []).length, 4);
+});
+
+test('the sample room is the seven steps, five resolved and two open, the sixth coming back tomorrow', () => {
+  const text = SAMPLE.make(NOW);
+  assert.ok(/^mode: russell$/m.test(text));
+  assert.equal((text.match(/ resolved from world/g) || []).length, 5);
+  assert.deepEqual([...text.matchAll(/^\^(s\d) open from world/gm)].map((m) => m[1]), ['s6', 's7']);
+  assert.ok(text.includes(`${new Date(nineOn(NOW, 1)).toISOString()} due ^s6`));
 });

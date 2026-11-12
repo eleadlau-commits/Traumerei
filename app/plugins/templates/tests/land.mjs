@@ -4,7 +4,9 @@
 
 import * as model from '../../../core/world/model.js';
 import * as X from '../../../core/world/traum.js';
-import { TEMPLATES } from '../rules.js';
+import { TEMPLATES as FOUR, SAMPLE } from '../rules.js';
+
+const TEMPLATES = [...FOUR, SAMPLE];
 
 const NOW = new Date(2026, 10, 12, 16).getTime();
 let bad = 0;

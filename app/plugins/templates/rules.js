@@ -149,6 +149,35 @@ export function week(now) {
   return traum({ marks, places, links, gaps, moments });
 }
 
+// The sample room: the handbook's seven steps of the first hour, as a room that has been through
+// five of them. A Russell tree (finishing is a question about parts): steps 1 to 5 resolved, 6
+// and 7 left as open gaps for the newcomer to close, and step 6 coming back tomorrow as a return.
+// Closing both finishes the room, which is the lesson.
+export function sample(now) {
+  const steps = [
+    '1. Name the room after the result. This one is named after what done looks like: nothing here open.',
+    '2. Empty your head into it, one thought at a time. Enter keeps a thought and starts the next. Do not sort yet.',
+    '3. Mark what is missing with a gap (Ctrl+Alt+G). The gaps are the whole to-do list: a fine edge at the start of a thought shows one.',
+    '4. Give it a shape when the pile asks for one. This room is a Russell tree, because finishing is a question about parts. Try another shape in the rail: the thoughts stay the same.',
+    '5. Say when you will be back (Ctrl+Alt+R). Step 6 has a return: it comes back tomorrow morning, and nothing nags before then.',
+    '6. Work from the desk. Open it (Ctrl+Alt+D): this gap is there, with the other one. Choose this thought and press Ctrl+Alt+G to close it.',
+    '7. When nothing is open, let it leave: export the room from its Add menu (right-click empty space). Then close this last gap, and the room is finished.',
+  ];
+  const marks = [
+    { id: 'room', kind: 'room', name: 'Learn Träumerei: done when nothing here is open', fields: { mode: 'russell', ...made(now, 0) } },
+    { id: 'steps', kind: 'group', name: 'The first hour, in seven steps', fields: { of: 'russell', ...made(now, 1) } },
+    ...steps.map((text, i) => ({ id: `s${i + 1}`, kind: 'line', fields: made(now, i + 2), text })),
+  ];
+  return traum({
+    marks,
+    places: [...marks.slice(1).map((m) => `^${m.id} in ^room`), '^steps in ^room | rule: russell | at: {x: 0, y: 0}'],
+    links: steps.map((_, i) => `^s${i + 1} part of ^steps | order: ${i}`),
+    gaps: steps.map((_, i) => (i < 5 ? done : open)(now, `s${i + 1}`, 'from world')),
+    moments: [`${iso(nineOn(now, 1))} due ^s6 | state: waiting | set: ${iso(now - START / 2)}`],
+  });
+}
+export const SAMPLE = { id: 'sample', name: 'Sample room', note: 'The first hour in seven steps, five done: close the last two', make: sample };
+
 // The chooser's rows: what each template looks like, and where it runs out.
 export const TEMPLATES = [
   { id: 'todo', name: 'To-do list', note: 'A plain list you tick, until one thing waits on another', make: todo },
