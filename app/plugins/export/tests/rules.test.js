@@ -67,3 +67,14 @@ test('a file name a disk takes', () => {
   assert.equal(fileName('Essay: due 3/12', 'md'), 'Essay- due 3-12.md');
   assert.equal(fileName('', 'pdf'), 'Untitled.pdf');
 });
+
+test('the printed page: headings, tasks, cards and open gaps as the Markdown has them', async () => {
+  if (typeof document === 'undefined') return; // drawn only where there is a page
+  const { page } = await import('../Export.js');
+  const t = room('pessoa', [['a', 'line', { text: 'Paint' }], ['b', 'line', { text: 'Check' }]], {
+    gaps: [{ mark: 'a', state: 'resolved', direction: 'from world' }, { mark: 'b', state: 'open', direction: 'to world' }] });
+  const node = page({}, outline(t, 'R'));
+  assert.equal(node.querySelector('h1').textContent, 'My room');
+  assert.equal(node.querySelector('.export-left').textContent, 'One gap is still open.');
+  assert.deepEqual([...node.querySelectorAll('li')].map((li) => li.textContent), ['☑ Paint', '☐ Open, to check Check']);
+});
