@@ -1,3 +1,7 @@
 # Made by the compiler (python build.py); never edit or upload these.
 dist/
 __pycache__/
+desktop/dist/
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/

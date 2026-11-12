@@ -566,8 +566,9 @@ function dockFor(dock, gone) {
 // the screen it may use (ui), and the parts rules and views share. app: the Folio app; world: the
 // world service; plugin: the Feature asking (its id owns what it adds, and it all goes when it is
 // switched off: gone(fn)); parts: surface(world.lib), made once; lib: world.lib; events: { on };
-// toast, docks, keys, frame, floors, service(name), room(): the app's, or null.
-export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, download = () => false, docks = null, keys = null,
+// toast, files ({ open, save, arrived }, files.js), link(url), desktop (inside the desktop app), docks, keys, frame,
+// floors, service(name), room(): the app's, or null.
+export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, files = null, link = () => false, desktop = false, docks = null, keys = null,
   frame = null, floors = null, service = () => null, room = null, gone = () => {} }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
@@ -589,7 +590,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
   });
   return Object.freeze({
     version: API_VERSION,
-    app: Object.freeze({ name: app.config.name, version: app.config.version }),
+    app: Object.freeze({ name: app.config.name, version: app.config.version, desktop: !!desktop }),
     plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
     ...tables,
     slots,
@@ -597,7 +598,13 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     // mark chosen there, as ids, or null.
     ui: Object.freeze({
       toast: (text) => toast(text),
-      download: (name, content, type = 'text/plain') => download(String(name), content, type),
+      files: Object.freeze({
+        open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
+        save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
+        arrived: (fn) => { const off = files ? files.arrived(fn) : () => {}; gone(off); return off; },
+      }),
+      link: (url) => link(String(url)),
+      download: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
       chosen: () => { const r = room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); },
       docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone), canvasOnly: () => docks.canvasOnly?.() }) : null,
       frame: frame ? Object.freeze({
