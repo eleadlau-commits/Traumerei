@@ -11,6 +11,8 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+mod store;
+
 fn main() {
     let started_with = traum_files(std::env::args());
     tauri::Builder::default()
@@ -28,7 +30,8 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(Opened(Mutex::new(started_with)))
         .manage(Listening(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![save_file, take_opened, open_link, sign_in_port, sign_in_wait])
+        .invoke_handler(tauri::generate_handler![save_file, take_opened, open_link, sign_in_port, sign_in_wait,
+            store_write, store_read, store_list, store_delete, store_clear])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 quiet_webview(&window);
@@ -143,6 +146,47 @@ fn came_back(listener: TcpListener) -> Result<String, String> {
         let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     }
     Err("nobody came back".into())
+}
+
+/// Where plugins keep their files: the app's data folder, then plugins\<id>\ (store.rs).
+fn store_root(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("plugins"))
+}
+
+/// The page's t.store.files.put (app/core/store/): the bytes come as the raw body, and the plugin,
+/// the file name, append ("1") and the quota in bytes as headers. Returns what the plugin keeps.
+#[tauri::command]
+fn store_write(app: tauri::AppHandle, request: tauri::ipc::Request<'_>) -> Result<u64, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("the bytes must come as the body".into()) };
+    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let id = header("plugin").ok_or("no plugin")?;
+    let name = header("name").ok_or("no name")?;
+    let quota: u64 = header("quota").and_then(|q| q.parse().ok()).ok_or("no quota")?;
+    store::write(&store_root(&app)?, &id, &name, bytes, header("append").as_deref() == Some("1"), quota)
+}
+
+/// t.store.files.get: the file's bytes as a raw answer (an ArrayBuffer on the page), or an error
+/// "missing" when there is none.
+#[tauri::command]
+fn store_read(app: tauri::AppHandle, plugin: String, name: String) -> Result<tauri::ipc::Response, String> {
+    store::read(&store_root(&app)?, &plugin, &name)?.map(tauri::ipc::Response::new).ok_or_else(|| "missing".into())
+}
+
+/// t.store.files.list: (name, bytes) for each of the plugin's files.
+#[tauri::command]
+fn store_list(app: tauri::AppHandle, plugin: String) -> Result<Vec<(String, u64)>, String> {
+    store::list(&store_root(&app)?, &plugin)
+}
+
+#[tauri::command]
+fn store_delete(app: tauri::AppHandle, plugin: String, name: String) -> Result<bool, String> {
+    store::delete(&store_root(&app)?, &plugin, &name)
+}
+
+/// Settings → Plugins' Clear: every file the plugin keeps.
+#[tauri::command]
+fn store_clear(app: tauri::AppHandle, plugin: String) -> Result<(), String> {
+    store::clear(&store_root(&app)?, &plugin)
 }
 
 /// Turns off WebView2's browser accelerator keys, its own right-click menu and its status bar.

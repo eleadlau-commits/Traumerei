@@ -10,7 +10,7 @@ import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIO
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
-  top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'together', 'ui', 'version'],
+  top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'store', 'together', 'ui', 'version'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],

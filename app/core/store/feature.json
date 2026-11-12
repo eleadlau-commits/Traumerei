@@ -1,0 +1,7 @@
+{
+  "name": "Plugin store",
+  "description": "Where each plugin keeps what is its own on this computer: small state, and large files (a model) held to a quota. Never in the room file.",
+  "version": "1.0.0",
+  "main": "Store.js",
+  "requires": []
+}

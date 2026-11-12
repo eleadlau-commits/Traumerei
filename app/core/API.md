@@ -155,6 +155,25 @@ A full mode (Joyce, Pessoa, Russell: trains, trays, its own drawing, gestures) g
 `point`, `drop` and more instead of `arrange`; that shape is the world's own
 (`app/core/world/ontologies/index.js`) and is for modes that ship with the app.
 
+## Store: what a plugin keeps on this computer
+
+`t.store` is the plugin's own, on this computer only. **It is never written into a `.traum` file**:
+the file is the six tables (Law 8), and what a plugin keeps here is outside them on purpose (a
+learned weight, a downloaded model, a cache). Say `store` in the plugin block's `needs`.
+
+| Member | What it is |
+|---|---|
+| `get(key, fallback?)`, `set(key, value)`, `remove(key)`, `keys()`, `clear()` | small state (JSON values), the plugin's alone |
+| `files.put(name, data)`, `files.append(name, data)` | writes bytes, a Blob or words; refused over the quota |
+| `files.get(name)` | a `Uint8Array`, or `null` |
+| `files.list()`, `files.used()`, `files.quota` | `[{ name, bytes }]`; bytes kept; bytes it may keep (4 GB) |
+| `files.remove(name)`, `files.clear()` | takes one or all away |
+| `files.download(url, name, { bytes, label?, signal?, progress? })` | a large file from an https address, the first time it is needed: the person is asked first, with its size; written in pieces; a file already there at that size is kept; a failed download leaves nothing. `{ ok, bytes, kept? }` or `{ ok: false, reason }` |
+
+Names are plain file names (letters, digits, `.`, `-`, `_`). Files live in the Windows app's data
+folder (`plugins\<id>\`) or the browser's private file system; packages carry code only, and
+models come down on first use. Settings → Plugins shows what each plugin keeps, with Clear.
+
 ## What a plugin adds and needs
 
 The plugin block's `kind` and `needs` (`app/plugins/README.md` §2) use one list each, kept in
