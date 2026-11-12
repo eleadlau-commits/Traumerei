@@ -45,6 +45,14 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright-core@1.48.2
           SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs
+      - name: Pack the plugins shipped apart (Provoke), to import into the preview
+        run: for id in $(python -c "from tools.corpus import APART; print(' '.join(APART))"); do python build.py pack-plugin "$id" --out packed; done
+      - name: Attach them as a download
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-to-import
+          path: packed/*.traumplug
+          retention-days: 14
       - name: Attach it as a download
         id: upload
         uses: actions/upload-artifact@v4

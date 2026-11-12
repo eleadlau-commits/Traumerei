@@ -12,3 +12,10 @@ CORPUS = (
     'word-linker', 'due-finder', 'nonsense-reader',
     'focus-mode', 'room-stats', 'export-room',
 )
+
+# Plugins shipped apart from the app, as their own .traumplug beside each Release (release.yml),
+# for people to import: the source stays here for the tests, the product leaves them out.
+APART = ('provoke',)
+
+# Everything standalone.py leaves out of the product.
+LEFT_OUT = CORPUS + APART

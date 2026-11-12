@@ -21,8 +21,21 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(off, set(CORPUS))
 
     def test_the_product_keeps_the_real_plugins(self):
-        for pid in ('gaps', 'returns', 'desk', 'export', 'provoke', 'home', 'account', 'renderer'):
-            self.assertNotIn(pid, CORPUS)
+        from tools.corpus import LEFT_OUT, APART
+        for pid in ('gaps', 'returns', 'desk', 'export', 'home', 'account', 'renderer'):
+            self.assertNotIn(pid, LEFT_OUT)
+        self.assertIn('provoke', APART)
+
+    def test_every_plugin_shipped_apart_packs(self):
+        import tempfile, shutil
+        from tools import pack_plugin
+        from tools.corpus import APART
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            for pid in APART:
+                self.assertTrue(pack_plugin.pack(pid, tmp).is_file())
+        finally:
+            shutil.rmtree(tmp)
 
 
 if __name__ == '__main__':

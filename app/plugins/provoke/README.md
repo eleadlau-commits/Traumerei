@@ -1,5 +1,9 @@
 # Provoke
 
+Shipped apart from the app (tools/corpus.py `APART`): `release.yml` packs it into
+`provoke.traumplug` beside the installer on every Release, and people import it in Settings →
+Plugins. The source stays here, so the tests and the conformance suite still run it.
+
 A reader (kernel phase 9): reads the open room and suggests what you have not said yet: two
 thoughts that speak of the same thing, or a handful that belong together, with a name. It
 decides nothing.
