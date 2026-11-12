@@ -39,8 +39,21 @@ export function pane({ ai, rooms = () => [], el, redraw = () => {} }) {
       ...roomList.map((r) => check(c.blocked(r.id), r.name || 'Untitled', (on) => c.block(r.id, on)))) : null,
     sidecars.length ? el('div', { class: 'stack' }, el('p', { class: 'hint small' }, 'Programs allowed to run beside the app (desktop app only):'),
       ...sidecars.map((p) => check(c.allowed(p.id), p.name, (on) => c.allow(p.id, on)))) : null,
+    machineRow(ai, el, set),
     el('label', { class: 'row' }, el('span', {}, 'Memory for AI models (MB)'),
       el('input', { type: 'number', min: '256', step: '256', value: String(c.memory()), 'aria-label': 'Memory for AI models in MB', onchange: set((e) => c.setMemory(e.target.value)) })));
+}
+
+// This computer's tier: what was detected, and a choice to say otherwise.
+const MACHINE_WORDS = { 'every-pc': 'Any computer (no GPU)', mid: 'Mid (enough cores and memory)', gpu: 'With a GPU' };
+function machineRow(ai, el, set) {
+  if (!ai.machine) return null;
+  const m = ai.machine();
+  const chosen = ai.choices.machineChoice?.() || '';
+  return el('label', { class: 'row' }, el('span', {}, 'This computer'),
+    el('select', { 'aria-label': 'This computer\'s tier for AI', onchange: set((e) => ai.choices.setMachine(e.target.value)) },
+      el('option', { value: '', ...(chosen ? {} : { selected: '' }) }, `As detected: ${MACHINE_WORDS[m.detected] || m.detected}`),
+      ...Object.entries(MACHINE_WORDS).map(([tier, words]) => el('option', { value: tier, ...(chosen === tier ? { selected: '' } : {}) }, words))));
 }
 
 const name = (providers, id) => providers.find((p) => p.id === id)?.name || id;

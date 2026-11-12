@@ -272,3 +272,51 @@ test('ai: verdicts are read from the tables: a suggestion\'s gap resolved by a l
   assert.deepEqual(v[0].items.map((x) => x.id).sort(), [h.ids[0], h.ids[1]].sort());
   assert.deepEqual(t.ai.verdicts('group'), []);
 });
+
+test('ai: budgets come in two tiers, measured warm, with the load held apart', async () => {
+  const { TIERS, LOAD_BUDGET, tierOf } = await import('../tasks.js');
+  assert.equal(TIERS.interactive, BUDGETS);
+  for (const task of Object.keys(TASKS)) assert.ok(TIERS.background[task].perItem > TIERS.interactive[task].perItem, task);
+  assert.equal(tierOf('now'), 'interactive');
+  assert.equal(tierOf('idle'), 'background');
+  let clock = 0;
+  let calls = 0;
+  // Slow once (loading), then quick: passes; a steady 1 s a call passes background only.
+  const loader = { id: 'loader', version: '1', tasks: ['judge'], run: async () => { clock += calls++ ? 1 : 2000; return { score: 0.9 }; } };
+  const steady = { id: 'steady', version: '1', tasks: ['judge'], run: async () => { clock += 1000; return { score: 0.9 }; } };
+  const ai = host([loader, steady]);
+  const cases = [{ input: { act: 'link', items: items(2) }, mark: () => 1 }, { input: { act: 'link', items: items(2) }, mark: () => 1 }];
+  const now = () => clock;
+  const l = await exam(ai, { provider: 'loader', task: 'judge', cases, now });
+  assert.equal(l.load.ms, 2000);
+  assert.ok(!l.load.over && l.over === 0 && l.passed, 'a slow load alone does not fail it');
+  const cold = await exam(ai, { provider: 'steady', task: 'judge', cases, now });
+  assert.ok(!cold.passed && cold.tier === 'interactive');
+  const bg = await exam(ai, { provider: 'steady', task: 'judge', cases, now, tier: 'background' });
+  assert.ok(bg.passed, 'fine when nobody waits');
+  assert.ok(LOAD_BUDGET.background > LOAD_BUDGET.interactive);
+});
+
+test('ai: the machine tier passes over a provider that needs more, and the person may say otherwise', async () => {
+  const { detect, fits } = await import('../machine.js');
+  assert.equal((await detect({ hardwareConcurrency: 2, deviceMemory: 4 })).tier, 'every-pc');
+  assert.equal((await detect({ hardwareConcurrency: 8, deviceMemory: 8 })).tier, 'mid');
+  assert.equal((await detect({ hardwareConcurrency: 8, deviceMemory: 8, gpu: { requestAdapter: async () => ({ isFallbackAdapter: false }) } })).tier, 'gpu');
+  assert.equal((await detect({ hardwareConcurrency: 8, deviceMemory: 8, gpu: { requestAdapter: async () => ({ isFallbackAdapter: true }) } })).tier, 'mid');
+  assert.equal((await detect({ hardwareConcurrency: 8, gpu: { requestAdapter: async () => { throw new Error('no'); } } })).tier, 'mid');
+  assert.ok(fits(undefined, 'every-pc') && fits('mid', 'gpu') && !fits('gpu', 'mid'));
+  const big = embedder('big', { hints: { tier: 'gpu' } });
+  const small = embedder('small', { hints: { tier: 'every-pc' } });
+  const choices = memoryChoices({ detected: { tier: 'every-pc', cores: 2, memory: 4, gpu: false } });
+  const ai = serve({ slot: (name) => (name === 'ai.providers' ? { items: [big, small] } : { items: [] }), choices });
+  assert.equal(ai.machine().tier, 'every-pc');
+  assert.equal(ai.first('embed'), 'small');
+  assert.match(ai.barred('big'), /needs a gpu machine; this one is every-pc/);
+  const r = await ai.call('embed', { items: items() });
+  assert.equal(r.provider.id, 'small');
+  choices.setMachine('gpu');
+  assert.ok(ai.machine().chosen && ai.machine().tier === 'gpu' && ai.machine().detected === 'every-pc');
+  assert.equal(ai.first('embed'), 'big');
+  choices.setMachine('nonsense');
+  assert.equal(ai.machine().tier, 'every-pc');
+});

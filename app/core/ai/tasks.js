@@ -94,6 +94,24 @@ export const BUDGETS = Object.freeze({
   label: { start: 50, perItem: 1 }, judge: { start: 20, perItem: 1 }, suggest: { start: 100, perItem: 3 }, gap: { start: 50, perItem: 2 },
 });
 
+// Two tiers of speed budget per task, measured warm (after one call that loads): `interactive`
+// for a call the person waits on (priority 'now'; the same figures as BUDGETS), `background` for
+// one nobody waits on (priority 'soon' or 'idle'), where a slower, better provider is fine.
+const slower = (b, k) => ({ start: b.start * k, perItem: b.perItem * k });
+export const TIERS = Object.freeze({
+  interactive: BUDGETS,
+  background: Object.freeze(Object.fromEntries(Object.entries(BUDGETS).map(([task, b]) => [task, Object.freeze(slower(b, 50))]))),
+});
+// The tier a call's priority falls in.
+export const tierOf = (priority) => (priority === 'now' ? 'interactive' : 'background');
+// The budget for a provider's first, cold call (loading its model), in ms, apart from the speed
+// budgets: loading once may be slow; answering may not.
+export const LOAD_BUDGET = Object.freeze({ interactive: 3000, background: 30000 });
+
+// Machine tiers, lowest first (app/core/AI.md, Machine tier). Core works on the lowest: no GPU, a
+// small CPU embedder and keyword labels. A provider may say the lowest tier it needs (hints.tier).
+export const MACHINES = Object.freeze(['every-pc', 'mid', 'gpu']);
+
 // Checks a value against a schema. Returns null when it fits, else where and why, in words.
 // Covers what the task schemas use: type, required, properties, items, enum, minimum, maximum,
 // minLength, minItems, and the binary layout ('x-binary': 'float32').
