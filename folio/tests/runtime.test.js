@@ -302,3 +302,29 @@ test('a feature switched on whose needs are off says so, and one that fails to s
   assert.equal(app.features.get('clock').reason, 'no time');
   for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
 });
+
+test('a feature brought in while the app runs starts at once, and taken away it is gone', async () => {
+  const app = liveApp();
+  const said = [];
+  app.on('app:started', (id) => said.push(id));
+  const extra = { id: 'extra', name: 'Extra', requires: ['base'], plugin: { api: 1 } };
+  const made = class extends Feature { start() { app.log.push('start extra'); this.add('things', { id: 'extra' }); } stop() { app.log.push('stop extra'); } };
+  assert.ok(await app.addFeature(extra, { default: made }));
+  assert.equal(await app.addFeature(extra, { default: made }), false, 'its id is taken now');
+  assert.equal(app.features.get('extra').status, 'active');
+  assert.deepEqual(said, ['extra']);
+  assert.ok(app.slot('things').items.some((i) => i.id === 'extra'));
+  app.stopFeature('extra');
+  assert.deepEqual(app.kept.disabled, ['extra']);
+  assert.deepEqual(app.removeFeature('extra'), []);
+  assert.equal(app.features.has('extra'), false);
+  assert.ok(!app.registry.some((m) => m.id === 'extra'));
+  assert.deepEqual(app.kept.disabled, [], 'forgotten, its off included');
+  const lone = { id: 'lone', name: 'Lone', requires: ['nothing-here'], plugin: { api: 1 } };
+  await app.addFeature(lone, { default: made });
+  assert.match(app.features.get('lone').reason, /Needs "nothing-here"/);
+  const broken = { id: 'broken', name: 'Broken', plugin: { api: 1 } };
+  await app.addFeature(broken, { default: class extends Feature { start() { throw new Error('nope'); } } });
+  assert.equal(app.features.get('broken').status, 'failed');
+  for (const id of ['base', 'notes', 'clock']) document.getElementById(`live-${id}`)?.remove();
+});
