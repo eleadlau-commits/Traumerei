@@ -123,7 +123,8 @@ installer (needs Rust and, on Windows, WebView2). The **Desktop app** Action bui
 that touches `desktop/` (download "traumerei-windows" from the run) and puts it on a draft Release
 for every `v*` tag.
 
-To release a version: set the same version in `app/app.json`, `desktop/src-tauri/tauri.conf.json`
-and `desktop/src-tauri/Cargo.toml`, merge, then tag main `v<version>` and push the tag. The Action
-checks the three agree with the tag, builds, and leaves a draft Release; publish it on GitHub. The
+To release a version: run `python build.py release <version>` (it writes the version into
+`app/app.json`, `desktop/src-tauri/tauri.conf.json` and `desktop/src-tauri/Cargo.toml`), add it to
+`CHANGELOG.md`, merge, then tag main `v<version>` and push the tag. The Action runs
+`python build.py release --check <tag>` to make sure the three agree with the tag, builds, and leaves a draft Release; publish it on GitHub. The
 desktop app's account page tells people a newer Release is out once a day.
