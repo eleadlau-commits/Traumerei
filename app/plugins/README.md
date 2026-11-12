@@ -126,3 +126,17 @@ plugin is off shows in Pessoa with a "Turn on" line. Holding **Shift** while the
 - **README.** Keep its "What it adds", "What it needs" and "What it saves" lists true.
 - **Missing something?** When the API lacks what a plugin needs, add it to the API (`v2.js`,
   `API.md` and `tests/api.test.js` together), never reach past it.
+
+## 6. Pack it into one file
+
+```
+python build.py pack-plugin word-count
+```
+
+writes `dist/plugins/word-count.traumplug` (`--out <folder>` to put it elsewhere): the whole plugin
+in one file a person imports in Settings → Plugins. A package (format `traumplug/1`) is one
+JavaScript module exporting `manifest` (id, name, description, version, requires and the plugin
+block), `css` (the plugin's styles) and a default `(folio) => class extends folio.Feature`. The
+plugin's `import … from 'folio'` is read from the folio the app hands over, so the file has no bare
+imports. Packages carry code and styles only; anything large (a model) is downloaded on first use.
+A `sidecar` in the plugin block (program, checksum, permissions) is passed through as written.
