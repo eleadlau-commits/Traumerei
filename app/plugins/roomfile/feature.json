@@ -16,9 +16,12 @@
     "api": 2,
     "minApp": "1.0.0",
     "kind": [
-      "file"
+      "format"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "needs": [
+      "files"
+    ]
   }
 }

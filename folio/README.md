@@ -139,7 +139,9 @@ elsewhere has one:
 |---|---|---|
 | `api` | yes | The plugin API version it was written for. A plugin written for a newer API than the app offers is left out, with the reason. |
 | `minApp` | yes | The oldest app version (app.json's `version`) it works with. A newer one than the app is left out, with the reason. |
-| `kind` | no | What it adds, as words the app understands, like `["mode"]` or `["dock", "tool"]`. Default `[]`. |
+| `kind` | no | What it adds, as words the app understands, like `["mode"]` or `["dock", "tool"]`. Default `[]`. When app.json's `plugins.kinds` maps each kind to words, only those are allowed. |
+| `needs` | no | What it needs, from app.json's `plugins.needs` (each name mapped to words). Default `[]`. |
+| `sidecar` | no | An object the app reads (a program it starts); the compiler only checks it is an object. |
 | `load` | no | `start` (the default: started with the app) or `when-used` (started the first time it is needed). |
 | `author` | no | Who made it. |
 

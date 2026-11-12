@@ -397,6 +397,23 @@ class CompilerTests(unittest.TestCase):
             self.assertEqual(by_id[fid].kind, 'mistake', fid)
             self.assertIn('plugin', by_id[fid].reason, fid)
 
+    def test_kinds_and_needs_come_from_one_list_in_app_json(self):
+        words = {'plugins': {'folder': 'plugins', 'api': 2, 'kinds': {'mode': 'a mode', 'format': 'a file format'},
+                             'needs': {'files': 'opens and saves files'}}}
+        _, _, by_id = self.discover_plugins({'plugins': {
+            'good': plugin({'kind': ['mode'], 'needs': ['files'], 'sidecar': {'program': 'x.exe'}}),
+            'odd-kind': plugin({'kind': ['file']}),
+            'odd-need': plugin({'needs': ['network']}),
+            'bad-needs': plugin({'needs': 'files'}),
+            'bad-sidecar': plugin({'sidecar': 'x.exe'}),
+        }}, words)
+        self.assertEqual(by_id['good'].reason, '')
+        self.assertFalse(by_id['good'].warnings)
+        self.assertIn('"file"', by_id['odd-kind'].reason)
+        self.assertIn('"network"', by_id['odd-need'].reason)
+        for fid in ('odd-kind', 'odd-need', 'bad-needs', 'bad-sidecar'):
+            self.assertEqual(by_id[fid].kind, 'mistake', fid)
+
     def test_new_plugin_makes_a_plugin_that_compiles(self):
         app = make_plugin_app(self.tmp, {'core': {'api': feature()}, 'plugins': {}})
         project = Project(ROOT, app)
@@ -451,7 +468,9 @@ class CompilerTests(unittest.TestCase):
                       {'plugins': {'folder': 'elsewhere', 'api': 1}}, {'plugins': {'folder': 'plugins', 'api': 0}},
                       {'plugins': {'folder': 'plugins', 'api': 1, 'x': 1}}, {'version': '1.0'},
                       {'plugins': {'folder': 'plugins', 'api': 1, 'service': ''}},
-                      {'plugins': {'folder': 'plugins', 'api': 1, 'exempt': 'time'}}):
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'exempt': 'time'}},
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'kinds': ['mode']}},
+                      {'plugins': {'folder': 'plugins', 'api': 1, 'needs': {'files': ''}}}):
             tmp = Path(tempfile.mkdtemp(prefix='folio-compiler-test-'))
             project = Project(ROOT, make_plugin_app(tmp, {'core': {}, 'plugins': {}}, extra))
             self.assertIsNone(project.load_app(Log(quiet=True)), extra)
@@ -468,8 +487,8 @@ class CompilerTests(unittest.TestCase):
         features = json.loads(start.split('const features = ', 1)[1].split(';\n', 1)[0])
         by_id = {f['id']: f for f in features}
         self.assertNotIn('plugin', by_id['world'])
-        self.assertEqual(by_id['mode']['plugin'], {'kind': ['mode'], 'load': 'when-used', 'api': 1, 'minApp': '1.0.0', 'author': 'E'})
-        self.assertEqual(by_id['tool']['plugin'], {'kind': [], 'load': 'start', 'api': 1, 'minApp': '1.0.0'})
+        self.assertEqual(by_id['mode']['plugin'], {'kind': ['mode'], 'needs': [], 'load': 'when-used', 'api': 1, 'minApp': '1.0.0', 'author': 'E'})
+        self.assertEqual(by_id['tool']['plugin'], {'kind': [], 'needs': [], 'load': 'start', 'api': 1, 'minApp': '1.0.0'})
         self.assertEqual(by_id['mode']['path'], 'features/mode/Main.js')  # one flat folder in the app
         self.assertIn('"pluginApi": 2', start)
         self.assertTrue((out / 'web' / 'features' / 'world' / 'Main.js').exists())

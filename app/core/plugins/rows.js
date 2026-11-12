@@ -1,17 +1,23 @@
 // Part of the plugins feature: what Settings → Plugins says of each plugin, from Folio's record
 // of it ({ manifest, status, reason, problem }). Plain functions, so they are tested without a page.
 
-// What a plugin adds, in words (its plugin block's kind).
-const KIND_WORDS = { mode: 'a mode', item: 'a kind of item', dock: 'a dock', tool: 'a tool', file: 'a file format',
-  editor: 'an editor', page: 'a page', look: 'the look', command: 'commands' };
+// What a plugin adds and needs, in words. The words are app.json's plugins.kinds and
+// plugins.needs (one list, which the compiler checks plugins against), handed over as the app's
+// config.pluginKinds and config.pluginNeeds.
 
 export const isPlugin = (f) => !!f?.manifest?.plugin;
 export const isOn = (f) => f?.status === 'active';
 export const startsOff = (f) => f?.manifest?.plugin?.starts === 'off'; // "starts": "off": switched on in Settings → Plugins
 
-export function kindWords(f) {
+export function kindWords(f, words = {}) {
   const kinds = [].concat(f.manifest.plugin?.kind || []);
-  return kinds.map((k) => KIND_WORDS[k] || k).join(', ');
+  return kinds.map((k) => words[k] || k).join(', ');
+}
+
+// "Needs: opens and saves files, reaches the internet" from its plugin block's needs; '' for none.
+export function needsWords(f, words = {}) {
+  const needs = [].concat(f.manifest.plugin?.needs || []);
+  return needs.length ? `Needs: ${needs.map((k) => words[k] || k).join(', ')}` : '';
 }
 
 // The line under a plugin's name: what is wrong, else what it is.

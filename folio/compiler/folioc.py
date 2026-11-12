@@ -51,7 +51,7 @@ FRAMEWORK_SERVICES: set[str] = set()
 FEATURE_KEYS = {'name', 'description', 'version', 'main', 'styles', 'templates', 'requires', 'uses',
                 'platforms', 'enabled', 'web', 'native', 'plugin'}
 # A plugin's block in feature.json (only for features in the app's plugins folder; see README §3).
-PLUGIN_KEYS = {'api', 'minApp', 'kind', 'load', 'author', 'starts'}
+PLUGIN_KEYS = {'api', 'minApp', 'kind', 'load', 'author', 'starts', 'needs', 'sidecar'}
 PLUGIN_LOADS = ('start', 'when-used')
 VERSION = re.compile(r'^\d+\.\d+\.\d+$')
 KIND_NAME = re.compile(r'^[a-z][a-z0-9-]*$')
@@ -401,8 +401,8 @@ class Project:
         if 'plugins' not in app:
             return ''
         plugins = app['plugins']
-        if not isinstance(plugins, dict) or any(k not in ('folder', 'api', 'service', 'exempt') for k in plugins):
-            return '"plugins" can only contain folder, api, service and exempt, like { "folder": "plugins", "api": 1 }'
+        if not isinstance(plugins, dict) or any(k not in ('folder', 'api', 'service', 'exempt', 'kinds', 'needs') for k in plugins):
+            return '"plugins" can only contain folder, api, service, exempt, kinds and needs, like { "folder": "plugins", "api": 1 }'
         if plugins.get('folder') not in folders:
             return f'"plugins.folder" must be one of "folders" ({", ".join(folders)})'
         api = plugins.get('api')
@@ -413,6 +413,11 @@ class Project:
         exempt = plugins.get('exempt', [])
         if not (isinstance(exempt, list) and all(isinstance(x, str) for x in exempt)):
             return '"plugins.exempt" must be a list of plugin ids'
+        for key, what in (('kinds', 'what a plugin may add'), ('needs', 'what a plugin may need')):
+            words = plugins.get(key, {})
+            if not (isinstance(words, dict) and all(isinstance(k, str) and KIND_NAME.match(k) and isinstance(v, str) and v
+                                                    for k, v in words.items())):
+                return f'"plugins.{key}" must map each name to words, like {{ "mode": "a mode" }}: {what}'
         return ''
 
     @staticmethod
@@ -552,6 +557,20 @@ class Project:
         kinds = p.get('kind', [])
         if not (isinstance(kinds, list) and all(isinstance(k, str) and KIND_NAME.match(k) for k in kinds)):
             return 'mistake', '"plugin.kind" must be a list of what it adds, like ["mode"]'
+        known = self.plugins_config.get('kinds')
+        if known and any(k not in known for k in kinds):
+            odd = next(k for k in kinds if k not in known)
+            return 'mistake', f'"plugin.kind" says "{odd}", which isn\'t one of the app\'s kinds ({", ".join(known)})'
+        needs = p.get('needs', [])
+        if not (isinstance(needs, list) and all(isinstance(k, str) for k in needs)):
+            return 'mistake', '"plugin.needs" must be a list of what it needs, like ["files"]'
+        offered_needs = self.plugins_config.get('needs', {})
+        if any(k not in offered_needs for k in needs):
+            odd = next(k for k in needs if k not in offered_needs)
+            return 'mistake', (f'"plugin.needs" says "{odd}", which isn\'t one of the app\'s needs ({", ".join(offered_needs)})'
+                               if offered_needs else '"plugin.needs" is set, but app.json has no "plugins.needs"')
+        if 'sidecar' in p and not isinstance(p['sidecar'], dict):
+            return 'mistake', '"plugin.sidecar" must be an object: { program, checksum, permissions }'
         if p.get('load', 'start') not in PLUGIN_LOADS:
             return 'mistake', f'"plugin.load" must be {" or ".join(PLUGIN_LOADS)}'
         if p.get('starts', 'on') not in ('on', 'off'):
@@ -797,12 +816,14 @@ class Project:
             'id': f.id, 'name': f.name, 'description': f.manifest['description'], 'version': f.version,
             'requires': f.requires, 'uses': f.uses, 'platforms': f.platforms,
             'path': f'features/{f.id}/{f.manifest["main"]}',
-            **({'plugin': {'kind': [], 'load': 'start', **f.plugin}} if f.plugin else {}),
+            **({'plugin': {'kind': [], 'needs': [], 'load': 'start', **f.plugin}} if f.plugin else {}),
         } for f in included]
         config = {'id': app['id'], 'name': app['name'], 'description': app.get('description', ''), 'version': app['version'],
                   'build': str(build_number) if build_number else '', 'framework': self.framework_version,
                   'appearance': app['appearance'], 'test': test,
-                  **({'pluginApi': self.plugins_config.get('api', 1)} if self.plugins_folder else {})}
+                  **({'pluginApi': self.plugins_config.get('api', 1)} if self.plugins_folder else {}),
+                  **({'pluginKinds': self.plugins_config['kinds']} if self.plugins_config.get('kinds') else {}),
+                  **({'pluginNeeds': self.plugins_config['needs']} if self.plugins_config.get('needs') else {})}
         seed = test and (self.app_dir / 'tests' / 'seed.js').is_file()
         if test and (self.app_dir / 'tests').is_dir():
             shutil.copytree(self.app_dir / 'tests', web / 'app-tests')
@@ -1458,6 +1479,10 @@ def cmd_new_plugin(project: Project, args) -> int:
     kinds = [k.strip() for k in (args.kind or '').split(',') if k.strip()]
     if not all(KIND_NAME.match(k) for k in kinds):
         print('--kind is a list of what it adds, like mode,editor.')
+        return 1
+    known = project.plugins_config.get('kinds')
+    if known and any(k not in known for k in kinds):
+        print(f'--kind must be among the app\'s kinds: {", ".join(known)}.')
         return 1
     app = project._app_json()
     own = project.app_dir / 'templates' / 'plugin'

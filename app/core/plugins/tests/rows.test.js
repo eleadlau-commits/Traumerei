@@ -2,7 +2,7 @@
 // each, the question before turning off what others need, and the plugin behind a mode that is off.
 
 import { test, assert } from 'folio/testing';
-import { plugins, note, kindWords, dependentsWords, offMode, isOn, startsOff } from '../rows.js';
+import { plugins, note, kindWords, needsWords, dependentsWords, offMode, isOn, startsOff } from '../rows.js';
 
 const f = (id, status, o = {}) => [id, { status, reason: o.reason || '', problem: o.problem || null,
   manifest: { id, name: o.name || id[0].toUpperCase() + id.slice(1), description: `${id} things`, ...(o.core ? {} : { plugin: { api: 1, kind: o.kind || ['tool'] } }) } }];
@@ -28,7 +28,8 @@ test('the line under a plugin says what is wrong, else what it is', () => {
   assert.deepEqual(note(features.get('picture')), { text: 'Off in safe mode', problem: false });
   assert.deepEqual(note(features.get('source')), { text: 'Needs Docks, which is switched off', problem: true });
   assert.deepEqual(note(features.get('russell')), { text: 'russell things', problem: false });
-  assert.equal(kindWords(features.get('picture')), 'a kind of item');
+  assert.equal(kindWords(features.get('picture'), { item: 'a kind of item' }), 'a kind of item');
+  assert.equal(kindWords(features.get('picture')), 'item');
 });
 
 test('turning off what others need names them', () => {
@@ -48,4 +49,11 @@ test('a plugin that starts off is told by its plugin block', () => {
   assert.equal(startsOff({ manifest: { plugin: { api: 2, starts: 'off' } } }), true);
   assert.equal(startsOff({ manifest: { plugin: { api: 2 } } }), false);
   assert.equal(startsOff({ manifest: {} }), false);
+});
+
+test('what a plugin needs is said in the app\'s words', () => {
+  const words = { files: 'opens and saves files', network: 'reaches the internet' };
+  const g = { manifest: { id: 'g', name: 'G', plugin: { api: 2, needs: ['files', 'network'] } } };
+  assert.equal(needsWords(g, words), 'Needs: opens and saves files, reaches the internet');
+  assert.equal(needsWords(features.get('picture'), words), '');
 });

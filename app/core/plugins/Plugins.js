@@ -10,7 +10,7 @@
 // off, as 'folio.disabled').
 
 import { Feature, ui } from 'folio';
-import { plugins, isOn, startsOff, note, kindWords, dependentsWords, offMode } from './rows.js';
+import { plugins, isOn, startsOff, note, kindWords, needsWords, dependentsWords, offMode } from './rows.js';
 
 const { el } = ui;
 
@@ -89,7 +89,8 @@ export default class Plugins extends Feature {
   row(f, safe) {
     const id = f.manifest.id;
     const n = note(f);
-    const kinds = kindWords(f);
+    const kinds = kindWords(f, this.app.config?.pluginKinds);
+    const needs = needsWords(f, this.app.config?.pluginNeeds);
     const asking = this.asking?.id === id ? this.asking : null;
     const sw = ui.toggle({
       checked: isOn(f),
@@ -100,7 +101,8 @@ export default class Plugins extends Feature {
     const row = el('div', { class: `feature-row plugins-row${isOn(f) ? '' : ' off'}`, role: 'listitem', 'data-plugin': id },
       el('div', { class: 'feature-text' },
         el('b', {}, f.manifest.name, kinds ? el('span', { class: 'plugins-kind' }, ` · ${kinds}`) : null),
-        el('small', { class: n.problem ? 'plugins-problem' : '' }, n.text)),
+        el('small', { class: n.problem ? 'plugins-problem' : '' }, n.text),
+        needs ? el('small', { class: 'plugins-needs' }, needs) : null),
       sw);
     if (!asking) return row;
     // Asked before turning off what others need: Enter turns them all off, Escape keeps them.
