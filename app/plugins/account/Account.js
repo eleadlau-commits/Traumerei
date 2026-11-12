@@ -17,6 +17,9 @@
 // Firebase is loaded from Google's servers only once someone signs in (or was signed in last
 // time), so visitors who never sign in don't download it. The project is set in config.js.
 //
+// The desktop app signs in through the person's browser (handoff.js): Google's popup can't open
+// in its window, so the live web app does the signing in and hands Google's tokens back.
+//
 // Opening the app can save things before the account is compared (a day's record, a last visit),
 // so right after a reload the two copies may differ again. A reload guard stops that becoming a
 // loop: within a minute of an automatic reload the page never reloads again, and sends this
@@ -29,6 +32,7 @@
 
 import { Feature, ui } from 'folio';
 import { firebaseConfig } from './config.js';
+import { newState, handoffUrl, readHandoff, returnUrl, readReturn } from './handoff.js';
 import { LOCAL_AREAS, pack, unpack, decide, reloadedRecently, settingsOf, incoming, batchesOf } from './sync.js';
 
 const { el } = ui;
@@ -57,15 +61,18 @@ export default class Account extends Feature {
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     const t = this.use('traumerei')?.connect(this);
     this.t = t;
-    this.desktop = !!t?.app.desktop; // the desktop app: no sign-in (Google's popup can't open there), an update check instead
+    this.desktop = !!t?.app.desktop; // the desktop app: signs in through the browser (handoff.js), and checks for updates
+    this.handoff = this.desktop ? null : readHandoff(location.search); // this web page was opened by the desktop app to sign in
+    this.waiting = null; // the desktop app: the state of the browser sign-in it is waiting for
     this.moments = t?.moments || null; // the moments table: the world travels as its rows
     // The account is a carrier of the six tables (Law 8): every change, as the moments log's rows.
     t?.slots.carriers.add({ id: 'account', name: 'Your account', moves: 'moments' });
     if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
     this.listenTo(window, 'pagehide', () => this.flush());
-    if (firebaseConfig && !this.desktop && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
+    if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
     if (this.desktop) this.checkForUpdate();
+    if (this.handoff && firebaseConfig) { this.handoffSdk().catch(() => {}); setTimeout(() => this.open(), 0); }
   }
 
   // ---- Updates (the desktop app) ----
@@ -119,6 +126,7 @@ export default class Account extends Feature {
   }
 
   async signIn() {
+    if (this.desktop) return this.signInThroughBrowser();
     this.setState('busy');
     try {
       await this.connect();
@@ -131,6 +139,56 @@ export default class Account extends Feature {
         this.storage.set('signedIn', true);
         await signInWithRedirect(this.auth, provider); // leaves the page and comes back signed in
       }
+    } catch (e) {
+      if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') this.setState('idle');
+      else this.fail(e);
+    }
+  }
+
+  // The desktop app: the browser signs in on the live web app and comes back with Google's tokens.
+  async signInThroughBrowser() {
+    const state = newState();
+    this.waiting = state;
+    this.setState('busy');
+    try {
+      const [path] = await Promise.all([this.t.ui.roundTrip((port) => handoffUrl(port, state)), this.connect()]);
+      if (this.waiting !== state) return; // Sign in was pressed again: that trip counts
+      this.waiting = null;
+      const tokens = readReturn(path, state);
+      if (!tokens) { this.setState('error'); return; }
+      const { GoogleAuthProvider, signInWithCredential } = this.sdk;
+      await signInWithCredential(this.auth, GoogleAuthProvider.credential(tokens.idToken, tokens.accessToken));
+    } catch (e) {
+      if (this.waiting === state) this.waiting = null;
+      this.fail(e);
+    }
+  }
+
+  // The web page opened by the desktop app: a Firebase app of its own that remembers nothing, so
+  // this browser's own copy of Träumerei is never signed in or synced by the hand-off.
+  handoffSdk() {
+    if (!this.handoffReady) {
+      this.handoffReady = (async () => {
+        const [appSdk, authSdk] = await Promise.all(['firebase-app.js', 'firebase-auth.js'].map((f) => import(SDK + f)));
+        const auth = authSdk.getAuth(appSdk.initializeApp(firebaseConfig, 'desktop-hand-off'));
+        await authSdk.setPersistence(auth, authSdk.inMemoryPersistence);
+        return { auth, ...authSdk };
+      })();
+      this.handoffReady.catch(() => { this.handoffReady = null; });
+    }
+    return this.handoffReady;
+  }
+
+  // Signs in with Google here and sends the browser back to the desktop app with the tokens.
+  async handOff() {
+    this.setState('busy');
+    try {
+      const { auth, GoogleAuthProvider, signInWithPopup } = await this.handoffSdk();
+      const cred = GoogleAuthProvider.credentialFromResult(await signInWithPopup(auth, new GoogleAuthProvider()));
+      if (!cred?.idToken && !cred?.accessToken) throw new Error('Google gave no tokens');
+      this.handedOff = true;
+      this.setState('idle');
+      location.href = returnUrl(this.handoff, cred.idToken, cred.accessToken);
     } catch (e) {
       if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') this.setState('idle');
       else this.fail(e);
@@ -262,16 +320,26 @@ export default class Account extends Feature {
   sections() {
     const busy = this.state === 'busy';
     const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), el('span', {}, value));
-    if (this.desktop) {
-      const latest = this.newer();
-      return [
-        { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [kv('Saved on', 'This computer'),
-          el('p', { class: 'hint' }, 'The desktop app keeps your rooms and settings on this computer. Export a room to keep a copy elsewhere.')] },
-        { id: 'account-version', title: 'Version', icon: 'account', body: [kv('This app', this.t.app.version),
-          latest ? el('p', { class: 'hint' }, `Träumerei ${latest} is out. Download it and run the installer; your rooms stay.`) : null,
-          latest ? el('div', {}, el('button', { type: 'button', class: 'btn', onclick: () => this.t.ui.link(RELEASES_PAGE) }, `Download ${latest}`)) : null].filter(Boolean) },
-      ];
+    if (this.handoff && firebaseConfig) {
+      return [{ id: 'account-sign-in', title: 'Sign in to the desktop app', icon: 'account', body: [
+        el('p', { class: 'hint' }, this.handedOff ? 'Done. You can close this tab and go back to Träumerei.' : 'Pick your Google account, then go back to Träumerei. This browser stays as it was.'),
+        this.state === 'error' && el('p', { class: 'account-error' }, "Couldn't sign in. Please try again."),
+        !this.handedOff && el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.handOff() },
+          busy ? 'Signing in…' : 'Sign in with Google'))].filter(Boolean) }];
     }
+    const sections = this.accountSections(busy, kv);
+    if (!this.desktop) return sections;
+    const latest = this.newer();
+    return sections.concat([
+      { id: 'account-version', title: 'Version', icon: 'account', body: [kv('This app', this.t.app.version),
+        latest ? el('p', { class: 'hint' }, `Träumerei ${latest} is out. Download it and run the installer; your rooms stay.`) : null,
+        latest ? el('div', {}, el('button', { type: 'button', class: 'btn', onclick: () => this.t.ui.link(RELEASES_PAGE) }, `Download ${latest}`)) : null].filter(Boolean) },
+    ]);
+  }
+
+  // Sign in and Saving, in the browser and the desktop app alike.
+  accountSections(busy, kv) {
+    const here = this.desktop ? 'this computer' : 'this device';
     if (!firebaseConfig) return [{ id: 'account-sign-in', title: 'Sign in', icon: 'account', body: [el('p', {}, "Accounts aren't set up yet.")] }];
     if (!this.user) {
       return [
@@ -279,15 +347,16 @@ export default class Account extends Feature {
           kv('Signed in', 'No'),
           el('p', { class: 'hint' }, 'Sign in to keep your rooms and settings on every device.'),
           this.state === 'error' && el('p', { class: 'account-error' }, "Couldn't sign in. Please try again."),
-          el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signIn() },
-            busy ? 'Signing in…' : 'Sign in with Google'))].filter(Boolean) },
-        { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [kv('Saved on', 'This device only')] },
+          this.waiting && el('p', { class: 'hint' }, 'Your browser opened to sign in. Pick your account there, then come back.'),
+          el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy && !this.waiting, onclick: () => this.signIn() },
+            this.waiting ? 'Open the browser again' : busy ? 'Signing in…' : 'Sign in with Google'))].filter(Boolean) },
+        { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [kv('Saved on', this.desktop ? 'This computer only' : 'This device only')] },
       ];
     }
     const status = {
       busy: 'Saving…',
       saved: 'Your rooms and settings are saved to your account.',
-      error: "Couldn't reach your account. Your rooms and settings are still saved on this device.",
+      error: `Couldn't reach your account. Your rooms and settings are still saved on ${here}.`,
       idle: '',
     }[this.state];
     return [
@@ -297,7 +366,7 @@ export default class Account extends Feature {
           el('div', {}, el('b', {}, this.name()), this.user.email && el('small', {}, this.user.email))),
         el('div', {}, el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => this.signOut().catch((e) => this.fail(e)) }, 'Sign out'))] },
       { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [
-        kv('Saved on', 'Your account and this device'),
+        kv('Saved on', `Your account and ${here}`),
         status && el('p', { class: this.state === 'error' ? 'account-error' : 'hint' }, status),
         this.guarded && el('p', { class: 'hint' },
           "The page had just reloaded with your account's rooms and settings, so instead of reloading again it sent this device's copy up."),

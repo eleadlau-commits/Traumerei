@@ -67,3 +67,20 @@ test('a link opens only an https address; in the desktop app through the shell',
     assert.deepEqual(calls, [['open_link', { url: 'https://github.com/eleadlau-commits/Traumerei/releases/latest' }]]);
   } finally { delete window.__TAURI_INTERNALS__; }
 });
+
+test('a round trip through the browser: a port from the shell, the address opened, the way back handed over', async () => {
+  const { roundTrip } = await import('../files.js');
+  assert.equal(await roundTrip((port) => `https://example.org/?p=${port}`), null); // in a browser: never
+  const calls = [];
+  window.__TAURI_INTERNALS__ = { invoke: async (cmd, args) => { calls.push([cmd, args]); return cmd === 'sign_in_port' ? 51234 : cmd === 'sign_in_wait' ? '/done?state=x' : undefined; } };
+  try {
+    assert.equal(await roundTrip((port) => `https://example.org/?p=${port}`), '/done?state=x');
+    assert.deepEqual(calls.map((c) => c[0]), ['sign_in_port', 'open_link', 'sign_in_wait']);
+    assert.deepEqual(calls[1][1], { url: 'https://example.org/?p=51234' });
+    calls.length = 0;
+    assert.equal(await roundTrip((port) => `http://example.org/?p=${port}`), null); // only https goes out
+    assert.deepEqual(calls.map((c) => c[0]), ['sign_in_port']);
+    window.__TAURI_INTERNALS__.invoke = async () => { throw new Error('timed out'); };
+    assert.equal(await roundTrip((port) => `https://example.org/?p=${port}`), null);
+  } finally { delete window.__TAURI_INTERNALS__; }
+});

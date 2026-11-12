@@ -60,8 +60,16 @@ It uses the framework's `storage.snapshot()`, `restore()` and `watch()`.
 
 ## In the desktop app
 
-When `t.app.desktop` is true there is no sign-in (Google's sign-in popup can't open in the app's
-window) and Firebase is never loaded: the page says the rooms are saved on this computer. Instead,
-once a day it asks GitHub for the latest Release; a newer version is said once as a toast and stays
+Google's sign-in popup can't open in the app's window, so the desktop app signs in through the
+person's browser (`handoff.js`, the loopback way native apps sign in): **Sign in with Google** asks
+`t.ui.roundTrip` to open the live web app at `?desktop-sign-in=<port>&state=<random>`. The web app
+then shows only *Sign in to the desktop app*; it signs in with Google in a Firebase app of its own
+that remembers nothing (so that browser's own Träumerei is never signed in or synced by it), and
+sends the browser to `http://127.0.0.1:<port>/done?state=…&id_token=…&access_token=…`. The shell
+hears it, answers with a short page, brings the window forward, and the app checks the state and
+signs in with `signInWithCredential`. From there sync works as in the browser. Nobody coming back
+within five minutes ends the wait; pressing the button again starts a new trip.
+
+Also, once a day it asks GitHub for the latest Release; a newer version is said once as a toast and stays
 on the page under *Version* with a **Download** button (`t.ui.link`). Nothing installs itself.
 Saved data: `checkedAt`, `latest` (the latest Release's version), `told` (the version last said).
