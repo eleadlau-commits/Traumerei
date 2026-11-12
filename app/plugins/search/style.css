@@ -8,3 +8,5 @@
 .search-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .search-room { flex: none; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
 .search-none { margin: 0; padding: 14px 20px; font-size: 13px; opacity: .5; }
+.search-link { display: flex; justify-content: space-between; gap: 20px; padding: 12px 20px 0; font-size: 12px; letter-spacing: .04em; opacity: .6; }
+.search-link-key { flex: none; opacity: .7; }
