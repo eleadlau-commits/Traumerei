@@ -1,6 +1,6 @@
 [package]
 name = "traumerei"
-version = "0.1.0"
+version = "1.0.0"
 description = "Träumerei desktop app"
 edition = "2021"
 
@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(windows)'.dependencies]
 # The same versions Tauri uses, so its WebView2 handle has the types we call.

@@ -32,3 +32,26 @@ test('in the desktop app, save asks the shell and passes bytes', async () => {
     assert.equal(got.length, 0); // never a browser download inside the app
   } finally { delete window.__TAURI_INTERNALS__; }
 });
+
+test('a file opened from Windows reaches everyone hearing, as a File; never in a browser', async () => {
+  const f = seam([]);
+  assert.equal(typeof f.arrived(() => {}), 'function'); // a browser: nothing to hear
+  let queue = [['Book.traum', [...new TextEncoder().encode('---\nformat: traum/3\n')]]];
+  window.__TAURI_INTERNALS__ = { invoke: async (cmd) => { assert.equal(cmd, 'take_opened'); const q = queue; queue = []; return q; } };
+  try {
+    const heard = [];
+    const off = f.arrived((file) => heard.push(file));
+    await new Promise((r) => setTimeout(r, 20)); // the page has loaded: the queued file is taken
+    assert.equal(heard.length, 1);
+    assert.equal(heard[0].name, 'Book.traum');
+    assert.equal(await heard[0].text(), '---\nformat: traum/3\n');
+    queue = [['Two.traum', [104, 105]]];
+    await window.__traumereiOpened(); // the shell pokes the page for a second double-click
+    assert.equal(heard.length, 2);
+    off();
+    queue = [['Three.traum', [104]]];
+    await window.__traumereiOpened();
+    assert.equal(heard.length, 2); // no one hearing: the shell keeps it
+    assert.equal(queue.length, 1);
+  } finally { delete window.__TAURI_INTERNALS__; delete window.__traumereiOpened; }
+});
