@@ -574,7 +574,7 @@ function dockFor(dock, gone) {
 // toast, files ({ open, save, arrived }, files.js), link(url), roundTrip(urlFor) (the browser and back), desktop (inside the desktop app), docks, keys, frame,
 // floors, service(name), room(), ai (the AI framework's service, app/core/ai): the app's, or null.
 export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, files = null, link = () => false, roundTrip = async () => null, desktop = false, docks = null, keys = null,
-  frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null }) {
+  frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null, store = null }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
   if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
@@ -601,6 +601,9 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     slots,
     // The AI framework (app/core/AI.md): tasks, the providers that do them, the maker's verdicts.
     ai: aiFor(ai, tables, readsOf(tables)),
+    // What the plugin keeps on this computer, never in a .traum file (app/core/store): small state
+    // and large files with a quota; null when the store isn't there.
+    store: store ? store.for(owner) : null,
     // The screen a plugin may use, and what the person is looking at: the open room and the one
     // mark chosen there, as ids, or null.
     ui: Object.freeze({

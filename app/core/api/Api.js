@@ -36,6 +36,7 @@ export default class Api extends Feature {
     const frame = this.use('frame');   // the top bar and status bar (the frame feature), or null
     const floors = this.use('floors'); // where rooms sit on the rooms page (the floors feature), or null
     const ai = this.use('ai');         // the AI framework (the ai feature, app/core/AI.md), or null
+    const store = this.use('store');   // what each plugin keeps on this computer (the store feature), or null
     // The rooms page starts after the plugins it shows (it uses Time and Search), so it is
     // looked up when a plugin first goes somewhere, not here.
     const service = (name) => app.use(name);
@@ -47,7 +48,7 @@ export default class Api extends Feature {
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, roundTrip, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id), ai }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, roundTrip, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id), ai, store }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

@@ -10,3 +10,4 @@
 .plugins-import p { margin: 0; }
 .plugins-import .row { display: flex; gap: 16px; }
 .plugins-remove { justify-self: start; padding: 0; font-size: 13px; }
+.plugins-clear { padding: 0; font-size: inherit; }

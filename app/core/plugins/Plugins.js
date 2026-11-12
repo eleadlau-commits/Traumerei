@@ -72,6 +72,20 @@ export default class Plugins extends Feature {
 
   redraw() { this.app.shell?.refreshSettings?.(); }
 
+  // What a plugin keeps on this computer (the store feature), with Clear; filled in once known.
+  keeps(id) {
+    const store = this.use('store');
+    if (!store) return null;
+    const line = el('small', { class: 'plugins-keeps', hidden: '' });
+    store.used(id).then((n) => {
+      if (!(n > 0)) return;
+      line.hidden = false;
+      line.replaceChildren(`Keeps ${store.size(n)} on this computer · `, el('button', { type: 'button', class: 'word plugins-clear',
+        onclick: async () => { await store.clear(id); this.toast(`${this.name(id)}'s files are cleared`); this.redraw(); } }, 'Clear'));
+    }, () => {});
+    return line;
+  }
+
   // ---- Imported plugins ----
 
   get appInfo() {
@@ -222,6 +236,7 @@ export default class Plugins extends Feature {
         el('b', {}, f.manifest.name, kinds ? el('span', { class: 'plugins-kind' }, ` · ${kinds}`) : null),
         el('small', { class: n.problem ? 'plugins-problem' : '' }, n.text),
         needs ? el('small', { class: 'plugins-needs' }, needs) : null,
+        this.keeps(id),
         f.manifest.imported ? el('button', { type: 'button', class: 'word plugins-remove', onclick: () => this.removeImported(id) }, 'Remove') : null),
       sw);
     if (!asking) return row;
