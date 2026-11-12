@@ -13,7 +13,7 @@ It adds itself to the slot `formats` (shape in `app/core/world/formats.js`), so 
 a room find it there: `accepts(file)` (a `.traum` file, or plain `.md`, `.markdown`, `.txt`),
 `importRoom({ file, cell, page, ok })` (a new room on floor `page`, in `cell` if it is free),
 `importInto(roomId, { file, ok, before })` (the file's marks into a room as new ones, not a locked
-one), `exportRoom(id)` (downloads `<its name>.traum`, a locked room too), `canEdit()` (whether the
+one), `exportRoom(id)` (saves `<its name>.traum` through `t.ui.files.save`, a locked room too), `canEdit()` (whether the
 source editor is there), `editGroup(roomId, groupId, o)` and `editRoom(roomId, o)` (as text in the
 source editor, read only in a locked room) and `cancel()` (closes the card).
 
@@ -22,7 +22,7 @@ source editor, read only in a locked room) and `cancel()` (closes the card).
   file comes in as loose thoughts (`plain.js`). Pictures at an `https://` address are fetched and
   shrunk if the other site allows it; one that can't be comes in as a line with its address. A file
   of the older `room/2` format is refused with a word saying so.
-- **Out.** *Export room file* downloads `<room name>.traum`: the room's tables with short ids, and
+- **Out.** *Export room file* saves `<room name>.traum` (a download, or the Save dialog in the desktop app): the room's tables with short ids, and
   each thought's history (`# Moments`). Taking a room out and bringing it back gives the same file.
 - **As text.** The room, or a group with its parts, with the world's own ids (pictures as
   `picture:1`); what Apply would do (kept, changed, new, deleted) is checked as it is typed, and

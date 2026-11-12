@@ -3,6 +3,11 @@
 Rooms for thinking, built with **Folio**: write your thoughts, arrange them in different ways,
 and finish what you start.
 
+**[Download Träumerei for Windows](https://github.com/eleadlau-commits/Traumerei/releases/latest)**:
+run the `…_x64-setup.exe` file from the latest Release. It isn't signed yet, so Windows shows
+"Windows protected your PC": click **More info**, then **Run anyway**. Or use the
+[web copy](https://eleadlau-commits.github.io/Traumerei/) in Chrome.
+
 Every pull request runs **Check pull request** (`.github/workflows/check.yml`): all the tests
 (`python build.py test`), then a build of the one-file page, then the speed budgets on it
 (`node tests/speed.mjs`: a 1,500-thought room opens in 0.8 s, starting a thought and Enter each
@@ -46,3 +51,16 @@ python build.py test
 ```
 
 Runs the engine's tests, Folio's own tests, and the whole-app checks (needs Chrome or Edge).
+
+## Desktop app (Windows)
+
+`desktop/` wraps the same one-file page in a Tauri 2 window. `python standalone.py --desktop`
+writes the page to `desktop/dist/index.html`; `cd desktop && npm ci && npx tauri build` makes the
+installer (needs Rust and, on Windows, WebView2). The **Desktop app** Action builds it on every PR
+that touches `desktop/` (download "traumerei-windows" from the run) and puts it on a draft Release
+for every `v*` tag.
+
+To release a version: set the same version in `app/app.json`, `desktop/src-tauri/tauri.conf.json`
+and `desktop/src-tauri/Cargo.toml`, merge, then tag main `v<version>` and push the tag. The Action
+checks the three agree with the tag, builds, and leaves a draft Release; publish it on GitHub. The
+desktop app's account page tells people a newer Release is out once a day.
