@@ -1,8 +1,11 @@
 {
   "name": "Export",
-  "description": "A room leaves as words: Markdown in the room's own order (Ctrl+Shift+E, or ⋯ More), open gaps marked, maths kept as TeX.",
+  "description": "A room leaves as words: Markdown in the room's own order (Ctrl+Shift+E), or a clean printed page to save as PDF (Ctrl+P); open gaps marked, maths kept.",
   "version": "0.1.0",
   "main": "Export.js",
+  "styles": [
+    "style.css"
+  ],
   "requires": [
     "api"
   ],
