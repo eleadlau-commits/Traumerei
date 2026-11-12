@@ -172,6 +172,7 @@ A full mode (Joyce, Pessoa, Russell: trains, trays, its own drawing, gestures) g
 | `ui.download(name, content, type?)` | Hands the person a file: `content` words or a Blob, `type` `text/plain` by default. The same as `ui.files.save`. |
 | `ui.files` | Files in and out, in the browser or the desktop app (`app/core/api/files.js`). `open(accept)` resolves with the chosen `File` (`name`, `await file.text()`), or `null`; `accept` as an input's (`'.traum,.md'`). `save(name, content, type?)` hands the person a file (`content` words or a Blob): a download in the browser, Windows' Save dialog in the desktop app; resolves `true` once saved, `false` when cancelled. Export goes through `save`. `arrived(fn)` hears each file the person opened from Windows (a double-clicked `.traum`) as a `File`; never in a browser; returns a function that stops hearing. |
 | `together(fn)` | Every propose `fn` makes lands as one step (one Ctrl+Z), not one each. Returns what `fn` returns. |
+| `ui.link(url)` | Opens an `https://` address in the person's browser (a new tab; the default browser in the desktop app). `false` for any other address. |
 | `ui.chosen()` | What the person is looking at: `{ context, mark }`, the open room and the one mark chosen there (`mark` `null` for none), or `null` outside a room. For a command on the chosen thought; nothing else of the screen is in the API. |
 | `plugin` | `{ id, name }` of the plugin that connected. |
 | `app` | `{ name, version, desktop }` of the app; `desktop` is true inside the desktop app (Windows), false in a browser. |
