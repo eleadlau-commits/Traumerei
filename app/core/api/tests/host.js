@@ -6,6 +6,7 @@
 import * as lib from '../../world/lib.js';
 import * as M from '../../world/moments.js';
 import { surface, connect } from '../v2.js';
+import { serve, memoryChoices } from '../../ai/Ai.js';
 
 const CORE_RULES = () => [lib.joyce.default, lib.pessoa.default];
 
@@ -72,6 +73,9 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
     }),
   };
   const parts = surface(lib);
+  // The AI framework, over the same slots, with the person's choices kept in memory.
+  const choices = memoryChoices();
+  const ai = serve({ slot: (name) => app.slot(name), choices });
   const toasts = [];
   let chosen = null;
   const leaving = new Map();
@@ -82,7 +86,7 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
   function plug(id, install) {
     const plugin = { id, manifest: { name: id, plugin: { api: 2, minApp: '1.0.0' } } };
     const gone = (fn) => { if (!leaving.has(id)) leaving.set(id, []); leaving.get(id).push(fn); };
-    const t = connect({ app, world, plugin, parts, lib, events, toast: (s) => toasts.push(s), room: roomNow, gone });
+    const t = connect({ app, world, plugin, parts, lib, events, toast: (s) => toasts.push(s), room: roomNow, gone, ai });
     install(t, { attach() {}, whenStopped: (fn) => gone(fn), listenTo() {} });
     const off = () => {
       for (const s of slots.values()) for (let i = s.entries.length - 1; i >= 0; i--) if (s.entries[i].owner === id) s.entries.splice(i, 1);
@@ -92,7 +96,7 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
     return { t, off };
   }
   const added = (id) => [...slots.entries()].flatMap(([slot, s]) => s.entries.filter((e) => e.owner === id).map((e) => ({ slot, item: e.item })));
-  return { w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, lib, tick };
+  return { ai, choices, w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, lib, tick };
 }
 
 // The eight laws, as checks over the world's tables (KERNEL.md). Returns the broken ones in words.

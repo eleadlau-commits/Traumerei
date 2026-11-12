@@ -1,0 +1,6 @@
+{
+  "name": "AI",
+  "description": "The AI framework: tasks in Träumerei's own terms, providers that do them, engines they share, and the services around them (scheduler, cache, budget, privacy policy, feedback, exams). Every result is a suggestion the maker keeps or refuses.",
+  "version": "1.0.0",
+  "main": "Ai.js"
+}
