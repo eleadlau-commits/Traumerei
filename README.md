@@ -8,6 +8,10 @@ run the `…_x64-setup.exe` file from the latest Release. It isn't signed yet, s
 "Windows protected your PC": click **More info**, then **Run anyway**. Or use the
 [web copy](https://eleadlau-commits.github.io/Traumerei/) in Chrome.
 
+**Provoke**, the reader that suggests links and groups in a room, comes as a plugin of its own:
+download `provoke.traumplug` from the same Release, then in Träumerei open Settings → Plugins →
+**Import plugin…** and pick the file. Ctrl+Alt+V then reads the open room.
+
 ## Start from something familiar
 
 The first time it opens, Träumerei offers four rooms in shapes you already know, and a sample

@@ -2,7 +2,7 @@
 """Makes standalone/traumerei.html: the whole page in one file that opens with a double-click
 (from file://, no server). Run `python standalone.py` after changing anything in app/.
 `python standalone.py --desktop` writes the same page to desktop/dist/index.html for the desktop app.
-The stress corpus (tools/corpus.py) is left out; `--corpus` keeps it in.
+The stress corpus and the plugins shipped apart (tools/corpus.py) are left out; `--corpus` keeps them in.
 
 It compiles the app with Folio (python build.py), then bundles the framework and the feature into
 one inline script with esbuild (fetched by npx, so it needs Node.js). Folio loads features with
@@ -25,10 +25,11 @@ DESKTOP = ROOT / 'desktop' / 'dist' / 'index.html'
 
 def main():
     out = DESKTOP if '--desktop' in sys.argv else OUT
-    # The stress corpus is for the tests, not for people (tools/corpus.py); --corpus keeps it in.
+    # The stress corpus is for the tests, not for people, and Provoke ships apart as a file to
+    # import (tools/corpus.py); --corpus keeps them all in.
     sys.path.insert(0, str(ROOT))
-    from tools.corpus import CORPUS
-    without = [] if '--corpus' in sys.argv else ['--without', ','.join(CORPUS)]
+    from tools.corpus import LEFT_OUT
+    without = [] if '--corpus' in sys.argv else ['--without', ','.join(LEFT_OUT)]
     subprocess.run([sys.executable, 'build.py', *without], cwd=ROOT, check=True)
     start = (WEB / 'start.js').read_text('utf-8')
     config = re.search(r'const config = (\{.*?\n\});', start, re.S).group(1)

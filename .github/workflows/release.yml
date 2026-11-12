@@ -70,3 +70,13 @@ jobs:
           releaseName: Träumerei ${{ github.ref_name }}
           releaseDraft: true
           prerelease: false
+      - name: Put the plugins shipped apart beside the installer
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for id in $(python -c "from tools.corpus import APART; print(' '.join(APART))"); do
+            python build.py pack-plugin "$id" --out packed
+          done
+          gh release upload "${{ github.ref_name }}" packed/*.traumplug --clobber

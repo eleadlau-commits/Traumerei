@@ -17,6 +17,7 @@ version with `python build.py release <version>`.
 - `python build.py release <version>` and one app identifier, `app.traumerei.desktop`.
 - Plugins can be packed into one `.traumplug` file and imported in Settings → Plugins.
 - The stress corpus of test plugins is no longer in the app (pack and import one to try it).
+- Provoke is no longer built in: it ships beside the installer as `provoke.traumplug`, to import.
 
 ## 1.0.0 (12 Nov 2026)
 
