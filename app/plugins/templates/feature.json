@@ -1,0 +1,21 @@
+{
+  "name": "Templates",
+  "description": "First run opens on a chooser: four rooms that start in a familiar shape, or a sample room. Also under More.",
+  "version": "0.1.0",
+  "main": "Templates.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "command"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

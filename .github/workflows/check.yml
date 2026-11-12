@@ -35,6 +35,8 @@ jobs:
         run: python build.py test
       - name: The .traum guide covers every ontology and kind
         run: node app/plugins/roomfile/tests/guide.mjs
+      - name: Every template room lands
+        run: node app/plugins/templates/tests/land.mjs
       - name: Build the one-file page
         run: python standalone.py
       - name: Speed budgets (a 1,500-thought room opens, Enter, typing, under 2 MB)
