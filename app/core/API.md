@@ -155,6 +155,15 @@ A full mode (Joyce, Pessoa, Russell: trains, trays, its own drawing, gestures) g
 `point`, `drop` and more instead of `arrange`; that shape is the world's own
 (`app/core/world/ontologies/index.js`) and is for modes that ship with the app.
 
+## What a plugin adds and needs
+
+The plugin block's `kind` and `needs` (`app/plugins/README.md` §2) use one list each, kept in
+`app/app.json` under `plugins.kinds` and `plugins.needs` with the words Settings → Plugins shows.
+The compiler refuses any other word, and the loader of imported plugins checks the same lists.
+Kinds: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, `page`, `look`,
+`tool`, `dock`, `provider`. Needs: `files`, `network`, `sidecar`, `store`, `ai`. Both grow by
+additions only.
+
 ## Slots, ui, plugin and app
 
 | Member | What it is |

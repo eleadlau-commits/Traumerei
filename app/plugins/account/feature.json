@@ -16,6 +16,9 @@
       "page"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "needs": [
+      "network"
+    ]
   }
 }

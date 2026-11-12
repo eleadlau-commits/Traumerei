@@ -18,9 +18,14 @@
       "link",
       "command",
       "editor",
-      "view"
+      "view",
+      "provider"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "needs": [
+      "ai",
+      "network"
+    ]
   }
 }

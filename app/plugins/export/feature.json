@@ -16,6 +16,9 @@
       "command"
     ],
     "load": "start",
-    "author": "E"
+    "author": "E",
+    "needs": [
+      "files"
+    ]
   }
 }

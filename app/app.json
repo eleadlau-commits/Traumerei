@@ -13,7 +13,29 @@
     "folder": "plugins",
     "api": 2,
     "service": "traumerei",
-    "exempt": []
+    "exempt": [],
+    "kinds": {
+      "mode": "a mode",
+      "item": "a kind of item",
+      "view": "a view",
+      "editor": "an editor",
+      "command": "commands",
+      "link": "a kind of link",
+      "reader": "a reader",
+      "format": "a file format",
+      "page": "a page",
+      "look": "the look",
+      "tool": "a tool",
+      "dock": "a dock",
+      "provider": "AI tasks"
+    },
+    "needs": {
+      "files": "opens and saves files",
+      "network": "reaches the internet or a local server",
+      "sidecar": "starts a program on this computer",
+      "store": "keeps its own files on this computer",
+      "ai": "asks for AI tasks"
+    }
   },
   "theme": {
     "accent": "#5c5f66",
