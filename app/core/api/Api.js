@@ -8,7 +8,7 @@
 
 import { Feature, ui } from 'folio';
 import { API_VERSION, surface, connect } from './v2.js';
-import { files as fileSeam, desktop, link } from './files.js';
+import { files as fileSeam, desktop, link, roundTrip } from './files.js';
 
 // A file handed to the person: words or a Blob, saved under a name (the browser's download).
 function download(name, content, type) {
@@ -46,7 +46,7 @@ export default class Api extends Feature {
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, roundTrip, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id) }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

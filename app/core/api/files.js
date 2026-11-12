@@ -24,6 +24,21 @@ export function link(url) {
   return true;
 }
 
+// A trip through the person's browser and back, for what can't happen inside the desktop app's
+// window (signing in with Google). The shell opens a port on this computer (sign_in_port), urlFor(port)
+// is opened in the default browser, and once the browser comes back to http://127.0.0.1:<port>/…
+// the shell (sign_in_wait) hands over that path and query. Resolves with it ('/done?…'), or null:
+// in a browser, for an address that isn't https, or when nobody came back within five minutes.
+export async function roundTrip(urlFor) {
+  const s = shell();
+  if (!s || typeof urlFor !== 'function') return null;
+  try {
+    const port = await s.invoke('sign_in_port');
+    if (!link(urlFor(port))) return null;
+    return (await s.invoke('sign_in_wait')) || null;
+  } catch { return null; }
+}
+
 // download(name, content, type): the browser's download; picker(accept): Folio's ui.filePicker.
 export function files({ download, picker }) {
   const pickers = new Map();
