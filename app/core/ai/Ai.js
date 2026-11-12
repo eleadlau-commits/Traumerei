@@ -34,11 +34,11 @@ export default class Ai extends Feature {
       allow: (id, on = true) => toggle('allowed', id, on), allowed: (id) => s.get('allowed', []).includes(id),
       setMemory: (mb) => s.set('memory', Math.max(256, Number(mb) || 2048)), memory: () => Number(s.get('memory', 2048)) || 2048,
       setMachine: (tier) => s.set('machine', MACHINES.includes(tier) ? tier : ''), machineChoice: () => (MACHINES.includes(s.get('machine', '')) ? s.get('machine', '') : ''),
+      detected: () => this.detected,
     });
     // Until detection answers, the lowest tier: core must work there.
     this.detected = Object.freeze({ tier: 'every-pc', cores: 1, memory: null, gpu: false, pending: true });
     detect().then((m) => { this.detected = m; }, () => {});
-    choices.detected = () => this.detected;
     const ai = serve({ slot: (name) => this.slot(name), choices, desktop: !!globalThis.__TAURI_INTERNALS__ });
     this.provide('ai', ai);
     // Settings → AI. The rooms come from the world service (its README), when it is there.
