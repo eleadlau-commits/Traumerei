@@ -15,6 +15,7 @@ checksum, permissions) is passed through untouched; the app decides what to do w
 
 import json
 import shutil
+import tempfile
 import subprocess
 import sys
 from pathlib import Path
@@ -59,8 +60,8 @@ def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
     m = manifest_of(folder, plugin_id)
     raw = json.loads((folder / 'feature.json').read_text('utf-8'))
     css = '\n'.join((folder / s).read_text('utf-8') for s in raw.get('styles', []))
-    work = root / 'dist' / 'pack' / plugin_id
-    work.mkdir(parents=True, exist_ok=True)
+    # Outside dist/: the compiler empties dist/ only when it made everything in it.
+    work = Path(tempfile.mkdtemp(prefix=f'pack-{plugin_id}-'))
     try:
         code = bundle(folder, raw.get('main', 'index.js'), work)
     finally:
@@ -78,7 +79,7 @@ def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
 
 def main(argv: list[str]) -> int:
     args = [a for a in argv if not a.startswith('--')]
-    out = ROOT / 'dist' / 'plugins'
+    out = ROOT / 'packed'
     if '--out' in argv:
         i = argv.index('--out')
         if i + 1 >= len(argv):
@@ -87,7 +88,7 @@ def main(argv: list[str]) -> int:
         out = Path(argv[i + 1]).resolve()
         args = [a for a in args if a != argv[i + 1]]
     if len(args) != 1:
-        print('Usage: python build.py pack-plugin <id> [--out folder]   (default folder: dist/plugins)')
+        print('Usage: python build.py pack-plugin <id> [--out folder]   (default folder: packed/)')
         return 2
     path = pack(args[0], out)
     print(f'Wrote {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path} ({path.stat().st_size // 1024} KB)')

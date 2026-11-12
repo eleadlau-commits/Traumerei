@@ -133,7 +133,7 @@ plugin is off shows in Pessoa with a "Turn on" line. Holding **Shift** while the
 python build.py pack-plugin word-count
 ```
 
-writes `dist/plugins/word-count.traumplug` (`--out <folder>` to put it elsewhere): the whole plugin
+writes `packed/word-count.traumplug` (`--out <folder>` to put it elsewhere): the whole plugin
 in one file a person imports in Settings → Plugins. A package (format `traumplug/1`) is one
 JavaScript module exporting `manifest` (id, name, description, version, requires and the plugin
 block), `css` (the plugin's styles) and a default `(folio) => class extends folio.Feature`. The
