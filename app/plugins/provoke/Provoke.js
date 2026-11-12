@@ -41,6 +41,8 @@ export const KIND = {
     if (f.features) out.features = h.oneLine(f.features);
     if (f.task) out.task = h.oneLine(f.task);
     if (f.by) out.by = h.oneLine(f.by);
+    if (f.linkKind) out.linkKind = h.oneLine(f.linkKind);
+    if (f.label) out.label = h.oneLine(f.label);
     return out;
   },
   text: (th) => th.says || '',
@@ -111,7 +113,8 @@ export async function provoke(t, room, { embed = null, most = 6 } = {}) {
   const top = (list) => list.slice(0, most);
   let found = [
     ...top((G?.ok ? G.output.groups : []).filter((g) => !skip('group', g.marks)).map((g) => ({ kind: 'group', marks: [...g.marks], title: g.title || '', words: [...(g.words || [])], why: g.why || '', features: g.features || [], by: by(G) }))),
-    ...top((L?.ok ? L.output.links : []).filter((l) => !skip('link', [l.from, l.to])).map((l) => ({ kind: 'link', marks: [l.from, l.to], title: '', words: [...(l.words || [])], why: l.why || '', features: l.features || [], by: by(L) }))),
+    ...top((L?.ok ? L.output.links : []).filter((l) => !skip('link', [l.from, l.to])).map((l) => ({ kind: 'link', marks: [l.from, l.to], title: '', words: [...(l.words || [])], why: l.why || '', features: l.features || [], by: by(L),
+      ...(l.kind && t.links.kinds().includes(l.kind) ? { linkKind: l.kind, label: l.label || '' } : {}) }))),
   ];
   // A pair inside a suggested group is said by the group.
   const inGroup = new Set(found.filter((p) => p.kind === 'group').flatMap((p) => p.marks));
@@ -129,7 +132,8 @@ export async function provoke(t, room, { embed = null, most = 6 } = {}) {
       const says = p.kind === 'link' ? `${text(p.marks[0])} and ${text(p.marks[1])} may speak of the same thing`
         : `${p.marks.length} thoughts may belong together: ${cap(p.title)}`;
       const why = p.why || (p.words.length ? `They share ${p.words.join(', ')}` : '');
-      const r = t.marks.make({ kind: 'suggestion', in: at, content: { says, act: p.kind, task: p.kind, by: p.by, title: p.title ? cap(p.title) : '', why, features: p.features.join(' ') } });
+      const typed = p.linkKind ? { linkKind: p.linkKind, label: p.label } : {};
+      const r = t.marks.make({ kind: 'suggestion', in: at, content: { says, act: p.kind, task: p.kind, by: p.by, title: p.title ? cap(p.title) : '', why, features: p.features.join(' '), ...typed } });
       if (!r.ok) continue;
       for (const m of p.marks) t.links.link(r.id, m, 'provokes');
       t.gaps.open(r.id, 'to maker');
@@ -148,7 +152,11 @@ export function keep(t, id) {
   return t.together(() => {
     let by = null;
     if (s.act === 'link') {
-      const r = t.links.link(s.subjects[0], s.subjects[1], 'resonates', null, { note: s.mark.why || '' });
+      // A typed link (the provider named a kind the app knows) is made as that kind, with its label;
+      // a relation goes through the rule that draws the first thought. Without a kind: resonates.
+      const kind = s.mark.linkKind || 'resonates';
+      const rule = kind === 'relation' ? t.places.of(s.subjects[0]).find((p) => p.rule)?.rule : null;
+      const r = t.links.link(s.subjects[0], s.subjects[1], kind, s.mark.linkKind ? s.mark.label || null : null, { note: s.mark.why || '', ...(rule ? { rule } : {}) });
       if (!r.ok) return r;
       by = r.id;
     } else {

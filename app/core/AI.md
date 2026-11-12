@@ -41,12 +41,19 @@ for its own learning: it is stored on the suggestion and handed back with the ve
 |---|---|---|
 | `embed` | `{ items }` | `{ vectors }` (binary layout below). Batched: callers' items are joined and the vectors split back. |
 | `search` | `{ query, items, most?, vectors? }` | `{ hits: [{ id, score }] }`, best first |
-| `link` | `{ items, most?, vectors? }` | `{ links: [{ from, to, score, why?, words?, features? }] }` |
+| `link` | `{ items, most?, vectors? }` | `{ links: [{ from, to, score, why?, words?, features?, kind?, label? }] }`; `kind` and `label` (1.0.1): see Typed links |
 | `group` | `{ items, most?, vectors? }` | `{ groups: [{ marks (2+ ids), score, title?, why?, words?, features? }] }` |
 | `label` | `{ items }` | `{ title, score }` |
-| `judge` | `{ act ('link' \| 'group' \| 'label' \| 'gap'), items, says?, features? }` | `{ score, why? }`: how likely the maker is to keep it |
+| `judge` | `{ act ('link' \| 'group' \| 'label' \| 'gap' \| 'assign'), items, says?, features? }` | `{ score, why? }`: how likely the maker is to keep it |
 | `suggest` | `{ items, most? }` | `{ suggestions: [{ act, marks, says, score, title?, direction?, why?, features? }] }`: finished suggestions of any kind |
 | `gap` | `{ items, most? }` | `{ gaps: [{ mark, direction ('to world' \| 'from world' \| 'to maker'), says, score, why?, features? }] }` |
+| `assign` (1.0.1) | `{ items, targets: [{ id, kind ('group' \| 'tag'), title?, items? }], most? }` | `{ assignments: [{ item, target, score, why?, features? }] }`: which existing group or tag each mark belongs in, best first; only ids it was handed |
+
+**Typed links.** A `link` result may name a link `kind` the app knows (`t.links.kinds()`: `relation`
+for a Russell arrow, a kind a plugin declared such as `cites`) and a `label` (its words, such as
+`proves`). Keep then makes that link (a relation through the rule that draws the first mark) rather
+than a bare `resonates`; a kind the app does not know is dropped, and Keep behaves as before.
+Additions in 1.0.1 (`assign`, `kind`/`label`, the `assign` act) leave every version-1 answer valid.
 
 The schemas themselves are data: `t.ai.schema(task)` gives `{ name, version, note, input, output }`
 as JSON Schema (plain JSON), so a provider in any language reads the same thing. The framework

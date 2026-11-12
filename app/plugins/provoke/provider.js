@@ -1,5 +1,5 @@
 // Provoke's reader as an AI provider (app/core/AI.md): the first provider, and every task's
-// fallback until our own system is there. It does `link`, `group`, `label` and `embed` with the
+// fallback until our own system is there. It does `link`, `group`, `label`, `assign` and `embed` with the
 // pure functions of reader.js, in the browser, on nothing but the words it is handed. It learns
 // from the maker's verdicts on its own suggestions (ctx.verdicts(): their features and whether
 // they were kept), as Provoke did before it was a provider.
@@ -42,7 +42,7 @@ export function provider() {
   };
   const most = (input, list) => list.slice(0, input.most || list.length);
   return {
-    id: ID, name: 'Provoke reader', version: VERSION, tasks: ['link', 'group', 'label', 'embed'],
+    id: ID, name: 'Provoke reader', version: VERSION, tasks: ['link', 'group', 'label', 'assign', 'embed'],
     hints: { where: 'local', runs: 'main', speed: 'fast', memory: 20, fallback: true },
     run: async (task, input, ctx) => {
       if (task === 'link' || task === 'group') {
@@ -59,6 +59,7 @@ export function provider() {
         const words = label(all, vecs, df, surface, all.length, 2);
         return words.length ? { title: words.join(' and '), score: 0.5 } : { title: input.items[0]?.text.split('\n')[0].slice(0, 40) || 'Together', score: 0.1 };
       }
+      if (task === 'assign') return { assignments: most(input, assign(input)) };
       if (task === 'embed') {
         const { vecs } = vectors(input.items);
         const data = new Float32Array(input.items.length * DIM);
@@ -72,4 +73,25 @@ export function provider() {
       throw new Error(`Provoke's reader does not do ${task}`);
     },
   };
+}
+
+// assign: each item to the target whose words (its title and the marks already in it) are most
+// like its own, when they are alike at all; best first.
+const cosine = (a, b) => { let s = 0; for (const [f, x] of a) { const y = b.get(f); if (y) s += x * y; } return s; };
+export function assign(input, { least = 0.12 } = {}) {
+  const targetText = (t) => [t.title || '', ...(t.items || []).map((x) => x.text)].join('\n');
+  const docs = [...input.items.map((x) => ({ text: x.text })), ...input.targets.map((t) => ({ text: targetText(t) }))];
+  const { vecs } = vectors(docs);
+  const n = input.items.length;
+  const out = [];
+  input.items.forEach((x, i) => {
+    let best = null;
+    input.targets.forEach((t, j) => {
+      if ((t.items || []).some((m) => m.id === x.id)) return; // already in it
+      const score = cosine(vecs[i], vecs[n + j]);
+      if (score >= least && (!best || score > best.score)) best = { item: x.id, target: t.id, score: Math.min(1, +score.toFixed(4)) };
+    });
+    if (best) out.push(best);
+  });
+  return out.sort((a, b) => b.score - a.score);
 }

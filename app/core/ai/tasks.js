@@ -8,6 +8,8 @@
 
 // Readers' directions for a gap (KERNEL.md), repeated here so the schema is self-contained.
 const DIRECTIONS = ['to world', 'from world', 'to maker'];
+// What a suggestion proposes. Grows by additions (assign came in 1.0.1).
+const ACTS = ['link', 'group', 'label', 'gap', 'assign'];
 
 const id = { type: 'string', minLength: 1 };
 const score = { type: 'number', minimum: 0, maximum: 1 };
@@ -53,7 +55,9 @@ export const TASKS = Object.freeze({
     input: { type: 'object', required: ['items'], properties: { items, most, vectors: VECTORS } },
     accepts: withVectors,
     output: { type: 'object', required: ['links'], properties: { links: { type: 'array', items: { type: 'object', required: ['from', 'to', 'score'],
-      properties: { from: id, to: id, score, why: words, words: { type: 'array', items: words }, features } } } } },
+      // kind and label (added in 1.0.1, optional): a link kind the app knows (t.links.kinds()) and its
+      // label, so Keep makes that link (a Russell relation, a Proust arrow) rather than a bare one.
+      properties: { from: id, to: id, score, why: words, words: { type: 'array', items: words }, features, kind: { type: 'string', minLength: 1 }, label: words } } } } },
   },
   group: {
     version: 1, note: 'handfuls of marks that belong together, each with a name',
@@ -69,14 +73,14 @@ export const TASKS = Object.freeze({
   },
   judge: {
     version: 1, note: 'how likely the maker is to keep a suggestion',
-    input: { type: 'object', required: ['act', 'items'], properties: { act: { type: 'string', enum: ['link', 'group', 'label', 'gap'] }, items, says: words, features } },
+    input: { type: 'object', required: ['act', 'items'], properties: { act: { type: 'string', enum: ACTS }, items, says: words, features } },
     output: { type: 'object', required: ['score'], properties: { score, why: words } },
   },
   suggest: {
     version: 1, note: 'finished suggestions of any kind, for the maker to keep or refuse',
     input: { type: 'object', required: ['items'], properties: { items, most } },
     output: { type: 'object', required: ['suggestions'], properties: { suggestions: { type: 'array', items: { type: 'object', required: ['act', 'marks', 'says', 'score'],
-      properties: { act: { type: 'string', enum: ['link', 'group', 'label', 'gap'] }, marks: { type: 'array', items: id, minItems: 1 }, says: { type: 'string', minLength: 1 },
+      properties: { act: { type: 'string', enum: ACTS }, marks: { type: 'array', items: id, minItems: 1 }, says: { type: 'string', minLength: 1 },
         title: words, direction: { type: 'string', enum: DIRECTIONS }, why: words, score, features } } } } },
   },
   gap: {
@@ -85,6 +89,20 @@ export const TASKS = Object.freeze({
     output: { type: 'object', required: ['gaps'], properties: { gaps: { type: 'array', items: { type: 'object', required: ['mark', 'direction', 'says', 'score'],
       properties: { mark: id, direction: { type: 'string', enum: DIRECTIONS }, says: { type: 'string', minLength: 1 }, why: words, score, features } } } } },
   },
+  assign: {
+    version: 1, note: 'which existing group or tag each mark belongs in',
+    input: { type: 'object', required: ['items', 'targets'], properties: { items, most,
+      // What a mark may be put in: an existing group or tag, with its name and (optionally) the marks already in it.
+      targets: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'kind'], properties: { id, kind: { type: 'string', enum: ['group', 'tag'] }, title: words, items } } } } },
+    output: { type: 'object', required: ['assignments'], properties: { assignments: { type: 'array', items: { type: 'object', required: ['item', 'target', 'score'],
+      properties: { item: id, target: id, score, why: words, features } } } } },
+    check: (input, output) => {
+      const items = new Set(input.items.map((x) => x.id));
+      const targets = new Set(input.targets.map((x) => x.id));
+      const bad = output.assignments.find((a) => !items.has(a.item) || !targets.has(a.target));
+      return !bad || `${bad.item} → ${bad.target} names an item or target it was not handed`;
+    },
+  },
 });
 
 // Speed budgets the evaluation harness holds each task to, per call of `items` marks (ms per
@@ -92,6 +110,7 @@ export const TASKS = Object.freeze({
 export const BUDGETS = Object.freeze({
   embed: { start: 50, perItem: 2 }, search: { start: 50, perItem: 1 }, link: { start: 50, perItem: 2 }, group: { start: 50, perItem: 2 },
   label: { start: 50, perItem: 1 }, judge: { start: 20, perItem: 1 }, suggest: { start: 100, perItem: 3 }, gap: { start: 50, perItem: 2 },
+  assign: { start: 50, perItem: 2 },
 });
 
 // Two tiers of speed budget per task, measured warm (after one call that loads): `interactive`
