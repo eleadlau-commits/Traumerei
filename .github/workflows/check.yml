@@ -33,6 +33,8 @@ jobs:
           fi
       - name: Run all tests
         run: python build.py test
+      - name: Tooling tests (release, pack-plugin)
+        run: python -m unittest discover -s tools/tests -t .
       - name: The .traum guide covers every ontology and kind
         run: node app/plugins/roomfile/tests/guide.mjs
       - name: Every template room lands
