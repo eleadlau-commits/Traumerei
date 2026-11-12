@@ -70,6 +70,8 @@ pile asks for them.
 
 ## For developers
 
+How the code is laid out, and which contract each part follows: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Versions: [CHANGELOG.md](CHANGELOG.md).
+
 Träumerei is built with **Folio**.
 Every pull request runs **Check pull request** (`.github/workflows/check.yml`): all the tests
 (`python build.py test`), then a build of the one-file page, then the speed budgets on it
