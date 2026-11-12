@@ -61,7 +61,8 @@ export default class World extends Feature {
       lib,                                          // the rules, by module (lib.js)
       formats,                                      // the file formats plugins add (formats.js)
       get world() { return w.world; },              // the world itself (model.js)
-      load: () => { w.world = loadWorld(w.storage.get(KEY)); w.log = M.loadLog(w.storage.get(LOG)); return w.world; },
+      // (A change not yet written down is written first, so reading afresh never loses it.)
+      load: () => { w.flush(); w.world = loadWorld(w.storage.get(KEY)); w.log = M.loadLog(w.storage.get(LOG)); return w.world; },
       begin: () => w.begin(),
       save: () => w.save(),
       settled: () => w.snap() === w.lastSnap,
@@ -197,11 +198,15 @@ export default class World extends Feature {
     this.last = next;
   }
 
-  write() { this.storage.set(KEY, this.world); this.storage.set(LOG, this.log); }
+  write() { this.unwritten = false; this.storage.set(KEY, this.world); this.storage.set(LOG, this.log); }
+
+  // A write waiting in writeSoon done now (before the world is read afresh from storage).
+  flush() { if (!this.unwritten) return; clearTimeout(this.saveTimer); this.write(); this.emit('world:saved'); }
 
   // Written down in a moment; a later call takes the place of an earlier one. say: then sends
   // 'world:saved' (a quiet "Saved" shows).
   writeSoon(say) {
+    this.unwritten = true;
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => { this.write(); if (say) this.emit('world:saved'); }, 250);
   }

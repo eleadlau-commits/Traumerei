@@ -1,0 +1,7 @@
+/* Templates: layout only (the look is Folio's: panel, sheet, shade, pick, word). */
+
+/* The chooser over the whole screen, Home's included, where there is no rail or dock. */
+.templates-layer { position: fixed; inset: 0; z-index: 30; --canvas-left: 0px; --canvas-right: 0px; }
+.templates-list { display: grid; }
+.templates-pick { display: grid; gap: 2px; width: 100%; text-align: left; }
+.templates-sheet { z-index: 21; }
