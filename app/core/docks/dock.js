@@ -79,7 +79,10 @@ export class Dock {
   // kind: a quiet word above the title ("Source"). beforeClose(): true (or a promise of true) when
   // it may close. onClose(): it closed. Resolves with { close, setTitle, setKind, open } or null
   // when what the tab held would not close.
-  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null } = {}) {
+  // behind: true opens it without taking the front from what shows there now (a room's Loose tab,
+  // opened on entering, leaves the Desk in front when the person had it there).
+  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null, behind = false } = {}) {
+    const before = this.visible ? this.front : null;
     const there = this.held.find((x) => x.tab === tab);
     if (there && !await this.closeOne(there)) return null;
     if (this.held.some((x) => x.tab === tab)) return null; // something else opened there meanwhile
@@ -87,7 +90,7 @@ export class Dock {
     const shown = { key, tab, kind, title, label, page, beforeClose, onClose };
     this.held.push(shown);
     this.body.append(page);
-    this.front = shown;
+    this.front = behind && before && this.held.includes(before) ? before : shown;
     this.tucked = false;
     this.root.hidden = false;
     this.draw();

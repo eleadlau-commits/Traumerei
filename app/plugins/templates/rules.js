@@ -161,7 +161,7 @@ export function sample(now) {
     '4. Give it a shape when the pile asks for one. This room is a Russell tree, because finishing is a question about parts. Try another shape in the rail: the thoughts stay the same.',
     '5. Say when you will be back (Ctrl+Alt+R). Step 6 has a return: it comes back tomorrow morning, and nothing nags before then.',
     '6. Work from the desk. Open it (Ctrl+Alt+D): this gap is there, with the other one. Choose this thought and press Ctrl+Alt+G to close it.',
-    '7. When nothing is open, let it leave: export the room from ⋯ More at the foot of the left rail. Then close this last gap, and the room is finished.',
+    '7. When nothing is open, let it leave: export the room from ⋯ More in the room, or press Ctrl+Shift+E. Then close this last gap, and the room is finished.',
   ];
   const marks = [
     { id: 'room', kind: 'room', name: 'Learn Träumerei: done when nothing here is open', fields: { mode: 'russell', ...made(now, 0) } },
