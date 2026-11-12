@@ -12,6 +12,7 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-opener = "2"
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 # The same versions Tauri uses, so its WebView2 handle has the types we call.

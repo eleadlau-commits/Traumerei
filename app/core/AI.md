@@ -261,6 +261,26 @@ starts, and the bridge talks to it.
 The desktop shell (Tauri) is where engines and sidecars run; the web copy gets JS and WebAssembly
 providers only.
 
+## Sidecars: a program a plugin brings
+
+A plugin may bring its own program to run beside the desktop app (an engine for a model). It
+declares it in its plugin block and says `sidecar` in its `needs`:
+
+```json
+"sidecar": { "program": "engine.exe", "url": "https://…/engine.exe", "bytes": 12345678,
+             "checksum": "sha256:<64 hex digits>", "args": ["--port", "{port}", "--models", "{store}"], "idle": 300 }
+```
+
+`t.ai.sidecar` is then `{ start(), stop(), running, port, provider(o) }` (`null` without a
+declaration). `provider({ name, version, tasks, hints })` is a provider (id: the plugin's) that
+speaks the HTTP bridge to it and starts it when first needed; add it with `t.slots.providers.add`.
+The first time, the person is asked **once per plugin**, with the program's size and where it comes
+from; then it is downloaded into the plugin's store (`t.store`), started by the shell
+(`desktop/src-tauri/src/sidecar.rs`) only if its file matches the checksum, on a free port on
+127.0.0.1 (`{port}`; `{store}` is the plugin's folder), with no window. It stops after `idle`
+seconds unused (300 by default), when the person revokes it in Settings → AI, and when the app
+closes. Nothing of this runs on the web copy: there a provider uses a worker (WebAssembly).
+
 ## Settings → AI
 
 Lists the tasks, the provider chosen for each and the ones it falls back to, the cloud switch,

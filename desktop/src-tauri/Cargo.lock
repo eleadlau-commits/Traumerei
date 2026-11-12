@@ -3958,6 +3958,7 @@ dependencies = [
 name = "traumerei"
 version = "1.0.1"
 dependencies = [
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

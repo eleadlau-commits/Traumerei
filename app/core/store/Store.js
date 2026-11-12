@@ -19,6 +19,8 @@ export default class Store extends Feature {
     const store = makeStore({ backend, area: (id) => this.app.storage.area(`store.${id}.`), quota: () => QUOTA, ask: (o) => this.ask(o) });
     this.provide('store', Object.freeze({
       for: (id) => store.for(id),
+      // For the app's own features only (never handed to a plugin): a download it already asked the person about.
+      trusted: (id) => store.for(id, { trusted: true }),
       backend: backend.name,
       // For Settings → Plugins: what a plugin keeps, and taking it all away.
       used: async (id) => { try { return await store.for(id).files.used(); } catch { return 0; } },

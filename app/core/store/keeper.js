@@ -29,7 +29,8 @@ export const size = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` 
 export function makeStore({ backend, area, quota = () => QUOTA, ask = async () => false, fetcher = (...a) => globalThis.fetch(...a) }) {
   const name = (n) => { if (!NAME.test(String(n))) throw new Error(`"${n}" isn't a file name a plugin may use (letters, digits, dot, dash, underscore)`); return String(n); };
   return {
-    for(id) {
+    // trusted: the app's own (the sidecar launcher), which may say it asked the person already.
+    for(id, { trusted = false } = {}) {
       if (!ID.test(String(id))) throw new Error(`"${id}" isn't a plugin id`);
       const small = area(id);
       const limit = () => quota(id);
@@ -46,14 +47,14 @@ export function makeStore({ backend, area, quota = () => QUOTA, ask = async () =
         // A large file (a model) from the web into the store, the first time it is needed. The
         // person is asked first, with its size; a file already there at that size is kept.
         // Resolves with { ok: true, bytes, kept? } or { ok: false, reason }.
-        async download(url, n, { bytes, label = '', signal = null, progress = () => {} } = {}) {
+        async download(url, n, { bytes, label = '', signal = null, progress = () => {}, asked = false } = {}) {
           n = name(n);
           if (!/^https:\/\//.test(String(url))) return { ok: false, reason: 'A download must come from an https address' };
           if (!(bytes > 0)) return { ok: false, reason: 'Say how large the file is, so the person can be asked' };
           const have = (await list()).find((f) => f.name === n);
           if (have && have.bytes === bytes) return { ok: true, bytes, kept: true };
           if ((await used()) - (have?.bytes || 0) + bytes > limit()) return { ok: false, reason: `It needs ${size(bytes)}, more than this plugin may keep (${size(limit())})` };
-          if (!(await ask({ id, name: n, label: label || n, bytes }))) return { ok: false, reason: 'Not now' };
+          if (!(trusted && asked) && !(await ask({ id, name: n, label: label || n, bytes }))) return { ok: false, reason: 'Not now' };
           let got = 0;
           try {
             const res = await fetcher(url, { signal });

@@ -11,6 +11,7 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+mod sidecar;
 mod store;
 
 fn main() {
@@ -30,16 +31,24 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(Opened(Mutex::new(started_with)))
         .manage(Listening(Mutex::new(None)))
+        .manage(sidecar::Sidecars::default())
         .invoke_handler(tauri::generate_handler![save_file, take_opened, open_link, sign_in_port, sign_in_wait,
-            store_write, store_read, store_list, store_delete, store_clear])
+            store_write, store_read, store_list, store_delete, store_clear,
+            sidecar_start, sidecar_stop, sidecar_running])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 quiet_webview(&window);
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("Träumerei could not start");
+        .build(tauri::generate_context!())
+        .expect("Träumerei could not start")
+        // A plugin's program never outlives the app.
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                app.state::<sidecar::Sidecars>().stop_all();
+            }
+        });
 }
 
 /// Room files opened from Windows and not yet taken by the page.
@@ -187,6 +196,28 @@ fn store_delete(app: tauri::AppHandle, plugin: String, name: String) -> Result<b
 #[tauri::command]
 fn store_clear(app: tauri::AppHandle, plugin: String) -> Result<(), String> {
     store::clear(&store_root(&app)?, &plugin)
+}
+
+/// The page's sidecars (app/core/ai/sidecar.js): starts the plugin's program from its folder once
+/// its checksum matches, on a free port; answers the port (the running one's, if it runs).
+#[tauri::command]
+async fn sidecar_start(app: tauri::AppHandle, plugin: String, program: String, checksum: String, args: Vec<String>) -> Result<u16, String> {
+    let root = store_root(&app)?;
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || handle.state::<sidecar::Sidecars>().start(&root, &plugin, &program, &checksum, &args))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn sidecar_stop(sidecars: tauri::State<sidecar::Sidecars>, plugin: String) -> bool {
+    sidecars.stop(&plugin)
+}
+
+/// (plugin id, port) for each program running now.
+#[tauri::command]
+fn sidecar_running(sidecars: tauri::State<sidecar::Sidecars>) -> Vec<(String, u16)> {
+    sidecars.running()
 }
 
 /// Turns off WebView2's browser accelerator keys, its own right-click menu and its status bar.
