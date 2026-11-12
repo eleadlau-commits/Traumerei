@@ -18,6 +18,9 @@ the plugin API (`app/core/API.md`); the compiler leaves out a plugin that reache
 app.json's `plugins.exempt` empty: when a plugin needs something the API lacks, add it to the API
 (v2.js, API.md and its test together).
 
+AI work goes through the AI framework: its contract is `app/core/AI.md` (tasks, providers,
+engines; the AI never changes the world, every result is a suggestion the maker keeps or refuses).
+
 ## The kernel
 
 The app is being rebuilt on six tables and eight laws (`app/core/KERNEL.md`): marks, places,

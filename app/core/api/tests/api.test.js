@@ -10,7 +10,7 @@ import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIO
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
-  top: ['app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'together', 'ui', 'version'],
+  top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'together', 'ui', 'version'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
@@ -19,7 +19,8 @@ const V2 = {
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'linkKinds', 'more', 'rules'],
+  slots: ['aiServices', 'carriers', 'commands', 'editor', 'engines', 'formats', 'kinds', 'linkKinds', 'more', 'providers', 'rules'],
+  ai: ['call', 'exam', 'first', 'item', 'providers', 'schema', 'tasks', 'verdict', 'verdicts'],
   ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'open', 'roundTrip', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };

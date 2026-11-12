@@ -181,6 +181,27 @@ A full mode (Joyce, Pessoa, Russell: trains, trays, its own drawing, gestures) g
 Each `add` returns a function that takes the item away again; everything a plugin adds is taken
 away when it is switched off.
 
+## AI
+
+`t.ai` is the AI framework (its contract: [`AI.md`](AI.md)). Any plugin can call a task; a
+provider plugs in as a slot. The AI never changes the world: a provider is handed reads only, and
+a result that would change anything reaches the maker as a suggestion to keep or refuse.
+
+| Member | What it is |
+|---|---|
+| `ai.tasks()` | `[{ name, version, note }]`: `embed`, `search`, `link`, `group`, `label`, `judge`, `suggest`, `gap` |
+| `ai.schema(task)` | the task's input and output schemas as plain data (JSON Schema), or `null` |
+| `ai.providers(task?)` | `[{ id, name, version, tasks, engine, hints }]`; for a task, in the order they are tried |
+| `ai.first(task, context?)` | the provider a call would try first now, or `null` |
+| `ai.call(task, input, opts?)` | a Promise of `{ ok: true, task, version, provider: { id, version }, output, ms, cached, tried }` or `{ ok: false, task, reason, tried }`; `opts` `{ context, priority, signal, part, only, fresh }` |
+| `ai.verdict(v)` | routes Keep or Refuse (`{ provider, version, task, kept, features?, suggestion? }`) to the provider that made the result |
+| `ai.verdicts(task?)` | the maker's verdicts, read from the suggestions in the tables |
+| `ai.exam({ provider, task, cases? })` | scores a provider (the evaluation harness) |
+| `ai.item(id)` | a mark as a task item `{ id, text, at? }` |
+| `slots.providers` | a provider: `add({ id, name, version, tasks, hints?, engine?, available?(), load?(), unload?(), run(task, input, ctx), verdict?(v) })` |
+| `slots.engines` | a runtime several providers share: `add({ id, name, kind?, memory?, gpu?, load?(), unload?() })` |
+| `slots.aiServices` | a replacement for the scheduler, cache or budget: `add({ id, replaces, make(defaults) })` |
+
 ## ui: docks, the frame and going somewhere
 
 | Member | What it is |

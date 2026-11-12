@@ -22,6 +22,8 @@ export const DIRECTIONS = Object.freeze(['to world', 'from world', 'to maker']);
 // The kinds of link there are (world/links.js says the same): part of, stands for, relation.
 export const LINK_KINDS = Object.freeze(['part of', 'stands for', 'relation']);
 
+import { aiFor } from './ai.js';
+
 const row = (o) => Object.freeze(o);
 const rows = (list) => Object.freeze(list.map(row));
 const landed = (id) => row({ ok: true, id });
@@ -541,6 +543,9 @@ export const SLOTS = {
   editor: 'room.editor',       // a section in the Editor for the chosen thing (room/README.md)
   formats: 'world.formats',    // a file format: rooms in and out, and edited as text (world/formats.js)
   carriers: 'world.carriers',  // a carrier of the six tables (the account's sync; world/README.md)
+  providers: 'ai.providers',   // an AI provider: does tasks (app/core/AI.md)
+  engines: 'ai.engines',       // a runtime several AI providers share (app/core/AI.md)
+  aiServices: 'ai.services',   // a replacement for the AI scheduler, cache or budget (app/core/AI.md)
 };
 
 // One dock for one plugin: what it opens is noted, so it all closes when the plugin is switched off.
@@ -567,9 +572,9 @@ function dockFor(dock, gone) {
 // world service; plugin: the Feature asking (its id owns what it adds, and it all goes when it is
 // switched off: gone(fn)); parts: surface(world.lib), made once; lib: world.lib; events: { on };
 // toast, files ({ open, save, arrived }, files.js), link(url), roundTrip(urlFor) (the browser and back), desktop (inside the desktop app), docks, keys, frame,
-// floors, service(name), room(): the app's, or null.
+// floors, service(name), room(), ai (the AI framework's service, app/core/ai): the app's, or null.
 export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, files = null, link = () => false, roundTrip = async () => null, desktop = false, docks = null, keys = null,
-  frame = null, floors = null, service = () => null, room = null, gone = () => {} }) {
+  frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
   if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
@@ -594,6 +599,8 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
     ...tables,
     slots,
+    // The AI framework (app/core/AI.md): tasks, the providers that do them, the maker's verdicts.
+    ai: aiFor(ai, tables, readsOf(tables)),
     // The screen a plugin may use, and what the person is looking at: the open room and the one
     // mark chosen there, as ids, or null.
     ui: Object.freeze({
