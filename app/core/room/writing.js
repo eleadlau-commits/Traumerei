@@ -138,6 +138,7 @@ export class Writing {
       return;
     }
     if (this.editing) return;
+    if (e.altKey && !mod && !e.shiftKey && e.code === 'KeyL' && this.roomId && this.sel && this.sel.kind !== 'many') { e.preventDefault(); this.followLink(this.sel.id); return; }
     if (this.shortcut(e, mod)) return;
     const kind = this.roomId && this.kindForKey(e); // a kind's own key: a passage's Alt+P (kinds.js)
     if (kind) {

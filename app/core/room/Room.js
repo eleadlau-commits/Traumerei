@@ -34,6 +34,7 @@ const OVER = {
   group: 'Click to choose · Double-click for the whole group · Right-click edits',
 };
 import { RoomView } from './view.js';
+import { RoomLinks, isPluginKind } from './linklayer.js';
 import { Writing } from './writing.js';
 import { Gestures } from './gestures.js';
 import { Bars } from './bars.js';
@@ -118,6 +119,11 @@ export default class Room extends Feature {
     this.on('world:modes', () => { if (this.roomId) { this.sel = null; this.drawRoom(); } }); // a mode came or went (a plugin)
     this.on('world:kinds', () => { this.drawKindKeys(live); if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
+    // A link of a plugin's kind made or taken away (the link hand, Links, Provoke): drawn now.
+    this.on('world:moments', ({ rows, undone }) => {
+      if (undone || !this.roomId || this.draft) return; // an undo draws the room itself
+      if (rows.some((r) => r.table === 'links' && isPluginKind((r.after || r.before)?.kind))) this.drawWorld();
+    });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone
       this.sel = null;
       this.draft = null;
@@ -478,4 +484,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Room, RoomView, Writing, Gestures, Bars, Twin, Kinds);
+mixIn(Room, RoomView, Writing, Gestures, Bars, Twin, Kinds, RoomLinks);
