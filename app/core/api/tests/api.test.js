@@ -20,7 +20,7 @@ const V2 = {
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['carriers', 'commands', 'editor', 'formats', 'kinds', 'linkKinds', 'more', 'rules'],
-  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'open', 'toast'],
+  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'open', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.

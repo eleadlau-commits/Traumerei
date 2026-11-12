@@ -35,6 +35,17 @@ const { el } = ui;
 const SDK = 'https://www.gstatic.com/firebasejs/11.0.2/';
 const UPLOAD_DELAY = 1500; // ms after the last change before it's sent
 
+const RELEASES_API = 'https://api.github.com/repos/eleadlau-commits/Traumerei/releases/latest';
+const RELEASES_PAGE = 'https://github.com/eleadlau-commits/Traumerei/releases/latest';
+
+// Whether version a (1.2.3) is newer than b.
+export function newerThan(a, b) {
+  const n = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
+  const [x, y] = [n(a), n(b)];
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+}
+
 export default class Account extends Feature {
   start() {
     this.user = null;
@@ -45,13 +56,42 @@ export default class Account extends Feature {
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
     this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     const t = this.use('traumerei')?.connect(this);
+    this.t = t;
+    this.desktop = !!t?.app.desktop; // the desktop app: no sign-in (Google's popup can't open there), an update check instead
     this.moments = t?.moments || null; // the moments table: the world travels as its rows
     // The account is a carrier of the six tables (Law 8): every change, as the moments log's rows.
     t?.slots.carriers.add({ id: 'account', name: 'Your account', moves: 'moments' });
     if (!this.storage.get('device')) this.storage.set('device', Math.random().toString(36).slice(2, 10));
     this.app.storage.watch(() => this.changed());
     this.listenTo(window, 'pagehide', () => this.flush());
-    if (firebaseConfig && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
+    if (firebaseConfig && !this.desktop && this.storage.get('signedIn', false)) this.connect().catch((e) => this.fail(e));
+    if (this.desktop) this.checkForUpdate();
+  }
+
+  // ---- Updates (the desktop app) ----
+
+  // Once a day, asks GitHub for the latest Release; a newer one is said once, as a toast, and
+  // stays on the account page with a link to download it. Nothing is installed by itself.
+  async checkForUpdate() {
+    const day = 24 * 60 * 60 * 1000;
+    if (Date.now() - this.storage.get('checkedAt', 0) > day) {
+      try {
+        const r = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } });
+        if (r.ok) { const j = await r.json(); this.storage.set('latest', String(j.tag_name || '').replace(/^v/, '')); this.storage.set('checkedAt', Date.now()); }
+      } catch { /* offline: try again next start */ }
+    }
+    const latest = this.newer();
+    if (latest && this.storage.get('told') !== latest) {
+      this.storage.set('told', latest);
+      this.t.ui.toast(`Träumerei ${latest} is out. Account has the link.`);
+    }
+    if (latest) this.setState(this.state);
+  }
+
+  // The latest Release's version when it is newer than this app's, else null.
+  newer() {
+    const latest = this.storage.get('latest', '');
+    return latest && newerThan(latest, this.t?.app.version || '0') ? latest : null;
   }
 
   name() {
@@ -222,6 +262,16 @@ export default class Account extends Feature {
   sections() {
     const busy = this.state === 'busy';
     const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), el('span', {}, value));
+    if (this.desktop) {
+      const latest = this.newer();
+      return [
+        { id: 'account-saving', title: 'Saving', icon: 'refresh', body: [kv('Saved on', 'This computer'),
+          el('p', { class: 'hint' }, 'The desktop app keeps your rooms and settings on this computer. Export a room to keep a copy elsewhere.')] },
+        { id: 'account-version', title: 'Version', icon: 'account', body: [kv('This app', this.t.app.version),
+          latest ? el('p', { class: 'hint' }, `Träumerei ${latest} is out. Download it and run the installer; your rooms stay.`) : null,
+          latest ? el('div', {}, el('button', { type: 'button', class: 'btn', onclick: () => this.t.ui.link(RELEASES_PAGE) }, `Download ${latest}`)) : null].filter(Boolean) },
+      ];
+    }
     if (!firebaseConfig) return [{ id: 'account-sign-in', title: 'Sign in', icon: 'account', body: [el('p', {}, "Accounts aren't set up yet.")] }];
     if (!this.user) {
       return [
