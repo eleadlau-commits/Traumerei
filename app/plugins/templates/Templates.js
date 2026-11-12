@@ -1,7 +1,8 @@
 // Templates: where a first run starts. The first time the app opens with nothing written, a
 // chooser sits over Home: four rooms that start in a shape people already know (a to-do list, an
 // essay, reading notes, a weekly plan), each of which runs out within the first hour where one of
-// the primitives takes over, or Start empty. A choice lands the room on the first floor and goes
+// the primitives takes over; a sample room (the first hour in seven steps, two left open); or
+// Start empty. A choice lands the room on the first floor and goes
 // into it. Afterwards the chooser is under ⋯ More (Templates) and is a command.
 //
 // The rooms are .traum text (rules.js), landed through t.carriers: a template adds no primitive,
@@ -14,7 +15,7 @@
 // Saved data: 'seen' → true once the chooser has been answered (a template, or Start empty).
 
 import { Feature, ui } from 'folio';
-import { TEMPLATES, fresh } from './rules.js';
+import { TEMPLATES, SAMPLE, fresh } from './rules.js';
 
 const { el } = ui;
 
@@ -47,7 +48,8 @@ export default class Templates extends Feature {
     const sheet = el('div', { class: 'panel sheet templates-sheet', role: 'dialog', 'aria-label': 'Start from a template' },
       el('div', { class: 'sub-head' }, 'Start from something familiar'),
       el('p', { class: 'hint' }, 'Each is a ready room in a shape you know. Within the first hour it runs out, and Träumerei takes over: that is the point of it.'),
-      el('div', { class: 'templates-list' }, TEMPLATES.map((tpl) => row(tpl.name, tpl.note, () => this.choose(tpl)))),
+      el('div', { class: 'templates-list' }, TEMPLATES.map((tpl) => row(tpl.name, tpl.note, () => this.choose(tpl))),
+        el('div', { class: 'pick-rule' }), row(SAMPLE.name, SAMPLE.note, () => this.choose(SAMPLE))),
       el('div', { class: 'sheet-words' },
         el('button', { type: 'button', class: 'word', onclick: () => this.close(true) }, 'Start empty'),
         el('span', { class: 'sheet-keys' }, 'Esc')));
