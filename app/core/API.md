@@ -198,6 +198,7 @@ a result that would change anything reaches the maker as a suggestion to keep or
 | `ai.verdicts(task?)` | the maker's verdicts, read from the suggestions in the tables |
 | `ai.exam({ provider, task, cases? })` | scores a provider (the evaluation harness) |
 | `ai.item(id)` | a mark as a task item `{ id, text, at? }` |
+| `ai.bridges` | `worker(o)`, `http(o)`, `openai(o)`: ready-made providers for a Web Worker (JS or WebAssembly), a local connection (a sidecar) and an OpenAI-style server (AI.md, Bridges) |
 | `slots.providers` | a provider: `add({ id, name, version, tasks, hints?, engine?, available?(), load?(), unload?(), run(task, input, ctx), verdict?(v) })` |
 | `slots.engines` | a runtime several providers share: `add({ id, name, kind?, memory?, gpu?, load?(), unload?() })` |
 | `slots.aiServices` | a replacement for the scheduler, cache or budget: `add({ id, replaces, make(defaults) })` |

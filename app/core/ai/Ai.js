@@ -7,10 +7,12 @@
 // Saved data (this feature's storage): `choice` { [task]: provider id }, `cloud` (false),
 // `blocked` [room ids], `allowed` [provider ids], `memory` (MB, 2048).
 
-import { Feature } from 'folio';
+import { Feature, ui } from 'folio';
 import { makeAi } from './service.js';
 import { TASKS, schemaOf } from './tasks.js';
 import { exam, verdictCases } from './exam.js';
+import * as bridges from './bridges.js';
+import { pane } from './settings.js';
 
 export const SLOTS = Object.freeze({ providers: 'ai.providers', engines: 'ai.engines', services: 'ai.services' });
 
@@ -30,7 +32,17 @@ export default class Ai extends Feature {
       allow: (id, on = true) => toggle('allowed', id, on), allowed: (id) => s.get('allowed', []).includes(id),
       setMemory: (mb) => s.set('memory', Math.max(256, Number(mb) || 2048)), memory: () => Number(s.get('memory', 2048)) || 2048,
     });
-    this.provide('ai', serve({ slot: (name) => this.slot(name), choices, desktop: !!globalThis.__TAURI_INTERNALS__ }));
+    const ai = serve({ slot: (name) => this.slot(name), choices, desktop: !!globalThis.__TAURI_INTERNALS__ });
+    this.provide('ai', ai);
+    // Settings → AI. The rooms come from the world service (its README), when it is there.
+    const world = this.use('world');
+    const rooms = () => { const w = world?.world; const m = world?.lib?.model; return w && m ? m.children(w, null).filter((r) => m.kindOf(r) === 'room').map((r) => ({ id: r.id, name: r.name })) : []; };
+    this.add('settings', { id: 'ai', title: 'AI', order: 79, render: () => {
+      const box = ui.el('div', {});
+      const draw = () => box.replaceChildren(pane({ ai, rooms, el: ui.el, redraw: draw }));
+      draw();
+      return box;
+    } });
   }
 }
 
@@ -42,7 +54,8 @@ export function serve({ slot, choices, desktop = false, now }) {
     providers: items(SLOTS.providers), engines: items(SLOTS.engines), services: items(SLOTS.services), desktop, now,
     settings: { choice: choices.chosen, cloud: choices.cloud, blocked: choices.blocked, allowed: choices.allowed, memory: choices.memory },
   });
-  return Object.freeze({ ...ai, tasks: () => Object.keys(TASKS), schema: schemaOf, slots: SLOTS, choices, exam: (o) => exam(ai, o), verdictCases });
+  return Object.freeze({ ...ai, tasks: () => Object.keys(TASKS), schema: schemaOf, slots: SLOTS, choices, exam: (o) => exam(ai, o), verdictCases,
+    bridges: Object.freeze({ worker: bridges.worker, http: bridges.http, openai: bridges.openai }) });
 }
 
 // Choices kept in memory, for tests and a host with no storage.
@@ -54,6 +67,6 @@ export function memoryChoices(start = {}) {
     setCloud: (on) => { s.cloud = !!on; }, cloud: () => s.cloud,
     block: (c, on = true) => toggle('blocked', c, on), blocked: (c) => s.blocked.includes(c),
     allow: (id, on = true) => toggle('allowed', id, on), allowed: (id) => s.allowed.includes(id),
-    setMemory: (mb) => { s.memory = mb; }, memory: () => s.memory,
+    setMemory: (mb) => { s.memory = Math.max(256, Number(mb) || 2048); }, memory: () => s.memory,
   };
 }

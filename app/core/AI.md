@@ -133,6 +133,7 @@ AbortSignal: a call cancelled before it starts never runs), `part(x)` (hears str
 | `verdicts(task?)` | the maker's verdicts, read from the tables (below), oldest first |
 | `exam({ provider, task, cases? })` | the evaluation harness (below) |
 | `item(id)` | a mark as a task item, `{ id, text, at? }`, or `null` |
+| `bridges` | `worker(o)`, `http(o)`, `openai(o)`: ready-made providers (Bridges, below) |
 
 Slots: `t.slots.providers`, `t.slots.engines`, `t.slots.aiServices`. Like every slot, what a
 plugin adds goes when it is switched off.
@@ -199,9 +200,28 @@ Three standard ways in. A provider with its own internal format translates at it
 harness counts that time in the task's budget.
 
 - **JS**: a plugin that adds a provider (above).
-- **WebAssembly**: Rust, C++, Go and others, run sandboxed in a worker.
-- **Sidecar process**: desktop only, a separate program talking over a local connection, with the
-  person's permission.
+- **WebAssembly** (Rust, C++, Go and others), or any heavy JS: `t.ai.bridges.worker({ id, version,
+  tasks, hints?, url | source })` makes a provider whose work runs sandboxed in a Web Worker
+  (the `.wasm` loads inside it, with its glue). The worker is started on `load()` and ended on
+  `unload()`, so the budget can give its room to another. **Protocol:** the page posts
+  `{ id, op: 'run', task, version, input }` and `{ id, op: 'cancel' }`; the worker answers
+  `{ id, part }` (any number, streamed), then `{ id, ok: true, output }` or `{ id, ok: false, reason }`.
+  Vectors are `Float32Array`s; the worker transfers its answers' buffers, the page's inputs are copied.
+- **Sidecar process** (desktop only, a separate program on a local connection, with the person's
+  permission): `t.ai.bridges.http({ id, version, tasks, url, hints? })` (`runs: 'sidecar'` by
+  default). **Protocol:** `POST <url>/traumerei/ai/v1/<task>` with JSON `{ version, input }`,
+  answered by JSON `{ output }` (2xx) or `{ reason }`; a vector's `data`, both ways, is written
+  `{ "float32": "<base64 of little-endian float32>" }`; `GET <url>/traumerei/ai/v1/health`
+  answering 2xx means available. The same bridge reaches any server that speaks it; one off this
+  machine must say `hints.where: 'remote'`.
+- **Engines on an OpenAI-style server** (Ollama, llama.cpp's server, …):
+  `t.ai.bridges.openai({ url, model, where? })` returns `{ provider, engine }` for `embed` through
+  `POST <url>/v1/embeddings`; add both (`t.slots.providers`, `t.slots.engines`). Providers for
+  other tasks on the same server name the same engine id.
+
+Starting a sidecar program from the desktop shell (spawning it and handing it a port) is the
+desktop app's part and comes with the first sidecar; until then a sidecar is a program the person
+starts, and the bridge talks to it.
 
 The desktop shell (Tauri) is where engines and sidecars run; the web copy gets JS and WebAssembly
 providers only.
