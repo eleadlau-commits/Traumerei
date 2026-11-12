@@ -1,7 +1,7 @@
 # The stress corpus (kernel phase 8)
 
 Thirty small plugins, each covering a slot or a mix no earlier plugin touched, written against
-[`API.md`](API.md) alone. They are the pressure that found the API's gaps before version 2 was
+[`API.md`](../app/core/API.md) alone. They are the pressure that found the API's gaps before version 2 was
 frozen, and now the **conformance suite** every later change must pass
 (`app/core/api/tests/corpus.test.js`, run by `python build.py test`). They all start off
 (`"starts": "off"`), waiting under More plugins in Settings → Plugins; switched on, one stays on.

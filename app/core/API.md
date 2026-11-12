@@ -29,7 +29,7 @@ List `"requires": ["api"]` in the plugin's feature.json, so it starts after the 
 out cleanly without it, and `"plugin": { "api": 2, … }`.
 
 **Version 2 is frozen** (end of kernel phase 8, after thirty plugins were written against this
-page alone: [`CORPUS.md`](CORPUS.md)). From now on it changes only by adding, never by renaming or
+page alone: [`docs/CORPUS.md`](../../docs/CORPUS.md)). From now on it changes only by adding, never by renaming or
 taking away. `tests/api.test.js` in `app/core/api/` holds this list and `tests/corpus.test.js`
 runs the thirty through the conformance suite, so an addition is made in three places at once:
 `v2.js`, this file and the test.
