@@ -321,7 +321,7 @@ export class Bars {
       listEl, add);
     const loose = (this.loose = { list: listEl, search, add, menu: add.querySelector('.room-loose-menu'), plus: add.querySelector('.room-loose-plus'), handle: null });
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
-    dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, beforeClose: () => { dock.toggle(); return false; },
+    dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, behind: true, beforeClose: () => { dock.toggle(); return false; },
       onClose: () => { if (this.loose === loose) { this.loose = null; this.looseQuery = ''; } } })
       .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
   }
