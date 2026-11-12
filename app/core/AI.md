@@ -90,7 +90,8 @@ verdicts(task?) (the maker's verdicts: this task's, or every task's with `null`)
 is `remote`); `runs` `main` | `worker` | `sidecar`; `speed` `fast` | `medium` | `slow`; `memory`
 in MB and `gpu` a share from 0 to 1 (for the budget; an engine's own figures count instead when
 the provider names one); `fallback` true for a provider that should be tried only after the
-others (Provoke's reader says so). New hints may be added.
+others (Provoke's reader says so); `tier` the lowest machine tier it needs (`every-pc`, `mid`,
+`gpu`; see Machine tier). New hints may be added.
 
 **An engine**: `{ id, name, kind? ('openai' for an OpenAI-style server), memory?, gpu?, load?(), unload?() }`.
 Providers that name it share one load and one place in the budget.
@@ -137,6 +138,7 @@ AbortSignal: a call cancelled before it starts never runs), `part(x)` (hears str
 | `verdicts(task?)` | the maker's verdicts, read from the tables (below), oldest first |
 | `exam({ provider, task, cases? })` | the evaluation harness (below) |
 | `item(id)` | a mark as a task item, `{ id, text, at? }`, or `null` |
+| `machine()` | this computer's tier: `{ tier, detected, chosen, cores, memory, gpu }` (Machine tier, below) |
 | `bridges` | `worker(o)`, `http(o)`, `openai(o)`: ready-made providers (Bridges, below) |
 
 Slots: `t.slots.providers`, `t.slots.engines`, `t.slots.aiServices`. Like every slot, what a
@@ -176,6 +178,23 @@ same shape: a cache `{ get(key), set(key, value) }`, a scheduler `{ run(job) →
 `{ provider, task, priority, signal, input, go(input) → Promise }`), a budget
 `{ acquire(holder) → Promise<{ ok, release() } | { ok: false, reason }> }`. The last one added wins.
 
+## Machine tier
+
+Some people have no GPU, and the core must work for them. At start the `ai` feature detects the
+computer's **tier**, lowest first:
+
+| Tier | What it is | What fits |
+|---|---|---|
+| `every-pc` | no usable GPU, or few cores or little memory | a small CPU embedder, keyword labels |
+| `mid` | 4 or more cores and 8 GB or more, no GPU | a 1 to 1.5 B labeller in the background |
+| `gpu` | as mid, with a WebGPU adapter that isn't a software fallback | everything |
+
+`t.ai.machine()` reads it (read-only): `tier` (what picking uses), `detected`, `chosen` (true when
+the person set it in Settings → AI, which wins), `cores`, `memory` (GB, as the browser rounds it),
+`gpu`. Until detection answers, the tier is `every-pc`. A provider with `hints.tier` above the
+machine's is passed over (`needs a gpu machine; this one is mid`). Our own system reads the tier to
+choose its size.
+
 ## Privacy policy
 
 - **Cloud providers are off by default.** A provider with `where: 'remote'` runs only once the
@@ -191,10 +210,15 @@ same shape: a cache `{ get(key), set(key, value) }`, a scheduler `{ run(job) →
 `t.ai.exam({ provider, task, cases })` scores a provider on an exam: `cases` is
 `[{ input, mark(output) → 0..1 }]`. For `judge`, without cases, the exam is the maker's own
 verdicts: a provider scores 1 on a case when its score falls on the side of the verdict (0.5 the
-line). Each call is held to the task's **speed budget** (`BUDGETS` in `tasks.js`: a fixed start
-plus a time per item, translation at the provider's edge included). The result is
-`{ provider, task, cases, score, ms: { mean, max }, over, failed, passed }`; a provider over budget
-fails, however well it scores. `compare` (in `exam.js`) runs two providers on one exam, so a new
+line). Each call is held to the task's **speed budget** (a fixed start plus a time per item,
+translation at the provider's edge included), in one of two **tiers** (`TIERS` in `tasks.js`):
+`interactive` for a call the person waits on (priority `now`; the figures of `BUDGETS`) and
+`background` for one nobody waits on (`soon`, `idle`; fifty times as long). Calls are measured
+**warm**: before the exam the first case runs once as the **load**, held apart to `LOAD_BUDGET`
+(3 s interactive, 30 s background), since loading a model once may be slow but answering may not.
+`exam({ provider, task, cases, tier? })` resolves with
+`{ provider, task, tier, cases, score, ms: { mean, max }, load: { ms, over }, over, failed, passed }`;
+a provider over budget, or over its load budget, fails, however well it scores. `compare` (in `exam.js`) runs two providers on one exam, so a new
 system can prove itself against the old one. The CI speed budgets (`tests/speed.mjs`) stay as
 they are; providers' exams are tests in their own feature.
 

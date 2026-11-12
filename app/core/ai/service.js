@@ -8,6 +8,7 @@
 // refuses.
 
 import { TASKS, invalid } from './tasks.js';
+import { fits } from './machine.js';
 
 // Our own system's id. It is every task's default once it is there.
 export const DEFAULT_SYSTEM = 'default';
@@ -123,13 +124,14 @@ export function makeBudget({ memory = () => 2048, gpu = () => 1 } = {}) {
 // providers(): the providers added (each { id, name?, version, tasks, hints?, engine?, available?(), load?(), unload?(), run(task, input, ctx), verdict?(v) });
 // engines(): the engines added ({ id, name?, kind?, memory?, gpu?, load?(), unload?() });
 // services(): replacements for { scheduler?, cache?, budget? }, the last one added for each wins;
-// settings: { choice(task) → provider id | null, cloud() → bool, blocked(context) → bool, allowed(providerId) → bool (a sidecar the person let run), memory() → MB };
+// settings: { choice(task) → provider id | null, cloud() → bool, blocked(context) → bool, allowed(providerId) → bool (a sidecar the person let run), memory() → MB, machine() → 'every-pc' | 'mid' | 'gpu' };
 // desktop: inside the desktop app; now(): the clock.
 export function makeAi({ providers = () => [], engines = () => [], services = () => [], settings = {}, desktop = false, now = () => Date.now() } = {}) {
   const choice = settings.choice || (() => null);
   const cloud = settings.cloud || (() => false);
   const blocked = settings.blocked || (() => false);
   const allowed = settings.allowed || (() => false);
+  const machine = settings.machine || (() => 'gpu');
   const defaults = { cache: makeCache(), scheduler: makeScheduler(), budget: makeBudget({ memory: settings.memory || (() => 2048) }) };
   const service = (name) => { const r = [...services()].reverse().find((s) => s.replaces === name); if (!r) return defaults[name]; if (!r.made) r.made = r.make(defaults); return r.made; };
 
@@ -140,6 +142,7 @@ export function makeAi({ providers = () => [], engines = () => [], services = ()
 
   // Why a provider may not run here, now, for this context (the privacy policy and permissions), or null.
   const barred = (p, context) => {
+    if (!fits(p.hints?.tier, machine())) return `needs a ${p.hints.tier} machine; this one is ${machine()}`;
     if (remote(p)) {
       if (!cloud()) return 'cloud providers are off (Settings → AI)';
       if (context == null) return 'a cloud provider needs to know whose room it reads';

@@ -20,7 +20,7 @@ const V2 = {
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['aiServices', 'carriers', 'commands', 'editor', 'engines', 'formats', 'kinds', 'linkKinds', 'more', 'providers', 'rules'],
-  ai: ['bridges', 'call', 'exam', 'first', 'item', 'providers', 'schema', 'tasks', 'verdict', 'verdicts'],
+  ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'tasks', 'verdict', 'verdicts'],
   ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'open', 'roundTrip', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };

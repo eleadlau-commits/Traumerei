@@ -7,6 +7,7 @@ The AI framework. Its contract, the one page everything else builds against, is
 - `service.js`: picking a provider with fallback, the privacy policy, and the three swappable
   services (scheduler, cache, budget). Pure: the tests run it as it is.
 - `exam.js`: the evaluation harness.
+- `machine.js`: detects the machine tier (every-pc, mid, gpu).
 - `bridges.js`: ready-made providers for a Web Worker, a local connection and an OpenAI-style server.
 - `settings.js`: Settings → AI.
 - `Ai.js`: the feature. Defines the slots `ai.providers`, `ai.engines`, `ai.services`, keeps the
@@ -23,7 +24,8 @@ use it directly.
 | `list(task?)`, `order(task)`, `first(task, context?)`, `barred(id, context?)` | the providers, the order they're tried in, the first that may run, why one may not |
 | `verdict(v)` | routes a verdict to its provider |
 | `tasks()`, `schema(task)` | the task names, one task's schemas as data |
-| `exam(o)`, `verdictCases(verdicts)` | the evaluation harness |
+| `exam(o)`, `verdictCases(verdicts)` | the evaluation harness (o.tier: interactive or background) |
+| `machine()` | the machine tier: `{ tier, detected, chosen, cores, memory, gpu }` |
 | `service(name)`, `defaults` | the scheduler, cache or budget in use; the built-in ones |
 | `choices` | the person's choices: `chosen`/`choose(task, id)`, `cloud`/`setCloud`, `blocked`/`block(room, on)`, `allowed`/`allow(id, on)`, `memory`/`setMemory` |
 | `slots` | the slot names |

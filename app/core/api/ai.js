@@ -29,6 +29,8 @@ export function aiFor(ai, tables, reads) {
   return Object.freeze({
     tasks: () => frozenList(ai ? ai.tasks().map((name) => row({ name, version: ai.schema(name).version, note: ai.schema(name).note })) : []),
     schema: (task) => (ai ? ai.schema(task) : null),
+    // How much AI this computer carries: { tier ('every-pc' | 'mid' | 'gpu'), detected, chosen, cores, memory, gpu }.
+    machine: () => (ai?.machine ? ai.machine() : row({ tier: 'every-pc', detected: 'every-pc', chosen: false, cores: null, memory: null, gpu: false })),
     providers: (task = null) => (ai ? ai.list(task) : frozenList([])),
     first: (task, context = null) => (ai ? ai.first(task, context) : null),
     call: (task, input, opts = {}) => (ai ? ai.call(task, input, { ...opts, reads, verdicts: (which = task) => verdicts(which) }) : none(task)),
@@ -36,10 +38,10 @@ export function aiFor(ai, tables, reads) {
     verdicts: (task = null) => frozenList(verdicts(task)),
     // Scores a provider on an exam (app/core/ai/exam.js): cases [{ input, mark(output) → 0..1 }];
     // for the judge task, without cases, the maker's own verdicts.
-    exam: ({ provider, task, cases = null }) => {
+    exam: ({ provider, task, cases = null, tier = 'interactive' }) => {
       if (!ai) return Promise.resolve(null);
       const list = cases || (task === 'judge' ? ai.verdictCases(verdicts()) : []);
-      return ai.exam({ provider, task, cases: list.map((c) => ({ ...c, opts: { reads, verdicts: () => verdicts(task), ...c.opts } })) });
+      return ai.exam({ provider, task, tier, cases: list.map((c) => ({ ...c, opts: { reads, verdicts: () => verdicts(task), ...c.opts } })) });
     },
     item,
     // Ready-made providers for the three bridges (app/core/ai/bridges.js): worker(o), http(o), openai(o).
