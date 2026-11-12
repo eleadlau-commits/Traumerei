@@ -1,7 +1,7 @@
 {
   "name": "Provoke",
   "description": "A reader: reads the open room and suggests links and groups, each a mark with an open gap for you to judge; Keep makes it, Refuse turns it down, and it learns from both (Ctrl+Alt+V).",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "Provoke.js",
   "styles": [
     "style.css"
