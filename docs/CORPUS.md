@@ -4,7 +4,10 @@ Thirty small plugins, each covering a slot or a mix no earlier plugin touched, w
 [`API.md`](../app/core/API.md) alone. They are the pressure that found the API's gaps before version 2 was
 frozen, and now the **conformance suite** every later change must pass
 (`app/core/api/tests/corpus.test.js`, run by `python build.py test`). They all start off
-(`"starts": "off"`), waiting under More plugins in Settings → Plugins; switched on, one stays on.
+(`"starts": "off"`). They are **not in the product**: `standalone.py` leaves every id in
+`tools/corpus.py` out of the web copy and the Windows app (`--corpus` keeps them in, for a look).
+Anyone who wants one packs it with `python build.py pack-plugin <id>` and imports the file in
+Settings → Plugins.
 
 | Slot | Plugins |
 |---|---|

@@ -15,6 +15,8 @@ version with `python build.py release <version>`.
   reader as the first provider.
 - First run opens on a chooser with four templates and a sample room.
 - `python build.py release <version>` and one app identifier, `app.traumerei.desktop`.
+- Plugins can be packed into one `.traumplug` file and imported in Settings → Plugins.
+- The stress corpus of test plugins is no longer in the app (pack and import one to try it).
 
 ## 1.0.0 (12 Nov 2026)
 

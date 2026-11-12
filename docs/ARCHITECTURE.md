@@ -19,8 +19,8 @@ Everything that can be switched off is a plugin in `app/plugins/`, made with
 `python build.py new-plugin <id>` and described in [`app/plugins/README.md`](../app/plugins/README.md).
 A plugin's `feature.json` has a `plugin` block (API version, oldest app version, what it adds,
 when it loads). `python build.py pack-plugin <id>` packs one into a single `.traumplug` file a
-person can import. The thirty stress plugins written to test the API are listed in
-[`CORPUS.md`](CORPUS.md).
+person can import. The stress plugins written to test the API are listed in [`CORPUS.md`](CORPUS.md); they
+stay in `app/plugins/` for the tests but are left out of the product (`tools/corpus.py`).
 
 ## Plugin API
 
