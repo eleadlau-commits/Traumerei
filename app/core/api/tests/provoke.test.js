@@ -205,3 +205,37 @@ test('provoke: a local model named in its settings becomes an embed provider, an
     assert.deepEqual([...new Set(asked)], ['http://localhost:11434/v1/embeddings']);
   } finally { globalThis.fetch = real; }
 });
+
+test('provoke: a link result with a kind the app knows is kept as that kind, with its label; an unknown kind stays a plain suggestion', async () => {
+  const { host, t, ids } = setup();
+  host.plug('kinds', (k) => k.slots.linkKinds.add({ kind: 'cites', name: 'Cites' }));
+  host.plug('default-system', (d) => d.slots.providers.add({ id: 'default', name: 'Our own system', version: '0.1', tasks: ['link'],
+    run: async () => ({ links: [{ from: ids[0], to: ids[9], score: 0.9, kind: 'cites', label: 'quotes' }, { from: ids[1], to: ids[10], score: 0.8, kind: 'no-such-kind' }] }) }));
+  await P.provoke(t, host.room);
+  const mine = P.suggestions(t).filter((s) => s.mark.by === 'default@0.1');
+  const typed = mine.find((s) => s.subjects.includes(ids[0]));
+  const plain = mine.find((s) => s.subjects.includes(ids[1]));
+  assert.equal(typed.mark.linkKind, 'cites');
+  assert.equal(plain.mark.linkKind, undefined);
+  const k = P.keep(t, typed.id);
+  assert.ok(k.ok, k.reason);
+  const made = t.links.get(k.by);
+  assert.equal(made.kind, 'cites');
+  assert.equal(made.label, 'quotes');
+  const k2 = P.keep(t, plain.id);
+  assert.equal(t.links.get(k2.by).kind, 'resonates');
+});
+
+test('provoke: the reader assigns a thought to the group whose words it shares', async () => {
+  const { t, ids } = setup();
+  const r = await t.ai.call('assign', {
+    items: [t.ai.item(ids[3]), t.ai.item(ids[8])],
+    targets: [{ id: 'g-bread', kind: 'group', title: 'Bread', items: [t.ai.item(ids[0]), t.ai.item(ids[1])] },
+      { id: 'g-music', kind: 'group', title: 'Piano music', items: [t.ai.item(ids[4])] }],
+  });
+  assert.ok(r.ok, r.reason);
+  assert.equal(r.provider.id, 'provoke-reader');
+  assert.deepEqual(r.output.assignments.map((a) => [a.item, a.target]), [[ids[3], 'g-bread']]);
+  const bad = await t.ai.call('assign', { items: [t.ai.item(ids[0])], targets: [] });
+  assert.ok(!bad.ok);
+});

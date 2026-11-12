@@ -15,7 +15,7 @@ const embedder = (id, o = {}) => ({ id, version: '1', tasks: ['embed'], hints: {
 const host = (providers, settings = {}, more = {}) => makeAi({ providers: () => providers, settings, ...more });
 
 test('ai: the first tasks are there, each versioned, with schemas as plain data and a speed budget', () => {
-  assert.deepEqual(Object.keys(TASKS).sort(), ['embed', 'gap', 'group', 'judge', 'label', 'link', 'search', 'suggest']);
+  assert.deepEqual(Object.keys(TASKS).sort(), ['assign', 'embed', 'gap', 'group', 'judge', 'label', 'link', 'search', 'suggest']);
   for (const name of Object.keys(TASKS)) {
     const s = schemaOf(name);
     assert.equal(s.version, 1, name);
