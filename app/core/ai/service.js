@@ -150,7 +150,8 @@ export function makeAi({ providers = () => [], engines = () => [], services = ()
     }
     if (sidecar(p)) {
       if (!desktop) return 'a process beside the app runs only in the desktop app';
-      if (!allowed(p.id)) return 'not allowed to run beside the app yet (Settings → AI)';
+      // A sidecar that asks (sidecar.js) asks the person itself the first time; others wait for Settings.
+      if (!allowed(p.id) && !p.hints?.asks) return 'not allowed to run beside the app yet (Settings → AI)';
     }
     return null;
   };

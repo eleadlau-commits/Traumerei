@@ -14,6 +14,7 @@ import { exam, verdictCases } from './exam.js';
 import * as bridges from './bridges.js';
 import { pane } from './settings.js';
 import { detect } from './machine.js';
+import { makeSidecars } from './sidecar.js';
 import { MACHINES } from './tasks.js';
 
 export const SLOTS = Object.freeze({ providers: 'ai.providers', engines: 'ai.engines', services: 'ai.services' });
@@ -31,7 +32,8 @@ export default class Ai extends Feature {
       chosen: (task) => s.get('choice', {})[task] || null,
       setCloud: (on) => s.set('cloud', !!on), cloud: () => s.get('cloud', false) === true,
       block: (context, on = true) => toggle('blocked', context, on), blocked: (context) => s.get('blocked', []).includes(context),
-      allow: (id, on = true) => toggle('allowed', id, on), allowed: (id) => s.get('allowed', []).includes(id),
+      // Revoking stops the program now; allowing again lets it be asked for again.
+      allow: (id, on = true) => { toggle('allowed', id, on); if (on) this.sidecars?.forget(id); else this.sidecars?.stop(id); }, allowed: (id) => s.get('allowed', []).includes(id),
       setMemory: (mb) => s.set('memory', Math.max(256, Number(mb) || 2048)), memory: () => Number(s.get('memory', 2048)) || 2048,
       setMachine: (tier) => s.set('machine', MACHINES.includes(tier) ? tier : ''), machineChoice: () => (MACHINES.includes(s.get('machine', '')) ? s.get('machine', '') : ''),
       detected: () => this.detected,
@@ -39,7 +41,10 @@ export default class Ai extends Feature {
     // Until detection answers, the lowest tier: core must work there.
     this.detected = Object.freeze({ tier: 'every-pc', cores: 1, memory: null, gpu: false, pending: true });
     detect().then((m) => { this.detected = m; }, () => {});
-    const ai = serve({ slot: (name) => this.slot(name), choices, desktop: !!globalThis.__TAURI_INTERNALS__ });
+    const shell = globalThis.__TAURI_INTERNALS__ || null;
+    this.sidecars = makeSidecars({ invoke: shell ? (cmd, args) => shell.invoke(cmd, args) : null, store: () => this.use('store'), choices, ask: (o) => this.askSidecar(o) });
+    this.whenStopped(() => { for (const id of this.sidecars.running()) this.sidecars.stop(id); });
+    const ai = serve({ slot: (name) => this.slot(name), choices, desktop: !!shell, sidecars: this.sidecars });
     this.provide('ai', ai);
     // Settings → AI. The rooms come from the world service (its README), when it is there.
     const world = this.use('world');
@@ -53,9 +58,26 @@ export default class Ai extends Feature {
   }
 }
 
+// Asked once per plugin, the first time its program is needed (sidecar.js).
+Ai.prototype.askSidecar = function askSidecar({ id, name, program, bytes, host }) {
+  const who = this.app.features.get(id)?.manifest.name || name || id;
+  const mb = bytes >= 1048576 ? `${Math.round(bytes / 1048576)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return new Promise((done) => {
+    let answer = false;
+    const d = ui.dialog({ title: 'A program for a plugin', size: 'box', onClose: () => done(answer) });
+    const yes = ui.el('button', { type: 'button', class: 'word', onclick: () => { answer = true; d.close(); } }, 'Allow');
+    d.setContent(
+      ui.el('p', {}, `${who} would like to run its own program on this computer: ${program} (${mb}, downloaded once from ${host}).`),
+      ui.el('p', { class: 'hint small' }, 'It runs only while Träumerei uses it, answers only this computer, and stops when idle or when Träumerei closes. Settings → AI can revoke it.'),
+      ui.el('div', { class: 'row' }, yes, ui.el('button', { type: 'button', class: 'word', onclick: () => d.close() }, 'Not now')));
+    d.open();
+    requestAnimationFrame(() => yes.focus());
+  });
+};
+
 // The `ai` service over the app's slots and the person's choices (also what the tests' host runs).
 // slot(name) → a Folio slot; choices: as above (chosen, cloud, blocked, allowed, memory, and the setters).
-export function serve({ slot, choices, desktop = false, now }) {
+export function serve({ slot, choices, desktop = false, now, sidecars = null }) {
   const items = (name) => () => slot(name)?.items || [];
   // The machine tier: the person's choice in Settings → AI, else what was detected.
   const machine = () => {
@@ -67,7 +89,7 @@ export function serve({ slot, choices, desktop = false, now }) {
     providers: items(SLOTS.providers), engines: items(SLOTS.engines), services: items(SLOTS.services), desktop, now,
     settings: { choice: choices.chosen, cloud: choices.cloud, blocked: choices.blocked, allowed: choices.allowed, memory: choices.memory, machine: () => machine().tier },
   });
-  return Object.freeze({ ...ai, machine, tasks: () => Object.keys(TASKS), schema: schemaOf, slots: SLOTS, choices, exam: (o) => exam(ai, o), verdictCases,
+  return Object.freeze({ ...ai, machine, sidecar: (plugin) => (sidecars ? sidecars.for(plugin) : null), tasks: () => Object.keys(TASKS), schema: schemaOf, slots: SLOTS, choices, exam: (o) => exam(ai, o), verdictCases,
     bridges: Object.freeze({ worker: bridges.worker, http: bridges.http, openai: bridges.openai }) });
 }
 

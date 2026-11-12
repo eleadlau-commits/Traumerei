@@ -8,8 +8,9 @@
 const row = (o) => Object.freeze(o);
 const none = (task) => Promise.resolve(row({ ok: false, task, reason: 'The AI framework is not there', tried: Object.freeze([]) }));
 
-// ai: the `ai` service, or null; tables: the plugin's kernel tables; reads: their read half.
-export function aiFor(ai, tables, reads) {
+// ai: the `ai` service, or null; tables: the plugin's kernel tables; reads: their read half;
+// plugin: { id, name, spec } (spec: its manifest's sidecar, or undefined).
+export function aiFor(ai, tables, reads, plugin = null) {
   const { marks, links, gaps } = tables;
   const item = (id) => { const m = marks.get(id); return m ? row({ id, text: marks.text(id), ...(m.at ? { at: m.at } : {}) }) : null; };
   // Every verdict the maker gave, oldest first: { suggestion, task, act, provider, version, kept, says, features, items, at }.
@@ -46,5 +47,7 @@ export function aiFor(ai, tables, reads) {
     item,
     // Ready-made providers for the three bridges (app/core/ai/bridges.js): worker(o), http(o), openai(o).
     bridges: ai?.bridges || Object.freeze({}),
+    // The program the plugin's manifest declares (sidecar.js): { start, stop, running, port, provider(o) }, or null.
+    sidecar: plugin?.spec && ai?.sidecar ? ai.sidecar(plugin) : null,
   });
 }

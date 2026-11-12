@@ -600,7 +600,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     ...tables,
     slots,
     // The AI framework (app/core/AI.md): tasks, the providers that do them, the maker's verdicts.
-    ai: aiFor(ai, tables, readsOf(tables)),
+    ai: aiFor(ai, tables, readsOf(tables), { id: owner, name: plugin.manifest?.name || owner, spec: plugin.manifest?.plugin?.sidecar }),
     // What the plugin keeps on this computer, never in a .traum file (app/core/store): small state
     // and large files with a quota; null when the store isn't there.
     store: store ? store.for(owner) : null,

@@ -48,6 +48,7 @@ export function problem(mod, text, app, taken = () => false) {
   if (odd) return `This plugin says it adds "${odd}", which this app doesn't know.`;
   const oddNeed = needs.find((k) => !(k in (app.pluginNeeds || {})));
   if (oddNeed) return `This plugin needs "${oddNeed}", which this app can't give.`;
+  if (p.sidecar && !needs.includes('sidecar')) return 'This plugin brings a program but doesn\'t say it needs "sidecar".';
   const req = [].concat(m.requires || []).find((r) => !MAY_REQUIRE.includes(r));
   if (req) return `This plugin needs the feature "${req}"; an imported plugin may need only the plugin API.`;
   for (const [, name] of String(text).matchAll(USES)) if (!ONE_WAY_IN.includes(name)) return `This plugin asks for "${name}"; a plugin reaches the app only through the plugin API.`;
