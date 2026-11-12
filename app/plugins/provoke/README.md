@@ -24,6 +24,14 @@ decides nothing.
 - **Where:** the Provoke tab in the left dock (⋯ More → Provoke), Ctrl+Alt+V reads the open room,
   and an Editor section on a thought a suggestion is about.
 
+- **Through the AI framework** (`app/core/AI.md`): Provoke asks for the `link` and `group` tasks
+  (and `embed` when a real embedder is there) and is the home of suggestions and verdicts. Its
+  reader is the first provider (`provider.js`, id `provoke-reader`, for `link`, `group`, `label`,
+  `embed`), marked a fallback, so our own system or a local model comes first once it is there.
+  Each suggestion keeps `task` and `by` (`<provider>@<version>`); Keep and Refuse go back to that
+  provider (`t.ai.verdict`). A local model named in Settings → Provoke is added as an embed
+  provider on its OpenAI-style address (`/v1/embeddings`).
+
 It reaches the app only through the plugin API and only proposes: it never writes a table, and it
 works with the rule kit (`t.parts`) taken away.
 

@@ -33,14 +33,16 @@ may find by meaning, Russell may ask where a chapter sits, Provoke asks for link
 Every task's input and output is an object. A mark, as a task sees it, is an **item**:
 `{ id, text, at? }` (its id, its words as plain text, when it was made in ms). Every `score` is a
 number from 0 to 1. `features` is an optional list of numbers a provider attaches to a result
-for its own learning: it is stored on the suggestion and handed back with the verdict.
+for its own learning: it is stored on the suggestion and handed back with the verdict. `vectors`
+(optional, in `search`, `link`, `group`) are vectors the caller already has for the items, from
+`embed`, in item order: a provider may use them or not.
 
 | Task | Input | Output |
 |---|---|---|
 | `embed` | `{ items }` | `{ vectors }` (binary layout below). Batched: callers' items are joined and the vectors split back. |
-| `search` | `{ query, items, most? }` | `{ hits: [{ id, score }] }`, best first |
-| `link` | `{ items, most? }` | `{ links: [{ from, to, score, why?, words?, features? }] }` |
-| `group` | `{ items, most? }` | `{ groups: [{ marks (2+ ids), score, title?, why?, words?, features? }] }` |
+| `search` | `{ query, items, most?, vectors? }` | `{ hits: [{ id, score }] }`, best first |
+| `link` | `{ items, most?, vectors? }` | `{ links: [{ from, to, score, why?, words?, features? }] }` |
+| `group` | `{ items, most?, vectors? }` | `{ groups: [{ marks (2+ ids), score, title?, why?, words?, features? }] }` |
 | `label` | `{ items }` | `{ title, score }` |
 | `judge` | `{ act ('link' \| 'group' \| 'label' \| 'gap'), items, says?, features? }` | `{ score, why? }`: how likely the maker is to keep it |
 | `suggest` | `{ items, most? }` | `{ suggestions: [{ act, marks, says, score, title?, direction?, why?, features? }] }`: finished suggestions of any kind |
@@ -82,12 +84,13 @@ t.slots.providers.add({
 
 `ctx` is frozen: `{ version (the task's), context (the room it reads, or null), signal (an
 AbortSignal, or null), part(x) (stream a partial answer), reads (the read half of the tables),
-verdicts() (the maker's verdicts for this task) }`.
+verdicts(task?) (the maker's verdicts: this task's, or every task's with `null`) }`.
 
 **Hints** (all optional): `where` `local` | `remote` (anything that sends data off this machine
 is `remote`); `runs` `main` | `worker` | `sidecar`; `speed` `fast` | `medium` | `slow`; `memory`
 in MB and `gpu` a share from 0 to 1 (for the budget; an engine's own figures count instead when
-the provider names one). New hints may be added.
+the provider names one); `fallback` true for a provider that should be tried only after the
+others (Provoke's reader says so). New hints may be added.
 
 **An engine**: `{ id, name, kind? ('openai' for an OpenAI-style server), memory?, gpu?, load?(), unload?() }`.
 Providers that name it share one load and one place in the budget.
@@ -101,7 +104,8 @@ reader. A call tries, in order:
 
 1. the provider chosen in Settings for this task,
 2. `default`, our own system,
-3. every other provider of the task: local before remote, then fast before slow, then in the order added.
+3. every other provider of the task: those that call themselves a fallback (`hints.fallback`) after
+   the rest, then local before remote, then fast before slow, then in the order added.
 
 A provider is **passed over**, and the next one tried, when it is not there, says it is not
 `available`, is barred by the privacy policy or a missing permission, its engine is missing, the
@@ -160,7 +164,7 @@ provider's `verdict(v)`.
 | Service | Built-in default | Swappable |
 |---|---|---|
 | **Scheduler** | priority (`now`, `soon`, `idle`), two jobs at a time, cancel before start, batching for tasks that batch (`embed`) | yes |
-| **Cache** | results by content hash of the input, plus task, provider and their versions; the 500 most recently used kept | yes |
+| **Cache** | results by content hash of the input, plus task, provider, their versions and the number of verdicts so far (a verdict since may change a learning provider's answer); the 500 most recently used kept | yes |
 | **Budget** | memory (MB, 2048 by default, Settings) and a GPU share per provider or engine; loaded models stay until room is needed, then the least recently used is unloaded; a provider that cannot fit is passed over | yes |
 | **Privacy policy** | enforced before any remote provider runs (below) | no |
 | **Feedback** | `verdict(v)` routing; verdicts stored in the tables | no |

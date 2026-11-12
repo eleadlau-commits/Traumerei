@@ -23,6 +23,9 @@ const features = { type: 'array', items: { type: 'number' } };
 // (row-major, the platform's byte order in memory; little-endian whenever bytes travel).
 export const VECTORS = Object.freeze({ type: 'object', required: ['dim', 'data'], properties: { dim: { type: 'integer', minimum: 1 }, data: { 'x-binary': 'float32' } } });
 
+// Vectors a caller already has for the items (from embed), in item order: a provider may use them.
+const withVectors = (input, output) => !input.vectors || input.vectors.data.length === input.items.length * input.vectors.dim || 'the vectors handed in must be dim numbers for each item';
+
 export const TASKS = Object.freeze({
   embed: {
     version: 1, note: 'a vector for each mark, so that nearness means likeness',
@@ -41,18 +44,21 @@ export const TASKS = Object.freeze({
   },
   search: {
     version: 1, note: 'the marks that answer a question, by meaning, best first',
-    input: { type: 'object', required: ['query', 'items'], properties: { query: words, items, most } },
+    input: { type: 'object', required: ['query', 'items'], properties: { query: words, items, most, vectors: VECTORS } },
+    accepts: withVectors,
     output: { type: 'object', required: ['hits'], properties: { hits: { type: 'array', items: { type: 'object', required: ['id', 'score'], properties: { id, score } } } } },
   },
   link: {
     version: 1, note: 'pairs of marks that speak of the same thing',
-    input: { type: 'object', required: ['items'], properties: { items, most } },
+    input: { type: 'object', required: ['items'], properties: { items, most, vectors: VECTORS } },
+    accepts: withVectors,
     output: { type: 'object', required: ['links'], properties: { links: { type: 'array', items: { type: 'object', required: ['from', 'to', 'score'],
       properties: { from: id, to: id, score, why: words, words: { type: 'array', items: words }, features } } } } },
   },
   group: {
     version: 1, note: 'handfuls of marks that belong together, each with a name',
-    input: { type: 'object', required: ['items'], properties: { items, most } },
+    input: { type: 'object', required: ['items'], properties: { items, most, vectors: VECTORS } },
+    accepts: withVectors,
     output: { type: 'object', required: ['groups'], properties: { groups: { type: 'array', items: { type: 'object', required: ['marks', 'score'],
       properties: { marks: { type: 'array', items: id, minItems: 2 }, score, title: words, why: words, words: { type: 'array', items: words }, features } } } } },
   },

@@ -12,16 +12,19 @@
 // about stay as the maker left them. The left dock's Provoke tab lists those about the open room
 // with Keep and Refuse; Ctrl+Alt+V reads the room.
 //
-// The reading is in reader.js: TF-IDF and character trigrams, nearest neighbours through an
-// inverted index, Louvain communities, cluster names by class TF-IDF, and a logistic regression
-// pulled toward a prior. Nothing leaves the browser, unless Settings → Provoke names a local model
-// (an Ollama server): then its embeddings are blended into the likeness.
+// It reads through the AI framework (app/core/AI.md): it asks for the `link` and `group` tasks
+// (and `embed`, when a real embedder is there) and keeps the suggestions and the verdicts. Its own
+// reader (reader.js, as the provider in provider.js) is the first provider and the fallback: TF-IDF
+// and character trigrams, nearest neighbours through an inverted index, Louvain communities,
+// cluster names by class TF-IDF, and a logistic regression pulled toward a prior. Nothing leaves
+// the browser, unless Settings → Provoke names a local model (an Ollama server): then it is added
+// as an embed provider, and its embeddings are blended into the likeness.
 //
 // A plugin: it reaches the app only through the plugin API (app/core/API.md), and only proposes;
 // it never writes a table. Saved data: the local model's address, if one is set (`model`).
 
 import { Feature, ui } from 'folio';
-import { read, learn, PRIOR, FEATURES } from './reader.js';
+import { provider as readerProvider, weightsFrom, ID as READER } from './provider.js';
 
 const { el } = ui;
 const KEY = 'provoke';
@@ -36,6 +39,8 @@ export const KIND = {
     if (f.title) out.title = h.oneLine(f.title);
     if (f.why) out.why = h.oneLine(f.why);
     if (f.features) out.features = h.oneLine(f.features);
+    if (f.task) out.task = h.oneLine(f.task);
+    if (f.by) out.by = h.oneLine(f.by);
     return out;
   },
   text: (th) => th.says || '',
@@ -53,19 +58,22 @@ const keyOf = (act, ids) => `${act}:${[...ids].sort().join(',')}`;
 const isOpen = (s) => s.gap && s.gap.state === 'open';
 const stale = (s) => s.subjects.length < (s.act === 'group' ? 3 : 2);
 
-// What the maker said of past suggestions, as examples to learn from: kept (the gap was resolved
-// by a link: what Keep made) or refused (by judgement).
-export function verdicts(t) {
-  const out = { link: [], group: [] };
-  for (const s of suggestions(t)) {
-    if (!s.gap || s.gap.state !== 'resolved' || !s.mark.features) continue;
-    const x = s.mark.features.split(' ').map(Number);
-    if (x.length !== FEATURES.length || x.some((v) => !Number.isFinite(v))) continue;
-    (out[s.act] || out.link).push({ x, y: s.gap.resolvedBy && s.gap.resolvedBy !== 'judgement' ? 1 : 0 });
-  }
-  return out;
+// What the maker said of past suggestions (read from the tables by t.ai.verdicts), and the
+// reader's weights learned from them.
+export const weights = (t) => weightsFrom(t.ai.verdicts());
+
+// A task through the framework; without it (no provider there), the reader itself.
+const local = readerProvider();
+async function ask(t, task, input, room) {
+  if (t.ai.providers(task).length) return t.ai.call(task, input, { context: room, priority: 'now' });
+  try {
+    const output = await local.run(task, input, { version: 1, context: room, verdicts: () => t.ai.verdicts(), part: () => {} });
+    return { ok: true, task, provider: { id: READER, version: local.version }, output };
+  } catch (err) { return { ok: false, task, reason: err.message }; }
 }
-export const weights = (t) => { const v = verdicts(t); return { link: learn(v.link, PRIOR.link), group: learn(v.group, PRIOR.group), seen: v.link.length + v.group.length }; };
+// Vectors as the framework carries them, from a list per text.
+const packed = (rows) => { const dim = rows[0]?.length || 0; if (!dim || rows.some((r) => r?.length !== dim)) return null; const data = new Float32Array(rows.length * dim); rows.forEach((r, i) => data.set(r, i * dim)); return { dim, data }; };
+const slice = (v, picks) => { if (!v) return null; const data = new Float32Array(picks.length * v.dim); picks.forEach((i, k) => data.set(v.data.subarray(i * v.dim, (i + 1) * v.dim), k * v.dim)); return { dim: v.dim, data }; };
 
 // The room the suggestions sit in: where the first one is at home, else a new one.
 function desk(t) {
@@ -86,10 +94,25 @@ export async function provoke(t, room, { embed = null, most = 6 } = {}) {
   const linked = (a, b) => t.links.from(a).some((l) => l.to === b) || t.links.from(b).some((l) => l.to === a);
   const skip = (kind, ids) => said.has(keyOf(kind, ids)) || (kind === 'link' ? linked(ids[0], ids[1])
     : ids.every((id) => t.links.holders(id).some((g) => ids.every((o) => t.links.holders(o).includes(g)))));
-  let dense = null;
-  if (embed && docs.length) { try { dense = await embed(docs.map((d) => d.text)); } catch { dense = null; } }
-  const w = weights(t);
-  let found = read(docs, { weights: w, skip, most, dense });
+  const items = docs.map((d) => ({ id: d.id, text: d.text, ...(d.at ? { at: d.at } : {}) }));
+  // Vectors from a real embedder, when there is one (the reader's own add nothing to its reading).
+  let vectors = null;
+  if (embed && docs.length) { try { vectors = packed(await embed(docs.map((d) => d.text))); } catch { vectors = null; } }
+  else if (items.length > 1 && ![null, READER].includes(t.ai.first('embed', room))) {
+    const r = await t.ai.call('embed', { items }, { context: room, priority: 'now' });
+    if (r.ok) vectors = r.output.vectors;
+  }
+  const loose = docs.map((d, i) => (d.grouped ? -1 : i)).filter((i) => i >= 0);
+  const [L, G] = await Promise.all([
+    items.length > 1 ? ask(t, 'link', { items, ...(vectors ? { vectors } : {}) }, room) : null,
+    loose.length > 2 ? ask(t, 'group', { items: loose.map((i) => items[i]), ...(vectors ? { vectors: slice(vectors, loose) } : {}) }, room) : null,
+  ]);
+  const by = (r) => (r?.ok ? `${r.provider.id}@${r.provider.version}` : '');
+  const top = (list) => list.slice(0, most);
+  let found = [
+    ...top((G?.ok ? G.output.groups : []).filter((g) => !skip('group', g.marks)).map((g) => ({ kind: 'group', marks: [...g.marks], title: g.title || '', words: [...(g.words || [])], why: g.why || '', features: g.features || [], by: by(G) }))),
+    ...top((L?.ok ? L.output.links : []).filter((l) => !skip('link', [l.from, l.to])).map((l) => ({ kind: 'link', marks: [l.from, l.to], title: '', words: [...(l.words || [])], why: l.why || '', features: l.features || [], by: by(L) }))),
+  ];
   // A pair inside a suggested group is said by the group.
   const inGroup = new Set(found.filter((p) => p.kind === 'group').flatMap((p) => p.marks));
   found = found.filter((p) => p.kind === 'group' || !(inGroup.has(p.marks[0]) && inGroup.has(p.marks[1])));
@@ -105,8 +128,8 @@ export async function provoke(t, room, { embed = null, most = 6 } = {}) {
     for (const p of found) {
       const says = p.kind === 'link' ? `${text(p.marks[0])} and ${text(p.marks[1])} may speak of the same thing`
         : `${p.marks.length} thoughts may belong together: ${cap(p.title)}`;
-      const why = p.words.length ? `They share ${p.words.join(', ')}` : '';
-      const r = t.marks.make({ kind: 'suggestion', in: at, content: { says, act: p.kind, title: p.title ? cap(p.title) : '', why, features: p.x.map((v) => +v.toFixed(4)).join(' ') } });
+      const why = p.why || (p.words.length ? `They share ${p.words.join(', ')}` : '');
+      const r = t.marks.make({ kind: 'suggestion', in: at, content: { says, act: p.kind, task: p.kind, by: p.by, title: p.title ? cap(p.title) : '', why, features: p.features.join(' ') } });
       if (!r.ok) continue;
       for (const m of p.marks) t.links.link(r.id, m, 'provokes');
       t.gaps.open(r.id, 'to maker');
@@ -135,12 +158,26 @@ export function keep(t, id) {
       if (!by) return { ok: false, reason: 'None of the thoughts could join the group' };
     }
     const r = t.gaps.resolve(id, by);
+    if (r.ok) tell(t, s, true);
     return r.ok ? { ok: true, id, by } : r;
   });
 }
 
+// A verdict, routed back to the provider that made the suggestion (AI.md: feedback).
+function tell(t, s, kept) {
+  const [provider, version] = String(s.mark.by || `${READER}@1`).split('@');
+  t.ai.verdict({ provider, version: version || null, task: s.mark.task || s.act, kept, suggestion: s.id,
+    features: String(s.mark.features || '').split(' ').filter(Boolean).map(Number) });
+}
+
 // Refuses a suggestion: its gap resolved by judgement; it stays, so it is not suggested again.
-export const refuse = (t, id) => (suggestions(t).some((x) => x.id === id) ? t.gaps.resolve(id, 'judgement') : { ok: false, reason: 'No such suggestion' });
+export function refuse(t, id) {
+  const s = suggestions(t).find((x) => x.id === id);
+  if (!s) return { ok: false, reason: 'No such suggestion' };
+  const r = t.gaps.resolve(id, 'judgement');
+  if (r.ok) tell(t, s, false);
+  return r;
+}
 
 // The open suggestions about a room (any of their thoughts at home there), oldest first.
 export const about = (t, room) => suggestions(t).filter((s) => isOpen(s) && !stale(s) && s.subjects.some((m) => t.places.home(m) === room))
@@ -163,13 +200,24 @@ export function ollama({ url, model }, fetcher = globalThis.fetch) {
 
 export function install(t, { storage = null, feature = null } = {}) {
   const model = () => storage?.get('model', null) || null;
-  const embed = () => { const m = model(); return m?.url && m?.model ? ollama(m) : null; };
+  t.slots.providers.add(readerProvider());
+  // A local model named in Settings → Provoke: an embed provider on its OpenAI-style address.
+  let offModel = [];
+  const useModel = () => {
+    for (const off of offModel) off();
+    offModel = [];
+    const m = model();
+    if (!m?.url || !m?.model || !t.ai.bridges.openai) return;
+    const { provider, engine } = t.ai.bridges.openai({ id: 'provoke-ollama', name: `${m.model} (local model)`, url: m.url, model: m.model });
+    offModel = [t.slots.engines.add(engine), t.slots.providers.add(provider)];
+  };
+  useModel();
   t.slots.kinds.add(KIND);
   t.slots.linkKinds.add({ kind: 'provokes', name: 'Provokes', note: 'a suggestion of Provoke\'s, to the thoughts it is about' });
   t.slots.linkKinds.add({ kind: 'resonates', name: 'Resonates', note: 'the two speak of the same thing (suggested by Provoke, kept by you)', both: true });
   const run = async () => {
     const room = t.ui.chosen()?.context;
-    const r = await provoke(t, room, { embed: embed() });
+    const r = await provoke(t, room);
     t.ui.toast(!r.ok ? r.reason : r.made ? `Provoke has ${r.made} suggestion${r.made > 1 ? 's' : ''}` : 'Provoke has nothing new to suggest');
     feature?.show();
     return r;
@@ -181,7 +229,7 @@ export function install(t, { storage = null, feature = null } = {}) {
   t.slots.editor.add({ id: 'provoke', order: 47, when: (x) => suggestions(t).some((s) => isOpen(s) && s.subjects.includes(x.id)),
     render: (x) => el('div', { class: 'provoke-section' }, el('div', { class: 'label' }, 'Provoke'),
       ...suggestions(t).filter((s) => isOpen(s) && s.subjects.includes(x.id)).map((s) => item(t, s, x.refresh))) });
-  return { run, embed };
+  return { run, useModel };
 }
 
 // One suggestion with its two words.
@@ -241,11 +289,11 @@ export default class Provoke extends Feature {
     const m = this.storage.get('model', null) || {};
     const field = (key, placeholder) => {
       const input = el('input', { type: 'text', value: m[key] || '', placeholder, 'aria-label': placeholder });
-      input.addEventListener('change', () => { const next = { ...(this.storage.get('model', null) || {}), [key]: input.value.trim() }; this.storage.set('model', next.url || next.model ? next : null); });
+      input.addEventListener('change', () => { const next = { ...(this.storage.get('model', null) || {}), [key]: input.value.trim() }; this.storage.set('model', next.url || next.model ? next : null); this.hands.useModel(); });
       return input;
     };
     return el('div', { class: 'provoke-settings' },
-      el('p', { class: 'hint' }, 'Provoke reads in the browser. To blend in a local model\'s sense of meaning, name an Ollama server and an embedding model (start Ollama with OLLAMA_ORIGINS set to this page\'s address). Leave empty to read without one.'),
+      el('p', { class: 'hint' }, 'Provoke reads in the browser. To blend in a local model\'s sense of meaning, name a local OpenAI-style server (Ollama, llama.cpp) and an embedding model; it becomes an embed provider in Settings → AI (start Ollama with OLLAMA_ORIGINS set to this page\'s address). Leave empty to read without one.'),
       field('url', 'http://localhost:11434'), field('model', 'nomic-embed-text'));
   }
 }

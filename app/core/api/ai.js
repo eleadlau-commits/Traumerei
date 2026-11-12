@@ -31,7 +31,7 @@ export function aiFor(ai, tables, reads) {
     schema: (task) => (ai ? ai.schema(task) : null),
     providers: (task = null) => (ai ? ai.list(task) : frozenList([])),
     first: (task, context = null) => (ai ? ai.first(task, context) : null),
-    call: (task, input, opts = {}) => (ai ? ai.call(task, input, { ...opts, reads, verdicts: () => verdicts(task) }) : none(task)),
+    call: (task, input, opts = {}) => (ai ? ai.call(task, input, { ...opts, reads, verdicts: (which = task) => verdicts(which) }) : none(task)),
     verdict: (v) => (ai ? ai.verdict(v) : false),
     verdicts: (task = null) => frozenList(verdicts(task)),
     // Scores a provider on an exam (app/core/ai/exam.js): cases [{ input, mark(output) → 0..1 }];

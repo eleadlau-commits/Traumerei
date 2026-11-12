@@ -153,12 +153,13 @@ export function makeAi({ providers = () => [], engines = () => [], services = ()
   };
 
   // The order providers are tried in for a task: the one chosen in Settings, our own system, then
-  // the rest, local before remote and fast before slow.
+  // the rest: a provider that calls itself a fallback after the others, local before remote, fast before slow.
   const order = (task) => {
     const all = doing(task);
     const first = [choice(task), DEFAULT_SYSTEM].filter(Boolean);
     const rank = (p) => { const i = first.indexOf(p.id); return i >= 0 ? i : first.length; };
-    return all.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || remote(a.p) - remote(b.p) || speed(a.p) - speed(b.p) || a.i - b.i).map((e) => e.p);
+    const last = (p) => (p.hints?.fallback ? 1 : 0);
+    return all.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || last(a.p) - last(b.p) || remote(a.p) - remote(b.p) || speed(a.p) - speed(b.p) || a.i - b.i).map((e) => e.p);
   };
 
   const holderOf = (p) => {
@@ -173,7 +174,7 @@ export function makeAi({ providers = () => [], engines = () => [], services = ()
   async function call(task, input, opts = {}) {
     const def = TASKS[task];
     if (!def) return frozen({ ok: false, task, reason: `No such task: ${task}`, tried: [] });
-    const bad = invalid(def.input, input, 'the input');
+    const bad = invalid(def.input, input, 'the input') || (def.accepts && def.accepts(input) !== true ? def.accepts(input) : null);
     if (bad) return frozen({ ok: false, task, reason: bad, tried: [] });
     const tried = [];
     const list = opts.only ? order(task).filter((p) => p.id === opts.only) : order(task);
@@ -184,7 +185,9 @@ export function makeAi({ providers = () => [], engines = () => [], services = ()
       const why = barred(p, opts.context);
       if (why) { pass(why); continue; }
       try { if (p.available && !(await p.available())) { pass('not available'); continue; } } catch (err) { pass(`not available: ${err.message}`); continue; }
-      const key = `${task}@${def.version}|${p.id}@${p.version}|${hashOf(input)}`;
+      // A verdict since changes what a learning provider would say: the count is part of the key.
+      const said = opts.verdicts ? opts.verdicts(null).length : 0;
+      const key = `${task}@${def.version}|${p.id}@${p.version}|v${said}|${hashOf(input)}`;
       const cache = service('cache');
       const hit = opts.fresh ? undefined : cache.get(key);
       if (hit) return frozen({ ok: true, task, version: def.version, provider: { id: p.id, version: String(p.version) }, output: hit, ms: 0, cached: true, tried });

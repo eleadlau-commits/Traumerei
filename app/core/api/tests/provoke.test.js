@@ -128,11 +128,11 @@ test('provoke: a suggestion whose thoughts went is cleared on the next reading; 
 });
 
 test('provoke: nothing in it touches a table directly', async () => {
-  for (const file of ['Provoke.js', 'reader.js']) {
+  for (const file of ['Provoke.js', 'reader.js', 'provider.js']) {
     const src = await source('provoke', file);
     if (src == null) continue; // (served without its source)
     const imports = [...src.matchAll(/^\s*import\s[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]);
-    assert.deepEqual(imports.filter((i) => i !== 'folio' && i !== './reader.js'), [], `${file} imports only Folio and itself`);
+    assert.deepEqual(imports.filter((i) => i !== 'folio' && i !== './reader.js' && i !== './provider.js'), [], `${file} imports only Folio and itself`);
     assert.ok(!/\.parts\b|\.things\b|\bworld\(\)/.test(src.replace(/^\s*\/\/.*$/gm, '')), `${file} reaches past the tables' proposes`);
   }
   // And it runs with the rule kit taken away: everything it does is a read or a propose.
@@ -155,4 +155,53 @@ test('provoke: a local model\'s embeddings are asked for once per text', async (
   assert.ok(r.ok);
   const broken = await P.provoke(t, host.room, { embed: async () => { throw new Error('no server'); } });
   assert.ok(broken.ok, 'without the model it reads as before');
+});
+
+test('provoke: it reads through the AI framework; its reader is the first provider, and every suggestion says who made it', async () => {
+  const { host, t } = setup();
+  for (const task of ['link', 'group', 'label', 'embed']) assert.ok(t.ai.providers(task).some((p) => p.id === 'provoke-reader'), task);
+  assert.equal(t.ai.first('link'), 'provoke-reader');
+  await P.provoke(t, host.room);
+  for (const s of P.suggestions(t)) {
+    assert.equal(s.mark.by, 'provoke-reader@1');
+    assert.equal(s.mark.task, s.act);
+  }
+  const label = await t.ai.call('label', { items: P.suggestions(t).find((s) => s.act === 'group').subjects.map((id) => t.ai.item(id)) });
+  assert.ok(label.ok && label.output.title, label.reason);
+  const embed = await t.ai.call('embed', { items: [t.ai.item(host.ids?.[0] || P.suggestions(t)[0].subjects[0])] });
+  assert.ok(embed.ok && embed.output.vectors.dim === 256);
+});
+
+test('provoke: our own system, once there, comes first; verdicts go back to the provider that made the suggestion', async () => {
+  const { host, t, ids } = setup();
+  const heard = [];
+  host.plug('default-system', (d) => d.slots.providers.add({ id: 'default', name: 'Our own system', version: '0.1', tasks: ['link'],
+    run: async () => ({ links: [{ from: ids[0], to: ids[9], score: 0.9, why: 'a test', features: [1, 2] }] }), verdict: (v) => heard.push(v) }));
+  assert.equal(t.ai.first('link'), 'default');
+  await P.provoke(t, host.room);
+  const mine = P.suggestions(t).filter((s) => s.mark.by === 'default@0.1');
+  assert.equal(mine.length, 1);
+  assert.ok(P.suggestions(t).some((s) => s.act === 'group' && s.mark.by === 'provoke-reader@1'), 'groups still come from the reader');
+  assert.ok(P.keep(t, mine[0].id).ok);
+  assert.deepEqual(heard.map((v) => [v.provider, v.version, v.task, v.kept, v.suggestion]), [['default', '0.1', 'link', true, mine[0].id]]);
+  const v = t.ai.verdicts('link').find((x) => x.suggestion === mine[0].id);
+  assert.ok(v.kept && v.provider === 'default');
+});
+
+test('provoke: a local model named in its settings becomes an embed provider, and its vectors reach the reading', async () => {
+  const host = makeHost({ thoughts: 0 });
+  const saved = { model: { url: 'http://localhost:11434', model: 'nomic-embed-text' } };
+  const storage = { get: (k, d) => saved[k] ?? d, set: (k, v) => { saved[k] = v; } };
+  const asked = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, o) => { const { input } = JSON.parse(o.body); asked.push(url); return { ok: true, json: async () => ({ data: input.map((x, i) => ({ index: i, embedding: [x.length, 1] })) }) }; };
+  try {
+    const L = host.lib.model;
+    for (const text of THEMES) L.create(host.w, host.room, { kind: 'line', text }, host.tick());
+    host.world.save();
+    const { t } = host.plug('provoke', (t) => P.install(t, { storage }));
+    assert.equal(t.ai.first('embed', host.room), 'provoke-ollama');
+    assert.ok((await P.provoke(t, host.room)).ok);
+    assert.deepEqual([...new Set(asked)], ['http://localhost:11434/v1/embeddings']);
+  } finally { globalThis.fetch = real; }
 });

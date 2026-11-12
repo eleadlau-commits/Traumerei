@@ -69,6 +69,7 @@ test('ai: the order is the one chosen in Settings, then our own system, then loc
   const ps = [embedder('slow', { hints: { speed: 'slow' } }), embedder('cloud', { hints: { where: 'remote', speed: 'fast' } }), embedder('fast'), embedder(DEFAULT_SYSTEM, { hints: { speed: 'slow' } })];
   assert.deepEqual(host(ps).order('embed'), [DEFAULT_SYSTEM, 'fast', 'slow', 'cloud']);
   assert.deepEqual(host(ps, { choice: () => 'slow' }).order('embed'), ['slow', DEFAULT_SYSTEM, 'fast', 'cloud']);
+  assert.deepEqual(host([embedder('reader', { hints: { fallback: true } }), embedder('model', { hints: { speed: 'slow' } })]).order('embed'), ['model', 'reader']);
 });
 
 test('ai: cloud providers are off by default, and a room can keep everything on this machine', async () => {
