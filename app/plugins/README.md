@@ -136,7 +136,8 @@ python build.py pack-plugin word-count
 ```
 
 writes `packed/word-count.traumplug` (`--out <folder>` to put it elsewhere): the whole plugin
-in one file a person imports in Settings → Plugins. A package (format `traumplug/1`) is one
+in one file a person imports in Settings → Plugins (Import plugin…, checked again there; see
+`app/core/plugins/README.md`). A package (format `traumplug/1`) is one
 JavaScript module exporting `manifest` (id, name, description, version, requires and the plugin
 block), `css` (the plugin's styles) and a default `(folio) => class extends folio.Feature`. The
 plugin's `import … from 'folio'` is read from the folio the app hands over, so the file has no bare

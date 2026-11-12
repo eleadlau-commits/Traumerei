@@ -6,3 +6,7 @@
 .plugins-safe, .plugins-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 0 0 16px; }
 .plugins-safe .hint, .plugins-foot .hint { margin: 0; flex: 1 1 260px; }
 .plugins-foot { margin: 16px 0 0; }
+.plugins-import { display: grid; gap: 6px; padding: 12px 0; margin: 0 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.plugins-import p { margin: 0; }
+.plugins-import .row { display: flex; gap: 16px; }
+.plugins-remove { justify-self: start; padding: 0; font-size: 13px; }

@@ -214,6 +214,44 @@ export class App {
     return started;
   }
 
+  // A feature brought in while the app runs (a plugin imported from a file): its registry entry
+  // (no path) and its loaded module ({ default: a class that extends Feature }). It starts at once
+  // unless it is switched off, safe mode is on, or what it requires isn't running (its record then
+  // says why). False when a feature with its id is already there.
+  async addFeature(manifest, module) {
+    if (!manifest?.id || this.features.has(manifest.id)) return false;
+    const record = { manifest, status: 'skipped', reason: '', problem: null, instance: null };
+    this.registry.push(manifest);
+    (this.modules ||= new Map()).set(manifest.id, { status: 'fulfilled', value: module });
+    this.features.set(manifest.id, record);
+    const missing = (manifest.requires || []).find((r) => this.features.get(r)?.status !== 'active');
+    if (this.offTest()(manifest)) record.status = 'disabled';
+    else if (this.safe && manifest.plugin) { record.status = 'safe'; record.reason = 'Off in safe mode'; }
+    else if (missing) {
+      const dep = this.features.get(missing);
+      record.reason = dep ? `Needs ${dep.manifest.name}, which is ${STATUS_WORDS[dep.status] || 'not running'}` : `Needs "${missing}", which isn't installed`;
+    } else if (await this.run(record, this.modules.get(manifest.id))) this.emit('app:started', manifest.id);
+    this.changedFeatures();
+    return true;
+  }
+
+  // Takes away a feature brought in with addFeature: stops it (and what needs it) and forgets it,
+  // its remembered on or off included. Its saved data stays, as for a feature switched off.
+  // Returns the ids that were stopped.
+  removeFeature(id) {
+    if (!this.features.has(id)) return [];
+    const stopped = this.features.get(id).status === 'active' ? this.stopFeature(id) : [];
+    const area = this.storage.area('folio');
+    area.set('disabled', area.get('disabled', []).filter((x) => x !== id));
+    const on = area.get('enabled', []) || [];
+    if (on.includes(id)) area.set('enabled', on.filter((x) => x !== id).length ? on.filter((x) => x !== id) : null);
+    this.features.delete(id);
+    this.modules?.delete(id);
+    this.registry = this.registry.filter((m) => m.id !== id);
+    this.changedFeatures();
+    return stopped;
+  }
+
   // Whether a feature is switched off: the person switched it off ('disabled'), or it is a plugin
   // that starts off ("starts": "off" in its plugin block) and they haven't switched it on ('enabled').
   offTest() {

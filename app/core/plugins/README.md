@@ -27,6 +27,21 @@ API to close what that plugin opened (`traumerei.release`).
 | `turnOff(id)` | switches it off, and every plugin that needs it |
 | `offMode(modeId)` | `{ id, name }` of the plugin that gives that mode, when it is off; else null |
 | `safe` | whether the app started in safe mode |
+| `importText(text)` | reads a `.traumplug`'s text and, when it passes the checks, shows the import card; resolves with the problem in words, or `''` |
+| `remove(id)` | takes an imported plugin away (its saved data stays, as when switched off) |
+| `imported()` | the ids of imported plugins |
+
+## Imported plugins
+
+**Import plugin…** at the foot of Settings → Plugins opens a `.traumplug` (from
+`python build.py pack-plugin`). `imported.js` runs the compiler's checks again (format
+`traumplug/1`, plugin API, oldest app, kinds and needs from app.json's one list, an id no feature
+has, `requires` only `api`, and no `use` of anything but `traumerei`); a card says what it is, who
+made it, what it adds and needs, and the person imports it or not. Its text is kept in this
+feature's storage (`imported`) and it starts with the app from then on, once the built-in features
+have (after `app:ready`), through Folio's `app.addFeature`. Its class holds one way in at run time
+too: `use` answers only the plugin API and `add` reaches only Settings and its own slots. Safe mode
+and the switch cover it like any plugin; **Remove** on its row takes it away (`app.removeFeature`).
 
 Saved data: none (Folio keeps what is off, as `folio.disabled`).
 
