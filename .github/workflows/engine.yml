@@ -66,6 +66,20 @@ jobs:
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then cpu=$(powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name"); else cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2); fi
           echo "CPU:$cpu, $(nproc) threads" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The engine program the plugin downloads is the one it names
+        if: runner.os == 'Linux'
+        run: |
+          node -e "
+            const { createHash } = require('crypto');
+            const s = require('./app/plugins/default/feature.json').plugin.sidecar;
+            fetch(s.url).then(async (r) => {
+              if (!r.ok) throw new Error(s.url + ' answered ' + r.status);
+              const b = Buffer.from(await r.arrayBuffer());
+              const sum = 'sha256:' + createHash('sha256').update(b).digest('hex');
+              console.log(s.url + ': ' + b.length + ' bytes, ' + sum);
+              if (b.length !== s.bytes || sum !== s.checksum) throw new Error('feature.json says ' + s.bytes + ' bytes, ' + s.checksum);
+            }).catch((e) => { console.error('::error::' + e.message); process.exit(1); });
+          "
       - name: Download and check the models
         run: node app/plugins/default/tests/fetch-models.mjs store mid
       - name: Start the engine and run the exam against Provoke's reader
