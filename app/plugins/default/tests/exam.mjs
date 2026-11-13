@@ -9,7 +9,10 @@
 // and reread speed (a 1,500-thought room the engine has seen, plus 30 new thoughts: the usual
 // case once Default.js has warmed a room). Each runs in the interactive tier (the person waits)
 // and the background tier. Fails unless `default` passes every exam and scores at least as well
-// as the reader on quality.
+// as the reader on quality, with one exception: cold speed in the interactive tier is reported,
+// not held to. A room never read before costs MiniLM about 2 ms a thought of plain compute, over
+// the budget on a small 4-core CPU; E chose (13 Nov 2026) to keep MiniLM, save vectors and warm
+// rooms in the background, and judge first reads on a real PC. --strict holds it too.
 
 import { makeAi } from '../../../core/ai/service.js';
 import { http } from '../../../core/ai/bridges.js';
@@ -20,6 +23,7 @@ import { THOUGHTS, sameTopic, unitRows, room } from './cases.js';
 
 const url = process.env.ENGINE_URL;
 if (!url) { console.error('Set ENGINE_URL to a running traumerei-engine.'); process.exit(2); }
+const strict = process.argv.includes('--strict');
 const out = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 
 const def = http({ id: ID, name: 'Träumerei (default)', version: VERSION, tasks: TASKS, url, hints: { speed: 'fast', memory: 120 } });
@@ -52,7 +56,8 @@ for (const tier of ['interactive', 'background']) {
     for (const x of [r.a, r.b]) {
       rows.push({ exam: name, tier, provider: x.provider, score: +x.score.toFixed(3), meanMs: Math.round(x.ms.mean), maxMs: Math.round(x.ms.max), loadMs: Math.round(x.load.ms), over: x.over, failed: x.failed, passed: x.passed });
     }
-    if (!r.a.passed) { bad++; console.error(`default did not pass ${name} (${tier}): ${r.a.over} over budget, ${r.a.failed} failed, load over: ${r.a.load.over}`); }
+    const held = strict || !(name === 'cold' && tier === 'interactive') || r.a.failed;
+    if (!r.a.passed) { if (held) bad++; console.error(`default did not pass ${name} (${tier}): ${r.a.over} over budget, ${r.a.failed} failed, load over: ${r.a.load.over}${held ? '' : ' (reported, not held to)'}`); }
     if (name === 'quality' && r.a.score < r.b.score) { bad++; console.error(`default scored below the reader on quality (${tier})`); }
   }
 }
