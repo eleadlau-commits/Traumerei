@@ -61,7 +61,7 @@ jobs:
           git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
           cd ort-src
           python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
-            --enable_msvc_static_runtime --compile_no_warning_as_error `
+            --enable_msvc_static_runtime --compile_no_warning_as_error --cmake_generator "Visual Studio 18 2026" `
             --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Keep only the libraries, where ort-sys looks for them (build tree layout).
