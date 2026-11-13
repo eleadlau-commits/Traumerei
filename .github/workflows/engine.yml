@@ -1,0 +1,92 @@
+# The default AI system's engine (app/plugins/default/engine): on every pull request that touches
+# the default plugin, builds traumerei-engine for Windows and Linux, downloads the models in
+# models.js (checking their checksums), and runs the embed exam against Provoke's reader
+# (app/plugins/default/tests/exam.mjs) on both. The Windows program is attached to the run as
+# "traumerei-engine-windows", with its size and sha256, for E to upload where models.js and the
+# plugin block say it lives.
+name: Default AI engine
+
+on:
+  pull_request:
+    paths:
+      - 'app/plugins/default/**'
+      - '.github/workflows/engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/plugins/default/engine/target
+          key: engine-${{ matrix.os }}-${{ hashFiles('app/plugins/default/engine/Cargo.toml', 'app/plugins/default/engine/Cargo.lock') }}
+      - name: Engine tests
+        working-directory: app/plugins/default/engine
+        run: cargo test --release
+      - name: Build the engine
+        working-directory: app/plugins/default/engine
+        run: cargo build --release
+      - name: Name, size and checksum
+        id: built
+        run: |
+          version=$(grep -m1 '^version' app/plugins/default/engine/Cargo.toml | cut -d'"' -f2)
+          ext=""; [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
+          mkdir -p out
+          cp "app/plugins/default/engine/target/release/traumerei-engine$ext" "out/traumerei-engine-$version$ext"
+          cd out
+          f="traumerei-engine-$version$ext"
+          bytes=$(wc -c < "$f" | tr -d ' ')
+          sum=$(sha256sum "$f" | cut -d' ' -f1)
+          echo "$f bytes=$bytes sha256=$sum" | tee SHA256.txt
+          echo "program=$f" >> "$GITHUB_OUTPUT"
+          { echo "### traumerei-engine on ${{ runner.os }}"; echo; echo "\`$f\`: $bytes bytes, sha256 \`$sum\`"; echo; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Download and check the models
+        run: node app/plugins/default/tests/fetch-models.mjs store mid
+      - name: Start the engine and run the exam against Provoke's reader
+        run: |
+          ./out/${{ steps.built.outputs.program }} --port 47811 --store "$PWD/store" --remember 0 &
+          up=""
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:47811/traumerei/ai/v1/health && { up=1; break; }; sleep 0.5; done
+          [ -n "$up" ] || { echo "::error::the engine never answered"; exit 1; }
+          ENGINE_URL=http://127.0.0.1:47811 node app/plugins/default/tests/exam.mjs --json out/exam.json
+      - name: Exam results in the summary
+        if: always()
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('out/exam.json')) process.exit(0);
+            const { rows } = JSON.parse(fs.readFileSync('out/exam.json', 'utf8'));
+            const head = '| exam | tier | provider | score | mean ms | max ms | load ms | over | passed |\n|---|---|---|---|---|---|---|---|---|\n';
+            const body = rows.map((r) => '| ' + [r.exam, r.tier, r.provider, r.score, r.meanMs, r.maxMs, r.loadMs, r.over, r.passed].join(' | ') + ' |').join('\n');
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '#### Exam on ${{ runner.os }}\n\n' + head + body + '\n\n');
+          "
+          cp store/found.json out/models-found.json || true
+      - name: Attach the program and the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traumerei-engine-${{ runner.os == 'Windows' && 'windows' || 'linux' }}
+          path: out/
+          retention-days: 30

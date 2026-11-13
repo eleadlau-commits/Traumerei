@@ -1,0 +1,37 @@
+# traumerei-engine: the default AI system's own engine (app/plugins/default/README.md).
+# One program, run by the desktop app as the `default` plugin's sidecar, that speaks the
+# framework's HTTP bridge (app/core/AI.md, Bridges) on 127.0.0.1. Step 1: the `embed` task.
+[package]
+name = "traumerei-engine"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "traumerei-engine"
+path = "src/main.rs"
+
+[features]
+# The released program: ONNX Runtime downloaded at build time and linked in, so it is one file.
+default = ["bundled"]
+bundled = ["ort/download-binaries", "ort/tls-rustls"]
+# For working on it where ONNX Runtime's download is out of reach: load a libonnxruntime given by
+# ORT_DYLIB_PATH at run time instead (cargo test --no-default-features --features dylib).
+dylib = ["ort/load-dynamic"]
+
+[dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std"] }
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
+tiny_http = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
