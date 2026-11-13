@@ -62,6 +62,10 @@ jobs:
           echo "$f bytes=$bytes sha256=$sum" | tee SHA256.txt
           echo "program=$f" >> "$GITHUB_OUTPUT"
           { echo "### traumerei-engine on ${{ runner.os }}"; echo; echo "\`$f\`: $bytes bytes, sha256 \`$sum\`"; echo; } >> "$GITHUB_STEP_SUMMARY"
+      - name: The machine the exam runs on
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then cpu=$(powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name"); else cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2); fi
+          echo "CPU:$cpu, $(nproc) threads" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Download and check the models
         run: node app/plugins/default/tests/fetch-models.mjs store mid
       - name: Start the engine and run the exam against Provoke's reader

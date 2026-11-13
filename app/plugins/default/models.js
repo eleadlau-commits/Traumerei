@@ -8,15 +8,17 @@
 // all-MiniLM-L6-v2 (sentence-transformers, Apache-2.0): 6 layers, 384 numbers per thought,
 // quantised to 8 bits for any x86-64 CPU with AVX2. Chosen in the step-1 thread: 2.2 ms a thought
 // on a 4-core 2.1 GHz CPU, and the best of five on a test of same-topic neighbours.
-const MINILM_REV = 'main'; // pinned to a commit once engine.yml has read it (bytes and sha256 too)
+const MINILM_REV = '1110a243fdf4706b3f48f1d95db1a4f5529b4d41'; // main on 13 Nov 2026, read by engine.yml
 const MINILM = `https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/${MINILM_REV}`;
 
 export const MODELS = Object.freeze({
   'minilm-l6-v2-int8': Object.freeze({
     task: 'embed', dim: 384, pooling: 'mean', maxTokens: 128, memory: 500, licence: 'Apache-2.0',
     files: Object.freeze({
-      model: Object.freeze({ name: 'minilm-l6-v2-int8.onnx', url: `${MINILM}/onnx/model_quint8_avx2.onnx`, bytes: 0, sha256: '' }),
-      tokenizer: Object.freeze({ name: 'minilm-l6-v2.tokenizer.json', url: `${MINILM}/tokenizer.json`, bytes: 0, sha256: '' }),
+      model: Object.freeze({ name: 'minilm-l6-v2-int8.onnx', url: `${MINILM}/onnx/model_quint8_avx2.onnx`, bytes: 23046789,
+        sha256: 'b941bf19f1f1283680f449fa6a7336bb5600bdcd5f84d10ddc5cd72218a0fd21' }),
+      tokenizer: Object.freeze({ name: 'minilm-l6-v2.tokenizer.json', url: `${MINILM}/tokenizer.json`, bytes: 466247,
+        sha256: 'be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037' }),
     }),
   }),
 });
