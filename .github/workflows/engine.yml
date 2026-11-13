@@ -48,6 +48,16 @@ jobs:
       - name: Build the engine
         working-directory: app/plugins/default/engine
         run: cargo build --release
+      - name: The Windows program needs no DLL a plain Windows lacks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1
+          $deps = & $dumpbin.FullName /dependents app/plugins/default/engine/target/release/traumerei-engine.exe | Where-Object { $_ -match '\.dll\s*$' } | ForEach-Object { $_.Trim() }
+          Write-Output "Needs: $($deps -join ', ')"
+          $bad = $deps | Where-Object { $_ -match '^(vcruntime|msvcp|concrt|vccorlib|ucrtbase|api-ms-win-crt)' }
+          if ($bad) { Write-Output "::error::the engine needs the Visual C++ runtime: $($bad -join ', ')"; exit 1 }
       - name: Name, size and checksum
         id: built
         run: |
