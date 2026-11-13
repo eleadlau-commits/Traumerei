@@ -58,6 +58,8 @@ jobs:
         if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
+          # Its patches to its dependencies apply only with the line ends as committed.
+          git config --global core.autocrlf false
           git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
           cd ort-src
           python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
