@@ -50,7 +50,7 @@ jobs:
       - name: ONNX Runtime with the C runtime linked in (kept between runs)
         if: runner.os == 'Windows'
         id: ort
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ort-static
           key: ort-static-msvc-${{ env.ORT_VERSION }}-1
@@ -77,6 +77,28 @@ jobs:
             Copy-Item $_.FullName $to
           }
           Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | Measure-Object -Property Length -Sum | ForEach-Object { "kept $($_.Count) libraries, $([math]::Round($_.Sum / 1MB)) MB" }
+          (Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | ForEach-Object { $_.FullName.Substring($env:GITHUB_WORKSPACE.Length + 12) }) -join ', '
+          # ort-sys links re2 from _deps\re2-build\Release. Put it there if it was built elsewhere,
+          # or an empty stand-in if this build of ONNX Runtime has none.
+          $re2 = "$env:GITHUB_WORKSPACE\ort-static\_deps\re2-build\Release\re2.lib"
+          New-Item -ItemType Directory -Force -Path (Split-Path $re2) | Out-Null
+          $found = Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter re2.lib | Select-Object -First 1
+          if ($found) {
+            if ($found.FullName -ne $re2) { Copy-Item $found.FullName $re2; "re2.lib: moved from $($found.FullName)" }
+          } else {
+            $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+            $bin = (Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter lib.exe | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1).DirectoryName
+            Set-Content stub.c "static int traumerei_re2_stub;"
+            & "$bin\cl.exe" /nologo /c /MT stub.c
+            & "$bin\lib.exe" /nologo "/OUT:$re2" stub.obj
+            "re2.lib: none was built; an empty stand-in"
+          }
+      - name: Keep it for the next runs
+        if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ort-static
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-1
       - name: Link the engine against it
         if: runner.os == 'Windows'
         run: |
