@@ -5,15 +5,16 @@
 //!     traumerei-engine --port <port> --store <the plugin's folder> [--threads N] [--idle S] [--remember N]
 //!
 //! It answers the framework's HTTP bridge on 127.0.0.1 only:
-//!   GET  /traumerei/ai/v1/health   200 { ok, engine, version, tasks }  (before any model loads)
+//!   GET  /traumerei/ai/v1/health   200 { ok, engine, version, tasks, kept }  (before any model loads)
 //!   POST /traumerei/ai/v1/embed    { version, input: { items } } → { output: { vectors } }
 //! A vector's data travels as { "float32": "<base64 of little-endian float32>" }. Failures answer
 //! { reason } in words. Models load on first use, from what engine.json in the store names.
 //! It exits by itself after --idle seconds with no request (1800 by default), in case the app
-//! that started it is gone without stopping it. --remember is how many texts' vectors it keeps in
-//! memory (50,000 by default; 0 for none, as the exams use).
+//! that started it is gone without stopping it. --remember is how many vectors it keeps, in memory
+//! and in vectors-<model>.bin in the store (100,000 by default; 0 for none, as the exams use).
 
 mod embed;
+mod memory;
 
 use base64::Engine as _;
 use serde::Deserialize;
@@ -149,7 +150,8 @@ fn main() {
         let method = req.method().clone();
         match (method, path.as_str()) {
             (Method::Get, "/traumerei/ai/v1/health") => {
-                answer(req, 200, &serde_json::json!({ "ok": true, "engine": "traumerei-engine", "version": VERSION, "tasks": TASKS }), o)
+                let kept = engine.embedder.as_ref().map(|e| e.kept());
+                answer(req, 200, &serde_json::json!({ "ok": true, "engine": "traumerei-engine", "version": VERSION, "tasks": TASKS, "kept": kept }), o)
             }
             (Method::Post, "/traumerei/ai/v1/embed") => {
                 let mut req = req;

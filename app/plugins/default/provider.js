@@ -28,7 +28,7 @@ export function makeDefault({ sidecar, store, machine = () => ({ tier: 'every-pc
       available: () => false, run: async () => { throw new Error('the default system runs only in the desktop app'); } };
   }
   const base = sidecar.provider({ name: NAME, version: VERSION, tasks: TASKS, hints: HINTS });
-  let readying = null, readyFor = null, refused = '';
+  let readying = null, readyFor = null, refused = '', prepared = false;
 
   // The tier's models in the store and engine.json naming them: { ok } or { ok: false, reason }.
   async function prepare(tier) {
@@ -52,6 +52,7 @@ export function makeDefault({ sidecar, store, machine = () => ({ tier: 'every-pc
     if (!readying || readyFor !== tier) {
       readyFor = tier;
       readying = prepare(tier).then((r) => {
+        prepared = r.ok;
         if (!r.ok) { readying = null; if (r.reason === 'Not now') refused = 'the models were not downloaded (asked once this session)'; }
         return r;
       }, (err) => { readying = null; return { ok: false, reason: String(err?.message || err) }; });
@@ -61,6 +62,9 @@ export function makeDefault({ sidecar, store, machine = () => ({ tier: 'every-pc
 
   return {
     ...base,
+    // True once this session has the engine allowed and the models in place (Default.js warms
+    // the open room's vectors only then, so warming never asks the person anything).
+    prepared: () => prepared,
     // The person is asked to allow the engine first (the sidecar), then for the models.
     available: async () => (await base.available()) && (await ready()).ok,
     run: async (task, input, ctx) => {

@@ -70,7 +70,7 @@ jobs:
         run: node app/plugins/default/tests/fetch-models.mjs store mid
       - name: Start the engine and run the exam against Provoke's reader
         run: |
-          ./out/${{ steps.built.outputs.program }} --port 47811 --store "$PWD/store" --remember 0 &
+          ./out/${{ steps.built.outputs.program }} --port 47811 --store "$PWD/store" &
           up=""
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:47811/traumerei/ai/v1/health && { up=1; break; }; sleep 0.5; done
           [ -n "$up" ] || { echo "::error::the engine never answered"; exit 1; }

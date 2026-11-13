@@ -42,5 +42,6 @@ export const unitRows = ({ dim, data }) => {
   return dim > 0;
 };
 
-// A room of n thoughts, each two of the exam's sentences joined (about 25 words), all different.
-export const room = (n) => Array.from({ length: n }, (_, i) => ({ id: `r${i}`, text: `${THOUGHTS[i % 60].text} ${THOUGHTS[(i * 7 + Math.floor(i / 60)) % 60].text} (${i})` }));
+// A room of n thoughts, each two of the exam's sentences joined (about 25 words), all different;
+// another `salt` gives other texts, so an engine that keeps vectors has none of them yet.
+export const room = (n, salt = '') => Array.from({ length: n }, (_, i) => ({ id: `r${i}`, text: `${THOUGHTS[i % 60].text} ${THOUGHTS[(i * 7 + Math.floor(i / 60)) % 60].text} (${salt}${i})` }));

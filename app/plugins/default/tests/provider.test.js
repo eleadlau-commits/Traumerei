@@ -62,7 +62,9 @@ test('on the web copy it is listed but never available, so the reader answers', 
 test('first use: the engine is allowed first, then the tier\'s model files download, then engine.json names them', async () => {
   const sidecar = fakeSidecar(), store = fakeStore();
   const p = makeDefault({ sidecar, store, machine: () => ({ tier: 'mid' }) });
+  assert.equal(p.prepared(), false);
   assert.equal(await p.available(), true);
+  assert.equal(p.prepared(), true);
   assert.equal(sidecar.log[0], 'start');
   const m = MODELS[pick('mid', 'embed')];
   assert.deepEqual(store.asked.map((a) => a.name), Object.values(m.files).map((f) => f.name));

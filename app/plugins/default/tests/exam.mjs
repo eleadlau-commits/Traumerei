@@ -4,10 +4,12 @@
 //
 //   ENGINE_URL=http://127.0.0.1:<port> node app/plugins/default/tests/exam.mjs [--json out.json]
 //
-// Two exams: quality (same-topic neighbours on the 60-thought general exam and on parts of it)
-// and speed (a search-sized call, a 300-thought room and a 1,500-thought room). Each runs in the
-// interactive tier (the person waits) and in the background tier. Fails unless `default` passes
-// every exam and scores at least as well as the reader on quality.
+// Three exams: quality (same-topic neighbours on the 60-thought general exam and on parts of it);
+// cold speed (a search-sized call, a 300-thought room and a 1,500-thought room, none seen before);
+// and reread speed (a 1,500-thought room the engine has seen, plus 30 new thoughts: the usual
+// case once Default.js has warmed a room). Each runs in the interactive tier (the person waits)
+// and the background tier. Fails unless `default` passes every exam and scores at least as well
+// as the reader on quality.
 
 import { makeAi } from '../../../core/ai/service.js';
 import { http } from '../../../core/ai/bridges.js';
@@ -33,13 +35,19 @@ const EXAMS = {
     quality(THOUGHTS.filter((x) => topics.slice(2, 5).includes(x.topic)), 3),
     quality(THOUGHTS.filter((x) => x.topic !== topics[5]), 5),
   ],
-  speed: [1, 300, 1500].map((n) => ({ input: { items: n === 1 ? [{ id: 'q', text: 'why does bread need patience' }] : room(n) }, mark: (o) => (unitRows(o.vectors) ? 1 : 0) })),
 };
+const unit = (o) => (unitRows(o.vectors) ? 1 : 0);
+const seen = room(1500, 'seen ');
+const cold = (tier) => [1, 300, 1500].map((n) => ({ input: { items: n === 1 ? [{ id: 'q', text: `why does bread need patience (${tier})` }] : room(n, `${tier} ${Date.now()} `) }, mark: unit }));
+const reread = (tier) => [0, 1, 2].map((k) => ({ input: { items: [...seen, ...room(30, `${tier} new ${k} `).map((x) => ({ ...x, id: `n${x.id}` }))] }, mark: unit }));
+
+// The engine sees the reread room once, as Default.js's warming would.
+await ai.call('embed', { items: seen }, { only: ID, priority: 'idle' });
 
 const rows = [];
 let bad = 0;
 for (const tier of ['interactive', 'background']) {
-  for (const [name, cases] of Object.entries(EXAMS)) {
+  for (const [name, cases] of Object.entries({ ...EXAMS, cold: cold(tier), reread: reread(tier) })) {
     const r = await compare(ai, { a: ID, b: 'provoke-reader', task: 'embed', cases, tier });
     for (const x of [r.a, r.b]) {
       rows.push({ exam: name, tier, provider: x.provider, score: +x.score.toFixed(3), meanMs: Math.round(x.ms.mean), maxMs: Math.round(x.ms.max), loadMs: Math.round(x.load.ms), over: x.over, failed: x.failed, passed: x.passed });

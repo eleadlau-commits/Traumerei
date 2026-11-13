@@ -8,7 +8,6 @@
 
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
@@ -89,8 +88,9 @@ fn checked(store: &Path, name: &str, want: &str) -> Result<std::path::PathBuf, S
     Ok(path)
 }
 
-/// Texts embedded so far, so a room read again costs only its new thoughts. Emptied when full.
-pub const REMEMBER: usize = 50_000;
+/// Vectors kept (memory.rs), so a room read again costs only its new thoughts: 100,000 of them
+/// is about 160 MB of file. Let go of all at once when full.
+pub const REMEMBER: usize = 100_000;
 /// Thoughts run through the model at once (sorted by length first, so padding stays small).
 const BATCH: usize = 32;
 /// The most sessions run side by side. One session per core, each on one thread, was measured
@@ -104,8 +104,7 @@ pub struct Embedder {
     sessions: Vec<Mutex<ort::session::Session>>,
     tokenizer: Tokenizer,
     types: bool,
-    remember: usize,
-    seen: HashMap<String, Vec<f32>>,
+    seen: crate::memory::Memory,
 }
 
 /// How many sessions to run: --threads if given, else engine.json's `workers`, else the cores there
@@ -143,17 +142,23 @@ impl Embedder {
             sessions.push(Mutex::new(s));
         }
         let types = sessions[0].lock().unwrap().inputs().iter().any(|i| i.name() == "token_type_ids");
-        let mut me = Embedder { spec: spec.clone(), dim: 0, sessions, tokenizer, types, remember, seen: HashMap::new() };
+        let mut me = Embedder { spec: spec.clone(), dim: 0, sessions, tokenizer, types, seen: crate::memory::Memory::open(None, "", 0, 0) };
         me.dim = me.run(&["dim".to_string()])?.len();
+        let file = store.join(plain(&format!("vectors-{}.bin", spec.name))?);
+        me.seen = crate::memory::Memory::open(Some(file), &spec.model_sha256, me.dim, remember);
         Ok(me)
     }
+
+    /// How many vectors are kept for reuse.
+    pub fn kept(&self) -> usize { self.seen.len() }
 
     /// One vector per text, unit length, `dim` numbers each, row by row.
     pub fn embed(&mut self, texts: &[String]) -> Result<Vec<f32>, String> {
         let mut out = vec![0f32; texts.len() * self.dim.max(1)];
         let mut todo: Vec<usize> = Vec::new();
-        for (i, t) in texts.iter().enumerate() {
-            match self.seen.get(t) {
+        let keys: Vec<crate::memory::Key> = texts.iter().map(|t| crate::memory::key(t)).collect();
+        for (i, k) in keys.iter().enumerate() {
+            match self.seen.get(k) {
                 Some(v) => out[i * self.dim..(i + 1) * self.dim].copy_from_slice(v),
                 None => todo.push(i),
             }
@@ -161,12 +166,13 @@ impl Embedder {
         if todo.is_empty() { return Ok(out) }
         let fresh: Vec<String> = todo.iter().map(|&i| texts[i].clone()).collect();
         let got = self.run(&fresh)?;
-        if self.seen.len() + fresh.len() > self.remember { self.seen.clear(); }
+        let mut keep = Vec::with_capacity(todo.len());
         for (k, &i) in todo.iter().enumerate() {
             let v = &got[k * self.dim..(k + 1) * self.dim];
             out[i * self.dim..(i + 1) * self.dim].copy_from_slice(v);
-            if self.remember > 0 { self.seen.insert(texts[i].clone(), v.to_vec()); }
+            keep.push((keys[i], v));
         }
+        self.seen.keep(&keep);
         Ok(out)
     }
 
