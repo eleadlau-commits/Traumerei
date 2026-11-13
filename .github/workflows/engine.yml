@@ -27,9 +27,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
     defaults:
       run:
         shell: bash
+    env:
+      # ONNX Runtime built here for Windows with the C runtime linked in (pyke's prebuilt one
+      # needs the Visual C++ runtime DLLs, which a plain Windows lacks).
+      ORT_VERSION: v1.31.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,13 +46,45 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             app/plugins/default/engine/target
-          key: engine-${{ matrix.os }}-${{ hashFiles('app/plugins/default/engine/Cargo.toml', 'app/plugins/default/engine/Cargo.lock') }}
+          key: engine-${{ matrix.os }}-${{ hashFiles('app/plugins/default/engine/Cargo.toml', 'app/plugins/default/engine/Cargo.lock', 'app/plugins/default/engine/.cargo/config.toml') }}
+      - name: ONNX Runtime with the C runtime linked in (kept between runs)
+        if: runner.os == 'Windows'
+        id: ort
+        uses: actions/cache@v4
+        with:
+          path: ort-static
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-1
+      - name: Build ONNX Runtime (only when it isn't kept yet; about an hour)
+        if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
+          cd ort-src
+          python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
+            --enable_msvc_static_runtime --compile_no_warning_as_error `
+            --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Keep only the libraries, where ort-sys looks for them (build tree layout).
+          $root = (Resolve-Path build\Windows\Release).Path
+          Get-ChildItem $root -Recurse -Filter *.lib | ForEach-Object {
+            $rel = $_.FullName.Substring($root.Length + 1)
+            $to = Join-Path "$env:GITHUB_WORKSPACE\ort-static" $rel
+            New-Item -ItemType Directory -Force -Path (Split-Path $to) | Out-Null
+            Copy-Item $_.FullName $to
+          }
+          Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | Measure-Object -Property Length -Sum | ForEach-Object { "kept $($_.Count) libraries, $([math]::Round($_.Sum / 1MB)) MB" }
+      - name: Link the engine against it
+        if: runner.os == 'Windows'
+        run: |
+          echo "ORT_LIB_LOCATION=$GITHUB_WORKSPACE/ort-static" >> "$GITHUB_ENV"
+          echo "ORT_LIB_PROFILE=Release" >> "$GITHUB_ENV"
+          echo "FEATURES=--no-default-features" >> "$GITHUB_ENV"
       - name: Engine tests
         working-directory: app/plugins/default/engine
-        run: cargo test --release
+        run: cargo test --release $FEATURES
       - name: Build the engine
         working-directory: app/plugins/default/engine
-        run: cargo build --release
+        run: cargo build --release $FEATURES
       - name: The Windows program needs no DLL a plain Windows lacks
         if: runner.os == 'Windows'
         shell: pwsh
