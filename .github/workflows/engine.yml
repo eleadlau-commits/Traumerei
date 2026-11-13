@@ -53,7 +53,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ort-static
-          key: ort-static-msvc-${{ env.ORT_VERSION }}-1
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-2
       - name: Build ONNX Runtime (only when it isn't kept yet; about an hour)
         if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
         shell: pwsh
@@ -64,13 +64,15 @@ jobs:
           $env:PATH = "C:\Program Files\Git\usr\bin;" + $env:PATH
           git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
           cd ort-src
+          # --no_telemetry: nothing in the engine reports to Microsoft. --build_shared_lib: only the DLL's
+          # link builds every dependency (re2 among them); the engine links the static libraries.
           python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
             --enable_msvc_static_runtime --compile_no_warning_as_error --cmake_generator "Visual Studio 18 2026" `
-            --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF
+            --no_telemetry --build_shared_lib --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Keep only the libraries, where ort-sys looks for them (build tree layout).
           $root = (Resolve-Path build\Windows\Release).Path
-          Get-ChildItem $root -Recurse -Filter *.lib | ForEach-Object {
+          Get-ChildItem $root -Recurse -Filter *.lib | Where-Object { $_.Name -ne 'onnxruntime.lib' } | ForEach-Object {
             $rel = $_.FullName.Substring($root.Length + 1)
             $to = Join-Path "$env:GITHUB_WORKSPACE\ort-static" $rel
             New-Item -ItemType Directory -Force -Path (Split-Path $to) | Out-Null
@@ -78,27 +80,29 @@ jobs:
           }
           Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | Measure-Object -Property Length -Sum | ForEach-Object { "kept $($_.Count) libraries, $([math]::Round($_.Sum / 1MB)) MB" }
           (Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | ForEach-Object { $_.FullName.Substring($env:GITHUB_WORKSPACE.Length + 12) }) -join ', '
-          # ort-sys links re2 from _deps\re2-build\Release. Put it there if it was built elsewhere,
-          # or an empty stand-in if this build of ONNX Runtime has none.
-          $re2 = "$env:GITHUB_WORKSPACE\ort-static\_deps\re2-build\Release\re2.lib"
-          New-Item -ItemType Directory -Force -Path (Split-Path $re2) | Out-Null
-          $found = Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter re2.lib | Select-Object -First 1
-          if ($found) {
-            if ($found.FullName -ne $re2) { Copy-Item $found.FullName $re2; "re2.lib: moved from $($found.FullName)" }
-          } else {
-            $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-            $bin = (Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter lib.exe | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1).DirectoryName
-            Set-Content stub.c "static int traumerei_re2_stub;"
-            & "$bin\cl.exe" /nologo /c /MT stub.c
-            & "$bin\lib.exe" /nologo "/OUT:$re2" stub.obj
-            "re2.lib: none was built; an empty stand-in"
-          }
       - name: Keep it for the next runs
         if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ort-static
-          key: ort-static-msvc-${{ env.ORT_VERSION }}-1
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-2
+      - name: Put the libraries where ort-sys looks for them
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $o = "$env:GITHUB_WORKSPACE\ort-static"
+          function Put($from, $to) {
+            if (Test-Path "$o\$to") { Write-Output "$to is there"; return }
+            $f = Get-ChildItem $o -Recurse -Filter $from | Where-Object { $_.FullName -ne "$o\$to" } | Select-Object -First 1
+            if (-not $f) { Write-Output "::error::$from was not built"; exit 1 }
+            New-Item -ItemType Directory -Force -Path (Split-Path "$o\$to") | Out-Null
+            Copy-Item $f.FullName "$o\$to"
+            Write-Output "$to <- $($f.FullName.Substring($o.Length + 1))"
+          }
+          Put re2.lib _deps\re2-build\Release\re2.lib
+          Put model_package.lib Release\model_package\model_package.lib
+          Put libutf8_validity.lib _deps\protobuf-build\Release\utf8_validity.lib
+          Put libutf8_range.lib _deps\protobuf-build\Release\utf8_range.lib
       - name: Link the engine against it
         if: runner.os == 'Windows'
         run: |
