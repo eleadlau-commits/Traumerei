@@ -60,6 +60,8 @@ jobs:
         run: |
           # Its patches to its dependencies apply only with the line ends as committed.
           git config --global core.autocrlf false
+          # Git's patch, not Strawberry Perl's (which fails on ONNX's patch with CRLF files).
+          $env:PATH = "C:\Program Files\Git\usr\bin;" + $env:PATH
           git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
           cd ort-src
           python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
