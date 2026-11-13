@@ -22,9 +22,9 @@
     ],
     "sidecar": {
       "program": "traumerei-engine-0.1.0.exe",
-      "url": "https://huggingface.co/OWNER/traumerei-engine/resolve/main/traumerei-engine-0.1.0.exe",
-      "bytes": 0,
-      "checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "url": "https://huggingface.co/elliot-elliot0lee/traumerei-engine/resolve/main/traumerei-engine-0.1.0.exe",
+      "bytes": 25708544,
+      "checksum": "sha256:53e4adf40907128c2cd4bd4a5e06ca35127095815abd2d314abc249e6b131aad",
       "args": ["--port", "{port}", "--store", "{store}"],
       "idle": 300
     }
