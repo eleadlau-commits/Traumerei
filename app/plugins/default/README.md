@@ -20,7 +20,7 @@ to the next provider (today Provoke's reader).
 ## How it answers
 
 1. The first call asks the person once to allow the engine (`traumerei-engine-<version>.exe`,
-   about 26 MB), which the app downloads and starts on a free 127.0.0.1 port (the plugin block's
+   about 22 MB), which the app downloads and starts on a free 127.0.0.1 port (the plugin block's
    `sidecar`).
 2. Then the model files its machine tier uses (`models.js`, `PICK`) download into the store, each
    asked with its size: all-MiniLM-L6-v2 int8, 23 MB, and its tokenizer.
