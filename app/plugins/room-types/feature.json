@@ -1,0 +1,26 @@
+{
+  "name": "Room types",
+  "description": "Settings → Room types: every way a room can be seen, and new ones from a Markdown file (a name, a note, an arrangement in words or code), edited in place, exported as a .traumplug.",
+  "version": "1.0.0",
+  "main": "RoomTypes.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "page",
+      "mode"
+    ],
+    "needs": [
+      "files",
+      "store"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}
