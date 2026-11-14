@@ -6,10 +6,21 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
 
-## 1.0.1 (unreleased)
+## 1.0.2 (unreleased)
+
+- Settings → Room types: every room type listed, and new ones from one Markdown file (name, note,
+  arrangement in words or code), edited in place, exported as `.traumplug`. `docs/ROOM-TYPES.md` is
+  the format, written for a model to follow; Copy guide puts it on the clipboard with a worked
+  calendar (`docs/room-types/month-calendar.md`).
+- A simple rule may `draw` boxes behind the marks, and propose through the tables on `drop` and
+  `land` (due, revisit, clear, gap, resolve): a calendar with day cells, where a thought dropped on
+  a day, or written onto a tapped day, is due that day. Plugin API 2, widened by additions only.
+
+## 1.0.1 (13 Nov 2026)
 
 - The AI framework: tasks, providers and engines (`app/core/AI.md`), Settings → AI, and Provoke's
   reader as the first provider.
