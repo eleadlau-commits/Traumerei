@@ -1,0 +1,32 @@
+{
+  "name": "Default AI",
+  "description": "Träumerei's own AI system: a small model on this computer that answers AI tasks first (embed, to start), so Provoke and search read by meaning. Its engine and models download once, when first used.",
+  "version": "0.1.0",
+  "main": "Default.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.1",
+    "kind": [
+      "provider"
+    ],
+    "load": "start",
+    "author": "E",
+    "needs": [
+      "ai",
+      "store",
+      "sidecar",
+      "network"
+    ],
+    "sidecar": {
+      "program": "traumerei-engine-0.1.0.exe",
+      "url": "https://huggingface.co/elliot-elliot0lee/traumerei-engine/resolve/main/traumerei-engine-0.1.0.exe",
+      "bytes": 22321152,
+      "checksum": "sha256:79d503d89fc7909f56f9f3763915a5a4b7deabbb187d0108efbe908adb4bf2f9",
+      "args": ["--port", "{port}", "--store", "{store}"],
+      "idle": 300
+    }
+  }
+}

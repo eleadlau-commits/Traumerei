@@ -1,0 +1,189 @@
+# The default AI system's engine (app/plugins/default/engine): on every pull request that touches
+# the default plugin, builds traumerei-engine for Windows and Linux, downloads the models in
+# models.js (checking their checksums), and runs the embed exam against Provoke's reader
+# (app/plugins/default/tests/exam.mjs) on both. The Windows program is attached to the run as
+# "traumerei-engine-windows", with its size and sha256, for E to upload where models.js and the
+# plugin block say it lives.
+name: Default AI engine
+
+on:
+  pull_request:
+    paths:
+      - 'app/plugins/default/**'
+      - '.github/workflows/engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    env:
+      # ONNX Runtime built here for Windows with the C runtime linked in (pyke's prebuilt one
+      # needs the Visual C++ runtime DLLs, which a plain Windows lacks).
+      ORT_VERSION: v1.31.0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/plugins/default/engine/target
+          key: engine-${{ matrix.os }}-${{ hashFiles('app/plugins/default/engine/Cargo.toml', 'app/plugins/default/engine/Cargo.lock', 'app/plugins/default/engine/.cargo/config.toml') }}
+      - name: ONNX Runtime with the C runtime linked in (kept between runs)
+        if: runner.os == 'Windows'
+        id: ort
+        uses: actions/cache/restore@v4
+        with:
+          path: ort-static
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-2
+      - name: Build ONNX Runtime (only when it isn't kept yet; about an hour)
+        if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          # Its patches to its dependencies apply only with the line ends as committed.
+          git config --global core.autocrlf false
+          # Git's patch, not Strawberry Perl's (which fails on ONNX's patch with CRLF files).
+          $env:PATH = "C:\Program Files\Git\usr\bin;" + $env:PATH
+          git clone --depth 1 --branch $env:ORT_VERSION --recursive --shallow-submodules https://github.com/microsoft/onnxruntime ort-src
+          cd ort-src
+          # --no_telemetry: nothing in the engine reports to Microsoft. --build_shared_lib: only the DLL's
+          # link builds every dependency (re2 among them); the engine links the static libraries.
+          python tools\ci_build\build.py --build_dir build\Windows --config Release --parallel --skip_tests `
+            --enable_msvc_static_runtime --compile_no_warning_as_error --cmake_generator "Visual Studio 18 2026" `
+            --no_telemetry --build_shared_lib --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Keep only the libraries, where ort-sys looks for them (build tree layout).
+          $root = (Resolve-Path build\Windows\Release).Path
+          Get-ChildItem $root -Recurse -Filter *.lib | Where-Object { $_.Name -ne 'onnxruntime.lib' } | ForEach-Object {
+            $rel = $_.FullName.Substring($root.Length + 1)
+            $to = Join-Path "$env:GITHUB_WORKSPACE\ort-static" $rel
+            New-Item -ItemType Directory -Force -Path (Split-Path $to) | Out-Null
+            Copy-Item $_.FullName $to
+          }
+          Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | Measure-Object -Property Length -Sum | ForEach-Object { "kept $($_.Count) libraries, $([math]::Round($_.Sum / 1MB)) MB" }
+          (Get-ChildItem "$env:GITHUB_WORKSPACE\ort-static" -Recurse -Filter *.lib | ForEach-Object { $_.FullName.Substring($env:GITHUB_WORKSPACE.Length + 12) }) -join ', '
+      - name: Keep it for the next runs
+        if: runner.os == 'Windows' && steps.ort.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ort-static
+          key: ort-static-msvc-${{ env.ORT_VERSION }}-2
+      - name: Put the libraries where ort-sys looks for them
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $o = "$env:GITHUB_WORKSPACE\ort-static"
+          function Put($from, $to) {
+            if (Test-Path "$o\$to") { Write-Output "$to is there"; return }
+            $f = Get-ChildItem $o -Recurse -Filter $from | Where-Object { $_.FullName -ne "$o\$to" } | Select-Object -First 1
+            if (-not $f) { Write-Output "::error::$from was not built"; exit 1 }
+            New-Item -ItemType Directory -Force -Path (Split-Path "$o\$to") | Out-Null
+            Copy-Item $f.FullName "$o\$to"
+            Write-Output "$to <- $($f.FullName.Substring($o.Length + 1))"
+          }
+          # With the DLL built, the providers are an object library; its .lib holds the same objects.
+          Put onnxruntime_providers_obj.lib Release\onnxruntime_providers.lib
+          Put re2.lib _deps\re2-build\Release\re2.lib
+          Put model_package.lib Release\model_package\model_package.lib
+          Put libutf8_validity.lib _deps\protobuf-build\Release\utf8_validity.lib
+          Put libutf8_range.lib _deps\protobuf-build\Release\utf8_range.lib
+      - name: Link the engine against it
+        if: runner.os == 'Windows'
+        run: |
+          echo "ORT_LIB_LOCATION=$GITHUB_WORKSPACE/ort-static" >> "$GITHUB_ENV"
+          echo "ORT_LIB_PROFILE=Release" >> "$GITHUB_ENV"
+          echo "FEATURES=--no-default-features" >> "$GITHUB_ENV"
+      - name: Engine tests
+        working-directory: app/plugins/default/engine
+        run: cargo test --release $FEATURES
+      - name: Build the engine
+        working-directory: app/plugins/default/engine
+        run: cargo build --release $FEATURES
+      - name: The Windows program needs no DLL a plain Windows lacks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1
+          $deps = & $dumpbin.FullName /dependents app/plugins/default/engine/target/release/traumerei-engine.exe | Where-Object { $_ -match '\.dll\s*$' } | ForEach-Object { $_.Trim() }
+          Write-Output "Needs: $($deps -join ', ')"
+          $bad = $deps | Where-Object { $_ -match '^(vcruntime|msvcp|concrt|vccorlib|ucrtbase|api-ms-win-crt)' }
+          if ($bad) { Write-Output "::error::the engine needs the Visual C++ runtime: $($bad -join ', ')"; exit 1 }
+      - name: Name, size and checksum
+        id: built
+        run: |
+          version=$(grep -m1 '^version' app/plugins/default/engine/Cargo.toml | cut -d'"' -f2)
+          ext=""; [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
+          mkdir -p out
+          cp "app/plugins/default/engine/target/release/traumerei-engine$ext" "out/traumerei-engine-$version$ext"
+          cd out
+          f="traumerei-engine-$version$ext"
+          bytes=$(wc -c < "$f" | tr -d ' ')
+          sum=$(sha256sum "$f" | cut -d' ' -f1)
+          echo "$f bytes=$bytes sha256=$sum" | tee SHA256.txt
+          echo "program=$f" >> "$GITHUB_OUTPUT"
+          { echo "### traumerei-engine on ${{ runner.os }}"; echo; echo "\`$f\`: $bytes bytes, sha256 \`$sum\`"; echo; } >> "$GITHUB_STEP_SUMMARY"
+      - name: The machine the exam runs on
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then cpu=$(powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name"); else cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2); fi
+          echo "CPU:$cpu, $(nproc) threads" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The engine program the plugin downloads is the one it names
+        if: runner.os == 'Linux'
+        run: |
+          node -e "
+            const { createHash } = require('crypto');
+            const s = require('./app/plugins/default/feature.json').plugin.sidecar;
+            fetch(s.url).then(async (r) => {
+              if (!r.ok) throw new Error(s.url + ' answered ' + r.status);
+              const b = Buffer.from(await r.arrayBuffer());
+              const sum = 'sha256:' + createHash('sha256').update(b).digest('hex');
+              console.log(s.url + ': ' + b.length + ' bytes, ' + sum);
+              if (b.length !== s.bytes || sum !== s.checksum) throw new Error('feature.json says ' + s.bytes + ' bytes, ' + s.checksum);
+            }).catch((e) => { console.error('::error::' + e.message); process.exit(1); });
+          "
+      - name: Download and check the models
+        run: node app/plugins/default/tests/fetch-models.mjs store mid
+      - name: Start the engine and run the exam against Provoke's reader
+        run: |
+          ./out/${{ steps.built.outputs.program }} --port 47811 --store "$PWD/store" &
+          up=""
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:47811/traumerei/ai/v1/health && { up=1; break; }; sleep 0.5; done
+          [ -n "$up" ] || { echo "::error::the engine never answered"; exit 1; }
+          ENGINE_URL=http://127.0.0.1:47811 node app/plugins/default/tests/exam.mjs --json out/exam.json
+      - name: Exam results in the summary
+        if: always()
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('out/exam.json')) process.exit(0);
+            const { rows } = JSON.parse(fs.readFileSync('out/exam.json', 'utf8'));
+            const head = '| exam | tier | provider | score | mean ms | max ms | load ms | over | passed |\n|---|---|---|---|---|---|---|---|---|\n';
+            const body = rows.map((r) => '| ' + [r.exam, r.tier, r.provider, r.score, r.meanMs, r.maxMs, r.loadMs, r.over, r.passed].join(' | ') + ' |').join('\n');
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '#### Exam on ${{ runner.os }}\n\n' + head + body + '\n\n');
+          "
+          cp store/found.json out/models-found.json || true
+      - name: Attach the program and the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traumerei-engine-${{ runner.os == 'Windows' && 'windows' || 'linux' }}
+          path: out/
+          retention-days: 30

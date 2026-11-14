@@ -6,3 +6,4 @@ desktop/node_modules/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
 packed/
+app/plugins/default/engine/target/

@@ -1,0 +1,4 @@
+# The engine is one file on PCs that may have no Visual C++ runtime installed: link the C runtime
+# into it (E's PC said VCRUNTIME140.dll and MSVCP140_1.dll were missing).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
