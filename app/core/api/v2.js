@@ -417,8 +417,8 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     admit: (rule, proposal) => { const o = ontology(rule); return row(o ? { ...lib.rules.admit(o, w(), { ...(proposal || {}) }) } : { ok: false, reason: 'No such rule' }); },
     moves: (rule, context, mark) => { const o = ontology(rule); return rows(o ? lib.rules.moves(o, w(), context, mark) : []); },
     draws: (rule, context) => {
-      const o = ontology(rule), d = o ? lib.rules.draws(o, w(), context) : { lines: [], arrows: [] };
-      return row({ lines: Object.freeze(d.lines.map((l) => Object.freeze([...l]))), arrows: rows(d.arrows) });
+      const o = ontology(rule), d = o ? lib.rules.draws(o, w(), context) : { lines: [], arrows: [], boxes: [] };
+      return row({ lines: Object.freeze(d.lines.map((l) => Object.freeze([...l]))), arrows: rows(d.arrows), boxes: rows(d.boxes || []) });
     },
   });
 
@@ -452,9 +452,35 @@ export function readsOver(lib, w, ontologies = null) {
 // sits; the kernel makes it a full mode: its units are the context's marks (a group as one), a
 // mark dragged keeps where it was put (a rule row of places) unless hand is false, a mark
 // arrange() leaves out sits in a row below the rest. Remembered until the tables it reads change.
+// Three optional hooks widen it, each still pure (it reads, and says what it wants as data):
+//   draw(reads, context) → [{ x, y, w, h, label?, note? }]   boxes the room draws behind the marks
+//   drop(reads, context, mark, x, y) → proposal(s)           a mark let go at x, y
+//   land(reads, context, mark, x, y) → proposal(s)           a new mark written at x, y (a chosen box)
+// A proposal is about the mark (or p.mark in the same context): { due: time, note? },
+// { revisit: time, note? }, { clear: true } (moments ahead), { gap: direction }, { resolve: true }
+// (gaps). The kernel lands each through the tables inside the room's step; a refused one is skipped.
+export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve']);
 export function simpleRule(rule, lib, ontologies = () => null) {
   const { model, groups, gaps: G, rules: R } = lib;
-  const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {}).length}`;
+  const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
+  const said = (fn, w, ...args) => { try { return fn(readsOver(lib, w, ontologies()), ...args); } catch (err) { console.warn(`Rule ${rule.id}: ${fn.name || 'a hook'} failed`, err); return null; } };
+  // Lands what drop() or land() proposed for `mark`; returns the reasons of those refused.
+  const propose = (w, room, mark, out) => {
+    const why = [];
+    for (const p of (Array.isArray(out) ? out : [out]).filter((p) => p && typeof p === 'object')) {
+      const id = p.mark ?? mark;
+      let r = null;
+      if (!w.things[id] || model.parentOf(w, id) !== room) r = { why: 'Not a mark of this room' };
+      else if (model.shut(w, id)) r = { why: 'The mark is locked' };
+      else if (p.due != null || p.revisit != null) r = lib.ahead.ask(w, id, p.due != null ? 'due' : 'revisit', { at: +(p.due ?? p.revisit), note: typeof p.note === 'string' ? p.note : '' });
+      else if (p.clear) r = lib.ahead.get(w, id) ? lib.ahead.clear(w, id) : null;
+      else if (p.gap) r = G.open(w, id, p.gap);
+      else if (p.resolve) r = G.resolve(w, id);
+      else r = { why: `A proposal is one of ${PROPOSALS.join(', ')}` };
+      if (r?.why) why.push(r.why);
+    }
+    return why;
+  };
   const memo = new WeakMap(); // w → Map context → { stamp, key, map }
   const hand = rule.hand !== false;
   const units = (w, room) => model.roomUnits(w, room);
@@ -479,10 +505,30 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       return out;
     },
     point(w, room, id) { return this.layout(w, room).get(id) || null; },
-    drop(w, room, id, x, y) { if (hand && !model.shut(w, room)) groups.putAt(w, room, rule.id, id, x, y); },
+    drop(w, room, id, x, y) {
+      if (model.shut(w, room)) return;
+      if (rule.drop) propose(w, room, id, said(rule.drop, w, room, id, x, y));
+      if (hand) groups.putAt(w, room, rule.id, id, x, y);
+    },
     unplace: hand ? (w, room, id) => groups.unplace(w, room, rule.id, id) : undefined,
     placed: () => true,
   };
+  // The boxes it draws, remembered with the layout's key; each checked to be a box.
+  if (rule.draw) {
+    const drawn = new WeakMap();
+    o.boxes = (w, room) => {
+      let byRoom = drawn.get(w); if (!byRoom) drawn.set(w, (byRoom = new Map()));
+      const key = `${lib.places.version(w, room)}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
+      const had = byRoom.get(room);
+      if (had && had.key === key) return had.boxes;
+      const out = said(rule.draw, w, room);
+      const boxes = (Array.isArray(out) ? out : []).filter((b) => b && ['x', 'y', 'w', 'h'].every((k) => Number.isFinite(b[k])) && b.w > 0 && b.h > 0)
+        .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note) }));
+      byRoom.set(room, { key, boxes });
+      return boxes;
+    };
+  }
+  if (rule.land) o.land = (w, room, id, x, y) => (model.shut(w, room) ? [] : propose(w, room, id, said(rule.land, w, room, id, x, y)));
   if (rule.admit) o.admit = (w, p) => { const why = rule.admit(readsOver(lib, w, ontologies()), p); return why && why !== true ? { ok: false, reason: typeof why === 'string' ? why : why.reason } : { ok: true }; };
   return o;
 }

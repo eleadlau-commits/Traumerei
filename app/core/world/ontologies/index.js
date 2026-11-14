@@ -19,6 +19,10 @@
 // joins is a links row. rules.js gives every ontology the kernel's contract: layout, admit, moves,
 // draws (asRule).
 //   drop(w, room, id, x, y)   a thought dragged to x, y: where it now sits
+//   boxes(w, room)        (optional) boxes the room draws behind the units ([{ x, y, w, h, label,
+//                         note }]); a tap chooses one (a simple rule's draw(): api/v2.js simpleRule)
+//   land(w, room, id, x, y)   (optional) a new thought was kept while a box was chosen, or at the
+//                         point Add was asked at (a simple rule's land())
 //   draftPoint(w, room)   (optional) where a thought being written shows
 //   tray(w, room)         (optional) thoughts it hasn't placed yet; leave it out for no tray. The
 //                         tray shows in the left dock (or along the foot of the room); a thought
