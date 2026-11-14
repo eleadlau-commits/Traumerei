@@ -301,3 +301,33 @@ test('corpus: Anki cards, echoes, dates named in words, statistics and the oldes
   assert.equal(oldestGap.oldest(o).mark, host.ids[5]);
   assert.equal(oldestGap.oldest(o).room, host.room);
 });
+
+test('a rule\'s three hooks: Calendar draws its days, a drop or a new thought on a day makes it due then', () => {
+  const host = makeHost();
+  const t = host.plug('calendar', calendar.install).t;
+  const rule = host.added('calendar').find((a) => a.slot === 'world.ontologies').item;
+  const boxes = t.rules.draws('calendar', host.room).boxes;
+  assert.ok(boxes.length >= 35 && boxes.every((b) => b.w === calendar.W && b.h === calendar.H)); // five weeks of days at least
+  assert.ok(boxes.some((b) => b.note === 'today') && /^Mon \d/.test(boxes[0].label));
+  const day = boxes[9]; // the second week's Wednesday
+  const mark = host.ids[3];
+  rule.drop(host.w, host.room, mark, day.x + 20, day.y + 20);
+  const due = t.moments.next(mark);
+  assert.equal(due.kind, 'due');
+  assert.equal(new Date(due.at).getHours(), 12);
+  const spot = t.rules.layout('calendar', host.room).find((r) => r.mark === mark).position;
+  assert.ok(spot.x > day.x && spot.x < day.x + day.w && spot.y > day.y && spot.y < day.y + day.h); // and it sits in that day
+  rule.drop(host.w, host.room, mark, -100, 40); // left of the days: nothing ahead
+  assert.equal(t.moments.next(mark), null);
+  rule.land(host.w, host.room, host.ids[4], boxes[2].x + 5, boxes[2].y + 5);
+  assert.equal(t.rules.layout('calendar', host.room).find((r) => r.mark === host.ids[4]).position.x, boxes[2].x + calendar.W / 2);
+  // A hook that throws or proposes nonsense changes nothing; a frozen world is never written.
+  const off = host.plug('odd', (k) => k.slots.rules.add({ id: 'odd', name: 'Odd', arrange: () => [], draw: () => { throw new Error('no'); }, drop: () => ({ fly: true }), land: () => [{ due: 'soon' }] }));
+  const odd = host.added('odd').find((a) => a.slot === 'world.ontologies').item;
+  const before = JSON.stringify(host.w.ahead || {});
+  assert.deepEqual(odd.boxes(host.w, host.room), []);
+  odd.drop(host.w, host.room, mark, 0, 0);
+  assert.deepEqual(odd.land(host.w, host.room, mark, 0, 0), ['A time to come back at is needed']);
+  assert.equal(JSON.stringify(host.w.ahead || {}), before);
+  off.off();
+});
