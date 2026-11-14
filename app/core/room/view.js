@@ -408,6 +408,13 @@ export class RoomView {
       // An ontology without a canvas of its own    } else {
       // Any other ontology: its units, each where it says.
       const ont = this.ont;
+      // A simple rule's boxes (its draw(): a calendar's days), behind the marks; the chosen one is
+      // where a new thought lands (writing.js: keepNew).
+      const chosen = this.boxAt?.room === this.roomId ? this.boxAt.i : -1;
+      (ont.boxes?.(w, this.roomId) || []).forEach((b, i) => nodes.push(el('div', {
+        class: 'room-cell' + (i === chosen ? ' chosen' : ''), 'data-box': String(i),
+        style: `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`,
+      }, b.label ? el('span', { class: 'room-cell-label' }, b.label) : null, b.note ? el('span', { class: 'room-cell-note' }, b.note) : null)));
       for (const th of ont.units(w, this.roomId)) {
         const p = ont.point(w, this.roomId, th.id) || { x: 0, y: 0 };
         nodes.push(el('div', {

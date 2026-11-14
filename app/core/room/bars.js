@@ -563,7 +563,7 @@ export class Bars {
     if (this.addAt) { // Add, from a right-click on the canvas
       const at = this.addAt;
       this.addAt = null;
-      return { train: null, x: Math.round(at.x), y: Math.round(at.y) };
+      return { train: null, x: Math.round(at.x), y: Math.round(at.y), at: true };
     }
     const cur = this.current[this.roomId];
     const t = this.world.things[cur];

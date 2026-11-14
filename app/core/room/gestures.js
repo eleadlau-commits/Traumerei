@@ -66,7 +66,7 @@ export class Gestures {
       thing = { ...pick, x: p.x, y: p.y, ...(this.ont.live ? { live: true } : { placed: true }) };
     }
     if (this.locked && thing) thing.still = true; // a locked room: a tap still chooses it, a drag moves the view
-    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, add: e.shiftKey, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
+    this.gesture = { kind: thing ? 'drag' : 'pan', thing, el: groupEl || thoughtEl, at: thoughtEl?.dataset.thought, box: thing ? null : e.target.closest?.('[data-box]')?.dataset.box ?? null, add: e.shiftKey, x0: e.clientX, y0: e.clientY, vx: v.x, vy: v.y, moved: false };
     // A long press (touch, or a pen) opens the properties, or Add on the empty canvas.
     if (e.pointerType !== 'mouse') {
       const g = this.gesture, at = { x: e.clientX, y: e.clientY, target: e.target };
@@ -186,6 +186,8 @@ export class Gestures {
       this.lastTap = train || g.at ? { train, thought: g.at, n, at: now } : null;
       if (n === 3 && this.editThought(g.at)) return;
       if (!g.thing && this.draft) this.stopWriting();
+      // A tap on a rule's box (a calendar's day) chooses it, a tap on it again or elsewhere lets it go.
+      if (!g.thing) this.boxAt = g.box != null && !(this.boxAt?.room === this.roomId && this.boxAt.i === +g.box) ? { room: this.roomId, i: +g.box } : null;
       this.drawWorld();
       return;
     }

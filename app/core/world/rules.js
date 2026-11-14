@@ -13,7 +13,8 @@
 //                               changes anything.
 //   moves(w, context, mark)     what the rule offers to do with a chosen mark: [{ id, label }].
 //   draws(w, context)           what it draws beside the marks, as data: { lines: [[mark…]],
-//                               arrows: [{ from, to, label }] } (no screen here).
+//                               arrows: [{ from, to, label }], boxes: [{ x, y, w, h, label, note }] }
+//                               (no screen here; boxes from a simple rule's draw()).
 //
 // Law 3 (a rule may constrain, never destroy) is held two ways (tests/rules.test.js): the four
 // reads above run on a frozen world, so a rule that wrote anything would throw; and a rule's
@@ -22,13 +23,15 @@
 
 import * as P from './places.js';
 import * as L from './links.js';
+import * as G from './gaps.js';
 import { shut, marksVersion, parentOf, isGroup, roomTrains, members } from './model.js';
 import { netFor } from './ontologies/relations.js';
 
 const MEMO = new WeakMap(); // ontology → Map context → { key, map }
 
 // The tables' state for one context, as one key: equal keys mean nothing that a layout reads changed.
-const keyOf = (w, context) => `${P.version(w, context)}|${L.version(w)}|${marksVersion(w)}`;
+// (Gaps and moments ahead count too: a rule such as Calendar lays marks out by their dates.)
+const keyOf = (w, context) => `${P.version(w, context)}|${L.version(w)}|${marksVersion(w)}|${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
 
 // Where each unit sits under ontology `o` in `context`: its own layout(w, context) when it has
 // one (a whole room at once), else each unit's point().
@@ -116,7 +119,8 @@ export function draws(o, w, context) {
   const net = netFor(o.id) || netFor(`${o.id}-links`);
   const store = net?.store;
   const arrows = store ? L.ofRule(w, store).filter((r) => parentOf(w, r.from) === context).map((r) => ({ from: r.from, to: r.to, label: r.label || '' })) : [];
-  return { lines, arrows };
+  const boxes = typeof o.boxes === 'function' ? o.boxes(w, context) : [];
+  return { lines, arrows, boxes };
 }
 
 // The ontology as a rule: the four parts above, bound to it.

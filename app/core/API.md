@@ -125,7 +125,7 @@ row of `links`. `t.rules` reads each mode as the kernel sees it, frozen:
 | `layout(rule, context)` | `[{ mark, context, rule, position: { x, y } }]`: where each unit sits under that rule, from the rows; remembered until the tables change (a 1,500-thought room lays out in under 50 ms) |
 | `admit(rule, proposal)` | `{ ok: true }` or `{ ok: false, reason }` for `{ kind: 'place', mark, context, position? }` or `{ kind: 'link', from, to, link, rule? }` (Russell refuses a loop). Changes nothing |
 | `moves(rule, context, mark)` | `[{ id, label }]`: what the rule offers for a chosen mark |
-| `draws(rule, context)` | `{ lines: [[mark…]], arrows: [{ from, to, label }] }`: what it draws beside the marks, as data |
+| `draws(rule, context)` | `{ lines: [[mark…]], arrows: [{ from, to, label }], boxes: [{ x, y, w, h, label, note }] }`: what it draws beside the marks, as data |
 
 **A rule of your own** is one function of the tables. Add it with `t.slots.rules.add`:
 
@@ -145,6 +145,21 @@ the time scrub, so read only from it. The kernel makes the rest: the room's unit
 kept as a rule row of `places`, marks `arrange` leaves out laid in rows below the rest, and the
 result remembered until the tables change (marks, places, links, gaps or moments ahead). A
 1,500-mark room must arrange in under 50 ms.
+
+Three optional hooks let a rule give a room a form of its own (a calendar's days) and still keep
+no state. Each reads the same `reads` and returns data; the kernel does the rest:
+
+| Hook | Called when | Returns |
+|---|---|---|
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). A tap on a box chooses it. |
+| `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or nothing |
+| `land(reads, context, mark, x, y)` | a new thought is kept while a box is chosen (`x, y` its centre), or at the point Add was asked at | a proposal, a list of them, or nothing |
+
+A **proposal** is about `mark` (or `p.mark`, another mark of the same room): `{ due: time, note? }`
+or `{ revisit: time, note? }` (moments ahead), `{ clear: true }` (nothing ahead), `{ gap: direction }`,
+`{ resolve: true }` (gaps). Each lands through its table in the same step as the gesture, so one
+Ctrl+Z takes back both; one the table refuses is skipped. A hook that throws changes nothing.
+`app/plugins/calendar` uses all three.
 
 The read half, as handed to `arrange`, a link kind's `admit` and every view:
 `marks` get, in, ofKind, text, search · `places` of, home, in, loose, position · `links` get,

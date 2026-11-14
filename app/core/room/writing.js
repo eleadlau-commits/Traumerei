@@ -311,6 +311,13 @@ export class Writing {
     if (!th && made && g && w.things[g.id]) remove(w, g.id);
     if (th && wr.kept) wr.kept(w, this.roomId, th, d);
     if (th) this.inheritGap(th, g, now);
+    // A simple rule with land() (a calendar) is told where the thought was written: the box chosen,
+    // or the point Add was asked at; it may propose (a date) through the tables, in this one step.
+    if (th && this.ont.land && this.ont !== wr) {
+      const b = this.boxAt?.room === this.roomId ? this.ont.boxes?.(w, this.roomId)?.[this.boxAt.i] : null;
+      const at = b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : d.at ? { x: d.x, y: d.y } : null;
+      if (at) this.ont.land(w, this.roomId, th.id, at.x, at.y);
+    }
     // An ontology that goes on from a thought (goOn) remembers the thought; the others its group.
     if (th && wr.goOn) this.current[this.roomId] = th.id;
     else if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
