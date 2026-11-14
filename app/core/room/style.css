@@ -478,8 +478,8 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 
 /* A simple rule's boxes (its draw(): a calendar's days), behind the thoughts: a hairline cell with
    its label at the top left. The chosen one (a tap) is where a new thought lands. */
-.room-box { position: absolute; box-sizing: border-box; border: 1px solid var(--line); }
-.room-box.chosen { background: var(--sel-fill); outline: var(--sel-line); }
-.room-box-label, .room-box-note { position: absolute; left: 8px; font-size: .78em; color: var(--room-ink); opacity: .55; pointer-events: none; white-space: nowrap; }
-.room-box-label { top: 6px; }
-.room-box-note { bottom: 6px; }
+.room-cell { position: absolute; box-sizing: border-box; border: 1px solid var(--line); }
+.room-cell.chosen { background: var(--sel-fill); outline: var(--sel-line); }
+.room-cell-label, .room-cell-note { position: absolute; left: 8px; font-size: .78em; color: var(--room-ink); opacity: .55; pointer-events: none; white-space: nowrap; }
+.room-cell-label { top: 6px; }
+.room-cell-note { bottom: 6px; }

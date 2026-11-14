@@ -412,9 +412,9 @@ export class RoomView {
       // where a new thought lands (writing.js: keepNew).
       const chosen = this.boxAt?.room === this.roomId ? this.boxAt.i : -1;
       (ont.boxes?.(w, this.roomId) || []).forEach((b, i) => nodes.push(el('div', {
-        class: 'room-box' + (i === chosen ? ' chosen' : ''), 'data-box': String(i),
+        class: 'room-cell' + (i === chosen ? ' chosen' : ''), 'data-box': String(i),
         style: `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`,
-      }, b.label ? el('span', { class: 'room-box-label' }, b.label) : null, b.note ? el('span', { class: 'room-box-note' }, b.note) : null)));
+      }, b.label ? el('span', { class: 'room-cell-label' }, b.label) : null, b.note ? el('span', { class: 'room-cell-note' }, b.note) : null)));
       for (const th of ont.units(w, this.roomId)) {
         const p = ont.point(w, this.roomId, th.id) || { x: 0, y: 0 };
         nodes.push(el('div', {
