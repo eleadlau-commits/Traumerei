@@ -50,14 +50,16 @@ keep no state between calls, never touch the page, the network or storage. Plain
 |---|---|---|
 | `arrange(reads, context)` | the room is laid out | `[{ mark, x, y }]`: where each mark sits; `x, y` is the mark's centre. A mark left out goes in rows below the rest |
 | `admit(reads, proposal)` | a link or a position is asked for | `true` to allow, or a reason in words to refuse. `proposal` is `{ kind: 'link', from, to, link }` or `{ kind: 'place', mark, context, position }` |
-| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note? }]`: boxes drawn behind the marks; `x, y` is the box's top-left corner. A tap on a box chooses it |
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks; `x, y` is the box's top-left corner. `right`: words on its right (a count, a page). `style`: `plain` (a thin frame, the default), `title` (big words, no frame), `heading`, `line` (a dotted line under it, as in a contents page), `shelf` (dashed, faintly filled) or `quiet`; `level` 1 to 3 sets a heading's or a line's size and indent. `opens`: a mark's id (a room's, say): a double-click on the box goes there. A tap on a box chooses it |
 | `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or `null` |
 | `land(reads, context, mark, x, y)` | a new thought is written while a box is chosen (`x, y` is the box's centre) | a proposal, a list of them, or `null` |
 
 A **proposal** is about `mark` (add `mark: id` for another mark of the same room):
 `{ due: time, note? }` (due at that time, milliseconds), `{ revisit: time, note? }`,
 `{ clear: true }` (nothing ahead any more), `{ gap: 'from world' }` (open a gap: `to world` check
-it, `from world` do it, `to maker` judge it), `{ resolve: true }` (close its gap). One the app
+it, `from world` do it, `to maker` judge it), `{ resolve: true }` (close its gap), `{ place: roomId }`
+(the mark goes into another room, loose there; add `x, y` to put it at that point under that room's
+mode: a thought dropped on a chapter's box goes into the chapter's room). One the app
 refuses is skipped. Undo takes back the gesture and its proposals together.
 
 `context` is the room's id. A 1,500-mark room must arrange in under 50 ms: no loops inside loops
@@ -67,7 +69,7 @@ over all marks.
 
 Every call returns frozen rows; hold ids, not rows.
 
-- `reads.marks`: `get(id)` → `{ id, kind, text, at, edited? }` · `in(context)` → the room's marks · `text(id)` · `ofKind(kind)` · `search(words)`
+- `reads.marks`: `get(id)` → `{ id, kind, text, at, edited? }` (a room's row also has `name` and `mode`, the mode it is seen through) · `in(context)` → the marks a context holds (a room's marks; a floor's rooms: `in(reads.places.home(context))` is every room on this room's floor, a contents page's chapters) · `text(id)` · `ofKind(kind)` · `search(words)`
 - `reads.links`: `from(mark, kind?)`, `to(mark, kind?)` → `[{ id, from, to, kind, label? }]` · `members(group)` · `holders(mark)` · `kinds()` · `named(kind)` · `get(id)` · `count()` · `standsFor(id)`
 - `reads.gaps`: `of(mark)` → `{ direction, state: 'open' | 'resolved', openedAt }` or `null` · `opened(context?)` · `oldest(context?)` · `progress(mark)` → `{ open, resolved, of }`
 - `reads.moments`: `next(mark)` → `{ kind: 'due' | 'revisit' | 'return', at, note, state: 'waiting' | 'back' | 'met' | 'refused' }` or `null` · `ahead(context?)` · `returns(context?)` · `of(mark)` (its history) · `changed(mark)` (when last written)
