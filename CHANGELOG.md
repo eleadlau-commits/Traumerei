@@ -6,11 +6,28 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
 
-## 1.0.2 (unreleased)
+## 1.0.3 (unreleased)
+
+- Room settings: a Settings item in the room's rail opens the room's own settings in the right dock
+  (name, colour, categories, what is inside it, and the mode's settings for this room).
+- Floors have names: "Floor 2 – Thesis" in the rail, crumbs and status bar. Name one in its settings.
+- Categories (the tag groups on the rooms page): opening one draws a dotted outline around its rooms.
+- Entering a room no longer opens the loose tray; the rail stays as you left it. Leaving the rooms
+  page for the menu can be cancelled.
+- Plugins can do more (plugin API 2, widened by additions only): their own families of groups
+  (cards that open by themselves), buttons under Tools in the rail, their own link kinds, dock pages
+  that take marks dropped on them, and every mode and part of the room. Room types gain box styles
+  (title, heading, line, shelf, quiet; levels, right side, a box that opens a mark) and can propose
+  where a thought is placed.
+- The Book plugin: a book in any room, chapters of thoughts, a contents page, a reading view, export
+  to Markdown and print (Ctrl+Alt+J).
+
+## 1.0.2 (14 Nov 2026)
 
 - Settings → Room types: every room type listed, and new ones from one Markdown file (name, note,
   arrangement in words or code), edited in place, exported as `.traumplug`. `docs/ROOM-TYPES.md` is
