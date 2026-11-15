@@ -185,7 +185,12 @@ export class Gestures {
       // Two taps on the same group (the page is redrawn between them, so no dblclick comes).
       const train = g.el?.dataset.group;
       const now = Date.now();
-      if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) this.sel = { kind: 'train', id: train };
+      if (train && this.lastTap?.train === train && now - this.lastTap.at < 400) {
+        // A family that opens by itself (a book card): two taps open it, as a double-click would.
+        const opens = this.openerOf(train);
+        if (opens) { this.lastTap = null; this.drawWorld(); opens(); return; }
+        this.sel = { kind: 'train', id: train };
+      }
       // Three taps on the same thought open it to write in, just where it is.
       const n = g.at && this.lastTap?.thought === g.at && now - this.lastTap.at < 400 ? this.lastTap.n + 1 : 1;
       this.lastTap = train || g.at ? { train, thought: g.at, n, at: now } : null;
