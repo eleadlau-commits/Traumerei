@@ -9,7 +9,7 @@
 // about.
 
 import { el } from './shared.js';
-import { roomsOn } from './world.js';
+import { roomsOn, floorTitle, nameFloor } from './world.js';
 
 export class RoomsFloor {
   // Chooses floor `i` (it slides into view) and shows its properties.
@@ -39,14 +39,18 @@ export class RoomsFloor {
     document.querySelector(`.rooms-page[data-page="${this.floorSel}"]`)?.focus({ preventScroll: true });
   }
 
-  // What a floor's properties hold: its name, how many rooms, and Delete floor (not for Floor 1).
+  // What a floor's properties hold: its number and own name, how many rooms, and Delete floor (not for Floor 1).
   floorRows(i) {
     const n = roomsOn(this.world, i).length;
     const key = (k) => el('span', { class: 'key' }, k);
     const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), el('span', {}, value));
     return [
-      el('div', { class: 'title-field' }, `Floor ${i + 1}`),
+      // Its own name ("Floor 2 – Thesis" in the rail and the breadcrumb): Enter or leaving keeps it.
+      el('input', { class: 'pop-name title-field floor-name', value: floorTitle(this.world, i), placeholder: `Floor ${i + 1}: a name`, 'aria-label': `Name of Floor ${i + 1}`, maxlength: 40,
+        onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.target.value = floorTitle(this.world, i); e.target.blur(); } },
+        onchange: (e) => { if (nameFloor(this.world, i, e.target.value)) { this.save(); this.drawRooms(); } } }),
       el('details', { class: 'sec', open: '' }, el('summary', {}, 'Floor'), el('div', { class: 'sec-body' },
+        kv('Number', String(i + 1)),
         kv('Rooms', n ? String(n) : 'None'),
         i === 0 ? el('p', { class: 'pop-note' }, 'Messy thoughts lives here, so Floor 1 stays.') : null,
         i > 0 && n ? el('p', { class: 'pop-note' }, 'Deleting it puts its rooms in the Archive.') : null)),

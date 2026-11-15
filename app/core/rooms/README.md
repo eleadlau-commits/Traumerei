@@ -72,6 +72,8 @@ written there. With nothing in it, the rooms page works on its own.
   Page Down, or a floor in the rail. *+ New floor* adds one at the end and slides down to it.
   Holding a dragged square at the top or bottom edge of the canvas slides to the floor above or
   below, to drop it on a cell there.
+- **Naming a floor** (`floor.js`): a right-click on a floor in the rail shows its properties, whose
+  title is the floor's own name; the rail, the breadcrumb and the status bar then say "Floor 2 – Thesis".
 - **Deleting a floor** (`floor.js`), like a room: a right-click on a floor in the rail chooses it
   and shows its properties in the right dock's Editor tab (Floor n, how many rooms, *Delete
   floor*); while they show, a click on another floor switches them. *Delete floor* (or **Delete**)

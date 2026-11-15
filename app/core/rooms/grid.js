@@ -3,6 +3,7 @@
 // room. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 
 import {
+  floorName, floorTitle,
   MESSY, DEFAULT_MODE, room, parentOf, floorOf, isArchived, addRoom, name, update, remove, move, fold, roomThoughts,
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
@@ -94,7 +95,7 @@ export class RoomsGrid {
       const many = this.picks.length > 1 ? `${this.picks.length} rooms chosen` : '';
       this.frame?.update(this, { backLabel: this.shelf ? 'Back to the rooms' : 'Back to the home page', crumbs: this.crumbs(),
         selection: many || (chosen ? `${chosen.name} chosen` : ''), idle: HINT,
-        mode: this.shelf ? 'Archive' : `${this.past ? `${pastWords(this.past.day)} · ` : ''}Floor ${this.page + 1} of ${pageCount(this.world)}` });
+        mode: this.shelf ? 'Archive' : `${this.past ? `${pastWords(this.past.day)} · ` : ''}Floor ${this.page + 1} of ${pageCount(this.world)}${floorTitle(this.world, this.page) ? ` – ${floorTitle(this.world, this.page)}` : ''}` });
     }
     const byTag = this.lights?.trim().startsWith('#');
     let hits = this.lights?.trim() && (!byTag || tidyTag(this.lights)) ? this.hitsOn(shown) : null;
@@ -269,14 +270,14 @@ export class RoomsGrid {
     const go = (i) => this.showPage(i); // from the Archive too
     this.pagesBar.replaceChildren(
       ...Array.from({ length: n }, (_, i) => el('button', {
-        type: 'button', class: 'rail-item rooms-page', 'data-page': i, title: `Floor ${i + 1}`,
+        type: 'button', class: 'rail-item rooms-page', 'data-page': i, title: floorName(this.world, i),
         ...(i === this.page && !this.shelf ? { 'aria-current': 'page' } : {}),
         ...(i === this.floorSel && !this.shelf ? { class: 'rail-item rooms-page chosen' } : {}),
         // A click goes there (and, while a floor's properties show, switches them to this one);
         // a right-click chooses it and shows its properties (floor.js).
         onclick: () => (this.floorSel != null && this.propsDock?.id === 'floor' ? this.chooseFloor(i) : go(i)),
         oncontextmenu: (e) => { e.preventDefault(); this.chooseFloor(i); },
-      }, railNum(i + 1), railWord(`Floor ${i + 1}`))),
+      }, railNum(i + 1), railWord(floorName(this.world, i)))),
       el('button', { type: 'button', class: 'rail-item rooms-page rooms-page-new', title: 'New floor', onclick: () => {
         const i = addPage(this.world);
         this.save();

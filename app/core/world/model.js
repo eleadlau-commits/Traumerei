@@ -762,6 +762,20 @@ export function roomAt(w, col, row, except = null, page = 0) {
 // Each floor is a mark of kind context, floor:0 … floor:<n-1>, with no gaps.
 export const floorIds = (w) => { const out = []; for (let n = 0; w.things[FLOOR(n)]; n++) out.push(FLOOR(n)); return out; };
 export const pageCount = (w) => Math.max(1, floorIds(w).length);
+// A floor's own name, given by the maker ("Thesis"), kept on its mark as `title`; '' for none.
+// floorName says it in full: "Floor 2 – Thesis", or "Floor 2".
+export const floorTitle = (w, page = 0) => (typeof w.things[FLOOR(page)]?.title === 'string' ? w.things[FLOOR(page)].title : '');
+export const floorName = (w, page = 0) => { const t = floorTitle(w, page); return t ? `Floor ${page + 1} – ${t}` : `Floor ${page + 1}`; };
+// Names floor `page` (an empty name takes it away). False when there is no such floor.
+export function nameFloor(w, page, text) {
+  const f = w.things[FLOOR(page)];
+  if (!isContext(f)) return false;
+  const t = oneLine(text).slice(0, 40);
+  if (t) f.title = t; else delete f.title;
+  f.edited = Date.now();
+  touch(w);
+  return true;
+}
 export function addPage(w, now = Date.now()) { const n = pageCount(w); w.things[FLOOR(n)] = floorThing(n, now); return n; }
 // The last floor goes (it must hold no rooms). False when it can't.
 export function dropPage(w) {

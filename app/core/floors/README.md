@@ -10,8 +10,10 @@ The rooms page's floors: how big every floor is, and where a room goes when it i
   made from inside a room, a room with no cell in old saved data): in the cell asked for if it is
   free, else the first free spot of its size on its own floor, else a new floor at the end. Other
   floors are not searched. A note says so: "Floor 2 was full, so Algebra is on a new Floor 4."
+- **A floor's name:** each floor may have its own name beside its number ("Floor 2 – Thesis"),
+  kept on the floor's mark as `title` (`floorName`, `floorTitle`, `nameFloor` in the world's model).
 - **Deleting a floor:** never Floor 1; its rooms go to the Archive and the floors below move up
-  one. A floor with a locked room on it stays.
+  one, each with its name. A floor with a locked room on it stays.
 - **Moved by you:** dragging to a cell or making a room 2 × 2 works only on the board; a room
   dragged onto a full floor's number stays where it was.
 

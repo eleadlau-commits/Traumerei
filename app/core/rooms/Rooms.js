@@ -19,7 +19,7 @@
 // Saved data: 'lastRoom' (its square glows), 'note' (the comment for next time), 'hinted'.
 
 import { Feature } from 'folio';
-import { bind, room, floorOf, isArchived, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
+import { bind, room, floorOf, floorName, isArchived, MESSY, remove, shut, pageLook, roomLook, rgb, pageCount } from './world.js';
 import { el, MAC, HINT, enterKeeps, railIcon, railWord } from './shared.js';
 import { RoomsGrid } from './grid.js';
 import { RoomsVerbs } from './verbs.js';
@@ -185,7 +185,7 @@ export default class Rooms extends Feature {
   crumbs() {
     return [
       { label: 'Rooms', title: 'The rooms', onClick: () => { if (this.shelf) this.toggleShelf(); else if (this.page) this.showPage(0); } },
-      this.shelf ? { label: 'Archive', current: true } : { label: `Floor ${this.page + 1}`, current: true },
+      this.shelf ? { label: 'Archive', current: true } : { label: floorName(this.world, this.page), current: true },
     ];
   }
 
