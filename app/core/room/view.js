@@ -8,6 +8,7 @@ import {
   light, twinOf, relationsRow, reading, showSizes,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
+import { patchChildren } from './patch.js';
 import { ui } from 'folio';
 import { el, railIcon, railWord } from './shared.js';
 
@@ -413,10 +414,13 @@ export class RoomView {
 
   // (Inside reading(), the world lists who holds what once for the whole drawing, not once per
   // thought: a big room draws fast.)
-  drawWorld() {
+  // patch: change only the nodes drawn differently from before (patch.js), for a step that
+  // changes one thought (the first letter of a new one); the rest of the room is not laid out again.
+  drawWorld(patch = false) {
     if (!this.roomId) return;
     reading(this.world, () => {
-      this.world$.replaceChildren(...this.canvasNodes());
+      if (patch) patchChildren(this.world$, this.canvasNodes());
+      else this.world$.replaceChildren(...this.canvasNodes());
       this.drawLinks(); // a plugin's links: lines, and a ↗ where the other end is elsewhere (linklayer.js)
       this.markPast();
       this.showStatus();
@@ -424,7 +428,10 @@ export class RoomView {
       this.drawTray();
       this.drawTwin(); // a Twin's other side, beside (twin.js)
     });
-    this.clearSoon();
+    // Clearing space measures every block in the room: after a patch (one thought begun) it waits
+    // until the letter is on the screen, so the thought shows first and the room makes room after.
+    if (patch) requestAnimationFrame(() => setTimeout(() => this.clearSoon(), 0));
+    else this.clearSoon();
   }
 
   // What the canvas shows: the ontology's own drawing, or each of its units where it says.
