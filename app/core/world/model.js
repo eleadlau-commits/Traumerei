@@ -74,7 +74,9 @@ export const isGroup = (th) => kindOf(th) === 'group';
 // and deleting the group deletes its items, as with trains) or 'many' (an item can be in several,
 // and deleting the group frees them). An ontology not declared holds them as 'one'.
 const MEMBERSHIP = { joyce: 'one' };
+const MODES = new Set([DEFAULT_MODE]); // every mode that declared its groups: no family takes its id
 export function declareGroups(of, groups) {
+  MODES.add(of);
   if (groups?.membership === 'many' || groups?.membership === 'one') MEMBERSHIP[of] = groups.membership;
   declareOrder(of, groups);
 }
@@ -84,6 +86,32 @@ export const membership = (of) => MEMBERSHIP[of] || 'one';
 // Russell chapter, whose thoughts are dragged up and down it).
 const KEPT = new Set();
 export function declareOrder(of, groups) { if (groups?.order === 'kept') KEPT.add(of); else KEPT.delete(of); }
+
+// Group families a plugin declares (not a mode's: a book, its chapters): { id, name, membership,
+// order, card, keep, open? }. Their groups hold parts like any group (part of rows), never belong to
+// a mode, and a mode never lays them out: a thought sits in a chapter and in a Proust cluster at
+// once. `card`: its groups that no other group holds show as one card in every mode (placed by
+// hand, or waiting in the tray), with their parts still where they are. `keep`: a group of it
+// left empty stays (a new chapter with nothing in it yet). Membership is 'many' unless it says
+// 'one' (deleting such a group never deletes its parts).
+const FAMILIES = new Map();
+export function declareFamilies(list = [], warn = () => {}) {
+  for (const id of FAMILIES.keys()) { delete MEMBERSHIP[id]; KEPT.delete(id); }
+  FAMILIES.clear();
+  for (const f of list) {
+    if (!f || typeof f.id !== 'string' || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(f.id)) { warn(f, 'an id of lowercase words joined by dashes'); continue; }
+    if (FAMILIES.has(f.id) || MODES.has(f.id)) { warn(f, 'an id of its own, not a mode\'s'); continue; }
+    const fam = Object.freeze({ id: f.id, name: typeof f.name === 'string' && f.name ? f.name : f.id, membership: f.membership === 'one' ? 'one' : 'many',
+      order: f.order === 'time' ? 'time' : 'kept', card: !!f.card, keep: f.keep !== false, open: typeof f.open === 'function' ? f.open : null });
+    FAMILIES.set(f.id, fam);
+    MEMBERSHIP[f.id] = fam.membership;
+    if (fam.order === 'kept') KEPT.add(f.id);
+  }
+}
+export const familyOf = (of) => FAMILIES.get(of) || null;
+export const families = () => [...FAMILIES.values()];
+// Whether a group is a card: one of a card family's (a book), shown as one thing in every mode.
+export const isCard = (g) => isGroup(g) && !!FAMILIES.get(g.of)?.card;
 
 let counter = 0;
 export function uid(prefix = 'x') {
@@ -335,7 +363,8 @@ export function join(w, groupId, id) {
   if (membership(g.of) === 'one') for (const o of groupsOf(w, id, g.of)) leave(w, o.id, id);
   // A group that keeps its order takes a newcomer before the first item written after it (so a
   // thought written between two goes between them); one written last goes at the end.
-  const after = KEPT.has(g.of) ? memberIds(w, groupId).find((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : null;
+  // (A family's group, a book's chapter, takes it at the end: its order is the maker's alone.)
+  const after = KEPT.has(g.of) && !g.family ? memberIds(w, groupId).find((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : null;
   L.join(w, groupId, id, after == null ? null : L.rankBefore(w, groupId, after));
   return true;
 }
@@ -362,7 +391,7 @@ export function leave(w, groupId, id) {
   const g = w.things[groupId];
   if (!isGroup(g)) return false;
   L.drop(w, L.partId(groupId, id));
-  if (!L.parts(w, groupId).length) { delete w.things[groupId]; L.dropAll(w, groupId); G.drop(w, groupId); A.drop(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
+  if (!L.parts(w, groupId).length && !(g.family && FAMILIES.get(g.of)?.keep !== false)) { delete w.things[groupId]; L.dropAll(w, groupId); G.drop(w, groupId); A.drop(w, groupId); P.dropMark(w, groupId); forget(w, groupId); }
   return true;
 }
 
@@ -502,6 +531,7 @@ function tidy(f) {
     const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE, title: oneLine(f.title) });
     if (f.closed) out.closed = true;
     if (f.shared) out.shared = true; // made on purpose (Ctrl+G, the tray): one object in every mode (groups.js)
+    if (f.family || FAMILIES.has(out.of)) out.family = true; // a plugin's family's (declareFamilies): never takes its parts with it, its plugin on or off
     return out;
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
@@ -637,7 +667,7 @@ export function remove(w, id) {
   if (!th || id === MESSY || shut(w, id)) return;
   delete w.things[id];
   touch(w);
-  const inside = isGroup(th) && membership(th.of) === 'one' ? memberIds(w, id) : [];
+  const inside = isGroup(th) && membership(th.of) === 'one' && !th.family ? memberIds(w, id) : [];
   const stoodFor = L.from(w, id, 'stands for').map((r) => r.to);
   const holders = groupsOf(w, id);
   L.dropAll(w, id);

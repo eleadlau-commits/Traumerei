@@ -5,6 +5,11 @@ where rooms are made and gone into, is the **rooms** feature's (`app/core/rooms`
 which room to open, and this feature shows it and writes in it.
 
 
+**Tools and opening.** Plugins' buttons (the slot `room.buttons`: `{ id, label, icon, order,
+run(), on?(), visible?(), title?() }`) show in the room's rail under **Tools**. A mark whose kind
+(`world.items`) or group family (`world.families`) has `open` opens that way on a double-click or
+Enter, in any mode, instead of the sheet.
+
 **Room settings.** *Settings* in a room's rail (or ⋯ More → Editor with nothing chosen, or the ⚙
 beside a mode) shows the room's own settings in the right dock: its name and line, tags, colour,
 lightness and opacity, Lock and Export (the rooms page's, through `rooms.settingsRows`), then the

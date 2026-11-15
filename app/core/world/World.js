@@ -10,7 +10,7 @@ import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import * as traum from './traum.js';
-import { loadWorld } from './model.js';
+import { loadWorld, declareFamilies } from './model.js';
 import { gather, forRooms, forPage, FALLBACK } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
 import { formatsOf } from './formats.js';
@@ -39,6 +39,13 @@ export default class World extends Feature {
     // through a mode that is off is seen through the fallback until it is on again.
     this.defineSlot('world.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see world/ontologies/index.js).')
       .watch(() => this.emit('world:modes'));
+    // Group families, from plugins (a book, its chapters: model.js declareFamilies): their groups
+    // hold parts, belong to no mode, and a card family's show as one card in every mode.
+    this.defineSlot('world.families', 'A family of groups a plugin declares: { id, name, membership?, order?, card?, keep?, open?(id) } (see world/model.js, declareFamilies).')
+      .watch((slot) => {
+        declareFamilies(slot.items, (f, why) => console.warn(`World: the group family "${f?.id}" was skipped: it needs ${why}`));
+        this.emit('world:modes');
+      });
     // More kinds of item, from plugins: ITEMS follows the slot, and 'world:kinds' says it changed
     // (a thought of a kind switched off shows as a stand-in and is kept as it is).
     const kinds = this.defineSlot('world.items', 'A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el) } (see world/items/index.js).');

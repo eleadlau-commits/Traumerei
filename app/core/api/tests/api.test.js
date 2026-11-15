@@ -19,7 +19,7 @@ const V2 = {
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['aiServices', 'carriers', 'commands', 'editor', 'engines', 'formats', 'kinds', 'linkKinds', 'more', 'providers', 'rules'],
+  slots: ['aiServices', 'buttons', 'carriers', 'commands', 'editor', 'engines', 'families', 'formats', 'kinds', 'linkKinds', 'more', 'providers', 'rules'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
   ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'open', 'roundTrip', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
@@ -96,8 +96,10 @@ test('what a plugin adds is its own, and can be taken away', () => {
   t.slots.more.add({ id: 'haiku-more' });
   t.slots.kinds.add({ kind: 'haiku' });
   t.slots.carriers.add({ id: 'haiku-cloud', name: 'Haiku cloud', moves: 'moments' });
+  t.slots.families.add({ id: 'haiku-book', name: 'Haiku book', card: true });
+  t.slots.buttons.add({ id: 'haiku-btn', label: 'Haiku', run() {} });
   assert.deepEqual(app.slot('world.ontologies').items.map((e) => e.owner), ['haiku']);
-  for (const slot of ['keys', 'rail.more', 'world.items', 'room.editor', 'world.carriers']) assert.equal(app.slot(slot).items[0].owner, 'haiku', slot);
+  for (const slot of ['keys', 'rail.more', 'world.items', 'room.editor', 'world.carriers', 'world.families', 'room.buttons']) assert.equal(app.slot(slot).items[0].owner, 'haiku', slot);
   remove();
   assert.equal(app.slot('world.ontologies').items.length, 0);
 });
