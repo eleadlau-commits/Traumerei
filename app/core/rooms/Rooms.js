@@ -212,7 +212,7 @@ export default class Rooms extends Feature {
     };
     text.onkeydown = (e) => {
       e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+      if (e.key === 'Escape') { e.preventDefault(); this.stayHere(); }
       if (e.key === 'Enter' && !e.isComposing && enterKeeps(e)) keep();
     };
     this.leaveBox.replaceChildren(
@@ -221,9 +221,17 @@ export default class Rooms extends Feature {
       el('div', { class: 'sheet-words' },
         el('button', { type: 'button', class: 'word', onclick: keep }, 'Keep'),
         el('button', { type: 'button', class: 'word', onclick: () => this.close() }, 'Skip'),
-        el('span', { class: 'sheet-keys' }, 'Enter keeps it · Ctrl+Enter a new line')));
+        el('button', { type: 'button', class: 'word', title: 'Stay on the rooms page (Escape)', onclick: () => this.stayHere() }, 'Cancel'),
+        el('span', { class: 'sheet-keys' }, 'Enter keeps it · Escape stays here')));
     this.leaveBox.hidden = false;
     text.focus();
+  }
+
+  // Cancel (or Escape) on the way out: the pop-up goes and the rooms page stays, as it was.
+  stayHere() {
+    this.leaving = false;
+    this.leaveBox.hidden = true;
+    this.drawRooms();
   }
 
   // The comment left last time, faint under the search bar until it is dismissed.

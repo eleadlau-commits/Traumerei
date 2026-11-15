@@ -18,8 +18,8 @@ room hands it to the **room** feature (`app/core/room`), which shows it and writ
 
 It sends `room:open` `{ id, from, seed }` when a room is gone into (`from`: the square's
 rectangle; `seed`: a first key typed on the rooms page, for Messy thoughts). It listens to
-`room:changed` (a room was written in, so leaving asks for a comment for next time) and to the
-world's events.
+`room:changed` (a room was written in, so leaving asks for a comment for next time: Keep, Skip,
+or Cancel, which stays on the rooms page, as Escape does) and to the world's events.
 
 It defines one slot, `rooms.room`: the open room, shown over this page, as one item
 `{ leave(), hasDraft(id) }` (the room feature fills it). `leave()` leaves the room and returns
