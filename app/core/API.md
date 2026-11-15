@@ -256,7 +256,7 @@ a result that would change anything reaches the maker as a suggestion to keep or
 
 | Member | What it is |
 |---|---|
-| `ui.docks` | `{ left, right, canvasOnly() }`, or `null` when the app has no docks. `canvasOnly()` hides every dock that shows; again brings them back. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose })` (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
+| `ui.docks` | `{ left, right, canvasOnly() }`, or `null` when the app has no docks. `canvasOnly()` hides every dock that shows; again brings them back. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose, drop })` (`drop: { drop(ids, target), accepts?(ids, target) }`: thoughts dragged from the canvas may be let go on the tab, onto the element under the pointer with a `data-drop` attribute, or the tab itself; the room lights it while one is held over it and leaves the thoughts where they were) (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
 | `ui.frame` | The top bar and status bar for a page the plugin shows: `show({ crumbs, idle })`, `update(o)`, `hide()`, `hint(text)`, `clearHint()` (`app/core/frame/README.md`). `null` without the frame. |
 | `ui.open` | `rooms()` (the rooms page), `room(id)` (into a room, from anywhere), `mark(id)` (into the room a mark is at home in, with the view on it and it chosen; a room: into it; `false` when it is in no room). |
 
