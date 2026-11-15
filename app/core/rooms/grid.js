@@ -156,7 +156,7 @@ export class RoomsGrid {
       else this.dockRoom(chosen || null);
     }
     if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
-    this.grid.replaceChildren(...empty, ...tiles, ...panels);
+    this.grid.replaceChildren(...empty, ...tiles, ...this.categoryOutlines(all), ...panels);
     this.keepInView(scrolled);
     this.grid.querySelector('.rooms-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
@@ -464,7 +464,7 @@ export class RoomsGrid {
       let timer = 0;
       return el('button', {
         type: 'button', class: 'rail-item rooms-tag-pick' + (mode ? '' : ' draggable'), role: 'listitem', 'aria-pressed': String(on),
-        title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · drag onto a room to tag it · right-click to put it in a group'}`,
+        title: `${t.n} room${t.n === 1 ? '' : 's'}${mode ? '' : ' · drag onto a room to tag it · right-click to put it in a category'}`,
         onclick: () => { if (this.heldTag) { this.heldTag = false; return; } this.tagLight = on ? null : t.tag; this.drawRooms(); },
         oncontextmenu: (e) => { e.preventDefault(); if (!mode) { this.regrouping = t.tag; this.drawTags(); } },
         onpointerdown: (e) => {
@@ -478,7 +478,7 @@ export class RoomsGrid {
     const plus = (group, label) => this.makingTag && this.makingTag.group === group
       ? this.makeField(group)
       : el('button', { type: 'button', class: 'rail-item rooms-tag-plus', title: label, 'aria-label': label,
-        onclick: () => { this.makingTag = { group }; this.drawTags(); } }, el('span', { 'aria-hidden': 'true' }, '+'), group == null ? 'group' : 'tag');
+        onclick: () => { this.makingTag = { group }; this.drawTags(); } }, el('span', { 'aria-hidden': 'true' }, '+'), group == null ? 'category' : 'tag');
     const none = !this.tagLight;
     this.tagsList.replaceChildren(
       el('button', { type: 'button', class: 'rail-item rooms-tag-head', role: 'listitem', 'aria-pressed': String(none),
@@ -488,13 +488,51 @@ export class RoomsGrid {
         const lit = this.tagLight && (tagGroup(this.world, this.tagLight, onts) || '').toLowerCase() === key;
         return el('div', { class: 'rooms-tag-fold' + (open ? ' open' : ''), role: 'listitem' },
           el('button', { type: 'button', class: 'rail-item rooms-tag-head', 'aria-expanded': String(open), 'aria-pressed': String(!!lit),
-            onclick: () => { this.openGroup = open ? null : key; this.makingTag = null; this.drawTags(); } },
+            onclick: () => { this.openGroup = open ? null : key; this.makingTag = null; this.drawRooms(); } },
           el('span', {}, g.group || 'Other'), el('span', { class: 'rooms-tag-caret', 'aria-hidden': 'true' }, '›')),
           open ? el('div', { class: 'rooms-tag-tags', role: 'list' },
             ...g.tags.map(pick),
             g.group === ONTOLOGY ? null : plus(g.group || '', `A new tag${g.group ? ' in ' + g.group : ''}`)) : null);
       }),
-      plus(null, 'A new group'));
+      plus(null, 'A new category'));
+  }
+
+  // A category opened in the rail shows on the floor: a dotted outline round the rooms of each of
+  // its tags (rooms side by side share one outline; rooms apart get one each), named by the tag at
+  // its top-left. A room with two tags of the category sits in two outlines, the second a little
+  // further in. Only a line on the screen: nothing moves, and nothing is kept.
+  categoryOutlines(all) {
+    if (!this.tagsOpen || this.openGroup == null || this.past) return [];
+    const onts = this.ontologies;
+    const group = tagsByGroup(this.world, onts, false).find((g) => (g.group || '').toLowerCase() === this.openGroup);
+    if (!group) return [];
+    const out = [];
+    group.tags.forEach((t, k) => {
+      const mine = new Set();
+      for (const r of all) if (hasTag(this.world, r.id, t.tag, onts)) for (const [c, d] of cells(r, cellOf(this.world, r.id))) mine.add(`${c},${d}`);
+      const seen = new Set();
+      for (const start of mine) {
+        if (seen.has(start)) continue;
+        // One outline for each patch of cells that touch side by side.
+        const patch = [], todo = [start];
+        seen.add(start);
+        while (todo.length) {
+          const at = todo.pop();
+          patch.push(at);
+          const [c, d] = at.split(',').map(Number);
+          for (const n of [`${c + 1},${d}`, `${c - 1},${d}`, `${c},${d + 1}`, `${c},${d - 1}`]) if (mine.has(n) && !seen.has(n)) { seen.add(n); todo.push(n); }
+        }
+        const first = patch.map((x) => x.split(',').map(Number)).sort((a, b) => a[1] - b[1] || a[0] - b[0])[0];
+        for (const at of patch) {
+          const [c, d] = at.split(',').map(Number);
+          const side = (n) => !mine.has(n);
+          const cls = ['rooms-outline', side(`${c},${d - 1}`) && 'top', side(`${c + 1},${d}`) && 'right', side(`${c},${d + 1}`) && 'bottom', side(`${c - 1},${d}`) && 'left'].filter(Boolean).join(' ');
+          out.push(el('div', { class: cls, 'aria-hidden': 'true', style: `grid-column:${c + 1};grid-row:${d + 1};--inset:${Math.min(k, 3) * 3}px` },
+            c === first[0] && d === first[1] ? el('span', { class: 'label rooms-outline-name' }, t.tag) : null));
+        }
+      }
+    });
+    return out;
   }
 
   // The + field: a new tag in a group (Enter makes it; it shows with 0 rooms until dragged onto
@@ -512,8 +550,8 @@ export class RoomsGrid {
       this.drawTags();
     };
     const field = el('input', {
-      class: 'rooms-tag-field rooms-make-field', placeholder: forGroup ? 'New group' : 'New tag',
-      'aria-label': forGroup ? 'A new group' : 'A new tag', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      class: 'rooms-tag-field rooms-make-field', placeholder: forGroup ? 'New category' : 'New tag',
+      'aria-label': forGroup ? 'A new category' : 'A new tag', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); done(true, e.target.value); }
@@ -578,7 +616,7 @@ export class RoomsGrid {
     const list = el('datalist', { id: 'rooms-group-list' }, ...groupNames(this.world).slice(1).map((g) => el('option', { value: g })));
     const field = el('input', {
       class: 'rooms-tag-field rooms-group-field', value: tagGroup(this.world, tag, this.ontologies) || '', placeholder: `${tag} in…`,
-      'aria-label': `The group ${tag} is in`, list: 'rooms-group-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
+      'aria-label': `The category ${tag} is in`, list: 'rooms-group-list', maxlength: 30, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); done(true, e.target.value); }
@@ -786,7 +824,7 @@ export class RoomsGrid {
     const list = el('datalist', { id: 'rooms-tag-list' },
       ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el('option', { value: t.tag })));
     const field = el('input', {
-      class: 'rooms-tag-field', placeholder: '+ tag', title: 'A tag, or Group: tag', 'aria-label': 'Add a tag', list: 'rooms-tag-list', maxlength: 61, autocomplete: 'off', spellcheck: 'false',
+      class: 'rooms-tag-field', placeholder: '+ tag', title: 'A tag, or Category: tag', 'aria-label': 'Add a tag', list: 'rooms-tag-list', maxlength: 61, autocomplete: 'off', spellcheck: 'false',
       onkeydown: (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value; after(() => addTag(this.world, r.id, v, onts)); }

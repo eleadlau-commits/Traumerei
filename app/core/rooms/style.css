@@ -240,6 +240,27 @@
 .rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(var(--ink-rgb) / .1)) 100%, rgb(var(--ink-rgb) / .12)); }
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
+/* A category opened in the rail: a dotted outline round the rooms of each tag (grid.js). Each
+   cell draws the sides that face out of its patch, half a gap outside the square, so the patch's
+   cells join into one line. */
+.rooms-outline {
+  pointer-events: none;
+  margin: calc(var(--cell-gap) / -2);
+  position: relative;
+  z-index: 1;
+  border: 0 dotted rgb(var(--ink-rgb) / .55);
+}
+.rooms-outline.top { border-top-width: 1.5px; margin-top: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
+.rooms-outline.right { border-right-width: 1.5px; margin-right: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
+.rooms-outline.bottom { border-bottom-width: 1.5px; margin-bottom: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
+.rooms-outline.left { border-left-width: 1.5px; margin-left: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
+.rooms-outline-name {
+  position: absolute;
+  top: -1.5em;
+  left: calc(2px + var(--inset, 0px) * 24);
+  white-space: nowrap;
+}
+
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
 /* ---- The floors of the rooms page, in the rail under Floors: Floor 1, Floor 2, + New floor ---- */

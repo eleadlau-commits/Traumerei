@@ -54,15 +54,18 @@ written there. With nothing in it, the rooms page works on its own.
   (Enter adds it; Backspace in the empty field takes off the last). Tags are the same whatever
   their case, and show only in properties and the tags list, never on the squares.
   Under a hairline below *Archive* (and the page numbers), **Arrange by** opens a quiet list:
-  *None*, then each tag group (Ontology first, *Other* last for the tags in no group). A click on
-  a group opens it to its tags, each with how many rooms have it. Picking a tag lights its rooms
+  *None*, then each **category** (a group of tags: Ontology first, *Other* last for the tags in no
+  category). A click on a category opens it to its tags, each with how many rooms have it, and
+  draws a **dotted outline** on the floor round the rooms of each of its tags (rooms side by side
+  share one; the tag's name sits at its top-left; a room with two of its tags sits in two, the
+  second a little further in). Picking a tag lights its rooms
   and dims the rest, as the search lights do: nothing hides or moves. *None*, picking the tag
   again, or Escape makes every room bright again. In the rooms page's Search, **#tag** does the
   same (it lights the rooms with a tag that starts so).
-  **Making tags.** *+ group* at the foot of the list makes a group; *+ tag* under an open group's
+  **Making tags.** *+ category* at the foot of the list makes a category; *+ tag* under an open category's
   tags makes a tag in it. A tag made so shows 0 until a room has it. **Drag a tag** (not a mode's)
   from the list onto a square to add it to that room; take it off in the room's properties.
-  Right-click a tag in the list (a long press on a phone) to type its group (empty takes it out);
+  Right-click a tag in the list (a long press on a phone) to type its category (empty takes it out);
   *Subject: Algebra* in a room's + tag also works. *Ontology* holds the modes and can't change.
 - **Motion.** Going into a room zooms in: its square grows to fill the screen while the rooms
   page swells and fades behind it. Leaving zooms out the other way, the room shrinking back into
@@ -133,7 +136,7 @@ written there. With nothing in it, the rooms page works on its own.
   them all, or unlocks them all when every one is locked). With several chosen, a right-click on one of them (or the
   Editor already open) shows "N rooms" in the Editor tab, with Lock, Archive and Delete (in the
   Archive: Restore and Delete). **Ctrl+G** groups them the rooms
-  page's way, by a tag they share (written in a small field; "Group: tag" puts the tag in a group
+  page's way, by a tag they share (written in a small field; "Category: tag" puts the tag in a category
   too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
 - **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy
   should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
