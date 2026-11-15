@@ -73,10 +73,12 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   };
 
   // -- marks: today, a mark row is a thought object, frozen (its shape: world/model.js). --
+  // A room's row says the mode it is seen through (`mode`), read from its view (since 1.0.3).
+  const markRow = (th) => (kindOf(th) === 'room' ? { ...th, mode: w().views?.[th.id]?.mode || model.DEFAULT_MODE } : { ...th });
   const marks = Object.freeze({
-    get: (id) => (thing(id) ? row({ ...thing(id) }) : null),
-    in: (context) => rows(model.children(w(), context ?? null).map((th) => ({ ...th }))),
-    ofKind: (kind) => rows(Object.values(w().things).filter((th) => kindOf(th) === kind).map((th) => ({ ...th }))),
+    get: (id) => (thing(id) ? row(markRow(thing(id))) : null),
+    in: (context) => rows(model.children(w(), context ?? null).map(markRow)),
+    ofKind: (kind) => rows(Object.values(w().things).filter((th) => kindOf(th) === kind).map(markRow)),
     text: (id) => (thing(id) ? model.thoughtText(w(), thing(id)) : ''),
     search: (words, most) => rows(model.search(w(), words, most).map((th) => ({ ...th }))),
     make: ({ kind = 'line', content = '', in: context = null, at = {} } = {}) => {
@@ -459,7 +461,11 @@ export function readsOver(lib, w, ontologies = null) {
 // A proposal is about the mark (or p.mark in the same context): { due: time, note? },
 // { revisit: time, note? }, { clear: true } (moments ahead), { gap: direction }, { resolve: true }
 // (gaps). The kernel lands each through the tables inside the room's step; a refused one is skipped.
-export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve']);
+// Since 1.0.3 also { place: context, x?, y? } (places.put: into another context of the rooms,
+// a chapter's room say; with x, y it lands there under that room's mode).
+export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place']);
+// What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
+export const BOX_STYLES = Object.freeze(['plain', 'title', 'heading', 'line', 'shelf', 'quiet']);
 export function simpleRule(rule, lib, ontologies = () => null) {
   const { model, groups, gaps: G, rules: R } = lib;
   const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
@@ -476,11 +482,27 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       else if (p.clear) r = lib.ahead.get(w, id) ? lib.ahead.clear(w, id) : null;
       else if (p.gap) r = G.open(w, id, p.gap);
       else if (p.resolve) r = G.resolve(w, id);
+      else if (p.place != null) r = placeIn(w, id, String(p.place), p.x, p.y);
       else r = { why: `A proposal is one of ${PROPOSALS.join(', ')}` };
       if (r?.why) why.push(r.why);
     }
     return why;
   };
+  // A { place } proposal: the mark goes into another room (loose there, or at x, y under that
+  // room's mode when given), as places.put would put it.
+  const placeIn = (w, id, context, x, y) => {
+    const to = w.things[context];
+    if (!to || model.kindOf(to) !== 'room') return { why: 'A mark is placed into a room' };
+    if (context === model.parentOf(w, id)) return null;
+    if (model.shut(w, context)) return { why: 'That room is locked' };
+    const at = Number.isFinite(x) && Number.isFinite(y);
+    if (!model.move(w, id, context, at ? x : 0, at ? y : 0, { loose: !at })) return { why: 'The mark cannot go into that room' };
+    if (at) { const mode = model.view(w, context).mode; groups.putAt(w, context, mode, id, x, y); }
+    return null;
+  };
+  // A rule's memo key: the room's places, the floor's (a contents page of the floor's rooms
+  // redraws when they move), every link, every mark, the gaps and the moments ahead.
+  const keyOf = (w, room) => `${lib.places.version(w, room)}|${lib.places.version(w, lib.places.home(w, room))}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
   const memo = new WeakMap(); // w → Map context → { stamp, key, map }
   const hand = rule.hand !== false;
   const units = (w, room) => model.roomUnits(w, room);
@@ -490,7 +512,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
     units,
     layout(w, room) {
       let byRoom = memo.get(w); if (!byRoom) memo.set(w, (byRoom = new Map()));
-      const key = `${lib.places.version(w, room)}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
+      const key = keyOf(w, room);
       const had = byRoom.get(room);
       if (had && had.key === key) return had.map;
       const out = new Map(), own = units(w, room), ids = new Set(own.map((u) => u.id));
@@ -518,12 +540,14 @@ export function simpleRule(rule, lib, ontologies = () => null) {
     const drawn = new WeakMap();
     o.boxes = (w, room) => {
       let byRoom = drawn.get(w); if (!byRoom) drawn.set(w, (byRoom = new Map()));
-      const key = `${lib.places.version(w, room)}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
+      const key = keyOf(w, room);
       const had = byRoom.get(room);
       if (had && had.key === key) return had.boxes;
       const out = said(rule.draw, w, room);
       const boxes = (Array.isArray(out) ? out : []).filter((b) => b && ['x', 'y', 'w', 'h'].every((k) => Number.isFinite(b[k])) && b.w > 0 && b.h > 0)
-        .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note) }));
+        .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note),
+          style: BOX_STYLES.includes(b.style) ? b.style : 'plain', level: [1, 2, 3].includes(b.level) ? b.level : 0,
+          right: b.right == null ? '' : String(b.right), opens: typeof b.opens === 'string' && w.things[b.opens] ? b.opens : null }));
       byRoom.set(room, { key, boxes });
       return boxes;
     };

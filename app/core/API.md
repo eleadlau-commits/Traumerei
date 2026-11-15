@@ -151,13 +151,13 @@ no state. Each reads the same `reads` and returns data; the kernel does the rest
 
 | Hook | Called when | Returns |
 |---|---|---|
-| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). A tap on a box chooses it. |
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet` (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it). A tap on a box chooses it. |
 | `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or nothing |
 | `land(reads, context, mark, x, y)` | a new thought is kept while a box is chosen (`x, y` its centre), or at the point Add was asked at | a proposal, a list of them, or nothing |
 
 A **proposal** is about `mark` (or `p.mark`, another mark of the same room): `{ due: time, note? }`
 or `{ revisit: time, note? }` (moments ahead), `{ clear: true }` (nothing ahead), `{ gap: direction }`,
-`{ resolve: true }` (gaps). Each lands through its table in the same step as the gesture, so one
+`{ resolve: true }` (gaps), `{ place: room, x?, y? }` (places: into another room, loose there, or at `x, y` under that room's mode). Each lands through its table in the same step as the gesture, so one
 Ctrl+Z takes back both; one the table refuses is skipped. A hook that throws changes nothing.
 `app/plugins/calendar` uses all three.
 

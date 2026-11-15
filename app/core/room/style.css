@@ -483,3 +483,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-cell-label, .room-cell-note { position: absolute; left: 8px; font-size: .78em; color: var(--room-ink); opacity: .55; pointer-events: none; white-space: nowrap; }
 .room-cell-label { top: 6px; }
 .room-cell-note { bottom: 6px; }
+/* A rule's box may say more of its look (API.md, Rules: style, level, right, opens). */
+.room-cell-right { position: absolute; right: 8px; top: 6px; font-size: .78em; color: var(--room-ink); opacity: .55; pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.room-cell-title, .room-cell-heading, .room-cell-line, .room-cell-quiet { border-color: transparent; }
+.room-cell-title .room-cell-label { font-size: 1.6em; opacity: .9; letter-spacing: .01em; }
+.room-cell-heading .room-cell-label { font-size: 1.15em; opacity: .85; }
+.room-cell-heading.room-cell-l2 .room-cell-label { font-size: 1em; left: 24px; }
+.room-cell-heading.room-cell-l3 .room-cell-label { font-size: .9em; left: 40px; opacity: .7; }
+.room-cell-line { border-bottom: 1px dotted var(--line); }
+.room-cell-line.room-cell-l2 .room-cell-label { left: 24px; }
+.room-cell-line.room-cell-l3 .room-cell-label { left: 40px; }
+.room-cell-shelf { border-style: dashed; background: rgb(var(--ink-rgb) / .03); }
+.room-cell-quiet .room-cell-label { opacity: .4; }
+.room-cell-opens { cursor: pointer; }
+.room-cell-opens:hover .room-cell-label { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }

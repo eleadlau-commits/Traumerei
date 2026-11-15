@@ -331,3 +331,44 @@ test('a rule\'s three hooks: Calendar draws its days, a drop or a new thought on
   assert.equal(JSON.stringify(host.w.ahead || {}), before);
   off.off();
 });
+
+test('a rule\'s wider boxes (1.0.3): style, level, right words, opens; a place proposal; the mode in reads; the floor in the memo', () => {
+  const host = makeHost();
+  let drawn = 0;
+  const { t } = host.plug('contents', (k) => k.slots.rules.add({
+    id: 'contents', name: 'Contents',
+    arrange: () => [],
+    // One line per room on this room's floor, its thoughts counted on the right; a click opens it.
+    draw: (reads, context) => {
+      drawn++;
+      const floor = reads.places.home(context);
+      return [{ x: 0, y: 0, w: 400, h: 60, label: 'Contents', style: 'title' },
+        ...reads.marks.in(floor).filter((m) => m.kind === 'room' && m.id !== context)
+          .map((r, i) => ({ x: 0, y: 80 + i * 40, w: 400, h: 36, label: r.name, right: String(reads.marks.in(r.id).length), style: 'line', level: 2, opens: r.id, note: r.mode }))];
+    },
+    drop: (reads, context, mark, x, y) => (y >= 80 ? { place: reads.marks.in(reads.places.home(context)).filter((m) => m.kind === 'room' && m.id !== context)[Math.floor((y - 80) / 40)]?.id } : null),
+  }));
+  const rule = host.added('contents').find((a) => a.slot === 'world.ontologies').item;
+  const boxes = t.rules.draws('contents', host.room).boxes;
+  assert.equal(boxes[0].style, 'title');
+  const line = boxes.find((b) => b.opens === host.other);
+  assert.ok(line, 'a line opens the other room');
+  assert.deepEqual([line.style, line.level, line.right, line.note], ['line', 2, '1', 'joyce']);
+  assert.equal(t.marks.get(host.other).mode, 'joyce', 'a room\'s row says its mode');
+  // A thought dropped on the line goes into that room.
+  const mark = host.ids[6];
+  rule.drop(host.w, host.room, mark, 10, line.y + 5);
+  assert.equal(t.places.home(mark), host.other);
+  // The memo: a new room on the floor draws the contents again, with no change in this room.
+  rule.boxes(host.w, host.room);
+  const before = drawn;
+  rule.boxes(host.w, host.room);
+  assert.equal(drawn, before, 'remembered while nothing changed');
+  host.lib.model.addRoom(host.w, 'Third', host.tick());
+  const again = rule.boxes(host.w, host.room);
+  assert.ok(drawn > before && again.some((b) => b.label === 'Third'));
+  // Nonsense in a box is left out or tidied, never drawn as given.
+  const { t: t2 } = host.plug('odd-boxes', (k) => k.slots.rules.add({ id: 'odd-boxes', name: 'Odd boxes', arrange: () => [], draw: () => [{ x: 0, y: 0, w: 10, h: 10, style: 'neon', level: 9, opens: 'nowhere' }] }));
+  const odd = t2.rules.draws('odd-boxes', host.room).boxes[0];
+  assert.deepEqual([odd.style, odd.level, odd.opens], ['plain', 0, null]);
+});

@@ -3,7 +3,7 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  room, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
+  room, parentOf, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
   trainThoughts, rooms, members,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
@@ -463,6 +463,14 @@ export class Gestures {
   onDouble(e) {
     if (this.lastPress && Date.now() - this.lastPress.at < 600) return; // a double-click in the thought being written (onDown)
     window.getSelection?.()?.removeAllRanges();
+    // A rule's box that opens a mark (a contents line's chapter room): there.
+    const boxEl = e.target.closest('[data-box]');
+    const box = boxEl && !e.target.closest('[data-thought], [data-id], [data-group]') ? this.ont.boxes?.(this.world, this.roomId)?.[+boxEl.dataset.box] : null;
+    if (box?.opens && this.world.things[box.opens]) {
+      const th = this.world.things[box.opens];
+      if (kindOf(th) === 'room') this.openRoom(th.id); else this.goTo({ id: th.id, room: parentOf(this.world, th.id) });
+      return;
+    }
     // A plugin's kind or family that opens by itself (a book): double-click opens it, in any mode.
     const one = e.target.closest('[data-id]')?.dataset.id || e.target.closest('[data-thought]')?.dataset.thought, held = e.target.closest('[data-group]')?.dataset.group;
     const opens = (one && this.openerOf(one)) || (held && this.openerOf(held));
