@@ -171,7 +171,7 @@ export class RoomsVerbs {
     const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
     if (!rs.length) { this.toast(this.chosenFor(e).length ? 'A locked room keeps its tags.' : 'Choose rooms first (Shift+click, or Ctrl+A).'); return; }
     const list = el('datalist', { id: 'rooms-group-tags' }, ...allTags(this.world, this.ontologies).map((t) => el('option', { value: t.tag || t })));
-    const field = el('input', { class: 'field rooms-group-tag', placeholder: 'A tag they share (or Group: tag)', 'aria-label': 'A tag for the chosen rooms', list: 'rooms-group-tags', maxlength: 61, autocomplete: 'off', spellcheck: 'false' });
+    const field = el('input', { class: 'field rooms-group-tag', placeholder: 'A tag they share (or Category: tag)', 'aria-label': 'A tag for the chosen rooms', list: 'rooms-group-tags', maxlength: 61, autocomplete: 'off', spellcheck: 'false' });
     const keep = () => {
       const text = field.value.trim(), tag = tidyTag(text.split(':').pop()); // "Group: tag" puts it in a group too
       this.closeSheet();
