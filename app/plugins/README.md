@@ -4,13 +4,21 @@ New work in Träumerei is a plugin: a folder here in `app/plugins/` that can be 
 Settings → Plugins without breaking anything else. This guide takes you from nothing to a working
 plugin. The full list of what a plugin may use is `app/core/API.md`.
 
+**A plugin ships as a file.** Only corpus plugins are built into the app (the room types, and the
+stress corpus, which is left out of the product too; `tools/corpus.py`). Every other plugin lives
+here for the tests, is left out of the app, and reaches people as a `.traumplug` (§6) on each
+Release and inside `starter-set.traumplug`. A plugin reaches another plugin only through the API
+(`t.peers`), since an imported one can't `use` anything but the plugin API.
+
 ## 1. Make the folder
 
 ```
 python build.py new-plugin word-count --kind editor --author E
 ```
 
-This makes `app/plugins/word-count/` from the template in `app/templates/plugin/`:
+This makes `app/plugins/word-count/` from the template in `app/templates/plugin/`. It ships as a
+file; `--corpus` instead makes it a stress-corpus plugin (it starts off, joins `CORPUS` in
+`tools/corpus.py`, and needs a line in `docs/CORPUS.md`).
 
 | File | What it is |
 |---|---|
@@ -135,7 +143,8 @@ plugin is off shows in Pessoa with a "Turn on" line. Holding **Shift** while the
 python build.py pack-plugin word-count
 ```
 
-writes `packed/word-count.traumplug` (`--out <folder>` to put it elsewhere): the whole plugin
+writes `packed/word-count.traumplug` (`--out <folder>` to put it elsewhere; `--all` packs every
+plugin shipped apart and `starter-set.traumplug`, as each Release does): the whole plugin
 in one file a person imports in Settings → Plugins (Import plugin…, checked again there; see
 `app/core/plugins/README.md`). A package (format `traumplug/1`) is one
 JavaScript module exporting `manifest` (id, name, description, version, requires and the plugin

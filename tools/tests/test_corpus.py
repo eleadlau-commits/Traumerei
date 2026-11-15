@@ -33,6 +33,21 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(standalone.built_in_strays(ok), [])
         self.assertEqual(standalone.built_in_strays(ok + [{'id': 'book', 'plugin': {}}]), ['book'])
 
+    def test_new_plugin_joins_the_corpus_only_when_asked(self):
+        import tempfile, shutil
+        from tools import new_plugin
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            (tmp / 'tools').mkdir()
+            shutil.copy(ROOT / 'tools' / 'corpus.py', tmp / 'tools' / 'corpus.py')
+            (tmp / 'app' / 'plugins' / 'haiku').mkdir(parents=True)
+            (tmp / 'app' / 'plugins' / 'haiku' / 'feature.json').write_text(json.dumps({'plugin': {'api': 2}}), 'utf-8')
+            new_plugin.join_corpus('haiku', tmp)
+            self.assertIn("    'haiku',\n)", (tmp / 'tools' / 'corpus.py').read_text('utf-8'))
+            self.assertEqual(json.loads((tmp / 'app' / 'plugins' / 'haiku' / 'feature.json').read_text('utf-8'))['plugin']['starts'], 'off')
+        finally:
+            shutil.rmtree(tmp)
+
     def test_every_plugin_shipped_apart_packs(self):
         import tempfile, shutil
         from tools import pack_plugin
