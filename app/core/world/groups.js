@@ -21,15 +21,18 @@
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
-import { parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, shut, create, remove, leave, membership, memberIds, move, unsetSpot, setSpot, isLooseGroup } from './model.js';
+import { isCard, parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, shut, create, remove, leave, membership, memberIds, move, unsetSpot, setSpot, isLooseGroup } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
 // The shared groups no shared group holds, however deep (with something inside), oldest first:
 // what a room's other ontologies see of its groups.
+// A card family's groups (a plugin's book: isCard) count too, empty or not, when no group holds them.
 export function outermost(w, roomId) {
-  const shared = groupsIn(w, roomId).filter((g) => g.shared && itemsIn(w, g.id).length);
-  return shared.filter((g) => !shared.some((o) => o !== g && holds(w, o.id, g.id)));
+  const all = groupsIn(w, roomId);
+  const shared = all.filter((g) => g.shared && itemsIn(w, g.id).length);
+  const cards = all.filter((g) => isCard(g) && !all.some((o) => o !== g && holds(w, o.id, g.id)));
+  return [...shared.filter((g) => !shared.some((o) => o !== g && holds(w, o.id, g.id))), ...cards];
 }
 
 // The outermost shared groups another ontology made, which ontology `of` sees as one thought each.
@@ -38,7 +41,7 @@ export const foreign = (w, roomId, of) => outermost(w, roomId).filter((g) => g.o
 // Whether a thought is inside a group ontology `of` sees as one thought: it isn't loose there too.
 export function inForeign(w, roomId, of) {
   const inside = new Set();
-  for (const g of foreign(w, roomId, of)) for (const th of within(w, g.id)) inside.add(th.id);
+  for (const g of foreign(w, roomId, of)) if (!isCard(g)) for (const th of within(w, g.id)) inside.add(th.id); // a card's parts stay where they are
   return (id) => inside.has(id);
 }
 

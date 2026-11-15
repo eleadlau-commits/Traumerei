@@ -253,9 +253,12 @@ export class Gestures {
   shortcut(e, mod) {
     const k = e.key;
     if ((k === 'Enter' && !mod && !e.shiftKey) || k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) {
-      // In a room: Enter (or the ContextMenu key) opens the properties of what is chosen.
+      // In a room: Enter (or the ContextMenu key) opens the properties of what is chosen; Enter on
+      // something a plugin opens by itself (a book) opens it instead.
       if (!this.sel) return false;
       e.preventDefault();
+      const opens = k === 'Enter' && this.sel.id && this.openerOf(this.sel.id);
+      if (opens) { opens(); return true; }
       this.openProps(this.sel);
       return true;
     }
@@ -430,6 +433,10 @@ export class Gestures {
   onDouble(e) {
     if (this.lastPress && Date.now() - this.lastPress.at < 600) return; // a double-click in the thought being written (onDown)
     window.getSelection?.()?.removeAllRanges();
+    // A plugin's kind or family that opens by itself (a book): double-click opens it, in any mode.
+    const one = e.target.closest('[data-id]')?.dataset.id || e.target.closest('[data-thought]')?.dataset.thought, held = e.target.closest('[data-group]')?.dataset.group;
+    const opens = (one && this.openerOf(one)) || (held && this.openerOf(held));
+    if (opens) { opens(); return; }
     const groupEl = e.target.closest('[data-group]');
     if (groupEl) {
       this.sel = { kind: 'train', id: groupEl.dataset.group };
