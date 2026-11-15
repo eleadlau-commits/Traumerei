@@ -2,7 +2,7 @@
 // { cols, rows }, from a preset), and a room placed for you goes on its own floor if there is a
 // free spot of its size, or else on a new floor at the end. Other floors are not searched.
 
-import { room, cellOf, setCell, unsetCell, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, shut, MESSY } from './world.js';
+import { floorTitle, nameFloor, room, cellOf, setCell, unsetCell, floorOf, isArchived, toPage, dropPage, roomsOn, cells, roomAt, addPage, pageCount, archive, allRooms, span, shut, MESSY } from './world.js';
 
 // The sizes a floor can be, one for every floor. Medium is the default.
 export const PRESETS = [
@@ -140,6 +140,9 @@ export function removeFloor(w, page, now = Date.now()) {
     if (p === page) toPage(w, r.id, page - 1);
     else if (p > page) { toPage(w, r.id, p - 1); if (at) setCell(w, r.id, at.col, at.row); } // a floor moving up keeps its rooms' cells
   }
+  // Each floor's own name moves up with its rooms; the deleted floor's goes.
+  for (let n = page; n < pageCount(w) - 1; n++) nameFloor(w, n, floorTitle(w, n + 1));
+  nameFloor(w, pageCount(w) - 1, '');
   dropPage(w); // the last floor, empty now
   return { archived: on };
 }

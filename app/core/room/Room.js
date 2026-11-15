@@ -22,7 +22,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, parentOf, floorOf, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
+import { bind, room, parentOf, floorOf, floorName, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -241,7 +241,7 @@ export default class Room extends Feature {
   crumbs() {
     const r = twinOf(this.world, this.roomId) || room(this.world, this.roomId); // a Twin's side: the Twin's floor
     const floor = (r && isArchived(this.world, r.id)) ? { label: 'Archive', onClick: () => this.rooms.showArchive?.() }
-      : { label: `Floor ${(r ? floorOf(this.world, r.id) : 0) + 1}`, onClick: () => this.rooms.showFloor?.(r ? floorOf(this.world, r.id) : 0) };
+      : { label: floorName(this.world, r ? floorOf(this.world, r.id) : 0), onClick: () => this.rooms.showFloor?.(r ? floorOf(this.world, r.id) : 0) };
     return [{ label: 'Rooms', title: 'Back to the rooms', onClick: () => this.back() }, floor, { node: this.crumb }];
   }
 

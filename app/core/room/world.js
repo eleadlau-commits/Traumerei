@@ -4,7 +4,7 @@
 // everything the room needs of the world's rules.
 
 export let
-  room, parentOf, floorOf, isArchived, view, shut, MESSY, name, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
+  floorName, room, parentOf, floorOf, isArchived, view, shut, MESSY, name, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
   thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
   isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
   seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, ITEMS, kindFor, maths, roomLook, light,
@@ -14,7 +14,7 @@ export let
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
   ({
-    room, parentOf, floorOf, isArchived, view, shut, MESSY, name, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
+    floorName, room, parentOf, floorOf, isArchived, view, shut, MESSY, name, create, update, remove, move, closeGroup, openGroup, kindOf, groupOf,
     thoughtText, trainThoughts, roomTrains, randomSpot, isBig, rooms, members, isGroup, startTrain,
     isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
     seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, setOrder, lock, reading, sideOf, spotOf, setSpot,

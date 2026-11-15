@@ -225,3 +225,20 @@ test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and roo
   assert.equal(resize(w, twin.id, 2, M), false);       // (6, 4) 2 × 2 would leave the board
   assert.equal(twin.size, 'twin');
 });
+
+test('a floor has its own name, which moves up with its rooms when a floor above is deleted', () => {
+  const w = emptyWorld();
+  addPage(w); addPage(w);
+  assert.equal(lib.model.floorName(w, 1), 'Floor 2');
+  assert.ok(lib.model.nameFloor(w, 1, '  Old  notes '));
+  assert.ok(lib.model.nameFloor(w, 2, 'Thesis'));
+  assert.equal(lib.model.floorName(w, 1), 'Floor 2 – Old notes');
+  const saved = loadWorld(JSON.parse(JSON.stringify(w)));
+  assert.equal(lib.model.floorTitle(saved, 2), 'Thesis', 'kept when saved and read back');
+  removeFloor(w, 1);
+  assert.equal(pageCount(w), 2);
+  assert.equal(lib.model.floorName(w, 1), 'Floor 2 – Thesis');
+  lib.model.nameFloor(w, 1, '');
+  assert.equal(lib.model.floorName(w, 1), 'Floor 2');
+  assert.equal(lib.model.nameFloor(w, 7, 'x'), false);
+});
