@@ -95,6 +95,7 @@ export default class Rooms extends Feature {
       showRooms: () => this.showRooms(),   // back to this page, from a room
       showFloor: (i) => { if (this.shelf) this.toggleShelf(); this.showPage(i); }, // back to this page, on floor i
       showArchive: () => { this.showRooms(); if (!this.shelf) this.toggleShelf(); }, // back to this page, on the Archive
+      settingsRows: (id, changed) => this.roomInsideRows(id, changed), // a room's settings, for inside it (grid.js)
     });
     document.addEventListener('keydown', (e) => this.onKey(e));
     document.addEventListener('pointerdown', (e) => this.makingAway(e), true); // the new-room menu closes on a press elsewhere (grid.js)

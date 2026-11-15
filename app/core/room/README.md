@@ -4,6 +4,12 @@ An open room of thoughts: a canvas to write in, seen through an ontological mode
 where rooms are made and gone into, is the **rooms** feature's (`app/core/rooms`); it says
 which room to open, and this feature shows it and writes in it.
 
+
+**Room settings.** *Settings* in a room's rail (or ⋯ More → Editor with nothing chosen, or the ⚙
+beside a mode) shows the room's own settings in the right dock: its name and line, tags, colour,
+lightness and opacity, Lock and Export (the rooms page's, through `rooms.settingsRows`), then the
+mode's settings for this room. A colour or slider moved repaints the room at once.
+
 ## How it talks to the rooms page
 
 It fills the rooms feature's `rooms.room` slot with one item:

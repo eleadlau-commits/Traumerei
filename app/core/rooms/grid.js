@@ -648,25 +648,27 @@ export class RoomsGrid {
   // size, Back to the tint, Lock, Archive and Delete (not for Messy).
   // The pieces of a room's properties, laid out two ways: down the pop-up beside its square
   // (roomRows) or in folding sections in the dock (roomDockRows).
-  roomParts(r) {
-    const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); };
+  // changed(what): told after each change, when the room itself shows them (its settings inside
+  // it): 'look' while a colour or slider moves, 'all' for the rest.
+  roomParts(r, changed = null) {
+    const set = (fields) => { update(this.world, r.id, fields); this.save(); this.drawRoomsSoon(); changed?.('look'); };
     const look = this.lookOf(r);
     const lightness = el('input', { type: 'range', min: 0.05, max: 0.98, step: 0.01, value: look.light, 'aria-label': 'Lightness', oninput: (e) => set({ light: +e.target.value }) });
     const p = {};
     p.name = el('input', {
       class: 'pop-name', value: r.name, 'aria-label': 'Room name', maxlength: 60,
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); },
-      onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); },
+      onchange: (e) => { name(this.world, r.id, e.target.value); this.save(); this.drawRooms(); changed?.('all'); },
     });
     // A line or two about the room: shown under its name inside, and in its square's peek.
     p.desc = el('textarea', {
       class: 'pop-desc', rows: 2, maxlength: DESC, placeholder: 'A line about this room', 'aria-label': 'Description',
       onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); e.target.blur(); } },
-      onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); },
+      onchange: (e) => { update(this.world, r.id, { desc: e.target.value }); this.save(); this.drawRooms(); changed?.('all'); },
     }, r.desc || '');
     // Its kind: a small room keeps its one mode; a big one switches inside (its tags name the modes).
     p.kind = isBig(r) ? 'Every mode · switched inside' : 'One mode';
-    p.tags = this.tagsRow(r);
+    p.tags = this.tagsRow(r, changed);
     // A colour picked is what the room is inside: its hue and chroma, and its lightness too.
     p.colour = el('input', { type: 'color', value: look.colour, 'aria-label': 'Colour', oninput: (e) => {
       const L = toOklch(rgb(e.target.value))[0];
@@ -682,9 +684,9 @@ export class RoomsGrid {
         else this.toast('There isn\'t room for it to grow here. Move it first.');
       },
     }, n === 1 ? '1 × 1' : '2 × 2'));
-    p.untint = r.tint || r.light != null || r.opacity != null ? () => { delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms(); } : null;
+    p.untint = r.tint || r.light != null || r.opacity != null ? () => { delete r.tint; delete r.light; delete r.opacity; this.save(); this.drawRooms(); changed?.('all'); } : null;
     // Locked: nothing inside can change, and the square stays where it is.
-    p.lock = () => this.lockRooms([r.id]);
+    p.lock = () => { this.lockRooms([r.id]); changed?.('all'); };
     p.archive = r.id !== MESSY && !shut(this.world, r.id) ? () => this.archiveRooms([r.id]) : null;
     // Taken out as a .traum file (the roomfile feature); a locked room too.
     p.export = this.files.canExport ? () => this.exportRoomFile(r.id) : null;
@@ -748,13 +750,39 @@ export class RoomsGrid {
     ];
   }
 
+  // A room's settings shown inside it (the room feature's Settings, in the right dock): the same
+  // pieces as its properties here, less what would take it away from under the person (Archive,
+  // Delete, its size). changed(what) redraws the room ('look': its colours only).
+  roomInsideRows(id, changed) {
+    const r = room(this.world, id);
+    if (!r) return [];
+    const p = this.roomParts(r, changed);
+    p.name.classList.add('title-field');
+    const btn = (label, fn, k = '') => (fn ? el('button', { type: 'button', class: 'box-btn', onclick: fn }, label, k ? el('span', { class: 'key' }, k) : '') : null);
+    const kv = (label, value) => el('div', { class: 'kv' }, el('span', {}, label), value);
+    const sec = (title, ...body) => el('details', { class: 'sec', open: '' }, el('summary', {}, title), el('div', { class: 'sec-body' }, ...body.filter(Boolean)));
+    return [
+      p.name,
+      p.desc,
+      sec('Room', kv('Modes', el('span', {}, p.kind)), kv('Tags', p.tags)),
+      sec('Look',
+        kv('Colour', p.colour),
+        kv('Lightness', p.lightness),
+        kv('Opacity', p.opacity),
+        p.untint ? el('div', { class: 'box-btns' }, btn('Back to the tint', p.untint)) : null),
+      sec('Actions', el('div', { class: 'box-btns' },
+        btn(shut(this.world, r.id) ? 'Unlock' : 'Lock', p.lock, this.keyMap?.label?.('rooms.lock') || ''),
+        btn('Export', p.export))),
+    ];
+  }
+
   // A room's tags in its properties: a chip each (its ontology's can't be taken off; the rest have
   // a ×), and a "+ tag" field that suggests the tags other rooms have. Enter adds what is typed.
-  tagsRow(r) {
+  tagsRow(r, changed = null) {
     const onts = this.ontologies;
     const mine = roomTags(this.world, r.id, onts);
     const had = new Set(mine.map((o) => o.tag.toLowerCase()));
-    const after = (fn) => { if (fn()) { this.save(); this.tagFocus = r.id; this.drawRooms(); } };
+    const after = (fn) => { if (fn()) { this.save(); this.tagFocus = r.id; this.drawRooms(); changed?.('all'); } };
     const list = el('datalist', { id: 'rooms-tag-list' },
       ...allTags(this.world, onts, true).filter((t) => !had.has(t.tag.toLowerCase())).map((t) => el('option', { value: t.tag })));
     const field = el('input', {
