@@ -44,6 +44,12 @@ import { ROOM_KEYS } from './keys.js';
 import * as verbs from './verbs.js';
 
 export default class Room extends Feature {
+  // Search (Ctrl+K: the Search plugin's panel), or null: looked up when needed (it may be imported).
+  get finder() { return this.use('search'); }
+  // The Time dock (the Time plugin's service), or null: looked up when needed, since an imported
+  // plugin starts after the core.
+  get time() { return this.use('time'); }
+
   start() {
     // The saved world, its rules, saving and undo, the ontologies, the look and the palette are the
     // world feature's (its service; world.js binds its rules for the files here).
@@ -69,12 +75,10 @@ export default class Room extends Feature {
       .watch(() => { if (this.roomId) this.drawRoom(); });
     this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
     this.files = this.w.formats;          // rooms in and out as files: the formats plugins add (Room files' .traum)
-    this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
     this.docks = this.use('docks');       // both docks: the loose thoughts fill the left one, or null
     this.keyMap = this.use('keys');      // the key map: the ? list, or null
     this.frame = this.use('frame');       // the top bar and the foot around the room (the frame feature), or null
-    this.time = this.use('time');         // the Time dock (the time feature), or null
     this.plugins = this.use('plugins');   // which plugins run (the plugins feature): a mode that is off says so, or null
     const run = {
       'room.mode': (e) => this.nextMode(e.shiftKey ? -1 : 1),

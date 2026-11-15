@@ -1,5 +1,9 @@
 """`python build.py pack-plugin <id> [--out DIR]`: packs app/plugins/<id>/ into one file,
 `<id>.traumplug`, that a person can import in Settings → Plugins.
+`python build.py pack-plugin --all [--out DIR]`: packs every plugin shipped apart (tools/corpus.py
+APART), and starter-set.traumplug: the ones today's app had built in, in one file (format
+`traumset/1`, JSON: { format, name, description, plugins: [package text, …] }), so a fresh install
+is one import away from it.
 
 A package (format `traumplug/1`) is one JavaScript module with three exports:
 
@@ -77,6 +81,29 @@ def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
     return path
 
 
+SET_FORMAT = 'traumset/1'
+# Shipped apart but left out of the starter set: what was never built into the app.
+NOT_STARTER = ('provoke',)
+
+
+def pack_set(texts: list[str], out_dir: Path, name='Starter set', file='starter-set') -> Path:
+    body = {'format': SET_FORMAT, 'name': name,
+            'description': 'Everything Träumerei had built in before 1.0.4, as plugins: the home page, '
+                           'Search, the desk, gaps and returns, Time, Export, room files, Book and the rest.',
+            'plugins': texts}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f'{file}.traumplug'
+    path.write_text(json.dumps(body, ensure_ascii=False), 'utf-8')
+    return path
+
+
+def pack_all(out_dir: Path, root: Path = ROOT) -> list[Path]:
+    from tools.corpus import APART
+    paths = [pack(pid, out_dir, root) for pid in APART]
+    starter = [p.read_text('utf-8') for pid, p in zip(APART, paths) if pid not in NOT_STARTER]
+    return paths + [pack_set(starter, out_dir)]
+
+
 def main(argv: list[str]) -> int:
     args = [a for a in argv if not a.startswith('--')]
     out = ROOT / 'packed'
@@ -87,8 +114,12 @@ def main(argv: list[str]) -> int:
             return 2
         out = Path(argv[i + 1]).resolve()
         args = [a for a in args if a != argv[i + 1]]
+    if '--all' in argv and not args:
+        for path in pack_all(out):
+            print(f'Wrote {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path} ({path.stat().st_size // 1024} KB)')
+        return 0
     if len(args) != 1:
-        print('Usage: python build.py pack-plugin <id> [--out folder]   (default folder: packed/)')
+        print('Usage: python build.py pack-plugin <id> | --all [--out folder]   (default folder: packed/)')
         return 2
     path = pack(args[0], out)
     print(f'Wrote {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path} ({path.stat().st_size // 1024} KB)')

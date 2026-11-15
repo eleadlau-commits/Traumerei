@@ -2,7 +2,7 @@
 // the side panel. Whoever opens it gives the text and two functions: check(text), which says what
 // the text holds and what Apply would do, and apply(text), which does it. This feature knows
 // nothing of rooms or Markdown; it is the box, the quiet lines above it and the words below it.
-// Other features use it only through the `source` service (README.md lists it).
+// Other plugins use it only through the plugin API's peers, as `source` (README.md lists it).
 
 import { Feature, ui } from 'folio';
 import { unfence } from './unfence.js';
@@ -15,13 +15,14 @@ export default class Source extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('The source editor needs the plugin API');
-    this.panel = t.ui.docks?.right; // the side panel (the right dock: this plugin requires the docks)
-    this.provide('source', {
+    this.panel = t.ui.docks?.right; // the side panel (the right dock), or null without docks
+    // Offered to other plugins through the plugin API (t.peers), so it works built in or imported.
+    t.peers.offer('source', Object.freeze({
       open: (o) => this.open(o),
       close: () => this.handle?.close() ?? Promise.resolve(true),
       isOpen: () => !!this.handle?.open,
       unfence,
-    });
+    }));
   }
 
   // The drafts kept: { [name]: { text, base } } (base: the text it held when the draft was made).

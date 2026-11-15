@@ -40,13 +40,15 @@ function shortPictures() {
 }
 
 export default class Roomfile extends Feature {
+  // The source editor (the Source editor plugin, offered through t.peers), for editing as text, or null.
+  get source() { return this.t?.peers.get('source') ?? null; }
+
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Room files needs the plugin API');
     this.t = t;
     // A .traum double-clicked in Windows (the desktop app): asked about as an import, then opened.
     t.ui.files.arrived(async (file) => { const r = await this.importRoom({ file }); if (r) t.ui.open?.room(r.id); });
-    this.source = this.use('source'); // the source editor (the source plugin), for editing as text, or null
     t.slots.formats.add({
       id: 'traum',
       name: 'Room file (.traum)',

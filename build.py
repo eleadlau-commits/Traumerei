@@ -16,7 +16,7 @@ from folioc import main  # noqa: E402
 # Träumerei's own commands, kept out of Folio's compiler (tools/).
 OWN = {
     'release': 'set one version in app.json, tauri.conf.json and Cargo.toml (release --check <tag> checks them)',
-    'pack-plugin': 'pack a plugin into one importable <id>.traumplug file',
+    'pack-plugin': 'pack a plugin into one importable <id>.traumplug file (--all: every plugin shipped apart, and the starter set)',
 }
 
 

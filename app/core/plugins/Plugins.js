@@ -15,7 +15,7 @@
 
 import { Feature, ui, time, VERSION } from 'folio';
 import { plugins, isOn, startsOff, note, kindWords, needsWords, dependentsWords, offMode } from './rows.js';
-import { problem, loadModule, entry, oneWayIn, card } from './imported.js';
+import { problem, loadModule, entry, oneWayIn, card, readSet } from './imported.js';
 
 // What an imported plugin's `import … from 'folio'` reads.
 const FOLIO = Object.freeze({ Feature, ui, time, VERSION });
@@ -39,6 +39,7 @@ export default class Plugins extends Feature {
       importText: (text) => this.importText(text),
       remove: (id) => this.removeImported(id),
       imported: () => Object.keys(this.storage.get('imported', {})),
+      whenReady: () => this.ready, // resolves once the imported plugins have started
     });
     // Imported plugins start once everything built in has (they need only the plugin API).
     this.ready = new Promise((done) => this.on('app:ready', () => this.startImported().then(done, done)));
@@ -114,17 +115,43 @@ export default class Plugins extends Feature {
     try { Plugin = oneWayIn(mod.default(FOLIO)); } catch (err) { Plugin = class extends Feature { start() { throw err; } }; }
     document.head.querySelector(`style[data-plugin="${m.id}"]`)?.remove();
     if (mod.css) document.head.append(ui.el('style', { 'data-plugin': m.id }, mod.css));
-    return this.app.addFeature(entry(m), { default: Plugin });
+    const added = await this.app.addFeature(entry(m), { default: Plugin });
+    this.app.refresh(); // what it added to Folio's own slots (a view, a menu row) shows now
+    return added;
   }
 
   // Reads a package and, when it passes the checks, offers it on the import card. The problem in
   // words, or '' when the card is up.
   async importText(text) {
+    let set = null;
+    try { set = readSet(text); } catch (err) { return this.offerFailed(err.message); }
+    if (set) return this.importSet(set);
     let mod;
     try { mod = await loadModule(text); } catch (err) { return this.offerFailed(`This file isn't a plugin Träumerei can read (${err.message}).`); }
     const why = problem(mod, text, this.appInfo, (x) => this.app.features.has(x));
     if (why) return this.offerFailed(why);
     this.offer = { text, mod };
+    this.redraw();
+    return '';
+  }
+
+  // A set (the starter set): every package in it that passes the checks is offered on one card;
+  // one already here is left as it is, one that fails says why on the card.
+  async importSet(set) {
+    const items = [], skipped = [], failed = [];
+    const ids = new Set();
+    for (const text of set.plugins) {
+      let mod;
+      try { mod = await loadModule(text); } catch (err) { failed.push(`A plugin in it couldn't be read (${err.message}).`); continue; }
+      const id = mod?.manifest?.id;
+      if (id && (this.app.features.has(id) || ids.has(id))) { skipped.push(mod.manifest.name || id); continue; }
+      const why = problem(mod, text, this.appInfo, () => false);
+      if (why) { failed.push(`${mod?.manifest?.name || 'A plugin'}: ${why}`); continue; }
+      ids.add(id);
+      items.push({ text, mod });
+    }
+    if (!items.length) return this.offerFailed(skipped.length && !failed.length ? `Every plugin in ${set.name} is already here.` : (failed[0] || `${set.name} holds nothing to import.`));
+    this.offer = { set, items, skipped, failed };
     this.redraw();
     return '';
   }
@@ -135,6 +162,7 @@ export default class Plugins extends Feature {
   async accept() {
     const o = this.offer;
     this.offer = null;
+    if (o?.set) return this.acceptSet(o);
     if (!o?.mod) return false;
     const m = o.mod.manifest;
     this.storage.set('imported', { ...this.storage.get('imported', {}), [m.id]: { text: o.text, at: Date.now() } });
@@ -143,6 +171,19 @@ export default class Plugins extends Feature {
     this.toast(isOn(f) ? `${m.name} is imported and on` : `${m.name} is imported, but couldn't start: ${f?.reason || 'not available'}`);
     this.redraw();
     return isOn(f);
+  }
+
+  // Every package of a set kept and started, in the set's order.
+  async acceptSet(o) {
+    const kept = { ...this.storage.get('imported', {}) };
+    for (const { text, mod } of o.items) kept[mod.manifest.id] = { text, at: Date.now() };
+    this.storage.set('imported', kept);
+    for (const { mod } of o.items) await this.run(mod);
+    const off = o.items.filter(({ mod }) => !isOn(this.app.features.get(mod.manifest.id)));
+    this.toast(off.length ? `${o.items.length - off.length} of ${o.items.length} plugins are on; ${off.map(({ mod }) => mod.manifest.name).join(', ')} couldn't start`
+      : `${o.items.length} plugins are imported and on`);
+    this.redraw();
+    return !off.length;
   }
 
   removeImported(id) {
@@ -160,7 +201,7 @@ export default class Plugins extends Feature {
 
   // Import plugin…: a .traumplug from this computer (the webview shows Windows' Open dialog).
   pick() {
-    const input = ui.el('input', { type: 'file', accept: '.traumplug', hidden: '' });
+    const input = ui.el('input', { type: 'file', accept: '.traumplug', hidden: '' }); // one plugin, or a set
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
       input.remove();
@@ -175,11 +216,23 @@ export default class Plugins extends Feature {
     if (!o) return null;
     const cancel = el('button', { type: 'button', class: 'word', onclick: () => { this.offer = null; this.redraw(); } }, o.problem ? 'Close' : 'Cancel');
     if (o.problem) return el('div', { class: 'plugins-import', role: 'alert' }, el('p', { class: 'plugins-problem' }, o.problem), cancel);
-    const c = card(o.mod.manifest, this.appInfo);
     const yes = el('button', { type: 'button', class: 'word', onclick: () => this.accept() }, 'Import');
     requestAnimationFrame(() => yes.focus());
-    return el('div', { class: 'plugins-import', role: 'dialog', 'aria-label': `Import ${c.title}`,
-      onkeydown: (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel.click(); } } },
+    const esc = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel.click(); } };
+    if (o.set) {
+      const needs = [...new Set(o.items.flatMap(({ mod }) => [].concat(mod.manifest.plugin?.needs || [])))].map((k) => this.appInfo.pluginNeeds?.[k] || k);
+      return el('div', { class: 'plugins-import', role: 'dialog', 'aria-label': `Import ${o.set.name}`, onkeydown: esc },
+        el('b', {}, o.set.name, el('span', { class: 'plugins-kind' }, ` · ${o.items.length} plugins`)),
+        o.set.description ? el('p', {}, o.set.description) : null,
+        el('p', { class: 'hint small' }, o.items.map(({ mod }) => mod.manifest.name).join(', ') + '.'),
+        el('p', { class: 'hint small' }, needs.length ? `Between them, what they need: ${needs.join('; ')}.` : 'They need nothing beyond the plugin API.'),
+        o.skipped.length ? el('p', { class: 'hint small' }, `Already here, left as they are: ${o.skipped.join(', ')}.`) : null,
+        ...o.failed.map((f) => el('p', { class: 'plugins-problem' }, f)),
+        el('p', { class: 'hint small' }, 'Each reaches your rooms only through the plugin API, and Remove takes it away again.'),
+        el('div', { class: 'row' }, yes, cancel));
+    }
+    const c = card(o.mod.manifest, this.appInfo);
+    return el('div', { class: 'plugins-import', role: 'dialog', 'aria-label': `Import ${c.title}`, onkeydown: esc },
     el('b', {}, c.title, c.by ? el('span', { class: 'plugins-kind' }, ` · ${c.by}`) : null),
     c.description ? el('p', {}, c.description) : null,
     c.adds ? el('p', { class: 'hint small' }, c.adds) : null,
@@ -214,7 +267,7 @@ export default class Plugins extends Feature {
       fold,
       safe ? null : el('div', { class: 'plugins-foot' },
         el('button', { type: 'button', class: 'word plugins-import-word', onclick: () => this.pick() }, 'Import plugin…'),
-        ui.hint('A plugin packed into one .traumplug file.', { small: true }),
+        ui.hint('A plugin packed into one .traumplug file, or a set of them (the starter set on each release).', { small: true }),
         el('button', { type: 'button', class: 'word', onclick: () => this.app.restart(true) }, 'Start in safe mode'),
         ui.hint('Every plugin off, this time only. Holding Shift while Träumerei starts does the same.', { small: true })));
   }

@@ -14,5 +14,8 @@
     ],
     "load": "start",
     "author": "E"
-  }
+  },
+  "requires": [
+    "api"
+  ]
 }

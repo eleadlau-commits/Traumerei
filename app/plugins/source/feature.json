@@ -7,8 +7,7 @@
     "style.css"
   ],
   "requires": [
-    "api",
-    "docks"
+    "api"
   ],
   "plugin": {
     "api": 2,

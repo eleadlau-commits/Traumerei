@@ -34,6 +34,8 @@ const RESIZE_MS = 400; // a resize re-renders once it has settled for this long
 
 export default class Renderer extends Feature {
   start() {
+    this.t = this.use('traumerei')?.connect(this);
+    if (!this.t) throw new Error('The renderer needs the plugin API');
     this.engine = new Engine();
     this.P = { ...DEFAULTS, ...this.storage.get('params', {}) };
     this.anchor = this.storage.get('anchor', { x: 0.5, y: 0.5 });
@@ -43,7 +45,7 @@ export default class Renderer extends Feature {
     this.clock = 0; // seconds of the Living view's time, which runs only while it's showing
     this.picker = ui.filePicker('image/*');
 
-    this.add('views', {
+    this.t.slots.views.add({
       id: 'renderer',
       label: 'Renderer',
       icon: 'palette',

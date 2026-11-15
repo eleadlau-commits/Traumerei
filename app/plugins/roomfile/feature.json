@@ -9,9 +9,6 @@
   "requires": [
     "api"
   ],
-  "uses": [
-    "source"
-  ],
   "plugin": {
     "api": 2,
     "minApp": "1.0.0",

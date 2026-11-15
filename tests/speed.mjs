@@ -92,8 +92,9 @@ async function once(browser, world) {
   await p.addInitScript((s) => { localStorage.clear(); localStorage.setItem('traumerei.world.world3', s); }, world);
   await p.addInitScript(watch);
   await p.goto(pathToFileURL(page).href);
-  await p.getByRole('button', { name: 'Create', exact: true }).first().click();
+  // The app opens on the rooms page (Home ships as a plugin file since 1.0.4).
   const tile = p.locator('.rooms-tile[data-room="messy"]');
+  await tile.waitFor();
   await tile.focus();
 
   // Room open.

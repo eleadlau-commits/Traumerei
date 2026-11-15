@@ -20,11 +20,18 @@ class CorpusTest(unittest.TestCase):
                if json.loads(p.read_text('utf-8'))['plugin'].get('starts') == 'off'}
         self.assertEqual(off, set(CORPUS))
 
-    def test_the_product_keeps_the_real_plugins(self):
-        from tools.corpus import LEFT_OUT, APART
-        for pid in ('gaps', 'returns', 'desk', 'export', 'home', 'account', 'renderer'):
-            self.assertNotIn(pid, LEFT_OUT)
-        self.assertIn('provoke', APART)
+    def test_only_corpus_plugins_are_built_in(self):
+        from tools.corpus import LEFT_OUT, APART, ROOM_TYPES, plugins
+        self.assertEqual(set(plugins()) - set(LEFT_OUT), set(ROOM_TYPES))
+        for pid in ('book', 'provoke', 'home', 'search', 'gaps', 'returns', 'desk', 'export'):
+            self.assertIn(pid, APART)
+        self.assertFalse(set(APART) & set(CORPUS))
+
+    def test_a_build_that_carries_a_plugin_outside_the_corpus_is_refused(self):
+        import standalone
+        ok = [{'id': 'world'}, {'id': 'russell', 'plugin': {}}]
+        self.assertEqual(standalone.built_in_strays(ok), [])
+        self.assertEqual(standalone.built_in_strays(ok + [{'id': 'book', 'plugin': {}}]), ['book'])
 
     def test_every_plugin_shipped_apart_packs(self):
         import tempfile, shutil
@@ -32,8 +39,12 @@ class CorpusTest(unittest.TestCase):
         from tools.corpus import APART
         tmp = Path(tempfile.mkdtemp())
         try:
-            for pid in APART:
-                self.assertTrue(pack_plugin.pack(pid, tmp).is_file())
+            paths = pack_plugin.pack_all(tmp)
+            self.assertEqual([p.stem for p in paths], [*APART, 'starter-set'])
+            starter = json.loads(paths[-1].read_text('utf-8'))
+            self.assertEqual(starter['format'], 'traumset/1')
+            self.assertEqual(len(starter['plugins']), len(APART) - 1)  # all but Provoke
+            self.assertFalse(any('"id": "provoke"' in p for p in starter['plugins']))
         finally:
             shutil.rmtree(tmp)
 

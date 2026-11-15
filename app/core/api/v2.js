@@ -618,7 +618,29 @@ export const SLOTS = {
   aiServices: 'ai.services',   // a replacement for the AI scheduler, cache or budget (app/core/AI.md)
   families: 'world.families',  // a family of groups a plugin declares: a book, its chapters (world/model.js declareFamilies)
   buttons: 'room.buttons',     // a button in a room's rail, under Tools (room/README.md)
+  menu: 'header.buttons',      // a row in the ☰ menu (Folio's slot, folio/runtime/Shell.js)
+  views: 'views',              // a page of the app under everything else (Folio's slot; the picture behind)
+  account: 'account',          // who is signed in, and their account page (Folio's slot; the first item)
 };
+
+// What plugins offer each other (t.peers): one name, one offer at a time; the offer goes when the
+// plugin that made it is switched off. shared: a Map the app keeps, or null for none.
+function peersFor(shared, owner, gone) {
+  const map = shared || new Map();
+  const mine = new Set();
+  gone(() => { for (const name of mine) if (map.get(name)?.owner === owner) map.delete(name); mine.clear(); });
+  return Object.freeze({
+    offer: (name, value) => {
+      const key = String(name);
+      const held = map.get(key);
+      if (held && held.owner !== owner) throw new Error(`${held.owner} already offers ${key}`);
+      map.set(key, { owner, value });
+      mine.add(key);
+      return () => { if (map.get(key)?.owner === owner) map.delete(key); mine.delete(key); };
+    },
+    get: (name) => map.get(String(name))?.value ?? null,
+  });
+}
 
 // One dock for one plugin: what it opens is noted, so it all closes when the plugin is switched off.
 function dockFor(dock, gone) {
@@ -646,7 +668,7 @@ function dockFor(dock, gone) {
 // toast, files ({ open, save, arrived }, files.js), link(url), roundTrip(urlFor) (the browser and back), desktop (inside the desktop app), docks, keys, frame,
 // floors, service(name), room(), ai (the AI framework's service, app/core/ai): the app's, or null.
 export function connect({ app, world, plugin, parts, lib = null, events = null, toast = () => {}, files = null, link = () => false, roundTrip = async () => null, desktop = false, docks = null, keys = null,
-  frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null, store = null }) {
+  frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null, store = null, peers = null }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
   if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
@@ -671,6 +693,11 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     plugin: Object.freeze({ id: owner, name: plugin.manifest?.name || owner }),
     ...tables,
     slots,
+    // What plugins offer each other, by name, through the API (an imported plugin has no other
+    // way to another plugin): offer(name, value) is the plugin's own and goes when it is switched
+    // off; get(name) is the value offered now, or null. Ask with get when it is needed, not once
+    // at start: the plugin offering it may start later, or not at all.
+    peers: peersFor(peers, owner, gone),
     // The AI framework (app/core/AI.md): tasks, the providers that do them, the maker's verdicts.
     ai: aiFor(ai, tables, readsOf(tables), { id: owner, name: plugin.manifest?.name || owner, spec: plugin.manifest?.plugin?.sidecar }),
     // What the plugin keeps on this computer, never in a .traum file (app/core/store): small state

@@ -22,13 +22,15 @@ const LOG = 'moments'; // where the moments log is saved (moments.js)
 const DAY = 864e5;
 
 export default class World extends Feature {
+  // The picture behind (the Renderer plugin's service), or null: looked up when needed (it may be imported).
+  get backdrop() { return this.use('backdrop'); }
+
   start() {
     for (const old of ['world', 'attention']) if (this.storage.has(old)) this.storage.set(old, null); // older shapes: not kept
     this.world = loadWorld(this.storage.get(KEY));
     this.log = M.loadLog(this.storage.get(LOG));
     this.begin();
     if (M.compact(this.log, Date.now())) this.storage.set(LOG, this.log);
-    this.backdrop = this.use('backdrop'); // the picture behind (Renderer), for the palette, or null
     this.prefs = lookPrefs(this.storage.get('look'));
     // The global ontology settings ({ [ontology]: { key: value } }): what a new room starts with.
     this.globals = this.storage.get('ontologies') || {};

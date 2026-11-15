@@ -45,10 +45,12 @@ export default class Api extends Feature {
     const events = { on: (name, fn) => this.on(name, fn) }; // what a plugin subscribes to, heard through this feature
     // What to undo when a plugin is switched off, by plugin: the dock tabs it opened.
     this.leaving = new Map();
+    // What plugins offer each other by name (t.peers): { owner, value }.
+    const peers = new Map();
     const gone = (id) => (fn) => { if (!this.leaving.has(id)) this.leaving.set(id, []); this.leaving.get(id).push(fn); };
     this.provide('traumerei', Object.freeze({
       version: API_VERSION,
-      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, roundTrip, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id), ai, store }),
+      connect: (plugin) => connect({ app, world, plugin, parts, lib: world.lib, events, toast: ui.toast, files, link, roundTrip, desktop: desktop(), docks, keys, frame, floors, service, room, gone: gone(plugin.id), ai, store, peers }),
       // For the app, not plugins: closes what a plugin opened, once it is switched off.
       release: (id) => this.release(id),
     }));

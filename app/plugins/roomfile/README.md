@@ -28,6 +28,6 @@ source editor, read only in a locked room) and `cancel()` (closes the card).
   `picture:1`); what Apply would do (kept, changed, new, deleted) is checked as it is typed, and
   Apply writes it back over what it was (`t.carriers.replace`): one step.
 
-It uses the `source` service (the source editor plugin) when it is there. It offers no service and
+It uses the source editor (`t.peers.get('source')`, offered by the Source editor plugin) when it is there. It offers no service and
 sends no events. Tests: `tests/plain.test.js`; the carrier's own in `app/core/world/tests/traum.test.js`;
 `tests/guide.mjs` checks FORMAT.md's examples land with no plugin on.

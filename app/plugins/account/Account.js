@@ -58,9 +58,9 @@ export default class Account extends Feature {
     this.timer = null;
     this.synced = false; // true once this device and the account agree, so changes can go up
     this.guarded = false; // true when the reload guard sent this device's copy up instead of reloading
-    this.add('account', { name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     const t = this.use('traumerei')?.connect(this);
     this.t = t;
+    t.slots.account.add({ name: () => this.name(), open: () => this.open(), sections: () => this.sections() });
     this.desktop = !!t?.app.desktop; // the desktop app: signs in through the browser (handoff.js), and checks for updates
     this.handoff = this.desktop ? null : readHandoff(location.search); // this web page was opened by the desktop app to sign in
     this.waiting = null; // the desktop app: the state of the browser sign-in it is waiting for

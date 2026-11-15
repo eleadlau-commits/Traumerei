@@ -19,6 +19,7 @@ last is the one that shows, and hiding it brings back the one before.
 | `show(owner, o)` | Shows the frame for `owner` (any object, usually the feature), on top of any other. `o`: `{ crumbs?, search()?, back()?, backLabel?, selection?, mode?, idle?, ink? }`: `crumbs` is where you are, a list of steps `{ label, onClick?, title?, current?, note? }` (a step with `onClick` is a word to press; `note` is a quiet word after it), or `{ node }` for a node of the owner's own (a name to rename in place); Search is shown only with `search`, and the arrow only with `back`; `back` is what the arrow does and `backLabel` what it is called; `selection` and `mode` show at the right of the status bar ("2 chosen", "Joyce"); `idle` is its quiet line on the left while the pointer is over nothing that says what it is; `ink` is kept for words drawn on the canvas (a CSS colour). |
 | `update(owner, o)` | Changes some of what `owner`'s frame says. |
 | `hide(owner)` | Takes `owner`'s frame away; the one under it shows, or none. |
+| `showsBesides(owner)` | Whether anyone but `owner` has a frame up: the rooms page asks it to know if a page (Home) lies under it. |
 | `saved(word)` | Saved, at the right of the status bar; another word ("Undone") for a moment. |
 | `hint(text)` | A line of help on the left of the status bar for a while; the first key or click takes it away. |
 | `hover(text)` | What the pointer is over, said by the owner (a thought on the canvas); `null` lets the frame read it again from the element's `data-hint`, `title` or name. |

@@ -8,6 +8,9 @@
 // its kinds and needs from the app's one list, one way in), since nothing compiled it into this app.
 
 export const FORMAT = 'traumplug/1';
+// A set of packages in one file (the starter set, `python build.py pack-plugin --all`): JSON,
+// { format: 'traumset/1', name, description, plugins: [package text, …] }, imported together.
+export const SET_FORMAT = 'traumset/1';
 const ID = /^[a-z][a-z0-9-]*$/;
 const VERSION = /^\d+\.\d+\.\d+$/;
 const USES = /\.use\(\s*['"]([\w.:-]+)['"]/g;
@@ -75,6 +78,19 @@ export function oneWayIn(Plugin) {
     }
     defineSlot(name, ...rest) { (this.ownSlots ||= []).push(name); return super.defineSlot(name, ...rest); }
   };
+}
+
+// A set's name, description and package texts, or null when the text isn't a set (a single
+// package). A file that says it is a set but can't be read throws, in words.
+export function readSet(text) {
+  const s = String(text).trimStart();
+  if (!s.startsWith('{')) return null;
+  let o;
+  try { o = JSON.parse(s); } catch { throw new Error('This set of plugins couldn\'t be read.'); }
+  if (o?.format !== SET_FORMAT) throw new Error(`This set of plugins is in a format this app doesn't read (${o?.format || 'none'}; it reads ${SET_FORMAT}).`);
+  const plugins = Array.isArray(o.plugins) ? o.plugins.filter((x) => typeof x === 'string') : [];
+  if (!plugins.length) throw new Error('This set of plugins holds no plugins.');
+  return Object.freeze({ name: String(o.name || 'Plugins'), description: String(o.description || ''), plugins });
 }
 
 // The words on the import card: what it is, who made it, what it adds and needs.
