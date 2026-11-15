@@ -168,7 +168,11 @@ readers · `gaps` of, opened, oldest, progress · `moments` of, changed, ahead, 
 
 A full mode (Joyce, Pessoa, Russell: trains, trays, its own drawing, gestures) gives `units`,
 `point`, `drop` and more instead of `arrange`; that shape is the world's own
-(`app/core/world/ontologies/index.js`) and is for modes that ship with the app.
+(`app/core/world/ontologies/index.js`). **Since 1.0.3 it is open to every plugin**, and stable on
+the same terms as the rest of version 2 (it changes only by adding): Russell and Proust are
+plugins written in it, with `t.parts`, and an imported plugin may be too. Keep the laws: the mode
+keeps no state of its own (where it puts a thing is a rule row of `places`, what it joins a row
+of `links`), and every write is one of its own gestures, which the room lands as one step.
 
 ## Store: what a plugin keeps on this computer
 
@@ -203,7 +207,9 @@ additions only.
 | Member | What it is |
 |---|---|
 | `slots.rules` | a way of seeing a room (an ontology, a rule in the kernel's words): `add(rule)`, `get(id)`, `all`, `settings`. Shape: `app/core/world/ontologies/index.js`. |
-| `slots.kinds` | a kind of mark that isn't plain words: `add({ kind, name, tidy(fields), text(mark), node(mark, el), fields?, add?, takes?(file), fromFile?(file), label?(mark) })`. `kind` lowercase words joined by dashes; its fields may be named anything but `id`, `kind`, `at`, `edited`, `parent` and `archived`; `tidy` its own fields tidied, or `null` when empty; `text` its words as plain text (search reads it); `node` how it shows (`el` is Folio's `ui.el`); `fields` `[{ key, type: 'line' \| 'text' \| 'image', label }]` makes it written in the room's sheet; `add` `{ note, keys?, file? }` offers it under Add (with `file`, a file is picked and `fromFile` gives the fields). Make one with `marks.make({ kind, content: fields, in })`. A mark of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. |
+| `slots.kinds` | a kind of mark that isn't plain words: `add({ kind, name, tidy(fields), text(mark), node(mark, el), fields?, add?, takes?(file), fromFile?(file), label?(mark) })`. `kind` lowercase words joined by dashes; its fields may be named anything but `id`, `kind`, `at`, `edited`, `parent` and `archived`; `tidy` its own fields tidied, or `null` when empty; `text` its words as plain text (search reads it); `node` how it shows (`el` is Folio's `ui.el`); `fields` `[{ key, type: 'line' \| 'text' \| 'image', label }]` makes it written in the room's sheet; `add` `{ note, keys?, file? }` offers it under Add (with `file`, a file is picked and `fromFile` gives the fields); `open(mark)`: double-click or Enter on a card of the kind opens it this way, in any mode (instead of the sheet). Make one with `marks.make({ kind, content: fields, in })`. A mark of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. |
+| `slots.families` | a family of groups that belongs to no mode (a book, its chapters): `add({ id, name, membership?, order?, card?, keep?, open?(id) })`. `id` lowercase words joined by dashes, never a mode's. Make one with `marks.make({ kind: 'group', content: { title, of: id }, in: room })`, put parts in with `links.link(part, group, 'part of')`, order them with `links.order(group, ids)`. Its groups hold parts like any group (a group of the family may hold another's: a book its chapters), and a mode never lays them out, so a thought sits in a chapter and in a Proust cluster at once. `membership` `'many'` (the default: a part in several of its groups) or `'one'`; `order` `'kept'` (the default: as put, a newcomer at the end) or `'time'`; `card: true`: each of its groups that no other group holds shows as one card in every mode (in the tray until it is placed), its parts still where they are; `keep` (default true): a group of it left empty stays; `open(id)`: double-click or Enter on its card opens it (a view in a dock). Deleting a family's group never deletes its parts, with its plugin on or off (the group says `family: true`), and its rows travel in .traum files like any group's. |
+| `slots.buttons` | a button in a room's rail, under **Tools**: `add({ id, label, icon, order, run(), on?(), visible?(), title?() })`, the same shape as ⋯ More's (`icon` a `ui.ICONS` name or a drawing on a 24 × 24 grid). |
 | `slots.linkKinds` | a kind of link: `add({ kind, name, note?, both?, admit?(from, to, reads) })`. `kind` lowercase words (`cites`, `example of`); `both`: it reads the same either way (one row for a pair); `admit` returns `true` or a refusal in words. Then `links.link(from, to, kind, label?, { note }?)` makes one between any two marks, in any rooms, and `links.unlink(id)` takes it away. A row of a kind whose plugin is off is kept and travels in files. `links.named(kind)` gives `{ kind, name, note, both }`. |
 | `slots.carriers` | a carrier of the six tables to somewhere else (the account's sync): `add({ id, name, moves })`, `moves` 'text' or 'moments'. Listed with the .traum file by `carriers.list()`. |
 | `slots.commands` | a named action, with its keys if it has any: `add({ id, keys?, words, zone, order, when?(), run?(e) })`, `label(id)` (its keys as words). `zone` is where it works: `room` (inside a room), `rooms` (the rooms page) or `everywhere`; keys are written `Ctrl+Alt+K`; two commands clash when they share keys in one zone. |
@@ -250,11 +256,14 @@ a result that would change anything reaches the maker as a suggestion to keep or
 
 | Member | What it is |
 |---|---|
-| `ui.docks` | `{ left, right, canvasOnly() }`, or `null` when the app has no docks. `canvasOnly()` hides every dock that shows; again brings them back. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose })` (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
+| `ui.docks` | `{ left, right, canvasOnly() }`, or `null` when the app has no docks. `canvasOnly()` hides every dock that shows; again brings them back. Each dock has `open({ key, tab, kind, title, label, body, beforeClose, onClose, drop })` (`drop: { drop(ids, target), accepts?(ids, target) }`: thoughts dragged from the canvas may be let go on the tab, onto the element under the pointer with a `data-drop` attribute, or the tab itself; the room lights it while one is held over it and leaves the thoughts where they were) (resolves with a handle, or `null`), `close(key, force)`, `show(key)`, `isOpen(key)`, `isShowing(key)` (`app/core/docks/README.md`). Every tab a plugin opens is closed when it is switched off. |
 | `ui.frame` | The top bar and status bar for a page the plugin shows: `show({ crumbs, idle })`, `update(o)`, `hide()`, `hint(text)`, `clearHint()` (`app/core/frame/README.md`). `null` without the frame. |
 | `ui.open` | `rooms()` (the rooms page), `room(id)` (into a room, from anywhere), `mark(id)` (into the room a mark is at home in, with the view on it and it chosen; a room: into it; `false` when it is in no room). |
 
 ## Parts: what rules and views share
+
+Stable for every plugin since 1.0.3 (before, only for the modes that ship with the app): a name
+here may gain siblings, never be renamed or taken away, and `tests/api.test.js` holds the list.
 
 | Member | What it is |
 |---|---|

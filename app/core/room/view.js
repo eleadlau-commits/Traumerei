@@ -209,6 +209,16 @@ export class RoomView {
       items.push(el('button', { type: 'button', class: 'rail-item room-settings-btn', 'aria-expanded': String(!!this.settingsFor),
         title: 'This room\'s settings: its colour, tags and mode', onclick: () => this.openRoomSettings(this.mode) }, railIcon('gear'), railWord('Settings')));
     }
+    // Tools: plugins' buttons for this room (the slot room.buttons), each an icon and a word.
+    const tools = this.slot('room.buttons').items
+      .filter((b) => { try { return b.visible ? !!b.visible() : true; } catch { return false; } });
+    if (tools.length) {
+      items.push(el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Tools'),
+        ...tools.map((b) => el('button', { type: 'button', class: 'rail-item room-tool', 'aria-pressed': String(!!(() => { try { return b.on?.(); } catch { return false; } })()),
+          title: (() => { try { return b.title?.() || b.label; } catch { return b.label; } })(),
+          onclick: () => { try { b.run(); } catch (err) { console.warn(`Room: the button ${b.id} failed`, err); } } },
+        railIcon(b.icon || 'dots'), railWord(b.label))));
+    }
     // Seen through Pessoa because its own mode's plugin is off: say so, with a word to turn it on.
     const away = v.mode !== this.mode && this.plugins?.offMode(v.mode);
     if (away) {

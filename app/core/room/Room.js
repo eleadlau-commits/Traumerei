@@ -22,7 +22,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, parentOf, floorOf, floorName, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes } from './world.js';
+import { bind, room, parentOf, floorOf, floorName, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes, familyOf, isGroup, kindFor, kindOf } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -64,6 +64,9 @@ export default class Room extends Feature {
     this.past = null;     // a day gone back to in the Time dock: { day, later, lit }, or null
     this.drafts = this.storage.get('drafts', {}) || {};    // per room: a thought left half written { text, train, x, y }
 
+    // Plugins' buttons in a room's rail, under Tools (a Book plugin's Books): the same shape as ⋯ More's.
+    this.defineSlot('room.buttons', 'A button in a room\'s rail, under Tools: { id, label, icon (a ui.ICONS name or a 24 × 24 drawing), order, run(), on?() → shown as pressed, visible?(), title?() }.')
+      .watch(() => { if (this.roomId) this.drawRoom(); });
     this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
     this.files = this.w.formats;          // rooms in and out as files: the formats plugins add (Room files' .traum)
     this.finder = this.use('search');     // Search (Ctrl+K): the search feature's panel, or null
@@ -396,7 +399,18 @@ export default class Room extends Feature {
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
-  groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || 'Train'; } // Train, Chapter
+  groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || familyOf(g?.of)?.name || 'Train'; } // Train, Chapter, a plugin's Book
+  // What opens a mark by itself, from a plugin: its kind's open(mark), or its group family's
+  // open(id) (a book opens in the right dock). Double-click or Enter on it then opens it, in any
+  // mode. Null when nothing does.
+  openerOf(id) {
+    const th = this.world.things[id];
+    if (!th) return null;
+    let fn = null;
+    try { fn = isGroup(th) ? familyOf(th.of)?.open : kindFor(kindOf(th))?.open; } catch { fn = null; }
+    if (typeof fn !== 'function') return null;
+    return () => { if (this.draft) this.commit(); try { fn(id); } catch (err) { console.warn(`Room: opening ${id} failed`, err); } };
+  }
   // A closed group opened (Russell's closed chapter): in the content editor, in the right dock's
   // Editor tab, with its thoughts as paragraphs to write in; without docks, as a document pop-up
   // (document.js).

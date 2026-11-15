@@ -243,3 +243,23 @@ test('not traum/3 is not read', () => {
   assert.equal(X.read('---\nformat: room/2\n---\n'), null);
   assert.equal(X.read('# just markdown'), null);
 });
+
+test('a link of a plugin\'s kind lands back from a file, its plugin on or off (Law 8)', () => {
+  const w = emptyWorld(1000);
+  const r = addRoom(w, 'Reading', 2000);
+  const a = create(w, r.id, { kind: 'line', text: 'Claim' }, 3000);
+  const b = create(w, r.id, { kind: 'line', text: 'Source' }, 3100);
+  L.set(w, L.kindId('cites', a.id, b.id), { from: a.id, to: b.id, kind: 'cites', note: 'p. 12' });
+  L.set(w, L.kindId('example of', b.id, a.id), { from: b.id, to: a.id, kind: 'example of' });
+  const text = X.write(tablesOf(w, r.id), { root: r.id });
+  const got = X.read(text);
+  const other = emptyWorld(5000);
+  const out = landTables(other, got.tables, got.root, { page: 0, now: 6000 });
+  assert.ok(!out.why, out.why);
+  const kinds = Object.values(other.links).map((l) => l.kind).filter((k) => k !== 'part of').sort();
+  assert.deepEqual(kinds, ['cites', 'example of']);
+  const cites = Object.values(other.links).find((l) => l.kind === 'cites');
+  assert.equal(cites.note, 'p. 12');
+  assert.equal(other.things[cites.from].text, 'Claim');
+  assert.equal(X.write(tablesOf(other, out.id), { root: out.id }).split('\n').filter((l) => /cites|example of/.test(l)).length, 2, 'and goes out again');
+});
