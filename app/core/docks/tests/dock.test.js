@@ -25,3 +25,18 @@ test('dock: opening behind into an empty dock shows it', async () => {
   assert.ok(d.isShowing('loose'));
   d.root.remove(); d.stripEl?.remove();
 });
+
+test('dock: opening quietly leaves the dock as it was (shut stays hidden, showing keeps its front)', async () => {
+  const d = make();
+  await d.open({ key: 'loose', tab: 'loose', kind: 'Loose', body: 'loose', quiet: true });
+  assert.ok(d.isOpen('loose'), 'it holds the loose tab');
+  assert.ok(!d.visible, 'but the dock stays hidden, only its strip shows');
+  assert.ok(d.stripped);
+  d.tuck(false);
+  assert.ok(d.isShowing('loose'), 'brought back, it shows the loose tab');
+  await d.close('loose', true);
+  await d.open({ key: 'desk', tab: 'desk', kind: 'Desk', body: 'desk' });
+  await d.open({ key: 'loose', tab: 'loose', kind: 'Loose', body: 'loose', quiet: true });
+  assert.ok(d.isShowing('desk'), 'a dock that showed keeps showing the desk');
+  d.root.remove(); d.stripEl?.remove();
+});

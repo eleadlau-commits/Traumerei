@@ -81,8 +81,12 @@ export class Dock {
   // when what the tab held would not close.
   // behind: true opens it without taking the front from what shows there now (a room's Loose tab,
   // opened on entering, leaves the Desk in front when the person had it there).
-  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null, behind = false } = {}) {
+  // quiet: true opens it without showing the dock: a dock that was hidden or shut stays hidden (its
+  // strip shows the new name), and one that showed keeps showing what it showed (a room's Loose
+  // tab on entering: the room opens without the canvas jumping, the dock as it was).
+  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null, behind = false, quiet = false } = {}) {
     const before = this.visible ? this.front : null;
+    const hidden = quiet && !this.visible;
     const there = this.held.find((x) => x.tab === tab);
     if (there && !await this.closeOne(there)) return null;
     if (this.held.some((x) => x.tab === tab)) return null; // something else opened there meanwhile
@@ -90,12 +94,20 @@ export class Dock {
     const shown = { key, tab, kind, title, label, page, beforeClose, onClose };
     this.held.push(shown);
     this.body.append(page);
-    this.front = behind && before && this.held.includes(before) ? before : shown;
-    this.tucked = false;
-    this.root.hidden = false;
-    this.draw();
-    document.documentElement.classList.add(`dock-${this.side}-open`); // (before the width is sent, so what moves over has moved)
-    this.setWidth(this.width, false);
+    this.front = (behind || quiet) && before && this.held.includes(before) ? before : shown;
+    if (hidden) {
+      this.tucked = true;
+      this.root.hidden = true;
+      this.root.style.width = `${this.width}px`;
+      this.draw();
+      this.resized(this.taken);
+    } else {
+      this.tucked = false;
+      this.root.hidden = false;
+      this.draw();
+      document.documentElement.classList.add(`dock-${this.side}-open`); // (before the width is sent, so what moves over has moved)
+      this.setWidth(this.width, false);
+    }
     const dock = this;
     return {
       close: (force = false) => (this.held.includes(shown) ? this.closeOne(shown, force) : Promise.resolve(true)),
