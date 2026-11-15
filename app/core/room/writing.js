@@ -5,10 +5,11 @@
 import {
   DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf, members,
-  gapState, gapOf, openGap, linksFrom, UP_LINKS,
+  gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
+import { countsLine } from './cards.js';
 
 export class Writing {
   // One thought, drawn by its kind.
@@ -16,7 +17,12 @@ export class Writing {
     if (this.draft?.edit === th.id) return this.draftNode(); // a thought opened again to write in
     const kind = kindOf(th);
     let node;
-    if (kind === 'group') { // a closed group reads as one passage; another mode's says what kind it is
+    if (kind === 'group' && isCard(th)) { // a card (a plugin's book) shows its title and what it holds, not every thought's words
+      node = el('div', { class: 'room-passage closed room-card', 'data-id': th.id },
+        el('div', { class: 'label room-passage-kind' }, this.groupName(th)),
+        el('div', { class: 'room-passage-title' }, th.title ? maths(th.title) : 'Untitled'),
+        el('div', { class: 'label room-card-counts' }, this.cardCounts(th)));
+    } else if (kind === 'group') { // a closed group reads as one passage; another mode's says what kind it is
       const body = thoughtText(this.world, th);
       node = el('div', { class: 'room-passage closed', 'data-id': th.id },
         th.of !== this.mode ? el('div', { class: 'label room-passage-kind' }, this.groupName(th)) : null,
@@ -27,6 +33,11 @@ export class Writing {
     // table, world/gaps.js) shows an open edge at its start, until it is resolved.
     if (gapState(this.world, th.id) === 'open') node.classList?.add('room-gap');
     return node;
+  }
+
+  // What a card holds, as a line: "2 chapters · 14 thoughts".
+  cardCounts(th) {
+    return countsLine(within(this.world, th.id), (x) => (isGroup(x) ? familyOf(x.of)?.name || this.groupName(x) : null));
   }
 
   draftNode() {

@@ -215,6 +215,7 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-passage-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; opacity: .85; margin-bottom: 4px; }
 .room-passage-body { white-space: pre-line; opacity: .9; max-height: 22em; overflow: hidden; }
 .room-passage.closed { border-left-style: dotted; }
+.room-card-counts { margin-top: 2px; opacity: .7; }
 .room-float .room-passage { margin: 0; }
 
 /* The sheet for writing a new thing of a kind (a passage, a picture's caption): its fields. */
