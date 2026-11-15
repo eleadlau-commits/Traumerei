@@ -204,6 +204,11 @@ export class RoomView {
       }, '⚙') : null;
       items.push(el('div', { class: 'room-rail-row' + (this.gearFor === m.id || this.settingsFor === m.id ? ' show' : '') }, word, gear));
     }
+    // Settings: this room's own (its colour, tags, Lock…) and its mode's, in the right dock.
+    if (this.panel) {
+      items.push(el('button', { type: 'button', class: 'rail-item room-settings-btn', 'aria-expanded': String(!!this.settingsFor),
+        title: 'This room\'s settings: its colour, tags and mode', onclick: () => this.openRoomSettings(this.mode) }, railIcon('gear'), railWord('Settings')));
+    }
     // Seen through Pessoa because its own mode's plugin is off: say so, with a word to turn it on.
     const away = v.mode !== this.mode && this.plugins?.offMode(v.mode);
     if (away) {
@@ -303,12 +308,26 @@ export class RoomView {
     if (open && open.id === this.settingsFor && this.panel.isOpen('mode-settings')) return;
     const o = this.ontologies.find((x) => x.id === this.settingsFor);
     if (!o) { this.settingsFor = null; return; }
+    // The room's own settings first (its name, line, tags, colour, lightness, opacity, Lock and
+    // Export: the rooms page's, through its service), then this mode's settings for the room.
     // Not the card's class: the card is fixed beside the rail, which left these floating over the dock.
     const body = el('div', { class: 'room-mode-settings-docked' });
-    const fill = () => { body.replaceChildren(...this.modeSettingsRows(o, () => { fill(); this.drawWorld(); }, { note: false }).filter(Boolean)); };
+    const id = this.roomId;
+    const changed = (what) => {
+      if (this.roomId !== id) return;
+      if (what === 'look') { this.paintRoom(); return; }
+      fill();
+      this.drawRoom();
+    };
+    const fill = () => {
+      const own = this.rooms?.settingsRows?.(id, changed) || [];
+      const mode = this.settingsOf(o).length ? this.modeSettingsRows(o, () => { fill(); this.drawWorld(); }, { note: false }).filter(Boolean) : [];
+      body.replaceChildren(...own,
+        ...(mode.length ? [el('details', { class: 'sec', open: '' }, el('summary', {}, `${o.name} in this room`), el('div', { class: 'sec-body' }, ...mode))] : []));
+    };
     fill();
     const now = (this.modeSettings = { id: o.id });
-    this.panel.open({ key: 'mode-settings', kind: 'Settings for this room', title: o.name, body,
+    this.panel.open({ key: 'mode-settings', kind: 'Room settings', title: '', body,
       onClose: () => {
         if (this.modeSettings !== now) return; // switched to another mode, or the room was left
         this.modeSettings = null;

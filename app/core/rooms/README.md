@@ -15,6 +15,7 @@ room hands it to the **room** feature (`app/core/room`), which shows it and writ
 | `showRooms()` | Back to the rooms page from the open room (it shrinks into its square). |
 | `showFloor(i)` | Back to the rooms page, on floor `i` (from 0). |
 | `showArchive()` | Back to the rooms page, on the Archive. |
+| `settingsRows(id, changed)` | A room's settings for inside it (name, line, tags, colour, lightness, opacity, Lock, Export): nodes for the room's Settings; `changed('look' \| 'all')` is told after each change. |
 
 It sends `room:open` `{ id, from, seed }` when a room is gone into (`from`: the square's
 rectangle; `seed`: a first key typed on the rooms page, for Messy thoughts). It listens to
