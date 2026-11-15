@@ -1,0 +1,25 @@
+{
+  "name": "Book",
+  "description": "A book in any room: chapters of the room's thoughts, in your order, opened in the right dock; a contents page, drag to reorder, drop thoughts in, export as Markdown or PDF.",
+  "version": "0.1.0",
+  "main": "Book.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.2",
+    "kind": [
+      "view",
+      "command"
+    ],
+    "load": "start",
+    "author": "E",
+    "needs": [
+      "files"
+    ]
+  }
+}
