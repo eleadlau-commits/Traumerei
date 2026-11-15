@@ -40,3 +40,27 @@ test('dock: opening quietly leaves the dock as it was (shut stays hidden, showin
   assert.ok(d.isShowing('desk'), 'a dock that showed keeps showing the desk');
   d.root.remove(); d.stripEl?.remove();
 });
+
+test('dock: a page opened with drop takes marks let go on it (the element with data-drop, else the page)', async () => {
+  const d = make();
+  const got = [];
+  const { ui } = await import('folio');
+  const chapter = ui.el('div', { 'data-drop': 'ch1' }, 'Chapter 1');
+  await d.open({ key: 'book', tab: 'book', kind: 'Book', body: ui.el('div', {}, chapter, ui.el('p', {}, 'contents')),
+    drop: { drop: (ids, el) => got.push([ids, el.dataset.drop || 'page']), accepts: (ids) => !ids.includes('no') } });
+  const real = document.elementFromPoint;
+  try {
+    document.elementFromPoint = () => chapter;
+    const at = d.dropAt(10, 10, ['a']);
+    assert.ok(at && at.el === chapter);
+    at.take(['a', 'b']);
+    assert.deepEqual(got, [[['a', 'b'], 'ch1']]);
+    assert.equal(d.dropAt(10, 10, ['no']), null, 'what it does not accept');
+    document.elementFromPoint = () => document.body;
+    assert.equal(d.dropAt(10, 10, ['a']), null, 'nowhere near the dock');
+    d.tuck(true);
+    document.elementFromPoint = () => chapter;
+    assert.equal(d.dropAt(10, 10, ['a']), null, 'a hidden dock takes nothing');
+  } finally { document.elementFromPoint = real; }
+  d.root.remove(); d.stripEl?.remove();
+});

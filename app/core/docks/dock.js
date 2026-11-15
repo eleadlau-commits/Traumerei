@@ -84,14 +84,16 @@ export class Dock {
   // quiet: true opens it without showing the dock: a dock that was hidden or shut stays hidden (its
   // strip shows the new name), and one that showed keeps showing what it showed (a room's Loose
   // tab on entering: the room opens without the canvas jumping, the dock as it was).
-  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null, behind = false, quiet = false } = {}) {
+  // drop: { drop(ids, target), accepts?(ids, target) }: marks dragged from a room's canvas may be let
+  // go on it; target is the element under the pointer with data-drop (or the page itself).
+  async open({ key = this.side, tab = this.firstTab, kind = '', title = '', label = '', body, beforeClose = null, onClose = null, behind = false, quiet = false, drop = null } = {}) {
     const before = this.visible ? this.front : null;
     const hidden = quiet && !this.visible;
     const there = this.held.find((x) => x.tab === tab);
     if (there && !await this.closeOne(there)) return null;
     if (this.held.some((x) => x.tab === tab)) return null; // something else opened there meanwhile
     const page = el('div', { class: 'dock-page' }, body || '');
-    const shown = { key, tab, kind, title, label, page, beforeClose, onClose };
+    const shown = { key, tab, kind, title, label, page, beforeClose, onClose, drop: drop && typeof drop.drop === 'function' ? drop : null };
     this.held.push(shown);
     this.body.append(page);
     this.front = (behind || quiet) && before && this.held.includes(before) ? before : shown;
@@ -221,6 +223,19 @@ export class Dock {
     this.bare = !!on;
     this.drawStrip();
     this.resized(this.taken);
+  }
+
+  // A place to let go of marks dragged from the canvas, at a point on the screen: { el, take(ids) }
+  // for the showing page whose drop takes them there, or null.
+  dropAt(x, y, ids) {
+    if (!this.visible) return null;
+    const hit = document.elementFromPoint(x, y);
+    const shown = hit && this.root.contains(hit) ? this.held.find((h) => h.page.contains(hit) && h.drop) : null;
+    if (!shown || shown !== this.front) return null;
+    const target = hit.closest('[data-drop]');
+    const el = target && shown.page.contains(target) ? target : shown.page;
+    try { if (shown.drop.accepts && !shown.drop.accepts(ids, el)) return null; } catch { return null; }
+    return { el, take: (list) => { try { return shown.drop.drop(list, el) !== false; } catch (err) { console.warn(`Dock (${this.side}): drop`, err); return false; } } };
   }
 
   // Whether it holds `key` (anything, when none is given), in front or not.

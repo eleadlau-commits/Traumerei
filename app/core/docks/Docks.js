@@ -48,6 +48,7 @@ export default class Docks extends Feature {
       isOpen: (key = null) => dock.isOpen(key),
       isShowing: (key) => dock.isShowing(key),
       toggle: () => this.toggle(dock.side),
+      dropAt: (x, y, ids) => dock.dropAt(x, y, ids), // a page that takes marks let go at this point (open's drop), or null
       get shown() { return dock.visible; },
       get width() { return dock.showing; },
     };

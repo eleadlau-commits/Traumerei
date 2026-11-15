@@ -28,6 +28,7 @@ import * as A from './ahead.js';
 export const NAMES = Object.freeze(['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
 export const MATERIAL = Object.freeze(['tint', 'light', 'opacity', 'size']);
 const OWN = new Set(['id', 'kind', 'at', 'edited']);
+const PLUGIN_KIND = /^[a-z][a-z0-9]*( [a-z0-9]+)*$/; // a kind of link a plugin declares (slots.linkKinds)
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const kindOf = (th) => (typeof th?.kind === 'string' && th.kind ? th.kind : 'line');
 const isRoom = (th) => kindOf(th) === 'room';
@@ -155,10 +156,13 @@ export function write(w, tables, ids) {
   }
   for (const r of tables.links) {
     const from = to(r.from), at = to(r.to);
-    if (!there(from) || !there(at) || !L.KINDS.includes(r.kind)) continue;
+    // The world's three kinds, and every kind a plugin declares (cites, example of: lowercase
+    // words), whose plugin may be off: its row comes back as it went out (Law 8).
+    const own = L.KINDS.includes(r.kind);
+    if (!there(from) || !there(at) || from === at || (!own && !PLUGIN_KIND.test(String(r.kind)))) continue;
     const row = { from, to: at, kind: r.kind };
     for (const k of ['order', 'rule', 'label', 'note']) if (r[k] != null) row[k] = clone(r[k]);
-    const id = r.kind === 'part of' ? L.partId(at, from) : r.kind === 'stands for' ? L.forId(from, at) : L.relId(row.rule || 'relation', from, at);
+    const id = r.kind === 'part of' ? L.partId(at, from) : r.kind === 'stands for' ? L.forId(from, at) : r.kind === 'relation' ? L.relId(row.rule || 'relation', from, at) : L.kindId(r.kind, from, at);
     L.set(w, id, row);
   }
   for (const r of tables.distance) { const c = to(r.context); if (there(c)) D.declare(w, c, r.reader); }

@@ -157,6 +157,11 @@ export class Gestures {
     if (g.kind === 'box') { this.endBox(g); return; }
     if (g.kind === 'group') {
       if (!g.moved) { this.sel = null; this.drawWorld(); return; }
+      if (g.last && this.dockDrop(g.last.x, g.last.y, Object.keys(g.from))) { // (moved live: back where they were first)
+        for (const [id, p] of Object.entries(g.from)) this.putAt(id, p.x, p.y);
+        this.droppedOnDock(Object.keys(g.from), g.last);
+        return;
+      }
       if (g.last && this.overTray(g.last.x, g.last.y) && verbs.throwBack(this, null, Object.keys(g.from))) return;
       this.drawWorld();
       this.save();
@@ -191,6 +196,12 @@ export class Gestures {
       this.drawWorld();
       return;
     }
+    // Let go over a dock page that takes marks (a plugin's view): it takes it, and it stays where it was here.
+    if (g.thing && g.last && this.dockDrop(g.last.x, g.last.y, [g.thing.id])) {
+      if (g.thing.live) this.ont.drop(this.world, this.roomId, g.thing.id, g.thing.x, g.thing.y); // (moved live: back where it was)
+      this.droppedOnDock([g.thing.id], g.last);
+      return;
+    }
     // Let go over the loose tray: it is thrown back (verbs.js).
     if (g.thing && g.last && this.overTray(g.last.x, g.last.y) && verbs.throwBack(this, null, [g.thing.id])) return;
     // Let go over a Twin's other side: it goes across (twin.js).
@@ -208,7 +219,9 @@ export class Gestures {
   // to let go, and a card of it follows the pointer above the dock (the canvas itself stays under
   // the dock). x null: the drag is over, both go.
   trayHover(g, x, y) {
-    const tray = x != null && !g.thing?.still && this.ont.tray && !this.locked ? this.trayAt(x, y) : null;
+    const ids = g.kind === 'group' ? Object.keys(g.from || {}) : g.thing ? [g.thing.id] : [];
+    const dock = x != null && !g.thing?.still && ids.length ? this.dockDrop(x, y, ids) : null;
+    const tray = dock ? dock.el : x != null && !g.thing?.still && this.ont.tray && !this.locked ? this.trayAt(x, y) : null;
     if (g.trayEl !== tray) { g.trayEl?.classList.remove('st-drop'); tray?.classList.add('st-drop'); g.trayEl = tray; }
     if (!tray) { g.ghost?.remove(); g.ghost = null; return; }
     if (!g.ghost) {
@@ -223,10 +236,27 @@ export class Gestures {
     g.ghost.style.top = `${y + 8}px`;
   }
 
+  // A dock page that takes marks let go at a point (a plugin's view opened with a drop: a book's
+  // chapter), or null: the right dock first, then the left.
+  dockDrop(x, y, ids) {
+    for (const side of ['right', 'left']) { const d = this.docks?.[side]?.dropAt?.(x, y, ids); if (d) return d; }
+    return null;
+  }
+
   // The loose tray under a point on the screen (the left dock's list, or the row at the foot of the
   // room), or null.
   trayAt(x, y) {
     return document.elementFromPoint(x, y)?.closest?.('.room-loose, .room-tray-row, .room-tray-btn') || null;
+  }
+
+  // Marks let go over a dock page that takes them: handed to it, and the room drawn as it was
+  // (what moved goes back). True when one took them.
+  droppedOnDock(ids, at) {
+    const d = this.dockDrop(at.x, at.y, ids);
+    if (!d) return false;
+    d.take(ids);
+    this.drawWorld();
+    return true;
   }
 
   // Whether a point on the screen is over the loose tray (the left dock's list, or the row at the
