@@ -65,6 +65,20 @@ One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, 
 - Corpus plugin **Word count strip**: the room's words in the strip, **Words** on the bar and
   Ctrl+Alt+W to hide it, a page of every room's count, and the room's name as its label from far off.
 
+### Step 4: the pointer and surfaces
+
+- `slots.surfaces`: a kind of mark (`surface` on its kind) or a thin rule's box (`surface` on a
+  `draw` box) asks for a surface by id, and the room gives its plugin an element sized by the
+  layout to draw in. Clicked into, it hears the pointer, the wheel and the keys until Esc or a
+  click outside; the app's keys wait meanwhile.
+- Pointer down to pointer up is one gesture, and the plugin's proposes in it land as one step: a
+  stroke is one Ctrl+Z. What a surface keeps goes through proposes (a kind's fields), so nothing
+  is kept outside the tables, and a surface kind whose plugin is off shows the quiet stand-in.
+- A new `needs` word, `surface`, shown on the import card; `slots.surfaces.add` refuses a plugin
+  that doesn't say it.
+- Corpus plugins **Sketch** (a drawing made with the pen, its strokes a field) and **Chart** (a
+  rule whose box draws a bar chart of the words in each group).
+
 ### Step 5: rich kinds in a flow, and more ways out
 
 - A kind of mark may flow among paragraphs (`inline: true`, `height(mark, width)`); `t.ui.size`

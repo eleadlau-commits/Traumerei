@@ -85,15 +85,21 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
 
   // Connects a plugin (by id) and runs its install(t); returns { t, off } where off() takes away
   // everything it added, as switching it off in Settings does.
-  function plug(id, install) {
-    const plugin = { id, manifest: { name: id, plugin: { api: 2, minApp: '1.0.0' } } };
+  // The kinds plugins add, made the world's (world/items setKinds), as World.js does on each change.
+  const kinds = () => lib.items.setKinds(app.slot('world.items').items);
+  kinds(); // a fresh host starts with the built-in kinds only
+  // block: more of the plugin block (its needs: a surface needs ['surface']).
+  function plug(id, install, block = {}) {
+    const plugin = { id, manifest: { name: id, plugin: { api: 2, minApp: '1.0.0', ...block } } };
     const gone = (fn) => { if (!leaving.has(id)) leaving.set(id, []); leaving.get(id).push(fn); };
     const t = connect({ app, world, plugin, parts, lib, events, toast: (s) => toasts.push(s), room: roomNow, gone, ai });
     install(t, { attach() {}, whenStopped: (fn) => gone(fn), listenTo() {} });
+    kinds(); // its kinds of mark are the world's now, as World.js keeps them (so their tidy runs)
     const off = () => {
       for (const s of slots.values()) for (let i = s.entries.length - 1; i >= 0; i--) if (s.entries[i].owner === id) s.entries.splice(i, 1);
       for (const fn of leaving.get(id) || []) fn();
       leaving.delete(id);
+      kinds();
     };
     return { t, off };
   }

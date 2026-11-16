@@ -169,7 +169,7 @@ no state. Each reads the same `reads` and returns data; the kernel does the rest
 
 | Hook | Called when | Returns |
 |---|---|---|
-| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet`, `page` (a sheet of paper, since 1.0.5) (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it). A tap on a box chooses it. |
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet`, `page` (a sheet of paper, since 1.0.5) (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it); `surface` a surface's id, drawn filling the box, and `data` what the box hands it (plain data, read from the same `reads`; since 1.0.5: Surfaces, below). A tap on a box chooses it. |
 | `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or nothing |
 | `land(reads, context, mark, x, y)` | a new thought is kept while a box is chosen (`x, y` its centre), or at the point Add was asked at | a proposal, a list of them, or nothing |
 
@@ -217,20 +217,21 @@ The plugin block's `kind` and `needs` (`app/plugins/README.md` §2) use one list
 `app/app.json` under `plugins.kinds` and `plugins.needs` with the words Settings → Plugins shows.
 The compiler refuses any other word, and the loader of imported plugins checks the same lists.
 Kinds: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, `page`, `look`,
-`tool`, `dock`, `provider`. Needs: `files`, `network`, `sidecar`, `store`, `ai`. Both grow by
-additions only.
+`tool`, `dock`, `provider`. Needs: `files`, `network`, `sidecar`, `store`, `ai`, `surface` (since
+1.0.5: it draws in a surface and takes the pointer, below). Both grow by additions only.
 
 ## Slots, ui, plugin and app
 
 | Member | What it is |
 |---|---|
 | `slots.rules` | a way of seeing a room (an ontology, a rule in the kernel's words): `add(rule)`, `get(id)`, `all`, `settings`. Shape: `app/core/world/ontologies/index.js`. |
-| `slots.kinds` | a kind of mark that isn't plain words: `add({ kind, name, tidy(fields), text(mark), node(mark, el), fields?, add?, takes?(file), fromFile?(file), label?(mark) })`. `kind` lowercase words joined by dashes; its fields may be named anything but `id`, `kind`, `at`, `edited`, `parent` and `archived`; `tidy` its own fields tidied, or `null` when empty; `text` its words as plain text (search reads it); `node` how it shows (`el` is Folio's `ui.el`); `fields` `[{ key, type: 'line' \| 'text' \| 'image', label }]` makes it written in the room's sheet; `add` `{ note, keys?, file? }` offers it under Add (with `file`, a file is picked and `fromFile` gives the fields); `open(mark)`: double-click or Enter on a card of the kind opens it this way, in any mode (instead of the sheet). Since 1.0.5, `inline: true` says it flows among paragraphs (a table, a figure: a rule laying a column sets it between them), and `height(mark, width)` how tall it draws at a width (world units); `ui.size` reads both. Make one with `marks.make({ kind, content: fields, in })`. A mark of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. |
+| `slots.kinds` | a kind of mark that isn't plain words: `add({ kind, name, tidy(fields), text(mark), node(mark, el), fields?, add?, takes?(file), fromFile?(file), label?(mark) })`. `kind` lowercase words joined by dashes; its fields may be named anything but `id`, `kind`, `at`, `edited`, `parent` and `archived`; `tidy` its own fields tidied, or `null` when empty; `text` its words as plain text (search reads it); `node` how it shows (`el` is Folio's `ui.el`); `fields` `[{ key, type: 'line' \| 'text' \| 'image', label }]` makes it written in the room's sheet; `add` `{ note, keys?, file? }` offers it under Add (with `file`, a file is picked and `fromFile` gives the fields); `open(mark)`: double-click or Enter on a card of the kind opens it this way, in any mode (instead of the sheet). Since 1.0.5, `inline: true` says it flows among paragraphs (a table, a figure: a rule laying a column sets it between them), and `height(mark, width)` how tall it draws at a width (world units); `ui.size` reads both. Make one with `marks.make({ kind, content: fields, in })`. A mark of a kind whose plugin is off is kept exactly as it is and shows as a quiet stand-in. `surface`: a surface's id (since 1.0.5): on the canvas the mark is drawn by that surface instead of `node` (Surfaces, below); `node` is still its picture everywhere else. |
 | `slots.holds` | since 1.0.4: what a mark may hold beyond the core's own (items and groups in rooms, rooms on floors): `add({ id, name?, holds(parent, kind) })`, `holds` true when mark `parent` (the mark itself, never the world) may take a new mark of `kind`. Twin's: a room of size `'twin'` holds rooms, its sides. A hook only allows what is made or moved in: a saved mark inside another is read and kept with the hook off. |
 | `slots.groups` | since 1.0.4, the one way to say a kind of group: `add({ id, name, membership?, order?, card?, keep?, open?(id), rule? })`. With `rule` (its `id` the rule's id), the rule's own groups: laid out by that rule, and Ctrl+G in it makes one (a rule may still say the same as its own `groups`). Without `rule`, a family no rule lays out, exactly as `slots.families` below says. In a rule with no groups of its own, Ctrl+G makes a **plain group** (`of: 'group'`, the core's own kind): one card in every rule, waiting in the tray until placed, its parts still where they are; Ctrl+Shift+G there takes it apart. |
 | `slots.families` | **Deprecated since 1.0.4: use `slots.groups` (without `rule`), which reads the same; this slot stays for plugins written before.** A family of groups that belongs to no mode (a book, its chapters): `add({ id, name, membership?, order?, card?, keep?, open?(id) })`. `id` lowercase words joined by dashes, never a mode's. Make one with `marks.make({ kind: 'group', content: { title, of: id }, in: room })`, put parts in with `links.link(part, group, 'part of')`, order them with `links.order(group, ids)`. Its groups hold parts like any group (a group of the family may hold another's: a book its chapters), and a mode never lays them out, so a thought sits in a chapter and in a Proust cluster at once. `membership` `'many'` (the default: a part in several of its groups) or `'one'`; `order` `'kept'` (the default: as put, a newcomer at the end) or `'time'`; `card: true`: each of its groups that no other group holds shows as one card in every mode (in the tray until it is placed), its parts still where they are; `keep` (default true): a group of it left empty stays; `open(id)`: double-click or Enter on its card opens it (a view in a dock). Deleting a family's group never deletes its parts, with its plugin on or off (the group says `family: true`), and its rows travel in .traum files like any group's. |
 | `slots.spans` | since 1.0.5: a kind of span, the look of some words inside a thought: `add({ kind, name, class, md? })`. `class` one of `bold`, `italic`, `underline`, `wavy`, `highlight`, `strike`, `quiet`, `caps`, `mono` (the room's own classes: the one look holds); `md` `[open, close]` writes it in Markdown (bold `['**', '**']`). A span is **material of the mark** (Law 1: the look is part of it): a line keeps `spans: [{ from, to, kind }]` (character offsets, `to` not included), carried in .traum files; `marks.edit(id, { spans })` sets them, and new words carry them along (typing inside a bold word keeps it bold). A span of a kind whose plugin is off is kept and drawn plain. |
 | `slots.decorators` | since 1.0.5: how a thought's words are drawn, read-only: `add({ id, decorate(text, mark) → [{ from, to, class }] })`, `class` from the list above. A decorator never changes anything and keeps nothing: every word's first letter bold, a wavy line under a misspelt word. It runs on every thought drawn, so keep it fast. |
+| `slots.surfaces` | since 1.0.5: an element a kind or a rule's box draws in, with the pointer while it is focused: `add({ id, width?, height?, draw(el, ctx), pointer?(e, ctx), wheel?(e, ctx), key?(e, ctx), focus?(ctx), blur?(ctx), leave?(el, ctx) })`. Needs `surface` in the plugin block's `needs` (refused without). See Surfaces, below. |
 | `slots.buttons` | a button in a room's rail, under **Tools**: `add({ id, label, icon, order, run(), on?(), visible?(), title?() })`, the same shape as ⋯ More's (`icon` a `ui.ICONS` name or a drawing on a 24 × 24 grid). |
 | `slots.menu` | a row in the ☰ menu: `add({ id, label, icon, order, onClick(), visible?(), busy?() })` (Folio's `header.buttons`). |
 | `slots.views` | a page of the app under everything else, such as the picture behind (Folio's `views`): `add({ id, label, icon?, order, mount(container, { head, actions }), render(), start?, hideTitle?, visible?() })`. The rooms page lies over it. |
@@ -262,6 +263,52 @@ additions only.
 
 Each `add` returns a function that takes the item away again; everything a plugin adds is taken
 away when it is switched off.
+
+## Surfaces: drawing and the pointer
+
+Since 1.0.5. A kind of mark (`slots.kinds`, with `surface: id`) or a thin rule's box (`draw`, a box
+with `surface: id`) asks for a surface by its id, and the room gives the plugin that added it an
+element, sized by the layout, to draw in: an SVG or a canvas the plugin makes and owns. Say
+`surface` in the plugin block's `needs`.
+
+```js
+t.slots.kinds.add({ kind: 'sketch', name: 'Sketch', surface: 'sketch', tidy, text, node, add: { note: 'A drawing' } });
+t.slots.surfaces.add({
+  id: 'sketch', width: 240, height: 160,           // its size when the layout gives none (world units)
+  draw(el, ctx) { el.replaceChildren(svgOf(t.marks.get(ctx.mark))); },
+  pointer(e, ctx) { if (e.type === 'up') t.marks.edit(ctx.mark, { strokes: [...old, stroke] }); },
+});
+```
+
+| Hook | Called when | Given |
+|---|---|---|
+| `draw(el, ctx)` | it shows, and again when its mark's fields, its box or its size change (never mid-gesture: once it ends) | `el`: an empty element the size of the surface, the plugin's to fill. An SVG there fills it and is filled in the text's colour with no stroke: say other paint on its shapes, or inline (`style`) on the svg itself, since the app's own rule for icons outranks attributes on an svg. |
+| `pointer(e, ctx)` | while focused: `e.type` `down`, `move`, `up` or `cancel` | `e`: `{ type, x, y, pressure, buttons, pointer, shift, alt, ctrl }`; `x, y` in the surface's own units (0, 0 its top-left corner, `ctx.width, ctx.height` its foot), however far the room is zoomed; `pointer` `mouse`, `pen` or `touch` |
+| `wheel(e, ctx)` | while focused | `e`: `{ x, y, dx, dy, ctrl, shift }`; return `true` when used, else the room pans and zooms as ever |
+| `key(e, ctx)` | while focused, a key down | `e`: `{ key, code, shift, alt, ctrl }`; return `true` when used. Esc never reaches it (Esc gives the room back), nor Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (undo and redo). The app's keys wait while a surface is focused. |
+| `focus(ctx)`, `blur(ctx)` | it is clicked into; Esc, a click outside or another surface takes it back | |
+| `leave(el, ctx)` | it is no longer drawn (its mark gone, the room left, the plugin off) | |
+
+`ctx` is frozen: `{ surface, mark, context, box, width, height, focused, el }`: the mark's id (or
+`null` for a box), the room's id, the box as `draw` gave it (or `null`), the size in world units,
+and the element `draw` was handed (so `pointer` can draw a stroke live into it). Read the mark
+through `t.marks.get(ctx.mark)`. A box's surface reads what it shows from `ctx.box.data`, which the
+rule's `draw(reads, context)` worked out from the world being drawn (a moment of the time scrub
+too); a box's surface is drawn again after each change to the room's marks or links. The size can
+change with the layout, so a surface that keeps coordinates scales them to units of its own (Sketch
+keeps a 240 × 160 pad). A kind's `tidy` gives back every field it owns, an empty one too: an edit
+merges what `tidy` returns, so a field left out keeps its old value.
+
+**The rules it keeps.** A press on a surface that is not focused goes to the room (choose the mark,
+drag it); a click (let go where it was pressed) focuses it. **Pointer down to pointer up is one
+gesture, and every propose the plugin makes in it lands as one step**: a stroke is one Ctrl+Z,
+however many edits it made. A surface keeps nothing outside the tables: what it draws is read from
+its mark's fields (an array of points is a field like any other, so a `.traum` file carries it:
+Law 8), and what it changes is a propose (`marks.edit`). `t.store.files` is for what the tables
+should not carry (a cache); it never travels in a file. A surface kind whose plugin is off shows as
+the quiet stand-in, its fields kept as they are. A hook that throws changes nothing in the room.
+`app/plugins/sketch` (a kind with a pen) and `app/plugins/chart` (a rule whose box draws a bar
+chart) are the corpus's surfaces.
 
 ## AI
 

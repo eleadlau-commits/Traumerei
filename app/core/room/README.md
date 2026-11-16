@@ -262,6 +262,14 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   follows the link there; Alt+L again where it landed takes the first mark's next link. Made or
   taken away, a link is drawn at once (`world:moments`). Structure (part of, relation) stays the
   mode's own.
+- **Surfaces** (`surface.js`, since 1.0.5): a kind of mark or a rule's box that asks for a surface
+  (`slots.surfaces`, API.md) is drawn by its plugin in an element of its own, sized by the layout,
+  after the mode has drawn (view.js calls `mountSurfaces()`; the element is kept across drawings,
+  so a canvas keeps what it drew). A press on it goes to the room as usual (choose, drag); a click
+  focuses it, and then the pointer, the wheel and the keys are its own until **Esc** or a click
+  outside. Its keys go through a hidden field, so the app's keys wait. Pointer down to pointer up
+  is one gesture: the room opens the plugin's hold at down and lets go at up, so its proposes land
+  as one step, and Ctrl+Z takes a stroke back.
 - **Keys:** Ctrl+A chooses everything in a room; Delete deletes what is chosen; arrows nudge it
   (Shift for bigger steps); ? (or ⋯ More → Keys) lists them all, from the key map (the keys feature;
   the room's entries are in `keys.js`). Ctrl+drag, Space+drag or the middle button move the canvas.

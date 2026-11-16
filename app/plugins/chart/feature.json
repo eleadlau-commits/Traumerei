@@ -1,0 +1,22 @@
+{
+  "name": "Chart",
+  "description": "A mode that lays a room's thoughts out in rows under a bar chart of its words: one bar per group, and one for the loose thoughts.",
+  "version": "0.1.0",
+  "main": "Chart.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "mode"
+    ],
+    "needs": [
+      "surface"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

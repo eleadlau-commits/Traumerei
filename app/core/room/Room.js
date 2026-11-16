@@ -41,6 +41,7 @@ import { Bars } from './bars.js';
 import { Strip } from './strip.js';
 import { Twin } from './twin.js';
 import { Kinds } from './kinds.js';
+import { Surfaces } from './surface.js';
 import { ROOM_KEYS } from './keys.js';
 import * as verbs from './verbs.js';
 
@@ -80,6 +81,9 @@ export default class Room extends Feature {
       .watch(() => { if (this.roomId) this.drawBarWords(); });
     this.defineSlot('room.strip', 'A tool\'s status in the strip at the foot of a room\'s canvas, one line: { id, text(context) → words, title?(context), onClick?(context), visible?(context), order }.')
       .watch(() => { if (this.roomId) this.drawStrip(); });
+    // Surfaces (since 1.0.5): an element a kind of mark or a rule's box draws in, with the pointer while focused (surface.js).
+    this.defineSlot('room.surfaces', 'A surface, as the plugin API makes it (api/v2.js surfaceFor): { id, width?, height?, draw(el, ctx), pointer?, wheel?, key?, focus?, blur?, leave?, hold() }.')
+      .watch(() => { if (this.roomId) this.drawWorld(); });
     this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
     this.files = this.w.formats;          // rooms in and out as files: the formats plugins add (Room files' .traum)
     this.panel = this.use('panel');       // the right dock, that editors open in, or null
@@ -534,4 +538,4 @@ function mixIn(target, ...parts) {
     }
   }
 }
-mixIn(Room, RoomView, Writing, Gestures, Bars, Strip, Twin, Kinds, RoomLinks);
+mixIn(Room, RoomView, Writing, Gestures, Bars, Strip, Twin, Kinds, RoomLinks, Surfaces);

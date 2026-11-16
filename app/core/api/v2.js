@@ -53,6 +53,14 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     holding++;
     try { return fn(); } finally { if (!--holding && held) { held = false; world.save?.(); } }
   };
+  // The same hold, open across events (since 1.0.5): a surface's gesture, pointer down to pointer
+  // up, is one step. Returns the function that lets go (once). Not in the API: the room calls it
+  // through the surface (surfaceFor), never a plugin.
+  const hold = () => {
+    holding++;
+    let open = true;
+    return () => { if (!open) return; open = false; if (!--holding && held) { held = false; world.save?.(); } };
+  };
 
   // A propose lands as one saved step and says so, or says why not.
   const land = (ok, id, why) => { if (!ok) return refuse(why); save(); return landed(id); };
@@ -441,8 +449,13 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   });
 
   reads = readsOf({ marks, places, links, distance, gaps, moments });
-  return Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers, together });
+  const api = Object.freeze({ marks, places, links, distance, gaps, moments, rules: ruleNs, carriers, together });
+  HOLDS.set(api, hold);
+  return api;
 }
+
+// Each kernel's open hold (kernel: hold), kept out of the API itself.
+const HOLDS = new WeakMap();
 
 // The read half of the tables: what a rule's arrange(), a link kind's admit() and a view are handed.
 export const READS = Object.freeze({
@@ -481,6 +494,35 @@ export function readsOver(lib, w, ontologies = null) {
 // a chapter's room say; with x, y it lands there under that room's mode).
 export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place']);
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
+// A surface's id (since 1.0.5): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
+export const SURFACE_ID = /^[a-z][a-z0-9]*([.-][a-z0-9]+)*$/;
+export const SURFACE_HOOKS = Object.freeze(['draw', 'pointer', 'wheel', 'key', 'focus', 'blur', 'leave']);
+
+// A plugin's surface as the room's slot holds it (room/surface.js): checked, its hooks only, and
+// hold() for the room to bracket a gesture so the plugin's proposes in it land as one step.
+// needs: the plugin block's needs (a surface needs 'surface').
+export function surfaceFor(s, hold, needs = []) {
+  if (![].concat(needs || []).includes('surface')) throw new Error('A surface needs "surface" in the plugin block\'s needs');
+  if (!s || typeof s !== 'object' || typeof s.id !== 'string' || !SURFACE_ID.test(s.id)) throw new Error('A surface needs an id: lowercase words joined by dashes or dots');
+  if (typeof s.draw !== 'function') throw new Error(`Surface ${s.id} needs draw(el, ctx)`);
+  const size = (v) => (Number.isFinite(v) && v > 0 ? Math.min(v, 4000) : undefined);
+  const out = { id: s.id, width: size(s.width), height: size(s.height), hold: () => (hold ? hold() : () => {}) };
+  for (const k of SURFACE_HOOKS) if (typeof s[k] === 'function') out[k] = s[k];
+  return Object.freeze(out);
+}
+
+// What a box hands its surface (since 1.0.5): plain data (a JSON copy, deep frozen), at most
+// 64 KB written out; anything else is left out.
+function boxData(data) {
+  if (data === undefined) return {};
+  try {
+    const text = JSON.stringify(data);
+    if (text === undefined || text.length > 65536) return {};
+    const freeze = (o) => { if (o && typeof o === 'object') { Object.freeze(o); for (const v of Object.values(o)) freeze(v); } return o; };
+    return { data: freeze(JSON.parse(text)) };
+  } catch { return {}; }
+}
+
 export const BOX_STYLES = Object.freeze(['plain', 'title', 'heading', 'line', 'shelf', 'quiet', 'page']);
 export function simpleRule(rule, lib, ontologies = () => null) {
   const { model, groups, gaps: G, rules: R } = lib;
@@ -583,7 +625,8 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       const boxes = (Array.isArray(out) ? out : []).filter((b) => b && ['x', 'y', 'w', 'h'].every((k) => Number.isFinite(b[k])) && b.w > 0 && b.h > 0)
         .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note),
           style: BOX_STYLES.includes(b.style) ? b.style : 'plain', level: [1, 2, 3].includes(b.level) ? b.level : 0,
-          right: b.right == null ? '' : String(b.right), opens: typeof b.opens === 'string' && w.things[b.opens] ? b.opens : null }));
+          right: b.right == null ? '' : String(b.right), opens: typeof b.opens === 'string' && w.things[b.opens] ? b.opens : null,
+          ...(typeof b.surface === 'string' && SURFACE_ID.test(b.surface) ? { surface: b.surface, ...boxData(b.data) } : {}) })); // a surface drawn in it (since 1.0.5)
       byRoom.set(room, { key, boxes });
       return boxes;
     };
@@ -666,6 +709,7 @@ export const SLOTS = {
   bar: 'room.bar',             // since 1.0.5: a word on a room's bar, beside Search (room/bars.js)
   strip: 'room.strip',         // since 1.0.5: a tool's status, one line at the foot of a room's canvas (room/strip.js)
   pages: 'pages.plugin',       // since 1.0.5: a page of the plugin's own, from the ☰ menu, in the frame (pages/Pages.js)
+  surfaces: 'room.surfaces',   // since 1.0.5: an element a kind or a rule's box draws in, with the pointer while focused (room/surface.js)
 };
 
 // The zoom's bands when no room feature runs (the room's own, room/shared.js BANDS, are the ones
@@ -735,6 +779,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       get settings() { return world.globals; },  // each rule's settings for new rooms: { [rule]: { key: value } }
     }),
     commands: Object.freeze({ add: add(SLOTS.commands), label: (id) => keys?.label(id) || '' }),
+    surfaces: Object.freeze({ add: (s) => add(SLOTS.surfaces)(surfaceFor(s, HOLDS.get(tables), plugin.manifest?.plugin?.needs)) }),
     // A page of its own: the page itself (the pages feature shows it in the frame) and its row in
     // the ☰ menu, which opens it; the one function given back takes both away.
     pages: Object.freeze({
