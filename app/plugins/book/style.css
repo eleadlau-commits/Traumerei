@@ -59,9 +59,9 @@
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 .room[data-mode="book-page"] .room-band-far .room-gap { box-shadow: none; }
-.room[data-mode="book-page"] .room-band-far [data-band-far]::after { max-width: 100%; width: 100%; text-align: left; left: 0; transform: translateY(-50%); }
-.room[data-mode="book-page"] .room-band-far [data-band-far]:has(.span-caps)::after { font-size: calc(var(--t-read, 19px) * 4.2); font-variant: small-caps; line-height: 1.05; }
-.room[data-mode="book-page"] .room-band-far .room-cell-quiet.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 2.4); left: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; opacity: .5; font-variant: small-caps; }
+.room[data-mode="book-page"] .room-band-far [data-band-far]::after { max-width: 100%; width: 100%; text-align: left; left: 0; top: auto; bottom: 0; transform: none; } /* grows up, into the space a heading drops */
+.room[data-mode="book-page"] .room-band-far [data-band-far]:has(.span-caps)::after { font-size: calc(var(--t-read, 19px) * 5.5); font-variant: small-caps; line-height: 1; }
+.room[data-mode="book-page"] .room-band-far .room-cell-quiet.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.9); top: auto; bottom: 0; line-height: 1; left: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; opacity: .5; font-variant: small-caps; }
 .room[data-mode="book-page"] .room-band-far .room-cell-quiet:not(.room-cell-l1) .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.8); }
 .room[data-mode="book-page"] .room-band-far .room-cell-title .room-cell-label { font-size: calc(var(--t-read, 19px) * 4.2); white-space: normal; left: 0; right: 0; line-height: 1.05; }
 .room[data-mode="book-page"] .room-band-far .room-cell-heading.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 3); }
