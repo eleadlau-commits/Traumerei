@@ -242,26 +242,28 @@
 .rooms-rooms.shelf { background: color-mix(in srgb, var(--rooms-mask, rgb(var(--ink-rgb) / .1)) 100%, rgb(var(--ink-rgb) / .12)); }
 .rooms-rooms.shelf .rooms-tile { filter: saturate(.7); }
 
-/* A category opened in the rail: a dotted outline round the rooms of each tag (grid.js). Each
-   cell draws the sides that face out of its patch, half a gap outside the square, so the patch's
-   cells join into one line. */
+/* A group of rooms: a dotted line in the group's colour (.rel-colour-*) round its rooms (grid.js).
+   Each cell draws the sides that face out of its patch, half a gap outside the square, so the
+   patch's cells join into one line (a little inside the gap, so two groups side by side keep two
+   lines); the group's name sits above its top-left room. */
 .rooms-outline {
   pointer-events: none;
   margin: calc(var(--cell-gap) / -2);
   position: relative;
   z-index: 1;
-  border: 0 dotted rgb(var(--ink-rgb) / .55);
+  border: 0 dotted currentColor;
 }
-.rooms-outline.top { border-top-width: 1.5px; margin-top: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
-.rooms-outline.right { border-right-width: 1.5px; margin-right: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
-.rooms-outline.bottom { border-bottom-width: 1.5px; margin-bottom: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
-.rooms-outline.left { border-left-width: 1.5px; margin-left: calc(var(--cell-gap) / -2 + var(--inset, 0px)); }
+.rooms-outline.top { border-top-width: 2px; margin-top: calc(var(--cell-gap) / -2 + 3px); }
+.rooms-outline.right { border-right-width: 2px; margin-right: calc(var(--cell-gap) / -2 + 3px); }
+.rooms-outline.bottom { border-bottom-width: 2px; margin-bottom: calc(var(--cell-gap) / -2 + 3px); }
+.rooms-outline.left { border-left-width: 2px; margin-left: calc(var(--cell-gap) / -2 + 3px); }
 .rooms-outline-name {
   position: absolute;
-  top: -1.5em;
-  left: calc(2px + var(--inset, 0px) * 24);
+  top: -1.6em;
+  left: 2px;
   white-space: nowrap;
 }
+.rooms-outline .rooms-outline-name { color: inherit; }
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
@@ -338,6 +340,9 @@
 .rooms-tag-pick.draggable { cursor: grab; touch-action: none; }
 .rooms-tag-name { overflow-wrap: anywhere; }
 .rooms-tag-n { color: var(--faint); font-variant-numeric: tabular-nums; }
+/* Groups in the rail: a dot of the group's colour before its name. */
+.rooms-group-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: currentColor; vertical-align: middle; }
+.rooms-groups-none { color: var(--faint); cursor: default; }
 .rooms-tag-plus { gap: 6px; color: var(--faint); }
 .rooms-group-edit { padding: 2px var(--s-4) 2px 40px; }
 .rooms-tag-tags .rooms-group-edit { padding-left: 52px; }
@@ -362,11 +367,11 @@
 .rooms-props .pop-desc { margin-bottom: var(--s-2); }
 :is(.dock-right-open, .dock-right-strip) .rooms:not(.in-room) .rooms-rooms { right: var(--dock-right, 0px); }
 
-/* A small sheet near the top (verbs.js): Move to floor (Ctrl+M), a tag for the chosen rooms (Ctrl+G). */
+/* A small sheet near the top (verbs.js): Move to floor (Ctrl+M); a group's name and colour (grid.js). */
 .rooms-sheet { z-index: 21; width: min(320px, calc(100% - 2 * var(--gutter))); padding: var(--s-3) 0; display: grid; }
 .rooms-sheet > .label { margin: 0 18px var(--s-2); }
 .rooms-sheet .pick[disabled] { opacity: var(--off); cursor: default; }
-.rooms-sheet .rooms-group-tag { margin: 0 18px var(--s-2); width: auto; }
+.rooms-sheet .field { margin: 0 18px var(--s-2); width: auto; }
 
 /* A past day from the Time dock (past.js): view only; a room deleted since is a faint ghost. */
 .rooms-past-tile { cursor: default; }

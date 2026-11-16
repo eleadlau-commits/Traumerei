@@ -50,6 +50,7 @@ export const ICONS = {
   floor: '<path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5"/><path d="M3.5 16.5L12 21l8.5-4.5"/>',
   archive: '<rect x="3" y="4" width="18" height="5"/><path d="M5 9v11h14V9"/><path d="M10 13h4"/>',
   tag: '<path d="M3.5 12.2V4h8.2l8.8 8.8-8.2 8.2z"/><circle cx="8" cy="8.5" r="1.3"/>',
+  group: '<rect x="3" y="4" width="18" height="16" stroke-dasharray="1.6 2.4"/><rect x="6.5" y="8" width="4.5" height="8"/><rect x="13" y="8" width="4.5" height="8"/>',
   rail: '<rect x="3.5" y="4.5" width="17" height="15"/><path d="M9 4.5v15"/>',
   qr: '<rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><path d="M14.5 14.5h2.5v2.5M20.5 14.5v6h-3M14.5 18.5v2"/>',
 };

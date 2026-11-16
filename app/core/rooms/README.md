@@ -59,10 +59,8 @@ written there. With nothing in it, the rooms page works on its own.
   their case, and show only in properties and the tags list, never on the squares.
   Under a hairline below *Archive* (and the page numbers), **Arrange by** opens a quiet list:
   *None*, then each **category** (a group of tags: Ontology first, *Other* last for the tags in no
-  category). A click on a category opens it to its tags, each with how many rooms have it, and
-  draws a **dotted outline** on the floor round the rooms of each of its tags (rooms side by side
-  share one; the tag's name sits at its top-left; a room with two of its tags sits in two, the
-  second a little further in). Picking a tag lights its rooms
+  category). A click on a category opens it to its tags, each with how many rooms have it.
+  Picking a tag lights its rooms
   and dims the rest, as the search lights do: nothing hides or moves. *None*, picking the tag
   again, or Escape makes every room bright again. In the rooms page's Search, **#tag** does the
   same (it lights the rooms with a tag that starts so).
@@ -139,9 +137,17 @@ written there. With nothing in it, the rooms page works on its own.
   Ctrl+D, Ctrl+M, Ctrl+L and Ctrl+Backspace work on them all, each as one undo step (Ctrl+L locks
   them all, or unlocks them all when every one is locked). With several chosen, a right-click on one of them (or the
   Editor already open) shows "N rooms" in the Editor tab, with Lock, Archive and Delete (in the
-  Archive: Restore and Delete). **Ctrl+G** groups them the rooms
-  page's way, by a tag they share (written in a small field; "Category: tag" puts the tag in a category
-  too), and **Ctrl+Shift+G** takes off the tags of their own they all share.
+  Archive: Restore and Delete). **Ctrl+G** groups them and **Ctrl+Shift+G** takes them out of
+  their group (see Groups).
+- **Groups** (`verbs.js`, `grid.js`): Ctrl+G puts the chosen rooms in a new group, named
+  "Group n" in the colour fewest groups have (one of the relation inks). Every group always shows
+  on the floor as a **dotted line in its colour** round its rooms: rooms side by side share one
+  line, rooms apart get one each, with the group's name above the top-left room. A room is in one
+  group at most (Ctrl+G on a room in a group moves it to the new one); a group with no rooms left
+  is gone. A group is no container: nothing moves and nothing is inside it; it is a field of each
+  of its rooms (the world's `roomGroup`, `roomGroups`, `groupRooms`, `ungroupRooms`,
+  `setRoomGroup`), so a room's file keeps it. **Groups** in the rail, under Tags, lists them with
+  their colour and how many rooms each has; picking one lights its rooms as a tag does.
 - **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy
   should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
   named "… copy", in the nearest free cell (the floors feature's `place` with `near`); a full floor
