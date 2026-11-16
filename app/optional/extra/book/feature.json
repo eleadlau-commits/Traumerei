@@ -1,7 +1,7 @@
 {
   "name": "Book",
   "description": "A book editor in any room: the Book mode lays the room out as a book, a column of headings and paragraphs you write in; chapters in your order, a contents page in the dock, export as Markdown, a Word document or PDF.",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "main": "Book.js",
   "styles": [
     "style.css"

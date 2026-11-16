@@ -79,12 +79,18 @@
    words wrap (reads.marks.draft's height) and the rule moves what follows down (column.js draftRoom). */
 .room[data-mode="book-page"] .room-draft { display: block; }
 .room[data-mode="book-page"] .room-band-far .room-cell-page.room-cell-opens { cursor: zoom-in; }
-/* Book · blocks (blocks.js): each chapter and section a dotted outline around its blocks. The
-   rule draws them as quiet boxes; only here, in a room seen as Book · blocks, they get a line. */
-[data-mode="book-blocks"] .room-cell-quiet { border: 1px dotted rgb(var(--ink-rgb) / .35); border-radius: 6px; }
-[data-mode="book-blocks"] .room-cell-quiet.room-cell-l2 { border-color: rgb(var(--ink-rgb) / .28); }
-[data-mode="book-blocks"] .room-cell-quiet.room-cell-l3 { border-color: rgb(var(--ink-rgb) / .22); }
-[data-mode="book-blocks"] .room-cell-quiet .room-cell-label { opacity: .6; }
+/* Book · blocks (blocks.js): each chapter is a block holding blocks, its paragraphs' blocks and its
+   sections' blocks inside it. The rule draws a chapter as a quiet box; only here, in a room seen as
+   Book · blocks, it is framed heavier than a paragraph's block (a firmer line, a faint wash that
+   deepens as chapters nest), its number on its top left, its words on the right. Chosen (a tap on
+   its frame), it is the chapter in hand, even an unnamed one. */
+[data-mode="book-blocks"] .room-cell-quiet { border: 1.5px solid rgb(var(--ink-rgb) / .5); background: rgb(var(--ink-rgb) / .025); }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l2 { border-color: rgb(var(--ink-rgb) / .4); background: rgb(var(--ink-rgb) / .035); }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l3 { border-color: rgb(var(--ink-rgb) / .32); background: rgb(var(--ink-rgb) / .045); }
+[data-mode="book-blocks"] .room-cell-quiet .room-cell-label { opacity: .8; font-size: 1.05em; font-weight: 600; font-variant-numeric: tabular-nums; top: 14px; left: 14px; }
+[data-mode="book-blocks"] .room-cell-quiet .room-cell-right { top: 14px; right: 14px; opacity: .45; }
+[data-mode="book-blocks"] .room-cell-quiet.chosen { background: var(--sel-fill); outline: var(--sel-line); }
+[data-mode="book-blocks"] .room-cell-plain { background: rgb(var(--paper-rgb) / .9); }
 
 /* The pages side by side, in the book in hand: fix the columns or the rows, and how many. */
 .book-grid { display: flex; flex-direction: column; gap: 4px; }

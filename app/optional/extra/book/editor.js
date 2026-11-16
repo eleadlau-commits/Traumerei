@@ -13,7 +13,9 @@
 import { isChapter } from './rules.js';
 import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
 import { shape, textWidth, SIZES, COUNTS } from './pages.js';
-import { BLOCKS } from './blocks.js';
+import { BLOCKS, frameChosen } from './blocks.js';
+import { chapterOf, wrap, addSection, toggleName, toggleNumbered } from './nest.js';
+import { isNumbered } from './rules.js';
 import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote, noteOn, noteInto, leaveBook, afterGesture } from './editing.js';
 import { flowDrop } from './flowdrop.js';
 import { slotAt, SLOT } from './slots.js';
@@ -119,14 +121,44 @@ export function installEditor(t) {
       const ch = headed(t, id);
       if (ch) unmakeHeading(t, ch); else if (!makeHeading(t, room(), id)) t.ui.toast('It could not become a heading here.');
     } });
-  cmd({ id: 'book.deeper', keys: ['Ctrl+]'], zone: 'room', words: 'the chosen heading one level deeper',
-    when: () => inBoth() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(demote(t, ch)); else t.ui.toast('Choose a heading.'); } });
-  cmd({ id: 'book.higher', keys: ['Ctrl+['], zone: 'room', words: 'the chosen heading one level up',
-    when: () => inBoth() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(promote(t, ch)); else t.ui.toast('Choose a heading.'); } });
+  // A heading chosen, or (in Book · blocks) a chapter's frame: an unnamed chapter has no heading.
+  const frame = () => (inBoth() && !chosen() && !t.ui.chosen()?.marks?.length ? frameChosen(t) : null);
+  const headingOrFrame = () => headed(t, chosen()) || frame();
+  cmd({ id: 'book.deeper', keys: ['Ctrl+]'], zone: 'room', words: 'the chosen heading (or chapter block) one level deeper',
+    when: () => inBoth() && (!!chosen() || !!frame()), run: () => { const ch = headingOrFrame(); if (ch) say(demote(t, ch)); else t.ui.toast('Choose a heading.'); } });
+  cmd({ id: 'book.higher', keys: ['Ctrl+['], zone: 'room', words: 'the chosen heading (or chapter block) one level up',
+    when: () => inBoth() && (!!chosen() || !!frame()), run: () => { const ch = headingOrFrame(); if (ch) say(promote(t, ch)); else t.ui.toast('Choose a heading.'); } });
   cmd({ id: 'book.up', keys: ['Ctrl+ArrowUp'], zone: 'room', words: 'move the chosen paragraph or chapter up one place',
-    when: () => inBoth() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), -1)) });
+    when: () => inBoth() && (!!chosen() || !!frame()), run: () => say(moveOne(t, room(), chosen() || frame(), -1)) });
   cmd({ id: 'book.down', keys: ['Ctrl+ArrowDown'], zone: 'room', words: 'move the chosen paragraph or chapter down one place',
-    when: () => inBoth() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), 1)) });
+    when: () => inBoth() && (!!chosen() || !!frame()), run: () => say(moveOne(t, room(), chosen() || frame(), 1)) });
+
+  // ---- Chapters as nested blocks (nest.js): named or not, numbered or not ----
+  // The chapter in hand: a chosen heading's, a chosen chapter block's (its frame), or the chosen
+  // paragraph's own chapter.
+  const inHand = () => (chosen() ? chapterOf(t, chosen()) : frame());
+  cmd({ id: 'book.wrap', keys: ['Alt+C'], zone: 'room', words: 'an unnamed chapter around the chosen blocks',
+    when: () => inBoth() && (!!chosen() || !!t.ui.chosen()?.marks?.length || !!frame()),
+    run: () => {
+      const all = t.ui.chosen()?.marks || [];
+      const ids = all.length ? [...all] : chosen() ? [chosen()] : [frame()];
+      const r = wrap(t, room(), ids);
+      if (r.ok) t.ui.toast('An unnamed chapter around them. Alt+Shift+H names it by its first paragraph; Ctrl+Z takes it back.'); else say(r);
+    } });
+  cmd({ id: 'book.section', keys: ['Alt+Shift+C'], zone: 'room', words: 'a new empty chapter inside the chapter in hand (none: at the end of the book)',
+    when: () => inBoth(),
+    run: () => { const r = addSection(t, room(), inHand()); if (r.ok) t.ui.toast('A new empty chapter, unnamed. Ctrl+Z takes it back.'); else say(r); } });
+  cmd({ id: 'book.name', keys: ['Alt+Shift+H'], zone: 'room', words: 'the chapter in hand unnamed (its heading a paragraph), or named by its first paragraph',
+    when: () => inBoth() && (!!chosen() || !!frame()),
+    run: () => { const ch = inHand(); if (!ch) { t.ui.toast('Choose a chapter, or a block in one.'); return; } say(toggleName(t, ch)); } });
+  cmd({ id: 'book.numbered', keys: ['Alt+U'], zone: 'room', words: 'the chapter in hand numbered or unnumbered',
+    when: () => inBoth() && (!!chosen() || !!frame()),
+    run: () => {
+      const ch = inHand();
+      if (!ch) { t.ui.toast('Choose a chapter, or a block in one.'); return; }
+      const r = toggleNumbered(t, ch);
+      if (r.ok) t.ui.toast(isNumbered(t.marks.get(ch)) ? 'Numbered.' : 'Unnumbered: no number, skipped in the numbering.'); else say(r);
+    } });
   cmd({ id: 'book.note', keys: ['Alt+N'], zone: 'room', words: 'make the chosen paragraph a margin note on the one before it (again: a paragraph)',
     when: () => inBoth() && !!chosen(),
     run: () => { const id = chosen(); say(aboutOf(t, id) ? unmakeNote(t, id) : makeNote(t, room(), id)); } });

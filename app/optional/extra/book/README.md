@@ -72,7 +72,8 @@ and room settings that redraw).
     end of its own paragraphs (before its first section), as Alt+M does. The keys do the same:
     Ctrl+Up / Ctrl+Down, Ctrl+] / Ctrl+[, Alt+M.
   - right, **Book**: the title (rename it there), paragraphs, words and what is still open; the
-    chapter, paragraph (its page, its notes) or note in hand; Export Markdown, Word document,
+    chapter (its Title, typed or emptied; Numbered · Unnumbered; its keys), paragraph (its page,
+    its notes, and its chapter's Title and numbering) or note in hand; Export Markdown, Word document,
     Print or PDF (both at the room's page size and margins, a chapter on a new page).
   - the column is zoomed out, if it must be, to fit between the docks.
 - **Keys on the chosen paragraph** (room seen as Book):
@@ -133,21 +134,55 @@ Book. The same book as a board, in reading order a row at a time:
 
 - every paragraph a block of up to four lines in a thin frame; one still to write in a dashed
   frame marked "to write"; its margin notes under it, in its frame;
-- each chapter a dotted outline around its blocks and sections, each section one inside it, the
-  heading on the outline's top (its number on the left, its words on the right); zoomed out, the
-  headings read large (the far band): the corkboard;
+- **each chapter a block holding blocks** (nested blocks): a heavier frame with a faint wash,
+  its heading on top (its number on the left, its words on the right, its words count at the far
+  right), its paragraph blocks inside it, N across, and its sections as blocks inside it in
+  reading order among its paragraphs, each spanning the chapter's width and holding theirs, three
+  levels deep. Zoomed out, the headings read large (the far band): the corkboard;
 - below the book, the tray: the room's thoughts not yet in it.
-- **Drag** a block between two others: it moves there, into that chapter when the outline is
-  another's (`{ join, at, from }`, one step). Onto an outline's top: to the end of that chapter.
-  A heading dragged moves its whole chapter (never into itself). Into the tray: out of the book.
-  A margin note stays a note (Alt+N). Let go inside its own block: nothing.
+- **Drag** a block between two others: it moves there, into that chapter when the block is
+  another chapter's (`{ join, at, from }`, one step). Onto a chapter block's top: to its end.
+  **Drag a chapter block by its heading** into another chapter block: it nests there, where it
+  is let go (between two of its blocks, or at its end on its top), its paragraphs and sections
+  with it; between blocks at any level, it moves there. Let go inside its own block: nothing.
+  Never deeper than three levels, with the sections it brings ("A book goes three levels deep",
+  said, and nothing moves). Into the tray: out of the book. A margin note stays a note (Alt+N).
+- **Choose a chapter's frame** (a tap on its block, outside the blocks in it): it is the chapter in
+  hand, even an unnamed one with no heading to choose; Ctrl+Up / Ctrl+Down, Ctrl+] / Ctrl+[,
+  Alt+C, Alt+Shift+C, Alt+Shift+H and Alt+U act on it, and the right dock shows it.
 - The keys on the structure work here too (Ctrl+Alt+H, Ctrl+] / Ctrl+[, Ctrl+Up / Ctrl+Down,
   Alt+N, Alt+M, Ctrl+Shift+V), and the docks stay open (the column is not fitted). Enter after a
   chosen block lands the new paragraph right after it.
 - Blocks across (2, 3, 4 by default, 6 or 8), its one setting: in the right dock, or Alt+= and
   Alt+- in a room seen as Book · blocks.
-- No other settings; the frames and outlines are the room's boxes (plain, shelf, quiet; the
-  plugin's style gives the quiet ones a dotted line in this mode only).
+- No other settings; the frames are the room's boxes (plain, shelf, quiet; the plugin's style
+  frames the quiet ones, the chapter blocks, heavier, in this mode only).
+
+## Chapters: named or unnamed, numbered or unnumbered (`nest.js`)
+
+In Book and Book · blocks alike (the chapter in hand: a chosen heading's chapter, a chosen
+chapter block's, or the chosen paragraph's own chapter). Each is one step, one Ctrl+Z.
+
+- **Unnamed**: a chapter with no heading thought and an empty title. In Book · blocks a block with
+  no title (its number alone, or with no number a faint frame, "unnamed" at its right); in Book a
+  break with its number and no heading words (or `* * *` with neither); in the contents its number
+  alone, or "(untitled)"; in Markdown and Word a heading of its number alone (or `* * *`).
+  - **Alt+C**: an unnamed chapter around the chosen block(s) (Shift+click for several, side by
+    side in one chapter), where the first of them was; a chosen chapter block is wrapped too.
+  - **Alt+Shift+C**: a new, empty, unnamed chapter at the end of the chapter in hand (nothing in
+    hand: at the end of the book).
+  - **Name it**: Ctrl+Alt+H (or Alt+Shift+H) on the first paragraph of a chapter with no heading
+    makes it that chapter's heading, the chapter kept where it is; or type its **Title** in the
+    right dock (a heading thought is made with those words, or the heading's words change).
+  - **Unname it**: Alt+Shift+H: its heading back to a paragraph (first in the chapter), its title
+    emptied, the chapter and everything in it kept; or empty the dock's Title.
+- **Unnumbered** (the chapter's own field `numbered: false`, kept in the tables through
+  `slots.groups` `fields`, so it travels in a `.traum` file): no number, and skipped in its
+  siblings' numbering, as LaTeX's starred sections (Preface, 1, 2, Interlude, 3); the sections in
+  it are unnumbered with it. Everywhere numbers are read: the Book view, Book · blocks, the
+  contents, the old card's dock, Markdown and the Word document. **Alt+U**, or the right dock's
+  Chapter in hand: Numbered · Unnumbered.
+- Never deeper than three levels: Alt+C and Alt+Shift+C refuse in words where it would not fit.
 
 ## What it needs
 
@@ -159,7 +194,7 @@ Book. The same book as a board, in reading order a row at a time:
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the

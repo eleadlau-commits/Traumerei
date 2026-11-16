@@ -42,10 +42,15 @@ export function moveTo(t, id, to, at) {
 // next chapter. Never deeper than it was: Ctrl+] makes it a section of the one before. A thought
 // not in a book goes to the end of the room's book (made when there is none). Returns the
 // chapter's id.
+//
+// The first paragraph of a chapter with no heading thought (an unnamed chapter, or one named only
+// by its title) names it instead: it becomes that chapter's heading, first in it, and the chapter
+// keeps its place and everything in it.
 export function makeHeading(t, room, mark) {
   return t.together(() => {
     let holder = holderOf(t, mark);
     if (!holder) { holder = bookOf(t, room); if (!holder) return null; moveTo(t, mark, holder, t.links.members(holder).length); }
+    if (isChapter(t.marks.get(holder)) && !headOf(t, holder) && firstParagraph(t, holder) === mark) return nameWith(t, holder, mark);
     const parts = t.links.members(holder);
     const i = parts.indexOf(mark);
     const outer = isChapter(t.marks.get(holder)) ? holderOf(t, holder) : null;
@@ -59,6 +64,19 @@ export function makeHeading(t, room, mark) {
     t.links.link(mark, ch.id, HEADS);
     return ch.id;
   });
+}
+
+// The first paragraph among a chapter's own parts (never a section), or null.
+export function firstParagraph(t, chapter) {
+  return t.links.members(chapter).find((p) => { const m = t.marks.get(p); return m && m.kind !== 'group'; }) || null;
+}
+// `mark` (a paragraph of the chapter) made the chapter's heading: first in it, linked `heads`, its
+// words the chapter's title. Inside a step; returns the chapter's id.
+export function nameWith(t, chapter, mark) {
+  moveTo(t, mark, chapter, 0);
+  t.links.link(mark, chapter, HEADS);
+  t.marks.edit(chapter, { title: (t.marks.text(mark) || '').split('\n')[0].slice(0, 120) });
+  return chapter;
 }
 
 // A heading made a paragraph again: its chapter goes, and everything in it joins the end of the
@@ -112,7 +130,7 @@ export function promote(t, chapter) {
 // beside it; a paragraph moves past the one beside it, into a chapter it meets (at its end going
 // up, first after its heading going down), and out of its chapter at either end.
 export function moveOne(t, room, mark, dir) {
-  const ch = headed(t, mark);
+  const ch = headed(t, mark) || (isChapter(t.marks.get(mark)) ? mark : null); // (a chapter's frame chosen: Book · blocks)
   const id = ch || mark;
   const holder = holderOf(t, id);
   if (!holder) return { ok: false, reason: 'It is not in the book.' };

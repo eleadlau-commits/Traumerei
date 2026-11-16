@@ -14,7 +14,7 @@
 // and travels in a .traum file).
 
 import { Feature, ui } from 'folio';
-import { BOOK, CHAPTER, isBook, isChapter, booksIn, tree, count, contents, markdown, fileName, moved } from './rules.js';
+import { BOOK, CHAPTER, NUMBERED, isBook, isChapter, booksIn, tree, count, contents, markdown, fileName, moved, numberer, under } from './rules.js';
 import { installEditor } from './editor.js';
 import { installDocks } from './docks.js';
 import { installZoom } from './zoom.js';
@@ -237,11 +237,11 @@ export function install(t) {
   // thoughts, a double-click renames it) or a thought (a click goes to it in the room, × takes it
   // out). Each line drags to another place among its siblings.
   const partsList = (holder, locked, prefix) => {
-    let n = 0;
+    const next = numberer(prefix);
     const ids = holder.parts.map((p) => p.id);
     const list = el('ol', { class: 'book-parts', role: 'list' });
     for (const p of holder.parts) {
-      const num = p.chapter ? `${prefix}${++n}` : '';
+      const num = p.chapter ? next(p.numbered) : '';
       const row = p.chapter ? chapterLine(p, num, locked, holder) : thoughtLine(p, locked, holder);
       if (!locked) {
         row.draggable = true;
@@ -257,7 +257,7 @@ export function install(t) {
         });
       }
       list.append(row);
-      if (p.chapter && openChapters.has(p.id)) list.append(el('li', { class: 'book-inside' }, p.parts.length ? partsList(p, locked, `${num}.`) : el('p', { class: 'hint' }, 'Nothing in it yet.')));
+      if (p.chapter && openChapters.has(p.id)) list.append(el('li', { class: 'book-inside' }, p.parts.length ? partsList(p, locked, under(num)) : el('p', { class: 'hint' }, 'Nothing in it yet.')));
     }
     return list;
   };
@@ -269,9 +269,9 @@ export function install(t) {
       if (locked) return;
       const f = el('input', { class: 'book-rename', value: p.title, maxlength: 120,
         onkeydown: (ev) => { ev.stopPropagation(); if (ev.key === 'Enter') f.blur(); if (ev.key === 'Escape') { f.value = p.title; f.blur(); } },
-        onblur: () => { const v = f.value.trim(); if (v && v !== p.title) t.marks.edit(p.id, { title: v }); else draw(); } });
+        onblur: () => { const v = f.value.trim(); if (v !== p.title) t.marks.edit(p.id, { title: v }); else draw(); } });
       e.currentTarget.replaceWith(f); f.focus(); f.select();
-    } }, p.title);
+    } }, p.title || (num ? '' : '(untitled)'));
     return el('li', { class: 'book-line book-chapter' + (open ? ' open' : ''), 'data-drop': p.id },
       el('button', { type: 'button', class: 'book-caret', 'aria-expanded': String(open), 'aria-label': open ? 'Close' : 'Open', onclick: () => { if (open) openChapters.delete(p.id); else openChapters.add(p.id); draw(); } }, '›'),
       el('span', { class: 'book-num' }, num), name,
@@ -288,9 +288,9 @@ export function install(t) {
   const readingNodes = (node, printed = false) => {
     const out = [el(printed ? 'h1' : 'div', { class: printed ? '' : 'book-read-title' }, node.title)];
     const walk = (n, depth, prefix) => {
-      let k = 0;
+      const next = numberer(prefix);
       for (const p of n.parts) {
-        if (p.chapter) { const num = `${prefix}${++k}`; out.push(el(`h${Math.min(depth + 1, 6)}`, { class: 'book-read-head' }, `${num} ${p.title}`)); walk(p, depth + 1, `${num}.`); }
+        if (p.chapter) { const num = next(p.numbered); out.push(el(`h${Math.min(depth + 1, 6)}`, { class: 'book-read-head' }, [num, p.title].filter(Boolean).join(' ') || '* * *')); walk(p, depth + 1, under(num)); }
         else if (p.text.trim()) out.push(el('p', { class: 'book-read-p' + (p.open ? ' book-open-gap' : '') }, p.text));
       }
     };
@@ -310,7 +310,10 @@ export function install(t) {
   // ---- Into the app ----
 
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
-  t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
+  // A paragraph sits in one chapter; a chapter keeps whether it is numbered (numbered: false, an
+  // unnumbered one: nest.js), in the tables (slots.groups `fields`, since 1.1.1).
+  t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one', fields: [NUMBERED],
+    tidy: (g) => ({ ...g, [NUMBERED]: g[NUMBERED] === false ? false : undefined }) });
   const editor = installEditor(t);
   const zoom = installZoom(t, { layout: editor.layout, keep: (fn) => docks.keep(fn) }); // far off a shelf of pages; going there
   installBlocks(t); // Book · blocks, its sibling rule (blocks.js)
