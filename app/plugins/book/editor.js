@@ -24,9 +24,9 @@ export function installEditor(t) {
 
   // ---- The rule ----
 
-  t.slots.linkKinds.add({ kind: HEADS, name: 'heads', note: 'the thought that is a chapter\'s heading',
+  t.slots.linkKinds.add({ kind: HEADS, name: 'heads', note: 'the thought that is a chapter\'s heading', quiet: true,
     admit: (from, to, reads) => (isChapter(reads.marks.get(to)) ? true : 'Only a chapter has a heading') });
-  t.slots.linkKinds.add({ kind: ABOUT, name: 'about', note: 'a margin note on a paragraph of the book' });
+  t.slots.linkKinds.add({ kind: ABOUT, name: 'about', note: 'a margin note on a paragraph of the book', quiet: true });
   t.slots.rules.add({
     id: RULE, name: 'Book', note: 'the book on pages (or one column): headings, chapters, paragraphs in order', icon: ICON, order: 30,
     claims: ['book', 'book-chapter'],

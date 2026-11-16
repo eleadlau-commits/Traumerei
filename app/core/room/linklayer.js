@@ -2,7 +2,8 @@
 // hand's own `link`), on the canvas, in every mode: a quiet dashed line between two marks that both
 // show here, and a small ↗ on a mark whose other end is somewhere else (another room, or folded
 // away). A click on the ↗, or Alt+L with the mark chosen, follows the link there (Alt+L again: the
-// next one). The structure kinds (part of, stands for, relation) are each mode's own to draw.
+// next one). The structure kinds (part of, stands for, relation) are each mode's own to draw, and
+// so is a plugin's kind declared `quiet` (since 1.1.1).
 // plan() is pure (tests/linklayer.test.js); drawLinks() measures what the canvas drew.
 
 import { el } from './shared.js';
@@ -13,6 +14,9 @@ const short = (s) => (s.length > 48 ? `${s.slice(0, 47)}…` : s) || '(empty)';
 
 // A plugin's kind: anything that is not structure.
 export const isPluginKind = (kind, structure = LINK_KINDS) => !structure.includes(kind);
+// Drawn here: a plugin's kind, unless its plugin declared it quiet (structure that plugin's own
+// mode draws, as a heading heads its chapter in Book). declared: the slot's declarations.
+export const isDrawn = (kind, declared = [], structure = LINK_KINDS) => isPluginKind(kind, structure) && !declared.some((d) => d?.kind === kind && d.quiet);
 
 // What to draw for the marks that show: { lines: [{ id, from, to, kind }], stubs: Map mark →
 // [{ id, kind, other, out }] }. ends(w, id) gives the rows touching a mark; shown is a Set of ids.
@@ -42,15 +46,20 @@ export function edge(a, b) {
 }
 
 export class RoomLinks {
-  // The rows of plugin kinds touching a mark.
+  // The kinds plugins declare (slots.linkKinds).
+  linkKindsDeclared() {
+    return (this.slot('links.kinds')?.items || []).map((e) => (e && e.item && e.owner !== undefined ? e.item : e));
+  }
+
+  // The rows of plugin kinds touching a mark, but not a quiet kind's.
   pluginLinks(id) {
-    const w = this.world;
-    return [...linksFrom(w, id), ...linksTo(w, id)].filter((r) => isPluginKind(r.kind));
+    const w = this.world, declared = this.linkKindsDeclared();
+    return [...linksFrom(w, id), ...linksTo(w, id)].filter((r) => isDrawn(r.kind, declared));
   }
 
   // A kind's name, as its plugin declares it.
   linkName(kind) {
-    const k = this.slot('links.kinds')?.items?.map((e) => (e && e.item && e.owner !== undefined ? e.item : e)).find((d) => d?.kind === kind);
+    const k = this.linkKindsDeclared().find((d) => d?.kind === kind);
     return k?.name || kind;
   }
 

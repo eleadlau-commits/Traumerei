@@ -28,7 +28,7 @@ export default class Api extends Feature {
   start() {
     const world = this.use('world');
     // Kinds of link a plugin brings (cites, contradicts): the API reads them when a link is proposed.
-    this.defineSlot('links.kinds', 'A kind of link: { kind, name, note?, both?, admit?(from, to, reads) } (app/core/API.md).');
+    this.defineSlot('links.kinds', 'A kind of link: { kind, name, note?, both?, quiet?, admit?(from, to, reads) } (app/core/API.md).');
     const parts = surface(world.lib);
     const app = this.app;
     const docks = this.use('docks');   // the left and right docks (the docks feature), or null

@@ -233,7 +233,7 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     holders: (mark) => Object.freeze(model.groupsOf(w(), mark).map((g) => g.id)),
     standsFor: (mark) => Object.freeze(LINKS.from(w(), mark, 'stands for').map((r) => r.to)), // the marks a fold stands for
     kinds: () => Object.freeze([...LINK_KINDS, ...declared().map((k) => k.kind).filter((k) => !LINK_KINDS.includes(k))]),
-    named: (kind) => { const k = declared().find((d) => d.kind === kind); return k ? row({ kind: k.kind, name: k.name || k.kind, note: k.note || '', both: !!k.both }) : LINK_KINDS.includes(kind) ? row({ kind, name: kind, note: '', both: false }) : null; },
+    named: (kind) => { const k = declared().find((d) => d.kind === kind); return k ? row({ kind: k.kind, name: k.name || k.kind, note: k.note || '', both: !!k.both, quiet: !!k.quiet }) : LINK_KINDS.includes(kind) ? row({ kind, name: kind, note: '', both: false, quiet: false }) : null; },
     count: () => LINKS.count(w()),
     // kind 'relation' takes the rule whose arrows these are (`rule`: 'russell', 'proust-links') and
     // goes through that rule's own checks (Russell refuses a loop, Law 3); label is the relation's
@@ -782,7 +782,7 @@ export function surface(lib) {
 // The places to plug in that core features own: the slot's name to a plugin → the app's slot.
 export const SLOTS = {
   rules: 'world.ontologies',   // a way of seeing a room (world/ontologies/index.js says its shape)
-  linkKinds: 'links.kinds',    // a kind of link: cites, contradicts (API.md: { kind, name, note?, both?, admit?(from, to, reads) })
+  linkKinds: 'links.kinds',    // a kind of link: cites, contradicts (API.md: { kind, name, note?, both?, quiet?, admit?(from, to, reads) })
   kinds: 'world.items',        // a kind of mark: a passage, a picture, a PDF page (world/items/index.js)
   commands: 'keys',            // a named action, with its keys if it has any (keys/README.md)
   more: 'rail.more',           // an entry under ⋯ More (frame/README.md)
