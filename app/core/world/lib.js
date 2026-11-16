@@ -20,8 +20,8 @@ export * as attention from './attention.js';  // a room's light from your visits
 export * as moments from './moments.js';      // the moments log: every change and visit, undo, replay
 export * as picture from './picture.js';      // shrinkPicture, keepOrShrink
 export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, forRooms, seeing
-export * as joyce from './ontologies/joyce.js';
-export * as pessoa from './ontologies/pessoa.js';
+export * as steps from './steps.js';   // how far below one thought the next sits (parts.trains)
+export * as spiral from './spiral.js'; // the spiral a room is laid on (parts.layout)
 export * as relations from './ontologies/relations.js'; // arrows and their relations, for any ontology
 export * as lines from './ontologies/lines.js';         // lines on a canvas: strands, arrows and their ends
 export * as arrowview from './ontologies/arrowview.js'; // arrows on the screen: drawn, edited, drawn anew, in a pop-up

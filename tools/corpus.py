@@ -7,8 +7,8 @@ all of them together in starter-set.traumplug (`python build.py pack-plugin --al
 Settings → Plugins.
 
 The corpus has two parts:
-- ROOM_TYPES: the ways of seeing a room, built into the app and on (Russell, Proust; Joyce,
-  Pessoa, Borges and Twin join them as they leave core).
+- ROOM_TYPES: the ways of seeing a room, built into the app and on (Joyce, Pessoa, Russell,
+  Proust; Borges and Twin join them as they leave core).
 - CORPUS: the stress corpus (docs/CORPUS.md), plugins written to test the plugin API, not for
   people: they start off and are left out of the product too (`--corpus` keeps them in).
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-ROOM_TYPES = ('russell', 'proust')
+ROOM_TYPES = ('joyce', 'pessoa', 'russell', 'proust')
 
 CORPUS = (
     'kanban', 'calendar', 'outline', 'grid', 'timeline', 'random',

@@ -8,8 +8,7 @@ import { bind } from '../world.js';
 import { emptyWorld, create, MESSY, own, members, setRoomSetting, closeGroup } from '../../world/model.js';
 import { gather, missing, groupChosen, throwBack } from '../../world/ontologies/index.js';
 import { trayForeign, wait } from '../../world/groups.js';
-import joyce from '../../world/ontologies/joyce.js';
-import pessoa from '../../world/ontologies/pessoa.js';
+import { joyce, pessoa } from '../../world/tests/roomtypes.js';
 import { proust, links, endsOf, point, shownAs, clusterOf, RELATIONS, LINKS } from '../rules.js';
 import { draw } from '../draw.js';
 

@@ -1,4 +1,5 @@
-// Joyce: thoughts joined by time into trains, each read like a paragraph. Each thought stands on
+// Joyce (a corpus plugin since open core step 1a; world.js binds what it uses from the plugin
+// API's parts): thoughts joined by time into trains, each read like a paragraph. Each thought stands on
 // its own, joined to the next by a line: taut between quick thoughts, slack after a pause, and
 // straight again when pulled far apart (Line tension: each room's own, from the ⚙ beside Joyce in
 // the rail). Drag a thought to move it alone (the line follows); double-click a train to choose it
@@ -11,48 +12,17 @@
 // another mode made (a chapter) is one thought here: in the tray until it is dragged out, then
 // where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
-import { startTrain, roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members, spotOf, setSpot, unsetSpot, isLooseGroup, offsetOf, setOffset, unsetOffset } from '../model.js';
+import {
+  startTrain, roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members, spotOf, setSpot, unsetSpot, isLooseGroup, offsetOf, setOffset, unsetOffset,
+  placedForeign, trayForeign, spot, putAt, place, inForeign, unplace, lines, stepAfter, setHeights, STEP,
+} from './world.js';
 
 // A train's corner (its rule row: places.js), and a thought's offset from it when dragged off its line.
 const corner = (w, id) => spotOf(w, id) || { x: 0, y: 0 };
-import { placedForeign, trayForeign, spot, putAt, place, inForeign, unplace } from '../groups.js';
-import * as lines from './lines.js';
-import { kindFor } from '../items/index.js';
 
 const byTime = (a, b) => a.at - b.at || (a.id < b.id ? -1 : 1);
 
 // ---- Where each thought of a train sits ----
-
-// How far below the one before a thought sits, until it is dragged somewhere else.
-// A line's step and a closed group's; every other kind says its own (its `step`; a passage's 190).
-export const STEP = { line: 58, group: 190 };
-const stepOf = (kind) => STEP[kind] ?? kindFor(kind).step ?? STEP.group;
-const LINE = 29; // each extra line of a thought written over several lines; the gap under a thought
-
-// Each thought's height as drawn (world units), measured after each drawing (measured() below),
-// so a thought that wraps onto several lines pushes the next one down by as much.
-const HEIGHTS = new Map();
-
-// Takes the heights just measured ({ id: { h } }); true if any changed enough to draw again.
-export function setHeights(sizes) {
-  let changed = false;
-  for (const [id, { h }] of sizes) {
-    const was = HEIGHTS.get(id);
-    if (!(h > 0)) continue;
-    if (was == null || Math.abs(was - h) > 1) { HEIGHTS.set(id, h); changed = true; }
-  }
-  return changed;
-}
-export const clearHeights = () => HEIGHTS.clear();
-
-// How far below a thought the next one sits: its real height and a gap, once it has been drawn;
-// until then, a guess from the lines written.
-export function stepAfter(th) {
-  const kind = kindOf(th);
-  const guess = kind !== 'line' ? stepOf(kind) : STEP.line + LINE * ((String(th.text || '').match(/\n/g) || []).length);
-  const h = HEIGHTS.get(th.id);
-  return h > 0 ? Math.max(stepOf(kind), Math.ceil(h) + LINE) : guess;
-}
 
 // Where each thought of a train sits ({ id: {x, y} }, world units): where it was dragged to, or
 // a step below the one before.
@@ -96,7 +66,7 @@ export function nudge(w, id, x, y, now = Date.now()) {
 
 // How slack the line between two thoughts is (0 taut … 1 loose), and the line itself: the shared
 // lines part's strand (lines.js), resting at Joyce's step between two lines.
-export const { PAUSE, strand } = lines;
+export const strand = (...a) => lines.strand(...a);
 export const slack = (a, b, dist = 0, tension = 0.5) => lines.slack(a, b, dist, tension, STEP.line);
 
 // ---- The timeline: a room's thoughts on one line, in the order they were last changed ----

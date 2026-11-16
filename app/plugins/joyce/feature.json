@@ -1,0 +1,18 @@
+{
+  "name": "Joyce",
+  "description": "Joyce, a way of seeing a room: thoughts joined by time into trains, each read like a paragraph, a line from thought to thought.",
+  "version": "1.0.0",
+  "main": "Joyce.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

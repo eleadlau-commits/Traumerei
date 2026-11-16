@@ -14,13 +14,14 @@ import * as P from '../places.js';
 import * as L from '../links.js';
 import * as R from '../rules.js';
 import { emptyWorld, loadWorld, create, MESSY, addRoom } from '../model.js';
+import { pessoa, ROOM_TYPES } from './roomtypes.js';
 import { gather, groupChosen, ungroupChosen, throwBack } from '../ontologies/index.js';
 import russell, { link as russellLink } from '../../russell/rules.js';
 import { proust } from '../../proust/rules.js';
 
 bindRussell(surface(lib));
 bindProust(surface(lib));
-const RULES = gather([russell, proust]).filter((o) => !o.bare); // Rows (the bare reading) lays nothing out by hand
+const RULES = gather([...ROOM_TYPES, russell, proust]).filter((o) => !o.bare); // Rows (the bare reading) lays nothing out by hand
 const byId = (id) => RULES.find((o) => o.id === id);
 
 // A seeded random (the same run every time).
@@ -36,8 +37,8 @@ function fixture(n = 1500, seed = 7) {
     const len = 1 + Math.floor(r() * 9);
     for (let k = 0; k < len && made < n; k++, made++) {
       const th = model.addThought(w, train.id, `thought ${made} ${'word '.repeat(1 + Math.floor(r() * 12))}`, t++);
-      if (r() < 0.05) lib.ontologies.BUILT_IN[0].drop(w, room, th.id, Math.round(r() * 4000), Math.round(r() * 3000));
-      if (r() < 0.2) lib.pessoa.default.drop(w, room, th.id, Math.round(r() * 4000), Math.round(r() * 3000));
+      if (r() < 0.05) ROOM_TYPES[0].drop(w, room, th.id, Math.round(r() * 4000), Math.round(r() * 3000));
+      if (r() < 0.2) pessoa.drop(w, room, th.id, Math.round(r() * 4000), Math.round(r() * 3000));
     }
   }
   const leaves = model.roomItems(w, room);
@@ -182,7 +183,7 @@ test('no rule keeps state: every position is a rule row, and the rules\' own dat
   const log = lib.moments.loadLog(null, 1);
   const before = JSON.parse(JSON.stringify(lib.moments.stateOf(w)));
   const id = model.roomItems(w, room)[5].id;
-  lib.pessoa.default.drop(w, room, id, 12345, 678);
+  pessoa.drop(w, room, id, 12345, 678);
   lib.moments.record(log, before, JSON.parse(JSON.stringify(lib.moments.stateOf(w))), 2);
   assert.ok(log.rows.some((x) => x.kind === 'moved' && x.place === P.ruleId(room, id, 'pessoa')), 'a moved row for the rule row');
 });
