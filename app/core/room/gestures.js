@@ -4,7 +4,7 @@
 
 import {
   room, parentOf, view, startTrain, create, remove, move, kindOf, isLeaf, isGroup, thoughtText,
-  trainThoughts, rooms, members,
+  trainThoughts, rooms, members, update, GROUP_CORE_FIELDS,
 } from './world.js';
 import { el, ZOOM, MAC, KEY, HOLD } from './shared.js';
 import * as verbs from './verbs.js';
@@ -393,6 +393,8 @@ export class Gestures {
   copyOf(ids) {
     const w = this.world, out = [];
     const fields = (th) => { const { id, parent, at, edited, members, ...f } = th; return f; };
+    // A group's own fields (its kind's `fields`, since 1.1.1): the paste tidies them again.
+    const ownOf = (g) => Object.fromEntries(Object.entries(g).filter(([k]) => !GROUP_CORE_FIELDS.includes(k)));
     for (const id of ids) {
       const th = w.things[id];
       if (!th) continue;
@@ -402,7 +404,7 @@ export class Gestures {
       if (!train && !isLeaf(th)) continue;
       const p = this.ont.point(w, this.roomId, id) || { x: train?.x ?? 0, y: train?.y ?? 0 };
       out.push(train
-        ? { x: p.x, y: p.y, title: train.title || '', closed: !!train.closed, items: trainThoughts(w, id).filter(isLeaf).map(fields) }
+        ? { x: p.x, y: p.y, title: train.title || '', closed: !!train.closed, own: ownOf(train), items: trainThoughts(w, id).filter(isLeaf).map(fields) }
         : { x: p.x, y: p.y, items: [fields(th)] });
     }
     return out;
@@ -439,6 +441,7 @@ export class Gestures {
       if (!items.length) { remove(w, train.id); continue; }
       if (u.title) train.title = u.title;
       if (u.closed) train.closed = true;
+      if (u.own && Object.keys(u.own).length) update(w, train.id, u.own, now);
       made.push(u.items.length === 1 && !u.title ? items[0].id : train.id);
     }
     if (!made.length) return;

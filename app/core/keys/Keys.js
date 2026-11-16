@@ -25,6 +25,12 @@ export default class Keys extends Feature {
       label: (id) => this.labelOf(id),
       live: () => this.live().map(({ id, keys, words, zone }) => ({ id, keys: [...(keys || [])], words, zone })),
       clashes: () => clashes(this.slot('keys').items),
+      // Runs a live entry by id, as its keys would (a plugin's t.slots.commands.run): true when it ran.
+      run: (id) => {
+        const k = this.live().find((x) => x.id === id);
+        if (!k?.run) return false;
+        try { k.run({ type: 'command', key: '', preventDefault() {}, stopPropagation() {} }); return true; } catch (err) { console.warn(`Keys: ${k.id}`, err); return false; }
+      },
     });
     window.addEventListener('keydown', (e) => this.onKey(e), true);
     this.build();

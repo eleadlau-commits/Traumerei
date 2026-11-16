@@ -14,6 +14,7 @@ export * as rules from './rules.js';          // rules: an ontology as the kerne
 export * as groups from './groups.js';        // groups as shared objects: outermost, foreign, trays
 export * as twin from './twin.js';            // a Twin: two sides, each a room, side by side
 export * as items from './items/index.js';    // ITEMS: the kinds of item (line, passage, picture)
+export * as draft from './draft.js';          // the thought being written, as a rule's reads see it (never a mark)
 export * as spans from './spans.js';          // the look of words in a thought: span kinds, decorators, shift, Markdown
 export * as maths from './maths.js';          // split, maths: LaTeX in a thought's words
 export * as look from './look.js';            // colours: a room's, a square's, the rooms page's

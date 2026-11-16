@@ -26,6 +26,25 @@ Two additions to plugin API 3, so a plugin can write a book (the Book editor, `b
 - Fixed: a thin rule's `land` was never heard in a room (the Calendar's "a thought written on a
   chosen day is due that day" worked only in tests).
 
+The rest of the gaps found in the open core's audit (G1 to G11), all additions:
+
+- `{ join, at?, from? }`: with `from`, the mark leaves that group in the same step, so a drop from
+  one chapter into another moves it rather than copying it.
+- `reads.marks.draft(context)`: the thought being written, `{ text, at?, after?, height? }`, for a
+  rule's `arrange` to leave room for it; the room lays out again when its box grows or shrinks.
+- `slots.groups` takes `fields` and `tidy`: a chapter keeps its own fields (a target, a break)
+  through edits, .traum files and copies; with its plugin off they stay as they are.
+- `together(async fn)`: one step until the promise settles; a rejection takes it back.
+- `ui.chosen()` gains `marks`; `ui.chosen.on(fn)`, `ui.choose(ids)`, `ui.repaint(ids?)`.
+- A span may carry `ref` (a mark or link); a span kind's `click(span, mark)` hears its words clicked.
+- A thin rule's settings may be `{ kind: 'choice' }` or `{ kind: 'toggle' }`; `arrange`, `draw`,
+  `drop` and `land` get the room's values as their last argument.
+- Moment rows carry `before` and `after`; `slots.commands.list()` and `run(id)`; `peers.on(fn)`.
+- API.md: surfaces draw what they must to be a tool, never the app's own words; chapters within
+  chapters stay links, never folders.
+- Corpus: `manuscript`, chapters within chapters as headings in reading order, proving the above.
+- Word document export keeps six levels of heading (it flattened past three).
+
 ## 1.1.0
 
 One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, step by step.

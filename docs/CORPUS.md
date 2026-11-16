@@ -18,7 +18,7 @@ Settings → Plugins.
 | carriers | `markdown-vault` (Obsidian in and out, a zip either way), `csv-marks`, `json-tables`, `anki-deck`, `plain-text` |
 | readers | `word-linker` (shared uncommon words become "echoes"), `due-finder` (dates in words become due), `nonsense-reader` (proposes only nonsense: every proposal must be refused) |
 | commands | `focus-mode`, `room-stats`, `export-room` |
-| open core | `page-flow` (fixed pages, a paragraph runs on in fragments: step 1), `first-letters` (a decorator), `spell-marks` (a decorator and the caret), `bold-italic` (spans kept on the mark, keys while writing, Markdown out: step 2), `figure` (a kind that flows among paragraphs), `docx` (a second format taking a room out, as a Word document: step 5), `word-count-strip` (the strip, a bar word, a page of its own and the zoom's bands: step 3), `sketch` (a kind drawn with the pen in a surface, a stroke one step: step 4), `chart` (a rule whose box asks for a surface: a bar chart of the words in each group: step 4), `highlighter` (a span, a decorator, the strip and a bar word, written from `API.md` alone: step 6) |
+| open core | `page-flow` (fixed pages, a paragraph runs on in fragments: step 1), `first-letters` (a decorator), `spell-marks` (a decorator and the caret), `bold-italic` (spans kept on the mark, keys while writing, Markdown out: step 2), `figure` (a kind that flows among paragraphs), `docx` (a second format taking a room out, as a Word document: step 5), `word-count-strip` (the strip, a bar word, a page of its own and the zoom's bands: step 3), `sketch` (a kind drawn with the pen in a surface, a stroke one step: step 4), `chart` (a rule whose box asks for a surface: a bar chart of the words in each group: step 4), `highlighter` (a span, a decorator, the strip and a bar word, written from `API.md` alone: step 6), `manuscript` (chapters within chapters as headings, by links never folders: the `join` proposal with `from`, the draft read, a kind of group's own fields, a thin rule's choice setting: 1.1.1) |
 
 Each exports `install(t)`; its Feature's `start()` is one line that calls it. That is what lets one
 host (`tests/host.js`: a world, its moments log, the slots and `connect()`, no screen) run every
@@ -78,7 +78,7 @@ API it needs, and a corpus plugin that uses it:
 | First-letter highlight | a decorator (read-only, on every thought) | `first-letters` |
 | Spell checker | a decorator, the caret, a fix as one step | `spell-marks` |
 | Calendar, Kanban | a rule's draw, drop and land | `calendar`, `kanban` |
-| Book editor | units of a size, a paragraph in fragments across pages, a part's position, the zoom | `page-flow`, `word-count-strip` (the Book itself is a plugin file, built after E's review) |
+| Book editor | units of a size, a paragraph in fragments across pages, a part's position, the zoom; since 1.1.1 writing into a chapter, moving between chapters, chapters within chapters | `page-flow`, `word-count-strip`, `manuscript` (the Book itself is a plugin file, built after E's review) |
 | Word document | spans kept on the mark, rich kinds in a flow, a second way out | `bold-italic`, `table`, `figure`, `docx` |
 | Image editor | a surface and the pen, a stroke one step | `sketch` |
 | Spreadsheet chart | a box that asks for a surface | `chart` |

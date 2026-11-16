@@ -54,7 +54,58 @@ export class Writing {
   draftNode() {
     this.draftEl = el('span', { class: 'room-thought room-draft' + (this.draft?.fresh ? ' fresh' : '') });
     this.paintDraft();
+    this.watchDraft(this.draftEl);
     return this.draftEl;
+  }
+
+  // The thought being written as a rule's reads see it (reads.marks.draft, since 1.1.1): its words,
+  // where Add was asked, the mark it is written after, and its box's height. A thought opened
+  // again is a mark already: no draft.
+  draftFor(context) {
+    const d = this.draft;
+    if (!d || d.edit || context !== this.roomId || this.root.hidden) return null;
+    return { text: this.input.value, ...(d.at ? { at: { x: d.x, y: d.y } } : {}), ...(d.near ? { after: d.near } : {}), ...(this.draftHeight ? { height: this.draftHeight } : {}) };
+  }
+
+  // A click on words of a kept span whose kind hears clicks (slots.spans' click, since 1.1.1): a
+  // footnote's mark, a comment on words. In the thought being written it takes Ctrl+click (a
+  // plain click places the caret). A drag is not a click.
+  onSpanClick(e) {
+    const down = this.spanDown;
+    if (!this.roomId || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+    let th = null, list = null, at = null;
+    const hit = document.elementFromPoint?.(e.clientX, e.clientY);
+    if (this.draftEl?.isConnected && hit?.closest?.('.room-draft')) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      list = this.draftSpans;
+      at = this.offsetAt(e.clientX, e.clientY);
+      th = this.draft?.edit ? this.world.things[this.draft.edit] : null;
+    } else {
+      const node = hit?.closest?.('.room-thought[data-id]');
+      th = node && this.world.things[node.dataset.id];
+      if (!th?.spans) return;
+      list = th.spans;
+      at = textOffsetAt(node, e.clientX, e.clientY);
+    }
+    const got = spans.clickable(list, at)[0];
+    if (!got) return;
+    const mark = th ? Object.freeze({ ...th }) : Object.freeze({ id: null, kind: 'line', text: this.input.value });
+    try { got.click(got.span, mark); } catch (err) { console.warn(`Room: the span kind ${got.span.kind}'s click failed`, err); }
+  }
+
+  // When the draft's box grows or shrinks (the words wrap onto another line), a rule that read the
+  // draft lays the room out again, on the next frame.
+  watchDraft(node) {
+    if (typeof ResizeObserver !== 'function') return;
+    this.draftWatch ||= new ResizeObserver((entries) => {
+      const h = Math.round(entries[entries.length - 1]?.contentRect?.height || 0);
+      if (!h || h === this.draftHeight) return;
+      this.draftHeight = h;
+      if (this.draftFrame || !this.ont?.readsDraft?.(this.world, this.roomId)) return;
+      this.draftFrame = requestAnimationFrame(() => { this.draftFrame = 0; if (this.draft && !this.draft.edit) this.drawWorld(true); });
+    });
+    this.draftWatch.disconnect();
+    this.draftWatch.observe(node);
   }
 
   // Draws the thought being written from the hidden box: its words, the selection, and the caret
@@ -573,4 +624,19 @@ export class Writing {
     this.addMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - h - 8))}px`;
     this.addMenu.querySelector('button')?.focus();
   }
+}
+
+// The character of a drawn thought's words under a point on the screen, or null.
+function textOffsetAt(node, x, y) {
+  let container = null, offset = 0;
+  if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); container = p?.offsetNode; offset = p?.offset ?? 0; }
+  else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); container = r?.startContainer; offset = r?.startOffset ?? 0; }
+  if (!container || !node.contains(container)) return null;
+  let at = 0;
+  const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  for (let t = walk.nextNode(); t; t = walk.nextNode()) {
+    if (t === container) return at + offset;
+    at += t.length;
+  }
+  return null;
 }

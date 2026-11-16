@@ -41,6 +41,7 @@ on ordinary keys.
 | `show()` · `hide()` | Shows or hides the ? list |
 | `label(id)` | An entry's keys as the screen shows them ("Ctrl+K", "⌘K" on a Mac), for a hover title |
 | `live()` | The entries live now: `{ id, keys, words, zone }` |
+| `run(id)` | Runs a live entry by id, as its keys would; `true` when it ran (since 1.1.1, for a plugin's `t.slots.commands.run`) |
 | `clashes()` | Every pair of entries sharing a key: `[{ key, a, b }]` (also warned in the console on start) |
 
 **The code.** `Keys.js` is the slot, the listener and the list; `keymap.js` the rules;

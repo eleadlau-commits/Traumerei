@@ -60,6 +60,7 @@ export default class Room extends Feature {
     // world feature's (its service; world.js binds its rules for the files here).
     this.w = this.use('world');
     bind(this.w.lib);
+    this.w.lib.draft?.setSource((context) => this.draftFor(context)); // the thought being written, as a rule reads it (writing.js)
     showSizes(!!this.w.prefs?.sizes); // Varied sizes within a thought (Settings → Rooms; view.js repaint follows it)
     this.rooms = this.use('rooms'); // the rooms page: back to it, and into another room
     this.floors = this.use('floors'); // where a new room goes (the floors feature)
@@ -187,6 +188,12 @@ export default class Room extends Feature {
       zoom: () => this.zoomNow(),
       setZoom: (zoom, at) => this.setZoom(zoom, at),
       onZoom: (fn) => this.onZoom(fn),
+      // What is chosen, all of it (t.ui.chosen().marks, since 1.1.1), choosing marks of the open
+      // room, hearing each change of the choice, and drawing marks again on the next frame.
+      chosenAll: () => (this.root.hidden ? [] : this.chosenIds()),
+      choose: (ids) => this.chooseIds(ids),
+      onChosen: (fn) => this.onChosen(fn),
+      repaint: (ids) => this.repaintSoon(ids),
     });
     // Where the Time dock is (the time feature): this room's Timeline. A click there chooses what it
     // names; the Editor follows, but Time stays in front (bars.js).
@@ -206,6 +213,48 @@ export default class Room extends Feature {
     document.fonts?.addEventListener?.('loadingdone', () => { if (this.roomId) this.clearSoon(); });
     document.addEventListener('paste', (e) => this.onPaste(e));
     document.addEventListener('copy', (e) => this.onCopy(e));
+  }
+
+  // What is chosen (sel): every change is heard by the plugins listening (t.ui.chosen.on, since
+  // 1.1.1), once per change, after the gesture that made it.
+  get sel() { return this._sel ?? null; }
+  set sel(v) { this._sel = v; if (this.choiceHeard?.size) this.choiceSoon(); }
+  chosenIds() { const s = this._sel; return s ? [...(s.ids || [s.id])].filter((id) => this.world.things[id]) : []; }
+  onChosen(fn) {
+    (this.choiceHeard ||= new Set()).add(fn);
+    return () => this.choiceHeard.delete(fn);
+  }
+  choiceSoon() {
+    if (this.choiceWaiting) return;
+    this.choiceWaiting = true;
+    queueMicrotask(() => {
+      this.choiceWaiting = false;
+      const marks = this.roomId && !this.root.hidden ? this.chosenIds() : [];
+      const said = `${this.roomId}|${marks.join(',')}`;
+      if (said === this.choiceSaid) return;
+      this.choiceSaid = said;
+      const o = Object.freeze({ context: this.roomId ?? null, mark: marks.length === 1 ? marks[0] : null, marks: Object.freeze(marks) });
+      for (const fn of [...(this.choiceHeard || [])]) { try { fn(o); } catch (err) { console.warn('Room: a choice listener failed', err); } }
+    });
+  }
+  // Chooses marks of the open room (t.ui.choose): false when none of them is there.
+  chooseIds(ids) {
+    if (!this.roomId || this.root.hidden) return false;
+    const mine = [...new Set([].concat(ids || []))].filter((id) => this.world.things[id] && parentOf(this.world, id) === this.roomId);
+    if (!mine.length && [].concat(ids || []).length) return false;
+    this.sel = this.selOf(mine);
+    this.barFor = null;
+    this.drawWorld();
+    return true;
+  }
+  // A plugin's look changed without a table changing (a decorator's state): the open room draws
+  // again on the next frame, once however often it is asked (t.ui.repaint, since 1.1.1).
+  repaintSoon() {
+    if (!this.roomId || this.repaintFrame) return;
+    this.repaintFrame = requestAnimationFrame(() => {
+      this.repaintFrame = 0;
+      if (this.roomId && !this.root.hidden) this.drawWorld(true);
+    });
   }
 
   // What the world feature holds, read through its service.
@@ -418,6 +467,8 @@ export default class Room extends Feature {
     // A press in the thought being written keeps the hidden box focused (and no page selection starts).
     this.stage.addEventListener('mousedown', (e) => { if (e.target.closest?.('.room-draft')) e.preventDefault(); });
     this.stage.addEventListener('dblclick', (e) => this.onDouble(e));
+    this.stage.addEventListener('pointerdown', (e) => { this.spanDown = { x: e.clientX, y: e.clientY }; }, true); // (a click on a span: onSpanClick)
+    this.stage.addEventListener('click', (e) => this.onSpanClick(e));
     this.stage.addEventListener('contextmenu', (e) => this.onContext(e));
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && this.roomId && !this.draft && !e.target.matches?.('input, textarea, select')) { this.spaceDown = true; this.stage.classList.add('panning'); } });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.stage.classList.remove('panning'); } });

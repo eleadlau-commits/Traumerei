@@ -31,6 +31,7 @@ CORPUS = (
     'page-flow', 'first-letters', 'spell-marks', 'bold-italic', 'figure', 'docx',
     'word-count-strip', 'sketch', 'chart',
     'highlighter',
+    'manuscript',
 )
 
 
