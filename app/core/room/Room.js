@@ -109,8 +109,21 @@ export default class Room extends Feature {
           title: () => 'Show or hide the Editor: what is chosen, or this room\'s settings' });
       }
       // Export and Edit as text show while a file format plugin can (Room files).
-      this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: () => live() && this.files.canExport, run: () => this.exportRoomFile(),
+      this.add('rail.more', { id: 'room-export', label: 'Export', order: 20, visible: () => live() && this.files.exporters.length === 1, run: () => this.exportRoomFile(),
         icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => 'Export this room as a .traum file' });
+      // Several formats that take a room out (a room file, a Word document): one entry each instead,
+      // kept up with the formats.
+      const offs = [];
+      const exporters = () => {
+        while (offs.length) offs.pop()();
+        const all = this.files.exporters;
+        if (all.length > 1) for (const f of all) {
+          offs.push(this.add('rail.more', { id: `room-export-${f.id}`, label: `Export: ${f.name}`, order: 20.5, visible: live, run: () => this.files.exportRoom(this.roomId, f.id),
+            icon: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v6h16v-6"/>', title: () => `Export this room as ${f.name}` }));
+        }
+      };
+      this.app.slot('world.formats')?.watch?.(exporters);
+      exporters();
       this.add('rail.more', { id: 'room-text', label: 'Edit as text', order: 21, icon: 'note', run: () => this.editAsMarkdown(),
         visible: () => live() && this.files.canEdit, title: () => 'Edit this room as text, in the right dock' });
       if (this.keyMap) {

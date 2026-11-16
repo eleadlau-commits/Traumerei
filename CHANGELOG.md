@@ -52,6 +52,15 @@ One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, 
 - `marks.markdown(id)`: a thought's words with their spans as Markdown.
 - Corpus plugins **First letters**, **Spell marks**, **Bold and italic**.
 
+### Step 5: rich kinds in a flow, and more ways out
+
+- A kind of mark may flow among paragraphs (`inline: true`, `height(mark, width)`); `t.ui.size`
+  says how tall a mark draws at a width. Page flow sets such a mark between paragraphs as a block.
+- Several formats may take a room out: then each shows as "Export: its name" in the room's
+  ⋯ More.
+- The corpus Table flows; corpus plugins **Figure** (a picture with a caption) and **Word
+  document** (a room as a .docx: headings, bold and italic, tables, figures).
+
 ## 1.0.3 (15 Nov 2026)
 
 - Room settings: a Settings item in the room's rail opens the room's own settings in the right dock

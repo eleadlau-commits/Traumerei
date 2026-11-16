@@ -7,7 +7,8 @@
 //   importRoom?(o)           a new room from o.file (or one it asks for when there is none):
 //                            { file, cell, page, ok() } → the room, or null
 //   importInto?(roomId, o)   the file's things into a room: { file, at(), ok(), before() } → true or false
-//   exportRoom?(id)          downloads the room in this format
+//   exportRoom?(id)          downloads the room in this format (several formats may: each is
+//                            offered, the first as Export)
 //   canEdit?()               whether a room or group can be edited as text in this format now
 //   editRoom?(roomId, o), editGroup?(roomId, groupId, o)   that editing: → true once applied
 //   cancel?()                closes anything it shows (its card)
@@ -39,7 +40,10 @@ export function formatsOf(slot) {
       return f && has('importInto')(f) ? !!(await wait(f, () => f.importInto(roomId, o), false)) : false;
     },
     get canExport() { return !!first('exportRoom'); },
-    exportRoom: (id) => { const f = first('exportRoom'); if (f) ask(f, () => f.exportRoom(id)); },
+    // Every format that takes a room out ({ id, name }), the first being Export's own; a room's
+    // ⋯ More offers each when there are several (a .traum file, a Word document).
+    get exporters() { return all().filter(has('exportRoom')).map((f) => ({ id: f.id, name: f.name })); },
+    exportRoom: (id, format = null) => { const f = format ? all().find((x) => x.id === format && has('exportRoom')(x)) : first('exportRoom'); if (f) ask(f, () => f.exportRoom(id)); },
     get canEdit() { return !!editor(); },
     editRoom: async (roomId, o) => { const f = editor(); return f && has('editRoom')(f) ? !!(await wait(f, () => f.editRoom(roomId, o), false)) : false; },
     editGroup: async (roomId, groupId, o) => { const f = editor(); return f && has('editGroup')(f) ? !!(await wait(f, () => f.editGroup(roomId, groupId, o), false)) : false; },

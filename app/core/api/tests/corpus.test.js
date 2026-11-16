@@ -56,6 +56,8 @@ const pageFlow = await load('page-flow', 'PageFlow.js');
 const firstLetters = await load('first-letters', 'FirstLetters.js');
 const spellMarks = await load('spell-marks', 'SpellMarks.js');
 const boldItalic = await load('bold-italic', 'BoldItalic.js');
+const figure = await load('figure', 'Figure.js');
+const docx = await load('docx', 'Docx.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -79,7 +81,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'focus-mode': focusMode,
   'room-stats': roomStats,
   'export-room': exportRoom,
-  'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic,
+  'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic, figure, docx,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -88,7 +90,7 @@ const WITH = { links: ['cites'] };
 const SAMPLES = {
   checkbox: { text: 'buy bread' }, quote: { text: 'To be, or not', source: 'Hamlet' }, code: { code: 'let x = 1;\n  x++', lang: 'js' },
   'audio-note': { src: 'data:audio/ogg;base64,AAAA', text: 'hum' }, 'pdf-page': { src: 'data:application/pdf;base64,JVBE', page: '3', name: 'paper' },
-  table: { text: 'a | b\n1 | 2' },
+  table: { text: 'a | b\n1 | 2' }, figure: { src: 'data:image/png;base64,iVBORw0KGgo=', caption: 'A river', ratio: 0.5 },
   suggestion: { says: 'the two may speak of the same thing', act: 'link' },
 };
 
@@ -438,4 +440,32 @@ test('bold and italic: spans are kept on the mark, follow its words, travel in a
   assert.ok(text.includes('material.spans'), 'the spans are in the file');
   const check = t.carriers.check(host.room, t.carriers.read(text));
   assert.deepEqual([check.changed, check.made, check.deleted], [0, 0, 0]);
+});
+
+test('a Word document: a room in reading order, a heading per group, spans as runs, a table, a figure', async () => {
+  const host = makeHost({ thoughts: 2 });
+  host.plug('table', table.install);
+  host.plug('figure', figure.install);
+  const { t } = host.plug('docx', docx.install);
+  const g = t.marks.make({ kind: 'group', content: { title: 'Chapter one' }, in: host.room }).id;
+  const p = t.marks.make({ content: 'a bold word', in: host.room }).id;
+  t.marks.edit(p, { spans: [{ from: 2, to: 6, kind: 'bold' }] });
+  t.links.link(p, g, 'part of');
+  t.marks.make({ kind: 'table', content: { text: 'name | age\nAda | 36' }, in: host.room });
+  const bytes = docx.docx(t, host.room);
+  const text = new TextDecoder().decode(bytes);
+  assert.equal(bytes[0], 0x50); assert.equal(bytes[1], 0x4b); // a zip
+  for (const s of ['word/document.xml', 'Chapter one', '<w:b/></w:rPr><w:t xml:space="preserve">bold</w:t>', '<w:tbl>', 'Ada']) assert.ok(text.includes(s), s);
+});
+
+test('page flow: a kind that flows (a table) sits between paragraphs as one block of its own height', () => {
+  const host = makeHost({ thoughts: 2 });
+  host.plug('table', table.install);
+  const { t } = host.plug('page-flow', pageFlow.install);
+  const id = t.marks.make({ kind: 'table', content: { text: 'a | b\n1 | 2\n3 | 4' }, in: host.room }).id;
+  const size = t.ui.size(id, 380);
+  assert.ok(size.inline && size.height > 100, JSON.stringify(size));
+  const row = t.rules.layout('page-flow', host.room).find((r) => r.mark === id);
+  assert.equal(row.height, size.height);
+  assert.ok(!row.fragments);
 });

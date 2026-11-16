@@ -2,7 +2,8 @@
 // group's parts in its order (its title as a heading), then the loose thoughts, oldest first. A
 // paragraph that does not fit at the foot of a page runs on to the next one in fragments; the
 // bottoms stay ragged. A corpus plugin (open core, step 1): written against app/core/API.md alone,
-// it proves a layout row's width and fragments, and t.ui.measure. Saves nothing.
+// it proves a layout row's width and fragments, and t.ui.measure; since step 5, kinds that flow
+// (t.ui.size: a table, a figure) sit between paragraphs as blocks. Saves nothing.
 import { Feature } from 'folio';
 
 export const PAGE = { w: 480, h: 640, margin: 50, gap: 60 };
@@ -32,7 +33,8 @@ function order(reads, context) {
 }
 
 // Lays the room out: the rows (with fragments) and the pages and headings drawn behind them.
-export function paginate(reads, context, measure) {
+// size(id, width): how tall a mark that is not words draws (t.ui.size), or null to measure its words.
+export function paginate(reads, context, measure, size = () => null) {
   const rows = [], boxes = [];
   let page = 0, y = PAGE.margin;
   const left = (n) => n * (PAGE.w + PAGE.gap);
@@ -47,6 +49,18 @@ export function paginate(reads, context, measure) {
       continue;
     }
     const m = item.mark;
+    // A kind that flows among paragraphs (a table, a figure): one block of its own height, on the
+    // next page when it doesn't fit (a block never splits).
+    if (m.kind !== 'line' && m.kind !== 'passage') {
+      const s = size(m.id, COL);
+      if (s && s.height > 0) {
+        const lh = measure('M', COL).lineHeight;
+        if (y + s.height > bottom && y > PAGE.margin) next();
+        rows.push({ mark: m.id, x: left(page) + PAGE.margin + COL / 2, y: y + s.height / 2, width: COL, height: s.height });
+        y += s.height + PARA * lh;
+        continue;
+      }
+    }
     const { lines, lineHeight: lh } = measure(reads.marks.text(m.id) || ' ', COL);
     let from = 0;
     while (from < lines) {
@@ -70,11 +84,12 @@ export function paginate(reads, context, measure) {
 
 export function install(t) {
   const measure = (text, width) => t.ui.measure(text, width);
+  const size = (id, width) => t.ui.size?.(id, width) || null;
   t.slots.rules.add({
     id: 'page-flow', name: 'Page flow', note: 'fixed pages, a paragraph runs on to the next',
     icon: '<path d="M5 3h9l5 5v13H5zM14 3v5h5"/>',
-    arrange: (reads, context) => paginate(reads, context, measure).rows,
-    draw: (reads, context) => paginate(reads, context, measure).boxes,
+    arrange: (reads, context) => paginate(reads, context, measure, size).rows,
+    draw: (reads, context) => paginate(reads, context, measure, size).boxes,
     hand: false,
   });
 }
