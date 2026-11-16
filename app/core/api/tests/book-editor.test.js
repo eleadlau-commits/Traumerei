@@ -134,16 +134,17 @@ test('book editor: a paragraph written after another lands right after it, in it
   assert.deepEqual(brokenLaws(host.w), []);
 });
 
-test('book editor: a paragraph made a heading gathers what follows; again, it is a paragraph', () => {
+test('book editor: a paragraph made a heading is the next chapter, gathering what follows; again, it is a paragraph', () => {
   const { t, s, text } = setUp();
   const winter = s.chapters[0];
   const [, a, b, c] = t.links.members(winter);
   const ch = E.makeHeading(t, s.room, b);
   assert.ok(ch);
-  assert.deepEqual(t.links.members(winter), [s.heads[0], a, ch]);
+  assert.deepEqual(t.links.members(winter), [s.heads[0], a]);
+  assert.equal(t.links.members(s.book)[t.links.members(s.book).indexOf(winter) + 1], ch, 'right after Winter, at its level');
   assert.deepEqual(t.links.members(ch), [b, c]);
   assert.equal(C.headed(t, b), ch);
-  assert.equal(C.read(t, s.room).items.find((x) => x.mark === b).num, '1.1');
+  assert.equal(C.read(t, s.room).items.find((x) => x.mark === b).num, '2');
   assert.ok(E.unmakeHeading(t, ch));
   assert.deepEqual(t.links.members(winter), [s.heads[0], a, b, c]);
   assert.equal(t.marks.get(ch), null);
