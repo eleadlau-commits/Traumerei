@@ -6,13 +6,27 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.1 | 3 | 1 | traum/3 |
 | 1.1.0 | 3 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
 
-## 1.1.0 (unreleased)
+## 1.1.1
+
+Two additions to plugin API 3, so a plugin can write a book (the Book editor, `book.traumplug`):
+
+- A rule's `land` and `drop` may propose `{ join: group, at? }`: the mark becomes a part of a group
+  of its room at a place in its order, in the same step as the gesture (one Ctrl+Z).
+- `t.ui.text.edit(mark, at?)` opens a kept line to write in with the caret at `at`, so a caret can
+  run on from one paragraph into the next.
+- `land` is heard when a thought was written after a mark (the one chosen, or the one kept just
+  before with Enter), and the thought being written is drawn under that mark at its width.
+- Fixed: a thin rule's `land` was never heard in a room (the Calendar's "a thought written on a
+  chosen day is due that day" worked only in tests).
+
+## 1.1.0
 
 One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, step by step.
 

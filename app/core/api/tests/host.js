@@ -81,7 +81,8 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
   const toasts = [];
   let chosen = null;
   const leaving = new Map();
-  const roomNow = () => (chosen ? { id: () => chosen.context, chosen: () => chosen.mark } : null);
+  let text = null; // the words being written, as the room offers them (writeIn)
+  const roomNow = () => (chosen ? { id: () => chosen.context, chosen: () => chosen.mark, ...(text ? { text } : {}) } : null);
 
   // Connects a plugin (by id) and runs its install(t); returns { t, off } where off() takes away
   // everything it added, as switching it off in Settings does.
@@ -104,7 +105,7 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
     return { t, off };
   }
   const added = (id) => [...slots.entries()].flatMap(([slot, s]) => s.entries.filter((e) => e.owner === id).map((e) => ({ slot, item: e.item })));
-  return { ai, choices, w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, lib, tick };
+  return { ai, choices, w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, writeIn: (o) => { text = o; }, lib, tick };
 }
 
 // The eight laws, as checks over the world's tables (KERNEL.md). Returns the broken ones in words.

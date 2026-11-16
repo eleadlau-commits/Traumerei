@@ -601,9 +601,24 @@ export class Bars {
       if (next) return next;
     }
     if (!this.fresh && t && parentOf(this.world, t.id) === this.roomId && !t.closed && t.of === this.writer.id) return { train: cur };
+    // A simple rule with land() (a book): the next thought is written after the mark chosen, or the
+    // one kept just before, drawn under it (view.js), and land() hears where (writing.js keepNew).
+    if (this.ont.land && !this.fresh) {
+      const chosen = this.sel && this.sel.kind !== 'many' ? this.sel.id : null;
+      const near = [chosen, cur].find((id) => id && this.world.things[id] && parentOf(this.world, id) === this.roomId && this.ont.point?.(this.world, this.roomId, id));
+      if (near) return { train: null, near, ...this.under(near) };
+    }
     const spot = this.freeSpot();
     this.fresh = false;
     return { train: null, x: Math.round(spot.x), y: Math.round(spot.y) };
+  }
+
+  // Where a thought written after a mark is drawn (bars.js target): under it, at its width.
+  under(id) {
+    const p = this.ont.point(this.world, this.roomId, id);
+    const last = p.fragments?.length ? p.fragments[p.fragments.length - 1] : p;
+    const h = last.height || this.drawnRects().get(id)?.h || 24;
+    return { x: Math.round(last.x), y: Math.round(last.y + h / 2 + 12), width: p.width || null, align: p.align || null };
   }
 
   onPaste(e) {

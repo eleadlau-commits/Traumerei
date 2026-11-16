@@ -426,6 +426,64 @@ test('a rule\'s wider boxes (1.0.3): style, level, right words, opens; a place p
   assert.deepEqual([odd.style, odd.level, odd.opens], ['plain', 0, null]);
 });
 
+test('a join proposal (1.1.1): land and drop file a mark into a group of the room, at a place in its order, as one step', () => {
+  const host = makeHost({ thoughts: 8 });
+  let asked = null;
+  const { t } = host.plug('chapters', (k) => {
+    k.slots.groups.add({ id: 'chapter', name: 'Chapter', membership: 'one' });
+    k.slots.rules.add({ id: 'chapters', name: 'Chapters', claims: ['chapter'], arrange: () => [], land: (reads, context, mark, x, y) => asked, drop: (reads, context, mark, x, y) => asked });
+  });
+  host.lib.model.declareFamilies(host.app.slot('world.groups').items); // (World.js does this when the slot changes)
+  const rule = host.added('chapters').find((a) => a.slot === 'world.ontologies').item;
+  const one = t.marks.make({ kind: 'group', content: { title: 'One', of: 'chapter' }, in: host.room }).id;
+  const two = t.marks.make({ kind: 'group', content: { title: 'Two', of: 'chapter' }, in: host.room }).id;
+  const [a, b, c, d] = host.ids.slice(3);
+  for (const id of [a, b]) t.links.link(id, one, 'part of');
+  // A new thought kept after a: into One, between a and b.
+  asked = { join: one, at: 1 };
+  assert.deepEqual(rule.land(host.w, host.room, c, 0, 0), []);
+  assert.deepEqual(t.links.members(one), [a, c, b]);
+  // Dropped on Two: out of One (a chapter holds a part alone), into Two.
+  asked = { join: two };
+  rule.drop(host.w, host.room, c, 0, 0);
+  assert.deepEqual([t.links.members(one), t.links.members(two)], [[a, b], [c]]);
+  // Already a part: it moves to `at` among the others.
+  asked = { join: one, at: 0 };
+  rule.drop(host.w, host.room, b, 0, 0);
+  assert.deepEqual(t.links.members(one), [b, a]);
+  // Refused, in words, and nothing changed: not a group, another room's group, a bad place.
+  const elsewhere = t.marks.make({ kind: 'group', content: { title: 'Far', of: 'chapter' }, in: host.other }).id;
+  for (const [p, why] of [[{ join: d }, 'Only a group can hold a part'], [{ join: elsewhere }, 'A mark joins a group of its own room'], [{ join: one, at: -1 }, 'A part joins at a position in the order: 0 first']]) {
+    asked = p;
+    assert.deepEqual(rule.land(host.w, host.room, d, 0, 0), [why]);
+  }
+  assert.deepEqual([t.links.members(one), t.links.members(two)], [[b, a], [c]]);
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('ui.text.edit (1.1.1): a kept line in the open room opens to write in, the caret where asked; anything else refuses in words', () => {
+  const host = makeHost({ thoughts: 4 });
+  const { t } = host.plug('runs-on', () => {});
+  const line = host.ids[3];
+  assert.deepEqual({ ...t.ui.text.edit(line) }, { ok: false, reason: 'The mark is not in the open room' }); // no room open
+  host.choose(host.room);
+  const opened = [];
+  host.writeIn({ edit: (id, at) => { opened.push([id, at]); return true; } });
+  assert.deepEqual({ ...t.ui.text.edit(line, 3) }, { ok: true, id: line });
+  assert.deepEqual({ ...t.ui.text.edit(line) }, { ok: true, id: line });
+  assert.deepEqual(opened, [[line, 3], [line, null]]);
+  assert.equal(t.ui.text.edit('nothing').reason, 'No such mark');
+  const train = host.train;
+  assert.match(t.ui.text.edit(train).reason, /^Only words are written in/);
+  const far = t.marks.in(host.other).find((m) => m.kind === 'line').id;
+  assert.equal(t.ui.text.edit(far).reason, 'The mark is not in the open room');
+  t.distance.declare(host.room, 'others');
+  assert.equal(t.ui.text.edit(line).reason, 'The room is locked');
+  t.distance.declare(host.room, 'me now');
+  host.writeIn({ edit: () => false });
+  assert.equal(t.ui.text.edit(line).ok, false);
+});
+
 test('page flow: a long paragraph at a page foot runs on to the next page in fragments, every row the column wide', () => {
   const host = makeHost({ thoughts: 3 });
   const { t } = host.plug('page-flow', pageFlow.install);
