@@ -52,6 +52,7 @@ const nonsenseReader = await load('nonsense-reader', 'NonsenseReader.js');
 const focusMode = await load('focus-mode', 'FocusMode.js');
 const roomStats = await load('room-stats', 'RoomStats.js');
 const exportRoom = await load('export-room', 'ExportRoom.js');
+const pageFlow = await load('page-flow', 'PageFlow.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -75,6 +76,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'focus-mode': focusMode,
   'room-stats': roomStats,
   'export-room': exportRoom,
+  'page-flow': pageFlow,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -371,4 +373,37 @@ test('a rule\'s wider boxes (1.0.3): style, level, right words, opens; a place p
   const { t: t2 } = host.plug('odd-boxes', (k) => k.slots.rules.add({ id: 'odd-boxes', name: 'Odd boxes', arrange: () => [], draw: () => [{ x: 0, y: 0, w: 10, h: 10, style: 'neon', level: 9, opens: 'nowhere' }] }));
   const odd = t2.rules.draws('odd-boxes', host.room).boxes[0];
   assert.deepEqual([odd.style, odd.level, odd.opens], ['plain', 0, null]);
+});
+
+test('page flow: a long paragraph at a page foot runs on to the next page in fragments, every row the column wide', () => {
+  const host = makeHost({ thoughts: 3 });
+  const { t } = host.plug('page-flow', pageFlow.install);
+  const long = 'river stone light '.repeat(120);
+  for (let i = 0; i < 6; i++) assert.ok(t.marks.make({ content: `${long} ${i}`, in: host.room }).ok);
+  const rows = t.rules.layout('page-flow', host.room);
+  assert.ok(rows.every((r) => r.width === pageFlow.PAGE.w - 2 * pageFlow.PAGE.margin));
+  const split = rows.filter((r) => r.fragments?.length > 1);
+  assert.ok(split.length > 0, 'some paragraph runs on');
+  for (const r of split) {
+    const lines = t.ui.measure(t.marks.text(r.mark), r.width).lines;
+    assert.deepEqual(r.fragments.map((f) => f.lines), r.fragments.map((f) => f.lines).sort((a, b) => a[0] - b[0]));
+    assert.equal(r.fragments.at(-1).lines[1], lines, 'the last fragment ends at the last line');
+    assert.ok(r.fragments[1].x > r.fragments[0].x, 'the next fragment is on the next page');
+  }
+  const boxes = t.rules.draws('page-flow', host.room).boxes;
+  assert.ok(boxes.filter((b) => b.style === 'page').length >= 2, 'two pages or more');
+});
+
+test('links.link part of takes a position: at 0 a part goes first', () => {
+  const host = makeHost({ thoughts: 6 });
+  const { t } = host.plug('page-flow', pageFlow.install);
+  const made = t.marks.make({ kind: 'group', content: { title: 'Chapter' }, in: host.room });
+  assert.ok(made.ok, made.reason);
+  const g = made.id;
+  const one = t.links.link(host.ids[4], g, 'part of');
+  assert.ok(one.ok, one.reason);
+  const two = t.links.link(host.ids[5], g, 'part of', null, { at: 0 });
+  assert.ok(two.ok, two.reason);
+  assert.equal(t.links.members(g).length, 2); // (the order itself: families.test.js, join at a position)
+  assert.equal(t.links.link(host.ids[3], g, 'part of', null, { at: -1 }).ok, false);
 });

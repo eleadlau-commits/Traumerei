@@ -21,7 +21,7 @@
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
-import { isCard, parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, shut, create, remove, leave, membership, memberIds, move, unsetSpot, setSpot, isLooseGroup } from './model.js';
+import { claims, isCard, parentOf, groupsIn, groupsOf, itemsIn, holds, within, isGroup, isLeaf, kindOf, shut, create, remove, leave, membership, memberIds, move, unsetSpot, setSpot, isLooseGroup } from './model.js';
 
 export const isShared = (g) => isGroup(g) && !!g.shared;
 
@@ -36,7 +36,8 @@ export function outermost(w, roomId) {
 }
 
 // The outermost shared groups another ontology made, which ontology `of` sees as one thought each.
-export const foreign = (w, roomId, of) => outermost(w, roomId).filter((g) => g.of !== of);
+// (A card of a family `of` claims is laid out by `of` itself: no card there.)
+export const foreign = (w, roomId, of) => outermost(w, roomId).filter((g) => g.of !== of && !(isCard(g) && claims(of, g.of)));
 
 // Whether a thought is inside a group ontology `of` sees as one thought: it isn't loose there too.
 export function inForeign(w, roomId, of) {

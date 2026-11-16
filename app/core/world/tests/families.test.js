@@ -63,3 +63,29 @@ test('families: an id must be its own, never a mode\'s', () => {
   declareFamilies([]);
   assert.equal(familyOf('set'), null);
 });
+
+test('a rule that claims a family lays its groups out itself: no card of it there, a card everywhere else', () => {
+  declareFamilies([{ id: 'claimed-book', name: 'Book', card: true }]);
+  const w = emptyWorld(1);
+  const room = addRoom(w, 'Study', 2);
+  const book = create(w, room.id, { kind: 'group', of: 'claimed-book', title: 'My book', family: true }, 3);
+  model.declareClaims('pages-test', ['claimed-book']);
+  assert.ok(foreign(w, room.id, 'joyce').some((g) => g.id === book.id));
+  assert.ok(!foreign(w, room.id, 'pages-test').some((g) => g.id === book.id));
+  model.declareClaims('pages-test', null);
+  assert.ok(foreign(w, room.id, 'pages-test').some((g) => g.id === book.id));
+  declareFamilies([]);
+});
+
+test('join takes a position in the order: 0 first, past the end last', () => {
+  declareFamilies([{ id: 'ordered-book', name: 'Book' }]);
+  const w = emptyWorld(1);
+  const room = addRoom(w, 'Study', 2);
+  const g = create(w, room.id, { kind: 'group', of: 'ordered-book', family: true }, 3);
+  const [a, b, c, d] = [4, 5, 6, 7].map((at) => create(w, room.id, { kind: 'line', text: `t${at}` }, at));
+  join(w, g.id, a.id); join(w, g.id, b.id);
+  join(w, g.id, c.id, 0);
+  join(w, g.id, d.id, 2);
+  assert.deepEqual(members(w, g.id).map((m) => m.id), [c.id, a.id, d.id, b.id]);
+  declareFamilies([]);
+});

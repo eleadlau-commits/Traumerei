@@ -33,13 +33,23 @@ const MEMO = new WeakMap(); // ontology → Map context → { key, map }
 // (Gaps and moments ahead count too: a rule such as Calendar lays marks out by their dates.)
 const keyOf = (w, context) => `${P.version(w, context)}|${L.version(w)}|${marksVersion(w)}|${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
 
+// A point, with the size and fragments a rule gave it (a thin rule's width, height, fragments).
+const sized = (p) => {
+  const q = { x: p.x, y: p.y };
+  if (p.width > 0) q.width = p.width;
+  if (p.height > 0) q.height = p.height;
+  if (p.align === 'start') q.align = 'start';
+  if (Array.isArray(p.fragments) && p.fragments.length) q.fragments = p.fragments;
+  return q;
+};
+
 // Where each unit sits under ontology `o` in `context`: its own layout(w, context) when it has
 // one (a whole room at once), else each unit's point().
 function lay(o, w, context) {
   const out = new Map();
   if (typeof o.layout === 'function') {
     const all = o.layout(w, context);
-    for (const [id, p] of all instanceof Map ? all : Object.entries(all || {})) if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) out.set(id, { x: p.x, y: p.y });
+    for (const [id, p] of all instanceof Map ? all : Object.entries(all || {})) if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) out.set(id, sized(p));
     return out;
   }
   for (const u of o.units(w, context)) {

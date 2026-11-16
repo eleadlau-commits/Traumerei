@@ -68,7 +68,7 @@ names the phase that brings it, and the read is empty. A refusal is never a step
 |---|---|---|---|
 | `marks` | `get(id)` · `in(context)` (the marks a context holds; `null` for the rooms) · `ofKind(kind)` · `text(id)` · `search(words, most?)` | `make({ kind?, content, in, at? })` (`kind` line by default; `room` with its name as content and no `in`, onto the first floor; `group` with `{ title }`, and a mark made `in` a group joins it; a plugin's kind with its fields as content; `at`: `x`, `y`) · `edit(id, fields)` (never kind, context, members or id; a mark left empty is removed, `{ ok, id, removed: true }`) · `delete(id)` | `on(change)` |
 | `places` | `of(mark)` · `home(mark)` (the context it is in) · `in(context, rule?)` · `loose(context)` (marks at home there that no rule places) · `position(mark, context, rule)` | `put(mark, context, rule?, position?)` (into a context, laid under a rule when given; a room onto a floor `floor:<n>` or into the Archive `archive`; since 1.0.4 a room with a cell `{ col, row }` goes exactly there by the floor rule, or is refused) · `move(mark, from, to)` (lands loose in `to`) · `unplace(mark, context)` (loose there, under every rule) | `on(change)` |
-| `links` | `get(id)` · `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `standsFor(fold)` (the marks it folded) · `kinds()` (part of, stands for, relation and the declared ones) · `named(kind)` · `count()` | `link(from, to, kind, label?, { rule, note }?)` (a relation needs the `rule` whose arrows these are and goes through its checks) · `fold(context, ids)` (one new mark stands for them) · `unlink(id)` (a stands-for row undone brings the mark back loose) · `order(group, ids)` | `on(change)` |
+| `links` | `get(id)` · `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `standsFor(fold)` (the marks it folded) · `kinds()` (part of, stands for, relation and the declared ones) · `named(kind)` · `count()` | `link(from, to, kind, label?, { rule, note, at }?)` (a relation needs the `rule` whose arrows these are and goes through its checks; a *part of* takes `at`, its position in a group that keeps its order, 0 first, since 1.0.5) · `fold(context, ids)` (one new mark stands for them) · `unlink(id)` (a stands-for row undone brings the mark back loose) · `order(group, ids)` | `on(change)` |
 | `carriers` | `list()`, `tables(context?)` (the six tables of a room, a group with its parts, or the whole world, deep frozen), `text(context?, { ids })` (as .traum text), `read(text)` (`{ tables, root, report }` or `null`), `check(context, read)` (what writing it over the context would do: `{ ok, kept, changed, made, deleted }` or a refusal) | `land(read, { into?, page?, cell? })` (new marks: a new room, or poured into one), `replace(context, read)` (edited text written back over it) | |
 | `distance` | `of(mark)` (its reader: the farthest declared on its way up, or `null`), `declared(context)` (its own row's reader, or `null`), `all()`, `shut(mark)` (in a context for others or a machine: nothing can change), `readers()` | `declare(context, reader)` (a room, a floor, the Archive; `me now` takes the row away; Lock is `others`) | `on(change)` |
 | `gaps` | `of(mark)` (its row: `{ mark, direction, state, openedAt, resolvedAt?, resolvedBy? }`, or the derived gap of a mark whose parts carry gaps: `{ …, derived: true, open, resolved, of }`, open while any part's is; `null` for none) · `opened(context?)` (the open rows, oldest first; of the marks at home in a context) · `oldest(context?)` · `progress(mark)` (`{ open, resolved, of }` over its parts, through *part of* and *relation* rows up to it, however deep) | `open(mark, direction)` (one open gap per mark; refuses on a mark whose gap is derived: open one on a part) · `resolve(mark, by?)` (`by` a link id that exists, or `judgement`, the default; a derived gap resolves only through its parts) · `reopen(mark)` (its direction kept, from now) | `on(change)` |
@@ -139,7 +139,20 @@ t.slots.rules.add({
 ```
 
 `arrange(reads, context)` returns `[{ mark, x, y }]` for the marks it places (world units; a
-thought is about 200 wide). `reads` is the read half of the six tables (the `READS` list below),
+thought is about 200 wide; `x, y` is its centre). Since 1.0.5 a row may also give the unit's size
+and say it draws in pieces:
+
+- `width`, `height`: the room wraps the thought to `width` and draws it at least `height` tall;
+  `align: 'start'` sets its words flush to the start instead of centred.
+- **Fragments.** A mark may have several rows, each with `lines: [from, to]`: that piece shows the
+  thought's wrapped lines `from` (counted from 0) up to `to`, at its own `x, y` (a paragraph that
+  runs on from the foot of one page to the top of the next). `t.ui.measure(text, width)` says how
+  many lines the words take at a width, so a rule can break them where the room will.
+- `claims: [family ids]` on the rule (beside `arrange`): it lays out the groups of those families
+  (`slots.groups` without a rule) itself, so their cards don't show in it.
+
+`t.rules.layout` gives the same back: a row's `width`, `height` and `fragments` (`[{ x, y, width,
+height, lines }]`). `app/plugins/page-flow` lays a room as fixed pages this way. `reads` is the read half of the six tables (the `READS` list below),
 over the world the rule is handed: it may be a frozen one, or the world as it was at a moment of
 the time scrub, so read only from it. The kernel makes the rest: the room's units, a mark dragged
 kept as a rule row of `places`, marks `arrange` leaves out laid in rows below the rest, and the
@@ -151,7 +164,7 @@ no state. Each reads the same `reads` and returns data; the kernel does the rest
 
 | Hook | Called when | Returns |
 |---|---|---|
-| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet` (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it). A tap on a box chooses it. |
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet`, `page` (a sheet of paper, since 1.0.5) (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it). A tap on a box chooses it. |
 | `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or nothing |
 | `land(reads, context, mark, x, y)` | a new thought is kept while a box is chosen (`x, y` its centre), or at the point Add was asked at | a proposal, a list of them, or nothing |
 
@@ -223,6 +236,7 @@ additions only.
 | `slots.formats` | a file format: `add({ id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id) })`. `accepts` whether a picked or dropped file is this format's; `importRoom({ file })` makes a new room from it and returns `{ id }` of the room (or `null`), and may be async; `importInto(roomId, { file })` pours it into a room, `true` or `false`; `exportRoom(id)` hands the room out (with `ui.files.save`). Read a file with `await file.text()`. Only the first format with `exportRoom` serves a room's Export (the .traum file); another way out is a command or a ⋯ More entry. Make the new room and its marks inside `together()`, so the import is one step. |
 | Folio's `settings` slot | a section on the Settings page: `this.add('settings', { id, title, order, render() })`. |
 | `ui.toast(text)` | A short message at the foot of the screen. |
+| `ui.measure(text, width)` | Since 1.0.5: how words wrap at `width` (world units) as the room draws a thought: `{ lines, lineHeight, height }`. Pure: the same words and width give the same answer, so a rule's `arrange` may use it. |
 | `ui.download(name, content, type?)` | Hands the person a file: `content` words or a Blob, `type` `text/plain` by default. The same as `ui.files.save`. |
 | `ui.files` | Files in and out, in the browser or the desktop app (`app/core/api/files.js`). `open(accept)` resolves with the chosen `File` (`name`, `await file.text()`), or `null`; `accept` as an input's (`'.traum,.md'`). `save(name, content, type?)` hands the person a file (`content` words or a Blob): a download in the browser, Windows' Save dialog in the desktop app; resolves `true` once saved, `false` when cancelled. Export goes through `save`. `arrived(fn)` hears each file the person opened from Windows (a double-clicked `.traum`) as a `File`; never in a browser; returns a function that stops hearing. |
 | `together(fn)` | Every propose `fn` makes lands as one step (one Ctrl+Z), not one each. Returns what `fn` returns. |

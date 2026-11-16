@@ -6,11 +6,26 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.0.5 | 2 | 1 | traum/3 |
 | 1.0.4 | 2 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.0.5 (unreleased)
+
+Open core, step 1: a rule may say how big a unit is and draw it in pieces.
+
+- A thin rule's `arrange` row may give `width` and `height` (the room wraps the thought to them)
+  and `align: 'start'`; a mark may have several rows, each a fragment with `lines: [from, to]`
+  (a paragraph that runs on to the next page). `t.rules.layout` reads them back.
+- `t.ui.measure(text, width)`: how words wrap at a width as the room draws them.
+- A rule may claim families (`claims: [family ids]`): it lays their groups out, and their cards
+  don't show in it.
+- `links.link(part, group, 'part of', null, { at })` joins at a position in the order (the kit's
+  `join(w, group, id, at)` too).
+- Corpus plugin **Page flow**: a room as fixed pages, a paragraph running on in fragments.
 
 ## 1.0.4 (unreleased)
 

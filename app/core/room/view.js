@@ -459,12 +459,25 @@ export class RoomView {
         style: `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`,
       }, b.label ? el('span', { class: 'room-cell-label' }, b.label) : null, b.note ? el('span', { class: 'room-cell-note' }, b.note) : null,
       b.right ? el('span', { class: 'room-cell-right' }, b.right) : null)));
+      // A unit drawn at the size its rule gave (width, height: the words wrap to it), or in
+      // fragments, each showing the lines from..to of the thought (a paragraph across two pages).
+      const sizeOf = (p) => (p.width ? `;width:${p.width}px;max-width:none` : '') + (p.height ? `;min-height:${p.height}px` : '');
       for (const th of ont.units(w, this.roomId)) {
         const p = ont.point(w, this.roomId, th.id) || { x: 0, y: 0 };
+        const cls = 'room-float' + (p.align === 'start' ? ' room-float-start' : '') + (this.isSel(th.id) ? ' selected' : '') + (this.found === th.id ? ' found' : '');
+        if (p.fragments && !(this.draft?.edit === th.id)) {
+          for (const f of p.fragments) {
+            const [from, to] = f.lines;
+            nodes.push(el('div', { class: cls + ' room-fragment', 'data-thought': th.id, style: `left:${f.x}px;top:${f.y}px${sizeOf(f)}` },
+              el('div', { class: 'room-fragment-clip', style: `height:${(to - from) * 1.45}em` },
+                el('div', { style: `margin-top:${-from * 1.45}em` }, this.thoughtNode(th)))));
+          }
+          continue;
+        }
         nodes.push(el('div', {
-          class: 'room-float' + (this.isSel(th.id) ? ' selected' : '') + (this.found === th.id ? ' found' : ''),
+          class: cls,
           'data-thought': th.id,
-          style: `left:${p.x}px;top:${p.y}px`,
+          style: `left:${p.x}px;top:${p.y}px${sizeOf(p)}`,
         }, this.thoughtNode(th)));
       }
       if (this.draft && !this.draft.edit) {

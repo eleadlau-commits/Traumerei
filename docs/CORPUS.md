@@ -18,6 +18,7 @@ Settings → Plugins.
 | carriers | `markdown-vault` (Obsidian in and out, a zip either way), `csv-marks`, `json-tables`, `anki-deck`, `plain-text` |
 | readers | `word-linker` (shared uncommon words become "echoes"), `due-finder` (dates in words become due), `nonsense-reader` (proposes only nonsense: every proposal must be refused) |
 | commands | `focus-mode`, `room-stats`, `export-room` |
+| open core | `page-flow` (fixed pages, a paragraph runs on in fragments: step 1) |
 
 Each exports `install(t)`; its Feature's `start()` is one line that calls it. That is what lets one
 host (`tests/host.js`: a world, its moments log, the slots and `connect()`, no screen) run every
