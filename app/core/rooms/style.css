@@ -17,6 +17,8 @@
 
 /* While Create is open the home page's words step aside; in a dark room the menu's lines turn pale. */
 .rooms-open .home { visibility: hidden; }
+/* Folio's "Nothing to show yet" (an app with no views) never shows under the rooms page. */
+.rooms-open #folio-root .empty { display: none; }
 
 /* ---- The rooms page ---- */
 .rooms-rooms {

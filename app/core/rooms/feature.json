@@ -11,11 +11,8 @@
     "floors"
   ],
   "uses": [
-    "renderer",
-    "roomfile",
     "keys",
     "docks",
-    "frame",
-    "time"
+    "frame"
   ]
 }

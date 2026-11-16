@@ -4,7 +4,7 @@
 
 import { test, assert } from 'folio/testing';
 import { Feature, ui, time, VERSION } from 'folio';
-import { problem, loadModule, entry, oneWayIn, card, FORMAT } from '../imported.js';
+import { problem, loadModule, entry, oneWayIn, card, FORMAT, readSet, SET_FORMAT } from '../imported.js';
 
 const APP = { version: '1.0.1', pluginApi: 2, pluginKinds: { command: 'commands', view: 'a view' }, pluginNeeds: { files: 'opens and saves files' } };
 const fixture = async () => {
@@ -61,4 +61,16 @@ test('imported: one way in holds at run time, and the card says what it adds and
   assert.equal(c.adds, 'Adds a view.');
   assert.equal(c.needs, 'It opens and saves files.');
   assert.match(c.sidecar, /x\.exe/);
+});
+
+test('imported: a set (the starter set) is JSON with its packages; a single package is no set', async () => {
+  const text = await renamed();
+  assert.equal(readSet(text), null);
+  const set = readSet(JSON.stringify({ format: SET_FORMAT, name: 'Starter set', plugins: [text, 3] }));
+  assert.equal(set.name, 'Starter set');
+  assert.deepEqual(set.plugins, [text]);
+  const refused = (s) => { try { readSet(s); return ''; } catch (err) { return err.message; } };
+  assert.ok(refused('{ nope').includes('couldn\'t be read'));
+  assert.ok(refused(JSON.stringify({ format: 'traumset/9', plugins: [text] })).includes('traumset/9'));
+  assert.ok(refused(JSON.stringify({ format: SET_FORMAT, plugins: [] })).includes('holds no plugins'));
 });

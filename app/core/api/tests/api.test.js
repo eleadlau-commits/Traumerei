@@ -10,7 +10,7 @@ import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIO
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
-  top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'places', 'plugin', 'rules', 'slots', 'store', 'together', 'ui', 'version'],
+  top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'peers', 'places', 'plugin', 'rules', 'slots', 'store', 'together', 'ui', 'version'],
   marks: ['delete', 'edit', 'get', 'in', 'make', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
@@ -19,7 +19,7 @@ const V2 = {
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['aiServices', 'buttons', 'carriers', 'commands', 'editor', 'engines', 'families', 'formats', 'kinds', 'linkKinds', 'more', 'providers', 'rules'],
+  slots: ['account', 'aiServices', 'buttons', 'carriers', 'commands', 'editor', 'engines', 'families', 'formats', 'kinds', 'linkKinds', 'menu', 'more', 'providers', 'rules', 'views'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
   ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'open', 'roundTrip', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
@@ -152,6 +152,25 @@ test('a plugin\'s dock tabs are its own, and all close when it is switched off',
   assert.equal(docks.right.open_.size, 0);
   assert.equal(docks.left.open_.size, 0);
   assert.equal(closed, 1); // its own onClose still runs
+});
+
+test('peers: what one plugin offers another by name goes when it is switched off', () => {
+  const app = fakeApp(), peers = new Map(), leaving = [];
+  const a = connect({ app, world, plugin: plugin('source'), parts: surface(lib), lib, peers, gone: (fn) => leaving.push(fn) });
+  const b = connect({ app, world, plugin: plugin('roomfile'), parts: surface(lib), lib, peers });
+  assert.deepEqual(Object.keys(a.peers).sort(), ['get', 'offer']);
+  assert.equal(b.peers.get('source'), null);
+  const box = { open: () => true };
+  a.peers.offer('source', box);
+  assert.equal(b.peers.get('source'), box);
+  let refused = null;
+  try { b.peers.offer('source', {}); } catch (err) { refused = err.message; }
+  assert.equal(refused, 'source already offers source');
+  for (const fn of leaving) fn(); // source is switched off
+  assert.equal(b.peers.get('source'), null);
+  const off = b.peers.offer('roomfile', 1);
+  off();
+  assert.equal(a.peers.get('roomfile'), null);
 });
 
 test('without docks there are none, and a tab needs a key', async () => {

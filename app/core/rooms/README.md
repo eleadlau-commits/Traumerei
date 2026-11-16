@@ -7,6 +7,10 @@ room hands it to the **room** feature (`app/core/room`), which shows it and writ
 
 `this.use('create')` (for the home page) offers `open()`: slides the rooms page up.
 
+The rooms page is the floor of the app. Home is a plugin (shipped as a file since 1.0.4): when no
+page lies under the rooms page (nobody else has a frame up, `frame.showsBesides`), it opens at
+start, once imported plugins have started, and Back or the wordmark leave it where it is.
+
 `this.use('rooms')` (for the room) gives everything it offers:
 
 | Member | What it does |

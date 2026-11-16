@@ -2,7 +2,9 @@
 """Makes standalone/traumerei.html: the whole page in one file that opens with a double-click
 (from file://, no server). Run `python standalone.py` after changing anything in app/.
 `python standalone.py --desktop` writes the same page to desktop/dist/index.html for the desktop app.
-The stress corpus and the plugins shipped apart (tools/corpus.py) are left out; `--corpus` keeps them in.
+Only corpus plugins are built in (tools/corpus.py): every other plugin ships as a file and is left
+out, and the page refuses to be made if one slips in. The stress corpus is left out too;
+`--corpus` keeps it, and everything else, in (for tests only).
 
 It compiles the app with Folio (python build.py), then bundles the framework and the feature into
 one inline script with esbuild (fetched by npx, so it needs Node.js). Folio loads features with
@@ -23,10 +25,16 @@ OUT = ROOT / 'standalone' / 'traumerei.html'
 DESKTOP = ROOT / 'desktop' / 'dist' / 'index.html'
 
 
+def built_in_strays(features: list[dict]) -> list[str]:
+    """The plugins in a build that aren't corpus plugins built in (tools/corpus.py ROOM_TYPES)."""
+    from tools.corpus import ROOM_TYPES
+    return sorted(f['id'] for f in features if f.get('plugin') is not None and f['id'] not in ROOM_TYPES)
+
+
 def main():
     out = DESKTOP if '--desktop' in sys.argv else OUT
-    # The stress corpus is for the tests, not for people, and Provoke ships apart as a file to
-    # import (tools/corpus.py); --corpus keeps them all in.
+    # Only corpus plugins are built in; the stress corpus is for the tests, not for people, and
+    # every other plugin ships as a file to import (tools/corpus.py). --corpus keeps them all in.
     sys.path.insert(0, str(ROOT))
     from tools.corpus import LEFT_OUT
     without = [] if '--corpus' in sys.argv else ['--without', ','.join(LEFT_OUT)]
@@ -34,6 +42,11 @@ def main():
     start = (WEB / 'start.js').read_text('utf-8')
     config = re.search(r'const config = (\{.*?\n\});', start, re.S).group(1)
     features = json.loads(re.search(r'const features = (\[.*?\n\]);', start, re.S).group(1))
+    if '--corpus' not in sys.argv:
+        stray = built_in_strays(features)
+        if stray:
+            sys.exit(f'Only corpus plugins are built in (CLAUDE.md); these would ship in the app: {", ".join(stray)}. '
+                     'Ship them as files (tools/corpus.py APART) or add them to the corpus.')
 
     lines = ["import { App } from 'folio';"]
     for i, f in enumerate(features):

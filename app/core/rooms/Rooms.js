@@ -29,6 +29,12 @@ import { Strip } from './strip.js';
 import { ROOMS_KEYS } from './keys.js';
 
 export default class Rooms extends Feature {
+  // The picture behind (the Renderer plugin's service), or null: looked up when needed (it may be imported).
+  get backdrop() { return this.use('backdrop'); }
+  // The Time dock (the Time plugin's service), or null: looked up when needed, since an imported
+  // plugin starts after the core.
+  get time() { return this.use('time'); }
+
   start() {
     this.w = this.use('world');
     bind(this.w.lib);
@@ -53,12 +59,10 @@ export default class Rooms extends Feature {
     this.edited = new Set(); // the rooms changed on this visit: they glow when you leave
     this.past = null;        // a past day from the Time dock, while it shows (past.js), or null
 
-    this.backdrop = this.use('backdrop'); // the picture behind (Renderer), or null
     this.files = this.w.formats;          // rooms in and out as files: the formats plugins add (Room files' .traum)
     this.floors = this.use('floors');     // every floor's size, and where a room goes (the floors feature)
     this.panel = this.use('panel');       // the right dock, where a room's properties open, or null
     this.frame = this.use('frame');       // the top bar and the foot around the page (the frame feature), or null
-    this.time = this.use('time');         // the Time dock (the time feature), or null: grid.js tells it when the page is drawn
     this.propsDock = null;                // a room's properties in it, while they show: { id, body, handle }
     // The page moves over beside the right dock (style.css): its squares are drawn again to fit.
     this.on('frame:home', () => this.home()); // the wordmark beside ☰: home, from a room or the rooms page
@@ -81,6 +85,12 @@ export default class Rooms extends Feature {
       visible: () => this.files.any && !!this.root && !this.root.hidden && !this.inRoom, onClick: () => { this.app.shell?.closeMenu?.(); this.importRoomFile(); } });
     this.defineSlot('rooms.room', 'The open room, shown over this page: { leave() → the id of the room that showed, or null; hasDraft(id) → whether a thought was left half written there; id() → the open room, or null; chosen() → the one thing chosen there, or null; go(id, room) → into the room with the view on the mark and it chosen }. One item.');
     this.provide('create', { open: () => this.open() });
+    // The rooms page is the floor of the app: with no page under it (no Home plugin), it opens at
+    // start, once imported plugins have started, and doesn't slide away (close()).
+    this.on('app:ready', async () => {
+      await this.app.use('plugins')?.whenReady?.();
+      if (this.root?.hidden && !this.underneath()) this.open();
+    });
     // Where the Time dock is (the time feature): the rooms page, whose days list chooses a room.
     this.add('time.place', {
       live: () => !this.root.hidden && !this.away && !this.inRoom,
@@ -163,7 +173,11 @@ export default class Rooms extends Feature {
     else this.close();
   }
 
+  // Whether a page lies under the rooms page (a plugin's, such as Home, with its frame up).
+  underneath() { return !!this.frame?.showsBesides?.(this); }
+
   close() {
+    if (!this.underneath()) { this.leaving = false; this.leaveBox.hidden = true; return; } // nothing to slide back to
     this.away = true;
     this.leaving = false;
     this.leaveBox.hidden = true;

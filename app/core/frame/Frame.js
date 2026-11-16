@@ -35,6 +35,7 @@ export default class Frame extends Feature {
       show: (owner, o) => this.show(owner, o),
       update: (owner, o) => this.update(owner, o),
       hide: (owner) => this.hide(owner),
+      showsBesides: (owner) => this.showsBesides(owner),
       saved: (word) => this.saved(word),
       hint: (text) => this.hint(text),
       clearHint: () => this.clearHint(),
@@ -136,6 +137,9 @@ export default class Frame extends Feature {
   }
 
   // Takes `owner`'s frame away; the one under it shows again, or none.
+  // Whether anyone but `owner` has a frame up (a page under the rooms page, such as Home).
+  showsBesides(owner) { return this.stack.some((s) => s.owner !== owner); }
+
   hide(owner) {
     this.stack = this.stack.filter((s) => s.owner !== owner);
     this.draw();

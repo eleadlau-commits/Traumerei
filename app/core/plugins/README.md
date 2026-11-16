@@ -30,6 +30,7 @@ API to close what that plugin opened (`traumerei.release`).
 | `importText(text)` | reads a `.traumplug`'s text and, when it passes the checks, shows the import card; resolves with the problem in words, or `''` |
 | `remove(id)` | takes an imported plugin away (its saved data stays, as when switched off) |
 | `imported()` | the ids of imported plugins |
+| `whenReady()` | a promise that resolves once the imported plugins have started (after `app:ready`) |
 
 ## Imported plugins
 

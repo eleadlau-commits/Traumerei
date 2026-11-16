@@ -7,13 +7,10 @@
     "style.css"
   ],
   "uses": [
-    "roomfile",
-    "search",
     "docks",
     "floors",
     "keys",
     "frame",
-    "time",
     "plugins"
   ],
   "requires": [
