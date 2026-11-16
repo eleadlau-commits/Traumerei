@@ -3,7 +3,7 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  room, addRoom, view, create, peek, isBig,
+  room, name, addRoom, view, create, peek, isBig,
   rooms, roomSetting, setRoomSetting, resetRoomSettings, seedRoomSettings, applySettingsToAll,
   light, twinOf, relationsRow, reading, showSizes,
 } from './world.js';
