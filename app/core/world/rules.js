@@ -24,7 +24,7 @@
 import * as P from './places.js';
 import * as L from './links.js';
 import * as G from './gaps.js';
-import { shut, marksVersion, parentOf, isGroup, roomTrains, members } from './model.js';
+import { shut, marksVersion, parentOf, isGroup } from './model.js';
 import { netFor } from './ontologies/relations.js';
 
 const MEMO = new WeakMap(); // ontology → Map context → { key, map }
@@ -111,11 +111,11 @@ export function moves(o, w, context, mark) {
   return out;
 }
 
-// What the rule draws beside the marks, as data: a line through each of its trains' marks (a
-// rule whose groups keep one membership and an order: Joyce), and its arrows (relation rows
+// What the rule draws beside the marks, as data: its lines through marks (its lines(): Joyce's
+// trains), and its arrows (relation rows
 // under its store).
 export function draws(o, w, context) {
-  const lines = o.id === 'joyce' ? roomTrains(w, context).filter((t) => !t.closed).map((t) => members(w, t.id).map((m) => m.id)) : [];
+  const lines = typeof o.lines === 'function' ? o.lines(w, context) : [];
   const net = netFor(o.id) || netFor(`${o.id}-links`);
   const store = net?.store;
   const arrows = store ? L.ofRule(w, store).filter((r) => parentOf(w, r.from) === context).map((r) => ({ from: r.from, to: r.to, label: r.label || '' })) : [];

@@ -40,7 +40,7 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   const declared = () => linkKinds() || [];
   let reads = null; // the read half, handed to a link kind's admit() (set once the tables are made)
   const w = () => world.world;
-  const rules = () => (world.ontologies?.length ? world.ontologies.map((o) => o.id) : ['joyce', 'pessoa']);
+  const rules = () => (world.ontologies?.length ? world.ontologies.map((o) => o.id) : ['rows']);
   const lays = (rule) => !!world.ontologies?.find((o) => o.id === rule)?.lays;
   const thing = (id) => w().things[id] || null;
   const kindOf = (th) => model.kindOf(th);

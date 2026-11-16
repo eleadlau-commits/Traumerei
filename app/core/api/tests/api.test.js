@@ -290,7 +290,7 @@ test('marks: frozen rows read off the world; make, edit and delete land as saved
 
 test('rules: each mode read as the kernel sees it: layout from the rows, admit in words, moves, draws; frozen', () => {
   const { w, room, train, a, b, c, locked, service } = smallWorld();
-  service.ontologies = lib.ontologies.BUILT_IN;
+  service.ontologies = lib.ontologies.forRooms(lib.ontologies.BUILT_IN); // the bare Rows only when no other is on
   const k = kernel({ lib, world: service });
   assert.deepEqual(k.rules.list().map((r) => r.id), ['joyce', 'pessoa']);
   const at = k.rules.layout('joyce', room.id);

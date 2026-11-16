@@ -19,7 +19,7 @@ export * as look from './look.js';            // colours: a room's, a square's, 
 export * as attention from './attention.js';  // a room's light from your visits
 export * as moments from './moments.js';      // the moments log: every change and visit, undo, replay
 export * as picture from './picture.js';      // shrinkPicture, keepOrShrink
-export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, FALLBACK
+export * as ontologies from './ontologies/index.js'; // BUILT_IN, gather, forRooms, seeing
 export * as joyce from './ontologies/joyce.js';
 export * as pessoa from './ontologies/pessoa.js';
 export * as relations from './ontologies/relations.js'; // arrows and their relations, for any ontology

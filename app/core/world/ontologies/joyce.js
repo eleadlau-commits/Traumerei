@@ -11,7 +11,7 @@
 // another mode made (a chapter) is one thought here: in the tray until it is dragged out, then
 // where it was let go (Joyce's own data, groups.js). A train made in the tray stays there too.
 
-import { roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members, spotOf, setSpot, unsetSpot, isLooseGroup, offsetOf, setOffset, unsetOffset } from '../model.js';
+import { startTrain, roomTrains, trainThoughts, groupOf, isGroup, isLeaf, kindOf, shut, thoughtText, roomItems, create, join, groupsIn, members, spotOf, setSpot, unsetSpot, isLooseGroup, offsetOf, setOffset, unsetOffset } from '../model.js';
 
 // A train's corner (its rule row: places.js), and a thought's offset from it when dragged off its line.
 const corner = (w, id) => spotOf(w, id) || { x: 0, y: 0 };
@@ -170,6 +170,11 @@ const joyce = {
   icon: '<circle cx="5" cy="7" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="17" r="2"/><path d="M6.7 8.2l3.6 2.6M13.7 13.2l3.6 2.6"/>', // thoughts on a line
   order: 10,
   groups: { form: 'train', name: 'Train', membership: 'one' },
+  fresh: 'New train: type to start it.',
+  // A thought kept with no train to go on with starts a train where it was written.
+  begin: (w, roomId, d, now) => startTrain(w, roomId, d.x ?? 0, d.y ?? 0, now),
+  // A line through each open train's thoughts (rules.js: draws).
+  lines: (w, roomId) => roomTrains(w, roomId).filter((t) => !t.closed).map((t) => members(w, t.id).map((m) => m.id)),
   live: true, // a drag moves the thought (or train) at once, so the line follows it
 
   // Each train's thoughts, or a closed train as one thought.

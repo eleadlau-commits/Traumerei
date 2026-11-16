@@ -60,7 +60,12 @@ import * as D from './distance.js';
 import * as T from './tables.js';
 
 export const MESSY = 'messy';
-export const DEFAULT_MODE = 'joyce';
+export const DEFAULT_MODE = 'joyce'; // the default rule before anyone chose one (World: defaultRule); read defaultMode()
+// The rule a new room opens in: a plain setting (Settings → Rooms), nothing special about any rule.
+// World sets it from the setting and the rules that are on; until then it is DEFAULT_MODE.
+let defaultId = DEFAULT_MODE;
+export const defaultMode = () => defaultId;
+export function setDefaultMode(id) { if (typeof id === 'string' && id) defaultId = id; }
 // A thought's kind: 'group', 'room', or an item's kind. Any item kind counts, even one whose
 // plugin is switched off now (items/index.js: kindFor gives it a stand-in that keeps it as it is);
 // a thought with no kind, or a malformed one, is a line.
@@ -349,7 +354,7 @@ export const groupsIn = (w, roomId, of = null) => children(w, roomId).filter((th
 export function groupsOf(w, id, of = null) {
   return L.holders(w, id).map((g) => w.things[g]).filter((g) => isGroup(g) && (of == null || g.of === of)).sort(byTime);
 }
-export const groupOf = (w, id, of = DEFAULT_MODE) => groupsOf(w, id, of)[0] || null;
+export const groupOf = (w, id, of = defaultMode()) => groupsOf(w, id, of)[0] || null;
 // The items in a room, in the order they were written.
 export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
 
@@ -417,7 +422,7 @@ export function lastWritten(w, roomId) {
 }
 
 export function view(w, roomId) {
-  if (!w.views[roomId]) w.views[roomId] = { mode: DEFAULT_MODE, x: 0, y: 0, zoom: 1 };
+  if (!w.views[roomId]) w.views[roomId] = { mode: defaultMode(), x: 0, y: 0, zoom: 1 };
   return w.views[roomId];
 }
 
@@ -761,7 +766,7 @@ export function openGroup(w, groupId) {
 
 // A new room on a floor of the rooms page (`where`: { page }), with no cell yet: the floors
 // feature places it (floors.place). `kind`: its ontology ('joyce', 'pessoa', …).
-export function addRoom(w, text = 'Untitled', now, where = {}, kind = DEFAULT_MODE) {
+export function addRoom(w, text = 'Untitled', now, where = {}, kind = defaultMode()) {
   const page = Math.max(0, Math.floor(where.page) || 0);
   while (pageCount(w) <= page) addPage(w, now); // a floor asked for is there
   const r = create(w, FLOOR(page), { kind: 'room', name: text }, now);

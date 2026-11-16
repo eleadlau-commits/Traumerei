@@ -3,7 +3,7 @@
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 
 import {
-  DEFAULT_MODE, room, view, startTrain, create, update, remove, move, kindOf, isLeaf,
+  room, view, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf, members,
   gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf,
 } from './world.js';
@@ -176,8 +176,8 @@ export class Writing {
     this.input.focus({ preventScroll: true });
     this.drawWorld();
     this.showDraft();
-    const joyce = this.writer.id === DEFAULT_MODE;
-    this.toast(this.writer.fresh || (joyce ? 'New train: type to start it.' : 'New thought: type to start it (it waits in the tray).'));
+    const wr = this.writer;
+    this.toast(wr.fresh || (wr.begin ? `New ${(wr.groups?.name || 'group').toLowerCase()}: type to start it.` : 'New thought: type to start it (it waits in the tray).'));
   }
 
   // Starts a thought (if one isn't started), with `seed` as its first letters.
@@ -306,9 +306,13 @@ export class Writing {
     this.drawWorld();
   }
 
-  // The ontology new thoughts are written into: the room's, or Joyce's trains when it makes no
-  // groups of its own (Pessoa).
-  get writer() { return this.ont.groups ? this.ont : this.ontology(DEFAULT_MODE); }
+  // The ontology new thoughts are written into: the room's, or the rule it names (writesInto:
+  // Pessoa names Joyce's trains) when it makes no groups of its own and that rule is on.
+  get writer() {
+    const o = this.ont;
+    if (o.groups || !o.writesInto) return o;
+    return this.ontologies.find((x) => x.id === o.writesInto) || o;
+  }
 
   // Keeps a new thought (fields) from draft d: into the group it goes on with, or one the writing
   // ontology begins (ontologies/index.js: begin), or loose in the room when it begins none. Returns
@@ -317,7 +321,7 @@ export class Writing {
     const w = this.world, wr = this.writer;
     let g = d.train && w.things[d.train];
     const made = !g;
-    if (!g) g = wr.begin ? wr.begin(w, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null, fresh: !!d.fresh }, now) : startTrain(w, this.roomId, d.x ?? 0, d.y ?? 0, now);
+    if (!g) g = wr.begin ? wr.begin(w, this.roomId, { x: d.x ?? 0, y: d.y ?? 0, for: d.for ?? null, fresh: !!d.fresh }, now) : null; // no begin: loose
     const th = create(w, g ? g.id : this.roomId, fields, now);
     if (!th && made && g && w.things[g.id]) remove(w, g.id);
     if (th && wr.kept) wr.kept(w, this.roomId, th, d);
