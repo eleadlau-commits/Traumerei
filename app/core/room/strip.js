@@ -4,7 +4,7 @@
 // keeps the left), hidden while no item has anything to say. An item may be pressed (onClick).
 // Its methods join the Room class (see mixIn in Room.js), so `this` is the feature.
 //
-// The slot `room.strip` (t.slots.strip, since 1.0.5): { id, text(context) → words, title?(context),
+// The slot `room.strip` (t.slots.strip, since 1.1.0): { id, text(context) → words, title?(context),
 // onClick?(context), visible?(context), order? }. context is the open room's id. The strip asks
 // each item again when the room is still for a moment after it was drawn or a key was let go
 // (stripSoon: never inside a keystroke or Enter), when the zoom's band changes, after an item or

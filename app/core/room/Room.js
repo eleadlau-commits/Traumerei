@@ -76,12 +76,12 @@ export default class Room extends Feature {
     this.defineSlot('room.buttons', 'A button in a room\'s rail, under Tools: { id, label, icon (a ui.ICONS name or a 24 × 24 drawing), order, run(), on?() → shown as pressed, visible?(), title?() }.')
       .watch(() => { if (this.roomId) this.drawRoom(); });
     // Plugins' words on the room's bar, beside Search (bars.js), and their status in the strip at
-    // the foot of the canvas (strip.js): since 1.0.5, t.slots.bar and t.slots.strip.
+    // the foot of the canvas (strip.js): since 1.1.0, t.slots.bar and t.slots.strip.
     this.defineSlot('room.bar', 'A word on a room\'s bar, beside Search: { id, label, title?(context), order, run(context), on?(context) → shown as pressed, visible?(context) }.')
       .watch(() => { if (this.roomId) this.drawBarWords(); });
     this.defineSlot('room.strip', 'A tool\'s status in the strip at the foot of a room\'s canvas, one line: { id, text(context) → words, title?(context), onClick?(context), visible?(context), order }.')
       .watch(() => { if (this.roomId) this.drawStrip(); });
-    // Surfaces (since 1.0.5): an element a kind of mark or a rule's box draws in, with the pointer while focused (surface.js).
+    // Surfaces (since 1.1.0): an element a kind of mark or a rule's box draws in, with the pointer while focused (surface.js).
     this.defineSlot('room.surfaces', 'A surface, as the plugin API makes it (api/v2.js surfaceFor): { id, width?, height?, draw(el, ctx), pointer?, wheel?, key?, focus?, blur?, leave?, hold() }.')
       .watch(() => { if (this.roomId) this.drawWorld(); });
     this.defineSlot('room.editor', 'A section in the Editor for the chosen thing: { id, order, when?(x), render(x) → node | null }; x is { world, roomId, mode, id, thing, locked, refresh() } (editor.js).');
@@ -174,7 +174,7 @@ export default class Room extends Feature {
       chosen: () => (!this.root.hidden && this.sel && this.sel.kind !== 'many' ? this.sel.id : null), // the one thing chosen there
       go: (id, room) => { if (this.world.things[id]) this.goTo({ id, room }); }, // the view on a mark in a room, and it chosen
       text: this.textService(),                 // the words being written: caret, select, replace, style (writing.js)
-      // The zoom (t.ui.zoom, since 1.0.5): its bands, the open room's zoom and band (or null),
+      // The zoom (t.ui.zoom, since 1.1.0): its bands, the open room's zoom and band (or null),
       // zooming it, and hearing each change (view.js).
       bands: BANDS,
       zoom: () => this.zoomNow(),

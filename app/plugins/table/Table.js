@@ -16,7 +16,7 @@ export const KIND = {
   node: (th, el) => { const [head = [], ...body] = cells(th.text); return el('table', { class: 'table-kind' }, el('thead', {}, el('tr', {}, ...head.map((c) => el('th', {}, c)))), el('tbody', {}, ...body.map((r) => el('tr', {}, ...r.map((c) => el('td', {}, c)))))); },
   fields: [{ key: 'text', type: 'text', label: 'Rows (cells split by |)' }],
   add: { note: 'Rows and columns' },
-  // It flows among paragraphs (a page, since 1.0.5): a row's height each, and a little room.
+  // It flows among paragraphs (a page, since 1.1.0): a row's height each, and a little room.
   inline: true,
   height: (th) => cells(th.text).length * ROW + 12,
 };

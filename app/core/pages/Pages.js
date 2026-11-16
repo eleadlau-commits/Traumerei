@@ -34,7 +34,7 @@ export default class Pages extends Feature {
       shell.openAccount = () => (this.account()?.sections ? this.open('account') : openAccount());
     }
     this.on('account:changed', () => { if (this.kind === 'account') this.draw(); });
-    // A plugin's own page (t.slots.pages, since 1.0.5), reached from the ☰ menu: { id, label,
+    // A plugin's own page (t.slots.pages, since 1.1.0), reached from the ☰ menu: { id, label,
     // icon?, idle?, sections?() → [{ id, title, icon?, body }] or render() → a node }. It shows in
     // this same frame (Home › its label), and Escape or ← goes back to what was there.
     this.defineSlot('pages.plugin', 'A plugin\'s own page, in the frame like Settings: { id, label, icon?, order?, idle?, sections?() → [{ id, title, icon?, body }], render?() → node }.')

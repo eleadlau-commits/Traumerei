@@ -4,7 +4,7 @@ Ctrl+Shift+H while writing highlights the word at the caret (or the chosen words
 
 A corpus plugin (open core, step 6): written from `app/core/API.md` alone by an author who had read
 nothing else of the code, as the check that froze plugin API 3. Where the page tripped that author
-was put right in `API.md` (CHANGELOG 1.0.5, step 6). Run through the conformance suite
+was put right in `API.md` (CHANGELOG 1.1.0, step 6). Run through the conformance suite
 (`app/core/api/tests/corpus.test.js`), off and left out of the product.
 
 - **What it adds:** a kind of span (`slots.spans`), an editing command (`t.ui.text.style`), a decorator, a strip line, a bar word and its command.

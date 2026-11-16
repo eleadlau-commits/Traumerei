@@ -6,13 +6,13 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
-| 1.0.5 | 3 | 1 | traum/3 |
+| 1.1.0 | 3 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
 
-## 1.0.5 (unreleased)
+## 1.1.0 (unreleased)
 
 One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, step by step.
 

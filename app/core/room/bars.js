@@ -12,7 +12,7 @@ import { nearSpot } from './clear.js';
 import * as verbs from './verbs.js';
 
 export class Bars {
-  // ---- The room's bar: plugins' words beside the room's own (t.slots.bar, since 1.0.5) ----
+  // ---- The room's bar: plugins' words beside the room's own (t.slots.bar, since 1.1.0) ----
 
   // The slot `room.bar`: { id, label, title?(context), order?, run(context), on?(context) → shown
   // pressed, visible?(context) }, drawn as words at the right of the frame's top bar, beside

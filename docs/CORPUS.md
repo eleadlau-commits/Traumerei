@@ -69,7 +69,7 @@ now keeps a copy, as `World.js` does.
 
 ## API 3: the open core, checked
 
-The open core (1.0.5) set out to make the plugin API wide enough that any application can be built
+The open core (1.1.0) set out to make the plugin API wide enough that any application can be built
 as a plugin while the six tables stay the only material. Each of its test applications now has the
 API it needs, and a corpus plugin that uses it:
 
