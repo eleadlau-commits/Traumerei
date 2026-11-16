@@ -516,3 +516,22 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .span-quiet { opacity: .55; }
 .span-caps { font-variant: small-caps; letter-spacing: .02em; }
 .span-mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: .9em; }
+
+/* ---- Step 3 of the open core: the strip and the zoom's bands ---- */
+
+/* The strip (strip.js): one quiet line along the foot of the canvas, above the status bar, its
+   words at the right (Add keeps the left). It does not float: it is the canvas's edge. */
+.room-strip { position: absolute; left: var(--rail); right: 0; bottom: var(--status, 0px); z-index: 2; display: flex; justify-content: flex-end; align-items: center; gap: var(--s-4); height: 24px; padding: 0 var(--s-4); overflow: hidden; white-space: nowrap; font-size: 12px; letter-spacing: .02em; text-transform: none; color: var(--room-ink); opacity: .62; pointer-events: none; }
+.room-strip-item { flex: none; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; pointer-events: auto; }
+.room-strip-item.word { padding: 0; font-size: inherit; letter-spacing: inherit; text-transform: none; color: inherit; }
+
+/* Words a rule gives a unit for a zoom band (data-band-far, -mid, -near; view.js markBands): under
+   that band the thought keeps its size but shows those words instead, large enough to read. */
+.room-band-far [data-band-far] > *, .room-band-mid [data-band-mid] > *, .room-band-near [data-band-near] > * { visibility: hidden; }
+.room-band-far [data-band-far]::after, .room-band-mid [data-band-mid]::after, .room-band-near [data-band-near]::after {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content; max-width: 32ch;
+  font-family: var(--font); letter-spacing: .02em; line-height: 1.2; text-align: center; color: var(--room-ink);
+}
+.room-band-far [data-band-far]::after { content: attr(data-band-far); font-size: calc(var(--t-read, 19px) * 2.4); }
+.room-band-mid [data-band-mid]::after { content: attr(data-band-mid); }
+.room-band-near [data-band-near]::after { content: attr(data-band-near); }

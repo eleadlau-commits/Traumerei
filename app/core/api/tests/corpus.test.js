@@ -58,6 +58,7 @@ const spellMarks = await load('spell-marks', 'SpellMarks.js');
 const boldItalic = await load('bold-italic', 'BoldItalic.js');
 const figure = await load('figure', 'Figure.js');
 const docx = await load('docx', 'Docx.js');
+const wordCountStrip = await load('word-count-strip', 'WordCountStrip.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -82,6 +83,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'room-stats': roomStats,
   'export-room': exportRoom,
   'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic, figure, docx,
+  'word-count-strip': wordCountStrip,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -140,6 +142,17 @@ async function drive(host, t, added) {
       if (item.exportRoom) await tryIt(`format ${item.id} out`, () => item.exportRoom(host.room));
     } else if (slot === 'rail.more') {
       await tryIt(`more ${item.id}`, () => item.run?.());
+    } else if (slot === 'room.strip') { // since 1.0.5: the strip, the room's bar, a page of its own
+      await tryIt(`strip ${item.id}`, () => {
+        if (item.visible) item.visible(host.room);
+        assert.equal(typeof item.text(host.room), 'string', `strip ${item.id} says no words`);
+        item.title?.(host.room);
+        item.onClick?.(host.room);
+      });
+    } else if (slot === 'room.bar') {
+      await tryIt(`bar ${item.id}`, () => { item.visible?.(host.room); item.on?.(host.room); item.title?.(host.room); item.run(host.room); item.run(host.room); });
+    } else if (slot === 'pages.plugin') {
+      await tryIt(`page ${item.id}`, () => { const out = item.sections ? item.sections() : item.render(); assert.ok(out, `page ${item.id} draws nothing`); });
     }
   }
   return errors;
@@ -468,4 +481,34 @@ test('page flow: a kind that flows (a table) sits between paragraphs as one bloc
   const row = t.rules.layout('page-flow', host.room).find((r) => r.mark === id);
   assert.equal(row.height, size.height);
   assert.ok(!row.fragments);
+});
+
+// Step 3 (1.0.5): the strip, the room's bar and a page of its own, through the API only.
+test('word count strip: the room\'s words in the strip, the chosen thought\'s first, a bar word that hides it, a page and a menu row', () => {
+  const host = makeHost();
+  const { t, off } = host.plug('word-count-strip', wordCountStrip.install);
+  const strip = host.app.slot('room.strip').items[0];
+  const bar = host.app.slot('room.bar').items[0];
+  const { words, thoughts } = wordCountStrip.countRoom(t, host.room);
+  assert.ok(words > 0 && thoughts > 0);
+  host.choose(host.room, null);
+  assert.equal(strip.text(host.room), `${words} words in ${thoughts} thoughts`);
+  host.choose(host.room, host.ids[4]);
+  assert.match(strip.text(host.room), /^4 words chosen · /);
+  assert.ok(strip.visible() && bar.on());
+  bar.run();
+  assert.ok(!strip.visible() && !bar.on()); // hidden: the strip has nothing of it
+  bar.run();
+  assert.ok(strip.visible());
+  // Far off, the strip names the room, a label for the map.
+  assert.match(wordCountStrip.stripText(t, host.room, { words: 1204, thoughts: 3 }, 'far'), /^Study · 1,204 words$/);
+  // A new thought is counted: the count follows the tables (moments.seq), not a stale memo.
+  assert.ok(t.marks.make({ content: 'two more', in: host.room }).ok);
+  host.choose(host.room, null);
+  assert.equal(strip.text(host.room), `${words + 2} words in ${thoughts + 1} thoughts`);
+  // Its page, with its row in the ☰ menu: both go when it is switched off.
+  assert.deepEqual(host.app.slot('pages.plugin').items.map((p) => p.id), ['word-counts']);
+  assert.deepEqual(host.app.slot('header.buttons').items.map((p) => p.id), ['page:word-counts']);
+  off();
+  assert.equal(host.app.slot('pages.plugin').items.length + host.app.slot('header.buttons').items.length + host.app.slot('room.strip').items.length, 0);
 });

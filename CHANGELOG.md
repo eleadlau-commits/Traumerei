@@ -52,6 +52,19 @@ One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, 
 - `marks.markdown(id)`: a thought's words with their spans as Markdown.
 - Corpus plugins **First letters**, **Spell marks**, **Bold and italic**.
 
+### Step 3: places beside the canvas, and the zoom
+
+- `t.slots.bar`: a word on a room's bar, beside Search (pressed while `on()`).
+- `t.slots.strip`: a tool's status in one quiet line along the foot of a room's canvas; never
+  floating, asked again only when the room is still.
+- `t.slots.pages`: a page of the plugin's own in the frame, with its row in the ☰ menu; Escape
+  goes back. `t.ui.open.page(id)` opens it.
+- `t.ui.zoom`: `get()`, `set(zoom, at?)`, `on(fn)` and fixed `bands` (far below 0.5, near from
+  1.75, mid between). A thin rule's row may give words for a band (`far: 'Chapter 2'`), shown in
+  place of the thought under it; the stage carries `room-band-far`, `-mid` or `-near`.
+- Corpus plugin **Word count strip**: the room's words in the strip, **Words** on the bar and
+  Ctrl+Alt+W to hide it, a page of every room's count, and the room's name as its label from far off.
+
 ### Step 5: rich kinds in a flow, and more ways out
 
 - A kind of mark may flow among paragraphs (`inline: true`, `height(mark, width)`); `t.ui.size`

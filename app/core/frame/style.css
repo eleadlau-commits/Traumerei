@@ -33,3 +33,9 @@
 .frame-rail-btn { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 100%; margin-left: calc(var(--s-2) - var(--s-4)); padding: 0; opacity: .6; }
 .frame-rail-btn:is(:hover, :focus-visible) { opacity: 1; }
 .frame-rail-btn svg { width: 15px; height: 15px; }
+
+/* An owner's words at the right of the breadcrumb's space, beside Search (a room's: plugins' words
+   on its bar). The step before them is the one that gives way when the space is short. */
+.frame .frame-crumbs > .frame-words { flex: none; display: flex; align-items: center; gap: var(--s-4); margin-left: auto; padding-left: var(--s-4); overflow: visible; }
+.frame .frame-crumbs:has(> .frame-words) > :nth-last-child(2) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.frame-word[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }

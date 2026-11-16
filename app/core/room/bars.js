@@ -12,6 +12,31 @@ import { nearSpot } from './clear.js';
 import * as verbs from './verbs.js';
 
 export class Bars {
+  // ---- The room's bar: plugins' words beside the room's own (t.slots.bar, since 1.0.5) ----
+
+  // The slot `room.bar`: { id, label, title?(context), order?, run(context), on?(context) → shown
+  // pressed, visible?(context) }, drawn as words at the right of the frame's top bar, beside
+  // Search, while a room is open (the frame's `words`). context is the open room's id. Drawn
+  // again with the room, when the slot changes and after a word is pressed.
+  drawBarWords() {
+    if (!this.frame || !this.roomId) return;
+    const slot = this.slot('room.bar');
+    const context = this.roomId;
+    const ask = (item, fn, fallback) => slot.run(item, fn, fallback);
+    const words = slot.items
+      .filter((b) => (b.visible ? ask(b, (i) => !!i.visible(context), false) : true))
+      .map((b) => ({ id: b.id, label: String(b.label || b.id), title: b.title ? String(ask(b, (i) => i.title(context) || '', '') || '') : '',
+        pressed: b.on ? !!ask(b, (i) => i.on(context), false) : null,
+        onClick: () => { ask(b, (i) => i.run?.(context)); if (this.roomId) this.drawPlaces(); } }));
+    // The frame draws again only when the words changed (it redraws the breadcrumb, and a room
+    // name being typed there must keep its focus).
+    const said = JSON.stringify(words.map((w) => [w.id, w.label, w.title, w.pressed]));
+    if (said === this.barSaid && this.barRoom === context) return;
+    this.barSaid = said;
+    this.barRoom = context;
+    this.frame.update(this, { words });
+  }
+
   // Chooses something and opens its properties (a right-click, a long press, Enter): in the side
   // (Resolves once they show.)
   // panel's content editor (editor.js) when there is a panel, else in the pop-up beside it. Many

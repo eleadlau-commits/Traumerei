@@ -10,7 +10,7 @@ import {
 import { clearSpace, OVERLAP } from './clear.js';
 import { patchChildren } from './patch.js';
 import { ui } from 'folio';
-import { el, railIcon, railWord } from './shared.js';
+import { el, railIcon, railWord, bandOf } from './shared.js';
 
 export class RoomView {
   // ---- Settings → Rooms ----
@@ -241,6 +241,7 @@ export class RoomView {
     this.modes.setAttribute('role', 'group');
     this.modes.replaceChildren(...items);
     this.root.dataset.mode = this.mode;
+    this.drawBarWords(); // plugins' words on the room's bar (bars.js)
     this.time?.refresh();
     this.place();
     this.drawWorld();
@@ -400,6 +401,70 @@ export class RoomView {
     this.world$.style.transform = `translate(${width / 2 - v.x * v.zoom}px, ${height / 2 - v.y * v.zoom}px) scale(${v.zoom})`;
     this.positionEdit?.();
     this.placeOther?.(); // a Twin's other side fits its half again (twin.js)
+    this.zoomed(v.zoom);
+  }
+
+  // ---- The zoom and its bands (t.ui.zoom, since 1.0.5): every zoom goes through place() ----
+
+  // The stage's band class (room-band-far, -mid, -near: shared.js BANDS) follows the zoom, and
+  // those listening (onZoom) hear each change of zoom, or of room.
+  zoomed(zoom) {
+    if (zoom === this.zoomWas && this.roomId === this.zoomRoom) return;
+    this.zoomWas = zoom;
+    this.zoomRoom = this.roomId;
+    const band = bandOf(zoom);
+    if (band !== this.band) {
+      if (this.band) this.stage.classList.remove(`room-band-${this.band}`);
+      this.stage.classList.add(`room-band-${band}`);
+      this.band = band;
+      this.stripSoon(); // an item may say something else under another band
+    }
+    for (const fn of [...(this.zoomers || [])]) {
+      try { fn({ zoom, band, context: this.roomId }); } catch (err) { console.warn('Room: a zoom listener failed', err); }
+    }
+  }
+
+  // Hears each change of zoom ({ zoom, band, context }); returns a function that stops hearing.
+  onZoom(fn) {
+    (this.zoomers ||= new Set()).add(fn);
+    return () => this.zoomers.delete(fn);
+  }
+
+  // The open room's zoom and its band, or null outside a room.
+  zoomNow() {
+    if (!this.roomId || this.root.hidden) return null;
+    const zoom = view(this.world, this.roomId).zoom || 1;
+    return { zoom, band: bandOf(zoom) };
+  }
+
+  // Zooms the open room to `zoom` (kept within ZOOM), with the world point `at` ({ x, y }; the
+  // middle of the screen by default) staying where it is on the screen. Saved as a wheel's is.
+  setZoom(zoom, at = null) {
+    if (!this.roomId || this.root.hidden || !Number.isFinite(zoom)) return null;
+    cancelAnimationFrame(this.glideFrame); // a glide (centre.js) gives way
+    const v = view(this.world, this.roomId);
+    const point = at && Number.isFinite(at.x) && Number.isFinite(at.y) ? { x: at.x, y: at.y } : { x: v.x, y: v.y };
+    const b = this.stage.getBoundingClientRect();
+    this.zoomAt(b.left + b.width / 2 + (point.x - v.x) * v.zoom, b.top + b.height / 2 + (point.y - v.y) * v.zoom, zoom, point);
+    clearTimeout(this.wheelSave);
+    this.wheelSave = setTimeout(() => this.save(), 300);
+    return this.zoomNow();
+  }
+
+  // A unit whose rule gives it words for a band (an arrange row's far, mid or near) carries them
+  // as data-band-<band>; under that band the room's look shows them in place of the thought.
+  // Marked on the nodes before they go in, so a patch still finds them drawn the same. Only a
+  // rule that says it has some (banded(), a simple rule's) is looked at, so other rooms pay
+  // nothing. Returns the nodes.
+  markBands(nodes) {
+    if (!this.ont.banded?.(this.world, this.roomId)) return nodes;
+    const laid = this.ont.layout(this.world, this.roomId);
+    for (const n of nodes) {
+      const words = n.dataset?.thought ? laid.get(n.dataset.thought)?.bands : null;
+      if (!words) continue;
+      for (const band of ['far', 'mid', 'near']) if (words[band]) n.setAttribute(`data-band-${band}`, words[band]);
+    }
+    return nodes;
   }
 
   toWorld(clientX, clientY) {
@@ -423,8 +488,9 @@ export class RoomView {
   drawWorld(patch = false) {
     if (!this.roomId) return;
     reading(this.world, () => {
-      if (patch) patchChildren(this.world$, this.canvasNodes());
-      else this.world$.replaceChildren(...this.canvasNodes());
+      const nodes = this.markBands(this.canvasNodes()); // with the words a rule gives a unit for a zoom band
+      if (patch) patchChildren(this.world$, nodes);
+      else this.world$.replaceChildren(...nodes);
       this.drawLinks(); // a plugin's links: lines, and a ↗ where the other end is elsewhere (linklayer.js)
       this.markPast();
       this.showStatus();
@@ -432,6 +498,7 @@ export class RoomView {
       this.drawTray();
       this.drawTwin(); // a Twin's other side, beside (twin.js)
     });
+    this.stripSoon(); // the strip's words, when the room is still (strip.js)
     // Clearing space measures every block in the room: after a patch (one thought begun) it waits
     // until the letter is on the screen, so the thought shows first and the room makes room after.
     if (patch) requestAnimationFrame(() => setTimeout(() => this.clearSoon(), 0));

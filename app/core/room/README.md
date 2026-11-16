@@ -10,6 +10,20 @@ run(), on?(), visible?(), title?() }`) show in the room's rail under **Tools**. 
 (`world.items`) or group family (`world.families`) has `open` opens that way on a double-click or
 Enter, in any mode, instead of the sheet.
 
+**The bar, the strip and the zoom** (open core step 3, since 1.0.5). Plugins' words on the room's
+bar (the slot `room.bar`: `{ id, label, title?(context), order, run(context), on?(context),
+visible?(context) }`) show at the right of the frame's top bar, beside Search (the frame's
+`words`; `bars.js` `drawBarWords`). The strip (`strip.js`, the slot `room.strip`: `{ id,
+text(context), title?(context), onClick?(context), visible?(context), order }`) is one quiet line
+along the foot of the canvas, its words at the right, hidden while no item says anything; it asks
+its items again 150 ms after the room was last drawn (never inside a keystroke), on a change of
+zoom band and of the slot. Every zoom goes through `place()` (`view.js`): the stage has the class
+`room-band-far`, `-mid` or `-near` (`shared.js` `BANDS`: far below 0.5, near from 1.75), and
+`onZoom(fn)` listeners hear each change; `setZoom(zoom, at?)` zooms keeping a world point still.
+The `rooms.room` item offers them (`bands`, `zoom()`, `setZoom`, `onZoom`) for `t.ui.zoom`. A
+thin rule's unit with words for a band carries them as `data-band-<band>` (`markBands`, put on
+before the nodes go in so a patch keeps them), and the look shows them in its place under that band.
+
 **Room settings.** *Settings* in a room's rail (or ⋯ More → Editor with nothing chosen, or the ⚙
 beside a mode) shows the room's own settings in the right dock: its name and line, tags, colour,
 lightness and opacity, Lock and Export (the rooms page's, through `rooms.settingsRows`), then the
@@ -144,7 +158,7 @@ room, through the `rooms` service. The `Room` class is written across several fi
 `Room.js` (starting, entering and leaving a room, building the page), `view.js` (a room, its
 rail and settings, clear space), `writing.js` (thoughts, the draft, the caret),
 `gestures.js` (pointer, keys, selection, copy and paste, opening Search), `centre.js` (Home and Ctrl+Shift+C: plain functions of the room), `bars.js` (pop-ups, tray,
-sheets, pictures) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
+sheets, pictures, the bar's words), `strip.js` (the strip at the canvas's foot) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
 A room in and out as a `.traum` file is the **roomfile** feature's (`app/plugins/roomfile`); the room

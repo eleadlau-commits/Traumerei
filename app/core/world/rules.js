@@ -33,13 +33,14 @@ const MEMO = new WeakMap(); // ontology → Map context → { key, map }
 // (Gaps and moments ahead count too: a rule such as Calendar lays marks out by their dates.)
 const keyOf = (w, context) => `${P.version(w, context)}|${L.version(w)}|${marksVersion(w)}|${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
 
-// A point, with the size and fragments a rule gave it (a thin rule's width, height, fragments).
+// A point, with the size, fragments and band words a rule gave it (a thin rule's width, height, fragments, bands).
 const sized = (p) => {
   const q = { x: p.x, y: p.y };
   if (p.width > 0) q.width = p.width;
   if (p.height > 0) q.height = p.height;
   if (p.align === 'start') q.align = 'start';
   if (Array.isArray(p.fragments) && p.fragments.length) q.fragments = p.fragments;
+  if (p.bands) q.bands = p.bands; // words for a zoom band (far, mid, near), since 1.0.5
   return q;
 };
 

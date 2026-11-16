@@ -7,7 +7,7 @@ import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import * as M from '../../world/moments.js';
 import { ROOM_TYPES } from '../../world/tests/roomtypes.js';
-import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
+import { API_VERSION, surface, connect, kernel, simpleRule, SLOTS, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
@@ -20,9 +20,9 @@ const V2 = {
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['account', 'aiServices', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'providers', 'rules', 'spans', 'views'],
+  slots: ['account', 'aiServices', 'bar', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'pages', 'providers', 'rules', 'spans', 'strip', 'views'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
-  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'size', 'text', 'toast'],
+  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'size', 'text', 'toast', 'zoom'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.
@@ -219,6 +219,77 @@ test('without keys, a frame or the rooms page, those parts do nothing quietly', 
   assert.equal(t.ui.frame, null);
   t.ui.open.rooms();
   t.ui.open.room('messy');
+});
+
+// ---- Step 3 of the open core (1.0.5): places and zoom ----
+
+test('places: a bar word, a strip item and a page (with its ☰ row) are the plugin\'s own; ui.open.page asks the pages', () => {
+  const app = fakeApp();
+  const opened = [];
+  const services = { pages: { open: (id) => { opened.push(id); return id === 'counts'; } } };
+  const t = connect({ app, world, plugin: plugin('haiku'), parts: surface(lib), lib, service: (name) => services[name] || null });
+  assert.deepEqual([SLOTS.bar, SLOTS.strip, SLOTS.pages], ['room.bar', 'room.strip', 'pages.plugin']);
+  t.slots.bar.add({ id: 'haiku-bar', label: 'Haiku', run() {} });
+  t.slots.strip.add({ id: 'haiku-strip', text: () => 'three lines' });
+  const off = t.slots.pages.add({ id: 'counts', label: 'Counts', order: 40, render: () => null });
+  for (const slot of ['room.bar', 'room.strip', 'pages.plugin', 'header.buttons']) assert.equal(app.slot(slot).items[0].owner, 'haiku', slot);
+  const row = app.slot('header.buttons').items[0].item;
+  assert.deepEqual([row.id, row.label, row.icon, row.order], ['page:counts', 'Counts', 'dots', 40]);
+  row.onClick(); // the ☰ row opens the page
+  assert.equal(t.ui.open.page('counts'), true);
+  assert.equal(t.ui.open.page('nowhere'), false);
+  assert.deepEqual(opened, ['counts', 'counts', 'nowhere']);
+  off(); // the page and its row go together
+  assert.equal(app.slot('pages.plugin').items.length + app.slot('header.buttons').items.length, 0);
+  assert.throws(() => t.slots.pages.add({ label: 'No id' }), /needs an id/);
+  const bare = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib });
+  assert.equal(bare.ui.open.page('counts'), false); // no pages feature: nothing, quietly
+});
+
+test('ui.zoom reads, sets and hears the open room\'s zoom with its bands; outside a room, null and a refusal', () => {
+  const heard = [], leaving = [];
+  let zoom = 1;
+  const listeners = new Set();
+  const bands = Object.freeze({ far: [0.25, 0.5], mid: [0.5, 1.75], near: [1.75, 4] });
+  const band = (z) => (z < 0.5 ? 'far' : z < 1.75 ? 'mid' : 'near');
+  const room = { bands, zoom: () => ({ zoom, band: band(zoom) }),
+    setZoom: (z, at) => { zoom = Math.min(4, Math.max(0.25, z)); for (const fn of listeners) fn({ zoom, band: band(zoom), context: 'r1', at }); return { zoom, band: band(zoom) }; },
+    onZoom: (fn) => { listeners.add(fn); return () => listeners.delete(fn); } };
+  const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib, room: () => room, gone: (fn) => leaving.push(fn) });
+  assert.deepEqual(t.ui.zoom.get(), { zoom: 1, band: 'mid' });
+  assert.equal(t.ui.zoom.bands, bands);
+  t.ui.zoom.on((z) => heard.push(z));
+  assert.deepEqual(t.ui.zoom.set(0.3, { x: 10, y: 20 }), { ok: true, zoom: 0.3, band: 'far' });
+  assert.deepEqual(t.ui.zoom.set(9), { ok: true, zoom: 4, band: 'near' }); // kept within the room's limits
+  assert.deepEqual(heard, [{ zoom: 0.3, band: 'far', context: 'r1' }, { zoom: 4, band: 'near', context: 'r1' }]);
+  assert.ok(Object.isFrozen(heard[0]));
+  for (const fn of leaving) fn(); // switched off: it hears no more
+  t.ui.zoom.set(1);
+  assert.equal(heard.length, 2);
+  const none = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib });
+  assert.equal(none.ui.zoom.get(), null);
+  assert.deepEqual(none.ui.zoom.set(2), { ok: false, reason: 'No room is open' });
+  assert.equal(typeof none.ui.zoom.on(() => {}), 'function');
+  assert.deepEqual(Object.keys(none.ui.zoom.bands), ['far', 'mid', 'near']);
+});
+
+test('a simple rule may give a unit words for a zoom band; the layout says it is banded, and t.rules.layout gives them back', () => {
+  const w = lib.model.emptyWorld(1000);
+  const room = lib.model.addRoom(w, 'Map', 2000);
+  const a = lib.model.create(w, room.id, { kind: 'line', text: 'a long thought about rivers' }, 3000);
+  const b = lib.model.create(w, room.id, { kind: 'line', text: 'another' }, 4000);
+  const rule = simpleRule({ id: 'map', arrange: () => [{ mark: a.id, x: 0, y: 0, far: '  Rivers  ', near: 'up close' }, { mark: b.id, x: 300, y: 0, far: '   ' }] }, lib);
+  const laid = rule.layout(w, room.id);
+  assert.deepEqual(laid.get(a.id).bands, { far: 'Rivers', near: 'up close' });
+  assert.equal(laid.get(b.id).bands, undefined); // blank words are none
+  assert.equal(rule.banded(w, room.id), true);
+  const plain = simpleRule({ id: 'plain', arrange: () => [{ mark: a.id, x: 0, y: 0 }] }, lib);
+  assert.equal(plain.banded(w, room.id), false);
+  const own = { world: w, lib, ontologies: [rule], ontology: () => rule, save() { return true; } };
+  const t = connect({ app: fakeApp(), world: own, plugin: plugin('haiku'), parts: surface(lib), lib });
+  const rows = new Map(t.rules.layout('map', room.id).map((r) => [r.mark, r]));
+  assert.deepEqual(rows.get(a.id).bands, { far: 'Rivers', near: 'up close' });
+  assert.ok(!('bands' in rows.get(b.id)));
 });
 
 // ---- The six tables (v2.js's kernel), over a small world ----
