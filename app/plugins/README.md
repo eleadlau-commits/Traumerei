@@ -1,6 +1,6 @@
 # Make a plugin
 
-New work in Träumerei is a plugin: a folder in `app/optional/` (the extra plugins; this folder,
+New work in Träumerei is a plugin: a folder in `app/optional/` (`starter/<id>/` or `extra/<id>/`; this folder,
 `app/plugins/`, keeps the corpus plugins) that can be switched off in
 Settings → Plugins without breaking anything else. This guide takes you from nothing to a working
 plugin. The full list of what a plugin may use is `app/core/API.md`.
@@ -8,8 +8,9 @@ plugin. The full list of what a plugin may use is `app/core/API.md`.
 **A plugin ships as a file.** Only corpus plugins are built into the app (the room types, and the
 stress corpus, which is left out of the product too; `tools/corpus.py`). Every other plugin lives
 in `app/optional/`, is left out of the app, and reaches people as a `.traumplug` (§7) after every
-merge to main (the rolling `plugins-latest` prerelease, see `app/optional/README.md`), on each
-Release, and (all but Book and Provoke) inside `starter-set.traumplug`. A plugin reaches another plugin only through the API
+merge to main (the rolling `plugins-latest` prerelease, see `app/optional/README.md`) and on each
+Release. The folder says whether it is also in `starter-set.traumplug`: `app/optional/starter/<id>/`
+is, `app/optional/extra/<id>/` (Book, Provoke) comes only on its own. A plugin reaches another plugin only through the API
 (`t.peers`), since an imported one can't `use` anything but the plugin API.
 
 ## 1. Make the folder
@@ -18,8 +19,8 @@ Release, and (all but Book and Provoke) inside `starter-set.traumplug`. A plugin
 python build.py new-plugin word-count --kind editor --author E
 ```
 
-This makes `app/optional/word-count/` from the template in `app/templates/plugin/`. It ships as a
-file; `--corpus` instead makes it a stress-corpus plugin in `app/plugins/` (it starts off, joins `CORPUS` in
+This makes `app/optional/extra/word-count/` from the template in `app/templates/plugin/`. It ships as a
+file on its own; `--starter` puts it in `app/optional/starter/`, so it joins the starter set too; `--corpus` instead makes it a stress-corpus plugin in `app/plugins/` (it starts off, joins `CORPUS` in
 `tools/corpus.py`, and needs a line in `docs/CORPUS.md`).
 
 | File | What it is |

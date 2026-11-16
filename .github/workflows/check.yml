@@ -36,9 +36,9 @@ jobs:
       - name: Tooling tests (release, pack-plugin)
         run: python -m unittest discover -s tools/tests -t .
       - name: The .traum guide covers every ontology and kind
-        run: node app/optional/roomfile/tests/guide.mjs
+        run: node app/optional/starter/roomfile/tests/guide.mjs
       - name: Every template room lands
-        run: node app/optional/templates/tests/land.mjs
+        run: node app/optional/starter/templates/tests/land.mjs
       - name: Build the one-file page
         run: python standalone.py
       - name: Speed budgets (a 1,500-thought room opens, Enter, typing, under 2 MB)

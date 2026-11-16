@@ -15,10 +15,10 @@ import { makeHost, brokenLaws } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/extra/${id}/${file}`, import.meta.url).href); }
 }
 async function text(id, file) {
-  for (const u of [`../../${id}/${file}`, `../../../optional/${id}/${file}`]) {
+  for (const u of [`../../${id}/${file}`, `../../../optional/extra/${id}/${file}`]) {
     try { const url = new URL(u, import.meta.url); if (url.protocol === 'file:') return (await import('node:fs')).readFileSync(url, 'utf8'); const r = await fetch(url); if (r.ok) return r.text(); } catch { /* the other folder */ }
   }
   return '';

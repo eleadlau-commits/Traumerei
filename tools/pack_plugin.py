@@ -1,9 +1,10 @@
-"""`python build.py pack-plugin <id> [--out DIR]`: packs app/plugins/<id>/ into one file,
-`<id>.traumplug`, that a person can import in Settings → Plugins.
+"""`python build.py pack-plugin <id> [--out DIR]`: packs a plugin's folder (app/optional/starter/<id>/,
+app/optional/extra/<id>/ or app/plugins/<id>/) into one file, `<id>.traumplug`, that a person can
+import in Settings → Plugins.
 `python build.py pack-plugin --all [--out DIR]`: packs every plugin shipped apart (tools/corpus.py
-APART), and starter-set.traumplug: the ones today's app had built in, in one file (format
-`traumset/1`, JSON: { format, name, description, plugins: [package text, …] }), so a fresh install
-is one import away from it.
+APART: everything in app/optional/starter/ and app/optional/extra/), and starter-set.traumplug: the
+ones in app/optional/starter/, in one file (format `traumset/1`, JSON: { format, name, description,
+plugins: [package text, …] }), so a fresh install is one import away from them.
 
 A package (format `traumplug/1`) is one JavaScript module with three exports:
 
@@ -58,11 +59,10 @@ def bundle(folder: Path, main: str, work: Path) -> str:
 
 
 def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
-    folder = root / 'app' / 'optional' / plugin_id  # the extra plugins; corpus plugins in app/plugins/
-    if not (folder / 'feature.json').is_file():
-        folder = root / 'app' / 'plugins' / plugin_id
-    if not (folder / 'feature.json').is_file():
-        raise SystemExit(f'No plugin app/optional/{plugin_id}/ or app/plugins/{plugin_id}/.')
+    from tools.corpus import find
+    folder = find(plugin_id, root)
+    if folder is None:
+        raise SystemExit(f'No plugin app/optional/starter/{plugin_id}/, app/optional/extra/{plugin_id}/ or app/plugins/{plugin_id}/.')
     m = manifest_of(folder, plugin_id)
     raw = json.loads((folder / 'feature.json').read_text('utf-8'))
     css = '\n'.join((folder / s).read_text('utf-8') for s in raw.get('styles', []))
@@ -84,9 +84,6 @@ def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
 
 
 SET_FORMAT = 'traumset/1'
-# Shipped apart but left out of the starter set: what was never built into the app, and Book (E,
-# 16 Nov 2026: the book editor is its own file, book.traumplug, imported on its own).
-NOT_STARTER = ('provoke', 'book')
 
 
 def pack_set(texts: list[str], out_dir: Path, name='Starter set', file='starter-set') -> Path:
@@ -101,9 +98,13 @@ def pack_set(texts: list[str], out_dir: Path, name='Starter set', file='starter-
 
 
 def pack_all(out_dir: Path, root: Path = ROOT) -> list[Path]:
-    from tools.corpus import APART
-    paths = [pack(pid, out_dir, root) for pid in APART]
-    starter = [p.read_text('utf-8') for pid, p in zip(APART, paths) if pid not in NOT_STARTER]
+    """Every plugin in app/optional/starter/ and app/optional/extra/ on its own, and the starter set:
+    the folder decides, app/optional/starter/ is in it, app/optional/extra/ (Book, Provoke) is not."""
+    from tools.corpus import OPTIONAL, STARTER, plugins
+    apart = plugins(*OPTIONAL, root=root)
+    in_starter = set(plugins(STARTER, root=root))
+    paths = [pack(pid, out_dir, root) for pid in apart]
+    starter = [p.read_text('utf-8') for pid, p in zip(apart, paths) if pid in in_starter]
     return paths + [pack_set(starter, out_dir)]
 
 

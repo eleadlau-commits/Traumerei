@@ -1,4 +1,4 @@
-# Publishes the extra plugins (app/optional/, tools/corpus.py APART) after every merge to main, so
+# Publishes the optional plugins (app/optional/starter/ and app/optional/extra/, tools/corpus.py APART) after every merge to main, so
 # they can be imported without waiting for an app release: each as <id>.traumplug, the starter set,
 # and one zip of them all, on the rolling prerelease "plugins-latest", overwritten each time.
 # Stable links: https://github.com/eleadlau-commits/Traumerei/releases/download/plugins-latest/<file>

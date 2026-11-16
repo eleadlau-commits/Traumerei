@@ -43,5 +43,5 @@ works with the rule kit (`t.parts`) taken away.
   More entry, an Editor section, a Settings section.
 - **What it needs:** the plugin API.
 - **What it saves:** the local model's address, if one is set.
-- **Check it:** `app/optional/provoke/tests/reader.test.js` (the reader) and
+- **Check it:** `app/optional/extra/provoke/tests/reader.test.js` (the reader) and
   `app/core/api/tests/provoke.test.js` (phase 9's gate); it is in the conformance suite too.

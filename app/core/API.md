@@ -1,6 +1,6 @@
 # The Träumerei plugin API, version 3
 
-A plugin is a feature folder in `app/plugins/` or `app/optional/` whose `feature.json` has a `plugin` block
+A plugin is a feature folder in `app/plugins/` or `app/optional/starter/` / `app/optional/extra/` whose `feature.json` has a `plugin` block
 (`folio/README.md` §3). It reaches the app **only** through the `traumerei` service below, and
 through Folio itself (its own storage, events, the `settings` slot, `ui`). The compiler leaves out
 a plugin that uses any other core service or adds to a core feature's slot directly.
@@ -131,7 +131,7 @@ part's is, with `open`, `resolved` and `of` counting the parts (a part that is i
 counts through its own parts, once). So a to-do list is a group whose parts have gaps to do, and
 its progress is `gaps.progress(group)`; `gaps.open` and `gaps.resolve` on such a mark refuse and
 say why. Every open, resolve and reopen is a moment (`opened`, `resolved`) Ctrl+Z takes back. The
-room draws an open gap as an edge on the thought; the Gaps plugin (`app/optional/gaps`) is the
+room draws an open gap as an edge on the thought; the Gaps plugin (`app/optional/starter/gaps`) is the
 hands: an Editor section and Ctrl+Alt+G.
 
 **What the rows are read from, in phase 0.** Places: a thought in a train is placed under

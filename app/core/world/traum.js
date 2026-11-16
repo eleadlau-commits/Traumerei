@@ -34,7 +34,7 @@
 import { NAMES } from './tables.js';
 
 export const FORMAT = 'traum/3';
-export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/optional/roomfile/FORMAT.md';
+export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/optional/starter/roomfile/FORMAT.md';
 export const SECTIONS = Object.freeze(['Marks', 'Places', 'Links', 'Distance', 'Gaps', 'Moments']);
 const READERS = ['me now', 'me later', 'others', 'machine'];
 const DIRECTIONS = ['to world', 'from world', 'to maker'];

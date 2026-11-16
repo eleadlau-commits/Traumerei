@@ -62,6 +62,8 @@ def version_key(text: str) -> tuple:
     return tuple(int(x) for x in text.split('.')) if VERSION.match(str(text)) else (0, 0, 0)
 NATIVE_KEYS = {'packages', 'capacitor', 'android', 'ios'}
 FOLDER_NAME = re.compile(r'^[a-z][a-z0-9]*(-[a-z0-9]+)*$')
+# A feature folder in app.json's "folders": a name, or names joined by "/" (e.g. "optional/starter")
+FOLDER_PATH = re.compile(r'^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)*$')
 NOT_SHIPPED = {'tests', 'extras', 'native'}  # feature subfolders that never go into the app
 GRADLE_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 BUNDLE_ID = re.compile(r'^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$')
@@ -304,7 +306,7 @@ class Project:
         """The app's feature folders, in the order they're read: app.json's "folders"
         (e.g. ["core", "plugins"]), or just "features"."""
         folders = self._app_json().get('folders')
-        if isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_NAME.match(x) for x in folders):
+        if isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_PATH.match(x) for x in folders):
             return list(folders)
         return ['features']
 
@@ -401,8 +403,8 @@ class Project:
         if not VERSION.match(str(app['version'])):
             return '"version" must look like "1.0.0"'
         folders = app.get('folders', ['features'])
-        if not (isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_NAME.match(x) for x in folders)):
-            return '"folders" must be a list of folder names in app/, like ["core", "plugins"]'
+        if not (isinstance(folders, list) and folders and all(isinstance(x, str) and FOLDER_PATH.match(x) for x in folders)):
+            return '"folders" must be a list of folder names in app/, like ["core", "plugins"] (or "optional/starter")'
         if len(set(folders)) != len(folders):
             return '"folders" lists a folder twice'
         if 'plugins' not in app:
@@ -454,14 +456,15 @@ class Project:
             log.warn(f'There is no {names} folder, so the app has no features.')
             return features
         for group in dirs:
+            here = group.relative_to(self.app_dir).as_posix()  # "core", or "optional/starter"
             for folder in sorted(group.iterdir()):
                 if not folder.is_dir() or folder.name.startswith(('.', '_')):
                     continue
                 manifest_path = folder / 'feature.json'
                 if not manifest_path.exists():
-                    log.warn(f'{group.name}/{folder.name}/ has no feature.json, so it was ignored.')
+                    log.warn(f'{here}/{folder.name}/ has no feature.json, so it was ignored.')
                     continue
-                feature = FeatureInfo(folder.name, folder, folder=group.name)
+                feature = FeatureInfo(folder.name, folder, folder=here)
                 try:
                     # utf-8-sig also accepts the invisible mark some Windows editors put at the start.
                     feature.manifest = json.loads(manifest_path.read_text('utf-8-sig'))
@@ -470,9 +473,9 @@ class Project:
                 if folder.name in seen:
                     feature.leave_out('mistake', f'a feature called "{folder.name}" is already in {seen[folder.name]}/; '
                                       'every feature needs its own name')
-                    feature.id = f'{group.name}/{folder.name}'  # so it doesn't stand in for the first one
+                    feature.id = f'{here}/{folder.name}'  # so it doesn't stand in for the first one
                 else:
-                    seen[folder.name] = group.name
+                    seen[folder.name] = here
                 if not feature.reason:
                     self.check(feature)
                 features.append(feature)
@@ -1447,7 +1450,7 @@ def cmd_new_feature(project: Project, args) -> int:
         print('Use lowercase words joined by dashes, e.g. "study-timer".')
         return 1
     target = project.features_dir / fid
-    where = f'app/{target.parent.name}/{fid}'
+    where = f'app/{target.parent.relative_to(project.app_dir).as_posix()}/{fid}'
     if any((d / fid).exists() for d in project.feature_dirs):
         print(f'A feature called "{fid}" already exists.')
         return 1

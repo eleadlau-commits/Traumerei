@@ -30,7 +30,7 @@ everything, a default class that calls it, plain functions beside it.
 ## 3. Write the plugin
 
 Read `reference/api-guide.md` once, whole: it is the full API in one page, with the laws, the
-budgets and the do/never list. Then write the folder `app/optional/<id>/` (the extra plugins; or `<id>/` with no repo):
+budgets and the do/never list. Then write the folder `app/optional/extra/<id>/` (on its own; `app/optional/starter/<id>/` only if E wants it in the starter set; or `<id>/` with no repo):
 
 - `feature.json`: name, one-sentence description, `"version": "0.1.0"`, `"main"`, `"requires":
   ["api"]`, and `"plugin": { "api": 3, "minApp": "1.1.2", "kind": [...], "needs": [...], "load":
