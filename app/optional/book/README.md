@@ -55,8 +55,16 @@ and room settings that redraw).
   the one before it; Alt+N on a note puts it back after that paragraph.
 - **Docks**, Ctrl+Alt+J in a room seen as Book (or Tools → Book):
   - left, **Contents**: chapters and sections numbered as they nest, their pages, words and
-    open gaps for each; the chapter you are in is lit; a click goes to its heading; drag a line among its
-    siblings to reorder; thoughts dragged from the canvas onto a line join that chapter.
+    open gaps for each; the chapter you are in is lit; a click goes to its heading. **Drag a
+    line** onto another (`treedrop.js`, one step, Ctrl+Z takes it back): its top third puts it
+    before that chapter, its foot after it (into it before its first section, when it has
+    sections: the line under it), its middle into it as its last section; a rule above or below,
+    or the line lit, shows where it lands while it is held. Across chapters as well as among
+    siblings, the chapter's paragraphs and sections coming with it. Never into itself or a chapter
+    it holds, never deeper than three levels (a line it may not go on is struck faint; let go
+    there, it says why). Thoughts dragged from the canvas onto a line join that chapter, at the
+    end of its own paragraphs (before its first section), as Alt+M does. The keys do the same:
+    Ctrl+Up / Ctrl+Down, Ctrl+] / Ctrl+[, Alt+M.
   - right, **Book**: the title (rename it there), paragraphs, words and what is still open; the
     chapter, paragraph (its page, its notes) or note in hand; Export Markdown, Word document,
     Print or PDF (both at the room's page size and margins, a chapter on a new page).
@@ -67,7 +75,8 @@ and room settings that redraw).
   - Ctrl+] / Ctrl+[: a heading one level deeper / up.
   - Ctrl+Up / Ctrl+Down: move it one place (a heading moves its whole chapter; a paragraph
     crosses into the chapter it meets).
-  - Alt+M: move it into a chapter you pick in the contents (Escape: no).
+  - Alt+M: move it into a chapter you pick in the contents (Escape: no): a paragraph at the end
+    of that chapter's own paragraphs, a chapter as its last section.
   - Ctrl+Shift+V: paste as paragraphs (split at blank lines). Plain paste never splits.
 - **Drag on the pages** (`flowdrop.js`, the rule's `drop`): let a paragraph go between two rows
   and it moves there (the row under it, before or after by its half; a piece of a paragraph that
@@ -123,7 +132,7 @@ Book. The same book as a board, in reading order a row at a time:
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the

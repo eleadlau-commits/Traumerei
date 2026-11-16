@@ -1,15 +1,16 @@
 // The Book editor's docks: the contents in the left dock (the tree: chapters and sections,
-// numbered as they nest, each with its words and open gaps; a click goes there; drag a line to
-// reorder among its siblings; the chapter you are in is lit), and the book in hand in the right
+// numbered as they nest, each with its words and open gaps; a click goes there; drag a line
+// anywhere in it: before, after or into another (treedrop.js); the chapter you are in is lit), and the book in hand in the right
 // dock (what is chosen: a chapter's words and what is still open in it, a paragraph's words and
 // gap; the book's title and totals; Markdown and Print). Only the plugin API (t.ui.docks).
 
 import { ui } from 'folio';
-import { isChapter, booksIn, wordCount, moved } from './rules.js';
+import { isChapter, booksIn, wordCount } from './rules.js';
 import { RULE, read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
 import { pageOf, textWidth, ranges, sheetWidth, gridOf, setGrid, COUNTS } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
 import { BLOCKS, ACROSS, acrossOf, setAcross } from './blocks.js';
+import { zoneOf, landing, dropTo } from './treedrop.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
@@ -20,6 +21,10 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   let left = null, right = null;   // the bodies, while open
   let moving = null;               // Alt+M: the mark waiting to be moved into a chapter
   let seen = '';                   // what the docks last showed (redrawn only when it changes)
+  let dragging = null;             // the chapter whose line is being dragged in the contents
+  const LIT = ['book-drop-before', 'book-drop-after', 'book-drop-into', 'book-drop-no'];
+  const unlight = (list, keep = null) => { for (const li of list.children) if (li !== keep) li.classList.remove(...LIT); };
+  const done = (list) => { dragging = null; for (const li of list.children) li.classList.remove(...LIT, 'book-dragged'); };
 
   const bookOf = (r) => booksIn(t, r)[0]?.id || null;
   // The chapter (or book) the chosen mark, or the caret, is in.
@@ -78,16 +83,31 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
         el('span', { class: 'book-right' }, `${span(it.chapter)}${c.words.toLocaleString()}${c.open ? ` · ${c.open} open` : ''}`));
       if (!t.distance.shut(r)) {
         row.draggable = true;
-        row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-book-part', it.chapter); e.dataTransfer.effectAllowed = 'move'; });
-        row.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/x-book-part')) { e.preventDefault(); row.classList.add('book-over'); } });
-        row.addEventListener('dragleave', () => row.classList.remove('book-over'));
-        row.addEventListener('drop', (e) => {
-          row.classList.remove('book-over');
-          const id = e.dataTransfer.getData('text/x-book-part');
-          const holder = holderOf(t, it.chapter);
-          if (!id || id === it.chapter || holderOf(t, id) !== holder) return; // among its siblings
+        row.addEventListener('dragstart', (e) => { dragging = it.chapter; e.dataTransfer.setData('text/x-book-part', it.chapter); e.dataTransfer.effectAllowed = 'move'; row.classList.add('book-dragged'); });
+        row.addEventListener('dragend', () => done(list));
+        // Where it would land, lit on the line: a rule above (before), below (after), or the line
+        // itself (into); struck faint where it may not go (let go there, it says why).
+        row.addEventListener('dragover', (e) => {
+          if (!e.dataTransfer.types.includes('text/x-book-part')) return;
+          const box = row.getBoundingClientRect();
+          const zone = zoneOf(e.clientY, box.top, box.height);
+          const where = dragging ? landing(t, dragging, it.chapter, zone) : { ok: true };
+          unlight(list, row);
+          row.classList.remove('book-drop-before', 'book-drop-after', 'book-drop-into', 'book-drop-no');
           e.preventDefault();
-          t.links.order(holder, moved(t.links.members(holder), id, it.chapter));
+          if (where.ok) { e.dataTransfer.dropEffect = 'move'; row.classList.add(`book-drop-${zone}`); }
+          else if (where.reason) row.classList.add('book-drop-no'); // (let go: refused in words)
+          else e.dataTransfer.dropEffect = 'none';
+        });
+        row.addEventListener('dragleave', (e) => { if (!row.contains(e.relatedTarget)) unlight(list); });
+        row.addEventListener('drop', (e) => {
+          done(list);
+          const id = e.dataTransfer.getData('text/x-book-part');
+          if (!id) return;
+          e.preventDefault();
+          const box = row.getBoundingClientRect();
+          const res = dropTo(t, id, it.chapter, zoneOf(e.clientY, box.top, box.height));
+          if (!res.ok && res.reason) t.ui.toast(res.reason);
         });
       }
       list.append(row);
@@ -97,6 +117,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
       el('div', { class: 'book-tree-head' }, el('span', {}, t.marks.get(b)?.title || 'Untitled book'),
         el('span', { class: 'book-right' }, `${lay.pages ? `${lay.pages} pages · ` : ''}${all.words.toLocaleString()} words${all.open ? ` · ${all.open} open` : ''}`)),
       heads.length ? list : el('p', { class: 'hint' }, 'No chapters yet. Choose a paragraph and press Ctrl+Alt+H to make it a heading.'),
+      heads.length && !t.distance.shut(r) ? el('p', { class: 'hint book-tree-hint' }, 'Drag a line onto another: its top before it, its middle into it, its foot after it. Thoughts from the page dropped on a line join that chapter. Keys: Ctrl+Up / Ctrl+Down, Ctrl+] / Ctrl+[, Alt+M.') : null,
     ].filter(Boolean);
   };
 
@@ -203,7 +224,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
       left = el('div', { class: 'book book-contents' });
       await d.open({ key: LEFT, tab: 'Contents', kind: 'Book', title: '', label: 'Contents', body: left,
         drop: { accepts: (ids, target) => !!target?.dataset?.drop && ids.length > 0,
-          drop: (ids, target) => { let n = 0; for (const id of ids) if (moveInto(t, id, target.dataset.drop).ok) n++; if (n) t.ui.toast(`${n === 1 ? 'A paragraph' : `${n} paragraphs`} moved into ${titleOf(t, target.dataset.drop)}.`); } },
+          drop: (ids, target) => { const n = t.together(() => ids.filter((id) => moveInto(t, id, target.dataset.drop).ok).length); if (n) t.ui.toast(`${n === 1 ? 'A paragraph' : `${n} paragraphs`} moved into ${titleOf(t, target.dataset.drop)}.`); } },
         onClose: () => { left = null; moving = null; unwatch(); } });
     } else d.show(LEFT);
     draw(true); watch();
