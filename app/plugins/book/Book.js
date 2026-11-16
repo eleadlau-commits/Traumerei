@@ -8,7 +8,7 @@
 // leaves as Markdown or a printed page (Save as PDF). Tools → Book in a room's rail, or
 // Ctrl+Alt+J, opens the room's books, or makes the first.
 //
-// A plugin. It reaches the app only through the plugin API (app/core/API.md): slots.families,
+// A plugin. It reaches the app only through the plugin API (app/core/API.md): slots.groups,
 // slots.buttons, slots.commands, the tables (marks, links, gaps, places), ui.docks.right and
 // ui.files.save. Saved data: none outside the tables (Law 8: a book is marks and part-of links,
 // and travels in a .traum file).
@@ -289,8 +289,8 @@ export function install(t) {
 
   // ---- Into the app ----
 
-  t.slots.families.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
-  t.slots.families.add({ id: CHAPTER, name: 'Chapter' });
+  t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
+  t.slots.groups.add({ id: CHAPTER, name: 'Chapter' });
   t.slots.buttons.add({ id: 'book', label: 'Book', icon: ICON, order: 40, visible: () => !!room(),
     title: () => 'This room\'s books (Ctrl+Alt+J): a contents page, chapters of thoughts, export', on: () => !!dock()?.isShowing(KEY), run: openRoomBooks });
   t.slots.commands.add({ id: 'book.open', keys: ['Ctrl+Alt+J'], zone: 'room', order: 70, words: 'Open this room\'s book, or make one', when: () => !!room(), run: openRoomBooks });

@@ -24,7 +24,7 @@
 import * as P from './places.js';
 import * as L from './links.js';
 import * as G from './gaps.js';
-import { shut, marksVersion, parentOf, isGroup } from './model.js';
+import { shut, marksVersion, parentOf, isGroup, groupsFor } from './model.js';
 import { netFor } from './ontologies/relations.js';
 
 const MEMO = new WeakMap(); // ontology → Map context → { key, map }
@@ -105,8 +105,9 @@ export function moves(o, w, context, mark) {
   const placed = o.placed ? o.placed(w, context, mark) : true;
   if (o.tray && !placed) out.push({ id: 'place', label: `Place in ${o.name}` });
   if (o.unplace && placed) out.push({ id: 'throw-back', label: 'Throw back into the tray' });
-  if (o.groups) out.push({ id: 'group', label: `Make a ${o.groups.name.toLowerCase()}` });
-  if (o.groups && isGroup(w.things[mark]) && w.things[mark].of === o.id) out.push({ id: 'ungroup', label: `Undo the ${o.groups.name.toLowerCase()}` });
+  const kind = groupsFor(o);
+  if (kind) out.push({ id: 'group', label: `Make a ${kind.name.toLowerCase()}` });
+  if (kind && isGroup(w.things[mark]) && w.things[mark].of === o.id) out.push({ id: 'ungroup', label: `Undo the ${kind.name.toLowerCase()}` });
   for (const m of o.moves || []) out.push({ id: m.id || m.label, label: m.label });
   return out;
 }

@@ -4,7 +4,7 @@
 // and Room.js puts them in the key map. A key pressed while typing in a field does nothing (the
 // key is still taken, so the browser doesn't reload or find).
 
-import { isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, shut, lock as lockRoom, throwBack as throwBackIn } from './world.js';
+import { groupsFor, PLAIN, remove, isGroup, groupOf, kindOf, trainThoughts, groupChosen, ungroupChosen, foldInto, room, shut, lock as lockRoom, throwBack as throwBackIn } from './world.js';
 
 const FIELD = 'input, textarea, select, [contenteditable]';
 export const typing = (e) => !!e?.target?.matches?.(FIELD);
@@ -109,11 +109,20 @@ export function throwBack(c, e, ids = null) {
 
 // Group: what is chosen becomes one group of this mode, by the mode's own rule (the world's
 // groupChosen: a Joyce train, a Russell chapter); the group is then chosen. A mode without groups
-// (Pessoa) says so.
+// of its own (Pessoa, Rows) makes a plain group: one card, waiting in the tray.
 export function group(c, e) {
   if (typing(e) || c.editing || !c.sel) return;
   if (c.locked) { c.toast('This room is locked.'); return; }
-  if (!c.ont.groups) { c.toast(`${c.ont.name} keeps each thought on its own: it has no groups.`); return; }
+  const kind = groupsFor(c.ont);
+  if (!kind) {
+    const g = groupChosen(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id], Date.now());
+    if (!g) { c.toast('Nothing here to group.'); return; }
+    c.sel = { kind: 'train', id: g.id };
+    c.save();
+    c.drawWorld();
+    c.toast(`One group of ${trainThoughts(c.world, g.id).length}, waiting in the tray.`);
+    return;
+  }
   const ids = c.sel.ids || [c.sel.id];
   // Chosen in the tray (none of them placed here yet): the new group stays in the tray.
   const loose = !!c.ont.placed && ids.every((id) => !c.ont.placed(c.world, c.roomId, id));
@@ -122,7 +131,7 @@ export function group(c, e) {
   c.sel = { kind: 'train', id: g.id };
   c.save();
   c.drawWorld();
-  c.toast(`One ${c.ont.groups.name.toLowerCase()} of ${trainThoughts(c.world, g.id).length}.`);
+  c.toast(`One ${kind.name.toLowerCase()} of ${trainThoughts(c.world, g.id).length}.`);
 }
 
 // Ungroup: what is chosen comes out of its groups of this mode (a whole group chosen: all of it),
@@ -130,13 +139,23 @@ export function group(c, e) {
 export function ungroup(c, e) {
   if (typing(e) || c.editing || !c.sel) return;
   if (c.locked) { c.toast('This room is locked.'); return; }
-  if (!c.ont.groups) { c.toast(`${c.ont.name} has no groups.`); return; }
+  const kind = groupsFor(c.ont);
+  if (!kind) { // plain groups chosen (model.js PLAIN) come apart: the group goes, its parts stay where they are
+    const plain = (c.sel.ids || [c.sel.id]).filter((id) => isGroup(c.world.things[id]) && c.world.things[id].of === PLAIN);
+    if (!plain.length) { c.toast(`${c.ont.name} has no groups of its own.`); return; }
+    for (const id of plain) remove(c.world, id);
+    c.sel = null;
+    c.save();
+    c.drawWorld();
+    c.toast(`${plain.length === 1 ? 'The group' : `${plain.length} groups`} came apart. Ctrl+Z undoes.`);
+    return;
+  }
   const n = ungroupChosen(c.ont, c.world, c.roomId, c.sel.ids || [c.sel.id]);
-  if (!n) { c.toast(`Not in a ${c.ont.groups.name.toLowerCase()} with others.`); return; }
+  if (!n) { c.toast(`Not in a ${kind.name.toLowerCase()} with others.`); return; }
   c.sel = null;
   c.save();
   c.drawWorld();
-  c.toast(`${n} out of their ${c.ont.groups.name.toLowerCase()}.`);
+  c.toast(`${n} out of their ${kind.name.toLowerCase()}.`);
 }
 
 // Lock: this room is locked (nothing in it can change), or unlocked again. One step.

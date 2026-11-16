@@ -83,7 +83,7 @@ test('Ctrl+G: each mode groups what is chosen by its own rule; Ctrl+Shift+G take
   assert.ok(groupOf(w, a.id, 'joyce'), 'still in its Joyce train');
   assert.equal(ungroupChosen(russell, w, MESSY, [a.id], 13), 1);
   assert.equal(groupOf(w, a.id, 'russell'), null, 'loose in Russell again');
-  assert.equal(groupChosen(pessoa, w, MESSY, [a.id, b.id]), null, 'Pessoa has no groups');
+  assert.equal(groupChosen(pessoa, w, MESSY, [a.id, b.id]).of, 'group', 'Pessoa has no groups of its own: a plain group');
 });
 
 test('Rows, the bare reading: every thought in one column as written; listed only when no other rule is on', async () => {

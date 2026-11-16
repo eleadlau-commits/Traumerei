@@ -22,7 +22,7 @@
 // Saved data: 'drafts' (a thought left half written, per room), 'hinted'.
 
 import { Feature, ui } from 'folio';
-import { bind, room, parentOf, floorOf, floorName, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes, familyOf, isGroup, kindFor, kindOf } from './world.js';
+import { bind, room, parentOf, floorOf, floorName, isArchived, view, shut, MESSY, roomLook, sides, twinOf, showSizes, familyOf, groupsFor, isGroup, kindFor, kindOf } from './world.js';
 import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
@@ -403,7 +403,7 @@ export default class Room extends Feature {
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
-  groupName(g) { return this.ontologies.find((o) => o.id === g?.of)?.groups?.name || familyOf(g?.of)?.name || 'Train'; } // Train, Chapter, a plugin's Book
+  groupName(g) { return groupsFor(this.ontologies.find((o) => o.id === g?.of))?.name || familyOf(g?.of)?.name || 'Group'; } // Train, Chapter, a plugin's Book
   // What opens a mark by itself, from a plugin: its kind's open(mark), or its group family's
   // open(id) (a book opens in the right dock). Double-click or Enter on it then opens it, in any
   // mode. Null when nothing does.

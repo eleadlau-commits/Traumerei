@@ -261,3 +261,35 @@ test('moved to another room (Move to…): it lands in that room\'s loose tray in
   assert.ok(!joyce.placed(w, other.id, t.id));
   assert.ok(waiting(w, other.id, 'pessoa', b.id));
 });
+
+test('one group concept: Ctrl+G in a rule with no groups of its own makes a plain group, a card', () => {
+  const w = emptyWorld();
+  const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+  const b = create(w, MESSY, { kind: 'line', text: 'b' }, 2);
+  const g = groupChosen(pessoa, w, MESSY, [a.id, b.id], 3);
+  assert.equal(g.of, model.PLAIN);
+  assert.ok(model.isLooseGroup(w, g.id));              // no place: it waits in the tray until placed
+  assert.ok(model.isCard(g));                            // one card in every rule
+  assert.deepEqual(ids(members(w, g.id)), [a.id, b.id]);
+  assert.equal(groupChosen(pessoa, w, MESSY, [g.id], 4), null); // grouped already
+  model.remove(w, g.id);
+  assert.ok(w.things[a.id] && w.things[b.id]);           // its parts stay
+});
+
+test('one group concept: a rule\'s groups can be said in the slot, and a family the same way', () => {
+  const rule = { id: 'haiku', name: 'Haiku' };
+  assert.equal(model.groupsFor(rule), null);
+  const rest = model.declareGroupKinds([{ id: 'haiku', rule: 'haiku', name: 'Stanza', order: 'kept' }, { id: 'haiku-book', name: 'Haiku book', card: true }, { id: 'odd', rule: 'haiku' }]);
+  try {
+    assert.equal(model.groupsFor(rule).name, 'Stanza');
+    assert.equal(model.membership('haiku'), 'one');
+    assert.deepEqual(rest.map((f) => f.id), ['haiku-book']);  // the rest are families
+    model.declareFamilies(rest);
+    assert.equal(model.familyOf('haiku-book').card, true);
+    assert.ok(model.familyOf(model.PLAIN));                  // the plain group stays, always
+    const w = emptyWorld();
+    const a = create(w, MESSY, { kind: 'line', text: 'a' }, 1);
+    const g = groupChosen({ ...rule, point: () => ({ x: 0, y: 0 }) }, w, MESSY, [a.id], 2);
+    assert.equal(g.of, 'haiku');
+  } finally { model.declareGroupKinds([]); model.declareFamilies([]); }
+});

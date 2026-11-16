@@ -15,7 +15,7 @@ const rules = await load('book', 'rules.js');
 test('book: chapters of a room\'s thoughts, in the maker\'s order, out as Markdown and back from a file', () => {
   const host = makeHost();
   const { t, off } = host.plug('book', book.install);
-  const families = host.app.slot('world.families').items;
+  const families = host.app.slot('world.groups').items;
   assert.deepEqual(families.map((f) => f.id), ['book', 'book-chapter']);
   host.lib.model.declareFamilies(families); // (World.js does this when the slot changes)
   host.choose(host.room);
