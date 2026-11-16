@@ -341,5 +341,5 @@ export default class Book extends Feature {
     if (!t) throw new Error('Needs the plugin API');
     this.api = install(t);
   }
-  stop() { this.api?.zoom?.stop(); }
+  stop() { this.api?.zoom?.stop(); this.api?.editor?.stop?.(); }
 }

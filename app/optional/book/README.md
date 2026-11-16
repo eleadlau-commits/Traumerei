@@ -95,6 +95,23 @@ and room settings that redraw).
   of the book and into or out of the margin are done by the plugin just after the gesture (no
   proposal leaves a group or links a note), still one step, one Ctrl+Z. Let go where it is, or
   nudged within its own row: nothing. The keys stay as they are.
+- **Writing: click anywhere in a chapter to write there** (`slots.js`, the rule's `draw` and
+  `land`). Click the blank space after a chapter's last paragraph (down to the next heading, or
+  the page's foot when the next chapter starts a page), the space right under an empty chapter's
+  heading, or the gap between two paragraphs (or a heading and its first paragraph): a caret
+  blinks there (a slot, an invisible box of the rule, chosen as any box is; between two
+  paragraphs a faint rule across the gap and the caret just left of the column). Type: the words
+  appear in place, under the heading or paragraph above, and the lines below make room. Enter
+  keeps the paragraph exactly there, in that chapter or section, as one step (one Ctrl+Z), and the
+  caret goes on under it, so paragraph after paragraph is typed in order. An empty chapter (or an
+  empty book) says "Click here, or choose a paragraph, and type" in that space. Choosing a
+  paragraph and typing works as before: the new one lands right after it. A click on the caret's
+  own slot keeps it. Far off (the shelf of pages) the slots take no clicks, so a double-click
+  still goes to a page; paragraphs, headings and margin notes stay on top of the slots, so
+  choosing and dragging are as before. Works on pages (pieces, grids and spreads) and with Pages:
+  None. The room has no API word for the box chosen, so the plugin reads it off the canvas (as
+  `zoom.js` does) and, for the moment a key begins the paragraph, chooses the mark above the slot
+  so the room draws the words under it (core gap 11 in the project's notes).
 - **Keys while writing**:
   - ArrowDown on the last line / ArrowUp on the first: the caret runs on into the next or
     previous paragraph.
@@ -137,7 +154,7 @@ Book. The same book as a board, in reading order a row at a time:
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the
