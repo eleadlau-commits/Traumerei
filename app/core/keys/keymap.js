@@ -62,8 +62,8 @@ export function label(combo, mac = false) {
 }
 
 // Two places' keys can clash when the places can be live at once: the same place, or either is
-// 'everywhere'.
-export const overlaps = (a, b) => a === b || a === 'everywhere' || b === 'everywhere';
+// 'everywhere' (but 'editing', the keys of a thought being written, is live only there).
+export const overlaps = (a, b) => a === b || ((a === 'everywhere' || b === 'everywhere') && a !== 'editing' && b !== 'editing');
 
 // Every pair of entries that share a key in places that overlap: [{ key, a, b }] by entry id.
 // An entry is { id, keys: [combo…], zone }; entries without keys (a click, "type anywhere") are

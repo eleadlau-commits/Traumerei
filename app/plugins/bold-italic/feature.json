@@ -1,0 +1,19 @@
+{
+  "name": "Bold and italic",
+  "description": "Ctrl+B and Ctrl+I while writing make words bold or italic, kept in the thought; the room comes out as Markdown with them.",
+  "version": "0.1.0",
+  "main": "BoldItalic.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "look", "command", "format"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

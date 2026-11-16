@@ -504,3 +504,15 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
    only its own lines of the thought. */
 .room-fragment-clip { overflow: hidden; }
 .room-float-start { text-align: start; }
+
+/* The look of words inside a thought (world/spans.js): kept spans and decorators draw only with
+   these classes, so the one look holds. */
+.span-bold { font-weight: 600; }
+.span-italic { font-style: italic; }
+.span-underline { text-decoration: underline; text-underline-offset: 3px; }
+.span-wavy { text-decoration: underline wavy rgb(var(--ink-rgb) / .5); text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.span-highlight { background: rgb(var(--glow-rgb) / .4); border-radius: 2px; }
+.span-strike { text-decoration: line-through; }
+.span-quiet { opacity: .55; }
+.span-caps { font-variant: small-caps; letter-spacing: .02em; }
+.span-mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: .9em; }

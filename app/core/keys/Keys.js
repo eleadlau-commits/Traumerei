@@ -16,7 +16,7 @@ const BROWSER = new Set(['r', 'd', 'l', 'f']);
 
 export default class Keys extends Feature {
   start() {
-    this.defineSlot('keys', '{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room" or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; no key runs while a field has focus (writing a thought, search, the tray, the Editor): there only the field\'s own keys work.');
+    this.defineSlot('keys', '{ id, keys: ["Ctrl+K", …], shows?, words, zone, order, when?(), run?(e), typing? }: a key and what it does. keys are written as in keymap.js; shows is what the list says instead of the keys (for a click, or "Type anywhere"); zone is "everywhere", "rooms", "room", "editing" (while a thought is being written: only there) or another place; when() is true while the key is live (default always); run(e), when given, is called on that key and the key is taken; no key runs while a field has focus (writing a thought, search, the tray, the Editor): there only the field\'s own keys work.');
     this.add('keys', { id: 'keys.list', keys: ['?'], words: 'these keys', zone: 'everywhere', order: 99,
       when: () => this.live().some((k) => k.id !== 'keys.list'), run: () => this.show() });
     this.provide('keys', {
@@ -52,18 +52,28 @@ export default class Keys extends Feature {
     if (e.defaultPrevented || e.isComposing) return;
     if (!this.box.hidden) { e.preventDefault(); e.stopPropagation(); this.hide(); return; }
     if (e.target?.matches?.(FIELD)) {
+      // A field that names a zone (a thought being written: data-zone="editing") takes that zone's
+      // keys first (Ctrl+B in a thought); every other key stays the field's own.
+      const zone = e.target.dataset?.zone;
+      if (zone && this.runKey(e, (k) => k.zone === zone)) return;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && BROWSER.has((e.key || '').toLowerCase())) e.preventDefault();
       return;
     }
     if (document.querySelector('dialog[open]')) return;
+    this.runKey(e, (k) => k.zone !== 'editing');
+  }
+
+  // Runs the first live entry of those `fits` allows that this key matches; true when one ran.
+  runKey(e, fits) {
     for (const k of this.slot('keys').items) {
-      if (!k.run || !(k.keys || []).some((c) => matches(c, e))) continue;
+      if (!k.run || !fits(k) || !(k.keys || []).some((c) => matches(c, e))) continue;
       try { if (k.when && !k.when()) continue; } catch { continue; }
       e.preventDefault();
       e.stopPropagation();
       try { k.run(e); } catch (err) { console.warn(`Keys: ${k.id}`, err); }
-      return;
+      return true;
     }
+    return false;
   }
 
   build() {

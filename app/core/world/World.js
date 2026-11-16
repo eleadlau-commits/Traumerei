@@ -65,6 +65,12 @@ export default class World extends Feature {
       setKinds(slot.items, (k, why) => console.warn(`World: the item kind "${k?.kind}" was skipped: ${why}`));
       this.emit('world:kinds');
     });
+    // The look of words in a thought, from plugins (spans.js): kinds of span kept on a mark (bold),
+    // and decorators that only draw (every word's first letter). 'world:kinds' redraws the rooms.
+    const spanKinds = this.defineSlot('world.spans', 'A kind of span, the look of some words in a thought: { kind, name, class, md? } (see world/spans.js).');
+    spanKinds.watch((slot) => { lib.spans.declareSpans(slot.items, (k, why) => console.warn(`World: the span kind "${k?.kind}" was skipped: it needs ${why}`)); this.emit('world:kinds'); });
+    const decorators = this.defineSlot('world.decorators', 'A decorator: { id, decorate(text, mark) → [{ from, to, class }] }, read-only (see world/spans.js).');
+    decorators.watch((slot) => { lib.spans.declareDecorators(slot.items, (d, why) => console.warn(`World: the decorator "${d?.id}" was skipped: it needs ${why}`)); this.emit('world:kinds'); });
     // What a mark may hold beyond the core's own, from plugins (a Twin's sides: model.js HOLDS).
     const holds = this.defineSlot('world.holds', 'What a mark may hold beyond the core\'s: { id, name?, holds(parent, kind) } (see world/model.js HOLDS).');
     holds.watch((slot) => {

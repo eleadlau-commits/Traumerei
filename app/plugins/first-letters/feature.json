@@ -1,0 +1,19 @@
+{
+  "name": "First letters",
+  "description": "Draws every word's first letter bold in every thought; changes no words.",
+  "version": "0.1.0",
+  "main": "FirstLetters.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "look"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

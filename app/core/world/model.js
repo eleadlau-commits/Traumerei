@@ -51,6 +51,7 @@
 //
 // No screen here, so it can be tested on its own (tests/model.test.js).
 
+import * as S from './spans.js';
 import { kindFor } from './items/index.js';
 import * as L from './links.js';
 import * as P from './places.js';
@@ -571,7 +572,9 @@ function tidy(f) {
   const kind = kindOf(f);
   if (isLeaf(f)) {
     const own = kindFor(kind).tidy(f, { oneLine, lines });
-    return own ? spot(f, { kind, ...own }) : null;
+    if (!own) return null;
+    const sp = typeof own.text === 'string' ? S.clean(f.spans, own.text.length) : null; // the look of its words (spans.js)
+    return spot(f, { kind, ...own, ...(sp ? { spans: sp } : {}) });
   }
   if (kind === 'group') {
     const out = spot(f, { kind, of: typeof f.of === 'string' && f.of ? f.of : DEFAULT_MODE, title: oneLine(f.title) });
@@ -709,8 +712,11 @@ export function create(w, parent, fields, now = Date.now()) {
 export function update(w, id, fields, now = Date.now()) {
   const th = w.things[id];
   if (!th || (kindOf(th) !== 'room' && shut(w, id))) return null; // a room itself can still be renamed, coloured or unlocked
+  // New words carry the spans over (spans.js shift), unless new spans come with them.
+  if ('text' in fields && !('spans' in fields) && th.spans) fields = { ...fields, spans: S.shift(th.spans, th.text, fields.text) };
   const next = tidy({ ...th, ...fields, kind: th.kind, edited: now });
   if (!next) { remove(w, id); return null; }
+  if (!next.spans) delete th.spans;
   if (isGroup(th)) {
     next.of = th.of;
     if (!next.closed) delete th.closed;
