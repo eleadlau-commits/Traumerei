@@ -10,6 +10,7 @@
 
 import { test, assert } from 'folio/testing';
 import { makeHost, brokenLaws, deepFreeze, bigRoom } from './host.js';
+import { json, samples, tablesOf, drive } from './conformance.js';
 
 // A plugin's module, from where the tests run: the built app has every feature side by side
 // (features/<id>/), the source keeps plugins in their own folder (app/plugins/<id>/).
@@ -94,103 +95,7 @@ const WITH = { links: ['cites'] };
 // What a plugin's block says it needs, where the API checks it (a surface needs 'surface').
 const NEEDS = { sketch: ['surface'], chart: ['surface'] };
 const block = (id) => (NEEDS[id] ? { needs: NEEDS[id] } : {});
-// A mark of each kind a plugin adds, made through the API (so its kind's fields are tried, and the
-// round-trip carries it); the fields a person would write.
-const SAMPLES = {
-  checkbox: { text: 'buy bread' }, quote: { text: 'To be, or not', source: 'Hamlet' }, code: { code: 'let x = 1;\n  x++', lang: 'js' },
-  'audio-note': { src: 'data:audio/ogg;base64,AAAA', text: 'hum' }, 'pdf-page': { src: 'data:application/pdf;base64,JVBE', page: '3', name: 'paper' },
-  table: { text: 'a | b\n1 | 2' }, sketch: { strokes: [[10, 10, 40, 30, 80, 20]], text: 'a hill' }, figure: { src: 'data:image/png;base64,iVBORw0KGgo=', caption: 'A river', ratio: 0.5 },
-  suggestion: { says: 'the two may speak of the same thing', act: 'link' },
-};
-
-const json = (o) => JSON.stringify(o);
-
-// Makes a mark of each kind the plugin added, and links of each kind it declared, through the API.
-function samples(host, t, id) {
-  for (const { slot, item } of host.added(id)) {
-    if (slot === 'world.items') {
-      const r = t.marks.make({ kind: item.kind, content: SAMPLES[item.kind], in: host.room });
-      assert.ok(r.ok, `${id}: a ${item.kind} could not be made: ${r.reason}`);
-      assert.equal(t.marks.get(r.id).kind, item.kind);
-      assert.ok(t.marks.text(r.id).length > 0, `${id}: a ${item.kind} reads no words`);
-    }
-    if (slot === 'links.kinds') {
-      const r = t.links.link(host.ids[7], host.ids[8], item.kind, null, { note: 'why' });
-      assert.ok(r.ok, `${id}: ${r.reason}`);
-      assert.equal(t.links.link(host.ids[7], host.ids[8], item.kind).ok, false); // once each way
-      assert.ok(t.links.link(host.ids[1], host.lib.model.roomItems(host.w, host.other)[0].id, item.kind).ok, `${id}: links cross rooms`);
-    }
-  }
-}
-const tablesOf = (host) => json(host.world.carriers.tables());
-
-// Uses everything a plugin added, as a person would: every rule laid out and asked, every
-// command run, every Editor section drawn, every link kind tried, every format sent out.
-async function drive(host, t, added) {
-  const errors = [];
-  const tryIt = async (what, fn) => { try { await fn(); } catch (err) { errors.push(`${what}: ${err.message}`); } };
-  host.choose(host.room, host.ids[4]);
-  for (const { slot, item } of added) {
-    if (slot === 'world.ontologies') {
-      await tryIt(`rule ${item.id} lays out`, () => { const l = t.rules.layout(item.id, host.room); assert.ok(l.length > 0, `rule ${item.id} placed nothing`); });
-      await tryIt(`rule ${item.id} on a frozen world`, () => { const copy = deepFreeze(JSON.parse(JSON.stringify(host.w))); item.layout(copy, host.room); });
-      await tryIt(`rule ${item.id} admits`, () => t.rules.admit(item.id, { kind: 'place', mark: host.ids[5], context: host.room, position: { x: 1, y: 2 } }));
-    } else if (slot === 'keys') {
-      if (item.run && (!item.when || item.when())) await tryIt(`command ${item.id}`, () => item.run({ preventDefault() {} }));
-    } else if (slot === 'room.editor') {
-      const x = { id: host.ids[4], roomId: host.room, mode: 'joyce', locked: false, refresh() {} };
-      if (!item.when || item.when(x)) await tryIt(`editor ${item.id}`, () => item.render(x));
-    } else if (slot === 'links.kinds') {
-      await tryIt(`link kind ${item.kind}`, () => {
-        const r = t.links.link(host.ids[3], host.ids[6], item.kind);
-        assert.ok(r.ok || typeof r.reason === 'string', `link kind ${item.kind} neither landed nor said why`);
-      });
-    } else if (slot === 'world.formats') {
-      if (item.exportRoom) await tryIt(`format ${item.id} out`, () => item.exportRoom(host.room));
-    } else if (slot === 'rail.more') {
-      await tryIt(`more ${item.id}`, () => item.run?.());
-    } else if (slot === 'room.strip') { // since 1.1.0: the strip, the room's bar, a page of its own
-      await tryIt(`strip ${item.id}`, () => {
-        if (item.visible) item.visible(host.room);
-        assert.equal(typeof item.text(host.room), 'string', `strip ${item.id} says no words`);
-        item.title?.(host.room);
-        item.onClick?.(host.room);
-      });
-    } else if (slot === 'room.bar') {
-      await tryIt(`bar ${item.id}`, () => { item.visible?.(host.room); item.on?.(host.room); item.title?.(host.room); item.run(host.room); item.run(host.room); });
-    } else if (slot === 'pages.plugin') {
-      await tryIt(`page ${item.id}`, () => { const out = item.sections ? item.sections() : item.render(); assert.ok(out, `page ${item.id} draws nothing`); });
-    } else if (slot === 'room.surfaces') {
-      // A surface (since 1.1.0): drawn for a mark of the kind that asks for it (or for a box, with
-      // no mark), then one gesture as a person would make it (down, moves, up: one step), a key,
-      // the wheel, focus and blur, and left.
-      await tryIt(`surface ${item.id}`, () => {
-        const kind = added.find((a) => a.slot === 'world.items' && a.item.surface === item.id)?.item.kind;
-        const mark = kind ? t.marks.ofKind(kind).find((m) => t.places.home(m.id) === host.room)?.id ?? null : null;
-        const box = kind ? null : t.rules.draws(added.find((a) => a.slot === 'world.ontologies')?.item.id, host.room).boxes.find((b) => b.surface === item.id) || null;
-        const size = box ? { width: box.w, height: box.h } : { width: item.width || 240, height: item.height || 160 };
-        const el = typeof document === 'undefined' ? null : document.createElement('div');
-        const ctx = (focused) => Object.freeze({ surface: item.id, mark, context: host.room, box, ...size, focused, el });
-        item.draw(el, ctx(false));
-        item.focus?.(ctx(true));
-        const steps = host.log.undo?.length;
-        const done = item.hold();
-        const at = (type, x, y) => Object.freeze({ type, x, y, pressure: 0.5, buttons: type === 'up' ? 0 : 1, pointer: 'pen', shift: false, alt: false, ctrl: false });
-        item.pointer?.(at('down', 10, 10), ctx(true));
-        for (let i = 1; i <= 5; i++) item.pointer?.(at('move', 10 + i * 8, 10 + i * 4), ctx(true));
-        item.pointer?.(at('up', 50, 30), ctx(true));
-        done();
-        if (steps !== undefined) assert.ok(host.log.undo.length - steps <= 1, `surface ${item.id}: one gesture made more than one step`);
-        item.key?.(Object.freeze({ key: 'a', code: 'KeyA', shift: false, alt: false, ctrl: false }), ctx(true));
-        item.wheel?.(Object.freeze({ x: 5, y: 5, dx: 0, dy: 40, ctrl: false, shift: false }), ctx(true));
-        item.blur?.(ctx(false));
-        if (mark && t.marks.get(mark)) item.draw(el, ctx(false));
-        item.leave?.(el, ctx(false));
-      });
-    }
-  }
-  return errors;
-}
+// SAMPLES, samples(), drive() and tablesOf() live in conformance.js, shared with `build.py check`.
 
 for (const [id, mod] of Object.entries(CORPUS)) {
   test(`corpus ${id}: the laws hold with it on, it is used without an error, and off and on again loses no row`, async () => {

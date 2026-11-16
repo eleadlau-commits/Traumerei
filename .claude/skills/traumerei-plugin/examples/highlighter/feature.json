@@ -1,0 +1,22 @@
+{
+  "name": "Highlighter",
+  "description": "Ctrl+Shift+H while writing highlights the word at the caret (==…== in Markdown), words in capitals are drawn as such, the strip counts the highlighted thoughts and a bar word hands the room out as Markdown.",
+  "version": "0.1.0",
+  "main": "Highlighter.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 3,
+    "minApp": "1.1.0",
+    "kind": [
+      "look",
+      "command",
+      "tool",
+      "format"
+    ],
+    "load": "start",
+    "starts": "off",
+    "author": "E"
+  }
+}

@@ -125,6 +125,8 @@ python build.py test
 ```
 
 Runs the engine's tests, Folio's own tests, and the whole-app checks (needs Chrome or Edge).
+`python build.py check <plugin-id>` checks one plugin in seconds (it compiles, its tests, the
+conformance suite, the speed budgets) and packs its `.traumplug` (`app/plugins/README.md` §6).
 
 ### Desktop app (Windows)
 

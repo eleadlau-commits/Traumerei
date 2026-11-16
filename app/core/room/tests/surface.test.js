@@ -70,7 +70,8 @@ test('a surface is drawn in the element of its mark and of its box, kept across 
   draw();
   assert.equal(world$.querySelector(`[data-thought] .room-surface`), host, 'the same element, moved into the new drawing');
   assert.equal(calls.length, 2, 'nothing changed, so nothing drawn again');
-  lib.model.update(w, th.id, { n: 2 });
+  // A moment later: made and changed in the same millisecond, the stamp (edited) would read the same.
+  lib.model.update(w, th.id, { n: 2 }, (th.edited ?? th.at) + 1000);
   draw();
   assert.deepEqual(calls.at(-1), ['draw', 'mark', 200, 120], 'its mark changed: drawn again');
   world$.replaceChildren();

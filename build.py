@@ -18,6 +18,7 @@ OWN = {
     'release': 'set one version in app.json, tauri.conf.json and Cargo.toml (release --check <tag> checks them)',
     'pack-plugin': 'pack a plugin into one importable <id>.traumplug file (--all: every plugin shipped apart, and the starter set)',
     'new-plugin': 'a new plugin, shipped as a file; --corpus makes it a stress-corpus plugin instead (tools/corpus.py)',
+    'check <id>': 'check one plugin headless (compiles, its tests, the conformance suite, the speed budgets), then pack it (--no-pack, --out DIR)',
 }
 
 
@@ -30,6 +31,10 @@ def own(argv: list[str]) -> int | None:
     if argv[0] == 'pack-plugin':
         from tools import pack_plugin
         return pack_plugin.main(argv[1:])
+    if argv[0] == 'check' and [a for a in argv[1:] if not a.startswith('-')]:
+        # `check <id>` is one plugin's; a bare `check` stays Folio's (every feature, without compiling).
+        from tools import check_plugin
+        return check_plugin.main(argv[1:])
     if argv[0] == 'new-plugin':
         from tools import new_plugin
         return new_plugin.main(argv[1:], lambda rest: main(['new-plugin', *rest], ROOT))
