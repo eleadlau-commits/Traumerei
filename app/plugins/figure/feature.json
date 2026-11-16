@@ -1,0 +1,19 @@
+{
+  "name": "Figure",
+  "description": "A picture with a caption that flows among paragraphs, as in a document's page.",
+  "version": "0.1.0",
+  "main": "Figure.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "item"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

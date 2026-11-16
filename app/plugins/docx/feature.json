@@ -1,0 +1,19 @@
+{
+  "name": "Word document",
+  "description": "Exports a room as a Word document (.docx): headings, paragraphs with bold and italic, tables and figures, in reading order.",
+  "version": "0.1.0",
+  "main": "Docx.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "format"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

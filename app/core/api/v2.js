@@ -746,6 +746,19 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       toast: (text) => toast(text),
       // How words wrap at a width as the room draws a thought: { lines, lineHeight, height }.
       measure: (text, width) => measure(text, width),
+      // How tall a mark draws at a width, for a rule laying marks in a column (a page): words by
+      // their lines; a kind with height(mark, width) by its own word (a table, a figure); inline:
+      // whether the kind says it flows among paragraphs (slots.kinds' inline).
+      size: (id, width) => {
+        const th = tables.marks.get(id);
+        if (!th) return null;
+        const k = (app.slot(SLOTS.kinds)?.items || []).find((x) => x?.kind === th.kind) || (lib || world.lib).items.kindFor(th.kind);
+        let h = null;
+        if (typeof k.height === 'function') { try { h = +k.height(th, +width); } catch { h = null; } }
+        if (Number.isFinite(h) && h > 0) return row({ height: h, inline: !!k.inline });
+        const m = measure(tables.marks.text(id) || ' ', width);
+        return row({ height: m.height, lines: m.lines, lineHeight: m.lineHeight, inline: th.kind === 'line' || th.kind === 'passage' || !!k.inline });
+      },
       // The words being written (a new thought, or one opened again): the caret, and what a
       // plugin may do there. Nothing is kept until Enter keeps the thought, as one step; a kept
       // mark's words change through replace(mark, …), one step.

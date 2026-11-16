@@ -22,7 +22,7 @@ const V2 = {
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['account', 'aiServices', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'providers', 'rules', 'spans', 'views'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
-  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'text', 'toast'],
+  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'size', 'text', 'toast'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.
