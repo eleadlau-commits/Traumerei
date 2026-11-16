@@ -34,6 +34,18 @@ export default class Pages extends Feature {
       shell.openAccount = () => (this.account()?.sections ? this.open('account') : openAccount());
     }
     this.on('account:changed', () => { if (this.kind === 'account') this.draw(); });
+    // A plugin's own page (t.slots.pages, since 1.0.5), reached from the ☰ menu: { id, label,
+    // icon?, idle?, sections?() → [{ id, title, icon?, body }] or render() → a node }. It shows in
+    // this same frame (Home › its label), and Escape or ← goes back to what was there.
+    this.defineSlot('pages.plugin', 'A plugin\'s own page, in the frame like Settings: { id, label, icon?, order?, idle?, sections?() → [{ id, title, icon?, body }], render?() → node }.')
+      .watch(() => { if (this.kind && this.kind.startsWith('plugin:') && !this.pluginPage(this.kind.slice(7))) this.close(); else if (this.kind?.startsWith('plugin:')) this.draw(); });
+    // Going into a room from a plugin's page (its list of rooms) leaves the page.
+    this.on('room:open', () => { if (this.kind?.startsWith('plugin:')) this.close(); });
+    this.provide('pages', Object.freeze({
+      open: (id) => { if (!this.pluginPage(String(id))) return false; this.open(`plugin:${id}`); return true; },
+      close: () => this.close(),
+      showing: () => (this.root.open && this.kind?.startsWith('plugin:') ? this.kind.slice(7) : null),
+    }));
     document.addEventListener('keydown', (e) => {
       if (!this.isOpen || e.key !== 'Escape' || e.defaultPrevented) return;
       if (e.target?.matches?.('input, textarea, select') || document.querySelector('dialog[open]:not(.pages)')) return;
@@ -47,9 +59,24 @@ export default class Pages extends Feature {
   // The account feature's item in Folio's 'account' slot, or null.
   account() { return this.slot('account').items[0] || null; }
 
+  // A plugin's page (the slot pages.plugin), by id, or null.
+  pluginPage(id) { return this.slot('pages.plugin').items.find((p) => p.id === id) || null; }
+
   // What each page is: its name, the rail's head, its quiet line, and its sections
   // ({ id, title, icon, body }).
   page(kind) {
+    if (kind?.startsWith('plugin:')) {
+      const p = this.pluginPage(kind.slice(7));
+      const slot = this.slot('pages.plugin');
+      const title = String(p?.label || p?.id || 'Page');
+      return { title, idle: String(p?.idle || ''),
+        sections: () => {
+          if (!p) return [];
+          if (p.sections) return (slot.run(p, (x) => x.sections(), []) || []).filter((s) => s && s.id != null && s.body).map((s) => ({ ...s, title: String(s.title ?? s.id), icon: s.icon || 'dots' }));
+          const body = p.render ? slot.run(p, (x) => x.render(), null) : null;
+          return body ? [{ id: p.id, title, icon: p.icon || 'dots', body }] : [];
+        } };
+    }
     if (kind === 'account') {
       const a = this.account();
       return { title: 'Account', idle: a?.name?.() ? 'Signed in' : 'Sign in to keep your rooms and settings on every device',

@@ -429,7 +429,8 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
       const o = ontology(rule);
       return rows(o ? [...lib.rules.layout(o, w(), context)].map(([mark, p]) => ({ mark, context, rule, position: Object.freeze({ x: p.x, y: p.y }),
         ...(p.width ? { width: p.width } : {}), ...(p.height ? { height: p.height } : {}),
-        ...(p.fragments ? { fragments: Object.freeze(p.fragments.map((f) => Object.freeze({ x: f.x, y: f.y, width: f.width, height: f.height, lines: f.lines }))) } : {}) })) : []);
+        ...(p.fragments ? { fragments: Object.freeze(p.fragments.map((f) => Object.freeze({ x: f.x, y: f.y, width: f.width, height: f.height, lines: f.lines }))) } : {}),
+        ...(p.bands ? { bands: Object.freeze({ ...p.bands }) } : {}) })) : []);
     },
     admit: (rule, proposal) => { const o = ontology(rule); return row(o ? { ...lib.rules.admit(o, w(), { ...(proposal || {}) }) } : { ok: false, reason: 'No such rule' }); },
     moves: (rule, context, mark) => { const o = ontology(rule); return rows(o ? lib.rules.moves(o, w(), context, mark) : []); },
@@ -542,6 +543,9 @@ export function simpleRule(rule, lib, ontologies = () => null) {
         if (Number.isFinite(p.width) && p.width > 0) q.width = p.width;
         if (Number.isFinite(p.height) && p.height > 0) q.height = p.height;
         if (p.align === 'start') q.align = 'start';
+        // Words for a zoom band (since 1.0.5): under it the unit shows them in place of its own.
+        const bands = Object.fromEntries(['far', 'mid', 'near'].filter((b) => typeof p[b] === 'string' && p[b].trim()).map((b) => [b, p[b].trim().slice(0, 200)]));
+        if (Object.keys(bands).length) { q.bands = Object.freeze(bands); out.banded = true; }
         const lines = Array.isArray(p.lines) && p.lines.length === 2 && p.lines.every((n) => Number.isInteger(n) && n >= 0) && p.lines[1] > p.lines[0] ? [p.lines[0], p.lines[1]] : null;
         const had = out.get(p.mark);
         if (had && lines && had.fragments) { had.fragments.push(Object.freeze({ ...q, lines: Object.freeze(lines) })); continue; }
@@ -558,6 +562,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       return out;
     },
     point(w, room, id) { return this.layout(w, room).get(id) || null; },
+    banded(w, room) { return !!this.layout(w, room).banded; }, // some unit has words for a zoom band
     drop(w, room, id, x, y) {
       if (model.shut(w, room)) return;
       if (rule.drop) propose(w, room, id, said(rule.drop, w, room, id, x, y));
@@ -658,7 +663,14 @@ export const SLOTS = {
   account: 'account',          // who is signed in, and their account page (Folio's slot; the first item)
   spans: 'world.spans',        // a kind of span: the look of some words in a thought, kept on the mark (world/spans.js)
   decorators: 'world.decorators', // how a thought's words are drawn, read-only: never kept (world/spans.js)
+  bar: 'room.bar',             // since 1.0.5: a word on a room's bar, beside Search (room/bars.js)
+  strip: 'room.strip',         // since 1.0.5: a tool's status, one line at the foot of a room's canvas (room/strip.js)
+  pages: 'pages.plugin',       // since 1.0.5: a page of the plugin's own, from the ☰ menu, in the frame (pages/Pages.js)
 };
+
+// The zoom's bands when no room feature runs (the room's own, room/shared.js BANDS, are the ones
+// that count): far, mid, near, each [from, to).
+const BANDS_FALLBACK = Object.freeze({ far: Object.freeze([0.25, 0.5]), mid: Object.freeze([0.5, 1.75]), near: Object.freeze([1.75, 4]) });
 
 // What plugins offer each other (t.peers): one name, one offer at a time; the offer goes when the
 // plugin that made it is switched off. shared: a Map the app keeps, or null for none.
@@ -723,6 +735,30 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       get settings() { return world.globals; },  // each rule's settings for new rooms: { [rule]: { key: value } }
     }),
     commands: Object.freeze({ add: add(SLOTS.commands), label: (id) => keys?.label(id) || '' }),
+    // A page of its own: the page itself (the pages feature shows it in the frame) and its row in
+    // the ☰ menu, which opens it; the one function given back takes both away.
+    pages: Object.freeze({
+      add: (page) => {
+        if (!page || typeof page.id !== 'string' || !page.id) throw new Error('A page needs an id');
+        const off = add(SLOTS.pages)(page);
+        const menuRow = add(SLOTS.menu)({ id: `page:${page.id}`, label: String(page.label || page.id), icon: page.icon || 'dots', order: page.order ?? 50,
+          onClick: () => service('pages')?.open(page.id), ...(page.visible ? { visible: () => page.visible() } : {}) });
+        return () => { off(); menuRow(); };
+      },
+    }),
+  });
+  // The zoom (since 1.0.5): the room's, read and set through the open room (room/view.js).
+  const zoomNs = Object.freeze({
+    get: () => { const z = room?.()?.zoom?.(); return z ? row({ zoom: z.zoom, band: z.band }) : null; },
+    set: (zoom, at) => { const r = room?.(); const z = r?.setZoom ? r.setZoom(+zoom, at) : null; return z ? row({ ok: true, zoom: z.zoom, band: z.band }) : row({ ok: false, reason: 'No room is open' }); },
+    on: (fn) => {
+      const r = room?.();
+      if (!r?.onZoom) return () => {};
+      const off = r.onZoom((z) => fn(row({ zoom: z.zoom, band: z.band, context: z.context })));
+      gone(off);
+      return off;
+    },
+    get bands() { return room?.()?.bands || BANDS_FALLBACK; },
   });
   return Object.freeze({
     version: API_VERSION,
@@ -778,6 +814,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
         spans: () => rows(room?.()?.text?.spans?.() || []),
         on: (fn) => { const off = room?.()?.text?.on?.(fn) || (() => {}); gone(off); return off; },
       }),
+      zoom: zoomNs,
       files: Object.freeze({
         open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
         save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
@@ -805,6 +842,8 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
           if (home !== id) room?.()?.go?.(id, home);
           return true;
         },
+        // A page a plugin added (slots.pages), by id: shown in the frame; false when there is none.
+        page: (id) => !!service('pages')?.open(String(id)),
       }),
     }),
     // What rules and views share: the rule kit and the drawing parts (surface()), and the world

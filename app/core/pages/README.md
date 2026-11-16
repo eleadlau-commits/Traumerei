@@ -25,5 +25,12 @@ The page is a `<dialog>` shown open (not modal) and put last in the page each ti
 shows. So while it shows, the key map, the rooms page and the room leave keys alone, as they do
 for any pop-up. While it shows `<html>` has the class `page-open` (Home hides its words).
 
-It offers no service and saves nothing. **The code.** `Pages.js` is the page, `settings.js` reads
+**A plugin's page** (since 1.0.5): the slot **`pages.plugin`** (`t.slots.pages`, which also puts
+its row in the ☰ menu) holds `{ id, label, icon?, order?, idle?, sections?() | render() }`. It shows
+in the same frame, Home › its label: `sections()` gives the rail and rows as Settings has,
+`render()` one body. Escape or ← goes back; going into a room (`room:open`) leaves it. The
+**`pages`** service opens one: `open(id)` (`false` when there is none), `close()`, `showing()`
+(the plugin page's id, or `null`).
+
+It saves nothing. **The code.** `Pages.js` is the page, `settings.js` reads
 the sections, `style.css` is its layout.

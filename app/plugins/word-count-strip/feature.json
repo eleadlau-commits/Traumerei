@@ -1,0 +1,21 @@
+{
+  "name": "Word count strip",
+  "description": "The open room's word count in the strip at the foot of the canvas, a word on the room's bar that shows or hides it, and a page of every room's count.",
+  "version": "0.1.0",
+  "main": "WordCountStrip.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "tool",
+      "page",
+      "command"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

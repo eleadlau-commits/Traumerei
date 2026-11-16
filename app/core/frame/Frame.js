@@ -161,7 +161,7 @@ export default class Frame extends Feature {
     this.searchBtn.hidden = !o.search;
     this.backBtn.hidden = !o.back;
     this.backBtn.setAttribute('aria-label', o.backLabel || 'Back');
-    this.drawCrumbs(o.crumbs || []);
+    this.drawCrumbs(o.crumbs || [], o.words || []);
     this.selEl.textContent = o.selection || '';
     this.modeEl.textContent = o.mode || '';
     this.drawInfo();
@@ -173,7 +173,9 @@ export default class Frame extends Feature {
 
   // Where you are: each step a word to press (or the owner's own node, as a room's name that can
   // be renamed in place), with a quiet › between them.
-  drawCrumbs(list) {
+  // Then the owner's words, if any (a room's: plugins' words on its bar), at the right of the
+  // breadcrumb's space, beside Search: { label, title?, pressed?, onClick }.
+  drawCrumbs(list, words = []) {
     const out = [];
     list.forEach((c, i) => {
       if (i) out.push(el('span', { class: 'crumb-sep', 'aria-hidden': 'true' }, '›'));
@@ -182,6 +184,12 @@ export default class Frame extends Feature {
       out.push(c.onClick ? el('button', { type: 'button', ...attrs, onclick: c.onClick }, c.label) : el('span', attrs, c.label));
       if (c.note) out.push(el('span', { class: 'crumb-note' }, c.note));
     });
+    if (words.length) {
+      out.push(el('span', { class: 'frame-words' }, ...words.map((w) => el('button', {
+        type: 'button', class: 'word frame-word', ...(w.id ? { 'data-word': w.id } : {}), ...(w.title ? { title: w.title, 'data-hint': w.title } : {}),
+        ...(w.pressed == null ? {} : { 'aria-pressed': String(!!w.pressed) }), onclick: () => w.onClick?.(),
+      }, w.label))));
+    }
     this.crumbs.replaceChildren(...out);
   }
 
