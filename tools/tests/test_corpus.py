@@ -58,8 +58,10 @@ class CorpusTest(unittest.TestCase):
             self.assertEqual([p.stem for p in paths], [*APART, 'starter-set'])
             starter = json.loads(paths[-1].read_text('utf-8'))
             self.assertEqual(starter['format'], 'traumset/1')
-            self.assertEqual(len(starter['plugins']), len(APART) - 1)  # all but Provoke
+            self.assertEqual(len(starter['plugins']), len(APART) - 2)  # all but Provoke and Book
             self.assertFalse(any('"id": "provoke"' in p for p in starter['plugins']))
+            self.assertFalse(any('"id": "book"' in p for p in starter['plugins']), 'Book ships on its own')
+            self.assertIn('book', [p.stem for p in paths])
         finally:
             shutil.rmtree(tmp)
 
