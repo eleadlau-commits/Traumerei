@@ -5,7 +5,9 @@ pages (A4, Letter, A5 or 6 × 9, or one column without pages): a title page, eac
 new page with its heading dropped, its sections with numbered headings, its paragraphs in order,
 running on from page to page; page numbers at the foot and the chapter's title at the head; margin
 notes beside the page; and after the last page, the room's thoughts not yet in the book. You write in it as in any room:
-Enter keeps a paragraph and it lands right after the one you were on, in its chapter.
+Enter keeps a paragraph and it lands right after the one you were on, in its chapter. While it
+is being written, the lines below move down to make room for it (`reads.marks.draft`), page by
+page too.
 
 A plugin, shipped as `book.traumplug` (never built into the app). It reaches the app only
 through the plugin API (`app/core/API.md`), and needs app 1.1.2 (the `join` proposal, `ui.text.edit`, quiet link kinds,
@@ -40,6 +42,9 @@ and room settings that redraw).
   quiet lines, each chapter's title large on its first page and at the head of the pages after.
   Far off, a double-click on a page goes to it, the page filling the height (in a spread, both
   pages when they fit). A click on a chapter in the contents brings its first page into view.
+  Going there is one move: the view slides and zooms together (eased, 260–520 ms; at once when
+  the system asks for less motion), the heading chosen without opening the room again, so the
+  right dock keeps the Book tab.
 - **Pages** (`pages.js`, drawn, never stored): a heading keeps two lines of what follows on its
   page; a paragraph runs on to the next page in pieces, never leaving one line alone at a foot or
   a top; a table or figure moves to the next page whole.

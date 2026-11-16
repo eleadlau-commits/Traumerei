@@ -105,6 +105,18 @@ export function read(reads, room) {
   return { items, at, notes };
 }
 
+// The room left for the thought being written after a mark (reads.marks.draft, since 1.1.1): the
+// room draws it under that mark, DRAFT_TOP below its last line, at its width, so what follows moves
+// down by that and the draft's height (its box's, else its words measured at width W), and the
+// rule is laid out again only when that height changes. → { after, h } or null.
+export const DRAFT_TOP = 12;
+export function draftRoom(reads, room, measure, W) {
+  const d = reads.marks.draft?.(room);
+  if (!d || !d.after) return null;
+  const h = d.height || measure(d.text || ' ', W).height || 0;
+  return { after: d.after, h: DRAFT_TOP + h };
+}
+
 // The column: rows for the marks (centre, width, height, words set flush left) and boxes behind
 // them (the title, each heading's number, the line over the thoughts not yet in the book).
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
@@ -112,6 +124,7 @@ export function column(reads, room, measure, size = () => null, set = null) {
   const W = widthOf(reads, room, set);
   const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
+  const draft = draftRoom(reads, room, measure, W);
   const rows = [], boxes = [];
   const L = -W / 2; // the column is centred on x = 0, and starts a little above the room's middle
   let y = -lh * 10;
@@ -126,7 +139,10 @@ export function column(reads, room, measure, size = () => null, set = null) {
     return measure(reads.marks.text(id) || ' ', W).height;
   };
   const top = y;
-  const place = (id, h, extra = {}) => { rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra }); y += h; };
+  const place = (id, h, extra = {}) => {
+    rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra });
+    y += h + (draft && draft.after === id ? draft.h : 0); // the thought being written after it, under it
+  };
   for (const it of items) {
     if (it.t === 'title') {
       if (y > top) y += lh * SPACE.title;
