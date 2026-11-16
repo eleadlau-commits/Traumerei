@@ -111,6 +111,14 @@ export const PLAIN = 'group';
 const PLAIN_KIND = { id: PLAIN, name: 'Group', membership: 'many', order: 'kept', card: true, keep: false };
 const RULE_GROUPS = new Map();
 // A rule's own groups, said on the rule or in the slot ({ name, membership, order, … }), or null.
+// Families a rule claims (its `claims`: [family ids]): it lays their groups out itself, so their
+// cards don't show in it (groups.js: foreign). Declared by gather() (ontologies/index.js).
+const CLAIMS = new Map();
+export function declareClaims(rule, families) {
+  if (Array.isArray(families) && families.length) CLAIMS.set(rule, new Set(families.filter((f) => typeof f === 'string')));
+  else CLAIMS.delete(rule);
+}
+export const claims = (rule, family) => !!CLAIMS.get(rule)?.has(family);
 export const groupsFor = (o) => o?.groups || (o?.id != null && RULE_GROUPS.get(o.id)) || null;
 // The slot's kinds of group: a rule's go with that rule, the rest are families. Returns the families.
 export function declareGroupKinds(list = [], warn = () => {}) {
@@ -391,7 +399,8 @@ export const roomItems = (w, roomId) => children(w, roomId).filter(isLeaf);
 // Puts an item, or another group, into a group (of its room). Where the group's ontology lets a
 // thing be in only one of its groups, it leaves the one it was in. Never a group into itself, nor
 // into a group it holds.
-export function join(w, groupId, id) {
+// at: (optional) the position in the group's order it takes (0 first; past the end, last).
+export function join(w, groupId, id, at = null) {
   const g = w.things[groupId], th = w.things[id];
   if (!isGroup(g) || !(isLeaf(th) || isGroup(th)) || P.home(w, id) !== P.home(w, groupId) || holdsDirectly(w, groupId, id)) return false;
   if (id === groupId || holds(w, id, groupId)) return false;
@@ -399,7 +408,9 @@ export function join(w, groupId, id) {
   // A group that keeps its order takes a newcomer before the first item written after it (so a
   // thought written between two goes between them); one written last goes at the end.
   // (A family's group, a book's chapter, takes it at the end: its order is the maker's alone.)
-  const after = KEPT.has(g.of) && !g.family ? memberIds(w, groupId).find((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : null;
+  const ids = memberIds(w, groupId);
+  const after = Number.isInteger(at) && at >= 0 ? (ids[at] ?? null)
+    : KEPT.has(g.of) && !g.family ? ids.find((m) => (w.things[m]?.at ?? 0) > (th.at ?? 0)) : null;
   L.join(w, groupId, id, after == null ? null : L.rankBefore(w, groupId, after));
   return true;
 }

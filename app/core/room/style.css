@@ -496,5 +496,11 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-cell-line.room-cell-l3 .room-cell-label { left: 40px; }
 .room-cell-shelf { border-style: dashed; background: rgb(var(--ink-rgb) / .03); }
 .room-cell-quiet .room-cell-label { opacity: .4; }
+.room-cell-page { background: rgb(var(--paper-rgb) / .85); border-color: rgb(var(--ink-rgb) / .12); box-shadow: 0 1px 4px rgb(var(--ink-rgb) / .08); }
 .room-cell-opens { cursor: pointer; }
 .room-cell-opens:hover .room-cell-label { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+
+/* A unit drawn in fragments by its rule (a paragraph that runs on to the next page): each shows
+   only its own lines of the thought. */
+.room-fragment-clip { overflow: hidden; }
+.room-float-start { text-align: start; }

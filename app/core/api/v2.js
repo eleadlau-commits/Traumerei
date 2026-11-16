@@ -23,6 +23,7 @@ export const DIRECTIONS = Object.freeze(['to world', 'from world', 'to maker']);
 export const LINK_KINDS = Object.freeze(['part of', 'stands for', 'relation']);
 
 import { aiFor } from './ai.js';
+import { measure } from './measure.js';
 
 const row = (o) => Object.freeze(o);
 const rows = (list) => Object.freeze(list.map(row));
@@ -192,10 +193,11 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     // kind 'relation' takes the rule whose arrows these are (`rule`: 'russell', 'proust-links') and
     // goes through that rule's own checks (Russell refuses a loop, Law 3); label is the relation's
     // name (left out: the room's first), note the arrow's words.
-    link: (from, to, kind, label = null, { rule = null, note = '' } = {}) => {
+    link: (from, to, kind, label = null, { rule = null, note = '', at = null } = {}) => {
       if (kind === 'part of') {
         if (!model.isGroup(thing(to))) return refuse('Only a group can hold a part');
-        return land(model.join(w(), to, from), LINKS.partId(to, from), 'The part cannot join: it is in another context, locked, or would hold its own group');
+        if (at != null && !(Number.isInteger(at) && at >= 0)) return refuse('A part joins at a position in the order: 0 first');
+        return land(model.join(w(), to, from, at), LINKS.partId(to, from), 'The part cannot join: it is in another context, locked, or would hold its own group');
       }
       if (kind === 'relation') {
         const net = rule && netFor(rule);
@@ -423,7 +425,9 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     list: () => rows((world.ontologies || []).map((o) => ({ id: o.id, name: o.name }))),
     layout: (rule, context) => {
       const o = ontology(rule);
-      return rows(o ? [...lib.rules.layout(o, w(), context)].map(([mark, p]) => ({ mark, context, rule, position: Object.freeze({ x: p.x, y: p.y }) })) : []);
+      return rows(o ? [...lib.rules.layout(o, w(), context)].map(([mark, p]) => ({ mark, context, rule, position: Object.freeze({ x: p.x, y: p.y }),
+        ...(p.width ? { width: p.width } : {}), ...(p.height ? { height: p.height } : {}),
+        ...(p.fragments ? { fragments: Object.freeze(p.fragments.map((f) => Object.freeze({ x: f.x, y: f.y, width: f.width, height: f.height, lines: f.lines }))) } : {}) })) : []);
     },
     admit: (rule, proposal) => { const o = ontology(rule); return row(o ? { ...lib.rules.admit(o, w(), { ...(proposal || {}) }) } : { ok: false, reason: 'No such rule' }); },
     moves: (rule, context, mark) => { const o = ontology(rule); return rows(o ? lib.rules.moves(o, w(), context, mark) : []); },
@@ -474,7 +478,7 @@ export function readsOver(lib, w, ontologies = null) {
 // a chapter's room say; with x, y it lands there under that room's mode).
 export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place']);
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
-export const BOX_STYLES = Object.freeze(['plain', 'title', 'heading', 'line', 'shelf', 'quiet']);
+export const BOX_STYLES = Object.freeze(['plain', 'title', 'heading', 'line', 'shelf', 'quiet', 'page']);
 export function simpleRule(rule, lib, ontologies = () => null) {
   const { model, groups, gaps: G, rules: R } = lib;
   const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
@@ -517,7 +521,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
   const units = (w, room) => model.roomUnits(w, room);
   const o = {
     id: rule.id, name: rule.name || rule.id, note: rule.note || '', icon: rule.icon, order: rule.order ?? 60,
-    groups: null, settings: rule.settings,
+    groups: null, settings: rule.settings, claims: Array.isArray(rule.claims) ? rule.claims : undefined,
     units,
     layout(w, room) {
       let byRoom = memo.get(w); if (!byRoom) memo.set(w, (byRoom = new Map()));
@@ -527,11 +531,27 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       const out = new Map(), own = units(w, room), ids = new Set(own.map((u) => u.id));
       let placed = [];
       try { placed = rule.arrange(readsOver(lib, w, ontologies()), room) || []; } catch (err) { console.warn(`Rule ${rule.id}: arrange failed`, err); }
-      for (const p of placed) if (p && ids.has(p.mark) && Number.isFinite(p.x) && Number.isFinite(p.y)) out.set(p.mark, { x: p.x, y: p.y });
+      // A row may give the unit's width and height (the room wraps the thought to them), and a
+      // mark may have several rows, each a fragment with the lines it shows ({ lines: [from, to] }:
+      // a paragraph that runs on to the next page).
+      for (const p of placed) {
+        if (!p || !ids.has(p.mark) || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+        const q = { x: p.x, y: p.y };
+        if (Number.isFinite(p.width) && p.width > 0) q.width = p.width;
+        if (Number.isFinite(p.height) && p.height > 0) q.height = p.height;
+        if (p.align === 'start') q.align = 'start';
+        const lines = Array.isArray(p.lines) && p.lines.length === 2 && p.lines.every((n) => Number.isInteger(n) && n >= 0) && p.lines[1] > p.lines[0] ? [p.lines[0], p.lines[1]] : null;
+        const had = out.get(p.mark);
+        if (had && lines && had.fragments) { had.fragments.push(Object.freeze({ ...q, lines: Object.freeze(lines) })); continue; }
+        if (had) continue;
+        if (lines) q.fragments = [Object.freeze({ ...q, lines: Object.freeze(lines) })];
+        out.set(p.mark, q);
+      }
       let i = 0;
       const below = Math.max(0, ...[...out.values()].map((p) => p.y)) + 260;
       for (const u of own) if (!out.has(u.id)) out.set(u.id, { x: (i % 8) * 240, y: below + Math.floor(i++ / 8) * 140 });
-      if (hand) for (const [id, p] of groups.spotsOf(w, room, rule.id)) if (out.has(id) && p && Number.isFinite(p.x)) out.set(id, { x: p.x, y: p.y });
+      if (hand) for (const [id, p] of groups.spotsOf(w, room, rule.id)) if (out.has(id) && p && Number.isFinite(p.x)) { const q = out.get(id); out.set(id, { ...q, x: p.x, y: p.y, fragments: undefined }); }
+      for (const q of out.values()) if (q.fragments) Object.freeze(q.fragments);
       byRoom.set(room, { key, map: out });
       return out;
     },
@@ -720,6 +740,8 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     // mark chosen there, as ids, or null.
     ui: Object.freeze({
       toast: (text) => toast(text),
+      // How words wrap at a width as the room draws a thought: { lines, lineHeight, height }.
+      measure: (text, width) => measure(text, width),
       files: Object.freeze({
         open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
         save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),

@@ -1,0 +1,19 @@
+{
+  "name": "Page flow",
+  "description": "A mode that lays a room out as fixed pages in reading order; a paragraph that does not fit runs on to the next page.",
+  "version": "0.1.0",
+  "main": "PageFlow.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

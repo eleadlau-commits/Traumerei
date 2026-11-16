@@ -27,6 +27,8 @@ CORPUS = (
     'markdown-vault', 'csv-marks', 'json-tables', 'anki-deck', 'plain-text',
     'word-linker', 'due-finder', 'nonsense-reader',
     'focus-mode', 'room-stats', 'export-room',
+    # the open core's proofs (open-core plan, one per step)
+    'page-flow',
 )
 
 

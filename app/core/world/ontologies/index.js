@@ -49,6 +49,9 @@
 //                         it, or with that rule off, a new thought is left loose (in the tray)
 //   lines(w, room)        (optional) lines it draws through marks, as lists of ids (Joyce: each
 //                         train's thoughts), for the kernel's draws() (rules.js)
+//   claims                (optional) [family ids]: the families (slots.groups without a rule) whose
+//                         groups it lays out itself, so their cards don't show in it (a book's
+//                         chapters in a Pages rule)
 //   seesAll               (optional) true: a room whose own rule is off may be seen through it
 //                         (Pessoa); the first one on, in order, is used, the core's Rows last
 //   bare                  (optional) the core's own reading (Rows): listed only when no other is on
@@ -115,7 +118,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { parentOf, declareGroups, groupsFor, PLAIN, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
+import { declareClaims, parentOf, declareGroups, groupsFor, PLAIN, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import rows from './rows.js';
 
 // Built into the core: only Rows, the bare reading, always there. Every way of seeing a room is a
@@ -138,6 +141,7 @@ export function missing(o) {
   if (o.roomsPage != null && typeof o.roomsPage !== 'boolean') out.push('roomsPage');
   if (o.lays != null && typeof o.lays !== 'boolean') out.push('lays');
   if (o.writesInto != null && typeof o.writesInto !== 'string') out.push('writesInto');
+  if (o.claims != null && !(Array.isArray(o.claims) && o.claims.every((c) => typeof c === 'string'))) out.push('claims');
   if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
 }
@@ -154,6 +158,7 @@ export function gather(extra = [], warn = () => {}) {
     seen.add(o.id);
     out.push(o);
     declareGroups(o.id, groupsFor(o));
+    declareClaims(o.id, o.claims);
   }
   return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
 }
