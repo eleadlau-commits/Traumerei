@@ -126,7 +126,7 @@ export function column(reads, room, measure, size = () => null, set = null) {
     return measure(reads.marks.text(id) || ' ', W).height;
   };
   const top = y;
-  const place = (id, h) => { rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start' }); y += h; };
+  const place = (id, h, extra = {}) => { rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra }); y += h; };
   for (const it of items) {
     if (it.t === 'title') {
       if (y > top) y += lh * SPACE.title;
@@ -139,7 +139,7 @@ export function column(reads, room, measure, size = () => null, set = null) {
       if (it.t === 'heading') {
         const h = heightOf(it.mark);
         boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label, style: 'heading', level: it.depth });
-        place(it.mark, h);
+        place(it.mark, h, { far: titleOf(reads, it.chapter) }); // far off: its title, large
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${label}  ${titleOf(reads, it.chapter)}`, style: 'heading', level: it.depth, opens: it.chapter });
         y += lh * 1.3;

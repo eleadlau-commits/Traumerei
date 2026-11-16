@@ -43,6 +43,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
   const rows = [], boxes = [], onPage = new Map(), heads = [];
+  const starts = [], firsts = []; // each page's first mark that starts there, and its first mark at all
   let page = -1, y = 0, used = false, running = '';
   const top = (n) => -lh * 13 + n * (P.h + GAP); // the title page's top a little above the room's middle, where it opens
   const foot = () => top(page) + P.h - P.m;
@@ -53,7 +54,12 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     if (s && Number.isFinite(s.height) && s.height > 0 && s.lines == null) return { block: s.height };
     return measure(reads.marks.text(id) || ' ', W);
   };
-  const row = (id, h, extra = {}) => { rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra }); if (!onPage.has(id)) onPage.set(id, page + 1); y += h; used = true; };
+  const row = (id, h, extra = {}) => {
+    rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra });
+    if (firsts[page] == null) firsts[page] = id;
+    if (!onPage.has(id)) { onPage.set(id, page + 1); if (starts[page] == null) starts[page] = id; }
+    y += h; used = true;
+  };
 
   const books = items.filter((x) => x.t === 'title').length;
   if (!books) { // no book yet: a quiet line says how to make one, and the loose thoughts follow
@@ -86,7 +92,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
       if (it.t === 'heading') {
         boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d });
-        row(it.mark, h);
+        row(it.mark, h, { far: title }); // far off, the heading reads as its title, set large (style.css)
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${it.num}  ${title}`, style: 'heading', level: d, opens: it.chapter });
         y += h; used = true;
@@ -121,11 +127,14 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   const last = page;
   // The pages behind, each numbered at its foot (not the title page), its chapter's title at its
   // head (not on a chapter's first page).
-  const behind = [];
+  // A page opens (a double-click on it, zoom.js) the first paragraph that starts on it, else the
+  // one running on to it. The running head is level 1, so that far off it reads large (style.css).
+  const behind = [], firstOn = [];
   for (let n = 0; n <= last; n++) {
-    behind.push({ x: -P.w / 2, y: top(n), w: P.w, h: P.h, style: 'page' });
+    firstOn[n] = starts[n] ?? firsts[n] ?? null;
+    behind.push({ x: -P.w / 2, y: top(n), w: P.w, h: P.h, style: 'page', ...(firstOn[n] ? { opens: firstOn[n] } : {}) });
     if (n > 0) behind.push({ x: -lh * 2, y: top(n) + P.h - P.m * 0.62, w: lh * 4, h: lh * 1.1, label: String(n + 1), style: 'quiet' });
-    if (n > 0 && heads[n]) behind.push({ x: L, y: top(n) + P.m * 0.38, w: W, h: lh * 1.1, label: heads[n], style: 'quiet' });
+    if (n > 0 && heads[n]) behind.push({ x: L, y: top(n) + P.m * 0.38, w: W, h: lh * 1.1, label: heads[n], style: 'quiet', level: 1 });
   }
   boxes.unshift(...behind);
   // After the last page: the thoughts not yet in the book, as a column.
@@ -140,8 +149,13 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     }
   }
   placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);
-  return { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P };
+  // firstOn: each page's mark (by page number less one); origin and pitch: where page n's top is,
+  // origin + (n - 1) * pitch (pageTop).
+  return { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P, firstOn, origin: top(0), pitch: P.h + GAP };
 }
+
+// The top of page n (counted from 1) of a layout with pages, in world units.
+export const pageTop = (lay, n) => lay.origin + (n - 1) * lay.pitch;
 
 // Each chapter's pages: Map(chapter → [first, last]), from a layout's pageOf.
 export function ranges(reads, room, pageOf) {

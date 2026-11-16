@@ -16,6 +16,7 @@ const E = await load('book', 'editing.js');
 const P = await load('book', 'pages.js');
 const R = await load('book', 'rules.js');
 const S = await load('book', 'tests/sample.js');
+const Z = await load('book', 'zoom.js');
 
 function setUp() {
   const host = makeHost({ thoughts: 2 });
@@ -189,6 +190,64 @@ test('book editor: split at the caret, join to the one before, paste as paragrap
   const made = E.pasteParagraphs(t, s.room, 'One.\n\nTwo,\nstill two.\n\n\nThree.', b);
   assert.deepEqual(made.map(text), ['One.', 'Two,\nstill two.', 'Three.']);
   assert.deepEqual(t.links.members(winter).slice(3, 6), made);
+});
+
+test('book editor: far off, each heading reads as its title; a page opens its first paragraph', () => {
+  const { host, t, s } = setUp();
+  const measure = (x, w) => t.ui.measure(x, w);
+  const titles = ['Winter', 'Spring', 'The garden', 'Visitors', 'Summer'];
+  const bandsOf = () => new Map(t.rules.layout(C.RULE, s.room).map((r) => [r.mark, r.bands]));
+  let bands = bandsOf();
+  assert.deepEqual(s.heads.map((h) => bands.get(h)?.far), titles, 'a heading: its title under far');
+  assert.ok(C.flow(t, s.room).filter((id) => !s.heads.includes(id)).every((id) => !bands.get(id)), 'a paragraph: no band words (quiet lines, by the look)');
+  // The pages: each opens the first paragraph that starts on it, else the one running on to it.
+  set(host, s.room, { pages: 'a5' });
+  const long = t.marks.make({ content: 'A long paragraph that runs on. '.repeat(160), in: s.room }).id;
+  t.links.link(long, s.chapters[0], 'part of', null, { at: 1 });
+  const lay = P.paginate(t, s.room, measure);
+  const pages = lay.boxes.filter((b) => b.style === 'page');
+  assert.equal(pages.length, lay.pages);
+  assert.equal(pages[0].opens, undefined, 'the title page: its title box opens the book');
+  pages.forEach((b, i) => { assert.equal(Z.pageAt(lay, b.y), i + 1, 'a page box says its page'); if (i) assert.equal(b.opens, lay.firstOn[i], `page ${i + 1}`); });
+  assert.equal(lay.firstOn[1], s.heads[0], 'Winter opens page 2');
+  const on = (r, n) => r.y >= P.pageTop(lay, n) && r.y <= P.pageTop(lay, n) + lay.page.h;
+  for (let n = 2; n <= lay.pages; n++) {
+    const id = lay.firstOn[n - 1];
+    const starts = [...lay.pageOf.values()].includes(n);
+    if (starts) assert.equal(lay.pageOf.get(id), n, `page ${n} opens a paragraph that starts there`);
+    else assert.ok(lay.rows.some((r) => r.mark === id && on(r, n)), `page ${n}: the paragraph running on to it`);
+  }
+  const bits = lay.rows.filter((r) => r.mark === long);
+  assert.ok(bits.length >= 3, 'the long paragraph over three pages or more');
+  const whole = lay.pageOf.get(long) + 1; // a page all of the running paragraph
+  assert.ok(on(bits[1], whole) && lay.firstOn[whole - 1] === long, 'a page all of one running paragraph opens it');
+  // The running heads are level 1 (read large far off); page numbers are not.
+  const heads = lay.boxes.filter((b) => b.style === 'quiet' && b.level === 1);
+  assert.ok(heads.length && heads.every((b) => ['Winter', 'Spring', 'Summer'].includes(b.label)), 'a chapter\'s title at the head of its pages');
+  assert.ok(lay.boxes.filter((b) => b.style === 'quiet' && /^\d+$/.test(b.label)).every((b) => !b.level));
+  // The heading as written now; and in one column, still its title far off.
+  t.marks.edit(s.heads[1], { text: 'Early spring\nand more' });
+  assert.equal(bandsOf().get(s.heads[1]).far, 'Early spring', 'its first line');
+  set(host, s.room, { pages: 'none' });
+  bands = bandsOf();
+  assert.equal(bands.get(s.heads[0]).far, 'Winter');
+});
+
+test('book editor: going to a page: the zoom that fills the height, and two zooms that move the view', () => {
+  assert.equal(Z.fillHeight(1010, 1034), 1);
+  assert.equal(Z.fillHeight(1010, 300), 0.5, 'never under mid: the words still read');
+  assert.equal(Z.fillHeight(100, 4000), 4);
+  const lay = { origin: -300, pitch: 1066, page: { h: 1010 } };
+  assert.equal(P.pageTop(lay, 3), -300 + 2 * 1066);
+  assert.deepEqual(Z.pageCentre(lay, 1, 1, 1100), { x: 0, y: -300 + 505 }, 'the whole page, when it fits');
+  const c = Z.pageCentre(lay, 2, 1, 600);
+  assert.ok(Math.abs(c.y - (766 - 12 + 300)) < 1e-9, 'else its top, with a little air');
+  // What t.ui.zoom.set(z, at) does to the view's middle (room/view.js setZoom): at + (V - at) * z0 / z.
+  const run = (V, z0, steps) => steps.reduce((v, st) => ({ x: st.at.x + (v.x - st.at.x) * v.z / st.zoom, y: st.at.y + (v.y - st.at.y) * v.z / st.zoom, z: st.zoom }), { ...V, z: z0 });
+  for (const [V, z0, C2, z] of [[{ x: 120, y: 900 }, 0.3, { x: 0, y: 2000 }, 0.8], [{ x: 0, y: 0 }, 1, { x: 50, y: -400 }, 1], [{ x: 10, y: 10 }, 2, { x: -40, y: 70 }, 4]]) {
+    const end = run(V, z0, Z.aim(V, z0, C2, z));
+    assert.ok(Math.abs(end.x - C2.x) < 1e-6 && Math.abs(end.y - C2.y) < 1e-6 && end.z === z, `to ${C2.x},${C2.y} at ${z}`);
+  }
 });
 
 test('book editor: a 1,500-paragraph book lays out on pages in under 50 ms', () => {

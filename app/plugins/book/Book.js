@@ -17,6 +17,7 @@ import { Feature, ui } from 'folio';
 import { BOOK, CHAPTER, isBook, isChapter, booksIn, tree, count, contents, markdown, fileName, moved } from './rules.js';
 import { installEditor } from './editor.js';
 import { installDocks } from './docks.js';
+import { installZoom } from './zoom.js';
 import { pageOf, SIZES, MARGINS } from './pages.js';
 import { RULE } from './column.js';
 import { wordDoc, DOCX } from './word.js';
@@ -310,7 +311,8 @@ export function install(t) {
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
   t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
   const editor = installEditor(t);
-  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout });
+  const zoom = installZoom(t, { layout: editor.layout }); // far off a shelf of pages; going there
+  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout, bring: zoom.bring });
   // In the room's ⋯ More too, beside the room file's own Export: the room's first book.
   t.slots.formats.add({ id: 'book-docx', name: 'Book as a Word document (.docx)', accepts: () => false,
     exportRoom: (r) => { const b = booksIn(t, r)[0]; return b ? exportWord(b.id) : t.ui.toast('No book in this room yet.'); } });
@@ -328,7 +330,7 @@ export function install(t) {
   t.links.on(redraw);
   t.gaps.on(redraw);
 
-  return { newBook, newChapter, take, openBook, exportWord, editor, docks };
+  return { newBook, newChapter, take, openBook, exportWord, editor, docks, zoom };
 }
 
 export default class Book extends Feature {
@@ -337,4 +339,5 @@ export default class Book extends Feature {
     if (!t) throw new Error('Needs the plugin API');
     this.api = install(t);
   }
+  stop() { this.api?.zoom?.stop(); }
 }
