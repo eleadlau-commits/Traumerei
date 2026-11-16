@@ -2,6 +2,7 @@
 // a thought or group can be moved across.
 
 import { test, assert } from 'folio/testing';
+import './roomtypes.js'; // Twin's hook: a Twin may hold its two sides
 import * as libForRussell from '../lib.js';
 import { surface as surfaceForRussell } from '../../api/v2.js';
 import { bind as bindRussell } from '../../russell/world.js';
@@ -94,4 +95,22 @@ test('a group moved across to a side in another mode is one object there: its th
   join(w, h.id, b.id);
   assert.ok(across(w, h.id));
   assert.ok(!h.shared);
+});
+
+test('without a holds hook (Twin off) no Twin is made, and the Twins there are kept and read', () => {
+  const w = emptyWorld();
+  const t = addTwin(w, 'Pair', 1, {}, ['joyce', 'russell']);
+  const [left] = sides(w, t.id);
+  const held = [...model.HOLDS];
+  model.setHolds([]);
+  try {
+    assert.equal(model.mayHold({ kind: 'room', size: 'twin' }, 'room'), false);
+    assert.equal(addTwin(w, 'Another', 2), null);
+    assert.equal(rooms(w).filter((r) => r.name === 'Another').length, 0);
+    assert.equal(create(w, t.id, { kind: 'room', name: 'Third' }, 3), null);   // no new side
+    assert.deepEqual(sides(w, t.id).map((s) => s.name), ['Left', 'Right']);  // kept, still read
+    assert.equal(twinOf(w, left.id).id, t.id);
+    const back = loadWorld(JSON.parse(JSON.stringify(w)));
+    assert.deepEqual(sides(back, t.id).map((s) => s.name), ['Left', 'Right']); // read back as it was
+  } finally { model.setHolds(held); }
 });

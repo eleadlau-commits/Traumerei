@@ -10,7 +10,7 @@ import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import * as traum from './traum.js';
-import { loadWorld, declareFamilies, setDefaultMode, DEFAULT_MODE } from './model.js';
+import { loadWorld, declareFamilies, setHolds, setDefaultMode, DEFAULT_MODE } from './model.js';
 import { gather, forRooms, forPage, seeing } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
 import { formatsOf } from './formats.js';
@@ -57,6 +57,12 @@ export default class World extends Feature {
     kinds.watch((slot) => {
       setKinds(slot.items, (k, why) => console.warn(`World: the item kind "${k?.kind}" was skipped: ${why}`));
       this.emit('world:kinds');
+    });
+    // What a mark may hold beyond the core's own, from plugins (a Twin's sides: model.js HOLDS).
+    const holds = this.defineSlot('world.holds', 'What a mark may hold beyond the core\'s: { id, name?, holds(parent, kind) } (see world/model.js HOLDS).');
+    holds.watch((slot) => {
+      setHolds(slot.items, (h, why) => console.warn(`World: a holds hook "${h?.id}" was skipped: ${why}`));
+      this.emit('world:holds');
     });
     // File formats, from plugins (Room files' .traum): one thing to ask (formats.js).
     const formats = formatsOf(this.defineSlot('world.formats', 'A file format: { id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id), canEdit?(), editRoom?(roomId, o), editGroup?(roomId, groupId, o), cancel?() } (see world/formats.js).'));

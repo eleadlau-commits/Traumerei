@@ -8,7 +8,7 @@ export let
   search, cells, cellOf, roomAt, lock, archive, archived, restore, peek,
   floorName, floorTitle, nameFloor, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
   tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
-  allTags, groupNames, copyRoom, span, addTwin, sides, pageLook, roomLook, rgb, squareLook, toOklch, light, openGaps;
+  allTags, groupNames, copyRoom, span, mayHold, addTwin, sides, pageLook, roomLook, rgb, squareLook, toOklch, light, openGaps;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
@@ -17,7 +17,7 @@ export function bind(lib) {
     search, cells, cellOf, roomAt, lock, archive, archived, restore, peek,
     floorName, floorTitle, nameFloor, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag, hasTag,
     tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup, seedRoomSettings,
-    allTags, groupNames, copyRoom, span,
+    allTags, groupNames, copyRoom, span, mayHold,
   } = lib.model);
   ({ addTwin, sides } = lib.twin);
   ({ pageLook, roomLook, rgb, squareLook, toOklch } = lib.look);

@@ -8,7 +8,7 @@ import {
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, shut, groupNames, light, squareLook, toOklch, rgb, span, addTwin, sides, openGaps,
+  seedRoomSettings, allTags, shut, groupNames, light, squareLook, toOklch, rgb, span, mayHold, addTwin, sides, openGaps,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 import { pastFloor, pastWords } from './past.js';
@@ -231,8 +231,9 @@ export class RoomsGrid {
         el('span', { class: 'rooms-kind-name' }, k.name), el('span', { class: 'pick-note' }, k.note || ''))),
       el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-more', role: 'menuitem', onclick: () => this.newRoom(c, defaultMode(), 2) },
         el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')),
-      el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.pickTwin(c) },
-        el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')));
+      // Twin…, while a plugin lets a room two cells wide hold its two sides (the Twin plugin).
+      mayHold({ kind: 'room', size: 'twin' }, 'room') ? el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.pickTwin(c) },
+        el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')) : null);
   }
 
   // A right-click on an empty cell: a room from a room file, put in that cell.
