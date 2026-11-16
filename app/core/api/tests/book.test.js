@@ -31,7 +31,9 @@ test('book: chapters of a room\'s thoughts, in the maker\'s order, out as Markdo
   const [x, y, z] = host.ids.slice(5, 8);
   for (const id of [x, y]) assert.ok(t.links.link(id, ch1.id, 'part of').ok);
   assert.ok(t.links.link(z, ch2.id, 'part of').ok);
-  assert.ok(t.links.link(x, ch2.id, 'part of').ok, 'a thought in two chapters');
+  assert.ok(t.links.link(x, ch2.id, 'part of').ok);
+  assert.deepEqual(t.links.holders(x), [ch2.id], 'a thought sits in one chapter (since 0.2): it moved');
+  assert.ok(t.links.link(x, ch1.id, 'part of').ok);
   // The book is a card in every mode; its thoughts stay where they were.
   assert.ok(host.lib.groups.trayForeign(host.w, host.room, 'joyce').some((g) => g.id === b.id));
   assert.ok(t.rules.layout('pessoa', host.room).some((p) => p.mark === x), 'x still laid out by Pessoa');
@@ -41,7 +43,7 @@ test('book: chapters of a room\'s thoughts, in the maker\'s order, out as Markdo
   const node = rules.tree(t, b.id);
   assert.deepEqual(node.parts.map((p) => p.title), ['Matrices', 'Vectors']);
   assert.deepEqual(node.parts[1].parts.map((p) => p.id), [y, x]);
-  assert.deepEqual(rules.contents(node).map((c) => `${c.num} ${c.title} ${c.thoughts}`), ['1 Matrices 2', '2 Vectors 2']);
+  assert.deepEqual(rules.contents(node).map((c) => `${c.num} ${c.title} ${c.thoughts}`), ['1 Matrices 1', '2 Vectors 2']);
   const md = rules.markdown(node);
   assert.ok(md.startsWith('# Linear maps\n') && md.indexOf('## 1 Matrices') < md.indexOf('## 2 Vectors'));
   assert.ok(md.includes(t.marks.text(y)));

@@ -34,3 +34,16 @@
   .book-print h1 { font-size: 22pt; margin: 0 0 18pt; }
   .book-print .book-read-head { page-break-after: avoid; }
 }
+
+/* The contents in the left dock: one line per chapter and section, indented as they nest. */
+.book-tree-head { display: flex; justify-content: space-between; gap: 8px; padding: 2px 4px 6px; border-bottom: 1px solid var(--line); }
+.book-tree { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.book-tree-line { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 4px; }
+.book-tree-line[draggable="true"] { cursor: grab; }
+.book-tree-line.book-over { box-shadow: inset 0 2px 0 var(--accent, currentColor); }
+.book-tree-line.st-drop { background: var(--sel-fill); outline: var(--sel-line); }
+.book-depth-2 { padding-left: 20px; }
+.book-depth-3 { padding-left: 36px; }
+.book-here { background: var(--sel-fill); }
+.book-target .book-text { text-decoration: underline dotted; }
+.book-hand-title { margin: 0 0 4px; }
