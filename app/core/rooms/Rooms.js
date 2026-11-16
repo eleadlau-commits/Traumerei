@@ -50,6 +50,8 @@ export default class Rooms extends Feature {
     this.shelf = false;   // the Archive page is showing, instead of the grid
     this.lights = null;   // the search lights: what is being looked for, or null
     this.tagLight = null; // the tag picked in the rail's Tags list: rooms without it dim
+    this.groupLight = null; // the group picked in the rail's Groups list: rooms not in it dim
+    this.groupsOpen = false; // the rail's Groups list is open
     this.regrouping = null; // the tag whose group is being typed in the Arrange by list
     this.tagsOpen = false; // the rail's Arrange by list is open
     this.picks = [];       // the rooms chosen, while more than one is (many.js)
@@ -116,8 +118,8 @@ export default class Rooms extends Feature {
       'rooms.move': (e) => this.moveChosen(e),
       'rooms.lock': (e) => this.lockChosen(e),
       'rooms.archive': (e) => this.archiveChosen(e),
-      'rooms.group': (e) => this.tagChosen(e),
-      'rooms.ungroup': (e) => this.untagChosen(e),
+      'rooms.group': (e) => this.groupChosen(e),
+      'rooms.ungroup': (e) => this.ungroupChosen(e),
     };
     for (const k of ROOMS_KEYS) this.add('keys', { ...k, zone: 'rooms', when: () => !this.root.hidden && !this.inRoom && !this.past, ...(run[k.id] ? { run: run[k.id] } : {}) });
     window.addEventListener('resize', () => { if (!this.inRoom && !this.root.hidden) this.drawRooms(); });
@@ -168,7 +170,7 @@ export default class Rooms extends Feature {
   home() {
     if (this.root.hidden || this.away) return;
     if (this.inRoom) this.showRooms();
-    this.tagLight = null;
+    this.tagLight = this.groupLight = null;
     if (this.edited?.size && !this.leaving) { if (this.shelf) this.toggleShelf(); this.askNote(); }
     else this.close();
   }
@@ -207,7 +209,7 @@ export default class Rooms extends Feature {
   // Back: from a room to the rooms page; from the Archive to the rooms; from the rooms page home.
   back() {
     if (this.inRoom) this.showRooms();
-    else if (this.tagLight) { this.tagLight = null; this.drawRooms(); }
+    else if (this.tagLight || this.groupLight) { this.tagLight = this.groupLight = null; this.drawRooms(); }
     else if (this.shelf) this.toggleShelf();
     else if (this.edited?.size && !this.leaving) this.askNote();
     else this.close();
@@ -533,10 +535,19 @@ export default class Rooms extends Feature {
         this.makingTag = null; this.drawRooms();
       } }, railIcon('tag'), railWord('Tags'));
     this.tagsList = el('div', { class: 'rooms-tag-list rail-wide', hidden: true, role: 'list' });
+    // Groups opens the groups of rooms (Ctrl+G makes one), each with its colour and how many rooms
+    // it has. Picking one dims the rooms not in it, as a tag does; picking it again, or Escape,
+    // lets go. Every group's line shows on the floor whether this is open or not.
+    this.groupsBtn = el('button', { type: 'button', class: 'rail-item rooms-groups-btn', 'aria-expanded': 'false', title: 'Groups',
+      onclick: () => {
+        if (this.frame?.railNarrow) { this.frame.toggleRail(); this.groupsOpen = true; } else this.groupsOpen = !this.groupsOpen;
+        this.drawRooms();
+      } }, railIcon('group'), railWord('Groups'));
+    this.groupsList = el('div', { class: 'rooms-tag-list rail-wide', hidden: true, role: 'list' });
     this.pagesBar = el('div', { class: 'rooms-pages', role: 'group', 'aria-label': 'Floors' });
     this.rail = el('nav', { class: 'rail rooms-rail', 'aria-label': 'Floors and the Archive' },
       el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Floors'), this.pagesBar, this.shelfBtn,
-      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Arrange by'), this.tagsBtn, this.tagsList,
+      el('div', { class: 'rail-head', 'aria-hidden': 'true' }, 'Arrange by'), this.tagsBtn, this.tagsList, this.groupsBtn, this.groupsList,
       this.moreBox = el('div', { class: 'rooms-more' })); // ⋯ More, holding Time (grid.js draws it)
     this.roomsPage = el('section', { class: 'rooms-rooms', 'aria-label': 'Rooms' },
       this.lightsBar,

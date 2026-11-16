@@ -8,7 +8,7 @@ import {
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, shut, groupNames, light, squareLook, toOklch, rgb, span, mayHold, addTwin, sides, openGaps,
+  seedRoomSettings, allTags, shut, groupNames, roomGroup, roomGroups, light, squareLook, toOklch, rgb, span, mayHold, addTwin, sides, openGaps,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 import { pastFloor, pastWords } from './past.js';
@@ -109,8 +109,15 @@ export class RoomsGrid {
       for (const id of shown) if (hasTag(this.world, id, this.tagLight, this.ontologies) && (!hits || hits[id])) tagged[id] = hits?.[id] || true;
       hits = tagged;
     }
+    // So does a group picked in the rail.
+    if (this.groupLight) {
+      const inIt = {};
+      for (const id of shown) if (roomGroup(this.world, id)?.id === this.groupLight && (!hits || hits[id])) inIt[id] = hits?.[id] || true;
+      hits = inIt;
+    }
     this.grid.classList.toggle('lights', !!hits);
     this.drawTags();
+    this.drawGroups();
     if (this.shelf) { this.strip.show([[this.shelfHead, this.grid]], 0); this.drawShelf(shelved, cols, cell, hits); return; }
     // The floor is the floors feature's fixed board: it never grows a row or column. Every floor
     // is in the strip, one under another: this one drawn here, the others as still copies.
@@ -156,7 +163,7 @@ export class RoomsGrid {
       else this.dockRoom(chosen || null);
     }
     if (this.making) panels.push(this.kindOptions(this.making, cell, cols));
-    this.grid.replaceChildren(...empty, ...tiles, ...this.categoryOutlines(all), ...panels);
+    this.grid.replaceChildren(...empty, ...tiles, ...this.groupOutlines(all), ...panels);
     this.keepInView(scrolled);
     this.grid.querySelector('.rooms-name-field')?.focus();
     if (!this.root.hidden) this.hint('rooms');
@@ -173,7 +180,7 @@ export class RoomsGrid {
       if (!taken.has(`${col},${row}`)) empty.push(el('div', { class: 'rooms-cell', style: `grid-column:${col + 1};grid-row:${row + 1}` }));
     }
     const g = el('div', { class: 'rooms-grid rooms-grid-copy', 'aria-hidden': 'true', inert: '', 'data-floor': page },
-      ...empty, ...all.map((r) => this.tile(r, now, null)));
+      ...empty, ...all.map((r) => this.tile(r, now, null)), ...this.groupOutlines(all));
     g.style.setProperty('--cols', cols);
     g.style.setProperty('--cell', cell + 'px');
     g.style.setProperty('--cell-gap', GRID.gap + 'px');
@@ -498,19 +505,34 @@ export class RoomsGrid {
       plus(null, 'A new category'));
   }
 
-  // A category opened in the rail shows on the floor: a dotted outline round the rooms of each of
-  // its tags (rooms side by side share one outline; rooms apart get one each), named by the tag at
-  // its top-left. A room with two tags of the category sits in two outlines, the second a little
-  // further in. Only a line on the screen: nothing moves, and nothing is kept.
-  categoryOutlines(all) {
-    if (!this.tagsOpen || this.openGroup == null || this.past) return [];
-    const onts = this.ontologies;
-    const group = tagsByGroup(this.world, onts, false).find((g) => (g.group || '').toLowerCase() === this.openGroup);
-    if (!group) return [];
+  // ---- Groups, in the rail under Tags: each group of rooms, its colour, how many rooms it has ----
+  drawGroups() {
+    const groups = roomGroups(this.world, this.shelf);
+    if (this.groupLight && !groups.some((g) => g.id === this.groupLight)) this.groupLight = null;
+    this.groupsBtn.setAttribute('aria-expanded', String(this.groupsOpen));
+    this.groupsBtn.classList.toggle('on', !!this.groupLight);
+    this.groupsList.hidden = !this.groupsOpen;
+    if (!this.groupsOpen) return;
+    this.groupsList.replaceChildren(...(groups.length ? groups.map((g) => {
+      const on = this.groupLight === g.id, n = g.rooms.length;
+      return el('button', {
+        type: 'button', class: 'rail-item rooms-tag-pick rooms-group-pick', role: 'listitem', 'aria-pressed': String(on),
+        title: `${n} room${n === 1 ? '' : 's'}`,
+        onclick: () => { this.groupLight = on ? null : g.id; this.drawRooms(); },
+      }, el('span', { class: 'rooms-tag-name' }, el('span', { class: `rooms-group-dot rel-colour-${g.colour}`, 'aria-hidden': 'true' }), g.name),
+      el('span', { class: 'rooms-tag-n' }, String(n)));
+    }) : [el('p', { class: 'rail-item rooms-groups-none' }, 'Choose rooms, then Ctrl+G')]));
+  }
+
+  // Every group on this floor, always shown: a dotted line in the group's colour round its rooms
+  // (rooms side by side share one line; rooms apart get one each), named at the top-left of each.
+  // Only a line on the screen: nothing moves, and nothing is inside it.
+  groupOutlines(all) {
+    if (this.past || this.shelf) return [];
     const out = [];
-    group.tags.forEach((t, k) => {
+    for (const g of roomGroups(this.world)) {
       const mine = new Set();
-      for (const r of all) if (hasTag(this.world, r.id, t.tag, onts)) for (const [c, d] of cells(r, cellOf(this.world, r.id))) mine.add(`${c},${d}`);
+      for (const r of all) if (roomGroup(this.world, r.id)?.id === g.id) for (const [c, d] of cells(r, cellOf(this.world, r.id))) mine.add(`${c},${d}`);
       const seen = new Set();
       for (const start of mine) {
         if (seen.has(start)) continue;
@@ -527,12 +549,12 @@ export class RoomsGrid {
         for (const at of patch) {
           const [c, d] = at.split(',').map(Number);
           const side = (n) => !mine.has(n);
-          const cls = ['rooms-outline', side(`${c},${d - 1}`) && 'top', side(`${c + 1},${d}`) && 'right', side(`${c},${d + 1}`) && 'bottom', side(`${c - 1},${d}`) && 'left'].filter(Boolean).join(' ');
-          out.push(el('div', { class: cls, 'aria-hidden': 'true', style: `grid-column:${c + 1};grid-row:${d + 1};--inset:${Math.min(k, 3) * 3}px` },
-            c === first[0] && d === first[1] ? el('span', { class: 'label rooms-outline-name' }, t.tag) : null));
+          const cls = ['rooms-outline', `rel-colour-${g.colour}`, side(`${c},${d - 1}`) && 'top', side(`${c + 1},${d}`) && 'right', side(`${c},${d + 1}`) && 'bottom', side(`${c - 1},${d}`) && 'left'].filter(Boolean).join(' ');
+          out.push(el('div', { class: cls, 'aria-hidden': 'true', 'data-group': g.id, style: `grid-column:${c + 1};grid-row:${d + 1}` },
+            c === first[0] && d === first[1] ? el('span', { class: 'label rooms-outline-name' }, g.name) : null));
         }
       }
-    });
+    }
     return out;
   }
 

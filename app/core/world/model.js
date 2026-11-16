@@ -1186,6 +1186,76 @@ export function makeGroup(w, text) {
   return true;
 }
 
+// ---- Room groups ----
+// Rooms side by side on the rooms page can be grouped: a coloured dotted line drawn round them
+// (one line round rooms that touch). A group is not a container: nothing moves and nothing is
+// inside it. It is written on each of its rooms (`group: { id, name, colour }`, a field of the
+// room's mark, so the file keeps it), and a room is in one group at most. A group with no rooms
+// left is gone. Its colour is one of the relation inks (base.css --rel-*).
+
+export const GROUP_COLOURS = Object.freeze(['rust', 'slate', 'moss', 'plum', 'amber']);
+
+// A room's group ({ id, name, colour }), or null.
+export function roomGroup(w, id) {
+  const g = room(w, id)?.group;
+  return g && typeof g === 'object' && typeof g.id === 'string' && g.id ? g : null;
+}
+
+// Every group with a room on a floor (and in the Archive too, with shelf), by name:
+// [{ id, name, colour, rooms: [room ids] }].
+export function roomGroups(w, shelf = false) {
+  const out = new Map();
+  for (const r of shelf ? [...rooms(w), ...archived(w)] : rooms(w)) {
+    const g = roomGroup(w, r.id);
+    if (!g) continue;
+    if (!out.has(g.id)) out.set(g.id, { id: g.id, name: tidyTag(g.name) || 'Group', colour: GROUP_COLOURS.includes(g.colour) ? g.colour : GROUP_COLOURS[0], rooms: [] });
+    out.get(g.id).rooms.push(r.id);
+  }
+  return [...out.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+// Puts rooms `ids` in a new group (a room in another group leaves it): named "Group n" (the
+// smallest n not taken), in the colour fewest groups have. Locked rooms are left as they are.
+// Returns the group, or null if no room could join.
+export function groupRooms(w, ids, { name: called = '', colour = '' } = {}) {
+  const rs = [...new Set(ids)].map((id) => room(w, id)).filter((r) => r && !shut(w, r.id));
+  if (!rs.length) return null;
+  const all = roomGroups(w, true);
+  let n = 1;
+  while (all.some((g) => same(g.name, `Group ${n}`))) n++;
+  const used = (c) => all.filter((g) => g.colour === c).length;
+  const pick = GROUP_COLOURS.includes(colour) ? colour : [...GROUP_COLOURS].sort((a, b) => used(a) - used(b))[0];
+  const g = { id: uid('grp'), name: tidyTag(called) || `Group ${n}`, colour: pick };
+  for (const r of rs) r.group = { ...g };
+  return g;
+}
+
+// Takes rooms `ids` out of their groups (locked rooms stay). Returns how many left one.
+export function ungroupRooms(w, ids) {
+  let n = 0;
+  for (const id of new Set(ids)) {
+    const r = room(w, id);
+    if (!r || shut(w, id) || !roomGroup(w, id)) continue;
+    delete r.group;
+    n++;
+  }
+  return n;
+}
+
+// Renames or recolours group `gid` on every room in it ({ name, colour }; either may be left out).
+// Returns whether anything changed.
+export function setRoomGroup(w, gid, { name: called, colour } = {}) {
+  const nm = called == null ? null : tidyTag(called), col = GROUP_COLOURS.includes(colour) ? colour : null;
+  let changed = false;
+  for (const r of [...rooms(w), ...archived(w)]) {
+    const g = roomGroup(w, r.id);
+    if (g?.id !== gid) continue;
+    const next = { ...g, ...(nm ? { name: nm } : {}), ...(col ? { colour: col } : {}) };
+    if (next.name !== g.name || next.colour !== g.colour) { r.group = next; changed = true; }
+  }
+  return changed;
+}
+
 // The last few things written in a room (newest last), as plain text, for its square's peek.
 export function peek(w, roomId, most = 3) {
   return roomThoughts(w, roomId).slice(-most).map((th) => oneLine(thoughtText(w, th))).filter(Boolean);

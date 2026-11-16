@@ -591,3 +591,33 @@ test('who holds what is read off the links index, true as groups change (reading
   const t2 = train(w2, MESSY, 'c');
   reading(w, () => assert.equal(groupOf(w2, trainThoughts(w2, t2.id)[0].id)?.id, t2.id));
 });
+
+test('room groups: Ctrl+G makes one, a room is in one at most, an empty group is gone', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A'), b = addRoom(w, 'B'), c = addRoom(w, 'C');
+  const g1 = model.groupRooms(w, [a.id, b.id]);
+  assert.equal(g1.name, 'Group 1');
+  assert.ok(model.GROUP_COLOURS.includes(g1.colour));
+  assert.equal(model.roomGroup(w, a.id).id, g1.id);
+  const g2 = model.groupRooms(w, [b.id, c.id]);
+  assert.equal(g2.name, 'Group 2');
+  assert.ok(g2.colour !== g1.colour, 'the next group takes a colour no group has');
+  assert.equal(model.roomGroup(w, b.id).id, g2.id, 'b moved to the new group');
+  assert.deepEqual(model.roomGroups(w).map((g) => [g.name, g.rooms.length]), [['Group 1', 1], ['Group 2', 2]]);
+  assert.equal(model.ungroupRooms(w, [a.id]), 1);
+  assert.deepEqual(model.roomGroups(w).map((g) => g.name), ['Group 2'], 'a group with no rooms is gone');
+  assert.equal(model.groupRooms(w, [a.id]).name, 'Group 1', 'its name is free again');
+});
+
+test('room groups: renamed and recoloured on every room; locked rooms keep theirs', () => {
+  const w = emptyWorld();
+  const a = addRoom(w, 'A'), b = addRoom(w, 'B');
+  const g = model.groupRooms(w, [a.id, b.id]);
+  assert.ok(model.setRoomGroup(w, g.id, { name: 'Algebra', colour: 'plum' }));
+  assert.deepEqual([model.roomGroup(w, a.id).name, model.roomGroup(w, b.id).colour], ['Algebra', 'plum']);
+  assert.equal(model.setRoomGroup(w, g.id, { colour: 'neon' }), false, 'only the inks there are');
+  lock(w, a.id);
+  assert.equal(model.ungroupRooms(w, [a.id, b.id]), 1);
+  assert.equal(model.roomGroup(w, a.id).id, g.id);
+  assert.equal(model.groupRooms(w, [a.id]), null);
+});

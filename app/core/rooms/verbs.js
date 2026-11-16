@@ -1,6 +1,6 @@
 // Part of the rooms feature. What is done to the chosen rooms (one, or many: many.js): duplicating
-// them, moving them to another floor, and giving them a shared tag (Ctrl+G) or taking it off
-// (Ctrl+Shift+G). The copy is the world's one rule (copyRoom: everything inside copied, nothing
+// them, moving them to another floor, and grouping them (Ctrl+G: a coloured line round them) or
+// taking them out of their group (Ctrl+Shift+G). The copy is the world's one rule (copyRoom: everything inside copied, nothing
 // shared); where it goes is the floors feature's (beside the original, else a new floor). Each is
 // one undo step. Its methods join the Rooms class (end of Rooms.js), so `this` is the feature.
 //
@@ -11,7 +11,7 @@
 
 
 
-import { MESSY, room, cellOf, floorOf, isArchived, copyRoom, pageCount, addPage, roomTags, addTag, removeTag, allTags, tidyTag, lock, archive, restore, shut } from './world.js';
+import { MESSY, room, cellOf, floorOf, isArchived, copyRoom, pageCount, addPage, lock, archive, restore, shut, roomGroup, groupRooms, ungroupRooms } from './world.js';
 import { el, MAC } from './shared.js';
 
 export class RoomsVerbs {
@@ -165,40 +165,29 @@ export class RoomsVerbs {
     });
   }
 
-  // Ctrl+G: a tag for every chosen room (one step), written in a small field (the tags there are
-  // offered). It is how rooms are grouped on the rooms page: by a tag they share.
-  tagChosen(e) {
-    const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
-    if (!rs.length) { this.toast(this.chosenFor(e).length ? 'A locked room keeps its tags.' : 'Choose rooms first (Shift+click, or Ctrl+A).'); return; }
-    const list = el('datalist', { id: 'rooms-group-tags' }, ...allTags(this.world, this.ontologies).map((t) => el('option', { value: t.tag || t })));
-    const field = el('input', { class: 'field rooms-group-tag', placeholder: 'A tag they share (or Category: tag)', 'aria-label': 'A tag for the chosen rooms', list: 'rooms-group-tags', maxlength: 61, autocomplete: 'off', spellcheck: 'false' });
-    const keep = () => {
-      const text = field.value.trim(), tag = tidyTag(text.split(':').pop()); // "Group: tag" puts it in a group too
-      this.closeSheet();
-      if (!tag) return;
-      let n = 0;
-      for (const r of rs) if (addTag(this.world, r.id, text, this.ontologies)) n++;
-      if (n) this.save();
-      this.drawRooms();
-      this.toast(n ? `${n} room${n === 1 ? '' : 's'} tagged ${tag}. Arrange by → Tags shows them together.` : `They all have ${tag} already.`);
-    };
-    this.openSheet(`Tag ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}`, [field, list], (ev) => {
-      if (ev.key === 'Enter') { ev.preventDefault(); keep(); }
-    });
-    field.focus({ preventScroll: true });
-  }
-
-  // Ctrl+Shift+G: the tags every chosen room shares (their own, not their mode's) come off: one step.
-  untagChosen(e) {
-    const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
-    if (!rs.length) return;
-    const own = (r) => roomTags(this.world, r.id, this.ontologies).filter((t) => !t.auto).map((t) => t.tag.toLowerCase());
-    const shared = rs.map(own).reduce((a, b) => a.filter((t) => b.includes(t)));
-    if (!shared.length) { this.toast(rs.length === 1 ? 'It has no tags of its own.' : 'They share no tag of their own.'); return; }
-    for (const r of rs) for (const t of shared) removeTag(this.world, r.id, t);
+  // Ctrl+G: the chosen rooms make a new group (one step): a coloured dotted line round them on the
+  // floor, listed under Groups in the rail. A room already in a group moves to the new one.
+  groupChosen(e) {
+    const all = this.chosenFor(e), rs = all.filter((r) => !shut(this.world, r.id));
+    if (!rs.length) { this.toast(all.length ? 'A locked room keeps its group.' : 'Choose rooms first (Shift+click, or Ctrl+A).'); return; }
+    const g = groupRooms(this.world, rs.map((r) => r.id));
+    if (!g) return;
     this.save();
     this.drawRooms();
-    this.toast(`Took ${shared.join(', ')} off ${rs.length === 1 ? rs[0].name : `${rs.length} rooms`}. Ctrl+Z puts it back.`);
+    this.toast(`${rs.length === 1 ? rs[0].name : `${rs.length} rooms`} grouped as ${g.name}. Ctrl+Shift+G takes them out.`);
+  }
+
+  // Ctrl+Shift+G: the chosen rooms leave their groups (one step); a group with no rooms left is gone.
+  ungroupChosen(e) {
+    const rs = this.chosenFor(e).filter((r) => !shut(this.world, r.id));
+    if (!rs.length) return;
+    const out = rs.filter((r) => roomGroup(this.world, r.id));
+    if (!out.length) { this.toast(rs.length === 1 ? 'It is in no group.' : 'They are in no group.'); return; }
+    ungroupRooms(this.world, out.map((r) => r.id));
+    this.save();
+    this.drawRooms();
+    const one = out.length === 1;
+    this.toast(`${one ? out[0].name : `${out.length} rooms`} out of ${one ? 'its' : 'their'} group. Ctrl+Z puts ${one ? 'it' : 'them'} back.`);
   }
 
   // A small sheet near the top (Folio's top-sheet): a label, then `nodes`. `onKey(ev)` sees its keys
