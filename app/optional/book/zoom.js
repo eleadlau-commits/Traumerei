@@ -99,7 +99,9 @@ export function installZoom(t, { layout, keep = (fn) => fn() }) {
     for (const body of document.querySelectorAll('.book-contents, .book-hand')) { const r = body.getBoundingClientRect(); if (r.width) w -= r.width + 32; }
     return Math.max(320, w);
   };
-  const at = (r, id) => t.rules.layout(RULE, r).find((row) => row.mark === id)?.position || null;
+  // Where a mark sits, from the rule's own layout (as the room draws it): t.rules.layout is
+  // remembered by the tables' versions alone, so it lags the paragraph being written (core-gaps.md).
+  const at = (r, id) => { const row = layout(r).rows.find((x) => x.mark === id); return row ? { x: row.x, y: row.y } : null; };
 
   // Where the view is now, { x, y, zoom }, read off the canvas: the room's world layer is drawn
   // translate(…) scale(zoom) from the stage's top-left corner (API 3 tells the zoom, not where

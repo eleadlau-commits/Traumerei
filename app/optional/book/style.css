@@ -66,7 +66,9 @@
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 .room[data-mode="book-page"] .room-band-far .room-gap { box-shadow: none; }
-.room[data-mode="book-page"] .room-band-far [data-band-far]::after { max-width: 100%; width: 100%; text-align: left; left: 0; top: auto; bottom: 0; transform: none; } /* grows up, into the space a heading drops */
+/* grows up, into the space a heading drops; one line, cut short with … at the page's measure, so a
+   long heading (a paragraph made a section) never piles up over the heading and lines above it */
+.room[data-mode="book-page"] .room-band-far [data-band-far]::after { max-width: 100%; width: 100%; text-align: left; left: 0; top: auto; bottom: 0; transform: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .room[data-mode="book-page"] .room-band-far [data-band-far]:has(.span-caps)::after { font-size: calc(var(--t-read, 19px) * 5.5); font-variant: small-caps; line-height: 1; }
 .room[data-mode="book-page"] .room-band-far .room-cell-quiet.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.9); top: auto; bottom: 0; line-height: 1; left: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; opacity: .5; font-variant: small-caps; }
 .room[data-mode="book-page"] .room-band-far .room-cell-quiet:not(.room-cell-l1) .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.8); }

@@ -36,7 +36,12 @@ export function moveTo(t, id, to, at) {
 
 // The chosen thought made a heading: a new chapter in its place, the thought its first part and
 // heading, and every part after it up to the next chapter gathered into it. A thought not in a
-// book goes to the end of the room's book (made when there is none). Returns the chapter's id.
+// book goes to the end of the room's book (made when there is none). A book goes three levels
+// deep (DEEPEST): in a section already that deep, the new one is a section beside it, right after
+// it, never a fourth level (sub-chapters made one after another stop nesting there). Returns the
+// chapter's id.
+export const DEEPEST = 3;
+const depthIn = (t, g) => { let d = 0; for (let up = g; up && isChapter(t.marks.get(up)) && d < 64; up = holderOf(t, up)) d++; return d; };
 export function makeHeading(t, room, mark) {
   return t.together(() => {
     let holder = holderOf(t, mark);
@@ -47,7 +52,9 @@ export function makeHeading(t, room, mark) {
     for (const id of parts.slice(i + 1)) { if (isChapter(t.marks.get(id))) break; follow.push(id); }
     const ch = t.marks.make({ kind: 'group', content: { title: (t.marks.text(mark) || '').split('\n')[0].slice(0, 120) || 'Untitled', of: CHAPTER }, in: room });
     if (!ch.ok) return null;
-    moveTo(t, ch.id, holder, i);
+    const outer = depthIn(t, holder) >= DEEPEST ? holderOf(t, holder) : null;
+    if (outer) moveTo(t, ch.id, outer, t.links.members(outer).indexOf(holder) + 1);
+    else moveTo(t, ch.id, holder, i);
     for (const id of [mark, ...follow]) moveTo(t, id, ch.id, t.links.members(ch.id).length);
     t.links.link(mark, ch.id, HEADS);
     return ch.id;
