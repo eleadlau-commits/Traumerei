@@ -29,7 +29,7 @@ CORPUS = (
     'focus-mode', 'room-stats', 'export-room',
     # the open core's proofs (open-core plan, one per step)
     'page-flow', 'first-letters', 'spell-marks', 'bold-italic', 'figure', 'docx',
-    'word-count-strip',
+    'word-count-strip', 'sketch', 'chart',
 )
 
 

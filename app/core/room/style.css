@@ -535,3 +535,17 @@ html:has(.room:not([hidden])) { --dock-left-at: var(--rail); }
 .room-band-far [data-band-far]::after { content: attr(data-band-far); font-size: calc(var(--t-read, 19px) * 2.4); }
 .room-band-mid [data-band-mid]::after { content: attr(data-band-mid); }
 .room-band-near [data-band-near]::after { content: attr(data-band-near); }
+
+/* A surface (surface.js, open core step 4): an element a plugin draws in, sized by the layout.
+   Clicked into, it takes the pointer and the keys (an outline says so) until Esc or a click
+   outside. Its keys box is a hidden field, so the app's keys wait while it is focused. */
+.room-surface { position: relative; display: block; overflow: hidden; text-align: start; touch-action: none; box-shadow: inset 0 0 0 1px var(--line); }
+.room-surface-box { box-shadow: none; }
+.room-surface-paper { position: absolute; inset: 0; }
+/* The app's icon rule (every svg 20 px, no fill, a thin stroke) stops at a surface: a plugin's SVG
+   fills it, filled in the text's colour with no stroke unless it says otherwise on its shapes. */
+.room-surface-paper > svg, .room-surface-paper > canvas { display: block; width: 100%; height: 100%; }
+.room-surface-paper svg { fill: currentColor; stroke: none; stroke-width: 1; flex: none; }
+.room-surface-box { position: absolute; inset: 0; width: auto !important; height: auto !important; }
+.room-surface-on { outline: 1px solid var(--accent); outline-offset: 2px; cursor: crosshair; }
+.room-surface-keys { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; resize: none; border: 0; padding: 0; }

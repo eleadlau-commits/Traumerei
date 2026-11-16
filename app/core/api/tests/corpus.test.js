@@ -53,6 +53,8 @@ const focusMode = await load('focus-mode', 'FocusMode.js');
 const roomStats = await load('room-stats', 'RoomStats.js');
 const exportRoom = await load('export-room', 'ExportRoom.js');
 const pageFlow = await load('page-flow', 'PageFlow.js');
+const sketch = await load('sketch', 'Sketch.js');
+const chart = await load('chart', 'Chart.js');
 const firstLetters = await load('first-letters', 'FirstLetters.js');
 const spellMarks = await load('spell-marks', 'SpellMarks.js');
 const boldItalic = await load('bold-italic', 'BoldItalic.js');
@@ -83,16 +85,19 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'room-stats': roomStats,
   'export-room': exportRoom,
   'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic, figure, docx,
-  'word-count-strip': wordCountStrip,
+  'word-count-strip': wordCountStrip, sketch, chart,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
+// What a plugin's block says it needs, where the API checks it (a surface needs 'surface').
+const NEEDS = { sketch: ['surface'], chart: ['surface'] };
+const block = (id) => (NEEDS[id] ? { needs: NEEDS[id] } : {});
 // A mark of each kind a plugin adds, made through the API (so its kind's fields are tried, and the
 // round-trip carries it); the fields a person would write.
 const SAMPLES = {
   checkbox: { text: 'buy bread' }, quote: { text: 'To be, or not', source: 'Hamlet' }, code: { code: 'let x = 1;\n  x++', lang: 'js' },
   'audio-note': { src: 'data:audio/ogg;base64,AAAA', text: 'hum' }, 'pdf-page': { src: 'data:application/pdf;base64,JVBE', page: '3', name: 'paper' },
-  table: { text: 'a | b\n1 | 2' }, figure: { src: 'data:image/png;base64,iVBORw0KGgo=', caption: 'A river', ratio: 0.5 },
+  table: { text: 'a | b\n1 | 2' }, sketch: { strokes: [[10, 10, 40, 30, 80, 20]], text: 'a hill' }, figure: { src: 'data:image/png;base64,iVBORw0KGgo=', caption: 'A river', ratio: 0.5 },
   suggestion: { says: 'the two may speak of the same thing', act: 'link' },
 };
 
@@ -153,6 +158,33 @@ async function drive(host, t, added) {
       await tryIt(`bar ${item.id}`, () => { item.visible?.(host.room); item.on?.(host.room); item.title?.(host.room); item.run(host.room); item.run(host.room); });
     } else if (slot === 'pages.plugin') {
       await tryIt(`page ${item.id}`, () => { const out = item.sections ? item.sections() : item.render(); assert.ok(out, `page ${item.id} draws nothing`); });
+    } else if (slot === 'room.surfaces') {
+      // A surface (since 1.0.5): drawn for a mark of the kind that asks for it (or for a box, with
+      // no mark), then one gesture as a person would make it (down, moves, up: one step), a key,
+      // the wheel, focus and blur, and left.
+      await tryIt(`surface ${item.id}`, () => {
+        const kind = added.find((a) => a.slot === 'world.items' && a.item.surface === item.id)?.item.kind;
+        const mark = kind ? t.marks.ofKind(kind).find((m) => t.places.home(m.id) === host.room)?.id ?? null : null;
+        const box = kind ? null : t.rules.draws(added.find((a) => a.slot === 'world.ontologies')?.item.id, host.room).boxes.find((b) => b.surface === item.id) || null;
+        const size = box ? { width: box.w, height: box.h } : { width: item.width || 240, height: item.height || 160 };
+        const el = typeof document === 'undefined' ? null : document.createElement('div');
+        const ctx = (focused) => Object.freeze({ surface: item.id, mark, context: host.room, box, ...size, focused, el });
+        item.draw(el, ctx(false));
+        item.focus?.(ctx(true));
+        const steps = host.log.undo?.length;
+        const done = item.hold();
+        const at = (type, x, y) => Object.freeze({ type, x, y, pressure: 0.5, buttons: type === 'up' ? 0 : 1, pointer: 'pen', shift: false, alt: false, ctrl: false });
+        item.pointer?.(at('down', 10, 10), ctx(true));
+        for (let i = 1; i <= 5; i++) item.pointer?.(at('move', 10 + i * 8, 10 + i * 4), ctx(true));
+        item.pointer?.(at('up', 50, 30), ctx(true));
+        done();
+        if (steps !== undefined) assert.ok(host.log.undo.length - steps <= 1, `surface ${item.id}: one gesture made more than one step`);
+        item.key?.(Object.freeze({ key: 'a', code: 'KeyA', shift: false, alt: false, ctrl: false }), ctx(true));
+        item.wheel?.(Object.freeze({ x: 5, y: 5, dx: 0, dy: 40, ctrl: false, shift: false }), ctx(true));
+        item.blur?.(ctx(false));
+        if (mark && t.marks.get(mark)) item.draw(el, ctx(false));
+        item.leave?.(el, ctx(false));
+      });
     }
   }
   return errors;
@@ -163,7 +195,7 @@ for (const [id, mod] of Object.entries(CORPUS)) {
     const host = makeHost();
     assert.equal(typeof mod.install, 'function', `${id} exports install(t)`);
     for (const other of WITH[id] || []) host.plug(other, CORPUS[other].install);
-    const { t, off } = host.plug(id, mod.install);
+    const { t, off } = host.plug(id, mod.install, block(id));
     samples(host, t, id);
     const added = host.added(id);
     assert.ok(added.length > 0, `${id} added nothing`);
@@ -174,7 +206,7 @@ for (const [id, mod] of Object.entries(CORPUS)) {
     off();
     assert.equal(host.added(id).length, 0, `${id} left something behind when switched off`);
     assert.equal(tablesOf(host), before, `${id} switched off lost or changed a row`);
-    const again = host.plug(id, mod.install);
+    const again = host.plug(id, mod.install, block(id));
     assert.equal(host.added(id).length, added.length, `${id} on again adds the same`);
     assert.deepEqual(await drive(host, again.t, host.added(id)), []);
     again.off();
@@ -183,7 +215,7 @@ for (const [id, mod] of Object.entries(CORPUS)) {
   test(`corpus ${id}: a .traum round-trip of a room is stable with it on`, () => {
     const host = makeHost();
     for (const other of WITH[id] || []) host.plug(other, CORPUS[other].install);
-    const { t } = host.plug(id, mod.install);
+    const { t } = host.plug(id, mod.install, block(id));
     samples(host, t, id);
     const text = t.carriers.text(host.room, { ids: 'real' });
     const check = t.carriers.check(host.room, t.carriers.read(text));
@@ -198,7 +230,7 @@ test('corpus rules: each lays out a 1,500-thought room within the budget', () =>
   const big = bigRoom(host);
   const slow = [];
   for (const [id, mod] of Object.entries(CORPUS)) {
-    const { t, off } = host.plug(id, mod.install);
+    const { t, off } = host.plug(id, mod.install, block(id));
     for (const { slot, item } of host.added(id)) {
       if (slot !== 'world.ontologies') continue;
       const start = performance.now();
@@ -511,4 +543,80 @@ test('word count strip: the room\'s words in the strip, the chosen thought\'s fi
   assert.deepEqual(host.app.slot('header.buttons').items.map((p) => p.id), ['page:word-counts']);
   off();
   assert.equal(host.app.slot('pages.plugin').items.length + host.app.slot('header.buttons').items.length + host.app.slot('room.strip').items.length, 0);
+});
+
+test('sketch: a stroke drawn in its surface is one edit and one step, Backspace takes it back, and a .traum file carries it', () => {
+  const host = makeHost({ thoughts: 3 });
+  const { t } = host.plug('sketch', sketch.install, { needs: ['surface'] });
+  const made = t.marks.make({ kind: 'sketch', content: { strokes: [[10, 10, 40, 30]], text: 'a hill' }, in: host.room });
+  assert.ok(made.ok, made.reason);
+  const mark = made.id;
+  const item = host.added('sketch').find((a) => a.slot === 'room.surfaces').item;
+  const el = document.createElement('div');
+  const ctx = Object.freeze({ surface: 'sketch', mark, context: host.room, box: null, width: 240, height: 160, focused: true, el });
+  item.draw(el, ctx);
+  assert.equal(el.querySelectorAll('path').length, 1);
+  const at = (type, x, y) => Object.freeze({ type, x, y, pressure: 0.5, buttons: type === 'up' ? 0 : 1, pointer: 'pen', shift: false, alt: false, ctrl: false });
+  const steps = host.log.undo.length;
+  const done = item.hold();
+  item.pointer(at('down', 100, 100), ctx);
+  item.pointer(at('move', 110, 105), ctx);
+  item.pointer(at('move', 110.2, 105.1), ctx); // too near the last: skipped
+  item.pointer(at('move', 300, -20), ctx);     // off the pad: kept at its edge
+  assert.equal(el.querySelectorAll('path').length, 2, 'the stroke under way is drawn live');
+  item.pointer(at('up', 300, -20), ctx);
+  done();
+  assert.equal(host.log.undo.length, steps + 1, 'one gesture, one step');
+  assert.deepEqual(t.marks.get(mark).strokes.at(-1), [100, 100, 110, 105, 240, 0]);
+  assert.equal(t.marks.get(mark).strokes.length, 2);
+  const text = t.carriers.text(host.room, { ids: 'real' });
+  assert.ok(text.includes('strokes'), 'the strokes travel in the file');
+  const check = t.carriers.check(host.room, t.carriers.read(text));
+  assert.deepEqual([check.changed, check.made, check.deleted], [0, 0, 0]);
+  assert.equal(item.key(Object.freeze({ key: 'Backspace', code: 'Backspace', shift: false, alt: false, ctrl: false }), ctx), true);
+  assert.equal(t.marks.get(mark).strokes.length, 1);
+  assert.equal(item.key(Object.freeze({ key: 'a', code: 'KeyA', shift: false, alt: false, ctrl: false }), ctx), false);
+  // The kind itself (the host keeps a plugin's marks as they are given, so it is asked here):
+  // strokes that are not strokes are left out, an empty sketch is null, and it always has words.
+  const k = host.added('sketch').find((a) => a.slot === 'world.items').item;
+  const h = { oneLine: (s) => String(s ?? '').replace(/\s+/g, ' ').trim() };
+  assert.deepEqual(sketch.tidyStrokes([[1, 2, 3], [NaN, 1], [5, 6], 'x', [500, -1], [1.26, 2]]), [[5, 6], [240, 0], [1.3, 2]]);
+  assert.equal(sketch.svgPath([5, 6]), 'M5 6l0 0');
+  assert.equal(k.tidy({ strokes: [], text: ' ' }, h), null);
+  assert.deepEqual(k.tidy({ text: '' }, h), { strokes: [], text: '' }, 'a new one from Add is a blank pad');
+  assert.deepEqual(k.tidy({ strokes: [[1, 1]], text: '' }, h), { strokes: [[1, 1]], text: '' });
+  assert.equal(k.text({ strokes: [[1, 1]] }), 'Sketch (1 stroke)');
+  assert.equal(k.text({ strokes: [[1, 1]], text: 'a hill' }), 'a hill');
+  const make = (tag, attrs, ...kids) => { const n = document.createElement(tag); n.append(...kids.filter((x) => x != null)); return n; };
+  const shown = k.node({ id: mark, kind: 'sketch', strokes: [[1, 1, 5, 5], [9, 9]], text: 'a hill' }, make);
+  assert.equal(shown.querySelectorAll('svg path').length, 2);
+  assert.equal(shown.querySelector('svg').getAttribute('viewBox'), '0 0 240 160');
+});
+
+test('chart: a rule whose box asks for a surface, which draws a bar for each group and one for the loose thoughts', () => {
+  const host = makeHost({ thoughts: 8 });
+  const { t } = host.plug('chart', chart.install, { needs: ['surface'] });
+  const g = t.marks.make({ kind: 'group', content: { title: 'Pair' }, in: host.room }).id;
+  assert.ok(t.marks.edit(host.ids[4], { text: 'one two three' }).ok);
+  assert.ok(t.marks.edit(host.ids[5], { text: 'four five' }).ok);
+  assert.ok(t.links.link(host.ids[4], g, 'part of').ok);
+  assert.ok(t.links.link(host.ids[5], g, 'part of').ok);
+  const boxes = t.rules.draws('chart', host.room).boxes;
+  assert.equal(boxes.length, 1);
+  assert.equal(boxes[0].surface, 'chart');
+  const bars = chart.barsOf(t, host.room);
+  assert.equal(bars.find((b) => b.id === g).words, 5);
+  assert.equal(bars.find((b) => b.id === host.train).words, 3 * 4); // the train's three thoughts, four words each
+  const loose = [3, 6, 7].reduce((n, i) => n + chart.words(t.marks.text(host.ids[i])), 0);
+  assert.equal(bars.at(-1).label, 'Loose');
+  assert.equal(bars.at(-1).words, loose);
+  assert.ok(t.rules.layout('chart', host.room).length > 0);
+  const surface = host.added('chart').find((a) => a.slot === 'room.surfaces').item;
+  const el = document.createElement('div');
+  const before = JSON.stringify(host.world.carriers.tables()), steps = host.world.saved;
+  surface.draw(el, Object.freeze({ surface: 'chart', mark: null, context: host.room, box: boxes[0], width: boxes[0].w, height: boxes[0].h, focused: false }));
+  assert.ok(el.querySelector('svg'));
+  assert.equal(el.querySelectorAll('svg rect').length, bars.length);
+  assert.equal(JSON.stringify(host.world.carriers.tables()), before, 'the chart writes nothing');
+  assert.equal(host.world.saved, steps);
 });

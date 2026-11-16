@@ -52,7 +52,7 @@ A whole `feature.json`, for a plugin with no styles:
 | `api` | The plugin API version it was written for. A plugin for a newer API than the app offers is left out, with the reason on the Plugins page. |
 | `minApp` | The oldest app version it works with. |
 | `kind` | What it adds, from the one list in app.json's `plugins.kinds`: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, `page`, `look`, `tool`, `dock`, `provider` (AI tasks). The compiler refuses any other word; Settings → Plugins shows them in words. |
-| `needs` | What it needs, from app.json's `plugins.needs`: `files` (opens and saves files), `network` (the internet or a local server), `sidecar` (starts a program on this computer), `store` (keeps its own files), `ai` (asks for AI tasks). Shown on its row and on the import card. Default `[]`. |
+| `needs` | What it needs, from app.json's `plugins.needs`: `files` (opens and saves files), `network` (the internet or a local server), `sidecar` (starts a program on this computer), `store` (keeps its own files), `ai` (asks for AI tasks), `surface` (draws in a surface of its own and takes the pointer while clicked into; since 1.0.5, API.md Surfaces). Shown on its row and on the import card. Default `[]`. |
 | `sidecar` | A program the desktop app starts for it: `{ program, url, bytes, checksum, args?, idle? }` (app/core/AI.md, Sidecars). Needs `sidecar` in `needs`. Packed as written. |
 | `load` | `start` (the default) or `when-used`. |
 | `author` | Who made it. |

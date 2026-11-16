@@ -497,6 +497,7 @@ export class RoomView {
       this.drawBar();
       this.drawTray();
       this.drawTwin(); // a Twin's other side, beside (twin.js)
+      this.mountSurfaces(); // a kind's or a box's surface, in the element drawn for it (surface.js)
     });
     this.stripSoon(); // the strip's words, when the room is still (strip.js)
     // Clearing space measures every block in the room: after a patch (one thought begun) it waits
@@ -522,7 +523,7 @@ export class RoomView {
       // right (a count, a page) and a mark it opens on a double-click (a chapter's room).
       (ont.boxes?.(w, this.roomId) || []).forEach((b, i) => nodes.push(el('div', {
         class: 'room-cell' + (b.style && b.style !== 'plain' ? ` room-cell-${b.style}` : '') + (b.level ? ` room-cell-l${b.level}` : '') + (b.opens ? ' room-cell-opens' : '') + (i === chosen ? ' chosen' : ''),
-        'data-box': String(i), ...(b.opens ? { title: 'Double-click to open' } : {}),
+        'data-box': String(i), ...(b.opens ? { title: 'Double-click to open' } : {}), ...(b.surface ? { 'data-surface': b.surface } : {}),
         style: `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`,
       }, b.label ? el('span', { class: 'room-cell-label' }, b.label) : null, b.note ? el('span', { class: 'room-cell-note' }, b.note) : null,
       b.right ? el('span', { class: 'room-cell-right' }, b.right) : null)));

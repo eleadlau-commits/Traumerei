@@ -1,0 +1,22 @@
+{
+  "name": "Sketch",
+  "description": "A kind of mark that is a small drawing made with the pen, in any room: click into it and draw; each stroke is one step, and Backspace takes the last one away.",
+  "version": "0.1.0",
+  "main": "Sketch.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.5",
+    "kind": [
+      "item"
+    ],
+    "needs": [
+      "surface"
+    ],
+    "load": "start",
+    "author": "E",
+    "starts": "off"
+  }
+}

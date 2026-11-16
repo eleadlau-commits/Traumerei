@@ -20,7 +20,7 @@ const V2 = {
   distance: ['all', 'declare', 'declared', 'of', 'on', 'readers', 'shut'],
   gaps: ['of', 'oldest', 'on', 'open', 'opened', 'progress', 'reopen', 'resolve'],
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
-  slots: ['account', 'aiServices', 'bar', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'pages', 'providers', 'rules', 'spans', 'strip', 'views'],
+  slots: ['account', 'aiServices', 'bar', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'pages', 'providers', 'rules', 'spans', 'strip', 'surfaces', 'views'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
   ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'size', 'text', 'toast', 'zoom'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
@@ -629,4 +629,62 @@ test('subscribing to a table hears the rows that land in its table, and stops wh
   for (const fn of leaving) fn();
   assert.equal(listeners.get('world:moments').length, 0);
   assert.equal(kernel({ lib, world: service }).marks.on(() => {})(), undefined); // no events: nothing to hear, quietly
+});
+
+// Surfaces (open core, step 4, since 1.0.5): a kind or a rule's box draws in an element of its own;
+// pointer down to pointer up is one step.
+test('slots.surfaces: needs "surface", checks its shape, and keeps only its hooks', () => {
+  const app = fakeApp();
+  const bare = connect({ app, world, plugin: plugin('pen'), parts: surface(lib), lib });
+  assert.throws(() => bare.slots.surfaces.add({ id: 'pen', draw() {} }), /needs "surface"/);
+  const p = plugin('pen');
+  p.manifest.plugin.needs = ['surface'];
+  const t = connect({ app, world, plugin: p, parts: surface(lib), lib });
+  assert.throws(() => t.slots.surfaces.add({ id: 'Pen!', draw() {} }), /id/);
+  assert.throws(() => t.slots.surfaces.add({ id: 'pen' }), /draw/);
+  const off = t.slots.surfaces.add({ id: 'pen.pad', width: 300, height: -1, draw() {}, key: () => true, odd: 1 });
+  const [entry] = app.slots.get('room.surfaces').items;
+  assert.equal(entry.owner, 'pen');
+  assert.equal(entry.item.id, 'pen.pad');
+  assert.deepEqual([entry.item.width, entry.item.height], [300, undefined]);
+  assert.equal(typeof entry.item.hold, 'function');
+  assert.ok(!('odd' in entry.item));
+  assert.ok(Object.isFrozen(entry.item));
+  off();
+  assert.equal(app.slots.get('room.surfaces').items.length, 0);
+});
+
+test('a surface\'s gesture is one step: the plugin\'s proposes between down and up save once', () => {
+  const w = lib.model.emptyWorld();
+  const r = lib.model.addRoom(w, 'Pad');
+  const counted = { world: w, saved: 0, save() { this.saved++; return true; }, lib };
+  const app = fakeApp();
+  const p = plugin('pen');
+  p.manifest.plugin.needs = ['surface'];
+  const t = connect({ app, world: counted, plugin: p, parts: surface(lib), lib });
+  t.slots.surfaces.add({ id: 'pen', draw() {} });
+  const s = app.slots.get('room.surfaces').items[0].item;
+  const made = t.marks.make({ content: 'a', in: r.id });
+  assert.ok(made.ok);
+  const before = counted.saved;
+  const done = s.hold(); // pointer down
+  t.marks.edit(made.id, { text: 'ab' });
+  t.marks.edit(made.id, { text: 'abc' });
+  assert.equal(counted.saved, before, 'nothing saved mid-gesture');
+  done(); // pointer up
+  done(); // (twice is once)
+  assert.equal(counted.saved, before + 1);
+  assert.equal(t.marks.get(made.id).text, 'abc');
+});
+
+test('a rule box may ask for a surface; a box with a bad surface id draws without one', () => {
+  const w = lib.model.emptyWorld();
+  const r = lib.model.addRoom(w, 'Chart');
+  const app = fakeApp();
+  const t = connect({ app, world: { world: w, saved: 0, save() { return true; }, lib, get ontologies() { return app.slots.get('world.ontologies')?.items.map((e) => e.item) || []; }, ontology: () => null }, plugin: plugin('bars'), parts: surface(lib), lib });
+  t.slots.rules.add({ id: 'bars', name: 'Bars', arrange: () => [], draw: () => [{ x: 0, y: 0, w: 200, h: 100, surface: 'chart' }, { x: 0, y: 200, w: 10, h: 10, surface: 'No Way' }] });
+  const rule = app.slots.get('world.ontologies').items[0].item;
+  const boxes = rule.boxes(w, r.id);
+  assert.equal(boxes[0].surface, 'chart');
+  assert.ok(!('surface' in boxes[1]));
 });

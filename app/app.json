@@ -34,7 +34,8 @@
       "network": "reaches the internet or a local server",
       "sidecar": "starts a program on this computer",
       "store": "keeps its own files on this computer",
-      "ai": "asks for AI tasks"
+      "ai": "asks for AI tasks",
+      "surface": "draws in a surface of its own and takes the pointer while it is clicked into"
     }
   },
   "theme": {
