@@ -1,11 +1,11 @@
-# The Träumerei plugin API, version 2
+# The Träumerei plugin API, version 3
 
 A plugin is a feature folder in `app/plugins/` whose `feature.json` has a `plugin` block
 (`folio/README.md` §3). It reaches the app **only** through the `traumerei` service below, and
 through Folio itself (its own storage, events, the `settings` slot, `ui`). The compiler leaves out
 a plugin that uses any other core service or adds to a core feature's slot directly.
 
-Version 2 names the app after the kernel's six tables ([`KERNEL.md`](KERNEL.md)): **marks**,
+Version 3 (as 2 before it) names the app after the kernel's six tables ([`KERNEL.md`](KERNEL.md)): **marks**,
 **places**, **links**, **distance**, **gaps**, **moments**. Each namespace has reads (frozen
 rows), proposes (a change that lands as one step, or a refusal with its reason in words) and
 `on(fn)`. Beside them sit `slots` (where a plugin plugs in), `ui`, `plugin` and `app`.
@@ -19,34 +19,54 @@ export default class Haiku extends Feature {
     if (!t) throw new Error('Needs the plugin API');
     t.slots.rules.add({ id: 'haiku', name: 'Haiku', note: 'three lines at a time', /* … */ });
     t.slots.commands.add({ id: 'haiku.count', keys: ['Ctrl+Alt+H'], words: 'Count the syllables', zone: 'room',
-      run: () => t.ui.toast(`${t.marks.in(roomId).length} thoughts`) });
-    t.marks.on(() => this.refresh());
+      run: () => t.ui.toast(`${t.marks.in(t.ui.chosen()?.context).length} thoughts`) });
   }
 }
 ```
 
 List `"requires": ["api"]` in the plugin's feature.json, so it starts after the API and is left
-out cleanly without it, and `"plugin": { "api": 2, … }`.
+out cleanly without it, and `"plugin": { "api": 3, … }`.
 
-**Version 2 is frozen** (end of kernel phase 8, after thirty plugins were written against this
-page alone: [`docs/CORPUS.md`](../../docs/CORPUS.md)). From now on it changes only by adding, never by renaming or
-taking away. `tests/api.test.js` in `app/core/api/` holds this list and `tests/corpus.test.js`
-runs the thirty through the conformance suite, so an addition is made in three places at once:
-`v2.js`, this file and the test.
+**Version 3 is frozen** (Träumerei 1.0.5, the end of the open core). It is version 2 with
+additions only, so a plugin written for 2 connects as it is (`"api": 2` still works); one written
+for 1 does not. From now on the API changes only by adding, never by renaming or taking away, and
+only for a bug or something no plugin can do from this page. `tests/api.test.js` in
+`app/core/api/` holds the whole list and `tests/corpus.test.js` runs the corpus through the
+conformance suite, so an addition is made in three places at once: `v2.js` (the file keeps its
+name), this page and the test.
+
+**What version 3 adds to 2** (each marked "since 1.0.5" where it is described below). The open
+core: everything at the drawing that was closed is now a seam, so a plugin can be anything from
+a first-letter highlighter to a word processor or a drawing tool, and the tables and the eight
+laws stay exactly as they were.
+
+| Seam | Names |
+|---|---|
+| Size and fragments | a thin rule's row `width`, `height`, `align`, `lines` (fragments), zoom `bands` (`far`, `mid`, `near`); `claims`; box style `page`; `ui.measure`, `ui.size`; `links.link(…, 'part of', …, { at })` |
+| Spans and the caret | `slots.spans` (kept on the mark, Law 1), `slots.decorators` (read-only), `ui.text`, commands in zone `editing`, `marks.markdown` |
+| Places and zoom | `slots.bar`, `slots.strip`, `slots.pages`, `ui.zoom`, `ui.open.page` |
+| Pointer and surface | `slots.surfaces`, a kind's `surface`, a box's `surface` and `data`, the need `surface` |
+| Kinds in a flow and more ways out | a kind's `inline` and `height(mark, width)`; several formats with `exportRoom` |
+| Rows | a mark row is frozen all the way down: its nested fields (a sketch's strokes, a thought's spans) are copies |
+
+The proof is the corpus (`docs/CORPUS.md`): the thirty plugins that froze version 2, plus one
+written for each seam (Page flow, First letters, Spell marks, Bold and italic, Word count strip,
+Sketch, Chart, Figure, Word document) and one written from this page alone by an author who had
+read nothing else (Highlighter).
 
 **Plain facts.** Every time is a number of milliseconds (`Date.now()`), in and out. Every propose,
 `moments.due` and `revisit` too, returns `{ ok, … }`. `marks.in(context)` gives every mark there:
-thoughts and groups (`kind: 'group'`); filter by `kind`. `t.ui.chosen().context` is the open
+thoughts and groups (`kind: 'group'`), the marks at home there (a group's parts too, not what sits in a room inside it); filter by `kind`. A mark row carries every field the mark keeps (its `spans` too), frozen all the way down. A room's name is `marks.text(room)`. `t.ui.chosen().context` is the open
 room's id. Build a node with Folio's `ui.el(tag, attrs, …kids)` (`import { ui } from 'folio'`).
-A command's or section's `order` is optional (lower first, 50 by default). `together(fn)` is
+Every slot item's `order` is optional (lower first, 50 by default). A `title?()` on an item is its tooltip. A bar word and the command that gives it a key are two items, each with its own id. `together(fn)` is
 `t.together(fn)`.
 
 ## Connecting
 
 | Member | What it is |
 |---|---|
-| `use('traumerei').version` | The API version the app offers (2). |
-| `use('traumerei').connect(plugin)` | The API for this plugin (pass `this`). Throws when the plugin's block asks for a newer API; a plugin written for 1 still connects. |
+| `use('traumerei').version` | The API version the app offers (3). |
+| `use('traumerei').connect(plugin)` | The API for this plugin (pass `this`). Throws when the plugin's block asks for a newer API, or for version 1; a plugin written for 2 connects to 3. |
 
 ## Rows, proposals and what they mean today
 
@@ -66,7 +86,7 @@ names the phase that brings it, and the read is empty. A refusal is never a step
 
 | Namespace | read | propose | subscribe |
 |---|---|---|---|
-| `marks` | `get(id)` · `in(context)` (the marks a context holds; `null` for the rooms) · `ofKind(kind)` · `text(id)` · `markdown(id)` (its words with their spans as Markdown, since 1.0.5) · `search(words, most?)` | `make({ kind?, content, in, at? })` (`kind` line by default; `room` with its name as content and no `in`, onto the first floor; `group` with `{ title }`, and a mark made `in` a group joins it; a plugin's kind with its fields as content; `at`: `x`, `y`) · `edit(id, fields)` (never kind, context, members or id; a mark left empty is removed, `{ ok, id, removed: true }`) · `delete(id)` | `on(change)` |
+| `marks` | `get(id)` · `in(context)` (the marks a context holds; `null` for the rooms) · `ofKind(kind)` · `text(id)` · `markdown(id)` (its words with their spans as Markdown, each kind of span by its `md`, a span kind with no `md` as plain words; `''` for no such mark; since 1.0.5) · `search(words, most?)` | `make({ kind?, content, in, at? })` (`kind` line by default; `room` with its name as content and no `in`, onto the first floor; `group` with `{ title }`, and a mark made `in` a group joins it; a plugin's kind with its fields as content; `at`: `x`, `y`) · `edit(id, fields)` (never kind, context, members or id; a mark left empty is removed, `{ ok, id, removed: true }`) · `delete(id)` | `on(change)` |
 | `places` | `of(mark)` · `home(mark)` (the context it is in) · `in(context, rule?)` · `loose(context)` (marks at home there that no rule places) · `position(mark, context, rule)` | `put(mark, context, rule?, position?)` (into a context, laid under a rule when given; a room onto a floor `floor:<n>` or into the Archive `archive`; since 1.0.4 a room with a cell `{ col, row }` goes exactly there by the floor rule, or is refused) · `move(mark, from, to)` (lands loose in `to`) · `unplace(mark, context)` (loose there, under every rule) | `on(change)` |
 | `links` | `get(id)` · `from(mark, kind?)` · `to(mark, kind?)` · `members(group)` (ids, in order) · `holders(mark)` (group ids) · `standsFor(fold)` (the marks it folded) · `kinds()` (part of, stands for, relation and the declared ones) · `named(kind)` · `count()` | `link(from, to, kind, label?, { rule, note, at }?)` (a relation needs the `rule` whose arrows these are and goes through its checks; a *part of* takes `at`, its position in a group that keeps its order, 0 first, since 1.0.5) · `fold(context, ids)` (one new mark stands for them) · `unlink(id)` (a stands-for row undone brings the mark back loose) · `order(group, ids)` | `on(change)` |
 | `carriers` | `list()`, `tables(context?)` (the six tables of a room, a group with its parts, or the whole world, deep frozen), `text(context?, { ids })` (as .traum text), `read(text)` (`{ tables, root, report }` or `null`), `check(context, read)` (what writing it over the context would do: `{ ok, kept, changed, made, deleted }` or a refusal) | `land(read, { into?, page?, cell? })` (new marks: a new room, or poured into one), `replace(context, read)` (edited text written back over it) | |
@@ -230,7 +250,7 @@ Kinds: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, 
 | `slots.groups` | since 1.0.4, the one way to say a kind of group: `add({ id, name, membership?, order?, card?, keep?, open?(id), rule? })`. With `rule` (its `id` the rule's id), the rule's own groups: laid out by that rule, and Ctrl+G in it makes one (a rule may still say the same as its own `groups`). Without `rule`, a family no rule lays out, exactly as `slots.families` below says. In a rule with no groups of its own, Ctrl+G makes a **plain group** (`of: 'group'`, the core's own kind): one card in every rule, waiting in the tray until placed, its parts still where they are; Ctrl+Shift+G there takes it apart. |
 | `slots.families` | **Deprecated since 1.0.4: use `slots.groups` (without `rule`), which reads the same; this slot stays for plugins written before.** A family of groups that belongs to no mode (a book, its chapters): `add({ id, name, membership?, order?, card?, keep?, open?(id) })`. `id` lowercase words joined by dashes, never a mode's. Make one with `marks.make({ kind: 'group', content: { title, of: id }, in: room })`, put parts in with `links.link(part, group, 'part of')`, order them with `links.order(group, ids)`. Its groups hold parts like any group (a group of the family may hold another's: a book its chapters), and a mode never lays them out, so a thought sits in a chapter and in a Proust cluster at once. `membership` `'many'` (the default: a part in several of its groups) or `'one'`; `order` `'kept'` (the default: as put, a newcomer at the end) or `'time'`; `card: true`: each of its groups that no other group holds shows as one card in every mode (in the tray until it is placed), its parts still where they are; `keep` (default true): a group of it left empty stays; `open(id)`: double-click or Enter on its card opens it (a view in a dock). Deleting a family's group never deletes its parts, with its plugin on or off (the group says `family: true`), and its rows travel in .traum files like any group's. |
 | `slots.spans` | since 1.0.5: a kind of span, the look of some words inside a thought: `add({ kind, name, class, md? })`. `class` one of `bold`, `italic`, `underline`, `wavy`, `highlight`, `strike`, `quiet`, `caps`, `mono` (the room's own classes: the one look holds); `md` `[open, close]` writes it in Markdown (bold `['**', '**']`). A span is **material of the mark** (Law 1: the look is part of it): a line keeps `spans: [{ from, to, kind }]` (character offsets, `to` not included), carried in .traum files; `marks.edit(id, { spans })` sets them, and new words carry them along (typing inside a bold word keeps it bold). A span of a kind whose plugin is off is kept and drawn plain. |
-| `slots.decorators` | since 1.0.5: how a thought's words are drawn, read-only: `add({ id, decorate(text, mark) → [{ from, to, class }] })`, `class` from the list above. A decorator never changes anything and keeps nothing: every word's first letter bold, a wavy line under a misspelt word. It runs on every thought drawn, so keep it fast. |
+| `slots.decorators` | since 1.0.5: how a thought's words are drawn, read-only: `add({ id, decorate(text, mark) → [{ from, to, class }] })`, `class` from the list above; `text` is the plain words (as `marks.text`) and the offsets count into them; it runs on words (kind `line`), the thought being written too (there `mark` is `{ id, text, spans }`, `id` `null` for a new thought); a decorator's class and a span's on the same words both draw. A decorator never changes anything and keeps nothing: every word's first letter bold, a wavy line under a misspelt word. It runs on every thought drawn, so keep it fast. |
 | `slots.surfaces` | since 1.0.5: an element a kind or a rule's box draws in, with the pointer while it is focused: `add({ id, width?, height?, draw(el, ctx), pointer?(e, ctx), wheel?(e, ctx), key?(e, ctx), focus?(ctx), blur?(ctx), leave?(el, ctx) })`. Needs `surface` in the plugin block's `needs` (refused without). See Surfaces, below. |
 | `slots.buttons` | a button in a room's rail, under **Tools**: `add({ id, label, icon, order, run(), on?(), visible?(), title?() })`, the same shape as ⋯ More's (`icon` a `ui.ICONS` name or a drawing on a 24 × 24 grid). |
 | `slots.menu` | a row in the ☰ menu: `add({ id, label, icon, order, onClick(), visible?(), busy?() })` (Folio's `header.buttons`). |
@@ -247,7 +267,7 @@ Kinds: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, 
 | `slots.formats` | a file format: `add({ id, name, accepts(file), importRoom?(o), importInto?(roomId, o), exportRoom?(id) })`. `accepts` whether a picked or dropped file is this format's; `importRoom({ file })` makes a new room from it and returns `{ id }` of the room (or `null`), and may be async; `importInto(roomId, { file })` pours it into a room, `true` or `false`; `exportRoom(id)` hands the room out (with `ui.files.save`). Read a file with `await file.text()`. The first format with `exportRoom` serves a room's Export (the .traum file); since 1.0.5, when several formats have `exportRoom`, the room's ⋯ More offers each as "Export: its name" (a Word document beside the room file). Make the new room and its marks inside `together()`, so the import is one step. |
 | Folio's `settings` slot | a section on the Settings page: `this.add('settings', { id, title, order, render() })`. |
 | `ui.toast(text)` | A short message at the foot of the screen. |
-| `ui.text` | Since 1.0.6: the words being written (a new thought, or one opened again to write in). `caret()`: `{ mark, from, to, text }` (`mark` `null` for a new thought; `from`, `to` the selection, equal for a caret) or `null` when nothing is being written. `select(from, to?)`. `replace(mark, from, to, words)`: in the thought being written (mark `null` or its id: nothing is kept until Enter keeps it, as one step), or in a kept mark's words as one step (`{ ok }` either way). `style(kind, from?, to?)`: a kind of span (`slots.spans`) on over those words of the thought being written, or off where they all have it (the selection by default); `spans()` its spans now. `on(fn)` hears the caret move and the words change, `fn(caret)`. A command with `zone: 'editing'` runs while a thought is being written (Ctrl+B in a thought), and only then. |
+| `ui.text` | Since 1.0.5: the words being written (a new thought, or one opened again to write in). `caret()`: `{ mark, from, to, text }` (`mark` `null` for a new thought; `text` all its words; `from`, `to` the selection in them, equal for a caret) or `null` when nothing is being written. `select(from, to?)`. `replace(mark, from, to, words)`: in the thought being written (mark `null` or its id: nothing is kept until Enter keeps it, as one step), or in a kept mark's words as one step (`{ ok }` either way). `style(kind, from?, to?)`: a kind of span (`slots.spans`) on over those words of the thought being written, or off where they all have it (the selection by default; a bare caret styles nothing, so a plugin wanting the word at the caret finds it in `text` and passes `from`, `to`); `true`, or `false` when nothing is being written; `spans()` its spans now. `on(fn)` hears the caret move and the words change, `fn(caret)`. A command with `zone: 'editing'` runs while a thought is being written (Ctrl+B in a thought), and only then. |
 | `ui.size(mark, width)` | Since 1.0.5: how tall a mark draws at `width`, for a rule laying marks in a column: `{ height, inline, lines?, lineHeight? }`. Words by their lines (as `ui.measure`); a kind with `height(mark, width)` by its own word; `inline` whether it flows among paragraphs (words do; a kind says so with `inline: true`). `null` for no such mark. |
 | `ui.measure(text, width)` | Since 1.0.5: how words wrap at `width` (world units) as the room draws a thought: `{ lines, lineHeight, height }`. Pure: the same words and width give the same answer, so a rule's `arrange` may use it. |
 | `ui.zoom` | Since 1.0.5, the open room's zoom: `get()` → `{ zoom, band }` or `null` outside a room; `set(zoom, at?)` zooms it (kept within 0.25 to 4) with the world point `at` (`{ x, y }`, the middle of the screen by default) staying where it is on the screen, → `{ ok, zoom, band }` or `{ ok: false, reason }`; `on(fn)` hears each change of zoom or of room, `fn({ zoom, band, context })`, and returns a function that stops (it stops when the plugin is switched off); `bands` the fixed bands, `{ far: [0.25, 0.5], mid: [0.5, 1.75], near: [1.75, 4] }`, each `[from, to)` (near holds 4). A room opens at 1, in `mid`: `far` sees the room as a map, `near` close up. A rule's row may give words for a band (Rules, above). |

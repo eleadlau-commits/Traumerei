@@ -61,6 +61,7 @@ const boldItalic = await load('bold-italic', 'BoldItalic.js');
 const figure = await load('figure', 'Figure.js');
 const docx = await load('docx', 'Docx.js');
 const wordCountStrip = await load('word-count-strip', 'WordCountStrip.js');
+const highlighter = await load('highlighter', 'Highlighter.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -85,7 +86,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'room-stats': roomStats,
   'export-room': exportRoom,
   'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic, figure, docx,
-  'word-count-strip': wordCountStrip, sketch, chart,
+  'word-count-strip': wordCountStrip, sketch, chart, highlighter,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -543,6 +544,21 @@ test('word count strip: the room\'s words in the strip, the chosen thought\'s fi
   assert.deepEqual(host.app.slot('header.buttons').items.map((p) => p.id), ['page:word-counts']);
   off();
   assert.equal(host.app.slot('pages.plugin').items.length + host.app.slot('header.buttons').items.length + host.app.slot('room.strip').items.length, 0);
+});
+
+// Step 6 (1.0.5): the plugin written from API.md alone, by an author who had read nothing else.
+test('highlighter: a span written ==…==, the strip counts the thoughts that carry it, and it all goes when switched off', () => {
+  const host = makeHost({ thoughts: 2 });
+  const { t, off } = host.plug('highlighter', highlighter.install);
+  const strip = host.app.slot('room.strip').items[0];
+  assert.equal(strip.text(host.room), '');
+  const id = t.marks.make({ content: 'a bright word', in: host.room }).id;
+  assert.ok(t.marks.edit(id, { spans: [{ from: 2, to: 8, kind: 'mark-up' }] }).ok);
+  assert.equal(t.marks.markdown(id), 'a ==bright== word');
+  assert.equal(strip.text(host.room), '1 highlighted thought');
+  assert.equal(host.app.slot('room.bar').items[0].label, 'Markdown');
+  off();
+  assert.equal(host.app.slot('room.strip').items.length + host.app.slot('room.bar').items.length, 0);
 });
 
 test('sketch: a stroke drawn in its surface is one edit and one step, Backspace takes it back, and a .traum file carries it', () => {

@@ -6,7 +6,7 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
-| 1.0.5 | 2 | 1 | traum/3 |
+| 1.0.5 | 3 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
@@ -87,6 +87,15 @@ One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, 
   ⋯ More.
 - The corpus Table flows; corpus plugins **Figure** (a picture with a caption) and **Word
   document** (a room as a .docx: headings, bold and italic, tables, figures).
+
+### Step 6: the plugin API, version 3, frozen
+
+- Version 3 is version 2 with the open core's additions, and frozen: it changes only by adding.
+  A plugin written for version 2 connects as it is; new plugins say `"api": 3`.
+- A mark row is frozen all the way down (its nested fields are copies), so no plugin can change
+  the world through a row.
+- Checked by the corpus (the thirty of version 2 and one plugin per seam) and by a plugin written
+  from `API.md` alone by an author who had read nothing else.
 
 ## 1.0.3 (15 Nov 2026)
 

@@ -38,20 +38,20 @@ A whole `feature.json`, for a plugin with no styles:
 
 ```json
 { "name": "Word count", "description": "…", "version": "0.1.0", "main": "WordCount.js",
-  "requires": ["api"], "plugin": { "api": 2, "minApp": "1.0.0", "kind": ["editor"], "load": "start", "author": "E" } }
+  "requires": ["api"], "plugin": { "api": 3, "minApp": "1.0.5", "kind": ["editor"], "load": "start", "author": "E" } }
 ```
 
 ## 2. The plugin block
 
 ```json
-"plugin": { "api": 2, "minApp": "1.0.0", "kind": ["editor"], "load": "start", "author": "E" }
+"plugin": { "api": 3, "minApp": "1.0.5", "kind": ["editor"], "load": "start", "author": "E" }
 ```
 
 | Key | What it says |
 |---|---|
 | `api` | The plugin API version it was written for. A plugin for a newer API than the app offers is left out, with the reason on the Plugins page. |
 | `minApp` | The oldest app version it works with. |
-| `kind` | What it adds, from the one list in app.json's `plugins.kinds`: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, `page`, `look`, `tool`, `dock`, `provider` (AI tasks). The compiler refuses any other word; Settings → Plugins shows them in words. |
+| `kind` | What it adds, from the one list in app.json's `plugins.kinds`: `mode`, `item`, `view`, `editor`, `command`, `link`, `reader`, `format`, `page`, `look` (a span or a decorator too), `tool`, `dock`, `provider` (AI tasks). The compiler refuses any other word; Settings → Plugins shows them in words. |
 | `needs` | What it needs, from app.json's `plugins.needs`: `files` (opens and saves files), `network` (the internet or a local server), `sidecar` (starts a program on this computer), `store` (keeps its own files), `ai` (asks for AI tasks), `surface` (draws in a surface of its own and takes the pointer while clicked into; since 1.0.5, API.md Surfaces). Shown on its row and on the import card. Default `[]`. |
 | `sidecar` | A program the desktop app starts for it: `{ program, url, bytes, checksum, args?, idle? }` (app/core/AI.md, Sidecars). Needs `sidecar` in `needs`. Packed as written. |
 | `load` | `start` (the default) or `when-used`. |
@@ -76,7 +76,7 @@ export default class WordCount extends Feature {
 }
 ```
 
-`t` is the plugin API, version 2. Its names follow the kernel's six tables
+`t` is the plugin API, version 3 (a plugin written for 2 still connects). Its names follow the kernel's six tables
 (`app/core/KERNEL.md`):
 
 | Name | Use it to |
