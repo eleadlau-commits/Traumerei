@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, titleOf, placeNotes, settingOf, widthOf } from './column.js';
+import { RULE, SPACE, NOTE, column, read, titleOf, placeNotes, settingOf, widthOf, draftRoom } from './column.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
 // millimetre (the reading size is 19 units, about a 12-point book face at this scale).
@@ -42,6 +42,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   const W = P.text, L = -W / 2;
   const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
+  const draft = draftRoom(reads, room, measure, W); // the thought being written after a mark: room under it
   const rows = [], boxes = [], onPage = new Map(), heads = [];
   const starts = [], firsts = []; // each page's first mark that starts there, and its first mark at all
   let page = -1, y = 0, used = false, running = '';
@@ -59,6 +60,15 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     if (firsts[page] == null) firsts[page] = id;
     if (!onPage.has(id)) { onPage.set(id, page + 1); if (starts[page] == null) starts[page] = id; }
     y += h; used = true;
+  };
+  // After `id`'s last piece: the room the thought being written there takes; what follows goes
+  // to the next page when it runs past the foot. → true when a new page began.
+  const roomFor = (id) => {
+    if (!draft || draft.after !== id) return false;
+    y += draft.h;
+    if (y < foot()) return false;
+    newPage();
+    return true;
   };
 
   const books = items.filter((x) => x.t === 'title').length;
@@ -93,6 +103,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       if (it.t === 'heading') {
         boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d });
         row(it.mark, h, { far: title }); // far off, the heading reads as its title, set large (style.css)
+        if (roomFor(it.mark)) continue;
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${it.num}  ${title}`, style: 'heading', level: d, opens: it.chapter });
         y += h; used = true;
@@ -122,6 +133,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
         if (from < lines) newPage();
       }
     }
+    if (roomFor(it.mark)) continue;
     y += lh * SPACE.para;
   }
   const last = page;
@@ -145,7 +157,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     for (const it of items.slice(loose + 1)) {
       const h = (linesOf(it.mark).height ?? linesOf(it.mark).block);
       rows.push({ mark: it.mark, x: 0, y: y + h / 2, width: W, height: h, align: 'start' });
-      y += h + lh * SPACE.para;
+      y += h + lh * SPACE.para + (draft && draft.after === it.mark ? draft.h : 0);
     }
   }
   placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);

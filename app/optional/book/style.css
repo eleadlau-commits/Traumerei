@@ -73,6 +73,9 @@
 .room[data-mode="book-page"] .room-band-far .room-cell-title .room-cell-label { font-size: calc(var(--t-read, 19px) * 4.2); white-space: normal; left: 0; right: 0; line-height: 1.05; }
 .room[data-mode="book-page"] .room-band-far .room-cell-heading.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 3); }
 .room[data-mode="book-page"] .room-cell-page.room-cell-opens { cursor: inherit; }
+/* The thought being written after a paragraph, a block, so that the room hears its box grow as the
+   words wrap (reads.marks.draft's height) and the rule moves what follows down (column.js draftRoom). */
+.room[data-mode="book-page"] .room-draft { display: block; }
 .room[data-mode="book-page"] .room-band-far .room-cell-page.room-cell-opens { cursor: zoom-in; }
 /* Book · blocks (blocks.js): each chapter and section a dotted outline around its blocks. The
    rule draws them as quiet boxes; only here, in a room seen as Book · blocks, they get a line. */
