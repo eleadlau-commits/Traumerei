@@ -197,6 +197,10 @@ test('G9: a thin rule\'s choice and toggle settings read as the core\'s own and 
   host.lib.model.touch(host.w);
   rule.layout(host.w, host.room);
   assert.deepEqual({ ...got.pop() }, { numbers: 'none', rules: true });
+  // The ⚙ writes a value without a new version of the marks: the room still lays out again.
+  host.lib.model.setRoomSetting(host.w, host.room, 'numbered', 'rules', false);
+  rule.layout(host.w, host.room);
+  assert.deepEqual({ ...got.pop() }, { numbers: 'none', rules: false });
 });
 
 test('G10, G11: moment rows carry before and after; commands list and run; peers.on hears offers', () => {
