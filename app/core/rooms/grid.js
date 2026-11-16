@@ -8,7 +8,7 @@ import {
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
-  seedRoomSettings, allTags, shut, groupNames, roomGroup, roomGroups, light, squareLook, toOklch, rgb, span, mayHold, addTwin, sides, openGaps,
+  seedRoomSettings, allTags, shut, groupNames, roomGroup, roomGroups, setRoomGroup, GROUP_COLOURS, light, squareLook, toOklch, rgb, span, mayHold, addTwin, sides, openGaps,
 } from './world.js';
 import { el, GRID, MAC, HOLD, HINT, railIcon, railNum, railWord } from './shared.js';
 import { pastFloor, pastWords } from './past.js';
@@ -517,11 +517,35 @@ export class RoomsGrid {
       const on = this.groupLight === g.id, n = g.rooms.length;
       return el('button', {
         type: 'button', class: 'rail-item rooms-tag-pick rooms-group-pick', role: 'listitem', 'aria-pressed': String(on),
-        title: `${n} room${n === 1 ? '' : 's'}`,
+        title: `${n} room${n === 1 ? '' : 's'} · right-click to rename or recolour`,
         onclick: () => { this.groupLight = on ? null : g.id; this.drawRooms(); },
+        oncontextmenu: (e) => { e.preventDefault(); this.groupSheet(g.id); },
       }, el('span', { class: 'rooms-tag-name' }, el('span', { class: `rooms-group-dot rel-colour-${g.colour}`, 'aria-hidden': 'true' }), g.name),
       el('span', { class: 'rooms-tag-n' }, String(n)));
     }) : [el('p', { class: 'rail-item rooms-groups-none' }, 'Choose rooms, then Ctrl+G')]));
+  }
+
+  // A group's name and colour, in a small sheet (a right-click on it in the rail, or on its name on
+  // the floor): the name (Enter keeps it) and a swatch for each ink (a click recolours it). Each
+  // change is one undo step, on every room in the group.
+  groupSheet(gid) {
+    const g = roomGroups(this.world, true).find((x) => x.id === gid);
+    if (!g) return;
+    const field = el('input', { class: 'field rooms-group-name', value: g.name, 'aria-label': 'The group\'s name', maxlength: 40, autocomplete: 'off', spellcheck: 'false' });
+    const swatches = el('div', { class: 'rooms-group-swatches', role: 'radiogroup', 'aria-label': 'Colour' },
+      ...GROUP_COLOURS.map((c) => el('button', {
+        type: 'button', class: `rel-swatch rel-colour-${c}`, role: 'radio', 'aria-checked': String(c === g.colour), title: c, 'aria-label': c,
+        onclick: () => { if (setRoomGroup(this.world, gid, { colour: c })) { this.save(); this.drawRooms(); } this.groupSheet(gid); },
+      })));
+    this.openSheet(g.name, [field, swatches], (ev) => {
+      if (ev.key !== 'Enter' || ev.target !== field) return;
+      ev.preventDefault();
+      const changed = setRoomGroup(this.world, gid, { name: field.value });
+      this.closeSheet();
+      if (changed) { this.save(); this.drawRooms(); }
+    });
+    field.focus({ preventScroll: true });
+    field.select();
   }
 
   // Every group on this floor, always shown: a dotted line in the group's colour round its rooms
@@ -551,7 +575,8 @@ export class RoomsGrid {
           const side = (n) => !mine.has(n);
           const cls = ['rooms-outline', `rel-colour-${g.colour}`, side(`${c},${d - 1}`) && 'top', side(`${c + 1},${d}`) && 'right', side(`${c},${d + 1}`) && 'bottom', side(`${c - 1},${d}`) && 'left'].filter(Boolean).join(' ');
           out.push(el('div', { class: cls, 'aria-hidden': 'true', 'data-group': g.id, style: `grid-column:${c + 1};grid-row:${d + 1}` },
-            c === first[0] && d === first[1] ? el('span', { class: 'label rooms-outline-name' }, g.name) : null));
+            c === first[0] && d === first[1] ? el('span', { class: 'label rooms-outline-name', title: 'Right-click to rename or recolour',
+              oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); this.groupSheet(g.id); } }, g.name) : null));
         }
       }
     }
