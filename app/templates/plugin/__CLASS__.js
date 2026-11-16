@@ -13,19 +13,23 @@ import { words, wordsLine } from './rules.js';
 
 const { el } = ui;
 
+// Everything the plugin adds, through the plugin API `t`. Kept apart from the class so
+// `python build.py check __ID__` can run it headless, through the conformance suite.
+export function install(t) {
+  // A section in the Editor for the chosen thought: how many words it holds.
+  t.slots.editor.add({
+    id: '__ID__',
+    order: 90,
+    when: (x) => !!t.marks.get(x.id),
+    render: (x) => el('p', { class: 'hint __ID__-count' }, wordsLine(words(t.marks.text(x.id)))),
+  });
+}
+
 export default class __CLASS__ extends Feature {
   start() {
     const t = this.use('traumerei')?.connect(this);
     if (!t) throw new Error('Needs the plugin API');
-    this.t = t;
-
-    // A section in the Editor for the chosen thought: how many words it holds.
-    t.slots.editor.add({
-      id: '__ID__',
-      order: 90,
-      when: (x) => !!t.marks.get(x.id),
-      render: (x) => el('p', { class: 'hint __ID__-count' }, wordsLine(words(t.marks.text(x.id)))),
-    });
+    install(t);
   }
 
   // Undo here only what the API did not add for you: timers, nodes put on the page, listeners on

@@ -6,7 +6,7 @@ plugin. The full list of what a plugin may use is `app/core/API.md`.
 
 **A plugin ships as a file.** Only corpus plugins are built into the app (the room types, and the
 stress corpus, which is left out of the product too; `tools/corpus.py`). Every other plugin lives
-here for the tests, is left out of the app, and reaches people as a `.traumplug` (§6) on each
+here for the tests, is left out of the app, and reaches people as a `.traumplug` (§7) on each
 Release and inside `starter-set.traumplug`. A plugin reaches another plugin only through the API
 (`t.peers`), since an imported one can't `use` anything but the plugin API.
 
@@ -137,7 +137,29 @@ plugin is off shows in Pessoa with a "Turn on" line. Holding **Shift** while the
 - **Missing something?** When the API lacks what a plugin needs, add it to the API (`v2.js`,
   `API.md` and `tests/api.test.js` together), never reach past it.
 
-## 6. Pack it into one file
+## 6. Check it in one step
+
+```
+python build.py check word-count
+```
+
+builds the app with the plugin in it and, headless (in a hidden Chrome or Edge, as `python build.py
+test`), runs everything a plugin must pass: it compiles (plugin block, kinds, needs, one way in);
+its own `tests/*.test.js`; the conformance suite the corpus is held to
+(`app/core/api/tests/conformance.js`: the eight laws hold with it on and after everything it adds
+has been used, nothing it adds throws, off and on again loses no row, a `.traum` round-trip is
+stable); and the speed budgets on a 1,500-thought room (starting, a rule's layout and boxes,
+decorators, strip lines: `BUDGETS` there). Then it packs `packed/word-count.traumplug` (§7;
+`--out <folder>`, `--no-pack`). `python build.py check <file>.traumplug` holds a packed file made
+anywhere (a chat with no repo) to the app's import checks, the suite and the budgets. A module that
+exports `install(t)` is driven as it is; give it `export const samples = { <kind>: { …fields } }`
+when a kind it adds needs particular fields to be made.
+
+Claude builds plugins with the `traumerei-plugin` skill (`.claude/skills/traumerei-plugin/`): the
+API in one page, a recipe for each kind of plugin, the gap check, short examples, and a packer for
+a chat with no repo.
+
+## 7. Pack it into one file
 
 ```
 python build.py pack-plugin word-count

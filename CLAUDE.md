@@ -11,7 +11,9 @@ core) and the stress corpus (`docs/CORPUS.md`, off and left out of the product).
 lives in `app/plugins/` for the tests, is left out of the app by `standalone.py`, and ships as a
 `.traumplug` on each Release, with all of them in `starter-set.traumplug`; `tools/corpus.py` keeps
 the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file;
-`--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin). The open-core
+`--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin); the `traumerei-plugin` skill
+(`.claude/skills/traumerei-plugin/`) walks an idea through the API first, and `python build.py check
+<id>` runs every check a plugin must pass, headless, then packs it. The open-core
 steps are done (plugin API 3, frozen in 1.1.0); build new non-corpus plugins only after E has
 reviewed it. Change core only for what every room needs, or to
 give the plugin API something plugins lack; core never names a plugin, it looks a plugin's service
