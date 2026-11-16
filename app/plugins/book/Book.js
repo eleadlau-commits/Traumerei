@@ -19,6 +19,7 @@ import { installEditor } from './editor.js';
 import { installDocks } from './docks.js';
 import { pageOf, SIZES, MARGINS } from './pages.js';
 import { RULE } from './column.js';
+import { wordDoc, DOCX } from './word.js';
 
 const { el } = ui;
 const KEY = 'book';
@@ -112,11 +113,16 @@ export function install(t) {
     t.ui.toast('The book is gone; its thoughts are where they were. Ctrl+Z brings it back.');
   };
 
-  // ---- Out: Markdown and a printed page ----
+  // ---- Out: Markdown, Word and a printed page ----
 
   const exportMarkdown = async (id) => {
     const node = tree(t, id);
     if (node) await t.ui.files.save(fileName(node.title, 'md'), markdown(node), 'text/markdown');
+  };
+  // A Word document true to the room's pages: size, margins, a chapter on a new page (word.js).
+  const exportWord = async (id) => {
+    const node = tree(t, id);
+    if (node) await t.ui.files.save(fileName(node.title, 'docx'), new Blob([wordDoc(t, id)], { type: DOCX }), DOCX);
   };
   const print = (id) => {
     const node = tree(t, id);
@@ -304,7 +310,10 @@ export function install(t) {
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
   t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
   const editor = installEditor(t);
-  const docks = installDocks(t, { exportMarkdown, print, layout: editor.layout });
+  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout });
+  // In the room's ⋯ More too, beside the room file's own Export: the room's first book.
+  t.slots.formats.add({ id: 'book-docx', name: 'Book as a Word document (.docx)', accepts: () => false,
+    exportRoom: (r) => { const b = booksIn(t, r)[0]; return b ? exportWord(b.id) : t.ui.toast('No book in this room yet.'); } });
   t.slots.commands.add({ id: 'book.move-into', keys: ['Alt+M'], zone: 'room', order: 72, words: 'move the chosen paragraph or chapter into a chapter you pick in the contents',
     when: () => editor.inBook() && !!t.ui.chosen()?.mark, run: () => docks.startMove() });
   t.slots.commands.add({ id: 'book.move-cancel', keys: ['Escape'], zone: 'room', order: 1, words: 'not moving it after all',
@@ -319,7 +328,7 @@ export function install(t) {
   t.links.on(redraw);
   t.gaps.on(redraw);
 
-  return { newBook, newChapter, take, openBook, editor, docks };
+  return { newBook, newChapter, take, openBook, exportWord, editor, docks };
 }
 
 export default class Book extends Feature {

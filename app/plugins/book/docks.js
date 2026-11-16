@@ -13,7 +13,7 @@ import { holderOf, moveInto } from './editing.js';
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, print, layout }) {
+export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -142,7 +142,7 @@ export function installDocks(t, { exportMarkdown, print, layout }) {
           el('p', { class: 'hint' }, `${wordCount(t.marks.text(id))} words${where ? ` · in ${isChapter(t.marks.get(where)) ? titleOf(t, where) : 'the book, before the first chapter'}` : ' · not in the book yet'}${g ? ` · ${g.state === 'open' ? 'still to write' : 'written'}` : ''}${pg ? ` · page ${pg}` : ''}${notes ? ` · ${notes === 1 ? 'a margin note' : `${notes} margin notes`}` : ''}`),
           el('p', { class: 'hint' }, 'Ctrl+Alt+H heading · Alt+M into a chapter · Alt+N a note on the one before · Ctrl+Up / Ctrl+Down move · Alt+Enter split'))));
     }
-    out.push(el('div', { class: 'box-btns book-actions' }, btn('Export Markdown', () => exportMarkdown(b)), btn('Print or PDF', () => print(b))));
+    out.push(el('div', { class: 'box-btns book-actions' }, btn('Export Markdown', () => exportMarkdown(b)), btn('Word document', () => exportWord(b)), btn('Print or PDF', () => print(b))));
     return out;
   };
 
