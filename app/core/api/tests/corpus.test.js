@@ -53,6 +53,9 @@ const focusMode = await load('focus-mode', 'FocusMode.js');
 const roomStats = await load('room-stats', 'RoomStats.js');
 const exportRoom = await load('export-room', 'ExportRoom.js');
 const pageFlow = await load('page-flow', 'PageFlow.js');
+const firstLetters = await load('first-letters', 'FirstLetters.js');
+const spellMarks = await load('spell-marks', 'SpellMarks.js');
+const boldItalic = await load('bold-italic', 'BoldItalic.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -76,7 +79,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'focus-mode': focusMode,
   'room-stats': roomStats,
   'export-room': exportRoom,
-  'page-flow': pageFlow,
+  'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -406,4 +409,33 @@ test('links.link part of takes a position: at 0 a part goes first', () => {
   assert.ok(two.ok, two.reason);
   assert.equal(t.links.members(g).length, 2); // (the order itself: families.test.js, join at a position)
   assert.equal(t.links.link(host.ids[3], g, 'part of', null, { at: -1 }).ok, false);
+});
+
+test('first letters: each word\'s first letter, read-only', () => {
+  assert.deepEqual(firstLetters.firsts('the river, 2 stones').map((r) => r.from), [0, 4, 11, 13]);
+});
+
+test('spell marks: the chosen thought\'s slips put right as one step, which one Ctrl+Z takes back', () => {
+  const host = makeHost({ thoughts: 3 });
+  const { t } = host.plug('spell-marks', spellMarks.install);
+  const id = t.marks.make({ content: 'Teh river is wich way', in: host.room }).id;
+  host.choose(host.room, id);
+  const seq = t.moments.seq();
+  host.added('spell-marks').find((a) => a.item.id === 'spell-marks.fix-chosen').item.run();
+  assert.equal(t.marks.get(id).text, 'The river is which way');
+  assert.equal(t.moments.seq(), seq + 1, 'one step');
+});
+
+test('bold and italic: spans are kept on the mark, follow its words, travel in a .traum file and come out as Markdown', () => {
+  const host = makeHost({ thoughts: 2 });
+  const { t } = host.plug('bold-italic', boldItalic.install);
+  const id = t.marks.make({ content: 'a bold word here', in: host.room }).id;
+  assert.ok(t.marks.edit(id, { spans: [{ from: 2, to: 6, kind: 'bold' }, { from: 7, to: 11, kind: 'italic' }] }).ok);
+  assert.equal(t.marks.markdown(id), 'a **bold** *word* here');
+  assert.ok(t.marks.edit(id, { text: 'so a bold word here' }).ok);
+  assert.deepEqual(t.marks.get(id).spans.map((s) => [s.from, s.to]), [[5, 9], [10, 14]]);
+  const text = t.carriers.text(host.room, { ids: 'real' });
+  assert.ok(text.includes('material.spans'), 'the spans are in the file');
+  const check = t.carriers.check(host.room, t.carriers.read(text));
+  assert.deepEqual([check.changed, check.made, check.deleted], [0, 0, 0]);
 });

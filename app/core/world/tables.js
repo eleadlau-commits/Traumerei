@@ -6,7 +6,8 @@
 //   marks     { id, body: { kind, content }, material?, at, edited? }
 //             content: the kind's own fields (`text` its words, `title` or `name` its name; a
 //             room's `rules` its rules' settings and `mode` the rule it is seen through); material:
-//             the mark's own look (a room's tint, light, opacity, size)
+//             the mark's own look (a room's tint, light, opacity, size; a thought's spans:
+//             [{ from, to, kind }], the look of its words, spans.js)
 //   places    { mark, context, rule?, position?, pinned? }
 //   links     { from, to, kind, order?, rule?, label?, note? }
 //   distance  { context, reader }
@@ -38,7 +39,7 @@ export function markOf(th, mode = null) {
   const content = {}, material = {};
   for (const [k, v] of Object.entries(th)) {
     if (OWN.has(k) || v === undefined) continue;
-    if (isRoom(th) && MATERIAL.includes(k)) material[k] = clone(v);
+    if ((isRoom(th) && MATERIAL.includes(k)) || k === 'spans') material[k] = clone(v); // (spans: the look of a thought's words)
     else content[k] = clone(v);
   }
   if (mode && isRoom(th)) content.mode = mode;

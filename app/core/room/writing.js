@@ -5,7 +5,7 @@
 import {
   room, view, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf, members,
-  gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf, groupsFor,
+  gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf, groupsFor, spans,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -28,11 +28,22 @@ export class Writing {
         th.of !== this.mode ? el('div', { class: 'label room-passage-kind' }, this.groupName(th)) : null,
         th.title ? el('div', { class: 'room-passage-title' }, maths(th.title)) : null,
         body ? el('div', { class: 'room-passage-body' }, maths(body)) : null);
+    } else if (kind === 'line' && (th.spans || spans.decorating())) { // words with a look of their own (spans.js): kept spans, decorators
+      node = el('span', { class: 'room-thought', 'data-id': th.id }, ...this.styledWords(th.text || '', spans.ranges(th)));
     } else node = kindFor(kind).node(th, el); // a kind whose plugin is off shows as a quiet stand-in
     // The gap's edge: a mark with an open gap (its own, or derived from its parts: the gaps
     // table, world/gaps.js) shows an open edge at its start, until it is resolved.
     if (gapState(this.world, th.id) === 'open') node.classList?.add('room-gap');
     return node;
+  }
+
+  // Words cut where their look changes, each piece in the room's span classes (span-bold, …).
+  styledWords(text, list) {
+    if (!list.length) return [maths(text)];
+    return spans.segments(text.length, list).map((g) => {
+      const words = text.slice(g.from, g.to);
+      return g.classes.length ? el('span', { class: g.classes.map((c) => `span-${c}`).join(' ') }, maths(words)) : maths(words);
+    });
   }
 
   // What a card holds, as a line: "2 chapters · 14 thoughts".
@@ -55,9 +66,17 @@ export class Writing {
     const a = this.input.selectionStart ?? v.length, b = this.input.selectionEnd ?? v.length;
     const back = this.input.selectionDirection === 'backward';
     const caret = document.activeElement === this.input || !d.isConnected ? el('span', { class: 'room-caret', 'aria-hidden': 'true' }) : null;
-    const parts = a === b
-      ? [v.slice(0, a), caret, v.slice(a)]
-      : [v.slice(0, a), back ? caret : null, el('span', { class: 'room-chosen' }, v.slice(a, b)), back ? null : caret, v.slice(b)];
+    const look = this.draftSpans?.length || spans.decorating() ? spans.ranges({ id: this.draft?.edit ?? null, text: v, spans: this.draftSpans }, v) : [];
+    // The words, cut where the selection, the caret or their look changes; the caret where the
+    // selection's moving end is.
+    const focus = back ? a : b;
+    const parts = [];
+    for (const g of spans.segments(v.length, look, [a, b])) {
+      if (g.from === focus && caret && !parts.includes(caret)) parts.push(caret);
+      const cls = [...(g.from >= a && g.to <= b && a !== b ? ['room-chosen'] : []), ...g.classes.map((c) => `span-${c}`)];
+      parts.push(cls.length ? el('span', { class: cls.join(' ') }, v.slice(g.from, g.to)) : v.slice(g.from, g.to));
+    }
+    if (caret && !parts.includes(caret)) parts.push(caret);
     // An empty thought, or one ending in a new line, still has a line for the caret to stand on.
     if (!v || v.endsWith('\n')) parts.push(el('span', { class: 'room-pad', 'aria-hidden': 'true' }, '\u200b'));
     d.replaceChildren(...parts.filter((p) => p != null && p !== '').map((p) => (p instanceof Node ? p : document.createTextNode(p))));
@@ -70,7 +89,7 @@ export class Writing {
     const range = document.createRange();
     for (const n of this.draftEl?.childNodes || []) {
       if (n.classList?.contains('room-pad')) { out.push({ i, r: n.getBoundingClientRect(), end: true }); continue; }
-      const t = n.nodeType === 3 ? n : n.classList?.contains('room-chosen') ? n.firstChild : null;
+      const t = n.nodeType === 3 ? n : n.classList?.contains('room-caret') ? null : n.firstChild?.nodeType === 3 ? n.firstChild : null;
       if (!t) continue;
       for (let k = 0; k < t.length; k++) {
         range.setStart(t, k);
@@ -232,6 +251,7 @@ export class Writing {
   }
 
   onInput() {
+    this.carrySpans();
     if (!this.draft) { this.beginWriting(); return; }
     this.paintDraft();
     this.showDraft();
@@ -280,20 +300,70 @@ export class Writing {
     const r = resize(box.value, box.selectionStart ?? 0, box.selectionEnd ?? 0, dir);
     if (!r) { this.toast('Choose some words on one line first.'); return; }
     box.value = r.text;
+    this.carrySpans();
     box.setSelectionRange(r.select[0], r.select[1]);
     this.paintDraft();
     this.showDraft();
   }
 
+  // The look of the words being written follows the words (spans.js shift): typing inside a bold
+  // word keeps it bold. this.draftSpans are the spans of the thought being written.
+  carrySpans() {
+    const v = this.input.value;
+    if (this.draftSpans?.length && this.draftText !== v) this.draftSpans = spans.shift(this.draftSpans, this.draftText ?? '', v) || [];
+    this.draftText = v;
+    this.caretMoved();
+  }
+  caretMoved() { for (const fn of this.caretFns || []) { try { fn(this.caretNow()); } catch (err) { console.warn('Room: a caret listener failed', err); } } }
+
+  // The words being written, for the plugin API's ui.text (api/v2.js): where the caret is, and
+  // what may be done there. Nothing here keeps anything: Enter keeps the thought, as one step.
+  caretNow() {
+    if (!this.draft || this.root.hidden) return null;
+    const v = this.input.value;
+    return { mark: this.draft.edit ?? null, from: this.input.selectionStart ?? v.length, to: this.input.selectionEnd ?? v.length, text: v };
+  }
+  textService() {
+    return {
+      caret: () => this.caretNow(),
+      select: (from, to = from) => { if (!this.caretNow()) return false; const n = this.input.value.length; this.selectText(Math.max(0, Math.min(n, from)), Math.max(0, Math.min(n, to))); return true; },
+      replace: (from, to, words) => {
+        if (!this.caretNow()) return false;
+        const n = this.input.value.length;
+        this.input.setRangeText(String(words ?? ''), Math.max(0, Math.min(n, from)), Math.max(0, Math.min(n, to)), 'end');
+        this.onInput();
+        return true;
+      },
+      style: (kind, from = null, to = null) => {
+        const c = this.caretNow();
+        if (!c) return false;
+        const a = from ?? c.from, b = to ?? c.to;
+        this.draftSpans = spans.toggle(this.draftSpans, kind, Math.min(a, b), Math.max(a, b), c.text.length) || [];
+        this.draftText = c.text;
+        this.paintDraft();
+        return true;
+      },
+      spans: () => (this.draftSpans || []).map((x) => ({ ...x })),
+      on: (fn) => { (this.caretFns ||= new Set()).add(fn); return () => this.caretFns.delete(fn); },
+    };
+  }
+  // The thought being written starts with these words and spans (none for a new one).
+  startDraftWords(text = '', list = null) {
+    this.input.value = text;
+    this.draftText = text;
+    this.draftSpans = list ? list.map((x) => ({ ...x })) : [];
+  }
+
   commit() {
     const text = this.input.value;
-    this.input.value = '';
+    const look = this.draftSpans?.length ? spans.shift(this.draftSpans, this.draftText ?? text, text) : null;
+    this.startDraftWords('');
     const d = this.draft;
     this.draft = null;
     if (d?.edit) { // a thought opened again: kept as it is now, or gone if it was emptied
       const th = this.world.things[d.edit];
       if (th && !text.trim()) remove(this.world, d.edit);
-      else if (th && text !== th.text) update(this.world, d.edit, { text });
+      else if (th && (text !== th.text || JSON.stringify(look || null) !== JSON.stringify(th.spans || null))) update(this.world, d.edit, { text, spans: look });
       if (this.writer.goOn && this.world.things[d.edit]) this.current[this.roomId] = d.edit;
       else if (this.world.things[d.train]) this.current[this.roomId] = d.train;
       this.save();
@@ -301,9 +371,9 @@ export class Writing {
       return;
     }
     if (!d || !text.trim()) { this.drawWorld(); return; }
-    this.keepNew(d, { kind: 'line', text });
+    this.keepNew(d, { kind: 'line', text, ...(look ? { spans: look } : {}) });
     this.save();
-    this.drawWorld();
+    this.drawWorld(true); // only what the kept thought changed is put in again (patch.js)
   }
 
   // The ontology new thoughts are written into: the room's, or the rule it names (writesInto:
@@ -385,7 +455,7 @@ export class Writing {
     }
     if (prev && kindOf(prev) === 'line') {
       this.draft = { train: d.train, edit: prev.id };
-      this.input.value = prev.text || '';
+      this.startDraftWords(prev.text || '', prev.spans);
       this.input.setSelectionRange(this.input.value.length, this.input.value.length);
     } else if (!d.edit) return false;
     this.drawWorld();
@@ -402,7 +472,7 @@ export class Writing {
     this.sel = null;
     this.lastTap = null;
     this.draft = { train: groupOf(this.world, id, this.writer.id)?.id || null, edit: id };
-    this.input.value = th.text || '';
+    this.startDraftWords(th.text || '', th.spans);
     this.input.focus({ preventScroll: true });
     this.input.setSelectionRange(this.input.value.length, this.input.value.length);
     this.drawWorld();

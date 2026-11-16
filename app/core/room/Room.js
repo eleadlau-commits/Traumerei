@@ -149,6 +149,7 @@ export default class Room extends Feature {
       id: () => (this.root.hidden ? null : this.roomId), // the open room, while it shows
       chosen: () => (!this.root.hidden && this.sel && this.sel.kind !== 'many' ? this.sel.id : null), // the one thing chosen there
       go: (id, room) => { if (this.world.things[id]) this.goTo({ id, room }); }, // the view on a mark in a room, and it chosen
+      text: this.textService(),                 // the words being written: caret, select, replace, style (writing.js)
     });
     // Where the Time dock is (the time feature): this room's Timeline. A click there chooses what it
     // names; the Editor follows, but Time stays in front (bars.js).
@@ -289,7 +290,7 @@ export default class Room extends Feature {
     else delete this.drafts[this.roomId];
     this.storage.set('drafts', this.drafts);
     this.draft = null;
-    this.input.value = '';
+    this.startDraftWords('');
     this.input.blur();
   }
 
@@ -301,7 +302,7 @@ export default class Room extends Feature {
     if (this.locked) return;
     const t = d.train && this.world.things[d.train];
     this.draft = t && parentOf(this.world, t.id) === this.roomId ? { train: d.train } : { train: null, x: d.x, y: d.y, ...(d.for ? { for: d.for } : {}) };
-    this.input.value = d.text;
+    this.startDraftWords(d.text);
     this.input.focus({ preventScroll: true });
     this.drawWorld();
     this.showDraft();
@@ -343,7 +344,7 @@ export default class Room extends Feature {
     this.world$ = el('div', { class: 'room-world' });
     this.stage = el('div', { class: 'room-stage', 'data-own-swipe': '' }, this.world$);
     const otherSide = this.twinPanel(); // a Twin's other side, beside the canvas (twin.js)
-    this.input = el('textarea', { class: 'room-input', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
+    this.input = el('textarea', { class: 'room-input', 'data-zone': 'editing', 'aria-label': 'Write a thought', rows: 1, wrap: 'off', autocomplete: 'off', spellcheck: 'false' });
     this.bar = el('div', { class: 'panel pop room-options room-edit', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.trayEl = el('div', { class: 'room-tray', hidden: true, onpointerdown: (e) => e.stopPropagation() });
     this.roomPage = el('section', { class: 'room-page', 'aria-label': 'Room' },
@@ -369,7 +370,7 @@ export default class Room extends Feature {
     this.input.addEventListener('blur', () => { if (this.draft && !this.draft.edit && !this.input.value.trim()) { this.draft = null; this.drawWorld(); } else this.paintDraft(); });
     // The caret and the selection on the canvas follow the hidden box's.
     document.addEventListener('selectionchange', () => { if (document.activeElement === this.input) this.paintDraft(); });
-    this.input.addEventListener('selectionchange', () => this.paintDraft());
+    this.input.addEventListener('selectionchange', () => { this.paintDraft(); this.caretMoved(); });
     this.input.addEventListener('focus', () => this.paintDraft());
     this.stage.addEventListener('pointerdown', (e) => this.onDown(e));
     // A press in the thought being written keeps the hidden box focused (and no page selection starts).

@@ -7,7 +7,6 @@ version with `python build.py release <version>`.
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
 | 1.0.5 | 2 | 1 | traum/3 |
-| 1.0.4 | 2 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
@@ -15,19 +14,9 @@ version with `python build.py release <version>`.
 
 ## 1.0.5 (unreleased)
 
-Open core, step 1: a rule may say how big a unit is and draw it in pieces.
+One release for everything since 1.0.3 (1.0.4 was never tagged): the open core, step by step.
 
-- A thin rule's `arrange` row may give `width` and `height` (the room wraps the thought to them)
-  and `align: 'start'`; a mark may have several rows, each a fragment with `lines: [from, to]`
-  (a paragraph that runs on to the next page). `t.rules.layout` reads them back.
-- `t.ui.measure(text, width)`: how words wrap at a width as the room draws them.
-- A rule may claim families (`claims: [family ids]`): it lays their groups out, and their cards
-  don't show in it.
-- `links.link(part, group, 'part of', null, { at })` joins at a position in the order (the kit's
-  `join(w, group, id, at)` too).
-- Corpus plugin **Page flow**: a room as fixed pages, a paragraph running on in fragments.
-
-## 1.0.4 (unreleased)
+### The house in order (step 0)
 
 - Only corpus plugins are built in (the room types). Everything else ships as a plugin file beside
   each Release: the home page, Search, the desk, gaps and returns, Time, Export, room files, Book,
@@ -40,6 +29,28 @@ Open core, step 1: a rule may say how big a unit is and draw it in pieces.
 - The first letter of a new thought puts in only that thought, not the whole room (about 80 ms
   in a room of 1,500, was 240 ms).
 - `python build.py new-plugin` makes a plugin that ships as a file; `--corpus` for a corpus plugin.
+
+### Step 1: a rule may say how big a unit is and draw it in pieces
+
+- A thin rule's `arrange` row may give `width` and `height` (the room wraps the thought to them)
+  and `align: 'start'`; a mark may have several rows, each a fragment with `lines: [from, to]`
+  (a paragraph that runs on to the next page). `t.rules.layout` reads them back.
+- `t.ui.measure(text, width)`: how words wrap at a width as the room draws them.
+- A rule may claim families (`claims: [family ids]`): it lays their groups out, and their cards
+  don't show in it.
+- `links.link(part, group, 'part of', null, { at })` joins at a position in the order (the kit's
+  `join(w, group, id, at)` too).
+- Corpus plugin **Page flow**: a room as fixed pages, a paragraph running on in fragments.
+
+### Step 2: the look of words inside a thought, and the caret
+
+- Spans: a thought keeps `spans: [{ from, to, kind }]` as material of the mark (Law 1), carried
+  in .traum files and following its words as they change. Kinds of span come from plugins
+  (`slots.spans`); decorators (`slots.decorators`) only draw. Both use the room's span classes.
+- `t.ui.text`: the caret in the thought being written, select, replace (one step on a kept
+  mark), style, spans, on. Commands with `zone: 'editing'` run while a thought is written.
+- `marks.markdown(id)`: a thought's words with their spans as Markdown.
+- Corpus plugins **First letters**, **Spell marks**, **Bold and italic**.
 
 ## 1.0.3 (15 Nov 2026)
 

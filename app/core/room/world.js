@@ -9,7 +9,7 @@ export let
   isLeaf, search, addRoom, roomThoughts, peek, roomSetting, setRoomSetting, resetRoomSettings,
   seedRoomSettings, applySettingsToAll, hash, DEFAULT_MODE, ITEMS, kindFor, maths, roomLook, light,
   groupChosen, ungroupChosen, throwBack, setOrder, foldInto, foldPlan, lock, sides, twinOf, otherSide, across, placeName, moveTargets, relationsRow, reading, wait, moveLoose, showSizes, resize,
-  familyOf, groupsFor, PLAIN, sideOf, spotOf, setSpot, gapOf, gapState, openGap, linksFrom, UP_LINKS, linksTo, LINK_KINDS, roomOf, isCard, within;
+  familyOf, groupsFor, PLAIN, sideOf, spotOf, setSpot, spans, gapOf, gapState, openGap, linksFrom, UP_LINKS, linksTo, LINK_KINDS, roomOf, isCard, within;
 
 // lib: the world service's lib (world/lib.js), or the same modules in a test.
 export function bind(lib) {
@@ -21,6 +21,7 @@ export function bind(lib) {
   } = lib.model);
   ({ ITEMS, kindFor } = lib.items);
   ({ maths, showSizes, resize } = lib.maths);
+  spans = lib.spans;
   ({ roomLook } = lib.look);
   ({ light } = lib.attention);
   ({ groupChosen, ungroupChosen, throwBack } = lib.ontologies);

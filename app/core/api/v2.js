@@ -35,7 +35,7 @@ export const ARCHIVE = 'archive';
 // ---- Six tables over the world as it is ----
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
 // screen; the tests call it with the same modules.
-export function kernel({ lib, world, events = null, gone = () => {}, floors = null, linkKinds = () => [] }) {
+export function kernel({ lib, world, events = null, gone = () => {}, floors = null, linkKinds = () => [], spanKinds = null }) {
   const { model, groups, links: LINKS, places: PLACES_T } = lib; // (the links and places tables, world/links.js and places.js, reached as the world's rules are)
   const netFor = (rule) => lib.relations.netFor(rule);
   const declared = () => linkKinds() || [];
@@ -81,6 +81,8 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     in: (context) => rows(model.children(w(), context ?? null).map(markRow)),
     ofKind: (kind) => rows(Object.values(w().things).filter((th) => kindOf(th) === kind).map(markRow)),
     text: (id) => (thing(id) ? model.thoughtText(w(), thing(id)) : ''),
+    // Its words with their spans written as Markdown (a kind of span that says how: bold as **…**).
+    markdown: (id) => { const th = thing(id); if (!th) return ''; const text = model.thoughtText(w(), th); return th.spans ? lib.spans.markdown(text, th.spans, spanKinds?.()) : text; },
     search: (words, most) => rows(model.search(w(), words, most).map((th) => ({ ...th }))),
     make: ({ kind = 'line', content = '', in: context = null, at = {} } = {}) => {
       if (context == null && kind !== 'room') return refuse('A mark needs a context to be made in');
@@ -654,6 +656,8 @@ export const SLOTS = {
   menu: 'header.buttons',      // a row in the ☰ menu (Folio's slot, folio/runtime/Shell.js)
   views: 'views',              // a page of the app under everything else (Folio's slot; the picture behind)
   account: 'account',          // who is signed in, and their account page (Folio's slot; the first item)
+  spans: 'world.spans',        // a kind of span: the look of some words in a thought, kept on the mark (world/spans.js)
+  decorators: 'world.decorators', // how a thought's words are drawn, read-only: never kept (world/spans.js)
 };
 
 // What plugins offer each other (t.peers): one name, one offer at a time; the offer goes when the
@@ -708,7 +712,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
   const owner = plugin.id;
   const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
   const declared = () => (app.slot(SLOTS.linkKinds)?.items || []).map((e) => (e && e.item && e.owner !== undefined ? e.item : e));
-  const tables = kernel({ lib: lib || world.lib, world, events, gone, floors, linkKinds: declared });
+  const tables = kernel({ lib: lib || world.lib, world, events, gone, floors, linkKinds: declared, spanKinds: () => app.slot(SLOTS.spans)?.items || [] });
   if (frame) gone(() => frame.hide(plugin));
   const slots = Object.freeze({
     ...Object.fromEntries(Object.entries(SLOTS).map(([name, slot]) => [name, Object.freeze({ add: add(slot) })])),
@@ -742,6 +746,25 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       toast: (text) => toast(text),
       // How words wrap at a width as the room draws a thought: { lines, lineHeight, height }.
       measure: (text, width) => measure(text, width),
+      // The words being written (a new thought, or one opened again): the caret, and what a
+      // plugin may do there. Nothing is kept until Enter keeps the thought, as one step; a kept
+      // mark's words change through replace(mark, …), one step.
+      text: Object.freeze({
+        caret: () => { const c = room?.()?.text?.caret?.(); return c ? row(c) : null; },
+        select: (from, to = from) => !!room?.()?.text?.select?.(+from, +to),
+        replace: (mark, from, to, words) => {
+          const live = room?.()?.text, c = live?.caret?.();
+          if (c && (mark == null || mark === c.mark)) return live.replace(+from, +to, words) ? row({ ok: true, id: c.mark }) : row({ ok: false, reason: 'Nothing is being written' });
+          const th = tables.marks.get(mark);
+          if (!th) return row({ ok: false, reason: 'No such mark' });
+          if (typeof th.text !== 'string') return row({ ok: false, reason: 'That mark has no words to replace' });
+          const a = Math.max(0, Math.min(th.text.length, Math.floor(+from))), b = Math.max(a, Math.min(th.text.length, Math.floor(+to)));
+          return tables.marks.edit(mark, { text: th.text.slice(0, a) + String(words ?? '') + th.text.slice(b) });
+        },
+        style: (kind, from = null, to = null) => !!room?.()?.text?.style?.(String(kind), from, to),
+        spans: () => rows(room?.()?.text?.spans?.() || []),
+        on: (fn) => { const off = room?.()?.text?.on?.(fn) || (() => {}); gone(off); return off; },
+      }),
       files: Object.freeze({
         open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
         save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
