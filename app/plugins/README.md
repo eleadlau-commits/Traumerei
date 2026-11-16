@@ -7,7 +7,7 @@ plugin. The full list of what a plugin may use is `app/core/API.md`.
 **A plugin ships as a file.** Only corpus plugins are built into the app (the room types, and the
 stress corpus, which is left out of the product too; `tools/corpus.py`). Every other plugin lives
 here for the tests, is left out of the app, and reaches people as a `.traumplug` (§6) on each
-Release and inside `starter-set.traumplug`. A plugin reaches another plugin only through the API
+Release and (all but Book and Provoke) inside `starter-set.traumplug`. A plugin reaches another plugin only through the API
 (`t.peers`), since an imported one can't `use` anything but the plugin API.
 
 ## 1. Make the folder

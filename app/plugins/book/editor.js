@@ -10,6 +10,7 @@
 import { isChapter } from './rules.js';
 import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
 import { shape, textWidth, SIZES } from './pages.js';
+import { BLOCKS } from './blocks.js';
 import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote } from './editing.js';
 
 const ICON = '<path d="M7 4h10M7 8h10M7 12h10M7 16h6"/><path d="M4 3v18"/>';
@@ -19,6 +20,8 @@ export function installEditor(t) {
   const size = (id, width) => t.ui.size?.(id, width) || null;
   const room = () => t.ui.chosen()?.context || null;
   const inBook = () => { const r = room(); return !!r && t.marks.get(r)?.mode === RULE; };
+  // Book or Book · blocks: the keys on the book's structure work in both.
+  const inBoth = () => { const r = room(); const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; };
   const chosen = () => t.ui.chosen()?.mark || null;
   const say = (r) => { if (r && r.ok === false && r.reason) t.ui.toast(r.reason); };
 
@@ -69,25 +72,25 @@ export function installEditor(t) {
 
   const cmd = (o) => t.slots.commands.add({ order: 72, ...o });
   cmd({ id: 'book.heading', keys: ['Ctrl+Alt+H'], zone: 'room', words: 'make the chosen paragraph a heading, gathering what follows (again: a paragraph)',
-    when: () => inBook() && !!chosen(),
+    when: () => inBoth() && !!chosen(),
     run: () => {
       const id = chosen();
       const ch = headed(t, id);
       if (ch) unmakeHeading(t, ch); else if (!makeHeading(t, room(), id)) t.ui.toast('It could not become a heading here.');
     } });
   cmd({ id: 'book.deeper', keys: ['Ctrl+]'], zone: 'room', words: 'the chosen heading one level deeper',
-    when: () => inBook() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(demote(t, ch)); else t.ui.toast('Choose a heading.'); } });
+    when: () => inBoth() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(demote(t, ch)); else t.ui.toast('Choose a heading.'); } });
   cmd({ id: 'book.higher', keys: ['Ctrl+['], zone: 'room', words: 'the chosen heading one level up',
-    when: () => inBook() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(promote(t, ch)); else t.ui.toast('Choose a heading.'); } });
+    when: () => inBoth() && !!chosen(), run: () => { const ch = headed(t, chosen()); if (ch) say(promote(t, ch)); else t.ui.toast('Choose a heading.'); } });
   cmd({ id: 'book.up', keys: ['Ctrl+ArrowUp'], zone: 'room', words: 'move the chosen paragraph or chapter up one place',
-    when: () => inBook() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), -1)) });
+    when: () => inBoth() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), -1)) });
   cmd({ id: 'book.down', keys: ['Ctrl+ArrowDown'], zone: 'room', words: 'move the chosen paragraph or chapter down one place',
-    when: () => inBook() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), 1)) });
+    when: () => inBoth() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), 1)) });
   cmd({ id: 'book.note', keys: ['Alt+N'], zone: 'room', words: 'make the chosen paragraph a margin note on the one before it (again: a paragraph)',
-    when: () => inBook() && !!chosen(),
+    when: () => inBoth() && !!chosen(),
     run: () => { const id = chosen(); say(aboutOf(t, id) ? unmakeNote(t, id) : makeNote(t, room(), id)); } });
   cmd({ id: 'book.paste', keys: ['Ctrl+Shift+V'], zone: 'room', words: 'paste as paragraphs, split at blank lines, after the chosen one',
-    when: () => inBook(), run: () => pasteFromClipboard(chosen()) });
+    when: () => inBoth(), run: () => pasteFromClipboard(chosen()) });
 
   // ---- Keys while writing a paragraph ----
 
@@ -162,5 +165,5 @@ export function installEditor(t) {
     t.ui.toast(made.length === 1 ? 'One paragraph pasted.' : `${made.length} paragraphs pasted.`);
   };
 
-  return { inBook, layout: (r) => shape(t, r, measure, size) };
+  return { inBook, inBoth, layout: (r) => shape(t, r, measure, size) };
 }
