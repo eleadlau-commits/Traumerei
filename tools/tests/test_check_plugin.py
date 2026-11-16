@@ -45,7 +45,7 @@ class CheckPluginTest(unittest.TestCase):
         self.assertEqual(quiet(check_plugin.main, [])[0], 2)
         code, said = quiet(check_plugin.main, ['no-such-plugin', '--no-pack'])
         self.assertEqual(code, 1)
-        self.assertIn('No plugin app/optional/no-such-plugin/', said)
+        self.assertIn('No plugin app/optional/starter/no-such-plugin/', said)
 
     @unittest.skipUnless(BROWSER, 'needs Chrome or Edge')
     def test_a_corpus_plugin_passes_and_is_packed(self):

@@ -49,7 +49,7 @@ tables and nothing else; a `.traum` file is the same tables written as text.
 8. **The file is the tables.** A `.traum` file round-trips the six tables with no plugin loaded;
    plugin data that cannot be expressed as rows is not saved. *(Phase 6: `world/tables.js` reads
    the six tables of a room, a group or the whole world and writes them back; `world/traum.js` is
-   the `.traum` carrier, format traum/3 (`app/optional/roomfile/FORMAT.md`); the account carries
+   the `.traum` carrier, format traum/3 (`app/optional/starter/roomfile/FORMAT.md`); the account carries
    the same tables as the moments log's rows. `tests/traum.test.js` is the gate.)*
 
 Each law has a test that is the gate of the phase that lands it (`api.test.js` and the world's
@@ -83,7 +83,7 @@ The `traumerei` API has one namespace per table, each with the same three shapes
 
 Phases: 0 names · 1 moments · 2 links · 3 places · 4 rules · 5 gap · 6 distance and carriers, v1
 deleted · 7 return · 8 stress corpus of thirty plugins, v2 frozen (done, docs/CORPUS.md) ·
-9 readers (done: Provoke, `app/optional/provoke/`; a suggestion is a mark with an open gap to
+9 readers (done: Provoke, `app/optional/extra/provoke/`; a suggestion is a mark with an open gap to
 the maker, linked by `provokes` rows to what it is about; Keep resolves the gap by the link it
 made, Refuse by judgement; it learns from those verdicts and only proposes). Budgets throughout: a 1,500-thought room opens in ≤ 0.8 s, Enter ≤ 0.35 s,
 keydown ≤ 20 ms, build < 2 MB.

@@ -5,8 +5,8 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as model from '../../../core/world/model.js';
-import * as X from '../../../core/world/traum.js';
+import * as model from '../../../../core/world/model.js';
+import * as X from '../../../../core/world/traum.js';
 
 const guide = readFileSync(fileURLToPath(new URL('../FORMAT.md', import.meta.url)), 'utf8');
 const blocks = [...guide.matchAll(/```traum\n([\s\S]*?)```/g)].map((m) => m[1]);

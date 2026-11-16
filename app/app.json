@@ -8,12 +8,14 @@
   "folders": [
     "core",
     "plugins",
-    "optional"
+    "optional/starter",
+    "optional/extra"
   ],
   "plugins": {
     "folder": [
       "plugins",
-      "optional"
+      "optional/starter",
+      "optional/extra"
     ],
     "api": 3,
     "service": "traumerei",

@@ -17,7 +17,7 @@ from folioc import main  # noqa: E402
 OWN = {
     'release': 'set one version in app.json, tauri.conf.json and Cargo.toml (release --check <tag> checks them)',
     'pack-plugin': 'pack a plugin into one importable <id>.traumplug file (--all: every plugin shipped apart, and the starter set)',
-    'new-plugin': 'a new plugin, shipped as a file; --corpus makes it a stress-corpus plugin instead (tools/corpus.py)',
+    'new-plugin': 'a new plugin, shipped as a file (app/optional/extra/; --starter: app/optional/starter/, in the starter set); --corpus makes it a stress-corpus plugin instead (tools/corpus.py)',
     'check <id>': 'check one plugin headless (compiles, its tests, the conformance suite, the speed budgets), then pack it (--no-pack, --out DIR)',
 }
 

@@ -98,10 +98,10 @@ check run on GitHub and download **traumerei-preview** from the summary; unzip i
 
 Everything for it is in this folder: a copy of Folio (`folio/`, version in `folio/VERSION`,
 from the Mobile Durham repository), `build.py`, and the app in `app/`: what every room needs in
-`app/core/`, the corpus plugins built in (the room types) in `app/plugins/`, and the extra plugins, each in its own
-folder, in `app/optional/`. The picture behind the
-page is the plugin in `app/optional/renderer/`, and its rendering engine is in
-`app/optional/renderer/engine/`. See that folder's README for how it works.
+`app/core/`, the corpus plugins built in (the room types) in `app/plugins/`, and the optional plugins, each in its own
+folder, in `app/optional/starter/` (packed into the starter set too) or `app/optional/extra/` (Book, Provoke: only on their own). The picture behind the
+page is the plugin in `app/optional/starter/renderer/`, and its rendering engine is in
+`app/optional/starter/renderer/engine/`. See that folder's README for how it works.
 
 ### Open it
 

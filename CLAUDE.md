@@ -8,11 +8,11 @@ changing. Never commit `standalone/traumerei.html`: an Action rebuilds it after 
 **New work is a plugin, and a plugin ships as a file.** Only corpus plugins are built into the app
 (E, 15 Nov 2026): the room types (Russell, Proust; Joyce, Pessoa, Borges and Twin as they leave
 core) and the stress corpus (`docs/CORPUS.md`, off and left out of the product). Every other plugin is an
-extra plugin: it lives in its own folder in `app/optional/` (tested like the rest), is left out of
+optional plugin: it lives in its own folder in `app/optional/starter/` or `app/optional/extra/` (tested like the rest), is left out of
 the app by `standalone.py`, and ships as a `.traumplug` after every merge to main (the rolling
-`plugins-latest` prerelease, `plugins.yml`) and on each Release, with all but Book and Provoke in
-`starter-set.traumplug`; `tools/corpus.py` keeps
-the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file;
+`plugins-latest` prerelease, `plugins.yml`) and on each Release; the folder decides the starter set: `app/optional/starter/` is
+packed into `starter-set.traumplug` too, `app/optional/extra/` (Book, Provoke) only on its own; `tools/corpus.py` keeps
+the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file in `app/optional/extra/`; `--starter` for the starter set;
 `--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin); the `traumerei-plugin` skill
 (`.claude/skills/traumerei-plugin/`) walks an idea through the API first, and `python build.py check
 <id>` runs every check a plugin must pass, headless, then packs it. The open-core
@@ -22,7 +22,7 @@ give the plugin API something plugins lack; core never names a plugin, it looks 
 up when it needs it, since an imported plugin starts after the core.
 
 Features live in three folders (app.json's `folders`). `app/core/` holds what every room needs
-(world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds the corpus plugins and `app/optional/` the extra plugins: everything that can be
+(world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds the corpus plugins and `app/optional/starter/` and `app/optional/extra/` the optional plugins: everything that can be
 switched off without breaking the app; each plugin's `feature.json` has a `plugin` block (the plugin
 API version it was written for, the oldest app version it works with, what it adds, when it
 loads). See `folio/README.md` §3. A plugin reaches the app only through the `traumerei` service,
@@ -46,7 +46,7 @@ Judge a feature by what it composes from the six primitives; one that needs a se
 
 Build Träumerei so each piece can be changed by reading only that piece.
 
-- **One owner.** New work lives in the one feature (`app/core/<id>/`, `app/plugins/<id>/` or `app/optional/<id>/`) that owns it, or in a
+- **One owner.** New work lives in the one feature (`app/core/<id>/`, `app/plugins/<id>/` or `app/optional/{starter,extra}/<id>/`) that owns it, or in a
   new feature of its own when it is a separate thing. Each feature has its own folder,
   `feature.json`, README, styles and saved data.
 - **Talk only through Folio.** Features reach each other only through services, slots and

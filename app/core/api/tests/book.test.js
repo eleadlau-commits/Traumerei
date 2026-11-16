@@ -7,7 +7,7 @@ import { makeHost, brokenLaws } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/extra/${id}/${file}`, import.meta.url).href); }
 }
 const book = await load('book', 'Book.js');
 const rules = await load('book', 'rules.js');

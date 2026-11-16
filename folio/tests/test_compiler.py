@@ -72,7 +72,7 @@ def make_plugin_app(tmp: Path, folders: dict, app_extra=None) -> Path:
               'folders': list(folders), 'plugins': {'folder': 'plugins', 'api': 2}, **(app_extra or {})}
     (app / 'app.json').write_text(json.dumps(config), 'utf-8')
     for group, features in folders.items():
-        (app / group).mkdir()
+        (app / group).mkdir(parents=True)
         for fid, spec in features.items():
             manifest, body = spec if isinstance(spec, tuple) else (spec, '')
             folder = app / group / fid
@@ -389,6 +389,16 @@ class CompilerTests(unittest.TestCase):
         self.assertEqual((by_id['mode'].reason, by_id['book'].reason), ('', ''))
         self.assertIn('plugins live in plugins/, optional/', by_id['stray'].reason)
         self.assertIn('has no "plugin" block', by_id['bare'].reason)
+
+    def test_a_feature_folder_can_sit_inside_another(self):
+        project, _, by_id = self.discover_plugins({
+            'core': {'world': feature()},
+            'optional/starter': {'desk': plugin()},
+            'optional/extra': {'book': plugin()},
+        }, {'plugins': {'folder': ['optional/starter', 'optional/extra'], 'api': 2}})
+        self.assertEqual(project.folder_names, ['core', 'optional/starter', 'optional/extra'])
+        self.assertEqual((by_id['desk'].folder, by_id['book'].folder), ('optional/starter', 'optional/extra'))
+        self.assertEqual((by_id['desk'].reason, by_id['book'].reason), ('', ''))
 
     def test_mistakes_in_plugin_blocks(self):
         cases = {
