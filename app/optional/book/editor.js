@@ -11,7 +11,8 @@ import { isChapter } from './rules.js';
 import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
 import { shape, textWidth, SIZES, COUNTS } from './pages.js';
 import { BLOCKS } from './blocks.js';
-import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote } from './editing.js';
+import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote, noteOn, noteInto, leaveBook, afterGesture } from './editing.js';
+import { flowDrop } from './flowdrop.js';
 
 const ICON = '<path d="M7 4h10M7 8h10M7 12h10M7 16h6"/><path d="M4 3v18"/>';
 
@@ -43,6 +44,17 @@ export function installEditor(t) {
     ],
     arrange: (reads, context, set) => shape(reads, context, measure, size, set).rows,
     draw: (reads, context, set) => shape(reads, context, measure, size, set).boxes,
+    // A paragraph dragged on the pages (flowdrop.js): into the flow as one { join, at, from } step
+    // with the gesture; out of the book, or into or out of the margin as a note, the plugin does
+    // just after it, one step of its own (no proposal leaves a group or links a note).
+    drop: (reads, context, mark, x, y, set) => {
+      const p = flowDrop(reads, context, mark, x, y, shape(reads, context, measure, size, set));
+      if (!p?.later) return p;
+      if (p.later === 'leave') afterGesture(t, () => leaveBook(t, p.mark), 'Out of the book. Ctrl+Z puts it back.');
+      else if (p.later === 'note') afterGesture(t, () => noteOn(t, p.mark, p.of), 'A margin note. Ctrl+Z puts it back.');
+      else afterGesture(t, () => noteInto(t, p.mark, p.join || null, p.at ?? 0), p.join ? '' : 'Out of the book. Ctrl+Z puts it back.');
+      return null;
+    },
     land: (reads, context, mark, x, y, set) => {
       const { rows } = shape(reads, context, measure, size, set);
       const near = rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);

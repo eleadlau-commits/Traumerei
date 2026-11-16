@@ -194,8 +194,16 @@ export function makeNote(t, room, mark) {
   const i = ids.indexOf(mark);
   const of = i > 0 ? ids[i - 1] : null;
   if (!of || !holderOf(t, of)) return { ok: false, reason: 'A note goes beside a paragraph of the book: there is none before this one.' };
+  return noteOn(t, mark, of);
+}
+// `mark` a margin note on `of` (a paragraph or heading of the book), one step: out of its chapter,
+// no longer a note on anything else. (Alt+N, and a paragraph dragged into the outer margin.)
+export function noteOn(t, mark, of) {
+  if (headed(t, mark)) return { ok: false, reason: 'A heading is not a note.' };
+  if (mark === of) return { ok: false, reason: 'A note is beside another paragraph.' };
   t.together(() => {
     for (const r of t.links.from(mark, 'part of')) if (isHolder(t.marks.get(r.to))) t.links.unlink(r.id);
+    for (const r of t.links.from(mark, ABOUT)) t.links.unlink(r.id);
     t.links.link(mark, of, ABOUT);
   });
   return { ok: true };
@@ -204,13 +212,32 @@ export function makeNote(t, room, mark) {
 export function unmakeNote(t, mark) {
   const of = aboutOf(t, mark);
   if (!of) return { ok: false, reason: 'It is not a margin note.' };
+  const holder = headed(t, of) || holderOf(t, of);
+  return noteInto(t, mark, holder, holder ? t.links.members(holder).indexOf(of) + 1 : 0);
+}
+// A margin note made a paragraph again in `holder` at `at` (none: not in the book), one step.
+export function noteInto(t, mark, holder, at) {
   t.together(() => {
     for (const r of t.links.from(mark, ABOUT)) t.links.unlink(r.id);
-    const ch = headed(t, of);
-    const holder = ch || holderOf(t, of);
-    if (holder) moveTo(t, mark, holder, t.links.members(holder).indexOf(of) + 1);
+    if (holder) moveTo(t, mark, holder, at);
   });
   return { ok: true };
+}
+
+// Out of the book (and every chapter of it), one step; false when it was in none.
+export function leaveBook(t, mark) {
+  const rows = t.links.from(mark, 'part of').filter((r) => isHolder(t.marks.get(r.to)));
+  if (!rows.length) return false;
+  t.together(() => { for (const r of rows) t.links.unlink(r.id); });
+  return true;
+}
+
+// What no proposal can do (out of a group, a link of the plugin's own kind) is done by the plugin
+// as soon as the room's gesture is over, as one step of its own: the drop itself changes nothing,
+// so one Ctrl+Z still takes the whole gesture back. fn → truthy when it changed something; then
+// `words` are said.
+export function afterGesture(t, fn, words = '') {
+  setTimeout(() => { const r = fn(); if (words && r && r.ok !== false) t.ui.toast(words); }, 0);
 }
 
 export { read, titleOf, headOf, headed };
