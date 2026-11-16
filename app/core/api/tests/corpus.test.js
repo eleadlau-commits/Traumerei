@@ -62,6 +62,7 @@ const figure = await load('figure', 'Figure.js');
 const docx = await load('docx', 'Docx.js');
 const wordCountStrip = await load('word-count-strip', 'WordCountStrip.js');
 const highlighter = await load('highlighter', 'Highlighter.js');
+const manuscript = await load('manuscript', 'Manuscript.js');
 const provoke = await load('provoke', 'Provoke.js'); // phase 9's reader, held to the same suite
 
 
@@ -86,7 +87,7 @@ export const CORPUS = { grid, timeline, calendar, kanban, outline, random,
   'room-stats': roomStats,
   'export-room': exportRoom,
   'page-flow': pageFlow, 'first-letters': firstLetters, 'spell-marks': spellMarks, 'bold-italic': boldItalic, figure, docx,
-  'word-count-strip': wordCountStrip, sketch, chart, highlighter,
+  'word-count-strip': wordCountStrip, sketch, chart, highlighter, manuscript,
   provoke };
 // A plugin that is the hands for others' additions is tried with one of them on.
 const WITH = { links: ['cites'] };
@@ -693,4 +694,57 @@ test('chart: a rule whose box asks for a surface, which draws a bar for each gro
   assert.equal(el.querySelectorAll('svg rect').length, bars.length);
   assert.equal(JSON.stringify(host.world.carriers.tables()), before, 'the chart writes nothing');
   assert.equal(host.world.saved, steps);
+});
+
+test('manuscript (1.1.1): chapters within chapters by links, a thought written into its chapter, a drop that moves, the draft, a break and numbering', () => {
+  const host = makeHost({ thoughts: 8 });
+  let draft = null;
+  host.lib.draft.setSource((context) => (context === host.room ? draft : null));
+  try {
+    const { t, off } = host.plug('manuscript', manuscript.install);
+    host.lib.model.declareFamilies(host.app.slot('world.groups').items); // (World.js does this when the slot changes)
+    const rule = host.added('manuscript').find((a) => a.slot === 'world.ontologies').item;
+    const [a, b, c, d, e] = host.ids.slice(3);
+    // Part One holds a, then Chapter 1.1 (a chapter inside a chapter: one more link) holding b, c.
+    const one = t.marks.make({ kind: 'group', content: { title: 'Part One', of: 'manuscript-chapter', break: true }, in: host.room }).id;
+    t.links.link(a, one, 'part of');
+    host.choose(host.room);
+    host.roomWith({ chosenAll: () => [b, c] });
+    const inner = manuscript.newChapter(t, { context: host.room, marks: [b, c] }, 'Chapter 1.1');
+    assert.deepEqual(t.links.members(one), [a]); // b and c were loose: the new chapter goes at the top level
+    t.links.link(inner, one, 'part of');
+    assert.deepEqual([t.links.members(one), t.links.members(inner)], [[a, inner], [b, c]]);
+    // Not folders: every thought's home is still the room.
+    for (const id of [a, b, c]) assert.equal(t.places.home(id), host.room);
+    // Laid out in reading order: Part One, a, Chapter 1.1, b, c, then the loose thoughts.
+    const ys = new Map(t.rules.layout('manuscript', host.room).map((r) => [r.mark, r.position.y]));
+    assert.ok(ys.get(a) < ys.get(b) && ys.get(b) < ys.get(c) && ys.get(c) < ys.get(d) && ys.get(d) < ys.get(e));
+    const boxes = t.rules.draws('manuscript', host.room).boxes;
+    assert.equal(boxes.filter((x) => x.style === 'line').length, 1); // Part One's break (a group field, G4)
+    assert.deepEqual(boxes.filter((x) => x.style === 'heading').map((x) => [x.label, x.level]), [['Part One', 1], ['Chapter 1.1', 2]]);
+    // Numbering, a choice setting kept per room (G9).
+    host.lib.model.setRoomSetting(host.w, host.room, 'manuscript', 'numbers', 'roman');
+    host.lib.model.touch(host.w);
+    assert.deepEqual(t.rules.draws('manuscript', host.room).boxes.filter((x) => x.style === 'heading').map((x) => x.label), ['I  Part One', 'i  Chapter 1.1']);
+    // A thought written after b lands in Chapter 1.1, just after b (G1 join, at).
+    const fresh = t.marks.make({ content: 'written after b', in: host.room }).id;
+    assert.deepEqual(rule.land(host.w, host.room, fresh, 0, ys.get(b)), []);
+    assert.deepEqual(t.links.members(inner), [b, fresh, c]);
+    // c dragged up to just under a: out of Chapter 1.1, into Part One before the inner chapter (G1 from).
+    rule.drop(host.w, host.room, c, 0, ys.get(a) + 1);
+    assert.deepEqual([t.links.members(one), t.links.members(inner)], [[a, c, inner], [b, fresh]]);
+    // The draft after a: what follows moves down by its box (G3).
+    const before = new Map(t.rules.layout('manuscript', host.room).map((r) => [r.mark, r.position.y]));
+    draft = { text: 'being written', after: a, height: 72 };
+    host.lib.model.touch(host.w);
+    const after = new Map(t.rules.layout('manuscript', host.room).map((r) => [r.mark, r.position.y]));
+    assert.equal(after.get(a), before.get(a));
+    assert.ok(after.get(c) - before.get(c) >= 72);
+    // Switched off: the same thoughts, still in the room; the chapters' links and the break stay.
+    off();
+    host.lib.model.declareFamilies([]);
+    assert.equal(t.marks.get(one).break, true);
+    assert.deepEqual(t.links.members(inner), [b, fresh]);
+    assert.deepEqual(brokenLaws(host.w), []);
+  } finally { host.lib.draft.setSource(null); }
 });

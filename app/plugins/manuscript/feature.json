@@ -1,0 +1,19 @@
+{
+  "name": "Manuscript",
+  "description": "A mode that reads a room as a manuscript: chapters within chapters as headings, in reading order, as links never folders.",
+  "version": "0.1.0",
+  "main": "Manuscript.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 3,
+    "minApp": "1.1.1",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "starts": "off",
+    "author": "E"
+  }
+}

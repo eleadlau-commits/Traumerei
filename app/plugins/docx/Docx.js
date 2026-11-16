@@ -22,7 +22,7 @@ export function order(reads, room) {
     for (const id of reads.links.members(g.id)) {
       const m = reads.marks.get(id);
       if (!m || seen.has(id)) continue;
-      if (m.kind === 'group') walk(m, Math.min(3, level + 1));
+      if (m.kind === 'group') walk(m, Math.min(6, level + 1)); // six levels of heading, as Word has
       else { seen.add(id); out.push({ mark: m }); }
     }
   };
@@ -74,7 +74,7 @@ export function docx(t, room) {
   const name = t.marks.get(room)?.name;
   if (name) body.push(`<w:p>${run(name, '<w:b/><w:sz w:val="40"/>')}</w:p>`);
   for (const item of order(t, room)) {
-    if (item.heading) { body.push(`<w:p>${run(item.heading, `<w:b/><w:sz w:val="${[0, 32, 28, 24][item.level]}"/>`)}</w:p>`); continue; }
+    if (item.heading) { body.push(`<w:p>${run(item.heading, `<w:b/><w:sz w:val="${[0, 32, 28, 24, 22, 21, 20][item.level]}"/>`)}</w:p>`); continue; }
     const m = item.mark;
     if (m.kind === 'table') { body.push(table(cells(m.text))); continue; }
     if (m.kind === 'figure') {
