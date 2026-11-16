@@ -126,8 +126,9 @@ folders that `app.json` lists in `"folders"`, read in that order (ids must diffe
 { "folders": ["core", "plugins"], "plugins": { "folder": "plugins", "api": 1 } }
 ```
 
-`"plugins"` says which of those folders holds **plugins**, and the plugin API version the app
-offers (`api`, a whole number; the app's own service for plugins says what each version holds).
+`"plugins"` says which of those folders holds **plugins** (`"folder"`: one name, or a list such as
+`["plugins", "optional"]` when plugins are kept in more than one; `new-plugin` uses the first), and
+the plugin API version the app offers (`api`, a whole number; the app's own service for plugins says what each version holds).
 Every feature in the plugins folder has a `plugin` block in its feature.json, and no feature
 elsewhere has one:
 

@@ -4,7 +4,7 @@ without opening the app, then the file a person imports.
 1. **Compiles.** The app is built in test mode with the plugin in it; the compiler checks its
    feature.json, its plugin block (kind, needs, api) and that it reaches the app only through the
    plugin API. A plugin it leaves out fails here, with the compiler's reason.
-2. **Its own tests.** Every `app/plugins/<id>/tests/*.test.js`.
+2. **Its own tests.** Every `app/optional/<id>/tests/*.test.js` (or `app/plugins/<id>/` for a corpus plugin).
 3. **The conformance suite** (`app/core/api/tests/conformance.js`, the corpus's own): the eight
    laws hold with it on and after everything it adds has been used; nothing it adds throws;
    switching it off takes away all it added and loses no row, and on again it works the same; a
@@ -101,9 +101,11 @@ def run_page(web: Path, tests: list[str], suite: str, labels=('2. Its own tests'
 
 
 def check(pid: str, out_dir: Path | None, root: Path = ROOT) -> int:
-    folder = root / 'app' / 'plugins' / pid
+    folder = root / 'app' / 'optional' / pid  # an extra plugin; a corpus plugin is in app/plugins/
     if not (folder / 'feature.json').is_file():
-        print(f'✗ No plugin app/plugins/{pid}/ (make one with python build.py new-plugin {pid}).')
+        folder = root / 'app' / 'plugins' / pid
+    if not (folder / 'feature.json').is_file():
+        print(f'✗ No plugin app/optional/{pid}/ or app/plugins/{pid}/ (make one with python build.py new-plugin {pid}).')
         return 1
     manifest = json.loads((folder / 'feature.json').read_text('utf-8'))
     block = manifest.get('plugin')

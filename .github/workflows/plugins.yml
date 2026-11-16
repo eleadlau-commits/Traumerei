@@ -1,0 +1,63 @@
+# Publishes the extra plugins (app/optional/, tools/corpus.py APART) after every merge to main, so
+# they can be imported without waiting for an app release: each as <id>.traumplug, the starter set,
+# and one zip of them all, on the rolling prerelease "plugins-latest", overwritten each time.
+# Stable links: https://github.com/eleadlau-commits/Traumerei/releases/download/plugins-latest/<file>
+# The prerelease is never the "latest" Release, so the desktop app's update check ignores it.
+name: Publish extra plugins
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'folio/**', 'tools/**', 'build.py', '.github/workflows/plugins.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugins-latest
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: plugins-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pack every extra plugin, the starter set, and one zip of them all
+        run: |
+          python build.py pack-plugin --all --out packed
+          python -c "import zipfile,glob,os; z=zipfile.ZipFile('packed/traumerei-plugins-latest.zip','w',zipfile.ZIP_DEFLATED); [z.write(f, os.path.basename(f)) for f in sorted(glob.glob('packed/*.traumplug'))]; z.close()"
+          ls -l packed
+      - name: Move the plugins-latest tag to this commit
+        run: |
+          git tag -f "$TAG"
+          git push -f origin "refs/tags/$TAG"
+      - name: Make the prerelease if it isn't there
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --latest=false \
+            --title "Extra plugins (latest from main)" --notes "Filled in by the next step."
+      - name: Upload the files, and drop any that are no longer made
+        run: |
+          gh release upload "$TAG" packed/*.traumplug packed/*.zip --clobber
+          for name in $(gh release view "$TAG" --json assets --jq '.assets[].name'); do
+            [ -f "packed/$name" ] || gh release delete-asset "$TAG" "$name" --yes
+          done
+          {
+            echo "The extra plugins as they are on main, rebuilt after every merge (commit ${GITHUB_SHA::7}, $(date -u +'%d %b %Y %H:%M') UTC). Not an app release."
+            echo
+            echo "Import a file in Träumerei: Settings → Plugins → Import plugin…. \`starter-set.traumplug\` holds all but Book and Provoke; \`book.traumplug\` is the Book editor on its own."
+            echo
+            echo "Each file always has the same link: https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/<file>"
+            echo
+            for f in packed/*.traumplug; do n=$(basename "$f"); echo "- [$n](https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/$n)"; done
+          } > notes.md
+          gh release edit "$TAG" --prerelease --latest=false --notes-file notes.md

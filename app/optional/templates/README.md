@@ -37,7 +37,7 @@ API (`app/core/API.md`: `t.marks.in`, `t.parts.model.MESSY`, `t.carriers.read/la
 
 ## How to check it works
 
-1. `python build.py test` (`tests/templates.test.js`) and `node app/plugins/templates/tests/land.mjs`
+1. `python build.py test` (`tests/templates.test.js`) and `node app/optional/templates/tests/land.mjs`
    (every template lands in an empty world with no plugin on; every pull request runs it).
 2. `python build.py serve` in a fresh browser profile: the chooser shows over Home. Pick To-do list:
    the room opens with five things, one ticked.

@@ -1,7 +1,7 @@
 // The format guide can't fall behind the code: every example file in FORMAT.md (a fenced block
 // whose front matter says traum/3) reads with nothing reported and lands in an empty world with
 // no plugin loaded, and writing what landed reads back as the same tables (Law 8).
-// Run with `node app/plugins/roomfile/tests/guide.mjs` (every pull request runs it: check.yml).
+// Run with `node app/optional/roomfile/tests/guide.mjs` (every pull request runs it: check.yml).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

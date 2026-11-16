@@ -324,8 +324,15 @@ class Project:
         return p if isinstance(p, dict) else {}
 
     @property
+    def plugins_folders(self) -> list[str]:
+        """The folders that hold plugins: app.json's "plugins.folder", one name or a list (the first
+        is where `new-plugin` puts a new one)."""
+        f = self.plugins_config.get('folder')
+        return [f] if isinstance(f, str) and f else [x for x in f if isinstance(x, str) and x] if isinstance(f, list) else []
+
+    @property
     def plugins_folder(self) -> str | None:
-        return self.plugins_config.get('folder') or None
+        return (self.plugins_folders or [None])[0]
 
     @property
     def framework_version(self) -> str:
@@ -403,8 +410,10 @@ class Project:
         plugins = app['plugins']
         if not isinstance(plugins, dict) or any(k not in ('folder', 'api', 'service', 'exempt', 'kinds', 'needs') for k in plugins):
             return '"plugins" can only contain folder, api, service, exempt, kinds and needs, like { "folder": "plugins", "api": 1 }'
-        if plugins.get('folder') not in folders:
-            return f'"plugins.folder" must be one of "folders" ({", ".join(folders)})'
+        pf = plugins.get('folder')
+        pf = [pf] if isinstance(pf, str) else pf
+        if not (isinstance(pf, list) and pf and all(isinstance(x, str) and x in folders for x in pf)):
+            return f'"plugins.folder" must be one of "folders" ({", ".join(folders)}), or a list of them'
         api = plugins.get('api')
         if not (isinstance(api, int) and not isinstance(api, bool) and api >= 1):
             return '"plugins.api" must be a whole number, 1 or more: the plugin API version the app offers'
@@ -535,12 +544,13 @@ class Project:
         """Checks a plugin's block: every feature in the plugins folder has one, and only they do.
         A plugin written for a newer plugin API, or a newer app, is left out (kind 'needs').
         Returns (kind, problem), or ('', '')."""
-        folder = self.plugins_folder
+        folders = self.plugins_folders
         has = 'plugin' in f.manifest
-        if not folder:
+        if not folders:
             return ('mistake', 'it has a "plugin" block, but app.json has no "plugins"') if has else ('', '')
-        if f.folder != folder:
-            return ('mistake', f'it has a "plugin" block but is in {f.folder}/; plugins live in {folder}/') if has else ('', '')
+        if f.folder not in folders:
+            return ('mistake', f'it has a "plugin" block but is in {f.folder}/; plugins live in {"/, ".join(folders)}/') if has else ('', '')
+        folder = f.folder
         p = f.manifest.get('plugin')
         if not has:
             return 'mistake', f'it is in {folder}/ but has no "plugin" block, like {{ "api": 1, "minApp": "1.0.0" }}'
@@ -683,15 +693,15 @@ class Project:
         defines, leaves it out. Plugins in "plugins.exempt" are let through (for plugins still
         being moved onto the service; the list should end up empty)."""
         cfg = self.plugins_config
-        folder, service = cfg.get('folder'), cfg.get('service')
-        if not folder or not service:
+        folders, service = self.plugins_folders, cfg.get('service')
+        if not folders or not service:
             return
-        core = [f for f in features if f.folder != folder and not f.reason]
+        core = [f for f in features if f.folder not in folders and not f.reason]
         core_services = {s: f.id for f in core for s in f.scan.get('provides', []) if s != service}
         core_slots = {s: f.id for f in core for s in f.scan.get('defines', [])}
         exempt = set(cfg.get('exempt', []))
         for f in features:
-            if f.folder != folder or f.reason or f.id in exempt:
+            if f.folder not in folders or f.reason or f.id in exempt:
                 continue
             used = sorted(set(f.scan.get('uses', [])) & set(core_services))
             added = sorted(set(f.scan.get('adds', [])) & set(core_slots))

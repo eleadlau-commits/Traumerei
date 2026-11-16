@@ -1,4 +1,4 @@
-// Plugins: Settings → Plugins, one row for every plugin (a feature in app/plugins/ with a plugin
+// Plugins: Settings → Plugins, one row for every plugin (a feature in app/plugins/ or app/optional/ with a plugin
 // block): its name, what it adds, and why it isn't running if it isn't (rows.js), with a switch
 // that works at once. A plugin switched off keeps its data; switched on, it carries on where it
 // was. Turning one off that others need says which go with it first, and asks.

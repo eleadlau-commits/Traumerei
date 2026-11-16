@@ -7,10 +7,14 @@
   "appearance": "light",
   "folders": [
     "core",
-    "plugins"
+    "plugins",
+    "optional"
   ],
   "plugins": {
-    "folder": "plugins",
+    "folder": [
+      "plugins",
+      "optional"
+    ],
     "api": 3,
     "service": "traumerei",
     "exempt": [],

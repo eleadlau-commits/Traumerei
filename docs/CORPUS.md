@@ -61,7 +61,7 @@ in the guide (it read the one `new-plugin` made), and a few guesses: the unit of
 are now said in the two docs.
 
 
-**Phase 9.** Provoke (`app/plugins/provoke/`), the reader the corpus prepared for, is held to the
+**Phase 9.** Provoke (`app/optional/provoke/`), the reader the corpus prepared for, is held to the
 same suite (it is in `CORPUS` in `corpus.test.js`) and has its own gate, `tests/provoke.test.js`.
 It needed nothing new from v2. Writing that gate found a fault in the test host: it kept the
 tables it had last written down by reference, so the log heard no moment in any corpus test; it

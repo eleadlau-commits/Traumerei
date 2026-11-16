@@ -1,6 +1,6 @@
 # Plugins
 
-Settings → Plugins: one row for every plugin (a feature in `app/plugins/` with a `plugin` block,
+Settings → Plugins: one row for every plugin (a feature in `app/plugins/` or `app/optional/` with a `plugin` block,
 `folio/README.md` §3), by name.
 
 - **The switch works at once.** Off: the plugin stops, and everything it added goes (its modes,

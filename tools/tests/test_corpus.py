@@ -27,6 +27,13 @@ class CorpusTest(unittest.TestCase):
             self.assertIn(pid, APART)
         self.assertFalse(set(APART) & set(CORPUS))
 
+    def test_each_plugin_is_in_its_folder(self):
+        from tools.corpus import APART, CORPUS, ROOM_TYPES, misplaced, plugins
+        self.assertEqual(misplaced(), [])
+        self.assertEqual(set(plugins('plugins')), set(ROOM_TYPES + CORPUS))
+        self.assertEqual(set(plugins('optional')), set(APART))
+        self.assertTrue((ROOT / 'app' / 'optional' / 'book' / 'feature.json').is_file())
+
     def test_a_build_that_carries_a_plugin_outside_the_corpus_is_refused(self):
         import standalone
         ok = [{'id': 'world'}, {'id': 'russell', 'plugin': {}}]

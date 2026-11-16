@@ -1,6 +1,6 @@
 // Every template room reads as traum/3 with nothing reported, lands in an empty world with no
 // plugin loaded, and has open gaps (a template is a room that is not finished yet).
-// Run with `node app/plugins/templates/tests/land.mjs` (every pull request runs it: check.yml).
+// Run with `node app/optional/templates/tests/land.mjs` (every pull request runs it: check.yml).
 
 import * as model from '../../../core/world/model.js';
 import * as X from '../../../core/world/traum.js';
