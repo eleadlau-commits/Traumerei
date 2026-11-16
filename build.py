@@ -17,6 +17,7 @@ from folioc import main  # noqa: E402
 OWN = {
     'release': 'set one version in app.json, tauri.conf.json and Cargo.toml (release --check <tag> checks them)',
     'pack-plugin': 'pack a plugin into one importable <id>.traumplug file (--all: every plugin shipped apart, and the starter set)',
+    'new-plugin': 'a new plugin, shipped as a file; --corpus makes it a stress-corpus plugin instead (tools/corpus.py)',
 }
 
 
@@ -29,6 +30,9 @@ def own(argv: list[str]) -> int | None:
     if argv[0] == 'pack-plugin':
         from tools import pack_plugin
         return pack_plugin.main(argv[1:])
+    if argv[0] == 'new-plugin':
+        from tools import new_plugin
+        return new_plugin.main(argv[1:], lambda rest: main(['new-plugin', *rest], ROOT))
     return None
 
 

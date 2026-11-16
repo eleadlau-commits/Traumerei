@@ -5,9 +5,16 @@ changing. Never commit `standalone/traumerei.html`: an Action rebuilds it after 
 
 ## Core and plugins
 
-**New work is a plugin.** Start it with `python build.py new-plugin <id>` and follow
-`app/plugins/README.md` (Make a plugin). Change core only for what every room needs, or to give
-the plugin API something plugins lack.
+**New work is a plugin, and a plugin ships as a file.** Only corpus plugins are built into the app
+(E, 15 Nov 2026): the room types (Russell, Proust; Joyce, Pessoa, Borges and Twin as they leave
+core) and the stress corpus (`docs/CORPUS.md`, off and left out of the product). Every other plugin
+lives in `app/plugins/` for the tests, is left out of the app by `standalone.py`, and ships as a
+`.traumplug` on each Release, with all of them in `starter-set.traumplug`; `tools/corpus.py` keeps
+the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file;
+`--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin). Build new
+plugins only once the open-core steps are done. Change core only for what every room needs, or to
+give the plugin API something plugins lack; core never names a plugin, it looks a plugin's service
+up when it needs it, since an imported plugin starts after the core.
 
 Features live in two folders (app.json's `folders`). `app/core/` holds what every room needs
 (world, rooms, floors, room, frame, docks, keys, pages). `app/plugins/` holds everything that can be
