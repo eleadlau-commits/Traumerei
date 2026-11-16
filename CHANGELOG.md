@@ -44,6 +44,8 @@ The rest of the gaps found in the open core's audit (G1 to G11), all additions:
   chapters stay links, never folders.
 - Corpus: `manuscript`, chapters within chapters as headings in reading order, proving the above.
 - Word document export keeps six levels of heading (it flattened past three).
+- `slots.linkKinds` takes `quiet: true`: a kind that is structure its plugin's mode draws (Book's
+  `heads` and `about`) gets no line or ↗ from the room, in any mode.
 
 ## 1.1.0
 

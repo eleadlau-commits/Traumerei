@@ -1,7 +1,7 @@
 // Tests for a plugin's links on the canvas (linklayer.js): which become lines, which a ↗.
 
 import { test, assert } from 'folio/testing';
-import { plan, edge, isPluginKind } from '../linklayer.js';
+import { plan, edge, isPluginKind, isDrawn } from '../linklayer.js';
 
 const ROWS = [
   { id: 'k:cites:a:b', from: 'a', to: 'b', kind: 'cites' },
@@ -39,4 +39,12 @@ test('a line leaves a box at its edge, toward the other', () => {
   assert.deepEqual(edge(b, a), { x: 300, y: 10 });
   const c = { x: 0, y: 200, w: 100, h: 20 };
   assert.deepEqual(edge(a, c), { x: 50, y: 20 });
+});
+
+test('a kind its plugin declares quiet is not drawn here (its mode draws it): since 1.1.1', () => {
+  const declared = [{ kind: 'cites', name: 'cites' }, { kind: 'heads', name: 'heads', quiet: true }];
+  assert.equal(isDrawn('cites', declared), true);
+  assert.equal(isDrawn('heads', declared), false);
+  assert.equal(isDrawn('link', declared), true, 'a kind no plugin declares (its plugin off) still shows');
+  assert.equal(isDrawn('part of', declared), false, 'structure never');
 });
