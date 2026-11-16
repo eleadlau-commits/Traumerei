@@ -48,6 +48,25 @@
 .book-target .book-text { text-decoration: underline dotted; }
 .book-hand-title { margin: 0 0 4px; }
 
+/* Far off (the zoom's far band, zoom.js): the book as a shelf of pages. Body text as quiet lines,
+   each line as long as its words (an inline background, cloned on each line, fragments too); each
+   chapter's heading as its title, large (its far band words, which the room shows in its place);
+   a section's a little smaller; the running heads (level 1) and the book's title large enough to
+   read; a page says a double-click goes there. Mid and near: the book as it is. */
+.room[data-mode="book-page"] .room-band-far .room-thought {
+  color: transparent;
+  background: linear-gradient(color-mix(in srgb, var(--room-ink) 24%, transparent), color-mix(in srgb, var(--room-ink) 24%, transparent)) 0 58% / 100% .5em no-repeat;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.room[data-mode="book-page"] .room-band-far .room-gap { box-shadow: none; }
+.room[data-mode="book-page"] .room-band-far [data-band-far]::after { max-width: 100%; width: 100%; text-align: left; left: 0; top: auto; bottom: 0; transform: none; } /* grows up, into the space a heading drops */
+.room[data-mode="book-page"] .room-band-far [data-band-far]:has(.span-caps)::after { font-size: calc(var(--t-read, 19px) * 5.5); font-variant: small-caps; line-height: 1; }
+.room[data-mode="book-page"] .room-band-far .room-cell-quiet.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.9); top: auto; bottom: 0; line-height: 1; left: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; opacity: .5; font-variant: small-caps; }
+.room[data-mode="book-page"] .room-band-far .room-cell-quiet:not(.room-cell-l1) .room-cell-label { font-size: calc(var(--t-read, 19px) * 1.8); }
+.room[data-mode="book-page"] .room-band-far .room-cell-title .room-cell-label { font-size: calc(var(--t-read, 19px) * 4.2); white-space: normal; left: 0; right: 0; line-height: 1.05; }
+.room[data-mode="book-page"] .room-band-far .room-cell-heading.room-cell-l1 .room-cell-label { font-size: calc(var(--t-read, 19px) * 3); }
+.room[data-mode="book-page"] .room-cell-page.room-cell-opens { cursor: inherit; }
+.room[data-mode="book-page"] .room-band-far .room-cell-page.room-cell-opens { cursor: zoom-in; }
 /* Book · blocks (blocks.js): each chapter and section a dotted outline around its blocks. The
    rule draws them as quiet boxes; only here, in a room seen as Book · blocks, they get a line. */
 [data-mode="book-blocks"] .room-cell-quiet { border: 1px dotted rgb(var(--ink-rgb) / .35); border-radius: 6px; }

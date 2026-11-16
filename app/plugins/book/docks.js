@@ -14,7 +14,7 @@ import { BLOCKS } from './blocks.js';
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
+export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id) }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -29,11 +29,11 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
     return headed(t, id) || (isChapter(t.marks.get(id)) ? id : holderOf(t, id));
   };
 
-  // To a mark on the canvas, chosen. (Going there shows its properties in the right dock: the
-  // book in hand comes back when it was showing.)
+  // To a mark on the canvas, chosen, its page in view at a zoom to read it (zoom.js bring). (Going
+  // there shows its properties in the right dock: the book in hand comes back when it was showing.)
   const goTo = (id) => {
     const had = !!right;
-    t.ui.open.mark(id);
+    bring(id);
     if (had) setTimeout(() => { openRight(); }, 0);
   };
 
