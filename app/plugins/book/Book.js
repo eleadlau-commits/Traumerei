@@ -15,6 +15,8 @@
 
 import { Feature, ui } from 'folio';
 import { BOOK, CHAPTER, isBook, isChapter, booksIn, tree, count, contents, markdown, fileName, moved } from './rules.js';
+import { installEditor } from './editor.js';
+import { installDocks } from './docks.js';
 
 const { el } = ui;
 const KEY = 'book';
@@ -139,6 +141,7 @@ export function install(t) {
   const openRoomBooks = () => {
     const r = room();
     if (!r) return;
+    if (editor.inBook()) { docks.openAll(true); return; } // a room seen as Book: contents left, in hand right
     const books = booksIn(t, r);
     if (books.length === 1) { openBook(books[0].id); return; }
     if (!books.length) { newBook(); return; }
@@ -290,7 +293,13 @@ export function install(t) {
   // ---- Into the app ----
 
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
-  t.slots.groups.add({ id: CHAPTER, name: 'Chapter' });
+  t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
+  const editor = installEditor(t);
+  const docks = installDocks(t, { exportMarkdown, print });
+  t.slots.commands.add({ id: 'book.move-into', keys: ['Alt+M'], zone: 'room', order: 72, words: 'move the chosen paragraph or chapter into a chapter you pick in the contents',
+    when: () => editor.inBook() && !!t.ui.chosen()?.mark, run: () => docks.startMove() });
+  t.slots.commands.add({ id: 'book.move-cancel', keys: ['Escape'], zone: 'room', order: 1, words: 'not moving it after all',
+    when: () => docks.moving(), run: () => docks.cancelMove() });
   t.slots.buttons.add({ id: 'book', label: 'Book', icon: ICON, order: 40, visible: () => !!room(),
     title: () => 'This room\'s books (Ctrl+Alt+J): a contents page, chapters of thoughts, export', on: () => !!dock()?.isShowing(KEY), run: openRoomBooks });
   t.slots.commands.add({ id: 'book.open', keys: ['Ctrl+Alt+J'], zone: 'room', order: 70, words: 'Open this room\'s book, or make one', when: () => !!room(), run: openRoomBooks });
@@ -301,7 +310,7 @@ export function install(t) {
   t.links.on(redraw);
   t.gaps.on(redraw);
 
-  return { newBook, newChapter, take, openBook };
+  return { newBook, newChapter, take, openBook, editor, docks };
 }
 
 export default class Book extends Feature {
