@@ -20,7 +20,7 @@ export function declareSpans(list = [], warn = () => {}) {
     if (!CLASSES.includes(k.class)) { warn(k, `a class, one of ${CLASSES.join(', ')}`); continue; }
     if (KINDS.has(k.kind)) { warn(k, 'a kind of its own'); continue; }
     const md = Array.isArray(k.md) && k.md.length === 2 && k.md.every((s) => typeof s === 'string') ? [...k.md] : null;
-    KINDS.set(k.kind, Object.freeze({ kind: k.kind, name: String(k.name || k.kind), class: k.class, md }));
+    KINDS.set(k.kind, Object.freeze({ kind: k.kind, name: String(k.name || k.kind), class: k.class, md, click: typeof k.click === 'function' ? k.click : null }));
   }
 }
 export const spanKind = (kind) => KINDS.get(kind) || null;
@@ -45,16 +45,16 @@ export function clean(spans, len) {
     if (!s || !KIND.test(s.kind || '')) continue;
     const from = Math.max(0, Math.min(len, Math.floor(+s.from))), to = Math.max(0, Math.min(len, Math.floor(+s.to)));
     if (!(Number.isFinite(from) && Number.isFinite(to)) || to <= from) continue;
-    out.push({ from, to, kind: s.kind });
+    out.push({ from, to, kind: s.kind, ...(typeof s.ref === 'string' && s.ref && s.ref.length <= 200 ? { ref: s.ref } : {}) }); // ref: a mark or link it points to (since 1.1.1)
   }
   out.sort((a, b) => a.from - b.from || a.to - b.to || (a.kind < b.kind ? -1 : 1));
   return merge(out).length ? merge(out) : null;
 }
-// Spans of one kind that touch or overlap become one.
+// Spans of one kind (and one ref) that touch or overlap become one.
 function merge(list) {
   const out = [];
   for (const s of list) {
-    const prev = [...out].reverse().find((o) => o.kind === s.kind);
+    const prev = [...out].reverse().find((o) => o.kind === s.kind && o.ref === s.ref);
     if (prev && s.from <= prev.to) prev.to = Math.max(prev.to, s.to);
     else out.push({ ...s });
   }
@@ -97,6 +97,14 @@ function coverage(list, from, to) {
   let at = from;
   for (const s of list.sort((x, y) => x.from - y.from)) { if (s.from > at) return false; at = Math.max(at, s.to); if (at >= to) return true; }
   return at >= to;
+}
+
+// The kept spans at a character of a text whose kind hears a click (slots.spans' click, since
+// 1.1.1), innermost first: [{ span, click }].
+export function clickable(spans, at) {
+  if (!Array.isArray(spans) || !Number.isFinite(at)) return [];
+  return spans.filter((s) => s && s.from <= at && at < s.to && KINDS.get(s.kind)?.click)
+    .sort((a, b) => (a.to - a.from) - (b.to - b.from)).map((s) => ({ span: Object.freeze({ ...s }), click: KINDS.get(s.kind).click }));
 }
 
 // How a mark's text is drawn: [{ from, to, class }] from its spans (kinds known) and every

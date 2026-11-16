@@ -12,7 +12,7 @@ import { API_VERSION, surface, connect, kernel, simpleRule, SLOTS, TABLES, READE
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
 const V2 = {
   top: ['ai', 'app', 'carriers', 'distance', 'gaps', 'links', 'marks', 'moments', 'parts', 'peers', 'places', 'plugin', 'rules', 'slots', 'store', 'together', 'ui', 'version'],
-  marks: ['delete', 'edit', 'get', 'in', 'make', 'markdown', 'ofKind', 'on', 'search', 'text'],
+  marks: ['delete', 'draft', 'edit', 'get', 'in', 'make', 'markdown', 'ofKind', 'on', 'search', 'text'],
   places: ['home', 'in', 'loose', 'move', 'of', 'on', 'position', 'put', 'unplace'],
   rules: ['admit', 'draws', 'layout', 'list', 'moves'],
   links: ['count', 'fold', 'from', 'get', 'holders', 'kinds', 'link', 'members', 'named', 'on', 'order', 'standsFor', 'to', 'unlink'],
@@ -22,7 +22,7 @@ const V2 = {
   moments: ['absorb', 'ahead', 'at', 'changed', 'clear', 'day', 'due', 'first', 'keep', 'kept', 'meet', 'next', 'note', 'of', 'on', 'outbox', 'placesAt', 'refuse', 'returns', 'revisit', 'seq', 'since'],
   slots: ['account', 'aiServices', 'bar', 'buttons', 'carriers', 'commands', 'decorators', 'editor', 'engines', 'families', 'formats', 'groups', 'holds', 'kinds', 'linkKinds', 'menu', 'more', 'pages', 'providers', 'rules', 'spans', 'strip', 'surfaces', 'views'],
   ai: ['bridges', 'call', 'exam', 'first', 'item', 'machine', 'providers', 'schema', 'sidecar', 'tasks', 'verdict', 'verdicts'],
-  ui: ['chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'roundTrip', 'size', 'text', 'toast', 'zoom'],
+  ui: ['choose', 'chosen', 'docks', 'download', 'files', 'frame', 'link', 'measure', 'open', 'repaint', 'roundTrip', 'size', 'text', 'toast', 'zoom'],
   parts: ['arrows', 'groups', 'kinds', 'layout', 'lines', 'maths', 'model', 'pictures', 'relations', 'trains', 'twins', 'world'],
 };
 // The parts rules and views share, by name.
@@ -175,7 +175,7 @@ test('peers: what one plugin offers another by name goes when it is switched off
   const app = fakeApp(), peers = new Map(), leaving = [];
   const a = connect({ app, world, plugin: plugin('source'), parts: surface(lib), lib, peers, gone: (fn) => leaving.push(fn) });
   const b = connect({ app, world, plugin: plugin('roomfile'), parts: surface(lib), lib, peers });
-  assert.deepEqual(Object.keys(a.peers).sort(), ['get', 'offer']);
+  assert.deepEqual(Object.keys(a.peers).sort(), ['get', 'offer', 'on']);
   assert.equal(b.peers.get('source'), null);
   const box = { open: () => true };
   a.peers.offer('source', box);

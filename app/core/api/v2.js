@@ -36,6 +36,7 @@ const landed = (id) => row({ ok: true, id });
 const refuse = (reason) => row({ ok: false, reason });
 const later = (what, phase) => refuse(`${what} arrives in kernel phase ${phase}; until then this is a name, not a table`);
 export const ARCHIVE = 'archive';
+export const TOGETHER_CAP = 30000; // how long an async together() holds its step, at most (ms)
 
 // ---- Six tables over the world as it is ----
 // lib: the world's rules (world.lib); world: the world service (its .world is w). Pure of the
@@ -54,9 +55,28 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   // lands as one step when it returns.
   let holding = 0, held = false;
   const save = () => { if (holding) held = true; else world.save?.(); };
+  // Lets go of one hold; the last one lands what was held as one step. back: the step is taken
+  // back at once (an async together that failed), when it is the last hold.
+  const release = (back = false) => {
+    if (--holding || !held) return;
+    held = false;
+    const seq = () => world.moments?.log?.seq, before = seq();
+    const step = world.save?.();
+    if (back && (before != null ? seq() !== before : step === true)) world.undo?.(true); // only a step that landed
+  };
+  // Since 1.1.1, fn may be async: the step stays open until its promise settles, then lands as one
+  // step; a rejected promise takes the step back and resolves to { ok: false, reason }. After 30 s
+  // the step lands with what it has (a warning says so). A plain fn that throws still lands what it did.
   const together = (fn) => {
     holding++;
-    try { return fn(); } finally { if (!--holding && held) { held = false; world.save?.(); } }
+    let out;
+    try { out = fn(); } catch (err) { release(); throw err; }
+    if (!out || typeof out.then !== 'function') { release(); return out; }
+    let open = true;
+    const timer = setTimeout(() => { if (!open) return; open = false; console.warn('together(): the step was held 30 s; it lands with what it has'); release(); }, TOGETHER_CAP);
+    const done = (back) => { if (!open) return false; open = false; clearTimeout(timer); release(back); return true; };
+    return Promise.resolve(out).then((v) => { done(false); return v; },
+      (err) => { done(true); return refuse(err?.message || String(err || 'The step was taken back')); });
   };
   // The same hold, open across events (since 1.1.0): a surface's gesture, pointer down to pointer
   // up, is one step. Returns the function that lets go (once). Not in the API: the room calls it
@@ -104,6 +124,9 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     // Its words with their spans written as Markdown (a kind of span that says how: bold as **…**).
     markdown: (id) => { const th = thing(id); if (!th) return ''; const text = model.thoughtText(w(), th); return th.spans ? lib.spans.markdown(text, th.spans, spanKinds?.()) : text; },
     search: (words, most) => rows(model.search(w(), words, most).map(markRow)),
+    // The thought being written in a context (since 1.1.1), for a rule's arrange to leave room for
+    // it: { text, at?, after?, height? }, frozen, or null. Never a mark, never saved.
+    draft: (context) => lib.draft?.of(context) ?? null,
     make: ({ kind = 'line', content = '', in: context = null, at = {} } = {}) => {
       if (context == null && kind !== 'room') return refuse('A mark needs a context to be made in');
       const made = kind === 'room'
@@ -334,7 +357,8 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
   // -- moments: the log (world/moments.js), read by mark, from a time, by day. A mark the log does
   // not know of (older than the history kept) still has its made and edited times. --
   const log = () => world.moments;
-  const momentRow = (r) => ({ time: r.time, kind: r.kind === 'told' ? r.said : r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}) });
+  const momentRow = (r) => ({ time: r.time, kind: r.kind === 'told' ? r.said : r.kind, ...(r.mark != null ? { mark: r.mark } : r.link != null ? { link: r.link } : r.place != null ? { place: r.place } : r.gap != null ? { gap: r.gap } : r.dist != null ? { dist: r.dist } : { context: r.context }), ...(r.step != null ? { step: r.step } : {}),
+    ...(r.before !== undefined ? { before: sealed(r.before) } : {}), ...(r.after !== undefined ? { after: sealed(r.after) } : {}) }); // what it was and became (since 1.1.1; compacted rows have none)
   function fallback(th) {
     const out = [{ time: th.at, kind: 'made', mark: th.id }];
     if (th.edited) out.push({ time: th.edited, kind: 'edited', mark: th.id });
@@ -471,7 +495,7 @@ const HOLDS = new WeakMap();
 
 // The read half of the tables: what a rule's arrange(), a link kind's admit() and a view are handed.
 export const READS = Object.freeze({
-  marks: ['get', 'in', 'ofKind', 'text', 'search'],
+  marks: ['get', 'in', 'ofKind', 'text', 'search', 'draft'],
   places: ['of', 'home', 'in', 'loose', 'position'],
   links: ['get', 'from', 'to', 'members', 'holders', 'standsFor', 'kinds', 'named', 'count'],
   distance: ['of', 'declared', 'all', 'shut', 'readers'],
@@ -504,8 +528,8 @@ export function readsOver(lib, w, ontologies = null) {
 // (gaps). The kernel lands each through the tables inside the room's step; a refused one is skipped.
 // Since 1.0.3 also { place: context, x?, y? } (places.put: into another context of the rooms,
 // a chapter's room say; with x, y it lands there under that room's mode). Since 1.1.1
-// { join: group, at? } (links.link(mark, group, 'part of', null, { at }): into a group of the
-// same room, a book's chapter, at a place in its order).
+// { join: group, at?, from? } (links.link(mark, group, 'part of', null, { at }): into a group of
+// the same room, a book's chapter, at a place in its order; leaving the group `from` in the same step).
 export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place', 'join']);
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
 // A surface's id (since 1.1.0): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
@@ -538,7 +562,27 @@ function boxData(data) {
 }
 
 export const BOX_STYLES = Object.freeze(['plain', 'title', 'heading', 'line', 'shelf', 'quiet', 'page']);
-export function simpleRule(rule, lib, ontologies = () => null) {
+// A thin rule's settings, each in the core's own shape (ontologies/index.js): sliders, switches,
+// choices and lists as they are; since 1.1.1 also { kind: 'choice', id, name, options: [{ id, name }],
+// default } and { kind: 'toggle', id, name, default }. One without a key is left out.
+export function ruleSettings(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const st of list) {
+    if (!st || typeof st !== 'object') continue;
+    if (st.kind === 'choice') {
+      const options = (Array.isArray(st.options) ? st.options : []).filter((o) => o && o.id != null).map((o) => [o.id, String(o.name ?? o.id)]);
+      if (typeof st.id !== 'string' || !options.length) continue;
+      out.push({ key: st.id, label: String(st.name || st.id), type: 'choice', options, default: options.some(([v]) => v === st.default) ? st.default : options[0][0] });
+    } else if (st.kind === 'toggle') {
+      if (typeof st.id !== 'string') continue;
+      out.push({ key: st.id, label: String(st.name || st.id), type: 'switch', default: !!st.default });
+    } else if (typeof st.key === 'string') out.push(st);
+  }
+  return out;
+}
+
+export function simpleRule(rule, lib, ontologies = () => null, globals = () => null) {
   const { model, groups, gaps: G, rules: R } = lib;
   const stampOf = (w) => `${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
   const said = (fn, w, ...args) => { try { return fn(readsOver(lib, w, ontologies()), ...args); } catch (err) { console.warn(`Rule ${rule.id}: ${fn.name || 'a hook'} failed`, err); return null; } };
@@ -555,7 +599,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       else if (p.gap) r = G.open(w, id, p.gap);
       else if (p.resolve) r = G.resolve(w, id);
       else if (p.place != null) r = placeIn(w, id, String(p.place), p.x, p.y);
-      else if (p.join != null) r = joinTo(w, room, id, String(p.join), p.at);
+      else if (p.join != null) r = joinTo(w, room, id, String(p.join), p.at, p.from == null ? null : String(p.from));
       else r = { why: `A proposal is one of ${PROPOSALS.join(', ')}` };
       if (r?.why) why.push(r.why);
     }
@@ -576,26 +620,45 @@ export function simpleRule(rule, lib, ontologies = () => null) {
   // A { join } proposal (since 1.1.1): the mark becomes a part of a group of the same room, at
   // `at` in its order (0 first; left out, where the group puts a newcomer), as links.link would
   // join it: the group's own family says whether it may sit in another group of the family too.
-  // A mark already a part of it moves to `at` (counted among the other parts).
-  const joinTo = (w, room, id, group, at) => {
+  // A mark already a part of it moves to `at` (counted among the other parts). With `from` (since
+  // 1.1.1), a group of the same room the mark leaves in the same step: a drop from one chapter into
+  // another moves it rather than copying it (a family's membership is many).
+  const joinTo = (w, room, id, group, at, from = null) => {
     const g = w.things[group];
     if (!g || !model.isGroup(g)) return { why: 'Only a group can hold a part' };
     if (model.parentOf(w, group) !== room) return { why: 'A mark joins a group of its own room' };
     if (model.shut(w, group)) return { why: 'The group is locked' };
     if (at != null && !(Number.isInteger(at) && at >= 0)) return { why: 'A part joins at a position in the order: 0 first' };
+    if (from != null && from !== group) {
+      const f = w.things[from];
+      if (!f || !model.isGroup(f) || model.parentOf(w, from) !== room) return { why: 'A mark leaves a group of its own room' };
+      if (model.shut(w, from)) return { why: 'The group it leaves is locked' };
+      if (!model.members(w, from).some((m) => m.id === id)) return { why: 'The mark is not a part of the group it would leave' };
+    }
     const ms = model.members(w, group);
     if (ms.some((m) => m.id === id)) { if (ms.length === 1) return null; model.leave(w, group, id); }
-    return model.join(w, group, id, at ?? null) ? null : { why: 'The part cannot join: it would hold its own group' };
+    if (!model.join(w, group, id, at ?? null)) return { why: 'The part cannot join: it would hold its own group' };
+    if (from != null && from !== group && model.members(w, from).some((m) => m.id === id)) model.leave(w, from, id);
+    return null;
   };
   // A rule's memo key: the room's places, the floor's (a contents page of the floor's rooms
   // redraws when they move), every link, every mark, the gaps and the moments ahead.
-  const keyOf = (w, room) => `${lib.places.version(w, room)}|${lib.places.version(w, lib.places.home(w, room))}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`;
-  const memo = new WeakMap(); // w → Map context → { stamp, key, map }
+  // Since 1.1.1 also the rule's settings for new rooms, and (for a rule whose arrange read it) the
+  // draft's: whether a thought is being written, and its box's height.
+  const memo = new WeakMap(); // w → Map context → { stamp, key, map, usesDraft }
+  const keyOf = (w, room) => `${lib.places.version(w, room)}|${lib.places.version(w, lib.places.home(w, room))}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`
+    + (settingsList.length ? `|${JSON.stringify(globals()?.[rule.id] || null)}` : '') + (memo.get(w)?.get(room)?.usesDraft ? `|${lib.draft?.key(room) ?? ''}` : '');
+  // Its settings (since 1.1.1 also { kind: 'choice', id, name, options: [{ id, name }], default } and
+  // { kind: 'toggle', id, name, default }, read as the core's own shape), and their values in a
+  // room, handed to each hook as its last argument: { [id]: value }, the room's, else the rule's
+  // for new rooms, else the default.
+  const settingsList = ruleSettings(rule.settings);
+  const settingsIn = (w, room) => Object.freeze(Object.fromEntries(settingsList.map((st) => [st.key, sealed(model.roomSetting(w, room, rule.id, st, globals() || {}))])));
   const hand = rule.hand !== false;
   const units = (w, room) => model.roomUnits(w, room);
   const o = {
     id: rule.id, name: rule.name || rule.id, note: rule.note || '', icon: rule.icon, order: rule.order ?? 60,
-    groups: null, settings: rule.settings, claims: Array.isArray(rule.claims) ? rule.claims : undefined,
+    groups: null, settings: settingsList.length ? settingsList : rule.settings, claims: Array.isArray(rule.claims) ? rule.claims : undefined,
     units,
     layout(w, room) {
       let byRoom = memo.get(w); if (!byRoom) memo.set(w, (byRoom = new Map()));
@@ -604,7 +667,9 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       if (had && had.key === key) return had.map;
       const out = new Map(), own = units(w, room), ids = new Set(own.map((u) => u.id));
       let placed = [];
-      try { placed = rule.arrange(readsOver(lib, w, ontologies()), room) || []; } catch (err) { console.warn(`Rule ${rule.id}: arrange failed`, err); }
+      const asked = lib.draft?.reads?.() ?? 0;
+      try { placed = rule.arrange(readsOver(lib, w, ontologies()), room, settingsIn(w, room)) || []; } catch (err) { console.warn(`Rule ${rule.id}: arrange failed`, err); }
+      const usesDraft = (lib.draft?.reads?.() ?? 0) !== asked;
       // A row may give the unit's width and height (the room wraps the thought to them), and a
       // mark may have several rows, each a fragment with the lines it shows ({ lines: [from, to] }:
       // a paragraph that runs on to the next page).
@@ -629,14 +694,15 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       for (const u of own) if (!out.has(u.id)) out.set(u.id, { x: (i % 8) * 240, y: below + Math.floor(i++ / 8) * 140 });
       if (hand) for (const [id, p] of groups.spotsOf(w, room, rule.id)) if (out.has(id) && p && Number.isFinite(p.x)) { const q = out.get(id); out.set(id, { ...q, x: p.x, y: p.y, fragments: undefined }); }
       for (const q of out.values()) if (q.fragments) Object.freeze(q.fragments);
-      byRoom.set(room, { key, map: out });
+      byRoom.set(room, { key: usesDraft && !had?.usesDraft ? keyOf(w, room) + `|${lib.draft?.key(room) ?? ''}` : key, map: out, usesDraft });
       return out;
     },
     point(w, room, id) { return this.layout(w, room).get(id) || null; },
+    readsDraft: (w, room) => !!memo.get(w)?.get(room)?.usesDraft, // its arrange read the thought being written (the room lays it out again as the draft grows)
     banded(w, room) { return !!this.layout(w, room).banded; }, // some unit has words for a zoom band
     drop(w, room, id, x, y) {
       if (model.shut(w, room)) return;
-      if (rule.drop) propose(w, room, id, said(rule.drop, w, room, id, x, y));
+      if (rule.drop) propose(w, room, id, said(rule.drop, w, room, id, x, y, settingsIn(w, room)));
       if (hand) groups.putAt(w, room, rule.id, id, x, y);
     },
     unplace: hand ? (w, room, id) => groups.unplace(w, room, rule.id, id) : undefined,
@@ -650,7 +716,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       const key = keyOf(w, room);
       const had = byRoom.get(room);
       if (had && had.key === key) return had.boxes;
-      const out = said(rule.draw, w, room);
+      const out = said(rule.draw, w, room, settingsIn(w, room));
       const boxes = (Array.isArray(out) ? out : []).filter((b) => b && ['x', 'y', 'w', 'h'].every((k) => Number.isFinite(b[k])) && b.w > 0 && b.h > 0)
         .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note),
           style: BOX_STYLES.includes(b.style) ? b.style : 'plain', level: [1, 2, 3].includes(b.level) ? b.level : 0,
@@ -660,7 +726,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       return boxes;
     };
   }
-  if (rule.land) o.land = (w, room, id, x, y) => (model.shut(w, room) ? [] : propose(w, room, id, said(rule.land, w, room, id, x, y)));
+  if (rule.land) o.land = (w, room, id, x, y) => (model.shut(w, room) ? [] : propose(w, room, id, said(rule.land, w, room, id, x, y, settingsIn(w, room))));
   if (rule.admit) o.admit = (w, p) => { const why = rule.admit(readsOver(lib, w, ontologies()), p); return why && why !== true ? { ok: false, reason: typeof why === 'string' ? why : why.reason } : { ok: true }; };
   return o;
 }
@@ -747,10 +813,16 @@ const BANDS_FALLBACK = Object.freeze({ far: Object.freeze([0.25, 0.5]), mid: Obj
 
 // What plugins offer each other (t.peers): one name, one offer at a time; the offer goes when the
 // plugin that made it is switched off. shared: a Map the app keeps, or null for none.
+// Since 1.1.1 a plugin may hear each offer made or taken back (on).
+const PEER_EARS = new WeakMap(); // the shared map → the listeners of every plugin
 function peersFor(shared, owner, gone) {
   const map = shared || new Map();
   const mine = new Set();
-  gone(() => { for (const name of mine) if (map.get(name)?.owner === owner) map.delete(name); mine.clear(); });
+  if (!PEER_EARS.has(map)) PEER_EARS.set(map, new Set());
+  const ears = PEER_EARS.get(map);
+  const tell = (name, offered, by) => { for (const fn of [...ears]) { try { fn(row({ name, offered, owner: by })); } catch (err) { console.warn('peers: a listener failed', err); } } };
+  const withdraw = (key) => { if (map.get(key)?.owner !== owner) return; map.delete(key); tell(key, false, owner); };
+  gone(() => { for (const name of mine) withdraw(name); mine.clear(); });
   return Object.freeze({
     offer: (name, value) => {
       const key = String(name);
@@ -758,9 +830,12 @@ function peersFor(shared, owner, gone) {
       if (held && held.owner !== owner) throw new Error(`${held.owner} already offers ${key}`);
       map.set(key, { owner, value });
       mine.add(key);
-      return () => { if (map.get(key)?.owner === owner) map.delete(key); mine.delete(key); };
+      tell(key, true, owner);
+      return () => { withdraw(key); mine.delete(key); };
     },
     get: (name) => map.get(String(name))?.value ?? null,
+    // fn({ name, offered, owner }) on each offer made (offered: true) or taken back; returns a function that stops hearing.
+    on: (fn) => { const ear = (o) => fn(o); ears.add(ear); const off = () => ears.delete(ear); gone(off); return off; },
   });
 }
 
@@ -802,12 +877,25 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
   const slots = Object.freeze({
     ...Object.fromEntries(Object.entries(SLOTS).map(([name, slot]) => [name, Object.freeze({ add: add(slot) })])),
     rules: Object.freeze({
-      add: (rule) => add(SLOTS.rules)(typeof rule?.arrange === 'function' && !rule.units ? simpleRule(rule, lib || world.lib, () => world.ontologies) : rule),
+      add: (rule) => add(SLOTS.rules)(typeof rule?.arrange === 'function' && !rule.units ? simpleRule(rule, lib || world.lib, () => world.ontologies, () => world.globals) : rule),
       get: (id) => world.ontology(id),          // the rule with this id (the default when it is off or unknown)
       get all() { return world.ontologies; },    // every rule there is now
       get settings() { return world.globals; },  // each rule's settings for new rooms: { [rule]: { key: value } }
     }),
-    commands: Object.freeze({ add: add(SLOTS.commands), label: (id) => keys?.label(id) || '' }),
+    commands: Object.freeze({
+      add: add(SLOTS.commands), label: (id) => keys?.label(id) || '',
+      // Since 1.1.1: the commands live where the person is now, [{ id, name, keys }], and running one
+      // by id as its keys would ({ ok }, refused when it is not live there, has nothing to run, or
+      // works in a room that is locked).
+      list: () => rows((keys?.live?.() || []).map((k) => ({ id: k.id, name: String(k.words || k.id), keys: Object.freeze([...(k.keys || [])]) }))),
+      run: (id) => {
+        const k = (keys?.live?.() || []).find((x) => x.id === id);
+        if (!k) return refuse('No such command here now');
+        const open = room?.()?.id?.() ?? null;
+        if ((k.zone === 'room' || k.zone === 'editing') && open != null && tables.distance.shut(open)) return refuse('The room is locked');
+        return keys?.run?.(id) ? landed(id) : refuse('That command has nothing to run');
+      },
+    }),
     surfaces: Object.freeze({ add: (s) => add(SLOTS.surfaces)(surfaceFor(s, HOLDS.get(tables), plugin.manifest?.plugin?.needs)) }),
     // A page of its own: the page itself (the pages feature shows it in the frame) and its row in
     // the ☰ menu, which opens it; the one function given back takes both away.
@@ -834,6 +922,23 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     },
     get bands() { return room?.()?.bands || BANDS_FALLBACK; },
   });
+  // What the person is looking at: { context, mark, marks } (marks since 1.1.1: all that is chosen;
+  // mark the one chosen, null when several are), or null outside a room; chosen.on(fn) hears each change (since 1.1.1).
+  const chosenOf = (r) => {
+    const context = r?.id?.() ?? null;
+    if (context == null) return null;
+    const marks = r.chosenAll ? [...r.chosenAll()] : (r.chosen?.() != null ? [r.chosen()] : []);
+    return row({ context, mark: r.chosen?.() ?? null, marks: Object.freeze(marks) });
+  };
+  const chosenFn = () => chosenOf(room?.());
+  chosenFn.on = (fn) => {
+    const r = room?.();
+    if (!r?.onChosen) return () => {};
+    const off = r.onChosen((o) => fn(row({ context: o.context, mark: o.mark, marks: Object.freeze([...o.marks]) })));
+    gone(off);
+    return off;
+  };
+  Object.freeze(chosenFn);
   return Object.freeze({
     version: API_VERSION,
     app: Object.freeze({ name: app.config.name, version: app.config.version, desktop: !!desktop }),
@@ -907,7 +1012,12 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       link: (url) => link(String(url)),
       roundTrip: (urlFor) => roundTrip(urlFor),
       download: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
-      chosen: () => { const r = room?.(); const context = r?.id?.() ?? null; return context == null ? null : row({ context, mark: r.chosen?.() ?? null }); },
+      chosen: chosenFn,
+      // Since 1.1.1: chooses marks of the open room ({ ok }; refused outside a room or for marks not
+      // there), and draws marks again on the next frame without a table changing (a decorator's
+      // state changed; coalesced, however often it is asked).
+      choose: (ids) => { const r = room?.(); if (r?.id?.() == null) return refuse('No room is open'); return r.choose?.([].concat(ids ?? [])) ? row({ ok: true }) : refuse('Those marks are not in the open room'); },
+      repaint: (ids = null) => { const r = room?.(); if (r?.id?.() == null || !r.repaint) return false; r.repaint(ids == null ? null : [].concat(ids)); return true; },
       docks: docks ? Object.freeze({ left: dockFor(docks.left, gone), right: dockFor(docks.right, gone), canvasOnly: () => docks.canvasOnly?.() }) : null,
       frame: frame ? Object.freeze({
         show: (o) => frame.show(plugin, o), update: (o) => frame.update(plugin, o), hide: () => frame.hide(plugin),

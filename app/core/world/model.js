@@ -130,7 +130,7 @@ export function declareGroupKinds(list = [], warn = () => {}) {
     if (!g || typeof g.rule !== 'string') { rest.push(g); continue; }
     if (g.id !== g.rule) { warn(g, 'an id that is its rule\'s'); continue; }
     const kind = Object.freeze({ id: g.id, rule: g.rule, name: typeof g.name === 'string' && g.name ? g.name : 'Group',
-      membership: g.membership === 'many' ? 'many' : 'one', order: g.order === 'kept' ? 'kept' : 'time' });
+      membership: g.membership === 'many' ? 'many' : 'one', order: g.order === 'kept' ? 'kept' : 'time', ...ownFields(g, warn) });
     RULE_GROUPS.set(g.rule, kind);
     MEMBERSHIP[g.rule] = kind.membership;
     declareOrder(g.rule, kind);
@@ -145,13 +145,51 @@ export function declareFamilies(list = [], warn = () => {}) {
     if (!f || typeof f.id !== 'string' || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(f.id)) { warn(f, 'an id of lowercase words joined by dashes'); continue; }
     if (FAMILIES.has(f.id) || MODES.has(f.id)) { warn(f, 'an id of its own, not a mode\'s'); continue; }
     const fam = Object.freeze({ id: f.id, name: typeof f.name === 'string' && f.name ? f.name : f.id, membership: f.membership === 'one' ? 'one' : 'many',
-      order: f.order === 'time' ? 'time' : 'kept', card: !!f.card, keep: f.keep !== false, open: typeof f.open === 'function' ? f.open : null });
+      order: f.order === 'time' ? 'time' : 'kept', card: !!f.card, keep: f.keep !== false, open: typeof f.open === 'function' ? f.open : null, ...ownFields(f, warn) });
     FAMILIES.set(f.id, fam);
     MEMBERSHIP[f.id] = fam.membership;
     if (fam.order === 'kept') KEPT.add(f.id);
   }
 }
 export const familyOf = (of) => FAMILIES.get(of) || null;
+// A kind of group's own fields (since 1.1.1): `fields: [names]` it keeps on its groups (plain JSON
+// values, saved in the .traum like any field, Law 8), and `tidy(group) → group`, its own reading
+// of them. A name the core owns is refused. Returns { fields, tidy } to go on the kind, or {}.
+export const GROUP_CORE_FIELDS = Object.freeze(['id', 'kind', 'of', 'title', 'closed', 'shared', 'family', 'x', 'y', 'at', 'edited', 'parent', 'members', 'archived', 'loose', 'mode']);
+function ownFields(g, warn) {
+  if (!Array.isArray(g.fields) || !g.fields.length) return {};
+  const fields = [];
+  for (const name of g.fields) {
+    if (typeof name !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(name) || GROUP_CORE_FIELDS.includes(name)) { warn(g, `fields named as its own, not ${GROUP_CORE_FIELDS.join(', ')} (${name})`); continue; }
+    if (!fields.includes(name)) fields.push(name);
+  }
+  return fields.length ? { fields: Object.freeze(fields), tidy: typeof g.tidy === 'function' ? g.tidy : null } : {};
+}
+const groupKindOf = (of) => FAMILIES.get(of) || RULE_GROUPS.get(of) || null;
+// A plain JSON copy of a value, or undefined when it is none (or over 64 KB written out).
+function plain(v) {
+  if (v === undefined || v === null) return undefined;
+  try { const s = JSON.stringify(v); return s === undefined || s.length > 65536 ? undefined : JSON.parse(s); } catch { return undefined; }
+}
+// A group's own fields from f, tidied by its kind (`fields`, `tidy`): kept on out. A group of a
+// family no plugin declares now (its plugin off) keeps every field it has as it is: off loses nothing.
+function groupFields(f, out) {
+  const k = groupKindOf(out.of);
+  if (!k) {
+    if (out.family) for (const [name, v] of Object.entries(f)) { if (GROUP_CORE_FIELDS.includes(name) || name in out) continue; const p = plain(v); if (p !== undefined) out[name] = p; }
+    return out;
+  }
+  if (!k.fields) return out;
+  for (const name of k.fields) { const p = plain(f[name]); if (p !== undefined) out[name] = p; }
+  if (k.tidy) {
+    let t = null;
+    try { t = k.tidy(Object.freeze(JSON.parse(JSON.stringify(out)))); } catch (err) { console.warn(`Group kind ${k.id}: tidy failed`, err); }
+    if (t && typeof t === 'object') for (const name of k.fields) { if (!(name in t)) continue; const p = plain(t[name]); if (p === undefined) delete out[name]; else out[name] = p; }
+  }
+  return out;
+}
+// The fields a group's kind keeps (declared), to take off a group when a change leaves them out.
+const ownFieldsOf = (g) => groupKindOf(g?.of)?.fields || [];
 declareFamilies(); // the plain group, before any plugin says more
 export const families = () => [...FAMILIES.values()];
 // Whether a group is a card: one of a card family's (a book), shown as one thing in every mode.
@@ -581,7 +619,7 @@ function tidy(f) {
     if (f.closed) out.closed = true;
     if (f.shared) out.shared = true; // made on purpose (Ctrl+G, the tray): one object in every mode (groups.js)
     if (f.family || FAMILIES.has(out.of)) out.family = true; // a plugin's family's (declareFamilies): never takes its parts with it, its plugin on or off
-    return out;
+    return groupFields(f, out); // its kind's own fields (since 1.1.1)
   }
   const out = { kind, name: oneLine(f.name) || 'Untitled' };
   if (f.rules && typeof f.rules === 'object' && !Array.isArray(f.rules) && Object.keys(f.rules).length) out.rules = copy(f.rules); // its rules' settings (KERNEL.md: on the context mark)
@@ -720,6 +758,7 @@ export function update(w, id, fields, now = Date.now()) {
   if (isGroup(th)) {
     next.of = th.of;
     if (!next.closed) delete th.closed;
+    for (const name of ownFieldsOf(th)) if (!(name in next)) delete th[name]; // a declared field left out (or null) goes
   }
   if (kindOf(th) === 'room') for (const k of ['desc', 'tags', 'rules']) if (!(k in next)) delete th[k];
   Object.assign(th, next);

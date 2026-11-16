@@ -49,7 +49,7 @@ export default class World extends Feature {
     // One group concept: every kind of group in 'world.groups' (a rule's own, with `rule`, or a
     // family); 'world.families' is the older slot for families, read the same (model.js).
     const families = this.defineSlot('world.families', 'A family of groups a plugin declares (older; use world.groups): { id, name, membership?, order?, card?, keep?, open?(id) } (see world/model.js, declareFamilies).');
-    const groupKinds = this.defineSlot('world.groups', 'A kind of group: { id, name, membership?, order?, card?, keep?, open?(id), rule? } (see world/model.js, declareGroupKinds).');
+    const groupKinds = this.defineSlot('world.groups', 'A kind of group: { id, name, membership?, order?, card?, keep?, open?(id), rule?, fields?, tidy?(group) } (see world/model.js, declareGroupKinds).');
     const declareAll = () => {
       const warn = (f, why) => console.warn(`World: the kind of group "${f?.id}" was skipped: it needs ${why}`);
       const rest = declareGroupKinds(groupKinds.items, warn);

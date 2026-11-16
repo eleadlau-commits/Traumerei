@@ -60,6 +60,15 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
       if (rows?.length) emit('world:moments', { rows, undone: false });
       return true;
     },
+    // A step back (or forward), as World.js takes it: the tables as they were.
+    undo(back = true) {
+      const rows = M.undo(log, w, back, tick());
+      if (!rows) return false;
+      last = snap();
+      lib.model.touch(w);
+      emit('world:moments', { rows, undone: back });
+      return true;
+    },
     get ontologies() { return ontologies(); },
     ontology: (id) => ontologies().find((o) => o.id === id) || pessoa,
     globals: {},
@@ -82,7 +91,8 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
   let chosen = null;
   const leaving = new Map();
   let text = null; // the words being written, as the room offers them (writeIn)
-  const roomNow = () => (chosen ? { id: () => chosen.context, chosen: () => chosen.mark, ...(text ? { text } : {}) } : null);
+  let more = {}; // more of the open room, as a test gives it (roomWith): chosenAll, choose, onChosen, repaint
+  const roomNow = () => (chosen ? { id: () => chosen.context, chosen: () => chosen.mark, ...(text ? { text } : {}), ...more } : null);
 
   // Connects a plugin (by id) and runs its install(t); returns { t, off } where off() takes away
   // everything it added, as switching it off in Settings does.
@@ -105,7 +115,7 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
     return { t, off };
   }
   const added = (id) => [...slots.entries()].flatMap(([slot, s]) => s.entries.filter((e) => e.owner === id).map((e) => ({ slot, item: e.item })));
-  return { ai, choices, w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, writeIn: (o) => { text = o; }, lib, tick };
+  return { ai, choices, w, room: room.id, other: other.id, train: train.id, ids, app, world, log, plug, added, toasts, choose: (context, mark = null) => { chosen = context ? { context, mark } : null; }, writeIn: (o) => { text = o; }, roomWith: (o) => { more = o || {}; }, lib, tick };
 }
 
 // The eight laws, as checks over the world's tables (KERNEL.md). Returns the broken ones in words.
