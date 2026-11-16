@@ -6,12 +6,27 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.0.4 | 2 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
 
-## 1.0.3 (unreleased)
+## 1.0.4 (unreleased)
+
+- Only corpus plugins are built in (the room types). Everything else ships as a plugin file beside
+  each Release: the home page, Search, the desk, gaps and returns, Time, Export, room files, Book,
+  pictures, the picture behind, templates, the account and the source editor.
+  `starter-set.traumplug` brings them all back in one import (Settings → Plugins → Import
+  plugin…). The app alone opens on the rooms page.
+- Plugin API 2 widened by additions: `t.peers` (what plugins offer each other), and `slots.menu`,
+  `slots.views` and `slots.account`.
+- A book's card shows its title and counts, not every thought's words.
+- The first letter of a new thought puts in only that thought, not the whole room (about 80 ms
+  in a room of 1,500, was 240 ms).
+- `python build.py new-plugin` makes a plugin that ships as a file; `--corpus` for a corpus plugin.
+
+## 1.0.3 (15 Nov 2026)
 
 - Room settings: a Settings item in the room's rail opens the room's own settings in the right dock
   (name, colour, categories, what is inside it, and the mode's settings for this room).
