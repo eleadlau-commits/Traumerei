@@ -10,6 +10,23 @@ const isGroupOf = (m, of) => !!m && m.kind === 'group' && m.of === of;
 export const isBook = (m) => isGroupOf(m, BOOK);
 export const isChapter = (m) => isGroupOf(m, CHAPTER);
 
+// Numbered or not: a chapter's own field `numbered` (slots.groups `fields`, kept in the tables), on
+// unless it says false. An unnumbered chapter (a Preface, an Interlude: LaTeX's starred sections)
+// shows no number and is skipped in its siblings' numbering, and so are the sections in it.
+export const NUMBERED = 'numbered';
+export const isNumbered = (m) => !!m && m[NUMBERED] !== false;
+// The numbers of one holder's chapters, in order: next(numbered) → '3' (with the holder's prefix,
+// '2.' for a section of chapter 2), or '' for an unnumbered one; a prefix of null numbers none.
+export function numberer(prefix = '') {
+  let n = 0;
+  return (numbered) => (prefix != null && numbered !== false ? `${prefix}${++n}` : '');
+}
+// The prefix a chapter numbered `num` hands its sections: none when it has no number.
+export const under = (num) => (num ? `${num}.` : null);
+// A chapter's words as a heading shows them: its number and its name, either one alone, or, with
+// neither (an unnamed, unnumbered chapter), `none`.
+export const headingWords = (num, name, none = '') => [num, name].filter(Boolean).join('  ') || none;
+
 // The books in a room, oldest first.
 export function booksIn(reads, room) {
   return reads.marks.in(room).filter(isBook).sort((a, b) => a.at - b.at);
@@ -41,7 +58,10 @@ export function tree(reads, id, seen = new Set()) {
     const g = reads.gaps.of(pid);
     return { id: pid, chapter: false, title: '', text: partText(reads, pid), parts: [], open: g?.state === 'open' ? 1 : 0, of: g ? 1 : 0 };
   }).filter(Boolean);
-  return { id, chapter: isChapter(m), title: headWords || m.title || (isBook(m) ? 'Untitled book' : 'Untitled chapter'), text: '', parts, open: p.open || 0, of: p.of || 0 };
+  // A chapter may have no name (no heading thought, an empty title): its title is then '' (named:
+  // false), and those that show it say so in their own way (its number alone, or "(untitled)").
+  const name = headWords || m.title || '';
+  return { id, chapter: isChapter(m), title: name || (isBook(m) ? 'Untitled book' : ''), named: !!name, ...(isChapter(m) ? { numbered: isNumbered(m) } : {}), text: '', parts, open: p.open || 0, of: p.of || 0 };
 }
 
 // How much a book (or chapter) holds: chapters (however deep), thoughts, and words.
@@ -54,15 +74,17 @@ export function count(node) {
 }
 export const wordCount = (text) => (String(text || '').match(/\S+/g) || []).length;
 
-// The contents page: one line per chapter, however deep, numbered as it nests (1, 1.1, 2…).
-export function contents(node, prefix = '') {
+// The contents page: one line per chapter, however deep, numbered as it nests (1, 1.1, 2…); an
+// unnumbered chapter has no number and is skipped (Preface, 1, 2, Interlude, 3); an unnamed one
+// reads as its number alone, or "(untitled)" with none.
+export function contents(node, prefix = '', depth = 1) {
   const out = [];
-  let n = 0;
+  const next = numberer(prefix);
   for (const p of node?.parts || []) {
     if (!p.chapter) continue;
-    const num = `${prefix}${++n}`;
-    out.push({ id: p.id, num, depth: num.split('.').length, title: p.title, open: p.open, ...count(p) });
-    out.push(...contents(p, `${num}.`));
+    const num = next(p.numbered);
+    out.push({ id: p.id, num, depth, title: p.title || (num ? '' : '(untitled)'), named: p.named !== false, numbered: !!num, open: p.open, ...count(p) });
+    out.push(...contents(p, under(num), depth + 1));
   }
   return out;
 }
@@ -73,13 +95,16 @@ export function markdown(node) {
   if (!node) return '';
   const lines = [`# ${node.title}`, ''];
   if (node.open) lines.push(`_${node.open === 1 ? 'One gap is' : `${node.open} gaps are`} still open._`, '');
+  // An unnumbered chapter's heading has no number; an unnamed one is its number alone; one with
+  // neither is a break (* * *).
   const walk = (n, depth, prefix) => {
-    let k = 0;
+    const next = numberer(prefix);
     for (const p of n.parts) {
       if (p.chapter) {
-        const num = `${prefix}${++k}`;
-        lines.push(`${'#'.repeat(Math.min(depth + 1, 6))} ${num} ${p.title}`, '');
-        walk(p, depth + 1, `${num}.`);
+        const num = next(p.numbered);
+        const words = [num, p.title].filter(Boolean).join(' ');
+        lines.push(words ? `${'#'.repeat(Math.min(depth + 1, 6))} ${words}` : '* * *', '');
+        walk(p, depth + 1, under(num));
       } else if (p.text.trim()) {
         lines.push(`${p.open ? '**Open:** ' : ''}${p.text.trim()}`, '');
       }

@@ -8,7 +8,7 @@
 // a figure as its picture and caption. Margin notes stay out, as they do in every export.
 // Plain functions over the read half of the tables; tested in api/tests/book-word.test.js.
 
-import { tree } from './rules.js';
+import { tree, numberer, under, headingWords } from './rules.js';
 import { SIZES, MARGINS } from './pages.js';
 import { settingOf } from './column.js';
 import { zip } from './zip.js';
@@ -99,12 +99,12 @@ export function bodyOf(reads, id, page) {
   let breakNext = true; // what follows the title starts the next page
   const brk = (chapter) => { const b = breakNext || (chapter && page.chapterPage); breakNext = false; return b; };
   const walk = (n, depth, prefix) => {
-    let k = 0;
+    const next = numberer(prefix); // an unnumbered chapter: no number, skipped (rules.js)
     for (const p of n.parts) {
       if (p.chapter) {
-        const num = `${prefix}${++k}`;
-        body.push(para(run(`${num}  ${p.title}`), { style: `Heading${Math.min(depth, 3)}`, pageBreak: brk(depth === 1) }));
-        walk(p, depth + 1, `${num}.`);
+        const num = next(p.numbered);
+        body.push(para(run(headingWords(num, p.title, '* * *')), { style: `Heading${Math.min(depth, 3)}`, pageBreak: brk(depth === 1) }));
+        walk(p, depth + 1, under(num));
         continue;
       }
       const m = reads.marks.get(p.id);

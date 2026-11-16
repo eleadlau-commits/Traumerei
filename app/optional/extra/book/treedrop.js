@@ -19,9 +19,9 @@ export function zoneOf(y, top, height) {
 
 const sectionsOf = (t, ch) => t.links.members(ch).filter((p) => isChapter(t.marks.get(p)));
 // How deep a holder sits: the book 0, a chapter 1, a section 2…
-const depthOf = (t, g) => { let d = 0; for (let up = g; up && isChapter(t.marks.get(up)); up = holderOf(t, up)) d++; return d; };
+export const depthOf = (t, g) => { let d = 0; for (let up = g; up && isChapter(t.marks.get(up)); up = holderOf(t, up)) d++; return d; };
 // How many levels a chapter takes: 1, and one more for each level of sections in it.
-const levels = (t, ch) => 1 + Math.max(0, ...sectionsOf(t, ch).map((s) => levels(t, s)));
+export const levels = (t, ch) => 1 + Math.max(0, ...sectionsOf(t, ch).map((s) => levels(t, s)));
 
 // Where `id` (a chapter, or its heading) lands let go on the line of `target` (a chapter) in
 // `zone`: { ok: true, holder, at } (`at` counted among the holder's parts without it, as

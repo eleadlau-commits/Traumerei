@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, titleOf, placeNotes, settingOf, widthOf, draftRoom } from './column.js';
+import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom } from './column.js';
 import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
@@ -93,7 +93,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     }
     if (it.t === 'heading' || it.t === 'chapter') {
       const d = it.depth;
-      const title = titleOf(reads, it.chapter);
+      const title = nameOf(reads, it.chapter); // (an unnamed chapter: none, and no running head)
       if (d === 1) running = title;
       const h = it.t === 'heading' ? (linesOf(it.mark).height ?? linesOf(it.mark).block) : lh * 1.3;
       const next = items[k + 1];
@@ -103,11 +103,11 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       else if (!fresh()) y += lh * SPACE.before[d - 1];
       if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
       if (it.t === 'heading') {
-        boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d });
+        if (it.num) boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d }); // (unnumbered: none)
         row(it.mark, h, { far: title }); // far off, the heading reads as its title, set large (style.css)
         if (roomFor(it.mark)) continue;
       } else {
-        boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${it.num}  ${title}`, style: 'heading', level: d, opens: it.chapter });
+        boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: chapterLabel(reads, it.chapter, it.num), style: 'heading', level: d, opens: it.chapter });
         own.set(k, { top: y, bottom: y + h });
         y += h; used = true;
       }

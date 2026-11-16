@@ -8,7 +8,7 @@
 // room's thoughts). A chapter's heading is a thought too, linked to it by a `heads` link and kept
 // as its first part, so the caret runs through it and it is written in like any paragraph.
 
-import { BOOK, CHAPTER, isBook, isChapter, booksIn } from './rules.js';
+import { BOOK, CHAPTER, isBook, isChapter, booksIn, isNumbered, numberer, under, headingWords } from './rules.js';
 import { slotsOf, spansOf } from './slots.js';
 
 export const RULE = 'book-page';
@@ -45,17 +45,29 @@ export function aboutOf(reads, mark) {
   for (const r of reads.links.from(mark, ABOUT)) if (reads.marks.get(r.to)) return r.to;
   return null;
 }
-// The title a chapter shows: its heading's words, else the group's own title.
-export function titleOf(reads, chapter) {
+// A chapter's name: its heading's words, else the group's own title, else '' (an unnamed chapter:
+// no heading thought and an empty title).
+export function nameOf(reads, chapter) {
   const h = headOf(reads, chapter);
   const words = h ? (reads.marks.text(h) || '').split('\n')[0].trim() : '';
-  return words || reads.marks.get(chapter)?.title || 'Untitled';
+  return words || reads.marks.get(chapter)?.title || '';
 }
+// The title a chapter shows in words: its name, or "(untitled)".
+export function titleOf(reads, chapter) {
+  return nameOf(reads, chapter) || '(untitled)';
+}
+// What a chapter with no heading thought shows where its heading would be: its number and its
+// title, its number alone (unnamed), its title alone (unnumbered), or a break (neither).
+export const BREAK = '* * *';
+export const chapterLabel = (reads, chapter, num) => headingWords(num, nameOf(reads, chapter), BREAK);
 
 // The room as the book reads: [{ t, … }] in order, and where each mark is.
 //   { t: 'title', book }                          a book's title
 //   { t: 'heading', mark, chapter, depth, num }   a chapter's heading thought
-//   { t: 'chapter', chapter, depth, num }         a chapter with no heading thought (its title)
+//   { t: 'chapter', chapter, depth, num }         a chapter with no heading thought (its title,
+//                                                 or none: an unnamed chapter)
+// `num` is '' for an unnumbered chapter (its field numbered: false) and the sections in it, which
+// its siblings' numbering skips (Preface, 1, 2, Interlude, 3).
 //   { t: 'para', mark, holder, depth }            a paragraph (or a table, a figure) in the book
 //   { t: 'loose' }, { t: 'stray', mark }          then the room's thoughts not in a book
 // `at` maps a mark (thought or chapter) to { holder, i } (its holder and place in its parts).
@@ -64,7 +76,7 @@ export function titleOf(reads, chapter) {
 export function read(reads, room) {
   const items = [], at = new Map(), seen = new Set(), notes = [];
   const walk = (holder, depth, prefix) => {
-    let n = 0;
+    const next = numberer(prefix);
     reads.links.members(holder).forEach((id, i) => {
       if (seen.has(id)) return; // a mark seen twice (in two chapters) reads once, where it comes first
       const m = reads.marks.get(id);
@@ -72,7 +84,7 @@ export function read(reads, room) {
       seen.add(id);
       at.set(id, { holder, i });
       if (isChapter(m)) {
-        const num = `${prefix}${++n}`;
+        const num = next(isNumbered(m));
         const head = headOf(reads, id);
         if (head && !seen.has(head) && reads.links.holders(head).includes(id)) {
           // its heading is drawn first, wherever it sits in the chapter's parts
@@ -80,7 +92,7 @@ export function read(reads, room) {
           at.set(head, { holder: id, i: reads.links.members(id).indexOf(head) });
           items.push({ t: 'heading', mark: head, chapter: id, depth: Math.min(depth + 1, 3), num });
         } else items.push({ t: 'chapter', chapter: id, depth: Math.min(depth + 1, 3), num });
-        walk(id, depth + 1, `${num}.`);
+        walk(id, depth + 1, under(num));
       } else if (m.kind !== 'group') items.push({ t: 'para', mark: id, holder, depth });
     });
   };
@@ -157,10 +169,10 @@ export function column(reads, room, measure, size = () => null, set = null) {
       const label = it.num;
       if (it.t === 'heading') {
         const h = heightOf(it.mark);
-        boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label, style: 'heading', level: it.depth });
+        if (label) boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label, style: 'heading', level: it.depth }); // (unnumbered: none)
         place(it.mark, h, { far: titleOf(reads, it.chapter) }); // far off: its title, large
       } else {
-        boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${label}  ${titleOf(reads, it.chapter)}`, style: 'heading', level: it.depth, opens: it.chapter });
+        boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: chapterLabel(reads, it.chapter, label), style: 'heading', level: it.depth, opens: it.chapter });
         own.set(k, { top: y, bottom: y + lh * 1.3 });
         y += lh * 1.3;
       }

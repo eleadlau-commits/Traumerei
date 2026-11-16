@@ -5,11 +5,12 @@
 // gap; the book's title and totals; Markdown and Print). Only the plugin API (t.ui.docks).
 
 import { ui } from 'folio';
-import { isChapter, booksIn, wordCount } from './rules.js';
-import { RULE, read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
+import { isChapter, isNumbered, booksIn, wordCount } from './rules.js';
+import { RULE, read, headed, headOf, titleOf, nameOf, aboutOf, ABOUT } from './column.js';
 import { pageOf, textWidth, ranges, sheetWidth, gridOf, setGrid, COUNTS } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
-import { BLOCKS, ACROSS, acrossOf, setAcross } from './blocks.js';
+import { BLOCKS, ACROSS, acrossOf, setAcross, frameChosen } from './blocks.js';
+import { chapterOf, rename, setNumbered, unnumberedAbove } from './nest.js';
 import { zoneOf, landing, dropTo } from './treedrop.js';
 
 const { el } = ui;
@@ -30,7 +31,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   // The chapter (or book) the chosen mark, or the caret, is in.
   const here = () => {
     const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark;
-    if (!id) return null;
+    if (!id) return frameChosen(t); // (a chapter block's frame chosen, Book · blocks)
     return headed(t, id) || (isChapter(t.marks.get(id)) ? id : holderOf(t, id));
   };
 
@@ -79,7 +80,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
       };
       const row = el('li', { class: `book-tree-line book-depth-${it.depth}` + (it.chapter === lit ? ' book-here' : '') + (moving ? ' book-target' : ''), 'data-drop': it.chapter },
         el('button', { type: 'button', class: 'book-text', onclick: go, title: moving ? 'Move it here' : 'Go there' },
-          el('span', { class: 'book-num' }, it.num), ` ${titleOf(t, it.chapter)}`),
+          el('span', { class: 'book-num' }, it.num), ` ${nameOf(t, it.chapter) || (it.num ? '' : '(untitled)')}`),
         el('span', { class: 'book-right' }, `${span(it.chapter)}${c.words.toLocaleString()}${c.open ? ` · ${c.open} open` : ''}`));
       if (!t.distance.shut(r)) {
         row.draggable = true;
@@ -148,12 +149,33 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
         onclick: () => { const res = setAcross(t, r, k); if (res && res.ok === false && res.reason) t.ui.toast(res.reason); } }, String(k)))),
       el('p', { class: 'hint' }, 'Alt+= more · Alt+- fewer'));
   };
+  // A chapter: its name (Title: typed, it becomes the heading; emptied, the chapter is unnamed),
+  // numbered or not (pick words, Alt+U), how much it holds, and the keys.
+  const chapterSection = (r, ch, label, locked) => {
+    const c = tally(ch);
+    const sub = t.links.members(ch).filter((p) => isChapter(t.marks.get(p))).length;
+    const name = nameOf(t, ch);
+    const on = isNumbered(t.marks.get(ch));
+    const field = el('input', { class: 'pop-name title-field book-chapter-title', value: name, placeholder: 'Unnamed: type a title', 'aria-label': 'The chapter\'s title', maxlength: 120, disabled: locked,
+      onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.target.value = name; e.target.blur(); } },
+      onchange: (e) => { const res = rename(t, r, ch, e.target.value); if (res && res.ok === false && res.reason) t.ui.toast(res.reason); } });
+    const word = (text, yes, title) => el('button', { type: 'button', class: 'word', 'aria-pressed': yes === on ? 'true' : 'false', title, disabled: locked,
+      onclick: () => { const res = setNumbered(t, ch, yes); if (res.ok === false && res.reason) t.ui.toast(res.reason); } }, text);
+    return el('details', { class: 'sec', open: '' }, el('summary', {}, label),
+      el('div', { class: 'sec-body' },
+        el('label', { class: 'label' }, 'Title', field),
+        el('div', { class: 'book-grid', role: 'group', 'aria-label': 'Numbered or not' },
+          el('div', { class: 'seg book-grid-row' }, word('Numbered', true, 'A number, counted among its siblings (Alt+U)'), word('Unnumbered', false, 'No number, skipped in the numbering: a Preface, an Interlude (Alt+U)'))),
+        unnumberedAbove(t, ch) ? el('p', { class: 'hint' }, 'No number while it sits in an unnumbered chapter.') : null,
+        el('p', { class: 'hint' }, `${c.paras} paragraphs · ${c.words.toLocaleString()} words${sub ? ` · ${sub} sections` : ''}${c.open ? ` · ${c.open} still open` : ''}`),
+        el('p', { class: 'hint' }, 'Alt+U numbered or not · Alt+Shift+H unnamed or named by its first paragraph · Alt+Shift+C a chapter inside it · Alt+C a chapter around it · Ctrl+] deeper · Ctrl+[ up · Ctrl+Up / Ctrl+Down move it · drag its heading to nest it')));
+  };
   const inHand = () => {
     const r = room();
     const b = r && bookOf(r);
     if (!b) return [el('p', { class: 'hint' }, 'No book in this room yet.'), el('div', { class: 'box-btns' }, btn('Make a book', () => openAll(true)))];
     const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark;
-    const ch = id ? (headed(t, id) || (isChapter(t.marks.get(id)) ? id : null)) : null;
+    const ch = id ? (headed(t, id) || (isChapter(t.marks.get(id)) ? id : null)) : frameChosen(t);
     const out = [];
     const locked = t.distance.shut(b);
     const title = el('input', { class: 'pop-name title-field book-title', value: t.marks.get(b)?.title || '', 'aria-label': 'The book\'s title', maxlength: 120, disabled: locked,
@@ -163,15 +185,8 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     out.push(title, el('p', { class: 'hint book-stats' }, `${all.paras} paragraphs · ${all.words.toLocaleString()} words${all.open ? ` · ${all.open} still open` : ' · nothing open'}`));
     if (t.marks.get(r)?.mode === BLOCKS) out.push(blocksControl(r));
     else if (pageOf(t, r)) out.push(gridControl(r));
-    if (ch) {
-      const c = tally(ch);
-      const sub = t.links.members(ch).filter((p) => isChapter(t.marks.get(p))).length;
-      out.push(el('details', { class: 'sec', open: '' }, el('summary', {}, 'Chapter in hand'),
-        el('div', { class: 'sec-body' },
-          el('p', { class: 'book-hand-title' }, titleOf(t, ch)),
-          el('p', { class: 'hint' }, `${c.paras} paragraphs · ${c.words.toLocaleString()} words${sub ? ` · ${sub} sections` : ''}${c.open ? ` · ${c.open} still open` : ''}`),
-          el('p', { class: 'hint' }, 'Ctrl+] deeper · Ctrl+[ up · Ctrl+Up / Ctrl+Down move it · Ctrl+Alt+H back to a paragraph'))));
-    } else if (id && t.marks.get(id) && aboutOf(t, id)) {
+    if (ch) out.push(chapterSection(r, ch, 'Chapter in hand', locked));
+    else if (id && t.marks.get(id) && aboutOf(t, id)) {
       const of = aboutOf(t, id);
       out.push(el('details', { class: 'sec', open: '' }, el('summary', {}, 'Margin note in hand'),
         el('div', { class: 'sec-body' },
@@ -185,7 +200,9 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
       out.push(el('details', { class: 'sec', open: '' }, el('summary', {}, 'Paragraph in hand'),
         el('div', { class: 'sec-body' },
           el('p', { class: 'hint' }, `${wordCount(t.marks.text(id))} words${where ? ` · in ${isChapter(t.marks.get(where)) ? titleOf(t, where) : 'the book, before the first chapter'}` : ' · not in the book yet'}${g ? ` · ${g.state === 'open' ? 'still to write' : 'written'}` : ''}${pg ? ` · page ${pg}` : ''}${notes ? ` · ${notes === 1 ? 'a margin note' : `${notes} margin notes`}` : ''}`),
-          el('p', { class: 'hint' }, 'Ctrl+Alt+H heading · Alt+M into a chapter · Alt+N a note on the one before · Ctrl+Up / Ctrl+Down move · Alt+Enter split'))));
+          el('p', { class: 'hint' }, 'Ctrl+Alt+H heading · Alt+M into a chapter · Alt+N a note on the one before · Ctrl+Up / Ctrl+Down move · Alt+Enter split · Alt+C a chapter around it'))));
+      const its = chapterOf(t, id);
+      if (its && !aboutOf(t, id)) out.push(chapterSection(r, its, 'Its chapter', locked));
     }
     out.push(el('div', { class: 'box-btns book-actions' }, btn('Export Markdown', () => exportMarkdown(b)), btn('Word document', () => exportWord(b)), btn('Print or PDF', () => print(b))));
     return out;
@@ -193,7 +210,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
 
   // ---- Drawing ----
 
-  const stamp = () => `${room()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`;
+  const stamp = () => `${room()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`; // (here: a chosen frame too)
   // The docks belong to a room seen as Book: out of it (the rooms page, another room, another
   // mode), they close.
   const inBookRoom = () => { const r = room(); const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; }; // (Book · blocks keeps them)

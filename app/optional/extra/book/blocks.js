@@ -11,7 +11,9 @@
 // the rule. Only the plugin API (app/core/API.md). Tested in app/core/api/tests/book-blocks.test.js.
 
 import { wordCount } from './rules.js';
-import { read, after, headed, aboutOf } from './column.js';
+import { read, after, headed, aboutOf, nameOf } from './column.js';
+import { DEEPEST, depthOf, levels } from './treedrop.js';
+import { isChapter } from './rules.js';
 import { holderOf, leaveBook, afterGesture } from './editing.js';
 
 export const BLOCKS = 'book-blocks';
@@ -107,12 +109,15 @@ export function board(reads, room, measure, set = null) {
     const o = { id: node.id, depth: d, x, y, w, h: 0, top: y, ancestors, cells: [] };
     outlines.push(o);
     let words = 0;
-    if (d > 0) { // a chapter: its number, then its heading (or its title) on the outline's top
-      const num = lh * (1.2 + 0.5 * node.num.length / 2);
-      const strip = lh * 1.9;
+    if (d > 0) { // a chapter block: its number, then its heading (or its title) on the frame's top
+      // (unnumbered: no number, the heading from the left; unnamed: its number alone, or with
+      // neither a slimmer strip, a faint frame)
+      const num = node.num ? lh * (1.2 + 0.5 * node.num.length / 2) : 0;
+      const name = node.head ? '' : nameOf(reads, node.id);
+      const strip = node.head || name || node.num ? lh * 1.9 : lh * 1.1;
       if (node.head) {
         const hw = w - 2 * PAD - num;
-        rows.push({ mark: node.head, x: left + num + hw / 2, y: y + strip / 2 + lh * 0.15, width: hw, height: lh, align: 'start', far: `${node.num}  ${(reads.marks.text(node.head) || '').split('\n')[0].slice(0, 60)}`, ...clip(node.head, hw, 1) });
+        rows.push({ mark: node.head, x: left + num + hw / 2, y: y + strip / 2 + lh * 0.15, width: hw, height: lh, align: 'start', far: [node.num, (reads.marks.text(node.head) || '').split('\n')[0].slice(0, 60)].filter(Boolean).join('  '), ...clip(node.head, hw, 1) });
         cells.set(node.head, { x0: x, y0: y, x1: x + w, y1: y + strip });
       }
       let sy = y + strip;
@@ -121,7 +126,8 @@ export function board(reads, room, measure, set = null) {
         cells.set(n, { x0: x, y0: sy, x1: x + w, y1: sy + lh * NL });
         sy += lh * NL + F;
       }
-      o.label = node.head ? node.num : `${node.num}  ${reads.marks.get(node.id)?.title || 'Untitled'}`;
+      o.label = node.head ? node.num : [node.num, name].filter(Boolean).join('  ');
+      o.named = !!(node.head || name); o.numbered = !!node.num;
       o.top = y = sy;
     } else y += PAD;
     let run = [];
@@ -161,7 +167,9 @@ export function board(reads, room, measure, set = null) {
   y = grid(strays, L0 + PAD, y + lh * 1.6, null);
   if (!strays.length) y += lh * 2;
   tray.h = Math.max(lh * 3, y - tray.y + PAD - (strays.length ? G : 0));
-  const outlined = outlines.filter((o) => o.depth > 0).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h, label: o.label, right: `${o.words.toLocaleString('en')} words`, style: 'quiet', level: Math.min(o.depth, 3) }));
+  // Each chapter a block holding blocks: a `quiet` box, which the plugin's style frames heavier than
+  // a paragraph's (style.css, in a room seen as Book · blocks only); an unnamed one says so faintly.
+  const outlined = outlines.filter((o) => o.depth > 0).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h, label: o.label, right: `${o.named ? '' : 'unnamed · '}${o.numbered ? '' : 'unnumbered · '}${o.words.toLocaleString('en')} words`, style: 'quiet', level: Math.min(o.depth, 3) }));
   const boxes = [...labels,
     { x: tray.x, y: tray.y, w: tray.w, h: tray.h, label: 'Not in the book yet', right: strays.length ? `${strays.length}` : 'drag a block here to take it out', style: 'shelf' },
     ...outlined, ...frames];
@@ -183,6 +191,9 @@ export function dropAt(reads, room, mark, x, y, lay) {
   const from = holderOf(reads, id);
   const T = lay.tray;
   if (x >= T.x && x <= T.x + T.w && y >= T.y && y <= T.y + T.h) return from ? { leave: from, mark: id } : null;
+  // A chapter let go inside its own block (on itself, or a section it holds): nothing.
+  const own = lay.outlines.find((c) => c.id === id);
+  if (own && within(own, x, y)) return null;
   // The innermost outline at the point (never the chapter being moved, nor one inside it).
   let o = null;
   for (const c of lay.outlines) {
@@ -190,6 +201,9 @@ export function dropAt(reads, room, mark, x, y, lay) {
     if (!o || c.depth > o.depth) o = c;
   }
   if (!o) return null;
+  // A chapter block nests at most three deep, with the sections it brings.
+  if (isChapter(reads.marks.get(id)) && depthOf(reads, o.id) + levels(reads, id) > DEEPEST)
+    return { refuse: 'A book goes three levels deep: it does not fit there.', mark: id };
   const members = reads.links.members(o.id).filter((m) => m !== id);
   const head = members[0] && headed(reads, members[0]) === o.id ? 1 : 0; // nothing goes above a heading
   let at;
@@ -221,6 +235,7 @@ export function installBlocks(t) {
     drop: (reads, context, mark, x, y, set) => {
       const p = dropAt(reads, context, mark, x, y, board(reads, context, measure, set));
       if (p?.leave) { leave(p.mark); return null; }
+      if (p?.refuse) { t.ui.toast(p.refuse); return null; }
       return p;
     },
     // A thought written after a block lands right after it, in its chapter (as in Book).
@@ -230,4 +245,28 @@ export function installBlocks(t) {
     },
     hand: false,
   });
+}
+
+// The chapter whose block is chosen (a tap on its frame, not on a block in it), in a room seen as
+// Book · blocks, or null: an unnamed chapter has no heading to choose, so its frame stands for it.
+// The room keeps no API word for the box chosen, so it is read off the canvas (data-box, as
+// editor.js reads a slot) and matched to the board's chapter blocks by where it is.
+export function chapterAtBox(lay, box) {
+  if (!box) return null;
+  const o = lay.outlines.find((c) => c.depth > 0 && Math.abs(c.x - box.x) < 0.5 && Math.abs(c.y - box.y) < 0.5 && Math.abs(c.w - box.w) < 0.5);
+  return o ? o.id : null;
+}
+let seenFrame = { key: '', id: null };
+export function frameChosen(t) {
+  try {
+    if (typeof document === 'undefined' || t.ui.chosen()?.mark) return null;
+    const r = t.ui.chosen()?.context;
+    if (!r || t.marks.get(r)?.mode !== BLOCKS) return null;
+    const node = [...document.querySelectorAll(`.room[data-mode="${BLOCKS}"] .room-cell-quiet.chosen[data-box]`)].find((n) => n.offsetParent);
+    const box = node ? t.rules.draws(BLOCKS, r).boxes[+node.dataset.box] : null;
+    if (!box || box.style !== 'quiet') return null;
+    const key = `${r}|${t.moments.seq?.() ?? Math.random()}|${box.x}|${box.y}|${box.w}`; // (looked at a few times a second by the docks)
+    if (seenFrame.key !== key) seenFrame = { key, id: chapterAtBox(board(t, r, (text, width) => t.ui.measure(text, width)), box) };
+    return seenFrame.id;
+  } catch { return null; }
 }
