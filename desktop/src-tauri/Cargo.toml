@@ -1,6 +1,6 @@
 [package]
 name = "traumerei"
-version = "1.0.3"
+version = "1.0.4"
 description = "Träumerei desktop app"
 edition = "2021"
 
