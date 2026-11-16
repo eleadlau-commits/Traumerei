@@ -137,6 +137,15 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
         if (context === ARCHIVE) return land(model.archive(w(), mark), mark, 'Messy thoughts, a locked room, a Twin\'s side or an archived room cannot be archived');
         if (!model.isFloor(context)) return refuse('A room sits on a floor or in the Archive');
         if (model.isArchived(w(), mark)) model.restore(w(), mark);
+        const page = +context.slice(6);
+        // With a cell ({ col, row } or { x, y }): exactly there by the floor rule (on the board,
+        // free), or refused; a room from another floor comes to this one. Without, the floor only.
+        const col = position?.col ?? position?.x, row = position?.row ?? position?.y;
+        if (Number.isFinite(col) && Number.isFinite(row) && floors) {
+          const at = { col: Math.round(col), row: Math.round(row) };
+          const done = model.floorOf(w(), mark) === page ? floors.move(mark, at.col, at.row) : floors.toFloor(mark, page, at) === true;
+          return land(done, mark, 'The room cannot go to that cell: it is off the board, taken, or the room is locked');
+        }
         return land(model.toPage(w(), mark, +context.slice(6)), mark, 'The room cannot go to that floor');
       }
       if (PLACES_T.home(w(), mark) !== context && !model.move(w(), mark, context, position?.x ?? 0, position?.y ?? 0, { loose: rule == null })) return refuse('The mark cannot go into that context: one of them is locked, or it would go inside itself');
@@ -576,7 +585,8 @@ export const MODEL = ['parentOf', 'shut', 'hash', 'roomSetting', 'setRoomSetting
   'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
   'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE',
   'leave', 'replaceIn', 'isLooseGroup', 'spotOf', 'setSpot', 'unsetSpot',
-  'roomUnits', 'roomTrains', 'trainThoughts', 'startTrain', 'offsetOf', 'setOffset', 'unsetOffset', 'defaultMode'];
+  'roomUnits', 'roomTrains', 'trainThoughts', 'startTrain', 'offsetOf', 'setOffset', 'unsetOffset', 'defaultMode',
+  'cellOf', 'floorOf', 'roomsOn', 'span', 'shapeOf'];
 export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'unput', 'spotsOf', 'place', 'unplace'];
 export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
   'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];

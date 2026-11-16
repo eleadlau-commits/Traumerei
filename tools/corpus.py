@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-ROOM_TYPES = ('joyce', 'pessoa', 'russell', 'proust')
+ROOM_TYPES = ('joyce', 'pessoa', 'borges', 'russell', 'proust')
 
 CORPUS = (
     'kanban', 'calendar', 'outline', 'grid', 'timeline', 'random',

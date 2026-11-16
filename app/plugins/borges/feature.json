@@ -1,0 +1,18 @@
+{
+  "name": "Borges",
+  "description": "Borges, the rooms page's way of seeing: rooms on the cells of the floors, a room's shape saying how many ways of seeing it holds.",
+  "version": "1.0.0",
+  "main": "Borges.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}
