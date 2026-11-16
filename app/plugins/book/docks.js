@@ -9,11 +9,12 @@ import { isChapter, booksIn, wordCount, moved } from './rules.js';
 import { RULE, read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
 import { pageOf, textWidth, ranges } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
+import { BLOCKS } from './blocks.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
+export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id) }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -28,11 +29,11 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
     return headed(t, id) || (isChapter(t.marks.get(id)) ? id : holderOf(t, id));
   };
 
-  // To a mark on the canvas, chosen. (Going there shows its properties in the right dock: the
-  // book in hand comes back when it was showing.)
+  // To a mark on the canvas, chosen, its page in view at a zoom to read it (zoom.js bring). (Going
+  // there shows its properties in the right dock: the book in hand comes back when it was showing.)
   const goTo = (id) => {
     const had = !!right;
-    t.ui.open.mark(id);
+    bring(id);
     if (had) setTimeout(() => { openRight(); }, 0);
   };
 
@@ -151,7 +152,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
   const stamp = () => `${room()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`;
   // The docks belong to a room seen as Book: out of it (the rooms page, another room, another
   // mode), they close.
-  const inBookRoom = () => { const r = room(); return !!r && t.marks.get(r)?.mode === RULE; };
+  const inBookRoom = () => { const r = room(); const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; }; // (Book · blocks keeps them)
   const closeAll = () => {
     const d = docks();
     if (left) d?.left?.close(LEFT, true);
@@ -209,7 +210,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout }) {
   // numbers fit the canvas between the two docks (read off the docks' own bodies).
   const fit = () => {
     const r = room();
-    if (!r || !left || !right || typeof window === 'undefined') return;
+    if (!r || !left || !right || typeof window === 'undefined' || t.marks.get(r)?.mode === BLOCKS) return; // (the board is not fitted)
     const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
     const room$ = (b.width ? b.left : window.innerWidth) - (a.width ? a.right : 0);
     const p = pageOf(t, r);

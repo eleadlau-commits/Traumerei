@@ -9,9 +9,10 @@ run the `…_x64-setup.exe` file from the latest Release. It isn't signed yet, s
 [web copy](https://eleadlau-commits.github.io/Traumerei/) in Chrome.
 
 **Plugins come as files.** The app itself is small: rooms, floors, the canvas, and the room types.
-Everything else (the home page, Search, the desk, gaps and returns, Time, Export, room files, Book
-and more) is a plugin: download `starter-set.traumplug` from the same Release, then in Träumerei
-open Settings → Plugins → **Import plugin…** and pick it, and they all arrive at once. Each is also
+Everything else (the home page, Search, the desk, gaps and returns, Time, Export, room files and
+more) is a plugin: download `starter-set.traumplug` from the same Release, then in Träumerei
+open Settings → Plugins → **Import plugin…** and pick it, and they all arrive at once. The Book
+editor is not in the set: import `book.traumplug` on its own. Each is also
 there on its own as `<name>.traumplug`, and `traumerei-plugins-<version>.zip` holds every one of
 them in one download. **Provoke**, the reader that suggests links and groups in a
 room, is `provoke.traumplug`; Ctrl+Alt+V then reads the open room.
