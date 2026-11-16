@@ -8,8 +8,8 @@ notes beside the page; and after the last page, the room's thoughts not yet in t
 Enter keeps a paragraph and it lands right after the one you were on, in its chapter.
 
 A plugin, shipped as `book.traumplug` (never built into the app). It reaches the app only
-through the plugin API (`app/core/API.md`), and needs app 1.1.1 (the `join` proposal and
-`ui.text.edit`).
+through the plugin API (`app/core/API.md`), and needs app 1.1.2 (the `join` proposal, `ui.text.edit`, quiet link kinds,
+and room settings that redraw).
 
 ## The shape (all in the tables, Law 8)
 
@@ -59,7 +59,7 @@ through the plugin API (`app/core/API.md`), and needs app 1.1.1 (the `join` prop
 
 ## What it needs
 
-- **Plugin API:** 3 · **oldest app:** 1.1.1
+- **Plugin API:** 3 · **oldest app:** 1.1.2
 
 ## What it saves
 

@@ -6,12 +6,23 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.2 | 3 | 1 | traum/3 |
 | 1.1.1 | 3 | 1 | traum/3 |
 | 1.1.0 | 3 | 1 | traum/3 |
 | 1.0.3 | 2 | 1 | traum/3 |
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.1.2
+
+One addition to plugin API 3 and one fix, from the Book editor (`book.traumplug` 0.3.2 needs 1.1.2):
+
+- `slots.linkKinds` takes `quiet: true`: a kind that is structure its plugin's mode draws (Book's
+  `heads` and `about`) gets no line or ↗ from the room, in any mode.
+- Fixed: a value changed in a room's settings (the ⚙ beside its mode) did not show until something
+  else changed, for every thin rule with settings (Book's page size, Manuscript's numbering): the
+  rule's layout memo now holds the room's own settings.
 
 ## 1.1.1
 
@@ -44,8 +55,6 @@ The rest of the gaps found in the open core's audit (G1 to G11), all additions:
   chapters stay links, never folders.
 - Corpus: `manuscript`, chapters within chapters as headings in reading order, proving the above.
 - Word document export keeps six levels of heading (it flattened past three).
-- `slots.linkKinds` takes `quiet: true`: a kind that is structure its plugin's mode draws (Book's
-  `heads` and `about`) gets no line or ↗ from the room, in any mode.
 
 ## 1.1.0
 
