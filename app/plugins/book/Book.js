@@ -312,9 +312,9 @@ export function install(t) {
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
   t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
   const editor = installEditor(t);
-  const zoom = installZoom(t, { layout: editor.layout }); // far off a shelf of pages; going there
+  const zoom = installZoom(t, { layout: editor.layout, keep: (fn) => docks.keep(fn) }); // far off a shelf of pages; going there
   installBlocks(t); // Book · blocks, its sibling rule (blocks.js)
-  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout, bring: zoom.bring });
+  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout, bring: zoom.bring, regrid: zoom.regrid });
   // In the room's ⋯ More too, beside the room file's own Export: the room's first book.
   t.slots.formats.add({ id: 'book-docx', name: 'Book as a Word document (.docx)', accepts: () => false,
     exportRoom: (r) => { const b = booksIn(t, r)[0]; return b ? exportWord(b.id) : t.ui.toast('No book in this room yet.'); } });

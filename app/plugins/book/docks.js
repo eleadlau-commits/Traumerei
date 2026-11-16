@@ -7,14 +7,14 @@
 import { ui } from 'folio';
 import { isChapter, booksIn, wordCount, moved } from './rules.js';
 import { RULE, read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
-import { pageOf, textWidth, ranges } from './pages.js';
+import { pageOf, textWidth, ranges, sheetWidth, gridOf, setGrid, COUNTS } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
-import { BLOCKS } from './blocks.js';
+import { BLOCKS, ACROSS, acrossOf, setAcross } from './blocks.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id) }) {
+export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id), regrid = (r, write) => write() }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -31,11 +31,8 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
 
   // To a mark on the canvas, chosen, its page in view at a zoom to read it (zoom.js bring). (Going
   // there shows its properties in the right dock: the book in hand comes back when it was showing.)
-  const goTo = (id) => {
-    const had = !!right;
-    bring(id);
-    if (had) setTimeout(() => { openRight(); }, 0);
-  };
+  const keep = (fn) => { const had = !!right; const out = fn(); if (had) setTimeout(() => { openRight(); }, 0); return out; };
+  const goTo = (id) => keep(() => bring(id));
 
   // Words and open gaps under a chapter, however deep.
   const tally = (id) => {
@@ -106,6 +103,30 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   // ---- Right: in hand ----
 
   const btn = (label, fn) => el('button', { type: 'button', class: 'box-btn', onclick: fn }, label);
+  // The pages side by side: fix the columns or the rows, and how many (Alt+G, Alt+= and Alt+-).
+  const gridControl = (r) => {
+    const g = gridOf(t, r);
+    const word = (label, on, change, title) => el('button', { type: 'button', class: 'word', 'aria-pressed': on ? 'true' : 'false', title,
+      onclick: () => { const res = regrid(r, () => setGrid(t, r, change)); if (res && res.ok === false && res.reason) t.ui.toast(res.reason); } }, label);
+    const now = g.fix === 'columns' ? (g.count === 1 ? 'One under another' : `${g.count} across${g.paired ? ', facing pages' : ''}`) : `${g.count} down, read left to right`;
+    return el('div', { class: 'book-grid', role: 'group', 'aria-label': 'Pages side by side' },
+      el('span', { class: 'label' }, 'Pages side by side'),
+      el('div', { class: 'seg book-grid-row' }, el('span', { class: 'hint' }, 'Fix'),
+        word('Columns', g.fix === 'columns', { grid: 'columns' }, 'So many pages across; rows follow (Alt+G)'),
+        word('Rows', g.fix === 'rows', { grid: 'rows' }, 'So many pages down; columns follow (Alt+G)')),
+      el('div', { class: 'seg book-grid-row' }, el('span', { class: 'hint' }, 'How many'),
+        ...COUNTS.map((n) => word(String(n), g.count === n, { count: n }, `${n} ${g.fix === 'columns' ? 'across' : 'down'}${n === 2 && g.fix === 'columns' ? ': facing pages' : ''} (Alt+= / Alt+-)`))),
+      el('p', { class: 'hint' }, `${now} · Alt+= more · Alt+- fewer · Alt+G columns or rows`));
+  };
+  // Book · blocks: how many blocks to a row (Alt+= and Alt+-).
+  const blocksControl = (r) => {
+    const n = acrossOf(t, r);
+    return el('div', { class: 'book-grid', role: 'group', 'aria-label': 'Blocks across' },
+      el('span', { class: 'label' }, 'Blocks across'),
+      el('div', { class: 'seg book-grid-row' }, ...ACROSS.map((k) => el('button', { type: 'button', class: 'word', 'aria-pressed': k === n ? 'true' : 'false', title: `${k} blocks to a row (Alt+= / Alt+-)`,
+        onclick: () => { const res = setAcross(t, r, k); if (res && res.ok === false && res.reason) t.ui.toast(res.reason); } }, String(k)))),
+      el('p', { class: 'hint' }, 'Alt+= more · Alt+- fewer'));
+  };
   const inHand = () => {
     const r = room();
     const b = r && bookOf(r);
@@ -119,6 +140,8 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
       onchange: (e) => { const v = e.target.value.trim(); if (v) t.marks.edit(b, { title: v }); } });
     const all = tally(b);
     out.push(title, el('p', { class: 'hint book-stats' }, `${all.paras} paragraphs · ${all.words.toLocaleString()} words${all.open ? ` · ${all.open} still open` : ' · nothing open'}`));
+    if (t.marks.get(r)?.mode === BLOCKS) out.push(blocksControl(r));
+    else if (pageOf(t, r)) out.push(gridControl(r));
     if (ch) {
       const c = tally(ch);
       const sub = t.links.members(ch).filter((p) => isChapter(t.marks.get(p))).length;
@@ -214,7 +237,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
     const room$ = (b.width ? b.left : window.innerWidth) - (a.width ? a.right : 0);
     const p = pageOf(t, r);
-    const need = p ? p.w + 80 : textWidth(t, r) + 160; // the page (or the column and its numbers) and air
+    const need = p ? sheetWidth(t, r) + 80 : textWidth(t, r) + 160; // the page or spread (or the column and its numbers) and air
     const z = t.ui.zoom?.get()?.zoom || 1;
     if (room$ > 0 && room$ < need * z) t.ui.zoom.set(Math.max(0.5, Math.floor((room$ / need) * 20) / 20));
   };
@@ -230,5 +253,5 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
 
   for (const on of [t.marks.on, t.links.on, t.gaps.on]) on(() => { if (left || right) draw(true); });
   t.ui.zoom?.on?.(() => { if (left || right) draw(); }); // a change of room is heard here at once
-  return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo };
+  return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo, keep };
 }

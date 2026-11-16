@@ -166,3 +166,16 @@ test('book blocks: a 1,500-paragraph book arranges in under 50 ms', () => {
   assert.ok(ms < 50, `arranged in ${ms.toFixed(1)} ms`);
   assert.ok(both < 120, `arranged and drawn in ${both.toFixed(1)} ms`);
 });
+
+test('book blocks: blocks across, the room\'s setting, changed in one step', () => {
+  const { t, s, lay } = setUp();
+  assert.equal(B.acrossOf(t, s.room), B.BOARD.cols, 'four to a row unless the room says otherwise');
+  const xs = (L) => { const by = new Map(); for (const r of L.rows.filter((q) => !C.headed(t, q.mark) && q.width === B.BOARD.block)) by.set(Math.round(r.y), (by.get(Math.round(r.y)) || 0) + 1); return Math.max(...by.values()); }; // the most blocks on one line
+  assert.equal(xs(lay()), 4);
+  assert.ok(B.setAcross(t, s.room, 2).ok);
+  assert.equal(t.marks.get(s.room).rules[B.BLOCKS].across, '2');
+  assert.equal(B.acrossOf(t, s.room), 2);
+  assert.equal(xs(lay()), 2, 'two to a row');
+  assert.ok(t.rules.layout(B.BLOCKS, s.room).length > 0);
+  assert.deepEqual([B.stepAcross(4, 1), B.stepAcross(8, 1), B.stepAcross(2, -1), B.stepAcross(3, -1)], [6, 8, 2, 2]);
+});
