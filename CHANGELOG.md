@@ -6,6 +6,7 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.3 | 3 | 1 | traum/3 |
 | 1.1.2 | 3 | 1 | traum/3 |
 | 1.1.1 | 3 | 1 | traum/3 |
 | 1.1.0 | 3 | 1 | traum/3 |
@@ -13,6 +14,16 @@ version with `python build.py release <version>`.
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.1.3
+
+Room groups on the rooms page (no contract changes):
+
+- Ctrl+G puts the selected rooms in a new group, drawn as one coloured dotted outline; Ctrl+Shift+G
+  takes them out. A room is in one group at most, and an empty group goes away.
+- Groups are listed in the rail under Tags; right-click a group (or its name on the floor) to rename
+  it or change its colour.
+- Tags no longer draw outlines or use Ctrl+G.
 
 ## 1.1.2
 
