@@ -82,14 +82,15 @@ def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
 
 
 SET_FORMAT = 'traumset/1'
-# Shipped apart but left out of the starter set: what was never built into the app.
-NOT_STARTER = ('provoke',)
+# Shipped apart but left out of the starter set: what was never built into the app, and Book (E,
+# 16 Nov 2026: the book editor is its own file, book.traumplug, imported on its own).
+NOT_STARTER = ('provoke', 'book')
 
 
 def pack_set(texts: list[str], out_dir: Path, name='Starter set', file='starter-set') -> Path:
     body = {'format': SET_FORMAT, 'name': name,
             'description': 'Everything Träumerei had built in before 1.0.4, as plugins: the home page, '
-                           'Search, the desk, gaps and returns, Time, Export, room files, Book and the rest.',
+                           'Search, the desk, gaps and returns, Time, Export, room files and the rest (Book comes on its own, as book.traumplug).',
             'plugins': texts}
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f'{file}.traumplug'
