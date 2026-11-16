@@ -34,26 +34,26 @@ export function moveTo(t, id, to, at) {
   return t.links.link(id, to, 'part of', null, at >= n ? {} : { at: Math.max(0, at) }).ok;
 }
 
-// The chosen thought made a heading: a new chapter in its place, the thought its first part and
-// heading, and every part after it up to the next chapter gathered into it. A thought not in a
-// book goes to the end of the room's book (made when there is none). A book goes three levels
-// deep (DEEPEST): in a section already that deep, the new one is a section beside it, right after
-// it, never a fourth level (sub-chapters made one after another stop nesting there). Returns the
+// The chosen thought made a heading, at the level of the heading it sits under: a paragraph of a
+// chapter becomes the next chapter, a paragraph of a section the next section (in 3, chapter 4;
+// in 3.1, section 3.2), placed right after the one it was in, and it takes with it everything
+// after it there (its paragraphs and sections, so the book reads in the same order). A paragraph
+// directly in the book (before any chapter) becomes a chapter, gathering what follows up to the
+// next chapter. Never deeper than it was: Ctrl+] makes it a section of the one before. A thought
+// not in a book goes to the end of the room's book (made when there is none). Returns the
 // chapter's id.
-export const DEEPEST = 3;
-const depthIn = (t, g) => { let d = 0; for (let up = g; up && isChapter(t.marks.get(up)) && d < 64; up = holderOf(t, up)) d++; return d; };
 export function makeHeading(t, room, mark) {
   return t.together(() => {
     let holder = holderOf(t, mark);
     if (!holder) { holder = bookOf(t, room); if (!holder) return null; moveTo(t, mark, holder, t.links.members(holder).length); }
     const parts = t.links.members(holder);
     const i = parts.indexOf(mark);
+    const outer = isChapter(t.marks.get(holder)) ? holderOf(t, holder) : null;
     const follow = [];
-    for (const id of parts.slice(i + 1)) { if (isChapter(t.marks.get(id))) break; follow.push(id); }
+    for (const id of parts.slice(i + 1)) { if (!outer && isChapter(t.marks.get(id))) break; follow.push(id); }
     const ch = t.marks.make({ kind: 'group', content: { title: (t.marks.text(mark) || '').split('\n')[0].slice(0, 120) || 'Untitled', of: CHAPTER }, in: room });
     if (!ch.ok) return null;
-    const outer = depthIn(t, holder) >= DEEPEST ? holderOf(t, holder) : null;
-    if (outer) moveTo(t, ch.id, outer, t.links.members(outer).indexOf(holder) + 1);
+    if (outer) moveTo(t, ch.id, outer, t.links.members(outer).indexOf(holder) + 1); // beside the one it was in
     else moveTo(t, ch.id, holder, i);
     for (const id of [mark, ...follow]) moveTo(t, id, ch.id, t.links.members(ch.id).length);
     t.links.link(mark, ch.id, HEADS);
@@ -61,15 +61,20 @@ export function makeHeading(t, room, mark) {
   });
 }
 
-// A heading made a paragraph again: its chapter goes, and everything in it takes its place.
+// A heading made a paragraph again: its chapter goes, and everything in it joins the end of the
+// chapter (or section) just before it, at its level, as a paragraph read on from there would; with
+// none before it, everything in it takes its place. Ctrl+Alt+H twice: as it was.
 export function unmakeHeading(t, chapter) {
   return t.together(() => {
     const holder = holderOf(t, chapter);
     if (!holder) return false;
-    const at = t.links.members(holder).indexOf(chapter);
+    const siblings = t.links.members(holder);
+    const at = siblings.indexOf(chapter);
+    const prev = at > 0 && isChapter(t.marks.get(siblings[at - 1])) ? siblings[at - 1] : null;
     const parts = t.links.members(chapter);
     for (const r of t.links.to(chapter, HEADS)) t.links.unlink(r.id);
-    parts.forEach((id, k) => moveTo(t, id, holder, at + 1 + k));
+    if (prev) parts.forEach((id) => moveTo(t, id, prev, t.links.members(prev).length));
+    else parts.forEach((id, k) => moveTo(t, id, holder, at + 1 + k));
     t.marks.delete(chapter);
     return true;
   });

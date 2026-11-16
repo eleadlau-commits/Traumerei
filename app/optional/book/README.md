@@ -76,9 +76,11 @@ and room settings that redraw).
     Print or PDF (both at the room's page size and margins, a chapter on a new page).
   - the column is zoomed out, if it must be, to fit between the docks.
 - **Keys on the chosen paragraph** (room seen as Book):
-  - Ctrl+Alt+H: make it a heading (it gathers what follows, up to the next chapter); again: a
-    paragraph. A book goes three levels deep: in a section of a section, the new heading is a
-    section beside it (3.1.2, never 3.1.1.1), so sub-chapters made one after another stop nesting.
+  - Ctrl+Alt+H: make it a heading at the level of the one it sits under, right after that one: a
+    paragraph of chapter 3 becomes chapter 4, one of section 3.1 section 3.2, taking with it what
+    follows it there (one directly in the book, before any chapter, becomes a chapter, gathering up
+    to the next chapter). Headings made one after another never nest; Ctrl+] makes one a section of
+    the one before. Again: a paragraph, read on at the end of the chapter (or section) before it.
   - Ctrl+] / Ctrl+[: a heading one level deeper / up.
   - Ctrl+Up / Ctrl+Down: move it one place (a heading moves its whole chapter; a paragraph
     crosses into the chapter it meets).
@@ -119,7 +121,8 @@ and room settings that redraw).
     previous paragraph.
   - Alt+Enter: split the paragraph at the caret. Backspace at its start: join it to the one
     before (never into a heading).
-  - Ctrl+Alt+H: this paragraph a heading (a new one becomes a heading when Enter keeps it).
+  - Ctrl+Alt+H: this paragraph a heading, at the level of the one it sits under (a new one becomes
+    a heading when Enter keeps it).
   - Ctrl+Shift+V: paste as paragraphs after this one.
 - In every other mode, the book is a card as before (0.1): double-click opens it in the right dock.
 

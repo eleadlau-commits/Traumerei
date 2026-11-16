@@ -1,13 +1,14 @@
 // Book (app/optional/book): the pages hold together whatever the maker does. E kept adding
-// sub-chapters in Summer, on two facing pages, and zoomed out: the paragraphs made sections one
-// after another nested a level deeper each time (3.1, 3.1.1, 3.1.1.1, a fourth level), and far off
-// each section heading showed its whole words large, growing up from its row over the chapter's
-// heading and the lines above. Now: a book goes three levels deep (a heading made in a section
-// that deep is a section beside it), and far off a heading's words stay on one line within the
-// page's measure (style.css). And in every state checked here (spreads, sections made in a row,
-// a draft open, a paragraph dragged): no two rows share a page's lines, every row sits inside its
-// page, each heading's number sits beside its heading on the same page, and what the room is
-// handed (t.rules.layout, t.rules.draws) is what the rule laid out.
+// sub-chapters in Summer, on two facing pages, and zoomed out: the paragraphs made headings one
+// after another nested a level deeper each time (3.1, 3.1.1, 3.1.1.1, past three levels), and far
+// off each heading showed its whole words large, growing up from its row over the chapter's
+// heading and the lines above. Now: Ctrl+Alt+H makes a heading at the level of the one the
+// paragraph sits under (in chapter 3, chapter 4; in 3.1, section 3.2), right after it; Ctrl+]
+// makes it a section; and far off a heading's words stay on one line within the page's measure
+// (style.css). And in every state checked here (spreads, headings made in a row, a draft open, a
+// paragraph dragged): no two rows share a page's lines, every row sits inside its page, so does
+// every slot to click and write in (none over another), each heading's number sits beside its
+// heading on the same page, and what the room draws is what the rule laid out.
 
 import { test, assert } from 'folio/testing';
 import { makeHost, brokenLaws } from './host.js';
@@ -68,6 +69,21 @@ function holdsTogether(t, s, L, why) {
     rs.sort((a, b) => a.top - b.top);
     for (let i = 1; i < rs.length; i++) assert.ok(rs[i].top >= rs[i - 1].foot - 0.5, `${why}: two rows overlap on page ${n}`);
   }
+  // The slots to click and write in (slots.js): each on a page, within its words, none over another.
+  const slots = L.boxes.filter((b) => b.slot), slotsOn = new Map();
+  assert.ok(slots.length, `${why}: slots to write in`);
+  for (const b of slots) {
+    const n = pageOfPoint(b.x + b.w / 2, b.y + Math.min(b.h, lh) / 2);
+    if (n == null) continue; // (after the last page, among the thoughts not yet in the book)
+    const q = P.placeOf(L, n);
+    assert.ok(b.y >= q.y - 0.5 && b.y + b.h <= q.y + P0.h - P0.m + 0.5, `${why}: a slot inside page ${n}'s words`);
+    assert.ok(b.x >= q.x - P0.w / 2 - 0.5 && b.x + b.w <= q.x + P0.w / 2 + 0.5, `${why}: a slot on page ${n}`);
+    (slotsOn.get(n) || slotsOn.set(n, []).get(n)).push(b);
+  }
+  for (const [n, bs] of slotsOn) {
+    bs.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < bs.length; i++) assert.ok(bs[i].y >= bs[i - 1].y + bs[i - 1].h - 0.5, `${why}: two slots overlap on page ${n}`);
+  }
   // Each heading's number: beside its heading's (first) row, on the same page, in the left margin.
   const heads = C.read(t, s.room).items.filter((x) => x.t === 'heading');
   const numbers = L.boxes.filter((b) => b.style === 'heading');
@@ -103,33 +119,69 @@ function handedAsLaid(t, s, rule, w, L, why, api = false) {
   }
 }
 
-test('book layout: sub-chapters made one after another in Summer, on facing pages: three levels at most, nothing overlaps', () => {
+const nums = (t, s) => C.read(t, s.room).items.filter((x) => x.t === 'heading').map((x) => x.num).join(' ');
+
+test('book layout: headings made one after another in Summer, on facing pages: each at its level, beside the last, nothing overlaps', () => {
   const { host, t, s, rule, lay, done } = setUp();
   try {
     holdsTogether(t, s, lay(), 'as it opens');
     handedAsLaid(t, s, rule, host.w, lay(), 'as it opens', true);
     const summer = s.chapters[4];
-    const paras = t.links.members(summer).filter((id) => id !== s.heads[4]);
-    // E's way: each paragraph in turn made a heading (it lands in the section the one before made).
+    const all = t.links.members(summer).filter((id) => id !== s.heads[4]);
+    const paras = all.slice(0, 3), rest = all.slice(3); // (the sample's Summer ends with a gap still open)
+    // E's way: each paragraph in turn made a heading. A paragraph of chapter 3 is chapter 4, and
+    // the next (now in 4) chapter 5: never a section of the one before.
     const made = [];
     for (const p of paras) { made.push(E.makeHeading(t, s.room, p)); host.world.save(); }
     assert.ok(made.every(Boolean), 'each one a heading');
-    const nums = C.read(t, s.room).items.filter((x) => x.t === 'heading').map((x) => x.num);
-    assert.ok(nums.every((n) => n.split('.').length <= 3), `never a fourth level: ${nums.join(' ')}`);
-    assert.ok(nums.includes('3.1') && nums.includes('3.1.1'), 'sections and a section in it');
-    // The third: a section beside the deepest one, after it (3.1.2), not inside it (3.1.1.1).
-    assert.ok(nums.includes('3.1.2') && !nums.includes('3.1.1.1'), nums.join(' '));
-    assert.equal(C.headed(t, paras[2]), made[2]);
-    assert.equal(E.holderOf(t, made[2]), made[0], 'beside 3.1.1, in 3.1');
+    assert.equal(nums(t, s), '1 2 2.1 2.2 3 4 5 6');
+    assert.deepEqual(t.links.members(summer), [s.heads[4]], 'Summer keeps its heading');
+    assert.deepEqual(t.links.members(s.book).slice(-3), made, 'each a chapter of the book, after the one before');
+    assert.deepEqual(made.map((ch) => t.links.members(ch)), [[paras[0]], [paras[1]], [paras[2], ...rest]], 'each takes what follows it');
+    assert.deepEqual(C.flow(t, s.room).filter((id) => [s.heads[4], ...all].includes(id)), [s.heads[4], ...all], 'read in the same order');
     assert.deepEqual(brokenLaws(host.w), []);
-    holdsTogether(t, s, lay(), 'after sub-chapters');
-    handedAsLaid(t, s, rule, host.w, lay(), 'after sub-chapters', true);
+    holdsTogether(t, s, lay(), 'after headings in a row');
+    handedAsLaid(t, s, rule, host.w, lay(), 'after headings in a row', true);
     // Far off, a heading reads as its words (a long one too), on one line in the page's measure.
     const bands = new Map(t.rules.layout(C.RULE, s.room).map((r) => [r.mark, r.bands]));
     assert.equal(bands.get(paras[1])?.far, t.marks.text(paras[1]).split('\n')[0].trim().slice(0, 200));
-    // Undone, one step at a time, Summer as it was.
-    for (let i = 0; i < paras.length; i++) host.world.undo();
-    assert.deepEqual(t.links.members(summer), [s.heads[4], ...paras]);
+    // Ctrl+] makes the last a section of the one before; Ctrl+[ lifts it again.
+    assert.ok(E.demote(t, made[2]).ok); host.world.save();
+    assert.equal(nums(t, s), '1 2 2.1 2.2 3 4 5 5.1');
+    assert.ok(E.promote(t, made[2]).ok); host.world.save();
+    assert.equal(nums(t, s), '1 2 2.1 2.2 3 4 5 6');
+    // Ctrl+Alt+H again on each: a paragraph of the chapter before, as it was.
+    for (const ch of [...made].reverse()) { assert.ok(E.unmakeHeading(t, ch)); host.world.save(); }
+    assert.deepEqual(t.links.members(summer), [s.heads[4], ...all]);
+    assert.equal(nums(t, s), '1 2 2.1 2.2 3');
+    // And undone, one step at a time, the same.
+    for (let i = 0; i < 2 * paras.length + 2; i++) host.world.undo();
+    assert.deepEqual(t.links.members(summer), [s.heads[4], ...all], 'all undone');
+    assert.equal(nums(t, s), '1 2 2.1 2.2 3');
+  } finally { done(); }
+});
+
+test('book layout: a paragraph of a section made a heading is the next section; one in the book before any chapter, a chapter', () => {
+  const { host, t, s, rule, lay, done } = setUp();
+  try {
+    const [, spring, garden, visitors] = s.chapters;
+    const inGarden = t.links.members(garden).filter((id) => id !== s.heads[2]);
+    const ch = E.makeHeading(t, s.room, inGarden[inGarden.length - 1]);
+    host.world.save();
+    assert.equal(nums(t, s), '1 2 2.1 2.2 2.3 3', 'in 2.1: section 2.2, Visitors now 2.3');
+    assert.deepEqual(t.links.members(spring).filter((id) => id !== s.heads[1]).slice(-3), [garden, ch, visitors]);
+    holdsTogether(t, s, lay(), 'a section made');
+    handedAsLaid(t, s, rule, host.w, lay(), 'a section made', true);
+    assert.ok(E.unmakeHeading(t, ch)); host.world.save();
+    assert.deepEqual(t.links.members(garden).filter((id) => id !== s.heads[2]), inGarden, 'again: back in The garden');
+    // Written in the book itself, before Winter: a chapter, gathering up to the next chapter.
+    const p = t.marks.make({ content: 'A foreword.', in: s.room }).id;
+    t.links.link(p, s.book, 'part of', null, { at: 0 });
+    const fw = E.makeHeading(t, s.room, p);
+    host.world.save();
+    assert.equal(t.links.members(s.book)[0], fw);
+    assert.equal(nums(t, s), '1 2 3 3.1 3.2 4');
+    assert.deepEqual(brokenLaws(host.w), []);
   } finally { done(); }
 });
 
@@ -153,7 +205,7 @@ test('book layout: with a draft open, after a drag, on facing pages, a grid and 
       holdsTogether(t, s, lay(), why);
       handedAsLaid(t, s, rule, host.w, lay(), why);
       setDraft({ text: 'A paragraph being written, long enough to wrap onto a second line of the page and then a third one too.', after: paras[0], height: 90 });
-      holdsTogether(t, s, lay(), `${why}, a draft open after a section heading`);
+      holdsTogether(t, s, lay(), `${why}, a draft open after a heading`);
       handedAsLaid(t, s, rule, host.w, lay(), `${why}, a draft open`);
       setDraft({ text: 'Another', after: s.paras[1], height: 400 });
       holdsTogether(t, s, lay(), `${why}, a tall draft in Winter`);
