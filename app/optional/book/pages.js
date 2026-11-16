@@ -6,6 +6,7 @@
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
 import { RULE, SPACE, NOTE, column, read, titleOf, placeNotes, settingOf, widthOf, draftRoom } from './column.js';
+import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
 // millimetre (the reading size is 19 units, about a 12-point book face at this scale).
@@ -40,10 +41,10 @@ export function shape(reads, room, measure, size = () => null, set = null) {
 export function paginate(reads, room, measure, size = () => null, set = null) {
   const P = pageOf(reads, room, set);
   const W = P.text, L = -W / 2;
-  const { items, notes } = read(reads, room);
+  const { items, notes, at } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
   const draft = draftRoom(reads, room, measure, W); // the thought being written after a mark: room under it
-  const rows = [], boxes = [], onPage = new Map(), heads = [];
+  const rows = [], boxes = [], onPage = new Map(), heads = [], own = new Map(); // own: the title's and headless chapters' places (slots.js)
   const starts = [], firsts = []; // each page's first mark that starts there, and its first mark at all
   let page = -1, y = 0, used = false, running = '';
   const top = (n) => -lh * 13 + n * (P.h + GAP); // the title page's top a little above the room's middle, where it opens
@@ -87,6 +88,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       boxes.push({ x: L, y: top(page) + P.h * 0.3, w: W, h: lh * 2.4, label: b?.title || 'Untitled book', style: 'title', opens: it.book });
       used = true;
       newPage(); // what comes before the first chapter starts on the next page
+      own.set(k, { top: y, bottom: y }); // a slot after the title: at the top of that page
       continue;
     }
     if (it.t === 'heading' || it.t === 'chapter') {
@@ -106,6 +108,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
         if (roomFor(it.mark)) continue;
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${it.num}  ${title}`, style: 'heading', level: d, opens: it.chapter });
+        own.set(k, { top: y, bottom: y + h });
         y += h; used = true;
       }
       y += lh * SPACE.after;
@@ -137,6 +140,9 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     y += lh * SPACE.para;
   }
   const last = page;
+  // Click anywhere in a chapter to write there (slots.js): each slot within its page's words.
+  const footAt = (yy) => { const n = Math.max(0, Math.floor((yy - top(0)) / (P.h + GAP))); return top(n) + P.h - P.m; };
+  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh, footAt });
   // The pages behind, each numbered at its foot (not the title page), its chapter's title at its
   // head (not on a chapter's first page).
   // A page opens (a double-click on it, zoom.js) the first paragraph that starts on it, else the
@@ -148,7 +154,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     if (n > 0) behind.push({ x: -lh * 2, y: top(n) + P.h - P.m * 0.62, w: lh * 4, h: lh * 1.1, label: String(n + 1), style: 'quiet' });
     if (n > 0 && heads[n]) behind.push({ x: L, y: top(n) + P.m * 0.38, w: W, h: lh * 1.1, label: heads[n], style: 'quiet', level: 1 });
   }
-  boxes.unshift(...behind);
+  boxes.unshift(...slots.slice().reverse(), ...behind); // the slots first, the last first (slots.js)
   // After the last page: the thoughts not yet in the book, as a column.
   if (loose >= 0) {
     y = top(last + 1) + lh * 2;
@@ -163,7 +169,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);
   // firstOn: each page's mark (by page number less one); origin, pitch and grid: where page n
   // sits (placeOf).
-  const lay = { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P, firstOn, origin: top(0), pitch: P.h + GAP,
+  const lay = { rows, boxes, slots, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P, firstOn, origin: top(0), pitch: P.h + GAP,
     grid: gridOf(reads, room, set, notes.length ? NOTE + lh * 2.2 : 0) };
   if (lay.grid.fix === 'columns' && lay.grid.count === 1) return lay; // one under another: as laid
   // Laid out one under another above; now each page moves to its place in the grid, all it holds

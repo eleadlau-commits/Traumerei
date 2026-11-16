@@ -88,3 +88,29 @@
 .book-grid { display: flex; flex-direction: column; gap: 4px; }
 .book-grid-row { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
 .book-grid-row .hint { margin: 0 6px 0 0; min-width: 5.5em; }
+
+/* Click anywhere in a chapter to write there (slots.js): the rule's slots, `shelf` boxes in a room
+   seen as Book, are invisible until chosen; then a caret blinks where the words will start (level
+   1, the end of a chapter: on the first line, the column's left edge) or, between two paragraphs
+   (level 2), just left of the column, on a faint rule across the gap. Only while the slot counts
+   (data-book-slot="on", editor.js); hidden while words are being written (they have their own
+   caret) or a mark is chosen. The pages sit behind the slots (they are
+   drawn after them), far off the slots let the pages take the double-click. An empty chapter's
+   slot says how to write in it. */
+.room[data-mode="book-page"] .room-cell-page { z-index: -1; }
+.room[data-mode="book-page"] .room-cell-shelf { border: 0; background: none; outline: 0; cursor: text; }
+.room[data-mode="book-page"] .room-cell-shelf.chosen { background: none; outline: 0; }
+.room[data-mode="book-page"] .room-cell-shelf .room-cell-label { left: 0; top: 12px; font-family: var(--font-read); font-size: var(--t-read, 19px); font-style: italic; opacity: .38; }
+.room[data-mode="book-page"] .room-cell-shelf.chosen .room-cell-label { left: 8px; }
+.room[data-mode="book-page"] .room-cell-shelf.chosen::before {
+  content: ''; position: absolute; left: 0; top: 12px; width: 1.5px; height: 1.45em;
+  font-size: var(--t-read, 19px); background: var(--room-ink); animation: room-caret 1.1s steps(1) infinite; pointer-events: none;
+}
+.room[data-mode="book-page"] .room-cell-shelf.room-cell-l2.chosen::before { left: -10px; top: 50%; height: 1.2em; transform: translateY(-50%); }
+.room[data-mode="book-page"] .room-cell-shelf.room-cell-l2.chosen::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dotted rgb(var(--ink-rgb) / .35); pointer-events: none;
+}
+.room[data-mode="book-page"]:is(:not([data-book-slot="on"]), :has(.room-draft, .room-float.selected)) .room-cell-shelf.chosen::before,
+.room[data-mode="book-page"]:is(:not([data-book-slot="on"]), :has(.room-draft, .room-float.selected)) .room-cell-shelf.chosen::after { display: none; }
+.room[data-mode="book-page"] .room-band-far .room-cell-shelf { pointer-events: none; }
+.room[data-mode="book-page"] .room-band-far .room-cell-shelf .room-cell-label { display: none; }

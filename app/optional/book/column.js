@@ -9,6 +9,7 @@
 // as its first part, so the caret runs through it and it is written in like any paragraph.
 
 import { BOOK, CHAPTER, isBook, isChapter, booksIn } from './rules.js';
+import { slotsOf, spansOf } from './slots.js';
 
 export const RULE = 'book-page';
 export const HEADS = 'heads';
@@ -122,10 +123,10 @@ export function draftRoom(reads, room, measure, W) {
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
 export function column(reads, room, measure, size = () => null, set = null) {
   const W = widthOf(reads, room, set);
-  const { items, notes } = read(reads, room);
+  const { items, notes, at } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
   const draft = draftRoom(reads, room, measure, W);
-  const rows = [], boxes = [];
+  const rows = [], boxes = [], own = new Map(); // own: where the title and headless chapters are (slots.js)
   const L = -W / 2; // the column is centred on x = 0, and starts a little above the room's middle
   let y = -lh * 10;
   const books = items.filter((x) => x.t === 'title').length;
@@ -143,11 +144,13 @@ export function column(reads, room, measure, size = () => null, set = null) {
     rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra });
     y += h + (draft && draft.after === id ? draft.h : 0); // the thought being written after it, under it
   };
-  for (const it of items) {
+  for (let k = 0; k < items.length; k++) {
+    const it = items[k];
     if (it.t === 'title') {
       if (y > top) y += lh * SPACE.title;
       const b = reads.marks.get(it.book);
       boxes.push({ x: L, y, w: W, h: lh * 2.4, label: b?.title || 'Untitled book', style: 'title', opens: it.book });
+      own.set(k, { top: y, bottom: y + lh * 2.4 });
       y += lh * SPACE.title;
     } else if (it.t === 'heading' || it.t === 'chapter') {
       y += lh * SPACE.before[it.depth - 1];
@@ -158,6 +161,7 @@ export function column(reads, room, measure, size = () => null, set = null) {
         place(it.mark, h, { far: titleOf(reads, it.chapter) }); // far off: its title, large
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${label}  ${titleOf(reads, it.chapter)}`, style: 'heading', level: it.depth, opens: it.chapter });
+        own.set(k, { top: y, bottom: y + lh * 1.3 });
         y += lh * 1.3;
       }
       y += lh * SPACE.after;
@@ -170,8 +174,10 @@ export function column(reads, room, measure, size = () => null, set = null) {
       y += lh * SPACE.para;
     }
   }
+  // Click anywhere in a chapter to write there (slots.js): first among the boxes, the last first.
+  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh });
   placeNotes(reads, rows, notes, measure, W / 2 + lh * 1.6);
-  return { rows, boxes, width: W, lineHeight: lh };
+  return { rows, boxes: [...slots.slice().reverse(), ...boxes], slots, width: W, lineHeight: lh };
 }
 
 // The margin notes, set beside what they are about: flush left from `x0` (the column's right edge

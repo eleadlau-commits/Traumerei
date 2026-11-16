@@ -5,7 +5,10 @@
 //
 // Where a new paragraph goes: the rule's land() hears the centre of the paragraph it was written
 // after (the one chosen, or the one kept just before) and proposes { join: chapter, at }, so it
-// lands in that chapter right after it, in the same step as Enter.
+// lands in that chapter right after it, in the same step as Enter. Click anywhere in a chapter to
+// write there (slots.js): a tap on the blank space after a chapter's last paragraph, under an
+// empty chapter's heading or between two paragraphs chooses a slot, typing there begins the
+// paragraph under the heading or paragraph above it, and Enter keeps it exactly there.
 
 import { isChapter } from './rules.js';
 import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
@@ -13,6 +16,7 @@ import { shape, textWidth, SIZES, COUNTS } from './pages.js';
 import { BLOCKS } from './blocks.js';
 import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote, noteOn, noteInto, leaveBook, afterGesture } from './editing.js';
 import { flowDrop } from './flowdrop.js';
+import { slotAt, SLOT } from './slots.js';
 
 const ICON = '<path d="M7 4h10M7 8h10M7 12h10M7 16h6"/><path d="M4 3v18"/>';
 
@@ -25,6 +29,22 @@ export function installEditor(t) {
   const inBoth = () => { const r = room(); const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; };
   const chosen = () => t.ui.chosen()?.mark || null;
   const say = (r) => { if (r && r.ok === false && r.reason) t.ui.toast(r.reason); };
+
+  // ---- Where a new paragraph goes ----
+  // The mark the thought being written was drawn under (reads.marks.draft's `after`), as the rule's
+  // layout last saw it while it was written: Enter keeps it there, whatever box the room still
+  // holds chosen. And the slot it was begun in (a key typed while a slot was chosen): exactly there.
+  const drafted = new Map();  // room → the mark the draft is written after, or null
+  const begun = new Map();    // room → { join, at } of the slot typing began in
+  let landed = () => {};      // told whether a paragraph was kept in a slot (below)
+  const drawn = new Map();    // room → the slots of the layout last drawn (with the room's settings)
+  const laid = (reads, context, set) => {
+    const d = reads.marks.draft?.(context);
+    if (d) drafted.set(context, d.after || null);
+    const lay = shape(reads, context, measure, size, set);
+    drawn.set(context, lay.slots);
+    return lay;
+  };
 
   // ---- The rule ----
 
@@ -42,8 +62,8 @@ export function installEditor(t) {
       { key: 'count', label: 'How many (2 columns: facing pages)', type: 'choice', default: '1', options: COUNTS.map((n) => [String(n), String(n)]) },
       { key: 'width', label: 'Column width (with Pages: None)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
     ],
-    arrange: (reads, context, set) => shape(reads, context, measure, size, set).rows,
-    draw: (reads, context, set) => shape(reads, context, measure, size, set).boxes,
+    arrange: (reads, context, set) => laid(reads, context, set).rows,
+    draw: (reads, context, set) => laid(reads, context, set).boxes,
     // A paragraph dragged on the pages (flowdrop.js): into the flow as one { join, at, from } step
     // with the gesture; out of the book, or into or out of the margin as a note, the plugin does
     // just after it, one step of its own (no proposal leaves a group or links a note).
@@ -56,7 +76,14 @@ export function installEditor(t) {
       return null;
     },
     land: (reads, context, mark, x, y, set) => {
-      const { rows } = shape(reads, context, measure, size, set);
+      const slot = begun.get(context), was = drafted.get(context);
+      begun.delete(context); drafted.delete(context);
+      landed(!!slot);
+      if (slot) return { join: slot.join, at: slot.at };
+      if (was && was !== mark && reads.marks.get(was)) { const p = after(reads, context, was); if (p) return p; }
+      const { rows, slots } = shape(reads, context, measure, size, set);
+      const s = slotAt(slots, x, y);
+      if (s) return { join: s.slot.join, at: s.slot.at };
       const near = rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);
       if (near) return after(reads, context, near.mark);
       return null;
@@ -179,5 +206,57 @@ export function installEditor(t) {
     t.ui.toast(made.length === 1 ? 'One paragraph pasted.' : `${made.length} paragraphs pasted.`);
   };
 
-  return { inBook, inBoth, layout: (r) => shape(t, r, measure, size) };
+  // A key that begins a paragraph while a slot is chosen (and no mark): the heading or paragraph
+  // above the slot is chosen for that moment, so the room draws the words under it, in place, and
+  // what follows makes room (column.js draftRoom); land() puts it in the slot. Heard before the
+  // room hears the key (which begins the thought and lets the choice go). The room keeps no API
+  // word for the box chosen, so it is read off the canvas (data-box, as zoom.js does), and it keeps
+  // a box chosen after a mark is chosen: the slot counts (and its caret shows: the room's
+  // data-book-slot, style.css) only from a press on a slot until a mark is chosen or a paragraph is
+  // kept elsewhere; after Enter in a slot, the room's box is the slot after the paragraph kept.
+  let live = null; // the room whose chosen slot counts, or null
+  let quiet = false; // our own choice of the anchor: not the person's
+  const flag = () => {
+    if (typeof document === 'undefined') return;
+    for (const n of document.querySelectorAll('.room')) n.setAttribute('data-book-slot', live && live === room() ? 'on' : 'off');
+  };
+  const chosenSlot = (r) => {
+    if (typeof document === 'undefined') return null;
+    const node = [...document.querySelectorAll(`.room[data-mode="${RULE}"] .room-cell-${SLOT}.chosen[data-box]`)].find((n) => n.offsetParent);
+    const b = node ? t.rules.draws(RULE, r).boxes[+node.dataset.box] : null;
+    return b && b.style === SLOT ? slotAt(drawn.get(r), b.x + b.w / 2, b.y + b.h / 2) : null;
+  };
+  const onKey = (e) => {
+    try {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.key?.length !== 1 || e.key === ' ') return;
+      if (e.target?.closest?.('input, textarea, select, button, [contenteditable], dialog') || document.querySelector('dialog[open]')) return;
+      if (!inBook() || chosen() || caret()) return;
+      const r = room();
+      if (live !== r) return;
+      const s = chosenSlot(r);
+      if (!s) return;
+      begun.set(r, { join: s.slot.join, at: s.slot.at });
+      if (s.slot.anchor && t.marks.get(s.slot.anchor)) { quiet = true; try { t.ui.choose([s.slot.anchor]); } finally { quiet = false; } }
+    } catch { /* switched off */ }
+  };
+  const onPress = (e) => {
+    try {
+      if (e.button !== 0 || !e.target?.closest) return;
+      const node = e.target.closest(`.room[data-mode="${RULE}"] .room-cell-${SLOT}`);
+      if (!node) return;
+      live = room(); flag();
+      // A press on the slot already chosen keeps it (the caret stays, as in any editor): the room
+      // would let it go on a second tap, so it does not hear this one. Not while words are being
+      // written: the press keeps them, as anywhere else.
+      if (node.classList.contains('chosen') && !caret() && !e.shiftKey && !e.ctrlKey && !e.metaKey) e.stopPropagation();
+    } catch { /* switched off */ }
+  };
+  t.ui.chosen.on?.((c) => { if (quiet) return; if (c?.mark || c?.context !== live) { live = null; flag(); } });
+  landed = (slot) => { if (!slot) { live = null; flag(); } };
+  // The thought let go unkept (Escape): the slot it was begun in is forgotten.
+  t.ui.text.on?.((c) => { if (!c) setTimeout(() => { if (!t.ui.text.caret()) { const r = room(); if (r) begun.delete(r); } }, 50); });
+  if (typeof window !== 'undefined') { window.addEventListener('keydown', onKey, true); window.addEventListener('pointerdown', onPress, true); }
+  const stop = () => { if (typeof window !== 'undefined') { window.removeEventListener('keydown', onKey, true); window.removeEventListener('pointerdown', onPress, true); } };
+
+  return { inBook, inBoth, layout: (r) => shape(t, r, measure, size), stop };
 }
