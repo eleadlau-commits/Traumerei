@@ -1,4 +1,4 @@
-// Book · blocks (app/plugins/book/blocks.js, stage 3): the book as a board of blocks in reading
+// Book · blocks (app/optional/book/blocks.js, stage 3): the book as a board of blocks in reading
 // order, chapters and sections as outlines around them; a block let go between others moves there
 // as one { join, at, from } step, onto an outline's label to the end of that chapter, into the tray
 // out of the book; let go where it was, nothing; a 1,500-paragraph book in under 50 ms.
@@ -8,7 +8,7 @@ import { makeHost, brokenLaws } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../plugins/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
 }
 const book = await load('book', 'Book.js');
 const B = await load('book', 'blocks.js');
