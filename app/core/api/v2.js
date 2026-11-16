@@ -627,6 +627,7 @@ export const SLOTS = {
   providers: 'ai.providers',   // an AI provider: does tasks (app/core/AI.md)
   engines: 'ai.engines',       // a runtime several AI providers share (app/core/AI.md)
   aiServices: 'ai.services',   // a replacement for the AI scheduler, cache or budget (app/core/AI.md)
+  holds: 'world.holds',        // what a mark may hold beyond the core's: a Twin's sides (world/model.js HOLDS)
   families: 'world.families',  // a family of groups a plugin declares: a book, its chapters (world/model.js declareFamilies)
   buttons: 'room.buttons',     // a button in a room's rail, under Tools (room/README.md)
   menu: 'header.buttons',      // a row in the ☰ menu (Folio's slot, folio/runtime/Shell.js)

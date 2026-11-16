@@ -4,13 +4,15 @@
 // a thought or group can be moved across (`across`), and then it belongs to the other side alone.
 // The sides are the only rooms inside a room (model.js: canHold, isTwin).
 
-import { parentOf, sideOf, addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
+import { parentOf, sideOf, mayHold, addRoom, create, children, kindOf, view, room, move, isTwin, isLeaf, isGroup, rooms, shut, MESSY } from './model.js';
 
 export { isTwin, sideOf };
 
 // Makes a Twin on floor `page` (where.page), its sides seen through `modes` ([left, right], e.g.
-// ['joyce', 'russell']). Returns the Twin (with no cell yet: the floors feature places it), or null.
+// ['joyce', 'russell']). Returns the Twin (with no cell yet: the floors feature places it), or null
+// (also while no plugin lets a Twin hold its sides: the Twin plugin's hook, model.js mayHold).
 export function addTwin(w, name = 'Untitled', now = Date.now(), where = {}, modes = []) {
+  if (!mayHold({ kind: 'room', size: 'twin' }, 'room')) return null;
   const t = addRoom(w, name, now, where);
   if (!t) return null;
   t.size = 'twin';

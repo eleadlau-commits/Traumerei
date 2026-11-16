@@ -2,6 +2,7 @@
 // moving and resizing within the board, and the check before a smaller size.
 
 import { test, assert } from 'folio/testing';
+import '../../world/tests/roomtypes.js'; // Twin's hook: a Twin may hold its two sides
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
 import { floorOf, archivedAt, emptyWorld, loadWorld, addRoom, addPage, pageCount, roomAt, lock, archive, restore, MESSY } from '../../world/model.js';

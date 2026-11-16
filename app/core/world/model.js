@@ -617,13 +617,31 @@ function placeFields(w, th, f) {
 // (A side is never a Twin's shape itself.)
 export const isTwin = (th) => kindOf(th) === 'room' && th.size === 'twin';
 
+// What a mark may hold beyond the core's own, from plugins (the slot 'world.holds', which World
+// keeps here with setHolds): [{ id, name?, holds(parent, kind) }]. The core holds items and groups
+// in rooms and rooms on floors; a room holding rooms (a Twin's sides) is a plugin's (Twin). One
+// array, changed in place. A saved room inside a room is read and kept whether or not a plugin
+// allows making one now: a hook only says what may be made or moved in.
+export const HOLDS = [];
+export function setHolds(list = [], warn = () => {}) {
+  HOLDS.length = 0;
+  for (const h of list) {
+    if (h && typeof h.id === 'string' && typeof h.holds === 'function') HOLDS.push(h);
+    else warn(h, 'it needs { id, holds(parent, kind) }');
+  }
+  return HOLDS;
+}
+// Whether some plugin lets mark `p` (a thing, or a shape like { kind: 'room', size: 'twin' }) hold
+// a mark of `kind`.
+export const mayHold = (p, kind) => !!p && HOLDS.some((h) => { try { return h.holds(p, kind) === true; } catch { return false; } });
+
 // What can sit inside what: items and groups in rooms, rooms on a floor or in the Archive (null:
-// the first floor), and a Twin's sides.
+// the first floor), and whatever a plugin's hook allows (mayHold: a Twin's sides).
 export function canHold(w, parent, kind) {
   const p = parent == null ? null : w.things[parent];
   if (parent != null && !p) return false;
   if (isLeaf({ kind }) || kind === 'group') return p != null && kindOf(p) === 'room' && !isTwin(p);
-  if (kind === 'room') return p == null || isContext(p) || isTwin(p);
+  if (kind === 'room') return p == null || isContext(p) || mayHold(p, 'room');
   return false;
 }
 

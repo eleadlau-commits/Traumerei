@@ -6,6 +6,7 @@
 // room's reads stay within budget.
 
 import { test, assert } from 'folio/testing';
+import './roomtypes.js'; // Twin's hook: a Twin may hold its two sides
 import * as model from '../model.js';
 import * as P from '../places.js';
 import * as L from '../links.js';
