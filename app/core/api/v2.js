@@ -503,8 +503,10 @@ export function readsOver(lib, w, ontologies = null) {
 // { revisit: time, note? }, { clear: true } (moments ahead), { gap: direction }, { resolve: true }
 // (gaps). The kernel lands each through the tables inside the room's step; a refused one is skipped.
 // Since 1.0.3 also { place: context, x?, y? } (places.put: into another context of the rooms,
-// a chapter's room say; with x, y it lands there under that room's mode).
-export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place']);
+// a chapter's room say; with x, y it lands there under that room's mode). Since 1.1.1
+// { join: group, at? } (links.link(mark, group, 'part of', null, { at }): into a group of the
+// same room, a book's chapter, at a place in its order).
+export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place', 'join']);
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
 // A surface's id (since 1.1.0): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
 export const SURFACE_ID = /^[a-z][a-z0-9]*([.-][a-z0-9]+)*$/;
@@ -553,6 +555,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
       else if (p.gap) r = G.open(w, id, p.gap);
       else if (p.resolve) r = G.resolve(w, id);
       else if (p.place != null) r = placeIn(w, id, String(p.place), p.x, p.y);
+      else if (p.join != null) r = joinTo(w, room, id, String(p.join), p.at);
       else r = { why: `A proposal is one of ${PROPOSALS.join(', ')}` };
       if (r?.why) why.push(r.why);
     }
@@ -569,6 +572,20 @@ export function simpleRule(rule, lib, ontologies = () => null) {
     if (!model.move(w, id, context, at ? x : 0, at ? y : 0, { loose: !at })) return { why: 'The mark cannot go into that room' };
     if (at) { const mode = model.view(w, context).mode; groups.putAt(w, context, mode, id, x, y); }
     return null;
+  };
+  // A { join } proposal (since 1.1.1): the mark becomes a part of a group of the same room, at
+  // `at` in its order (0 first; left out, where the group puts a newcomer), as links.link would
+  // join it: the group's own family says whether it may sit in another group of the family too.
+  // A mark already a part of it moves to `at` (counted among the other parts).
+  const joinTo = (w, room, id, group, at) => {
+    const g = w.things[group];
+    if (!g || !model.isGroup(g)) return { why: 'Only a group can hold a part' };
+    if (model.parentOf(w, group) !== room) return { why: 'A mark joins a group of its own room' };
+    if (model.shut(w, group)) return { why: 'The group is locked' };
+    if (at != null && !(Number.isInteger(at) && at >= 0)) return { why: 'A part joins at a position in the order: 0 first' };
+    const ms = model.members(w, group);
+    if (ms.some((m) => m.id === id)) { if (ms.length === 1) return null; model.leave(w, group, id); }
+    return model.join(w, group, id, at ?? null) ? null : { why: 'The part cannot join: it would hold its own group' };
   };
   // A rule's memo key: the room's places, the floor's (a contents page of the floor's rooms
   // redraws when they move), every link, every mark, the gaps and the moments ahead.
@@ -866,6 +883,16 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
           if (typeof th.text !== 'string') return row({ ok: false, reason: 'That mark has no words to replace' });
           const a = Math.max(0, Math.min(th.text.length, Math.floor(+from))), b = Math.max(a, Math.min(th.text.length, Math.floor(+to)));
           return tables.marks.edit(mark, { text: th.text.slice(0, a) + String(words ?? '') + th.text.slice(b) });
+        },
+        // A kept line opened to write in, the caret at `at` (its end by default), as a triple-click
+        // opens it (since 1.1.1): the caret runs on from one paragraph to the next.
+        edit: (mark, at = null) => {
+          const th = tables.marks.get(mark), r = room?.(), open = r?.id?.() ?? null;
+          if (!th) return row({ ok: false, reason: 'No such mark' });
+          if (th.kind !== 'line') return row({ ok: false, reason: 'Only words are written in: open a mark of another kind its own way' });
+          if (open == null || tables.places.home(mark) !== open) return row({ ok: false, reason: 'The mark is not in the open room' });
+          if (tables.distance.shut(mark)) return row({ ok: false, reason: 'The room is locked' });
+          return r?.text?.edit?.(mark, at == null ? null : Math.floor(+at)) ? row({ ok: true, id: mark }) : row({ ok: false, reason: 'The mark cannot be written in here' });
         },
         style: (kind, from = null, to = null) => !!room?.()?.text?.style?.(String(kind), from, to),
         spans: () => rows(room?.()?.text?.spans?.() || []),

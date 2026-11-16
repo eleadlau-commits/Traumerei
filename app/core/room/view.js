@@ -550,7 +550,10 @@ export class RoomView {
       }
       if (this.draft && !this.draft.edit) {
         const p = ont.draftPoint?.(w, this.roomId) || (this.draft.train ? null : this.draft) || this.freeSpot();
-        nodes.push(el('div', { class: 'room-float', style: `left:${p.x}px;top:${p.y}px` }, this.draftNode()));
+        // Written after a mark (a simple rule with land(), since 1.1.1): under it, its top edge at
+        // y, at the mark's width and alignment.
+        const near = this.draft.near ? `;transform:translate(-50%,0)${p.width ? `;width:${p.width}px;max-width:none` : ''}` : '';
+        nodes.push(el('div', { class: 'room-float' + (this.draft.near && p.align === 'start' ? ' room-float-start' : ''), style: `left:${p.x}px;top:${p.y}px${near}` }, this.draftNode()));
       }
     }
     return nodes;

@@ -326,6 +326,13 @@ export class Writing {
   textService() {
     return {
       caret: () => this.caretNow(),
+      edit: (id, at = null) => {
+        if (!this.editThought(id)) return false;
+        const n = this.input.value.length, i = at == null || !Number.isFinite(at) ? n : Math.max(0, Math.min(n, at));
+        this.selectText(i);
+        this.caretMoved();
+        return true;
+      },
       select: (from, to = from) => { if (!this.caretNow()) return false; const n = this.input.value.length; this.selectText(Math.max(0, Math.min(n, from)), Math.max(0, Math.min(n, to))); return true; },
       replace: (from, to, words) => {
         if (!this.caretNow()) return false;
@@ -396,15 +403,18 @@ export class Writing {
     if (!th && made && g && w.things[g.id]) remove(w, g.id);
     if (th && wr.kept) wr.kept(w, this.roomId, th, d);
     if (th) this.inheritGap(th, g, now);
-    // A simple rule with land() (a calendar) is told where the thought was written: the box chosen,
-    // or the point Add was asked at; it may propose (a date) through the tables, in this one step.
-    if (th && this.ont.land && this.ont !== wr) {
+    // A simple rule with land() (a calendar, a book) is told where the thought was written: the
+    // box chosen, the point Add was asked at, or (since 1.1.1) the centre of the mark it was
+    // written after (the one chosen, or the one kept just before); it may propose (a date, a
+    // chapter to join) through the tables, in this one step.
+    if (th && this.ont.land) {
       const b = this.boxAt?.room === this.roomId ? this.ont.boxes?.(w, this.roomId)?.[this.boxAt.i] : null;
-      const at = b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : d.at ? { x: d.x, y: d.y } : null;
+      const near = d.near && w.things[d.near] ? this.ont.point?.(w, this.roomId, d.near) : null;
+      const at = b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : d.at ? { x: d.x, y: d.y } : near ? { x: near.x, y: near.y } : null;
       if (at) this.ont.land(w, this.roomId, th.id, at.x, at.y);
     }
     // An ontology that goes on from a thought (goOn) remembers the thought; the others its group.
-    if (th && wr.goOn) this.current[this.roomId] = th.id;
+    if (th && (wr.goOn || this.ont.land)) this.current[this.roomId] = th.id; // a simple rule with land(): the next is written after it
     else if (th && g && w.things[g.id]) this.current[this.roomId] = g.id;
     else if (th) delete this.current[this.roomId];
     return th;
