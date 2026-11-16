@@ -6,7 +6,7 @@
 
 import { ui } from 'folio';
 import { isChapter, booksIn, wordCount, moved } from './rules.js';
-import { read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
+import { RULE, read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
 import { pageOf, textWidth, ranges } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
 
@@ -149,7 +149,18 @@ export function installDocks(t, { exportMarkdown, print, layout }) {
   // ---- Drawing ----
 
   const stamp = () => `${room()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`;
+  // The docks belong to a room seen as Book: out of it (the rooms page, another room, another
+  // mode), they close.
+  const inBookRoom = () => { const r = room(); return !!r && t.marks.get(r)?.mode === RULE; };
+  const closeAll = () => {
+    const d = docks();
+    if (left) d?.left?.close(LEFT, true);
+    if (right) d?.right?.close(RIGHT, true);
+    left = right = null; moving = null;
+    if (timer) { clearInterval(timer); timer = null; }
+  };
   const draw = (force = false) => {
+    if ((left || right) && !inBookRoom()) { closeAll(); return; }
     const s = stamp();
     if (!force && s === seen) return;
     seen = s;
@@ -217,5 +228,6 @@ export function installDocks(t, { exportMarkdown, print, layout }) {
   const cancelMove = () => { if (!moving) return false; moving = null; draw(true); return true; };
 
   for (const on of [t.marks.on, t.links.on, t.gaps.on]) on(() => { if (left || right) draw(true); });
+  t.ui.zoom?.on?.(() => { if (left || right) draw(); }); // a change of room is heard here at once
   return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo };
 }

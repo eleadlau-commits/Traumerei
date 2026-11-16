@@ -34,12 +34,12 @@ export function installEditor(t) {
       { key: 'pages', label: 'Pages', type: 'choice', default: 'a4', options: [...Object.entries(SIZES).map(([k, v]) => [k, v[2]]), ['none', 'None: one column']] },
       { key: 'margins', label: 'Margins', type: 'choice', default: 'normal', options: [['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']] },
       { key: 'chapterPage', label: 'A chapter starts a page', type: 'switch', default: true },
-      { key: 'width', label: 'Column (no pages)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
+      { key: 'width', label: 'Column width (with Pages: None)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
     ],
-    arrange: (reads, context) => shape(reads, context, measure, size).rows,
-    draw: (reads, context) => shape(reads, context, measure, size).boxes,
-    land: (reads, context, mark, x, y) => {
-      const { rows } = shape(reads, context, measure, size);
+    arrange: (reads, context, set) => shape(reads, context, measure, size, set).rows,
+    draw: (reads, context, set) => shape(reads, context, measure, size, set).boxes,
+    land: (reads, context, mark, x, y, set) => {
+      const { rows } = shape(reads, context, measure, size, set);
       const near = rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);
       if (near) return after(reads, context, near.mark);
       return null;

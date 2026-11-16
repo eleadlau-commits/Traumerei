@@ -18,10 +18,15 @@ export const ABOUT = 'about'; // a margin note: a thought linked about a paragra
 export const WIDTHS = Object.freeze({ narrow: 480, book: 600, wide: 760 });
 export const SPACE = Object.freeze({ para: 0.55, before: [2.6, 1.9, 1.4], after: 0.5, title: 4.2, loose: 2.4 });
 
+// One of the room's settings under the rule: from `set` (the values a hook is handed, the room's
+// or else those for new rooms), else the room's own as it keeps them.
+export function settingOf(reads, room, key, set = null) {
+  if (set && set[key] !== undefined) return set[key];
+  return reads.marks.get(room)?.rules?.[RULE]?.[key];
+}
 // The column width a room asked for (its settings under the rule), or the book's.
-export function widthOf(reads, room) {
-  const set = reads.marks.get(room)?.rules?.[RULE]?.width;
-  return WIDTHS[set] || WIDTHS.book;
+export function widthOf(reads, room, set = null) {
+  return WIDTHS[settingOf(reads, room, 'width', set)] || WIDTHS.book;
 }
 
 // The heading thought of a chapter (the mark that heads it), or null.
@@ -103,8 +108,8 @@ export function read(reads, room) {
 // The column: rows for the marks (centre, width, height, words set flush left) and boxes behind
 // them (the title, each heading's number, the line over the thoughts not yet in the book).
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
-export function column(reads, room, measure, size = () => null) {
-  const W = widthOf(reads, room);
+export function column(reads, room, measure, size = () => null, set = null) {
+  const W = widthOf(reads, room, set);
   const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
   const rows = [], boxes = [];

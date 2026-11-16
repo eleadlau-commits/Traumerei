@@ -643,11 +643,12 @@ export function simpleRule(rule, lib, ontologies = () => null, globals = () => n
   };
   // A rule's memo key: the room's places, the floor's (a contents page of the floor's rooms
   // redraws when they move), every link, every mark, the gaps and the moments ahead.
-  // Since 1.1.1 also the rule's settings for new rooms, and (for a rule whose arrange read it) the
+  // Since 1.1.1 also the rule's settings for new rooms and the room's own (a value changed in its ⚙
+  // lays it out again: the ⚙ writes it without a new version of the marks), and (for a rule whose arrange read it) the
   // draft's: whether a thought is being written, and its box's height.
   const memo = new WeakMap(); // w → Map context → { stamp, key, map, usesDraft }
   const keyOf = (w, room) => `${lib.places.version(w, room)}|${lib.places.version(w, lib.places.home(w, room))}|${lib.links.version(w)}|${model.marksVersion(w)}|${stampOf(w)}`
-    + (settingsList.length ? `|${JSON.stringify(globals()?.[rule.id] || null)}` : '') + (memo.get(w)?.get(room)?.usesDraft ? `|${lib.draft?.key(room) ?? ''}` : '');
+    + (settingsList.length ? `|${JSON.stringify(globals()?.[rule.id] || null)}|${JSON.stringify(w.things[room]?.rules?.[rule.id] || null)}` : '') + (memo.get(w)?.get(room)?.usesDraft ? `|${lib.draft?.key(room) ?? ''}` : '');
   // Its settings (since 1.1.1 also { kind: 'choice', id, name, options: [{ id, name }], default } and
   // { kind: 'toggle', id, name, default }, read as the core's own shape), and their values in a
   // room, handed to each hook as its last argument: { [id]: value }, the room's, else the rule's

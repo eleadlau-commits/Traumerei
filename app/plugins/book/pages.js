@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, WIDTHS, column, read, titleOf, placeNotes } from './column.js';
+import { SPACE, column, read, titleOf, placeNotes, settingOf, widthOf } from './column.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
 // millimetre (the reading size is 19 units, about a 12-point book face at this scale).
@@ -14,33 +14,31 @@ export const MARGINS = Object.freeze({ narrow: 16, normal: 22, wide: 30 });
 export const MM = 3.4;
 export const GAP = 56; // between pages, in world units
 
-const setting = (reads, room, key) => reads.marks.get(room)?.rules?.[RULE]?.[key];
 
 // The room's page, or null when it is seen as one column: { w, h, m, text, name } (world units).
-export function pageOf(reads, room) {
-  const key = setting(reads, room, 'pages') ?? 'a4';
+export function pageOf(reads, room, set = null) {
+  const key = settingOf(reads, room, 'pages', set) ?? 'a4';
   const size = SIZES[key];
   if (!size) return null;
-  const m = (MARGINS[setting(reads, room, 'margins')] ?? MARGINS.normal) * MM;
+  const m = (MARGINS[settingOf(reads, room, 'margins', set)] ?? MARGINS.normal) * MM;
   const w = Math.round(size[0] * MM), h = Math.round(size[1] * MM);
   return { w, h, m, text: Math.round(w - 2 * m), name: size[2], key };
 }
 // The width the words are set at: the page's measure, or the column's.
-export function textWidth(reads, room) {
-  const p = pageOf(reads, room);
-  if (p) return p.text;
-  return WIDTHS[setting(reads, room, 'width')] || WIDTHS.book;
+export function textWidth(reads, room, set = null) {
+  const p = pageOf(reads, room, set);
+  return p ? p.text : widthOf(reads, room, set);
 }
-const chaptersStartPages = (reads, room) => setting(reads, room, 'chapterPage') !== false;
+const chaptersStartPages = (reads, room, set) => settingOf(reads, room, 'chapterPage', set) !== false;
 
 // The book as it reads in this room: pages, or the column.
-export function shape(reads, room, measure, size = () => null) {
-  return pageOf(reads, room) ? paginate(reads, room, measure, size) : { ...column(reads, room, measure, size), pageOf: new Map(), pages: 0 };
+export function shape(reads, room, measure, size = () => null, set = null) {
+  return pageOf(reads, room, set) ? paginate(reads, room, measure, size, set) : { ...column(reads, room, measure, size, set), pageOf: new Map(), pages: 0 };
 }
 
 // The pages: { rows, boxes, width, lineHeight, pageOf: Map(mark → page number), pages }.
-export function paginate(reads, room, measure, size = () => null) {
-  const P = pageOf(reads, room);
+export function paginate(reads, room, measure, size = () => null, set = null) {
+  const P = pageOf(reads, room, set);
   const W = P.text, L = -W / 2;
   const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
@@ -59,7 +57,7 @@ export function paginate(reads, room, measure, size = () => null) {
 
   const books = items.filter((x) => x.t === 'title').length;
   if (!books) { // no book yet: a quiet line says how to make one, and the loose thoughts follow
-    const c = column(reads, room, measure, size);
+    const c = column(reads, room, measure, size, set);
     return { ...c, pageOf: onPage, pages: 0 };
   }
   let loose = -1;
@@ -82,7 +80,7 @@ export function paginate(reads, room, measure, size = () => null) {
       const h = it.t === 'heading' ? (linesOf(it.mark).height ?? linesOf(it.mark).block) : lh * 1.3;
       const next = items[k + 1];
       const after = next && next.t === 'para' ? lh * Math.min(2, linesOf(next.mark).lines || 1) : 0; // a heading keeps two lines of what follows
-      if (d === 1 && chaptersStartPages(reads, room) && used) newPage();
+      if (d === 1 && chaptersStartPages(reads, room, set) && used) newPage();
       if (d === 1 && fresh()) { y = top(page) + P.h * 0.2; heads[page] = ''; } // a chapter's first page: its heading dropped, no running head
       else if (!fresh()) y += lh * SPACE.before[d - 1];
       if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
