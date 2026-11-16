@@ -8,7 +8,9 @@ import * as M from '../../world/moments.js';
 import { surface, connect } from '../v2.js';
 import { serve, memoryChoices } from '../../ai/Ai.js';
 
-const CORE_RULES = () => [lib.joyce.default, lib.pessoa.default];
+import { ROOM_TYPES, pessoa } from '../../world/tests/roomtypes.js';
+
+const CORE_RULES = () => [...ROOM_TYPES, ...lib.ontologies.BUILT_IN];
 
 export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
   let clock = now;
@@ -59,7 +61,7 @@ export function makeHost({ thoughts = 12, now = 1_700_000_000_000 } = {}) {
       return true;
     },
     get ontologies() { return ontologies(); },
-    ontology: (id) => ontologies().find((o) => o.id === id) || lib.pessoa.default,
+    ontology: (id) => ontologies().find((o) => o.id === id) || pessoa,
     globals: {},
     moments: { get log() { return log; }, of: (id) => M.of(log, id), since: (t) => M.since(log, t), changed: (id) => M.changed(log, id), at: (t) => M.stateAt(log, t), first: () => M.first(log), get keep() { return log.keep; }, setKeep: (d) => { log.keep = d; },
       outbox: (seq) => (seq == null ? M.whole(M.stateOf(w), 1) : M.outbox(log, seq)), absorb: (list) => M.absorb(log, M.stateOf(w), list) },

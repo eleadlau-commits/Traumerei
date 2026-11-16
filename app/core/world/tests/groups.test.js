@@ -10,8 +10,7 @@ import * as model from '../model.js';
 import { emptyWorld, MESSY, startTrain, addThought, create, members, addRoom, join, roomItems, foldedAway } from '../model.js';
 import { outermost, foreign, trayForeign, placedForeign, kindTag, wait, waiting, moveLoose } from '../groups.js';
 import { groupChosen, throwBack } from '../ontologies/index.js';
-import joyce from '../ontologies/joyce.js';
-import pessoa from '../ontologies/pessoa.js';
+import { joyce, pessoa } from './roomtypes.js';
 import russell, { chapters, addChapter } from '../../russell/rules.js';
 
 const train = (w, ...texts) => {

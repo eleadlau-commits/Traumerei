@@ -116,16 +116,13 @@
 // themselves are shared by every ontology.
 
 import { parentOf, declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
-import joyce from './joyce.js';
-import pessoa from './pessoa.js';
 import rows from './rows.js';
 
-// Built into the core for now: Joyce (trains) and Pessoa (each thought on its own); they become
-// corpus plugins in step 1a. Rows is the core's own bare reading, always there. Every other mode
-// is a plugin (Russell, Proust). Nothing here is special about Joyce: which rule a new room opens
-// in is a setting (World: defaultRule), and a room whose rule is off is seen through the first
-// rule that sees everything (seesAll), Rows last.
-export const BUILT_IN = [joyce, pessoa, rows];
+// Built into the core: only Rows, the bare reading, always there. Every way of seeing a room is a
+// plugin (Joyce, Pessoa, Russell, Proust: the corpus room types). Nothing here is special about
+// any of them: which rule a new room opens in is a setting (World: defaultRule), and a room whose
+// rule is off is seen through the first rule that sees everything (seesAll), Rows last.
+export const BUILT_IN = [rows];
 export const FALLBACK = 'rows';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };

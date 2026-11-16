@@ -1,0 +1,18 @@
+{
+  "name": "Pessoa",
+  "description": "Pessoa, a way of seeing a room: every thought on its own, laid on a loose spiral and left where it is dragged.",
+  "version": "1.0.0",
+  "main": "Pessoa.js",
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 2,
+    "minApp": "1.0.0",
+    "kind": [
+      "mode"
+    ],
+    "load": "start",
+    "author": "E"
+  }
+}

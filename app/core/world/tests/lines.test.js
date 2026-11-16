@@ -2,7 +2,9 @@
 
 import { test, assert } from 'folio/testing';
 import { slack, strand, line, layer, knot, cleanEnds, ENDS, HEAD } from '../ontologies/lines.js';
-import { slack as joyceSlack, strand as joyceStrand, STEP } from '../ontologies/joyce.js';
+import { J } from './roomtypes.js';
+import { STEP } from '../steps.js';
+const { slack: joyceSlack, strand: joyceStrand } = J;
 
 test('a strand sags after a long pause, stays taut when quick, and straightens when pulled', () => {
   const quick = slack({ at: 0 }, { at: 2000 }, 58), pause = slack({ at: 0 }, { at: 1800e3 }, 58);
@@ -14,7 +16,8 @@ test('a strand sags after a long pause, stays taut when quick, and straightens w
 });
 
 test('Joyce\'s strands are the shared ones, resting at its line step', () => {
-  assert.equal(joyceStrand, strand);
+  const p = { x: 0, y: 0 }, q = { x: 40, y: 90 };
+  assert.equal(joyceStrand(p, q, 12), strand(p, q, 12)); // the shared strand
   for (const gap of [0, 5e3, 60e3, 1800e3, 7200e3]) for (const dist of [STEP.line, 200, 700]) {
     assert.equal(joyceSlack({ at: 0 }, { at: gap }, dist, 0.3), slack({ at: 0 }, { at: gap }, dist, 0.3, STEP.line));
   }

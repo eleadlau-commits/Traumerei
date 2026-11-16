@@ -575,7 +575,8 @@ function pick(from, names, where) {
 export const MODEL = ['parentOf', 'shut', 'hash', 'roomSetting', 'setRoomSetting', 'isGroup', 'isLeaf', 'create',
   'join', 'members', 'itemsIn', 'within', 'groupOf', 'groupsIn', 'roomItems', 'thoughtText', 'view', 'setOrder', 'groupLabel',
   'room', 'roomThoughts', 'kindOf', 'update', 'remove', 'groupsOf', 'addRoom', 'seedRoomSettings', 'search', 'MESSY', 'DEFAULT_MODE',
-  'leave', 'replaceIn', 'isLooseGroup', 'spotOf', 'setSpot', 'unsetSpot'];
+  'leave', 'replaceIn', 'isLooseGroup', 'spotOf', 'setSpot', 'unsetSpot',
+  'roomUnits', 'roomTrains', 'trainThoughts', 'startTrain', 'offsetOf', 'setOffset', 'unsetOffset', 'defaultMode'];
 export const GROUPS = ['placedForeign', 'trayForeign', 'inForeign', 'waiting', 'wait', 'spot', 'putAt', 'unput', 'spotsOf', 'place', 'unplace'];
 export const RELATIONS = ['arrowsOf', 'cleanRelationList', 'relationEntry', 'relationEnds', 'listText', 'relationName', 'splitList',
   'cleanRelations', 'relationShown', 'withRelation', 'RELATIONS'];
@@ -598,8 +599,8 @@ export function surface(lib) {
     kinds: pick(lib.items, KINDS, 'items'),
     twins: pick(lib.twin, TWINS, 'twin'),
     pictures: pick(lib.picture, ['shrinkPicture', 'keepOrShrink'], 'picture'),
-    layout: pick(lib.pessoa, ['spiralPoint'], 'pessoa'),
-    trains: pick(lib.joyce, TRAINS, 'joyce'),
+    layout: pick(lib.spiral, ['spiralPoint'], 'spiral'),
+    trains: pick(lib.steps, TRAINS, 'steps'),
   };
 }
 

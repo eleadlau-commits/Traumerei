@@ -1,10 +1,10 @@
-// Pessoa: every thought floats on its own, laid on a loose spiral outwards in the order they were
+// Pessoa (a corpus plugin since open core step 1a; world.js binds what it uses from the plugin
+// API's parts): every thought floats on its own, laid on a loose spiral outwards in the order they were
 // written, and stays where it is dragged. Pessoa makes no groups: a group another mode made (a
 // train, a chapter) is one thought here, in the tray until it is dragged onto the canvas, and its
 // thoughts don't float on their own as well. Where a thought was dragged to is its 'pessoa' rule row (places.js); Pessoa keeps nothing itself.
 
-import { roomUnits, shut, hash, isGroup } from '../model.js';
-import { placedForeign, trayForeign, spot, putAt, unput, spotsOf, unplace, inForeign, waiting, wait } from '../groups.js';
+import { roomUnits, shut, isGroup, placedForeign, trayForeign, spot, putAt, unput, spotsOf, unplace, inForeign, waiting, wait, spiralPoint } from './world.js';
 
 // The room's thoughts Pessoa floats on their own: all but those inside another mode's group,
 // which stands for them (one card, on the canvas once it is placed, or in the tray), and those
@@ -15,20 +15,6 @@ function ownThoughts(w, roomId) {
 }
 export const ownUnits = (w, roomId) => ownThoughts(w, roomId).filter((th) => !waiting(w, roomId, 'pessoa', th.id));
 const waitingThoughts = (w, roomId) => ownThoughts(w, roomId).filter((th) => waiting(w, roomId, 'pessoa', th.id));
-
-// The i-th thought (in time order) sits on an Archimedean spiral r = bθ, spaced evenly along its
-// length, nudged a little by its id so it doesn't look ruled.
-export const SPIRAL = { step: 230, gap: 190 }; // px between neighbours along the spiral; between turns
-export function spiralPoint(i, id = '') {
-  const b = SPIRAL.gap / (2 * Math.PI);
-  const theta = Math.sqrt((2 * SPIRAL.step * (i + 0.6)) / b);
-  const r = b * theta;
-  const h = hash(id);
-  const jx = ((h & 0xff) / 255 - 0.5) * 36;
-  const jy = (((h >> 8) & 0xff) / 255 - 0.5) * 28;
-  return { x: r * Math.cos(theta) + jx, y: r * Math.sin(theta) + jy };
-}
-
 
 export default {
   id: 'pessoa',

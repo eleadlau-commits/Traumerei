@@ -6,6 +6,7 @@
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import * as M from '../../world/moments.js';
+import { ROOM_TYPES } from '../../world/tests/roomtypes.js';
 import { API_VERSION, surface, connect, kernel, SLOTS, TABLES, READERS, DIRECTIONS, ARCHIVE } from '../v2.js';
 
 // Version 2, as API.md lists it. Changing the API means changing this and API.md together.
@@ -26,7 +27,7 @@ const V2 = {
 };
 // The parts rules and views share, by name.
 const PARTS = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'search', 'seedRoomSettings', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'thoughtText', 'unsetSpot', 'update', 'view', 'within'],
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'defaultMode', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'offsetOf', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'roomTrains', 'roomUnits', 'search', 'seedRoomSettings', 'setOffset', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'startTrain', 'thoughtText', 'trainThoughts', 'unsetOffset', 'unsetSpot', 'update', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'spotsOf', 'trayForeign', 'unplace', 'unput', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
@@ -75,7 +76,7 @@ test('every name is the world\'s own, and the API can\'t be changed by a plugin'
   const parts = surface(lib);
   assert.equal(parts.model.create, lib.model.create);
   assert.equal(parts.arrows.arrowView, lib.arrowview.arrowView);
-  assert.equal(parts.layout.spiralPoint, lib.pessoa.spiralPoint);
+  assert.equal(parts.layout.spiralPoint, lib.spiral.spiralPoint);
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts, lib });
   assert.ok(Object.isFrozen(t) && Object.isFrozen(t.parts.model) && Object.isFrozen(t.slots.rules));
   assert.throws(() => { 'use strict'; t.parts.model.create = null; });
@@ -290,12 +291,12 @@ test('marks: frozen rows read off the world; make, edit and delete land as saved
 
 test('rules: each mode read as the kernel sees it: layout from the rows, admit in words, moves, draws; frozen', () => {
   const { w, room, train, a, b, c, locked, service } = smallWorld();
-  service.ontologies = lib.ontologies.forRooms(lib.ontologies.BUILT_IN); // the bare Rows only when no other is on
+  service.ontologies = lib.ontologies.forRooms([...ROOM_TYPES, ...lib.ontologies.BUILT_IN]); // the bare Rows only when no other is on
   const k = kernel({ lib, world: service });
   assert.deepEqual(k.rules.list().map((r) => r.id), ['joyce', 'pessoa']);
   const at = k.rules.layout('joyce', room.id);
   assert.ok(Object.isFrozen(at) && at.some((p) => p.mark === a.id && p.rule === 'joyce'));
-  assert.deepEqual(at.find((p) => p.mark === a.id).position, lib.ontologies.BUILT_IN[0].point(w, room.id, a.id));
+  assert.deepEqual(at.find((p) => p.mark === a.id).position, ROOM_TYPES[0].point(w, room.id, a.id));
   assert.deepEqual(k.rules.admit('pessoa', { kind: 'place', mark: c.id, context: room.id, position: { x: 1, y: 2 } }), { ok: true });
   assert.match(k.rules.admit('pessoa', { kind: 'place', mark: c.id, context: locked.id }).reason, /locked|not in that context/);
   assert.equal(k.rules.admit('nowhere', {}).ok, false);

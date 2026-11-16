@@ -27,7 +27,7 @@ import { openDocument } from './document.js';
 import { el, HINT } from './shared.js';
 
 // The status bar's quiet line in a room, while the pointer is over nothing in particular.
-const IDLE = 'Type anywhere to write · Enter keeps it · Ctrl+Enter a new train · Right-click edits';
+const IDLE = 'Type anywhere to write · Enter keeps it · Ctrl+Enter starts afresh · Right-click edits';
 // What it says over a thought or a group on the canvas.
 const OVER = {
   thought: 'Thought · Click to choose · Triple-click to write in it · Right-click edits · Drag to move',

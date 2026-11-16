@@ -2,7 +2,7 @@
 
 import { test, assert } from 'folio/testing';
 import { clearSpace, clearSpot, nearSpot } from '../clear.js';
-import { setHeights, clearHeights, stepAfter, STEP } from '../../world/ontologies/joyce.js';
+import { setHeights, clearHeights, stepAfter, STEP } from '../../world/steps.js';
 
 const box = (x, y, w, h) => ({ x, y, w, h });
 

@@ -14,8 +14,10 @@ import {
   roomTags, addTag, removeTag, allTags, hasTag, tagGroup, setTagGroup, groupNames, tagsByGroup, ONTOLOGY, makeTag, makeGroup, cells, copyRoom,
 } from '../model.js';
 import * as model from '../model.js';
-import pessoa, { spiralPoint } from '../ontologies/pessoa.js';
-import { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName, STEP, stepAfter } from '../ontologies/joyce.js';
+import { pessoa, J } from './roomtypes.js';
+import { spiralPoint } from '../spiral.js';
+import { STEP, stepAfter } from '../steps.js';
+const { trainSpots, nextSpot, nudge, slack, strand, timeline, tagName } = J;
 
 const train = (w, room = MESSY, ...texts) => {
   const t = startTrain(w, room, 0, 0);
