@@ -41,7 +41,7 @@ test('a line leaves a box at its edge, toward the other', () => {
   assert.deepEqual(edge(a, c), { x: 50, y: 20 });
 });
 
-test('a kind its plugin declares quiet is not drawn here (its mode draws it): since 1.1.1', () => {
+test('a kind its plugin declares quiet is not drawn here (its mode draws it): since 1.1.2', () => {
   const declared = [{ kind: 'cites', name: 'cites' }, { kind: 'heads', name: 'heads', quiet: true }];
   assert.equal(isDrawn('cites', declared), true);
   assert.equal(isDrawn('heads', declared), false);

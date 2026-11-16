@@ -3,7 +3,7 @@
 // show here, and a small ↗ on a mark whose other end is somewhere else (another room, or folded
 // away). A click on the ↗, or Alt+L with the mark chosen, follows the link there (Alt+L again: the
 // next one). The structure kinds (part of, stands for, relation) are each mode's own to draw, and
-// so is a plugin's kind declared `quiet` (since 1.1.1).
+// so is a plugin's kind declared `quiet` (since 1.1.2).
 // plan() is pure (tests/linklayer.test.js); drawLinks() measures what the canvas drew.
 
 import { el } from './shared.js';
