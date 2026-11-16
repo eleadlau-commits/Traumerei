@@ -47,3 +47,10 @@
 .book-here { background: var(--sel-fill); }
 .book-target .book-text { text-decoration: underline dotted; }
 .book-hand-title { margin: 0 0 4px; }
+
+/* Book · blocks (blocks.js): each chapter and section a dotted outline around its blocks. The
+   rule draws them as quiet boxes; only here, in a room seen as Book · blocks, they get a line. */
+[data-mode="book-blocks"] .room-cell-quiet { border: 1px dotted rgb(var(--ink-rgb) / .35); border-radius: 6px; }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l2 { border-color: rgb(var(--ink-rgb) / .28); }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l3 { border-color: rgb(var(--ink-rgb) / .22); }
+[data-mode="book-blocks"] .room-cell-quiet .room-cell-label { opacity: .6; }

@@ -64,6 +64,27 @@ and room settings that redraw).
   - Ctrl+Shift+V: paste as paragraphs after this one.
 - In every other mode, the book is a card as before (0.1): double-click opens it in the right dock.
 
+## Book · blocks
+
+A sibling rule (`book-blocks`, order 31, `blocks.js`): Arrange by → Book · blocks, or Tab from
+Book. The same book as a board, in reading order a row at a time:
+
+- every paragraph a block of up to four lines in a thin frame; one still to write in a dashed
+  frame marked "to write"; its margin notes under it, in its frame;
+- each chapter a dotted outline around its blocks and sections, each section one inside it, the
+  heading on the outline's top (its number on the left, its words on the right); zoomed out, the
+  headings read large (the far band): the corkboard;
+- below the book, the tray: the room's thoughts not yet in it.
+- **Drag** a block between two others: it moves there, into that chapter when the outline is
+  another's (`{ join, at, from }`, one step). Onto an outline's top: to the end of that chapter.
+  A heading dragged moves its whole chapter (never into itself). Into the tray: out of the book.
+  A margin note stays a note (Alt+N). Let go inside its own block: nothing.
+- The keys on the structure work here too (Ctrl+Alt+H, Ctrl+] / Ctrl+[, Ctrl+Up / Ctrl+Down,
+  Alt+N, Alt+M, Ctrl+Shift+V), and the docks stay open (the column is not fitted). Enter after a
+  chosen block lands the new paragraph right after it.
+- No settings of its own; the frames and outlines are the room's boxes (plain, shelf, quiet; the
+  plugin's style gives the quiet ones a dotted line in this mode only).
+
 ## What it needs
 
 - **Plugin API:** 3 · **oldest app:** 1.1.2
