@@ -1,7 +1,8 @@
 # Recipes: the closest plugin for each kind of idea
 
 Start from the closest one, copy its shape, change what differs. Each is in the repo at
-`app/plugins/<id>/`; the ones marked ★ are also bundled in this skill's `examples/` folder, whole.
+`app/plugins/<id>/`; the ones marked ★ are also bundled in this skill's `examples/` folder, as they are in the repo (most
+are one file; ★ `highlighter` shows the `rules.js` + `tests/` split a new plugin should have).
 All of them are corpus plugins written against the API alone and held by the same checks you run.
 
 | You want… | Slot(s) | Start from | What it shows |

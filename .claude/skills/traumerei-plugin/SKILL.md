@@ -23,7 +23,8 @@ building it; otherwise go on.
 ## 2. Pick the closest recipe
 
 Open `reference/recipes.md`, find the row nearest the idea, and read that plugin whole (in
-`examples/<id>/` here, or `app/plugins/<id>/` in the repo). Copy its shape: `install(t)` holding
+`examples/<id>/` here, or `app/plugins/<id>/` in the repo; `highlighter` shows the split into
+`rules.js` and tests that a new plugin should have). Copy its shape: `install(t)` holding
 everything, a default class that calls it, plain functions beside it.
 
 ## 3. Write the plugin
@@ -66,9 +67,11 @@ writes `packed/<id>.traumplug`. Fix every ✗ and run it again until it says eve
 Then `python build.py test` for the whole suite before a PR. Every plugin but a corpus one ships
 as a file: `tools/corpus.py` lists it among those shipped apart on its own.
 
-**With no repo** (a chat): run `python scripts/traumplug.py <id>/ --out .` from this skill if you
-can run code. It makes the same import checks the app makes and writes `<id>.traumplug` (one
-main file plus files it imports by `./name.js`; no `* as`, no `export { … }` lists, no packages).
+**With no repo** (a chat), if you can run code: `node scripts/run_tests.mjs <id>/` runs its
+tests (with a stand-in for `folio`, so test plain functions), then `python scripts/traumplug.py
+<id>/ --out .` makes the same import checks the app makes and writes `<id>.traumplug`. The packer
+puts every file in one scope, so no top-level name may be declared in two files; it takes one
+main file plus files imported by `./name.js` (no `* as`, no `export { … }` lists, no packages).
 If you cannot run code, write the package by hand in the format in `reference/no-repo.md`. Go
 through the self-check list there. Hand over the folder and the `.traumplug`, and tell the person
 the full check is `python build.py check <file>.traumplug` in the repo.

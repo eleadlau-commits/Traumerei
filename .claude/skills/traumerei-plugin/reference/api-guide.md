@@ -24,11 +24,11 @@ A folder `app/plugins/<id>/` (id: lowercase words joined by dashes) with:
 }
 ```
 
-Plugin block keys: `api` (3), `minApp` (oldest app it works with; `1.1.2` if it uses anything
-marked 1.1.1/1.1.2 below, `1.1.0` otherwise), `kind` (list, from: `mode`, `item`, `view`,
+Plugin block keys: `api` (3), `minApp` (oldest app it works with: write `1.1.2` for a new
+plugin), `kind` (list, from: `mode`, `item`, `view`,
 `editor`, `command`, `link`, `reader`, `format`, `page`, `look`, `tool`, `dock`, `provider`),
 `needs` (list, from: `files`, `network`, `sidecar`, `store`, `ai`, `surface`; default none),
-`load` (`start`), `author`, `starts` (`on` default; `off` waits under More plugins). Any other word
+`load` (`start`), `author` (the person who asked for it; `E` when unsure in this project), `starts` (`on` default; `off` waits under More plugins). Any other word
 is refused by the compiler and by the importer.
 
 The main file, always in this shape:
@@ -69,8 +69,11 @@ or adding to a core slot directly gets it left out of the build and refused at i
 - Build nodes with `ui.el(tag, attrs, ...kids)`; SVG with `document.createElementNS`.
 - Slot items: `order` optional (lower first, 50 default); `title?()` a tooltip. Each `add`
   returns a function that removes the item.
-- A thought is about 200 world units wide; rule positions are a unit's **centre**, box positions
-  a box's **top-left**.
+- A thought is about 200 world units wide and a one-line thought about 40 tall (space rows 44 to
+  60 apart, or ask `t.ui.size(mark, width)`); rule positions are a unit's **centre**, box
+  positions a box's **top-left**.
+- A read of something that is not there gives `null` (`marks.get`, `gaps.of`, `moments.next`);
+  a list read gives `[]`.
 
 ## 3. The six tables
 
@@ -83,7 +86,7 @@ Words: readers `me now`, `me later`, `others`, `machine`. Gap directions `to wor
 | `t.places` | `of(mark)`, `home(mark)`, `in(context, rule?)`, `loose(context)`, `position(mark, context, rule)` | `put(mark, context, rule?, position?)`, `move(mark, from, to)`, `unplace(mark, context)` |
 | `t.links` | `get(id)`, `from(mark, kind?)`, `to(mark, kind?)`, `members(group)` (ids, ordered), `holders(mark)`, `standsFor(fold)`, `kinds()`, `named(kind)`, `count()` | `link(from, to, kind, label?, { rule, note, at }?)` (`part of` takes `at`; `relation` needs `rule`), `fold(context, ids)`, `unlink(id)`, `order(group, ids)` |
 | `t.distance` | `of(mark)`, `declared(context)`, `all()`, `shut(mark)`, `readers()` | `declare(context, reader)` (`others` locks, `me now` unlocks) |
-| `t.gaps` | `of(mark)` → `{ mark, direction, state: 'open'\|'resolved', openedAt, resolvedAt? }` or derived `{ derived: true, open, resolved, of }`, `opened(context?)` oldest first, `oldest(context?)`, `progress(mark)` → `{ open, resolved, of }` | `open(mark, direction)`, `resolve(mark, by?)`, `reopen(mark)`. A mark with parts has a derived gap: open/resolve its parts instead |
+| `t.gaps` | `of(mark)` → `{ mark, direction, state: 'open'\|'resolved', openedAt, resolvedAt? }`, derived `{ derived: true, open, resolved, of }`, or `null` for none; `opened(context?)` the stored open rows of the marks at home there (a group's parts too; derived gaps not counted), oldest first, `oldest(context?)`, `progress(mark)` → `{ open, resolved, of }` | `open(mark, direction)` (refused while one is open: resolve it first; on a resolved gap it opens a new one, any direction), `resolve(mark, by?)`, `reopen(mark)` (same direction). A mark with parts has a derived gap: open/resolve its parts instead |
 | `t.moments` | `of(mark)` (rows with `before`/`after` since 1.1.1), `changed(mark)`, `since(time)`, `day(date)`, `at(time)`, `placesAt(time)`, `first()`, `ahead(context?)`, `returns(context?)`, `next(mark)` → `{ at, state: 'waiting'\|'back'\|…, note }`, `seq()` (changes on every landing: cache by it) | `due(mark, time, note?)`, `revisit(mark, time, note?)`, `note(mark, text)`, `meet(mark)`, `refuse(mark)`, `clear(mark)`, `keep(days)` |
 | `t.carriers` | `list()`, `tables(context?)`, `text(context?, { ids })` (.traum text), `read(text)`, `check(context, read)` | `land(read, { into? })`, `replace(context, read)` |
 
@@ -107,7 +110,7 @@ their fields, links, gaps and moments; keep only caches and settings outside.
 | `t.slots.more` | ⋯ More entry: `{ id, label, icon, order, run(), on?(), visible?(), title?() }` | `command` |
 | `t.slots.buttons` | rail Tools button: same shape as More | `tool` |
 | `t.slots.bar` | word on the room's top bar: `{ id, label, title?(context), order, run(context), on?(context), visible?(context) }`. Give it a command too, for a key | `tool` |
-| `t.slots.strip` | quiet status line at the canvas foot: `{ id, text(context) → string, title?, onClick?, visible?, order }`. Cache by `t.moments.seq()` | `tool` |
+| `t.slots.strip` | quiet status line at the canvas foot: `{ id, text(context) → string, title?, onClick?, visible?, order }`; `''` shows nothing (no need for `visible` to hide an empty count). Cache by `t.moments.seq()` | `tool` |
 | `t.slots.editor` | Editor section for the chosen thing: `{ id, order, when?(x), render(x) → node\|null }`, `x = { id, roomId, mode, locked, refresh() }` | `editor` |
 | `t.slots.pages` | a page in the frame (like Settings): `{ id, label, icon?, order?, idle?, visible?(), sections?() → [{ id, title, icon?, body }] \| render() → node }`; open with `t.ui.open.page(id)` | `page` |
 | `t.slots.views` | a whole view under everything: `{ id, label, icon?, order, mount(container, { head, actions }), render() }` | `view` |
@@ -134,13 +137,16 @@ Hooks that give a room a form (each pure, returns data):
 
 | Hook | When | Returns |
 |---|---|---|
-| `draw(reads, context, settings)` | room drawn | boxes `[{ x, y, w, h, label?, note?, right?, style?: 'plain'\|'title'\|'heading'\|'line'\|'shelf'\|'quiet'\|'page', level?, opens?, surface?, data? }]` (top-left) |
+| `draw(reads, context, settings)` | room drawn | boxes `[{ x, y, w, h, label?, note?, right?, style?, level?, opens?, surface?, data? }]` (top-left). `label` small words at its top-left, `note` small words at its foot (`today`), `right` small words at its top-right. `style`: `plain` (a framed box, the default), `shelf` (dashed frame, faintly filled: lanes, columns, areas), `title` (no frame, a large label), `heading` (no frame, a heading label; `level` 2–3 smaller and indented), `line` (a dotted line along its foot), `quiet` (no frame, faint label), `page` (a sheet of paper with a shadow). The look is the room's, so pick by meaning |
 | `drop(reads, context, mark, x, y, settings)` | a mark let go at x, y | a proposal, a list, or nothing |
 | `land(reads, context, mark, x, y, settings)` | a new thought kept while a box is chosen, at Add's point, or written after a mark | a proposal, a list, or nothing |
 
 Proposals: `{ due: time, note? }`, `{ revisit: time, note? }`, `{ clear: true }`, `{ gap: direction }`,
 `{ resolve: true }`, `{ place: room, x?, y? }`, `{ join: group, at?, from? }`; add `mark` to
-target another mark of the room. They land with the gesture as one step; a refused one is skipped.
+target another mark of the room. They land with the gesture as one step, in list order; a refused
+one is skipped. `{ gap }` acts as `gaps.open`: refused while a gap is open, so return
+`[{ resolve: true }, { gap: 'from world' }]` to change an open gap's direction; on a resolved or
+missing gap `{ gap }` alone opens one. Read `reads.gaps.of(mark)` in the hook to return only what applies.
 
 `reads.marks.draft(context)` → the thought being written `{ text, at?, after?, height? }` or
 `null` (leave room for it). `t.rules.layout/admit/moves/draws(rule, context)` read any rule.
@@ -198,7 +204,7 @@ A thought of a kind (or a span, a link kind) whose plugin is off is kept untouch
 - **Do** wrap multi-step changes in `t.together`, check `.ok` and toast `.reason`.
 - **Do** cache counts by `t.moments.seq()`; keep decorators and strip text cheap.
 - **Do** use Folio's classes for the look (`hint`, `small`, `word` buttons, `pick`); CSS only for layout.
-- **Do** namespace ids: `<plugin-id>.<thing>` for commands, `<plugin-id>` for slots.
+- **Do** namespace ids: `<plugin-id>.<thing>` for commands and for slot items (`<plugin-id>` alone is fine for a plugin's one rule or one item of a slot).
 - **Never** import another feature's files, or anything bare but `folio` (no npm packages: write
   it yourself, or load it at run time from `t.store.files.download`).
 - **Never** keep content outside the tables, mutate a row, or write in `arrange`/`draw`.
