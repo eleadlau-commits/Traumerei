@@ -73,3 +73,8 @@
 [data-mode="book-blocks"] .room-cell-quiet.room-cell-l2 { border-color: rgb(var(--ink-rgb) / .28); }
 [data-mode="book-blocks"] .room-cell-quiet.room-cell-l3 { border-color: rgb(var(--ink-rgb) / .22); }
 [data-mode="book-blocks"] .room-cell-quiet .room-cell-label { opacity: .6; }
+
+/* The pages side by side, in the book in hand: fix the columns or the rows, and how many. */
+.book-grid { display: flex; flex-direction: column; gap: 4px; }
+.book-grid-row { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.book-grid-row .hint { margin: 0 6px 0 0; min-width: 5.5em; }

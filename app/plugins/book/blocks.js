@@ -20,6 +20,20 @@ export const BLOCKS = 'book-blocks';
 // `pad` inside an outline, `note` lines of a margin note shown under its paragraph.
 export const BOARD = Object.freeze({ block: 230, lines: 4, cols: 4, frame: 10, gap: 18, pad: 22, note: 2 });
 
+// How many blocks to a row: the room's setting under the rule (BOARD.cols by default), and the
+// counts it offers. setAcross keeps a new count there, one step (marks.edit), as the ⚙ does.
+export const ACROSS = Object.freeze([2, 3, 4, 6, 8]);
+export function acrossOf(reads, room, set = null) {
+  const n = Number(set?.across ?? reads.marks.get(room)?.rules?.[BLOCKS]?.across);
+  return ACROSS.includes(n) ? n : BOARD.cols;
+}
+export function setAcross(t, room, n) {
+  const m = t.marks.get(room);
+  if (!m) return { ok: false, reason: 'No such room' };
+  return t.marks.edit(room, { rules: { ...(m.rules || {}), [BLOCKS]: { ...(m.rules?.[BLOCKS] || {}), across: String(n) } } });
+}
+export const stepAcross = (n, dir) => ACROSS[Math.max(0, Math.min(ACROSS.length - 1, Math.max(0, ACROSS.indexOf(n)) + dir))];
+
 // The board: { rows, boxes, outlines, tray, cells, books }.
 //   rows      for arrange: each paragraph, heading, note and stray where it shows
 //   boxes     for draw: the outlines (quiet: dotted by the plugin's style), then the frames
@@ -29,8 +43,9 @@ export const BOARD = Object.freeze({ block: 230, lines: 4, cols: 4, frame: 10, g
 //             parts it shows in order (a paragraph's block, a section's outline)
 //   tray      { x, y, w, h }: the thoughts not yet in the book
 //   cells     Map(mark → { x0, y0, x1, y1 }): where each mark shows (a heading: its label strip)
-export function board(reads, room, measure) {
-  const { block: BW, lines: LINES, cols: COLS, frame: F, gap: G, pad: PAD, note: NL } = BOARD;
+export function board(reads, room, measure, set = null) {
+  const { block: BW, lines: LINES, frame: F, gap: G, pad: PAD, note: NL } = BOARD;
+  const COLS = acrossOf(reads, room, set);
   const lh = measure('M', BW).lineHeight || 27.5;
   const BH = lh * LINES;
   const CW = BW + 2 * F + G; // a cell's pitch across
@@ -205,16 +220,17 @@ export function installBlocks(t) {
   t.slots.rules.add({
     id: BLOCKS, name: 'Book · blocks', note: 'the book as blocks: a frame for each paragraph, an outline for each chapter; drag to reorder', icon: ICON, order: 31,
     claims: ['book', 'book-chapter'],
-    arrange: (reads, context) => board(reads, context, measure).rows,
-    draw: (reads, context) => board(reads, context, measure).boxes,
-    drop: (reads, context, mark, x, y) => {
-      const p = dropAt(reads, context, mark, x, y, board(reads, context, measure));
+    settings: [{ key: 'across', label: 'Blocks across', type: 'choice', default: String(BOARD.cols), options: ACROSS.map((n) => [String(n), String(n)]) }],
+    arrange: (reads, context, set) => board(reads, context, measure, set).rows,
+    draw: (reads, context, set) => board(reads, context, measure, set).boxes,
+    drop: (reads, context, mark, x, y, set) => {
+      const p = dropAt(reads, context, mark, x, y, board(reads, context, measure, set));
       if (p?.leave) { leave(p.mark); return null; }
       return p;
     },
     // A thought written after a block lands right after it, in its chapter (as in Book).
-    land: (reads, context, mark, x, y) => {
-      const near = board(reads, context, measure).rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);
+    land: (reads, context, mark, x, y, set) => {
+      const near = board(reads, context, measure, set).rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);
       return near ? after(reads, context, near.mark) : null;
     },
     hand: false,

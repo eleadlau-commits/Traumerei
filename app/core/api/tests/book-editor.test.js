@@ -208,7 +208,7 @@ test('book editor: far off, each heading reads as its title; a page opens its fi
   const pages = lay.boxes.filter((b) => b.style === 'page');
   assert.equal(pages.length, lay.pages);
   assert.equal(pages[0].opens, undefined, 'the title page: its title box opens the book');
-  pages.forEach((b, i) => { assert.equal(Z.pageAt(lay, b.y), i + 1, 'a page box says its page'); if (i) assert.equal(b.opens, lay.firstOn[i], `page ${i + 1}`); });
+  pages.forEach((b, i) => { assert.equal(Z.pageAt(lay, b.x + b.w / 2, b.y + 1), i + 1, 'a page box says its page'); if (i) assert.equal(b.opens, lay.firstOn[i], `page ${i + 1}`); });
   assert.equal(lay.firstOn[1], s.heads[0], 'Winter opens page 2');
   const on = (r, n) => r.y >= P.pageTop(lay, n) && r.y <= P.pageTop(lay, n) + lay.page.h;
   for (let n = 2; n <= lay.pages; n++) {
@@ -237,7 +237,7 @@ test('book editor: going to a page: the zoom that fills the height, and two zoom
   assert.equal(Z.fillHeight(1010, 1034), 1);
   assert.equal(Z.fillHeight(1010, 300), 0.5, 'never under mid: the words still read');
   assert.equal(Z.fillHeight(100, 4000), 4);
-  const lay = { origin: -300, pitch: 1066, page: { h: 1010 } };
+  const lay = { origin: -300, pitch: 1066, page: { w: 714, h: 1010 }, pages: 3 };
   assert.equal(P.pageTop(lay, 3), -300 + 2 * 1066);
   assert.deepEqual(Z.pageCentre(lay, 1, 1, 1100), { x: 0, y: -300 + 505 }, 'the whole page, when it fits');
   const c = Z.pageCentre(lay, 2, 1, 600);
@@ -248,6 +248,79 @@ test('book editor: going to a page: the zoom that fills the height, and two zoom
     const end = run(V, z0, Z.aim(V, z0, C2, z));
     assert.ok(Math.abs(end.x - C2.x) < 1e-6 && Math.abs(end.y - C2.y) < 1e-6 && end.z === z, `to ${C2.x},${C2.y} at ${z}`);
   }
+});
+
+test('book editor: pages side by side: columns or rows fixed, facing pages, notes in the outer margin', () => {
+  const { host, t, s } = setUp();
+  const measure = (x, w) => t.ui.measure(x, w);
+  const long = t.marks.make({ content: 'A long paragraph that runs on. '.repeat(200), in: s.room }).id;
+  t.links.link(long, s.chapters[0], 'part of', null, { at: 1 });
+  const down = P.paginate(t, s.room, measure);
+  assert.equal(down.grid.count, 1, 'one under another unless the room says otherwise');
+  const check = (lay, what) => {
+    assert.deepEqual([...lay.pageOf], [...down.pageOf], `${what}: the same pages`);
+    assert.deepEqual(lay.firstOn, down.firstOn, `${what}: each page opens the same paragraph`);
+    const pages = lay.boxes.filter((b) => b.style === 'page');
+    pages.forEach((b, i) => {
+      const q = P.placeOf(lay, i + 1);
+      assert.ok(Math.abs(b.x + b.w / 2 - q.x) < 1e-6 && Math.abs(b.y - q.y) < 1e-6, `${what}: page ${i + 1} where placeOf says`);
+      assert.equal(P.pageAt(lay, q.x, q.y + 10), i + 1, `${what}: the page at its place`);
+    });
+    // Every row of the book (each piece of the long paragraph too) on its page, inside the margins.
+    const book = new Set(C.flow(t, s.room).filter((id) => lay.pageOf.has(id)));
+    for (const r of lay.rows.filter((x) => book.has(x.mark))) {
+      const b = pages.find((p) => r.y >= p.y && r.y <= p.y + p.h && Math.abs(r.x - (p.x + p.w / 2)) < 1);
+      assert.ok(b, `${what}: a row on a page`);
+    }
+    // No two pages overlap.
+    for (let i = 0; i < pages.length; i++) for (let j = i + 1; j < pages.length; j++) {
+      const a = pages[i], b = pages[j];
+      assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${what}: pages ${i + 1} and ${j + 1} apart`);
+    }
+    return pages;
+  };
+  // Two columns: facing pages, the title page alone on the right.
+  set(host, s.room, { grid: 'columns', count: '2' });
+  let lay = P.paginate(t, s.room, measure);
+  let pages = check(lay, 'spreads');
+  const at = (n) => P.placeOf(lay, n);
+  assert.ok(at(1).x > 0 && !at(1).left, 'the title page a right-hand page');
+  assert.ok(at(2).left && at(2).x < 0 && at(3).x > 0 && at(2).y === at(3).y && at(2).y === at(1).y + lay.pitch, 'pages 2 and 3 face each other, under it');
+  assert.ok(Math.abs((at(3).x - lay.page.w / 2) - (at(2).x + lay.page.w / 2) - P.GUTTER) < 1e-6, 'a narrow gutter between them');
+  const note = lay.rows.find((r) => r.mark === s.note), of = lay.pageOf.get(s.paras[1]);
+  assert.ok(of % 2 === 0 && at(of).left, 'its paragraph on a left-hand page');
+  assert.ok(note.x + note.width / 2 < at(of).x - lay.page.w / 2, 'a note on a left-hand page in its outer margin, on the left');
+  // Three columns: no pairs, page 1 first; rows follow.
+  set(host, s.room, { count: '3' });
+  lay = P.paginate(t, s.room, measure);
+  check(lay, 'three across');
+  assert.ok(P.placeOf(lay, 1).x < P.placeOf(lay, 2).x && P.placeOf(lay, 4).y > P.placeOf(lay, 1).y && P.placeOf(lay, 4).x === P.placeOf(lay, 1).x);
+  // Rows fixed at two: pages run down two, then across.
+  set(host, s.room, { grid: 'rows', count: '2' });
+  lay = P.paginate(t, s.room, measure);
+  pages = check(lay, 'two down');
+  assert.ok(P.placeOf(lay, 2).x === P.placeOf(lay, 1).x && P.placeOf(lay, 2).y > P.placeOf(lay, 1).y, 'page 2 under page 1');
+  assert.ok(P.placeOf(lay, 3).x > P.placeOf(lay, 1).x && P.placeOf(lay, 3).y === P.placeOf(lay, 1).y, 'page 3 at the top of the next column');
+  const loose = lay.rows.filter((r) => !lay.pageOf.has(r.mark) && r.mark !== s.note);
+  assert.ok(loose.length && loose.every((r) => r.y > Math.max(...pages.map((b) => b.y + b.h))), 'the thoughts not yet in the book under the grid');
+  void pages;
+});
+
+test('book editor: the grid is the room\'s setting, changed in one step from the dock or a key', () => {
+  const { t, s } = setUp();
+  assert.ok(P.setGrid(t, s.room, { count: 4 }).ok);
+  assert.equal(t.marks.get(s.room).rules[C.RULE].count, '4', 'kept in the room\'s settings under the rule');
+  assert.deepEqual([P.gridOf(t, s.room).fix, P.gridOf(t, s.room).count, P.gridOf(t, s.room).paired], ['columns', 4, true]);
+  const p2 = t.rules.layout(C.RULE, s.room).find((r) => r.mark === s.heads[0]).position;
+  assert.ok(Math.abs(p2.x) > 1, 'the room laid out again: Winter moved into the grid');
+  assert.ok(P.setGrid(t, s.room, { grid: 'rows' }).ok);
+  assert.equal(P.gridOf(t, s.room).fix, 'rows');
+  assert.equal(P.gridOf(t, s.room).count, 4, 'the count kept');
+  assert.equal(t.marks.get(s.room).rules[C.RULE].pages, undefined, 'the other settings as they were');
+  assert.deepEqual([P.stepCount(1, 1), P.stepCount(4, 1), P.stepCount(6, 1), P.stepCount(1, -1), P.stepCount(6, -1)], [2, 6, 6, 1, 4]);
+  assert.equal(P.sheetWidth(t, s.room), P.pageOf(t, s.room).w, 'rows fixed: a page');
+  P.setGrid(t, s.room, { grid: 'columns', count: 2 });
+  assert.equal(P.sheetWidth(t, s.room), 2 * P.pageOf(t, s.room).w + P.GUTTER, 'facing pages: a spread');
 });
 
 test('book editor: a 1,500-paragraph book lays out on pages in under 50 ms', () => {
@@ -270,4 +343,11 @@ test('book editor: a 1,500-paragraph book lays out on pages in under 50 ms', () 
   const ms = performance.now() - t0;
   assert.equal(lay.length, 1500);
   assert.ok(ms < 50, `laid out in ${ms.toFixed(1)} ms`);
+  // Four pages across: the same pagination, each page moved to its place.
+  host.w.things[room.id].rules = { [C.RULE]: { grid: 'columns', count: '4' } };
+  model.update(host.w, model.roomThoughts(host.w, room.id)[9].id, { text: 'changed too' }, host.tick());
+  const t1 = performance.now();
+  t.rules.layout(C.RULE, room.id);
+  const ms4 = performance.now() - t1;
+  assert.ok(ms4 < 50, `four across laid out in ${ms4.toFixed(1)} ms`);
 });

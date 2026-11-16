@@ -25,7 +25,21 @@ and room settings that redraw).
 
 - **Mode Book** (rule `book-page`, order 30). Its settings, per room (the ⚙ beside Book in the
   rail): Pages (A4 by default, Letter, A5, 6 × 9 in, or None: one column), Margins (narrow,
-  normal, wide), A chapter starts a page (on), Column (Narrow, Book, Wide; without pages).
+  normal, wide), A chapter starts a page (on), Pages side by side (fix Columns or Rows, and how
+  many: 1, 2, 3, 4 or 6; Columns 1 by default, one under another), Column (Narrow, Book, Wide;
+  without pages).
+- **Pages side by side** (with pages): fix the columns and that many pages sit across, the rows
+  following as many as the book needs; two columns (or four, or six) pair them as facing pages,
+  the title page alone on the right as a recto, a narrow gutter between the two. Fix the rows and
+  that many pages run down, the columns following, so the book reads left to right as a strip (a
+  shelf, zoomed out). Only where each page sits changes, never what is on it; margin notes go in
+  the outer margin (left of a left-hand page of a spread). In the right dock (Fix: Columns ·
+  Rows; How many: 1 · 2 · 3 · 4 · 6) or by keys, in a room seen as Book: Alt+= one more, Alt+-
+  one fewer, Alt+G columns or rows. Printing and the Word document stay one page to a sheet.
+- **Zoom** (`zoom.js`): far off (under 0.5), the book is a shelf of page thumbnails: the body as
+  quiet lines, each chapter's title large on its first page and at the head of the pages after.
+  Far off, a double-click on a page goes to it, the page filling the height (in a spread, both
+  pages when they fit). A click on a chapter in the contents brings its first page into view.
 - **Pages** (`pages.js`, drawn, never stored): a heading keeps two lines of what follows on its
   page; a paragraph runs on to the next page in pieces, never leaving one line alone at a foot or
   a top; a table or figure moves to the next page whole.
@@ -82,7 +96,9 @@ Book. The same book as a board, in reading order a row at a time:
 - The keys on the structure work here too (Ctrl+Alt+H, Ctrl+] / Ctrl+[, Ctrl+Up / Ctrl+Down,
   Alt+N, Alt+M, Ctrl+Shift+V), and the docks stay open (the column is not fitted). Enter after a
   chosen block lands the new paragraph right after it.
-- No settings of its own; the frames and outlines are the room's boxes (plain, shelf, quiet; the
+- Blocks across (2, 3, 4 by default, 6 or 8), its one setting: in the right dock, or Alt+= and
+  Alt+- in a room seen as Book · blocks.
+- No other settings; the frames and outlines are the room's boxes (plain, shelf, quiet; the
   plugin's style gives the quiet ones a dotted line in this mode only).
 
 ## What it needs

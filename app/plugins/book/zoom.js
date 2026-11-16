@@ -9,7 +9,9 @@
 // about a world point that stays where it is on the screen, so two of them move the view too.
 
 import { RULE } from './column.js';
-import { pageTop, ranges } from './pages.js';
+import { placeOf, pageAt, ranges, GUTTER, pageOf, gridOf, setGrid, stepCount } from './pages.js';
+import { BLOCKS, acrossOf, setAcross, stepAcross } from './blocks.js';
+export { pageAt } from './pages.js';
 
 // Where t.ui.open.mark leaves the middle of the screen: a little right of and below the mark's
 // centre, room for its edit pop-up (the room's goTo; not in API 3, so kept here).
@@ -23,15 +25,23 @@ export function fillHeight(h, viewH) {
   return Math.min(MAX, Math.max(READ, Math.round(z * 100) / 100));
 }
 
-// The middle of the screen that shows page n (from 1) of a layout with pages at zoom z: the whole
-// page when it fits the height, else its top with a little air.
-export function pageCentre(lay, n, z, viewH) {
-  const top = pageTop(lay, n), h = lay.page.h, seen = viewH / z;
-  return { x: 0, y: h <= seen ? top + h / 2 : top - 12 / z + seen / 2 };
+// The middle of the screen that shows page n (from 1) of a layout with pages at zoom z on a
+// screen viewW by viewH pixels: the whole page when it fits the height, else its top with a little
+// air; a page of a spread with its facing page, when both fit the width.
+export function pageCentre(lay, n, z, viewH, viewW = 0) {
+  const q = placeOf(lay, n), w = lay.page.w, h = lay.page.h, seen = viewH / z;
+  const both = lay.grid?.paired && (2 * w + GUTTER) * z <= viewW;
+  return { x: both ? q.x + (q.left ? 1 : -1) * (w + GUTTER) / 2 : q.x, y: h <= seen ? q.y + h / 2 : q.y - 12 / z + seen / 2 };
 }
 
-// The page (from 1) whose top is at y, in a layout with pages.
-export const pageAt = (lay, y) => Math.round((y - lay.origin) / lay.pitch) + 1;
+// The zoom to go to a page at: it fills the height; in a spread, both pages, when the two fit the
+// width at a zoom that still reads.
+export function goZoom(lay, viewH, viewW) {
+  const z = fillHeight(lay.page.h, viewH);
+  if (!lay.grid?.paired) return z;
+  const zw = Math.floor(((viewW - 24) / (2 * lay.page.w + GUTTER)) * 100) / 100;
+  return zw >= READ ? Math.min(z, zw) : z;
+}
 
 // The steps of t.ui.zoom.set that take the view from its middle V at zoom z0 to middle C at zoom
 // z. A set(z, at) keeps `at` still on the screen, so the new middle is at + (V − at)·z0/z; solved
@@ -50,11 +60,19 @@ export function aim(V, z0, C, z) {
   return steps;
 }
 
-export function installZoom(t, { layout }) {
+// keep(fn): runs a going-there so that the book in hand stays in the right dock (docks.js).
+export function installZoom(t, { layout, keep = (fn) => fn() }) {
   const room = () => t.ui.chosen()?.context || null;
   const inBook = () => { const r = room(); return !!r && t.marks.get(r)?.mode === RULE; };
   // The height of the canvas on the screen: the window less the room's top bar and status line.
   const viewH = () => (typeof window === 'undefined' ? 800 : Math.max(240, window.innerHeight - 84));
+  // Its width: the window less the room's rail and the Book's own docks, while they show.
+  const viewW = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return 1200;
+    let w = window.innerWidth - 234;
+    for (const body of document.querySelectorAll('.book-contents, .book-hand')) { const r = body.getBoundingClientRect(); if (r.width) w -= r.width + 32; }
+    return Math.max(320, w);
+  };
   const at = (r, id) => t.rules.layout(RULE, r).find((row) => row.mark === id)?.position || null;
 
   // To page n of the open room, with `mark` chosen (it is on that page), at zoom z (the zoom it
@@ -64,7 +82,7 @@ export function installZoom(t, { layout }) {
     const lay = layout(r), p = at(r, mark), now = t.ui.zoom?.get?.();
     if (!lay.pages || !p || !now || !n) return true;
     const zoom = z ?? now.zoom;
-    for (const s of aim({ x: p.x + OPENED.x, y: p.y + OPENED.y }, now.zoom, pageCentre(lay, n, zoom, viewH()), zoom)) t.ui.zoom.set(s.zoom, s.at);
+    for (const s of aim({ x: p.x + OPENED.x, y: p.y + OPENED.y }, now.zoom, pageCentre(lay, n, zoom, viewH(), viewW()), zoom)) t.ui.zoom.set(s.zoom, s.at);
     return true;
   };
 
@@ -83,7 +101,7 @@ export function installZoom(t, { layout }) {
       return ok;
     }
     const n = lay.pageOf.get(id) ?? ranges(t, r, lay.pageOf).get(id)?.[0];
-    return toPage(r, id, n, far ? fillHeight(lay.page.h, viewH()) : null);
+    return toPage(r, id, n, far ? goZoom(lay, viewH(), viewW()) : null);
   };
 
   // Far off, a double-click on a page (it opens the first paragraph on it, pages.js firstOn) or on
@@ -97,7 +115,7 @@ export function installZoom(t, { layout }) {
     if (id) return { mark: id, n: lay.pageOf.get(id) };
     const i = target.closest('[data-box]')?.dataset.box;
     const b = i == null ? null : t.rules.draws(RULE, r).boxes[+i];
-    return b?.opens ? { mark: b.opens, n: b.style === 'page' ? pageAt(lay, b.y) : lay.pageOf.get(b.opens) } : null;
+    return b?.opens ? { mark: b.opens, n: b.style === 'page' ? pageAt(lay, b.x + b.w / 2, b.y + 1) : lay.pageOf.get(b.opens) } : null;
   };
   const onPress = (e) => {
     try {
@@ -109,10 +127,43 @@ export function installZoom(t, { layout }) {
       if (!inBook() || t.ui.zoom?.get?.()?.band !== 'far' || !e.target?.closest) return;
       const r = room(), lay = layout(r), hit = lay.pages ? under(r, e.target, lay) : null;
       if (!hit?.mark || !hit.n) return;
-      setTimeout(() => toPage(r, hit.mark, hit.n, fillHeight(lay.page.h, viewH())), 0); // after the room hears the press
+      setTimeout(() => keep(() => toPage(r, hit.mark, hit.n, goZoom(lay, viewH(), viewW()))), 0); // after the room hears the press
     } catch { last = null; /* switched off */ }
   };
+  // The pages side by side changed (the dock's words, or a key): the page in hand (the chosen
+  // mark's, else the book's first) brought back into view at the zoom it had, since every page
+  // has moved. write() makes the change (setGrid); → its result.
+  const regrid = (r, write) => {
+    const was = t.ui.chosen()?.mark || null;
+    const res = write();
+    if (!res || res.ok === false) return res;
+    const lay = layout(r);
+    const id = was && lay.pageOf.has(was) ? was : lay.firstOn?.[1] ?? lay.firstOn?.[0];
+    const n = id ? lay.pageOf.get(id) : null;
+    if (lay.pages && n) keep(() => toPage(r, id, n));
+    return res;
+  };
+  // Keys, in a room seen as Book with pages: Alt+= one more, Alt+- one fewer, Alt+G columns or
+  // rows. In Book · blocks, Alt+= and Alt+-: blocks across.
+  const say = (res) => { if (res && res.ok === false && res.reason) t.ui.toast(res.reason); };
+  const paged = () => inBook() && !!pageOf(t, room());
+  const board = () => { const r = room(); return !!r && t.marks.get(r)?.mode === BLOCKS; };
+  const grid = () => gridOf(t, room());
+  const step = (change) => {
+    say(regrid(room(), () => setGrid(t, room(), change)));
+    const g = grid(), pages = g.count === 1 ? 'page' : 'pages';
+    t.ui.toast(g.count === 1 && g.fix === 'columns' ? 'Pages one under another.' : `${g.count} ${pages} ${g.fix === 'columns' ? 'across' : 'down'}${g.paired ? ', facing' : ''}.`);
+  };
+  const reblock = (dir) => { const n = stepAcross(acrossOf(t, room()), dir); say(setAcross(t, room(), n)); t.ui.toast(`${n} blocks across.`); };
+  const cmd = (o) => t.slots.commands.add({ order: 72, zone: 'room', ...o });
+  cmd({ id: 'book.grid-more', keys: ['Alt+='], words: 'pages (or blocks) side by side: one more column (or row)',
+    when: () => paged() || board(), run: () => (board() ? reblock(1) : step({ count: stepCount(grid().count, 1) })) });
+  cmd({ id: 'book.grid-fewer', keys: ['Alt+-'], words: 'pages (or blocks) side by side: one fewer column (or row)',
+    when: () => paged() || board(), run: () => (board() ? reblock(-1) : step({ count: stepCount(grid().count, -1) })) });
+  cmd({ id: 'book.grid-fix', keys: ['Alt+G'], words: 'pages side by side: fix the columns, or the rows',
+    when: paged, run: () => step({ grid: grid().fix === 'columns' ? 'rows' : 'columns' }) });
+
   if (typeof window !== 'undefined') window.addEventListener('pointerdown', onPress, true);
   const stop = () => { if (typeof window !== 'undefined') window.removeEventListener('pointerdown', onPress, true); };
-  return { bring, toPage, stop };
+  return { bring, toPage, regrid, stop };
 }

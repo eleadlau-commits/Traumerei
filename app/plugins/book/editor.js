@@ -9,7 +9,7 @@
 
 import { isChapter } from './rules.js';
 import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
-import { shape, textWidth, SIZES } from './pages.js';
+import { shape, textWidth, SIZES, COUNTS } from './pages.js';
 import { BLOCKS } from './blocks.js';
 import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote } from './editing.js';
 
@@ -37,6 +37,8 @@ export function installEditor(t) {
       { key: 'pages', label: 'Pages', type: 'choice', default: 'a4', options: [...Object.entries(SIZES).map(([k, v]) => [k, v[2]]), ['none', 'None: one column']] },
       { key: 'margins', label: 'Margins', type: 'choice', default: 'normal', options: [['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']] },
       { key: 'chapterPage', label: 'A chapter starts a page', type: 'switch', default: true },
+      { key: 'grid', label: 'Pages side by side: fix', type: 'choice', default: 'columns', options: [['columns', 'Columns (rows follow)'], ['rows', 'Rows (columns follow)']] },
+      { key: 'count', label: 'How many (2 columns: facing pages)', type: 'choice', default: '1', options: COUNTS.map((n) => [String(n), String(n)]) },
       { key: 'width', label: 'Column width (with Pages: None)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
     ],
     arrange: (reads, context, set) => shape(reads, context, measure, size, set).rows,

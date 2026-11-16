@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { SPACE, column, read, titleOf, placeNotes, settingOf, widthOf } from './column.js';
+import { RULE, SPACE, NOTE, column, read, titleOf, placeNotes, settingOf, widthOf } from './column.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
 // millimetre (the reading size is 19 units, about a 12-point book face at this scale).
@@ -149,13 +149,87 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     }
   }
   placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);
-  // firstOn: each page's mark (by page number less one); origin and pitch: where page n's top is,
-  // origin + (n - 1) * pitch (pageTop).
-  return { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P, firstOn, origin: top(0), pitch: P.h + GAP };
+  // firstOn: each page's mark (by page number less one); origin, pitch and grid: where page n
+  // sits (placeOf).
+  const lay = { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P, firstOn, origin: top(0), pitch: P.h + GAP,
+    grid: gridOf(reads, room, set, notes.length ? NOTE + lh * 2.2 : 0) };
+  if (lay.grid.fix === 'columns' && lay.grid.count === 1) return lay; // one under another: as laid
+  // Laid out one under another above; now each page moves to its place in the grid, all it holds
+  // with it (only x and y change: the pagination is the same). A margin note goes with the page
+  // of what it is about, in its outer margin (left of a left-hand page of a spread).
+  const noteOf = new Map(notes.map((n) => [n.mark, n.of]));
+  const below = belowGrid(lay) - top(last + 1); // the thoughts not yet in the book: under the grid
+  const move = (o, mid) => {
+    const n0 = Math.floor(((mid ?? o.y) - lay.origin) / lay.pitch + 1e-9);
+    if (n0 > last) { o.y += below; return; }
+    const q = placeOf(lay, n0 + 1);
+    o.y += q.y - top(n0); o.x += q.x;
+  };
+  for (const r of rows) {
+    const of = noteOf.get(r.mark);
+    if (of && onPage.has(of)) {
+      const n = onPage.get(of), q = placeOf(lay, n);
+      r.y += q.y - top(n - 1); r.x = q.x + (q.left ? -r.x : r.x);
+    } else move(r);
+  }
+  for (const b of boxes) move(b, b.y + Math.min(b.h, lh) / 2);
+  return lay;
 }
 
-// The top of page n (counted from 1) of a layout with pages, in world units.
-export const pageTop = (lay, n) => lay.origin + (n - 1) * lay.pitch;
+// Pages in a grid (the room's settings): `grid` 'columns' (that many pages across, rows follow;
+// an even count pairs them as facing pages, the title page alone on the right as a recto) or
+// 'rows' (that many pages down, columns follow: the book reads left to right as a strip).
+export const COUNTS = Object.freeze([1, 2, 3, 4, 6]);
+export const GUTTER = 24; // between the two pages of a spread
+export function gridOf(reads, room, set = null, side = 0) {
+  const fix = settingOf(reads, room, 'grid', set) === 'rows' ? 'rows' : 'columns';
+  const n = Number(settingOf(reads, room, 'count', set));
+  const count = COUNTS.includes(n) ? n : 1;
+  const paired = fix === 'columns' && count % 2 === 0;
+  // between pages side by side: room for the margin notes (side: a note's width and air, or 0)
+  return { fix, count, paired, between: GAP + (paired ? 2 * side : side) };
+}
+
+// Where page n (from 1) sits: { x: its middle, y: its top, col, row, left: a left-hand page of a
+// spread }.
+export function placeOf(lay, n) {
+  const g = lay.grid || { fix: 'columns', count: 1, paired: false, between: GAP }, w = lay.page.w;
+  if (g.fix === 'columns' && g.count === 1) return { x: 0, y: lay.origin + (n - 1) * lay.pitch, col: 0, row: n - 1, left: false };
+  let col, row;
+  if (g.fix === 'rows') { col = Math.floor((n - 1) / g.count); row = (n - 1) % g.count; }
+  else { const slot = g.paired ? n : n - 1; col = slot % g.count; row = Math.floor(slot / g.count); }
+  const left = g.paired && col % 2 === 0;
+  let x;
+  if (g.paired) { const pair = Math.floor(col / 2); x = pair * (2 * w + GUTTER + g.between) + (left ? 0 : w + GUTTER); }
+  else x = col * (w + g.between);
+  if (g.fix === 'columns') { // the columns centred on the middle
+    const k = g.count, span = g.paired ? (k / 2) * (2 * w + GUTTER) + (k / 2 - 1) * g.between : k * w + (k - 1) * g.between;
+    x += w / 2 - span / 2;
+  }
+  return { x, y: lay.origin + row * lay.pitch, col, row, left };
+}
+// The top of page n (from 1).
+export const pageTop = (lay, n) => placeOf(lay, n).y;
+// The page at a point (x, y), or null.
+export function pageAt(lay, x, y) {
+  for (let n = 1; n <= lay.pages; n++) {
+    const q = placeOf(lay, n);
+    if (Math.abs(x - q.x) <= lay.page.w / 2 + 1 && y >= q.y - 1 && y <= q.y + lay.page.h + 1) return n;
+  }
+  return null;
+}
+// The top of what follows the grid.
+export function belowGrid(lay) {
+  let lo = lay.origin;
+  for (let n = 1; n <= lay.pages; n++) lo = Math.max(lo, placeOf(lay, n).y + lay.pitch);
+  return lo;
+}
+// How wide the room's pages read side by side (the docks fit them): a spread, or a page.
+export function sheetWidth(reads, room, set = null) {
+  const P = pageOf(reads, room, set);
+  if (!P) return 0;
+  return gridOf(reads, room, set).paired ? 2 * P.w + GUTTER : P.w;
+}
 
 // Each chapter's pages: Map(chapter → [first, last]), from a layout's pageOf.
 export function ranges(reads, room, pageOf) {
@@ -176,4 +250,19 @@ export function ranges(reads, room, pageOf) {
   };
   for (const b of read(reads, room).items.filter((x) => x.t === 'title')) walk(b.book);
   return out;
+}
+
+// The room's grid changed ({ grid?, count? }), kept in the room's settings under the rule, as its
+// ⚙ keeps them: one step, undone as one. → { ok } (marks.edit's).
+export function setGrid(t, room, change) {
+  const m = t.marks.get(room);
+  if (!m) return { ok: false, reason: 'No such room' };
+  const next = { ...(m.rules?.[RULE] || {}), ...change };
+  if (next.count != null) next.count = String(next.count);
+  return t.marks.edit(room, { rules: { ...(m.rules || {}), [RULE]: next } });
+}
+// The count one step more (dir 1) or fewer (-1), within COUNTS.
+export function stepCount(n, dir) {
+  const i = Math.max(0, COUNTS.indexOf(n));
+  return COUNTS[Math.max(0, Math.min(COUNTS.length - 1, i + dir))];
 }
