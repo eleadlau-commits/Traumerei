@@ -15,7 +15,8 @@ and saved data.
 
 ## Plugins
 
-Everything that can be switched off is a plugin in `app/plugins/`, made with
+Everything that can be switched off is a plugin: the corpus in `app/plugins/`, the extra plugins in
+`app/optional/`, made with
 `python build.py new-plugin <id>` and described in [`app/plugins/README.md`](../app/plugins/README.md).
 A plugin's `feature.json` has a `plugin` block (API version, oldest app version, what it adds,
 when it loads). `python build.py pack-plugin <id>` packs one into a single `.traumplug` file a
@@ -37,7 +38,7 @@ AI never changes the world; every result is a suggestion the maker keeps or refu
 ## Files
 
 A room is saved as a `.traum` file (format `traum/3`), which is the six tables written out (Law 8):
-[`app/plugins/roomfile/FORMAT.md`](../app/plugins/roomfile/FORMAT.md). What a plugin keeps outside
+[`app/optional/roomfile/FORMAT.md`](../app/optional/roomfile/FORMAT.md). What a plugin keeps outside
 the tables is not in the file.
 
 ## Desktop

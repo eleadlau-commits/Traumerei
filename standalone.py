@@ -36,7 +36,9 @@ def main():
     # Only corpus plugins are built in; the stress corpus is for the tests, not for people, and
     # every other plugin ships as a file to import (tools/corpus.py). --corpus keeps them all in.
     sys.path.insert(0, str(ROOT))
-    from tools.corpus import LEFT_OUT
+    from tools.corpus import LEFT_OUT, misplaced
+    if misplaced():
+        sys.exit('Each plugin in its folder (tools/corpus.py): ' + '; '.join(misplaced()) + '.')
     without = [] if '--corpus' in sys.argv else ['--without', ','.join(LEFT_OUT)]
     subprocess.run([sys.executable, 'build.py', *without], cwd=ROOT, check=True)
     start = (WEB / 'start.js').read_text('utf-8')

@@ -1,14 +1,16 @@
 """`python build.py new-plugin <id> [--corpus] […]`: Folio's new-plugin, with Träumerei's rule on
 top (CLAUDE.md): only corpus plugins are built in.
 
-Without --corpus the new plugin ships as a file: it lives in app/plugins/ for the tests, but
-standalone.py leaves it out of the app (tools/corpus.py counts it among APART) and each release
-carries it as <id>.traumplug. With --corpus it joins the stress corpus: it starts off, is listed
-in tools/corpus.py's CORPUS, and needs a line in docs/CORPUS.md.
+Without --corpus the new plugin ships as a file: it lives in app/optional/ (the extra plugins),
+standalone.py leaves it out of the app (tools/corpus.py counts it among APART), and each merge to
+main and each release carry it as <id>.traumplug. With --corpus it stays in app/plugins/ and joins
+the stress corpus: it starts off, is listed in tools/corpus.py's CORPUS, and needs a line in
+docs/CORPUS.md.
 """
 
 import json
 import re
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,6 +41,8 @@ def main(argv: list[str], folio_new_plugin) -> int:
         print(f'{pid} joins the stress corpus: it starts off and is left out of the app. '
               f'Add a line for `{pid}` to docs/CORPUS.md.')
     else:
-        print(f'{pid} ships as a file, not in the app: python build.py pack-plugin {pid} makes '
-              f'{pid}.traumplug, and every release carries it.')
+        shutil.move(str(ROOT / 'app' / 'plugins' / pid), str(ROOT / 'app' / 'optional' / pid))
+        print(f'Made app/optional/{pid}/. '
+              f'{pid} ships as a file, not in the app: python build.py pack-plugin {pid} makes '
+              f'{pid}.traumplug, every merge to main publishes it (plugins-latest) and every release carries it.')
     return 0

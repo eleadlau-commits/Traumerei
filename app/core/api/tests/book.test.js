@@ -1,4 +1,4 @@
-// The Book plugin through the whole API (app/plugins/book): a book of chapters in a room, its
+// The Book plugin through the whole API (app/optional/book): a book of chapters in a room, its
 // thoughts still where their mode put them; thoughts dropped in, reordered, taken out; the book
 // out as Markdown and round a .traum file; deleting it leaves every thought. The laws hold.
 
@@ -7,7 +7,7 @@ import { makeHost, brokenLaws } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../plugins/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
 }
 const book = await load('book', 'Book.js');
 const rules = await load('book', 'rules.js');

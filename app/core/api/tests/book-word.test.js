@@ -1,4 +1,4 @@
-// The Book editor's Word document (app/plugins/book/word.js, stage 4): true to the room's pages
+// The Book editor's Word document (app/optional/book/word.js, stage 4): true to the room's pages
 // (size and margins), the title on a page of its own, each chapter on a new page when the room
 // says so (sections never), headings as Word's own, numbered as they nest; spans as runs; margin
 // notes left out; page numbers and the running head kept off the title page.
@@ -8,7 +8,7 @@ import { makeHost } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../plugins/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
 }
 const book = await load('book', 'Book.js');
 const C = await load('book', 'column.js');

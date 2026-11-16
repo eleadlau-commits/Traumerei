@@ -41,8 +41,8 @@ class PackPluginTest(unittest.TestCase):
         self.assertFalse(got['bare'])
 
     def test_manifest_passes_the_plugin_block_through(self):
-        m = pack_plugin.manifest_of(pack_plugin.ROOT / 'app' / 'plugins' / 'desk', 'desk')
-        block = json.loads((pack_plugin.ROOT / 'app/plugins/desk/feature.json').read_text('utf-8'))['plugin']
+        m = pack_plugin.manifest_of(pack_plugin.ROOT / 'app' / 'optional' / 'desk', 'desk')
+        block = json.loads((pack_plugin.ROOT / 'app/optional/desk/feature.json').read_text('utf-8'))['plugin']
         self.assertEqual(m['plugin'], block)
         self.assertEqual(m['requires'], ['api'])
 

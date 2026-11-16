@@ -1,10 +1,11 @@
 """Which plugins are built into the app, and which ship as files (E's rule, 15 Nov 2026).
 
-Only corpus plugins are built in. Every other plugin ships as a file: its source stays in
-app/plugins/ so `python build.py test` runs it through the suites, standalone.py leaves it out of
-the product (the web copy and the Windows app), and each release carries it as a .traumplug, with
-all of them together in starter-set.traumplug (`python build.py pack-plugin --all`), imported in
-Settings → Plugins.
+Only corpus plugins are built in; they live in app/plugins/. Every other plugin ships as a file
+and lives in app/optional/ (the extra plugins): `python build.py test` runs it through the suites,
+standalone.py leaves it out of the product (the web copy and the Windows app), and each merge to
+main (plugins.yml, the rolling "plugins-latest" release) and each release carry it as a
+.traumplug, with all but Book and Provoke together in starter-set.traumplug
+(`python build.py pack-plugin --all`), imported in Settings → Plugins.
 
 The corpus has two parts:
 - ROOM_TYPES: the ways of seeing a room, built into the app and on (Joyce, Pessoa, Russell,
@@ -35,14 +36,30 @@ CORPUS = (
 )
 
 
-def plugins() -> list[str]:
-    """Every plugin in app/plugins/, by folder name."""
-    return sorted(p.parent.name for p in (ROOT / 'app' / 'plugins').glob('*/feature.json'))
+FOLDERS = ('plugins', 'optional')  # app/plugins/: the corpus; app/optional/: the extra plugins
 
 
-# Plugins shipped apart from the app, as their own .traumplug beside each Release (release.yml):
-# every plugin that isn't corpus. A new plugin is one of them unless it joins the corpus.
-APART = tuple(p for p in plugins() if p not in ROOM_TYPES + CORPUS)
+def plugins(folder: str | None = None) -> list[str]:
+    """Every plugin in app/plugins/ and app/optional/ (or in one of them), by folder name."""
+    return sorted(p.parent.name for f in ((folder,) if folder else FOLDERS) for p in (ROOT / 'app' / f).glob('*/feature.json'))
+
+
+def folder_of(plugin_id: str) -> Path:
+    """A plugin's folder: app/optional/<id>/ for an extra plugin, else app/plugins/<id>/."""
+    extra = ROOT / 'app' / 'optional' / plugin_id
+    return extra if extra.is_dir() else ROOT / 'app' / 'plugins' / plugin_id
+
+
+# Plugins shipped apart from the app, as their own .traumplug on every merge to main
+# (plugins.yml) and beside each Release (release.yml): every plugin in app/optional/.
+APART = tuple(plugins('optional'))
+
+
+def misplaced() -> list[str]:
+    """Plugins in the wrong folder: one in app/plugins/ that isn't corpus, or a corpus plugin in
+    app/optional/."""
+    return ([f'app/plugins/{p}/ is not a corpus plugin: move it to app/optional/' for p in plugins('plugins') if p not in ROOM_TYPES + CORPUS]
+            + [f'app/optional/{p}/ is a corpus plugin: it belongs in app/plugins/' for p in APART if p in ROOM_TYPES + CORPUS])
 
 # Everything standalone.py leaves out of the product.
 LEFT_OUT = CORPUS + APART

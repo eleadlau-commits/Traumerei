@@ -275,5 +275,5 @@ paragraph is a line, a heading and its paragraph a passage, `![caption](address)
 Nothing here changes: a kind's content is its own fields, a mode's positions are its rule lines in
 `# Places`, its settings `rules.<mode>` on the room, its arrows relation links with `rule:` its id.
 A plugin that keeps something no row can say does not have it saved (Law 8). The check
-`node app/plugins/roomfile/tests/guide.mjs` (every pull request runs it) reads every ```` ```traum ````
+`node app/optional/roomfile/tests/guide.mjs` (every pull request runs it) reads every ```` ```traum ````
 example here and lands it with no plugin on.

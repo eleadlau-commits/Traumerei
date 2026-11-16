@@ -161,7 +161,7 @@ rail and settings, clear space), `writing.js` (thoughts, the draft, the caret),
 sheets, pictures, the bar's words), `strip.js` (the strip at the canvas's foot) and `twin.js` (a Twin's other side, beside the canvas). `editor.js` (the content editor) and `document.js` (a closed chapter as a
 document, and the paragraphs both write in) are plain functions of the room. Each part is a class whose methods `mixIn` (end of `Room.js`) copies onto
 `Room`, so `this` is always the feature. `shared.js` holds the constants they share.
-A room in and out as a `.traum` file is the **roomfile** feature's (`app/plugins/roomfile`); the room
+A room in and out as a `.traum` file is the **roomfile** feature's (`app/optional/roomfile`); the room
 only says where (its `roomfile` service), and leaves those choices out when it isn't there.
 
 ## Editing, the line, the timeline
@@ -216,7 +216,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   text in the source editor on the right) are under ⋯ More at the foot of the rail. A group's
   pop-up has *Source* for just that group.
 - **Search** (the bar in the middle of the top row, or Ctrl+K / ⌘K) opens the **search** feature's
-  panel (`app/plugins/search`), which searches every room; a find opened there (`search:found`)
+  panel (`app/optional/search`), which searches every room; a find opened there (`search:found`)
   brings the view to it, in its room. With no search feature the bar isn't there.
 - **Ctrl+Z** undoes and **Ctrl+Shift+Z** (or Ctrl+Y) redoes. A quiet *Saved* shows in the corner,
   and a line of help the first time a room is seen.

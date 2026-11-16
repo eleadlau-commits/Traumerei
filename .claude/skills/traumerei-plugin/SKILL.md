@@ -23,14 +23,14 @@ building it; otherwise go on.
 ## 2. Pick the closest recipe
 
 Open `reference/recipes.md`, find the row nearest the idea, and read that plugin whole (in
-`examples/<id>/` here, or `app/plugins/<id>/` in the repo; `highlighter` shows the split into
+`examples/<id>/` here, or `app/plugins/<id>/` in the repo, where the corpus lives; `highlighter` shows the split into
 `rules.js` and tests that a new plugin should have). Copy its shape: `install(t)` holding
 everything, a default class that calls it, plain functions beside it.
 
 ## 3. Write the plugin
 
 Read `reference/api-guide.md` once, whole: it is the full API in one page, with the laws, the
-budgets and the do/never list. Then write the folder `app/plugins/<id>/` (or `<id>/` with no repo):
+budgets and the do/never list. Then write the folder `app/optional/<id>/` (the extra plugins; or `<id>/` with no repo):
 
 - `feature.json`: name, one-sentence description, `"version": "0.1.0"`, `"main"`, `"requires":
   ["api"]`, and `"plugin": { "api": 3, "minApp": "1.1.2", "kind": [...], "needs": [...], "load":

@@ -1,5 +1,5 @@
 // The .traum carrier: the six tables (tables.js) as plain text, and back (Law 8: the file is the
-// tables). Format traum/3, spec in app/plugins/roomfile/FORMAT.md. No plugin is needed to read or
+// tables). Format traum/3, spec in app/optional/roomfile/FORMAT.md. No plugin is needed to read or
 // write a file: every kind of mark goes through as rows. No screen here (tests/traum.test.js).
 //
 //   ---
@@ -34,7 +34,7 @@
 import { NAMES } from './tables.js';
 
 export const FORMAT = 'traum/3';
-export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/plugins/roomfile/FORMAT.md';
+export const GUIDE = 'https://github.com/eleadlau-commits/traumerei/blob/main/app/optional/roomfile/FORMAT.md';
 export const SECTIONS = Object.freeze(['Marks', 'Places', 'Links', 'Distance', 'Gaps', 'Moments']);
 const READERS = ['me now', 'me later', 'others', 'machine'];
 const DIRECTIONS = ['to world', 'from world', 'to maker'];

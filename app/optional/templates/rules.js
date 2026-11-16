@@ -1,4 +1,4 @@
-// The template rooms, as .traum text (app/plugins/roomfile/FORMAT.md), and when the chooser shows.
+// The template rooms, as .traum text (app/optional/roomfile/FORMAT.md), and when the chooser shows.
 // Plain functions of the time they are made at: nothing here touches the screen or the world.
 //
 // Each template is a room in a shape people already know, built only from what the app already
@@ -26,7 +26,7 @@ const body = (text) => text.split('\n').map((l) => (/^[#\\]/.test(l) ? `\\${l}` 
 // Writes a room from plain rows. `marks`: { id, kind, name?, fields?, text? } (the room first);
 // `places`, `links`, `gaps`, `moments`: lines as FORMAT.md writes them, without their section.
 export function traum({ marks, places = [], links = [], gaps = [], moments = [] }) {
-  const out = ['---', 'format: traum/3', 'guide: https://github.com/eleadlau-commits/Traumerei/blob/main/app/plugins/roomfile/FORMAT.md', `context: ^${marks[0].id}`, '---', '', '# Marks', ''];
+  const out = ['---', 'format: traum/3', 'guide: https://github.com/eleadlau-commits/Traumerei/blob/main/app/optional/roomfile/FORMAT.md', `context: ^${marks[0].id}`, '---', '', '# Marks', ''];
   for (const m of marks) {
     out.push(`## ^${m.id} ${m.kind}${m.name ? `: ${m.name}` : ''}`);
     for (const [k, v] of Object.entries(m.fields || {})) out.push(`${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`);

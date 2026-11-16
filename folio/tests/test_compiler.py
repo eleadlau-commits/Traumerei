@@ -378,6 +378,18 @@ class CompilerTests(unittest.TestCase):
         self.assertIn('has no "plugin" block', by_id['bare'].reason)
         self.assertEqual({by_id['world'].kind, by_id['bare'].kind}, {'mistake'})
 
+    def test_plugins_can_live_in_more_than_one_folder(self):
+        project, _, by_id = self.discover_plugins({
+            'core': {'world': feature(), 'stray': plugin()},
+            'plugins': {'mode': plugin()},
+            'optional': {'book': plugin(), 'bare': feature()},
+        }, {'plugins': {'folder': ['plugins', 'optional'], 'api': 2}})
+        self.assertEqual(project.plugins_folders, ['plugins', 'optional'])
+        self.assertEqual(project.plugins_folder, 'plugins')  # new-plugin's folder
+        self.assertEqual((by_id['mode'].reason, by_id['book'].reason), ('', ''))
+        self.assertIn('plugins live in plugins/, optional/', by_id['stray'].reason)
+        self.assertIn('has no "plugin" block', by_id['bare'].reason)
+
     def test_mistakes_in_plugin_blocks(self):
         cases = {
             'not-object': feature(plugin=1),

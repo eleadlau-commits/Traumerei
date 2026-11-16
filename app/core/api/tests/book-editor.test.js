@@ -1,4 +1,4 @@
-// The Book editor through the whole API (app/plugins/book, stage 1): the room seen as Book is one
+// The Book editor through the whole API (app/optional/book, stage 1): the room seen as Book is one
 // column in reading order; a paragraph written after another lands right after it in its chapter
 // (land → join); a paragraph made a heading gathers what follows; levels, moves, splits, joins
 // and pasting as paragraphs are each one step; a 1,500-paragraph book lays out in under 50 ms.
@@ -8,7 +8,7 @@ import { makeHost, brokenLaws } from './host.js';
 
 async function load(id, file) {
   try { return await import(new URL(`../../${id}/${file}`, import.meta.url).href); }
-  catch { return import(new URL(`../../../plugins/${id}/${file}`, import.meta.url).href); }
+  catch { return import(new URL(`../../../optional/${id}/${file}`, import.meta.url).href); }
 }
 const book = await load('book', 'Book.js');
 const C = await load('book', 'column.js');

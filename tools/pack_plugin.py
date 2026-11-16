@@ -58,9 +58,11 @@ def bundle(folder: Path, main: str, work: Path) -> str:
 
 
 def pack(plugin_id: str, out_dir: Path, root: Path = ROOT) -> Path:
-    folder = root / 'app' / 'plugins' / plugin_id
+    folder = root / 'app' / 'optional' / plugin_id  # the extra plugins; corpus plugins in app/plugins/
     if not (folder / 'feature.json').is_file():
-        raise SystemExit(f'No plugin app/plugins/{plugin_id}/.')
+        folder = root / 'app' / 'plugins' / plugin_id
+    if not (folder / 'feature.json').is_file():
+        raise SystemExit(f'No plugin app/optional/{plugin_id}/ or app/plugins/{plugin_id}/.')
     m = manifest_of(folder, plugin_id)
     raw = json.loads((folder / 'feature.json').read_text('utf-8'))
     css = '\n'.join((folder / s).read_text('utf-8') for s in raw.get('styles', []))

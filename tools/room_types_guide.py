@@ -1,5 +1,5 @@
 """`python tools/room_types_guide.py`: copies docs/ROOM-TYPES.md and docs/room-types/month-calendar.md
-into app/plugins/room-types/guide.js, the words Copy guide puts on the clipboard. Run it after
+into app/optional/room-types/guide.js, the words Copy guide puts on the clipboard. Run it after
 changing either file; tools/tests/test_room_types.py fails while they differ."""
 
 import json
@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 GUIDE = ROOT / 'docs' / 'ROOM-TYPES.md'
 CALENDAR = ROOT / 'docs' / 'room-types' / 'month-calendar.md'
-OUT = ROOT / 'app' / 'plugins' / 'room-types' / 'guide.js'
+OUT = ROOT / 'app' / 'optional' / 'room-types' / 'guide.js'
 
 
 def text() -> str:

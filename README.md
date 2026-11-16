@@ -17,6 +17,13 @@ there on its own as `<name>.traumplug`, and `traumerei-plugins-<version>.zip` ho
 them in one download. **Provoke**, the reader that suggests links and groups in a
 room, is `provoke.traumplug`; Ctrl+Alt+V then reads the open room.
 
+**The newest plugins, between releases.** After every merge to main the extra plugins are rebuilt
+onto the rolling [plugins-latest](https://github.com/eleadlau-commits/Traumerei/releases/tag/plugins-latest)
+prerelease, each always at the same link, for example
+<https://github.com/eleadlau-commits/Traumerei/releases/download/plugins-latest/book.traumplug> and
+<https://github.com/eleadlau-commits/Traumerei/releases/download/plugins-latest/starter-set.traumplug>.
+A plugin there may need a newer app than the last Release (its `minApp`); Settings → Plugins says so.
+
 ## Start from something familiar
 
 The first time it opens, Träumerei offers four rooms in shapes you already know, and a sample
@@ -91,9 +98,10 @@ check run on GitHub and download **traumerei-preview** from the summary; unzip i
 
 Everything for it is in this folder: a copy of Folio (`folio/`, version in `folio/VERSION`,
 from the Mobile Durham repository), `build.py`, and the app in `app/`: what every room needs in
-`app/core/`, and everything that can be switched off in `app/plugins/`. The picture behind the
-page is the plugin in `app/plugins/renderer/`, and its rendering engine is in
-`app/plugins/renderer/engine/`. See that folder's README for how it works.
+`app/core/`, the corpus plugins built in (the room types) in `app/plugins/`, and the extra plugins, each in its own
+folder, in `app/optional/`. The picture behind the
+page is the plugin in `app/optional/renderer/`, and its rendering engine is in
+`app/optional/renderer/engine/`. See that folder's README for how it works.
 
 ### Open it
 
