@@ -10,9 +10,9 @@
 // Plain functions of the read half of the tables (as column.js), and installBlocks(t), which adds
 // the rule. Only the plugin API (app/core/API.md). Tested in app/core/api/tests/book-blocks.test.js.
 
-import { isChapter, wordCount } from './rules.js';
+import { wordCount } from './rules.js';
 import { read, after, headed, aboutOf } from './column.js';
-import { holderOf } from './editing.js';
+import { holderOf, leaveBook, afterGesture } from './editing.js';
 
 export const BLOCKS = 'book-blocks';
 // The board's measures, in world units: a block's words wrap at `block` and show at most `lines`
@@ -211,12 +211,7 @@ export function installBlocks(t) {
   const ICON = '<rect x="3" y="4" width="8" height="6"/><rect x="13" y="4" width="8" height="6"/><rect x="3" y="14" width="8" height="6"/><rect x="13" y="14" width="8" height="6" stroke-dasharray="2 2"/>';
   // Out of the book: no proposal takes a mark out of a group alone, so the plugin does it, one step,
   // as soon as the room's gesture is over (the drop itself changes nothing).
-  const leave = (mark) => setTimeout(() => {
-    const rows = t.links.from(mark, 'part of').filter((r) => { const g = t.marks.get(r.to); return g && g.kind === 'group' && (g.of === 'book' || isChapter(g)); });
-    if (!rows.length) return;
-    t.together(() => { for (const r of rows) t.links.unlink(r.id); });
-    t.ui.toast('Out of the book, in the tray. Ctrl+Z puts it back.');
-  }, 0);
+  const leave = (mark) => afterGesture(t, () => leaveBook(t, mark), 'Out of the book, in the tray. Ctrl+Z puts it back.');
   t.slots.rules.add({
     id: BLOCKS, name: 'Book · blocks', note: 'the book as blocks: a frame for each paragraph, an outline for each chapter; drag to reorder', icon: ICON, order: 31,
     claims: ['book', 'book-chapter'],

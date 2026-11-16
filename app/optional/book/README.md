@@ -83,6 +83,18 @@ and room settings that redraw).
   - Alt+M: move it into a chapter you pick in the contents (Escape: no): a paragraph at the end
     of that chapter's own paragraphs, a chapter as its last section.
   - Ctrl+Shift+V: paste as paragraphs (split at blank lines). Plain paste never splits.
+- **Drag on the pages** (`flowdrop.js`, the rule's `drop`): let a paragraph go between two rows
+  and it moves there (the row under it, before or after by its half; a piece of a paragraph that
+  runs on counts as its paragraph), within its chapter or into another, on any page of the grid or
+  spread, or in the one column of Pages: None (`{ join, at, from }`, one step with the gesture).
+  Onto a heading: first in that chapter. A heading dragged carries its whole chapter (onto another
+  heading's top half, or the space above it: before that chapter, at its level; never into
+  itself or a section it holds). Under the last page, among the thoughts not yet in the book: out
+  of the book. Into the outer margin beside a paragraph: a margin note on it; a note dragged back
+  into the flow is a paragraph there again, or beside another paragraph, a note on that one. Out
+  of the book and into or out of the margin are done by the plugin just after the gesture (no
+  proposal leaves a group or links a note), still one step, one Ctrl+Z. Let go where it is, or
+  nudged within its own row: nothing. The keys stay as they are.
 - **Keys while writing**:
   - ArrowDown on the last line / ArrowUp on the first: the caret runs on into the next or
     previous paragraph.
@@ -125,7 +137,7 @@ Book. The same book as a board, in reading order a row at a time:
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-drag.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the
