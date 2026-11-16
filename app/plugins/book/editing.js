@@ -4,7 +4,7 @@
 // Each is one step (t.together). Only the plugin API (t); tested in tests/editing.test.js.
 
 import { BOOK, CHAPTER, isBook, isChapter, booksIn } from './rules.js';
-import { HEADS, headOf, headed, read, titleOf } from './column.js';
+import { HEADS, ABOUT, headOf, headed, read, titleOf, flow, aboutOf } from './column.js';
 
 const isHolder = (m) => isBook(m) || isChapter(m);
 
@@ -181,6 +181,33 @@ export function pasteParagraphs(t, room, words, anchor = null) {
     }
     return out;
   });
+}
+
+// A paragraph made a margin note (Alt+N) on the paragraph (or heading) before it: out of its
+// chapter, linked `about` that one, drawn beside it and left out of the export.
+export function makeNote(t, room, mark) {
+  if (headed(t, mark)) return { ok: false, reason: 'A heading is not a note: make it a paragraph first (Ctrl+Alt+H).' };
+  const ids = flow(t, room);
+  const i = ids.indexOf(mark);
+  const of = i > 0 ? ids[i - 1] : null;
+  if (!of || !holderOf(t, of)) return { ok: false, reason: 'A note goes beside a paragraph of the book: there is none before this one.' };
+  t.together(() => {
+    for (const r of t.links.from(mark, 'part of')) if (isHolder(t.marks.get(r.to))) t.links.unlink(r.id);
+    t.links.link(mark, of, ABOUT);
+  });
+  return { ok: true };
+}
+// A margin note made a paragraph again, right after the one it was about.
+export function unmakeNote(t, mark) {
+  const of = aboutOf(t, mark);
+  if (!of) return { ok: false, reason: 'It is not a margin note.' };
+  t.together(() => {
+    for (const r of t.links.from(mark, ABOUT)) t.links.unlink(r.id);
+    const ch = headed(t, of);
+    const holder = ch || holderOf(t, of);
+    if (holder) moveTo(t, mark, holder, t.links.members(holder).indexOf(of) + 1);
+  });
+  return { ok: true };
 }
 
 export { read, titleOf, headOf, headed };

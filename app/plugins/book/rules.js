@@ -31,14 +31,17 @@ export function tree(reads, id, seen = new Set()) {
   if (!m || seen.has(id)) return null;
   seen.add(id);
   const p = reads.gaps.progress(id) || { open: 0, of: 0 };
+  // A chapter's heading (the thought linked `heads` to it) is its title, not one of its paragraphs.
+  const head = reads.links.to(id, 'heads').map((r) => r.from).find((h) => reads.marks.get(h)) || null;
+  const headWords = head ? (reads.marks.text(head) || '').split('\n')[0].trim() : '';
   const parts = reads.links.members(id).map((pid) => {
     const pm = reads.marks.get(pid);
-    if (!pm) return null;
+    if (!pm || pid === head) return null;
     if (isChapter(pm)) return { ...tree(reads, pid, seen), chapter: true };
     const g = reads.gaps.of(pid);
     return { id: pid, chapter: false, title: '', text: partText(reads, pid), parts: [], open: g?.state === 'open' ? 1 : 0, of: g ? 1 : 0 };
   }).filter(Boolean);
-  return { id, chapter: isChapter(m), title: m.title || (isBook(m) ? 'Untitled book' : 'Untitled chapter'), text: '', parts, open: p.open || 0, of: p.of || 0 };
+  return { id, chapter: isChapter(m), title: headWords || m.title || (isBook(m) ? 'Untitled book' : 'Untitled chapter'), text: '', parts, open: p.open || 0, of: p.of || 0 };
 }
 
 // How much a book (or chapter) holds: chapters (however deep), thoughts, and words.

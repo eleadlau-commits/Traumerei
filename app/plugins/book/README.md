@@ -1,8 +1,10 @@
 # Book
 
-A book editor in any room. Seen as **Book** (Mode → Book, or Tab), the room is one column a page
-wide: the book's title, its chapters and sections with numbered headings, its paragraphs in
-order, and below a line, the room's thoughts not yet in the book. You write in it as in any room:
+A book editor in any room. Seen as **Book** (Mode → Book, or Tab), the room is the book set on
+pages (A4, Letter, A5 or 6 × 9, or one column without pages): a title page, each chapter on a
+new page with its heading dropped, its sections with numbered headings, its paragraphs in order,
+running on from page to page; page numbers at the foot and the chapter's title at the head; margin
+notes beside the page; and after the last page, the room's thoughts not yet in the book. You write in it as in any room:
 Enter keeps a paragraph and it lands right after the one you were on, in its chapter.
 
 A plugin, shipped as `book.traumplug` (never built into the app). It reaches the app only
@@ -21,13 +23,22 @@ through the plugin API (`app/core/API.md`), and needs app 1.1.1 (the `join` prop
 
 ## What it adds
 
-- **Mode Book** (rule `book-page`, order 30). Settings → Column: Narrow, Book (600) or Wide.
+- **Mode Book** (rule `book-page`, order 30). Its settings, per room (the ⚙ beside Book in the
+  rail): Pages (A4 by default, Letter, A5, 6 × 9 in, or None: one column), Margins (narrow,
+  normal, wide), A chapter starts a page (on), Column (Narrow, Book, Wide; without pages).
+- **Pages** (`pages.js`, drawn, never stored): a heading keeps two lines of what follows on its
+  page; a paragraph runs on to the next page in pieces, never leaving one line alone at a foot or
+  a top; a table or figure moves to the next page whole.
+- **Margin notes**: a thought linked `about` a paragraph, drawn beside it (to the right of the
+  page), out of the flow and out of the export. Alt+N on a chosen paragraph makes it a note on
+  the one before it; Alt+N on a note puts it back after that paragraph.
 - **Docks**, Ctrl+Alt+J in a room seen as Book (or Tools → Book):
-  - left, **Contents**: chapters and sections numbered as they nest, words and open gaps for
-    each; the chapter you are in is lit; a click goes to its heading; drag a line among its
+  - left, **Contents**: chapters and sections numbered as they nest, their pages, words and
+    open gaps for each; the chapter you are in is lit; a click goes to its heading; drag a line among its
     siblings to reorder; thoughts dragged from the canvas onto a line join that chapter.
   - right, **Book**: the title (rename it there), paragraphs, words and what is still open; the
-    chapter or paragraph in hand; Export Markdown, Print or PDF.
+    chapter, paragraph (its page, its notes) or note in hand; Export Markdown, Print or PDF
+    (printed at the room's page size and margins, a chapter on a new page).
   - the column is zoomed out, if it must be, to fit between the docks.
 - **Keys on the chosen paragraph** (room seen as Book):
   - Ctrl+Alt+H: make it a heading (it gathers what follows, up to the next chapter); again: a

@@ -19,7 +19,7 @@ function reads() {
   const gaps = { g: { state: 'open' }, d: { state: 'resolved' } };
   return {
     marks: { get: (id) => marks[id] || null, text: (id) => marks[id]?.text || '', in: () => Object.values(marks).filter((m) => m.kind !== 'room') },
-    links: { members: (id) => parts[id] || [] },
+    links: { members: (id) => parts[id] || [], to: () => [] },
     gaps: { of: (id) => gaps[id] || null, progress: (id) => ({ b: { open: 1, of: 2 }, c1: { open: 1, of: 1 }, c2: { open: 0, of: 1 }, s: { open: 0, of: 1 } }[id] || { open: 0, of: 0 }) },
   };
 }

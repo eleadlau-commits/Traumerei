@@ -1,4 +1,4 @@
-// The Book editor on the canvas: the Book rule (the room as one column, a page wide), headings
+// The Book editor on the canvas: the Book rule (the room as pages, or one column), headings
 // drawn as headings, and the keys of a book: a heading from the chosen paragraph, its level, moving
 // a paragraph or chapter, splitting and joining paragraphs, the caret running on from one
 // paragraph to the next, and pasting as paragraphs. Only the plugin API (app/core/API.md).
@@ -8,8 +8,9 @@
 // lands in that chapter right after it, in the same step as Enter.
 
 import { isChapter } from './rules.js';
-import { RULE, HEADS, column, after, flow, headed } from './column.js';
-import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs } from './editing.js';
+import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
+import { shape, textWidth, SIZES } from './pages.js';
+import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote } from './editing.js';
 
 const ICON = '<path d="M7 4h10M7 8h10M7 12h10M7 16h6"/><path d="M4 3v18"/>';
 
@@ -25,14 +26,20 @@ export function installEditor(t) {
 
   t.slots.linkKinds.add({ kind: HEADS, name: 'heads', note: 'the thought that is a chapter\'s heading',
     admit: (from, to, reads) => (isChapter(reads.marks.get(to)) ? true : 'Only a chapter has a heading') });
+  t.slots.linkKinds.add({ kind: ABOUT, name: 'about', note: 'a margin note on a paragraph of the book' });
   t.slots.rules.add({
-    id: RULE, name: 'Book', note: 'the book as one column: headings, chapters, paragraphs in order', icon: ICON, order: 30,
+    id: RULE, name: 'Book', note: 'the book on pages (or one column): headings, chapters, paragraphs in order', icon: ICON, order: 30,
     claims: ['book', 'book-chapter'],
-    settings: [{ key: 'width', label: 'Column', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] }],
-    arrange: (reads, context) => column(reads, context, measure, size).rows,
-    draw: (reads, context) => column(reads, context, measure, size).boxes,
+    settings: [
+      { key: 'pages', label: 'Pages', type: 'choice', default: 'a4', options: [...Object.entries(SIZES).map(([k, v]) => [k, v[2]]), ['none', 'None: one column']] },
+      { key: 'margins', label: 'Margins', type: 'choice', default: 'normal', options: [['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']] },
+      { key: 'chapterPage', label: 'A chapter starts a page', type: 'switch', default: true },
+      { key: 'width', label: 'Column (no pages)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
+    ],
+    arrange: (reads, context) => shape(reads, context, measure, size).rows,
+    draw: (reads, context) => shape(reads, context, measure, size).boxes,
     land: (reads, context, mark, x, y) => {
-      const { rows } = column(reads, context, measure, size);
+      const { rows } = shape(reads, context, measure, size);
       const near = rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1);
       if (near) return after(reads, context, near.mark);
       return null;
@@ -76,6 +83,9 @@ export function installEditor(t) {
     when: () => inBook() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), -1)) });
   cmd({ id: 'book.down', keys: ['Ctrl+ArrowDown'], zone: 'room', words: 'move the chosen paragraph or chapter down one place',
     when: () => inBook() && !!chosen(), run: () => say(moveOne(t, room(), chosen(), 1)) });
+  cmd({ id: 'book.note', keys: ['Alt+N'], zone: 'room', words: 'make the chosen paragraph a margin note on the one before it (again: a paragraph)',
+    when: () => inBook() && !!chosen(),
+    run: () => { const id = chosen(); say(aboutOf(t, id) ? unmakeNote(t, id) : makeNote(t, room(), id)); } });
   cmd({ id: 'book.paste', keys: ['Ctrl+Shift+V'], zone: 'room', words: 'paste as paragraphs, split at blank lines, after the chosen one',
     when: () => inBook(), run: () => pasteFromClipboard(chosen()) });
 
@@ -85,7 +95,7 @@ export function installEditor(t) {
   const kept = () => { const c = inBook() ? caret() : null; return c && c.mark ? c : null; };
   // The line the caret is on, counted from 0, and how many there are, at the column's width.
   const lineAt = (c) => {
-    const W = column(t, room(), measure, size).width;
+    const W = textWidth(t, room());
     return { at: measure(c.text.slice(0, c.from), W).lines - 1, of: measure(c.text || ' ', W).lines };
   };
   const runOn = (dir) => {
@@ -152,5 +162,5 @@ export function installEditor(t) {
     t.ui.toast(made.length === 1 ? 'One paragraph pasted.' : `${made.length} paragraphs pasted.`);
   };
 
-  return { inBook };
+  return { inBook, layout: (r) => shape(t, r, measure, size) };
 }

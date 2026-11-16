@@ -6,13 +6,14 @@
 
 import { ui } from 'folio';
 import { isChapter, booksIn, wordCount, moved } from './rules.js';
-import { read, headed, headOf, titleOf, widthOf } from './column.js';
+import { read, headed, headOf, titleOf, aboutOf, ABOUT } from './column.js';
+import { pageOf, textWidth, ranges } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, print }) {
+export function installDocks(t, { exportMarkdown, print, layout }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -25,6 +26,14 @@ export function installDocks(t, { exportMarkdown, print }) {
     const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark;
     if (!id) return null;
     return headed(t, id) || (isChapter(t.marks.get(id)) ? id : holderOf(t, id));
+  };
+
+  // To a mark on the canvas, chosen. (Going there shows its properties in the right dock: the
+  // book in hand comes back when it was showing.)
+  const goTo = (id) => {
+    const had = !!right;
+    t.ui.open.mark(id);
+    if (had) setTimeout(() => { openRight(); }, 0);
   };
 
   // Words and open gaps under a chapter, however deep.
@@ -55,17 +64,20 @@ export function installDocks(t, { exportMarkdown, print }) {
     const { items } = read(t, r);
     const heads = items.filter((x) => x.t === 'heading' || x.t === 'chapter');
     const all = tally(b);
+    const lay = layout(r);
+    const pp = lay.pages ? ranges(t, r, lay.pageOf) : new Map();
+    const span = (g) => { const x = pp.get(g); return x ? (x[0] === x[1] ? `p. ${x[0]} · ` : `pp. ${x[0]}–${x[1]} · `) : ''; };
     const list = el('ol', { class: 'book-tree', role: 'list' });
     for (const it of heads) {
       const c = tally(it.chapter);
       const go = () => {
         if (moving) { const r2 = moveInto(t, moving, it.chapter); if (!r2.ok) t.ui.toast(r2.reason); moving = null; draw(true); return; }
-        t.ui.open.mark(headOf(t, it.chapter) || it.chapter);
+        goTo(headOf(t, it.chapter) || it.chapter);
       };
       const row = el('li', { class: `book-tree-line book-depth-${it.depth}` + (it.chapter === lit ? ' book-here' : '') + (moving ? ' book-target' : ''), 'data-drop': it.chapter },
         el('button', { type: 'button', class: 'book-text', onclick: go, title: moving ? 'Move it here' : 'Go there' },
           el('span', { class: 'book-num' }, it.num), ` ${titleOf(t, it.chapter)}`),
-        el('span', { class: 'book-right' }, `${c.words.toLocaleString()}${c.open ? ` · ${c.open} open` : ''}`));
+        el('span', { class: 'book-right' }, `${span(it.chapter)}${c.words.toLocaleString()}${c.open ? ` · ${c.open} open` : ''}`));
       if (!t.distance.shut(r)) {
         row.draggable = true;
         row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-book-part', it.chapter); e.dataTransfer.effectAllowed = 'move'; });
@@ -85,7 +97,7 @@ export function installDocks(t, { exportMarkdown, print }) {
     return [
       moving ? el('p', { class: 'hint book-moving' }, `Moving “${(t.marks.text(moving) || '').slice(0, 40)}”: click a chapter. Escape: no.`) : null,
       el('div', { class: 'book-tree-head' }, el('span', {}, t.marks.get(b)?.title || 'Untitled book'),
-        el('span', { class: 'book-right' }, `${all.words.toLocaleString()} words${all.open ? ` · ${all.open} open` : ''}`)),
+        el('span', { class: 'book-right' }, `${lay.pages ? `${lay.pages} pages · ` : ''}${all.words.toLocaleString()} words${all.open ? ` · ${all.open} open` : ''}`)),
       heads.length ? list : el('p', { class: 'hint' }, 'No chapters yet. Choose a paragraph and press Ctrl+Alt+H to make it a heading.'),
     ].filter(Boolean);
   };
@@ -114,13 +126,21 @@ export function installDocks(t, { exportMarkdown, print }) {
           el('p', { class: 'book-hand-title' }, titleOf(t, ch)),
           el('p', { class: 'hint' }, `${c.paras} paragraphs · ${c.words.toLocaleString()} words${sub ? ` · ${sub} sections` : ''}${c.open ? ` · ${c.open} still open` : ''}`),
           el('p', { class: 'hint' }, 'Ctrl+] deeper · Ctrl+[ up · Ctrl+Up / Ctrl+Down move it · Ctrl+Alt+H back to a paragraph'))));
+    } else if (id && t.marks.get(id) && aboutOf(t, id)) {
+      const of = aboutOf(t, id);
+      out.push(el('details', { class: 'sec', open: '' }, el('summary', {}, 'Margin note in hand'),
+        el('div', { class: 'sec-body' },
+          el('p', { class: 'hint' }, `${wordCount(t.marks.text(id))} words · beside “${(t.marks.text(of) || '').slice(0, 48)}…” · not in the export`),
+          el('p', { class: 'hint' }, 'Alt+N: back into the book, after that paragraph'))));
     } else if (id && t.marks.get(id)) {
       const g = t.gaps.of(id);
       const where = holderOf(t, id);
+      const notes = t.links.to(id, ABOUT).filter((n) => t.marks.get(n.from)).length;
+      const pg = layout(r).pageOf.get(id);
       out.push(el('details', { class: 'sec', open: '' }, el('summary', {}, 'Paragraph in hand'),
         el('div', { class: 'sec-body' },
-          el('p', { class: 'hint' }, `${wordCount(t.marks.text(id))} words${where ? ` · in ${isChapter(t.marks.get(where)) ? titleOf(t, where) : 'the book, before the first chapter'}` : ' · not in the book yet'}${g ? ` · ${g.state === 'open' ? 'still to write' : 'written'}` : ''}`),
-          el('p', { class: 'hint' }, 'Ctrl+Alt+H heading · Alt+M into a chapter · Ctrl+Up / Ctrl+Down move · Alt+Enter split'))));
+          el('p', { class: 'hint' }, `${wordCount(t.marks.text(id))} words${where ? ` · in ${isChapter(t.marks.get(where)) ? titleOf(t, where) : 'the book, before the first chapter'}` : ' · not in the book yet'}${g ? ` · ${g.state === 'open' ? 'still to write' : 'written'}` : ''}${pg ? ` · page ${pg}` : ''}${notes ? ` · ${notes === 1 ? 'a margin note' : `${notes} margin notes`}` : ''}`),
+          el('p', { class: 'hint' }, 'Ctrl+Alt+H heading · Alt+M into a chapter · Alt+N a note on the one before · Ctrl+Up / Ctrl+Down move · Alt+Enter split'))));
     }
     out.push(el('div', { class: 'box-btns book-actions' }, btn('Export Markdown', () => exportMarkdown(b)), btn('Print or PDF', () => print(b))));
     return out;
@@ -181,7 +201,8 @@ export function installDocks(t, { exportMarkdown, print }) {
     if (!r || !left || !right || typeof window === 'undefined') return;
     const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
     const room$ = (b.width ? b.left : window.innerWidth) - (a.width ? a.right : 0);
-    const need = widthOf(t, r) + 160; // the column, its numbers in the left margin, and air
+    const p = pageOf(t, r);
+    const need = p ? p.w + 80 : textWidth(t, r) + 160; // the page (or the column and its numbers) and air
     const z = t.ui.zoom?.get()?.zoom || 1;
     if (room$ > 0 && room$ < need * z) t.ui.zoom.set(Math.max(0.5, Math.floor((room$ / need) * 20) / 20));
   };
@@ -196,5 +217,5 @@ export function installDocks(t, { exportMarkdown, print }) {
   const cancelMove = () => { if (!moving) return false; moving = null; draw(true); return true; };
 
   for (const on of [t.marks.on, t.links.on, t.gaps.on]) on(() => { if (left || right) draw(true); });
-  return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit };
+  return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo };
 }
