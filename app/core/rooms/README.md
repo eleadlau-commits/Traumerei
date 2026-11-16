@@ -148,6 +148,8 @@ written there. With nothing in it, the rooms page works on its own.
   of its rooms (the world's `roomGroup`, `roomGroups`, `groupRooms`, `ungroupRooms`,
   `setRoomGroup`), so a room's file keeps it. **Groups** in the rail, under Tags, lists them with
   their colour and how many rooms each has; picking one lights its rooms as a tag does.
+  **A right-click** on a group in the rail, or on its name on the floor, opens a small sheet: its
+  name (Enter keeps it) and a swatch for each ink (a click recolours it). Each is one undo step.
 - **Duplicate** (Ctrl+D, or Alt+drag the square to where the copy
   should go): a copy of the room with everything in it (the world's one copy rule, `copyRoom`),
   named "… copy", in the nearest free cell (the floors feature's `place` with `near`); a full floor

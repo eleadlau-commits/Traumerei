@@ -263,7 +263,7 @@
   left: 2px;
   white-space: nowrap;
 }
-.rooms-outline .rooms-outline-name { color: inherit; }
+.rooms-outline .rooms-outline-name { color: inherit; pointer-events: auto; cursor: context-menu; }
 
 /* Going in: Folio's .expand grows from the square to fill the screen, then fades into the room. */
 
@@ -372,6 +372,7 @@
 .rooms-sheet > .label { margin: 0 18px var(--s-2); }
 .rooms-sheet .pick[disabled] { opacity: var(--off); cursor: default; }
 .rooms-sheet .field { margin: 0 18px var(--s-2); width: auto; }
+.rooms-group-swatches { display: flex; gap: var(--s-3); margin: var(--s-1) 18px 0; }
 
 /* A past day from the Time dock (past.js): view only; a room deleted since is a faint ghost. */
 .rooms-past-tile { cursor: default; }
