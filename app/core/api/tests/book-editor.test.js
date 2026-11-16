@@ -13,6 +13,8 @@ async function load(id, file) {
 const book = await load('book', 'Book.js');
 const C = await load('book', 'column.js');
 const E = await load('book', 'editing.js');
+const P = await load('book', 'pages.js');
+const R = await load('book', 'rules.js');
 const S = await load('book', 'tests/sample.js');
 
 function setUp() {
@@ -37,12 +39,82 @@ test('book editor: the room as one column, in reading order, headings numbered a
   assert.ok(order()[order().length - 1].startsWith('Check: when'), 'the thoughts not in the book come last');
   const lay = t.rules.layout(C.RULE, s.room);
   const rows = new Map(lay.map((r) => [r.mark, r]));
-  assert.ok(lay.every((r) => r.width === C.WIDTHS.book), 'every row the column wide');
+  const W = P.textWidth(t, s.room);
+  assert.ok(lay.filter((r) => r.mark !== s.note).every((r) => r.width === W), 'every row the measure wide');
   const ys = C.flow(t, s.room).map((id) => rows.get(id).position.y);
   assert.deepEqual(ys, [...ys].sort((a, b) => a - b), 'rows run down the page in reading order');
   const boxes = t.rules.draws(C.RULE, s.room).boxes;
   assert.ok(boxes.some((b) => b.style === 'title' && b.label === S.TEXT.title));
   assert.deepEqual(boxes.filter((b) => b.style === 'heading').map((b) => b.label), ['1', '2', '2.1', '2.2', '3']);
+});
+
+// A room's settings under the Book rule, as its ⚙ keeps them.
+const set = (host, room, o) => { const r = host.w.things[room]; r.rules = { ...(r.rules || {}), [C.RULE]: { ...(r.rules?.[C.RULE] || {}), ...o } }; host.world.save(); };
+
+test('book editor: pages: a title page, each chapter on a new page, numbered, a paragraph running on in pieces', () => {
+  const { host, t, s } = setUp();
+  const measure = (text, width) => t.ui.measure(text, width);
+  const p = P.pageOf(t, s.room);
+  assert.equal(p.name, 'A4', 'A4 unless the room says otherwise');
+  let lay = P.paginate(t, s.room, measure);
+  assert.equal(lay.pageOf.get(s.heads[0]), 2, 'the title page is page 1; Winter opens page 2');
+  assert.equal(lay.pageOf.get(s.heads[1]), 3, 'Spring starts a page of its own');
+  assert.equal(lay.pageOf.get(s.heads[2]), 3, 'a section does not');
+  const pages = lay.boxes.filter((b) => b.style === 'page');
+  assert.equal(pages.length, lay.pages);
+  assert.ok(lay.boxes.some((b) => b.style === 'quiet' && b.label === '2'), 'numbered at the foot');
+  // Every row of the book inside a page's margins.
+  const inside = (r) => pages.some((b) => r.y - r.height / 2 >= b.y + p.m - 0.5 && r.y + r.height / 2 <= b.y + b.h - p.m + 0.5);
+  const book = new Set(C.flow(t, s.room).filter((id) => lay.pageOf.has(id)));
+  assert.ok(lay.rows.filter((r) => book.has(r.mark)).every(inside), 'nothing over a margin');
+  // Chapters run on: no page between Winter and Spring.
+  set(host, s.room, { chapterPage: false });
+  lay = P.paginate(t, s.room, measure);
+  assert.equal(lay.pageOf.get(s.heads[1]), 2);
+  // A long paragraph on A5 runs on to the next page, never one line alone at the foot or top.
+  set(host, s.room, { pages: 'a5', chapterPage: true });
+  const long = t.marks.make({ content: 'A long paragraph that runs on. '.repeat(120), in: s.room }).id;
+  t.links.link(long, s.chapters[0], 'part of', null, { at: 1 });
+  lay = P.paginate(t, s.room, measure);
+  const bits = lay.rows.filter((r) => r.mark === long);
+  assert.ok(bits.length >= 2, 'in pieces');
+  const total = measure(t.marks.text(long), P.textWidth(t, s.room)).lines;
+  assert.equal(bits.reduce((n, r) => n + (r.lines[1] - r.lines[0]), 0), total, 'every line once');
+  assert.ok(bits.every((r) => r.lines[1] - r.lines[0] >= 2), 'no line alone');
+  // One column again: no pages.
+  set(host, s.room, { pages: 'none' });
+  assert.equal(P.pageOf(t, s.room), null);
+  assert.equal(P.shape(t, s.room, measure).pages, 0);
+});
+
+test('book editor: margin notes: beside their paragraph, out of the flow and the export; Alt+N back and forth', () => {
+  const { t, s, text } = setUp();
+  const measure = (x, w) => t.ui.measure(x, w);
+  assert.ok(!C.flow(t, s.room).includes(s.note), 'not in the flow');
+  assert.ok(!C.read(t, s.room).items.some((x) => x.mark === s.note), 'nor among the thoughts not in the book');
+  const lay = P.paginate(t, s.room, measure);
+  const n = lay.rows.find((r) => r.mark === s.note), of = lay.rows.find((r) => r.mark === s.paras[1]);
+  assert.ok(n.x - n.width / 2 > lay.page.w / 2, 'beside the page');
+  assert.ok(Math.abs((n.y - n.height / 2) - (of.y - of.height / 2)) < 1, 'level with its paragraph');
+  assert.ok(!R.markdown(R.tree(t, s.book)).includes('Margin note'), 'left out of the export');
+  // Alt+N on a paragraph: a note on the one before; again: back after it.
+  const [, a, b] = t.links.members(s.chapters[0]);
+  assert.ok(E.makeNote(t, s.room, b).ok);
+  assert.equal(C.aboutOf(t, b), a);
+  assert.ok(!t.links.members(s.chapters[0]).includes(b));
+  assert.ok(E.unmakeNote(t, b).ok);
+  assert.deepEqual(t.links.members(s.chapters[0]).slice(1, 3), [a, b]);
+  assert.equal(E.makeNote(t, s.room, s.heads[0]).ok, false, 'a heading is not a note');
+  void text;
+});
+
+test('book editor: the export has each heading once, as its chapter\'s title', () => {
+  const { t, s } = setUp();
+  const md = R.markdown(R.tree(t, s.book));
+  assert.equal(md.split('Winter').length - 1, 1);
+  assert.ok(md.includes('## 1 Winter'));
+  t.marks.edit(s.heads[0], { text: 'Deep winter' });
+  assert.ok(R.markdown(R.tree(t, s.book)).includes('## 1 Deep winter'), 'the heading as written now');
 });
 
 test('book editor: a paragraph written after another lands right after it, in its chapter, in the same step', () => {
@@ -119,7 +191,7 @@ test('book editor: split at the caret, join to the one before, paste as paragrap
   assert.deepEqual(t.links.members(winter).slice(3, 6), made);
 });
 
-test('book editor: a 1,500-paragraph book lays out in under 50 ms', () => {
+test('book editor: a 1,500-paragraph book lays out on pages in under 50 ms', () => {
   const host = makeHost({ thoughts: 0 });
   const { t } = host.plug('book', book.install, { api: 3, needs: ['files'] });
   host.lib.model.declareFamilies(host.app.slot('world.groups').items);

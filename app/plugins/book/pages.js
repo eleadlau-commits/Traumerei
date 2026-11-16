@@ -1,0 +1,167 @@
+// The Book rule's pages: the book set on pages of a fixed size, stacked down the canvas as a
+// manuscript is, the title page first; a chapter starts a page (a setting), a heading never sits
+// alone at a page's foot, a paragraph runs on to the next page in pieces, and never leaves one
+// line alone at a foot or a top. Page numbers sit at each page's foot and the chapter's title
+// heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
+// the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
+
+import { RULE, SPACE, WIDTHS, column, read, titleOf, placeNotes } from './column.js';
+
+// Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
+// millimetre (the reading size is 19 units, about a 12-point book face at this scale).
+export const SIZES = Object.freeze({ a4: [210, 297, 'A4'], letter: [216, 279, 'Letter'], a5: [148, 210, 'A5'], trade: [152, 229, '6 × 9 in'] });
+export const MARGINS = Object.freeze({ narrow: 16, normal: 22, wide: 30 });
+export const MM = 3.4;
+export const GAP = 56; // between pages, in world units
+
+const setting = (reads, room, key) => reads.marks.get(room)?.rules?.[RULE]?.[key];
+
+// The room's page, or null when it is seen as one column: { w, h, m, text, name } (world units).
+export function pageOf(reads, room) {
+  const key = setting(reads, room, 'pages') ?? 'a4';
+  const size = SIZES[key];
+  if (!size) return null;
+  const m = (MARGINS[setting(reads, room, 'margins')] ?? MARGINS.normal) * MM;
+  const w = Math.round(size[0] * MM), h = Math.round(size[1] * MM);
+  return { w, h, m, text: Math.round(w - 2 * m), name: size[2], key };
+}
+// The width the words are set at: the page's measure, or the column's.
+export function textWidth(reads, room) {
+  const p = pageOf(reads, room);
+  if (p) return p.text;
+  return WIDTHS[setting(reads, room, 'width')] || WIDTHS.book;
+}
+const chaptersStartPages = (reads, room) => setting(reads, room, 'chapterPage') !== false;
+
+// The book as it reads in this room: pages, or the column.
+export function shape(reads, room, measure, size = () => null) {
+  return pageOf(reads, room) ? paginate(reads, room, measure, size) : { ...column(reads, room, measure, size), pageOf: new Map(), pages: 0 };
+}
+
+// The pages: { rows, boxes, width, lineHeight, pageOf: Map(mark → page number), pages }.
+export function paginate(reads, room, measure, size = () => null) {
+  const P = pageOf(reads, room);
+  const W = P.text, L = -W / 2;
+  const { items, notes } = read(reads, room);
+  const lh = measure('M', W).lineHeight || 27.5;
+  const rows = [], boxes = [], onPage = new Map(), heads = [];
+  let page = -1, y = 0, used = false, running = '';
+  const top = (n) => -lh * 13 + n * (P.h + GAP); // the title page's top a little above the room's middle, where it opens
+  const foot = () => top(page) + P.h - P.m;
+  const fresh = () => y <= top(page) + P.m + 0.5;
+  const newPage = () => { page++; y = top(page) + P.m; used = false; heads[page] = running; };
+  const linesOf = (id) => {
+    const s = size(id, W);
+    if (s && Number.isFinite(s.height) && s.height > 0 && s.lines == null) return { block: s.height };
+    return measure(reads.marks.text(id) || ' ', W);
+  };
+  const row = (id, h, extra = {}) => { rows.push({ mark: id, x: 0, y: y + h / 2, width: W, height: h, align: 'start', ...extra }); if (!onPage.has(id)) onPage.set(id, page + 1); y += h; used = true; };
+
+  const books = items.filter((x) => x.t === 'title').length;
+  if (!books) { // no book yet: a quiet line says how to make one, and the loose thoughts follow
+    const c = column(reads, room, measure, size);
+    return { ...c, pageOf: onPage, pages: 0 };
+  }
+  let loose = -1;
+  for (let k = 0; k < items.length; k++) {
+    const it = items[k];
+    if (it.t === 'loose') { loose = k; break; }
+    if (it.t === 'title') { // the title page
+      running = '';
+      newPage();
+      const b = reads.marks.get(it.book);
+      boxes.push({ x: L, y: top(page) + P.h * 0.3, w: W, h: lh * 2.4, label: b?.title || 'Untitled book', style: 'title', opens: it.book });
+      used = true;
+      newPage(); // what comes before the first chapter starts on the next page
+      continue;
+    }
+    if (it.t === 'heading' || it.t === 'chapter') {
+      const d = it.depth;
+      const title = titleOf(reads, it.chapter);
+      if (d === 1) running = title;
+      const h = it.t === 'heading' ? (linesOf(it.mark).height ?? linesOf(it.mark).block) : lh * 1.3;
+      const next = items[k + 1];
+      const after = next && next.t === 'para' ? lh * Math.min(2, linesOf(next.mark).lines || 1) : 0; // a heading keeps two lines of what follows
+      if (d === 1 && chaptersStartPages(reads, room) && used) newPage();
+      if (d === 1 && fresh()) { y = top(page) + P.h * 0.2; heads[page] = ''; } // a chapter's first page: its heading dropped, no running head
+      else if (!fresh()) y += lh * SPACE.before[d - 1];
+      if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
+      if (it.t === 'heading') {
+        boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d });
+        row(it.mark, h);
+      } else {
+        boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: `${it.num}  ${title}`, style: 'heading', level: d, opens: it.chapter });
+        y += h; used = true;
+      }
+      y += lh * SPACE.after;
+      continue;
+    }
+    // A paragraph (or a table, a figure: a block, on the next page when it does not fit).
+    const m = linesOf(it.mark);
+    if (m.block) {
+      if (y + m.block > foot() && !fresh()) newPage();
+      row(it.mark, m.block);
+    } else {
+      const lines = Math.max(1, m.lines || 1);
+      let from = 0;
+      while (from < lines) {
+        const rest = lines - from;
+        const fits = Math.floor((foot() - y) / lh + 0.01);
+        let take = Math.min(rest, fits);
+        if (take < rest && rest - take < 2 && rest >= 3) take = rest - 2; // no last line alone at a top
+        if (take < rest && take < 2) { // no first line alone at a foot
+          if (!fresh()) { newPage(); continue; }
+          take = Math.max(1, Math.min(rest, fits));
+        }
+        row(it.mark, take * lh, take < lines ? { lines: [from, from + take] } : {});
+        from += take;
+        if (from < lines) newPage();
+      }
+    }
+    y += lh * SPACE.para;
+  }
+  const last = page;
+  // The pages behind, each numbered at its foot (not the title page), its chapter's title at its
+  // head (not on a chapter's first page).
+  const behind = [];
+  for (let n = 0; n <= last; n++) {
+    behind.push({ x: -P.w / 2, y: top(n), w: P.w, h: P.h, style: 'page' });
+    if (n > 0) behind.push({ x: -lh * 2, y: top(n) + P.h - P.m * 0.62, w: lh * 4, h: lh * 1.1, label: String(n + 1), style: 'quiet' });
+    if (n > 0 && heads[n]) behind.push({ x: L, y: top(n) + P.m * 0.38, w: W, h: lh * 1.1, label: heads[n], style: 'quiet' });
+  }
+  boxes.unshift(...behind);
+  // After the last page: the thoughts not yet in the book, as a column.
+  if (loose >= 0) {
+    y = top(last + 1) + lh * 2;
+    boxes.push({ x: L, y, w: W, h: lh * 1.2, label: 'Not in the book yet', style: 'line' });
+    y += lh * 1.6;
+    for (const it of items.slice(loose + 1)) {
+      const h = (linesOf(it.mark).height ?? linesOf(it.mark).block);
+      rows.push({ mark: it.mark, x: 0, y: y + h / 2, width: W, height: h, align: 'start' });
+      y += h + lh * SPACE.para;
+    }
+  }
+  placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);
+  return { rows, boxes, width: W, lineHeight: lh, pageOf: onPage, pages: last + 1, page: P };
+}
+
+// Each chapter's pages: Map(chapter → [first, last]), from a layout's pageOf.
+export function ranges(reads, room, pageOf) {
+  const out = new Map();
+  const walk = (g) => {
+    let lo = Infinity, hi = -Infinity;
+    for (const id of reads.links.members(g)) {
+      const m = reads.marks.get(id);
+      if (!m) continue;
+      if (m.kind === 'group') {
+        const r = walk(id);
+        if (r) { lo = Math.min(lo, r[0]); hi = Math.max(hi, r[1]); }
+      } else if (pageOf.has(id)) { const p = pageOf.get(id); lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    }
+    if (lo === Infinity) return null;
+    out.set(g, [lo, hi]);
+    return [lo, hi];
+  };
+  for (const b of read(reads, room).items.filter((x) => x.t === 'title')) walk(b.book);
+  return out;
+}

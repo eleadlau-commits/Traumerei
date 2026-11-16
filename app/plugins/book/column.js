@@ -12,6 +12,7 @@ import { BOOK, CHAPTER, isBook, isChapter, booksIn } from './rules.js';
 
 export const RULE = 'book-page';
 export const HEADS = 'heads';
+export const ABOUT = 'about'; // a margin note: a thought linked about a paragraph of the book
 
 // The column's measures, in world units (a thought is about 200 wide; the reading size is 19).
 export const WIDTHS = Object.freeze({ narrow: 480, book: 600, wide: 760 });
@@ -33,6 +34,11 @@ export function headed(reads, mark) {
   for (const r of reads.links.from(mark, HEADS)) { const g = reads.marks.get(r.to); if (isChapter(g)) return r.to; }
   return null;
 }
+// The paragraph a margin note is about, or null.
+export function aboutOf(reads, mark) {
+  for (const r of reads.links.from(mark, ABOUT)) if (reads.marks.get(r.to)) return r.to;
+  return null;
+}
 // The title a chapter shows: its heading's words, else the group's own title.
 export function titleOf(reads, chapter) {
   const h = headOf(reads, chapter);
@@ -47,8 +53,10 @@ export function titleOf(reads, chapter) {
 //   { t: 'para', mark, holder, depth }            a paragraph (or a table, a figure) in the book
 //   { t: 'loose' }, { t: 'stray', mark }          then the room's thoughts not in a book
 // `at` maps a mark (thought or chapter) to { holder, i } (its holder and place in its parts).
+// `notes`: [{ mark, of }], the margin notes (thoughts linked `about` a mark in the book), in the
+// order of what they are about; they are neither in the book's flow nor among the strays.
 export function read(reads, room) {
-  const items = [], at = new Map(), seen = new Set();
+  const items = [], at = new Map(), seen = new Set(), notes = [];
   const walk = (holder, depth, prefix) => {
     let n = 0;
     reads.links.members(holder).forEach((id, i) => {
@@ -75,12 +83,21 @@ export function read(reads, room) {
     items.push({ t: 'title', book: b.id });
     walk(b.id, 0, '');
   }
+  const inBook = new Set(seen);
+  for (const it of items) {
+    if (it.t !== 'para' && it.t !== 'heading') continue;
+    for (const r of reads.links.to(it.mark, ABOUT)) {
+      if (seen.has(r.from) || !reads.marks.get(r.from) || inBook.has(r.from)) continue;
+      seen.add(r.from);
+      notes.push({ mark: r.from, of: it.mark });
+    }
+  }
   const strays = reads.marks.in(room).filter((m) => m.kind !== 'group' && m.kind !== 'room' && !seen.has(m.id)).sort((a, b) => a.at - b.at);
   if (strays.length) {
     items.push({ t: 'loose' });
     for (const m of strays) items.push({ t: 'stray', mark: m.id });
   }
-  return { items, at };
+  return { items, at, notes };
 }
 
 // The column: rows for the marks (centre, width, height, words set flush left) and boxes behind
@@ -88,7 +105,7 @@ export function read(reads, room) {
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
 export function column(reads, room, measure, size = () => null) {
   const W = widthOf(reads, room);
-  const { items } = read(reads, room);
+  const { items, notes } = read(reads, room);
   const lh = measure('M', W).lineHeight || 27.5;
   const rows = [], boxes = [];
   const L = -W / 2; // the column is centred on x = 0, and starts a little above the room's middle
@@ -132,7 +149,26 @@ export function column(reads, room, measure, size = () => null) {
       y += lh * SPACE.para;
     }
   }
+  placeNotes(reads, rows, notes, measure, W / 2 + lh * 1.6);
   return { rows, boxes, width: W, lineHeight: lh };
+}
+
+// The margin notes, set beside what they are about: flush left from `x0` (the column's right edge
+// and some air), NOTE wide, each level with the top of its paragraph's first piece, pushed down so
+// that none covers the one above. Into `rows`.
+export const NOTE = 260;
+export function placeNotes(reads, rows, notes, measure, x0) {
+  if (!notes.length) return;
+  const first = new Map();
+  for (const r of rows) if (!first.has(r.mark)) first.set(r.mark, r);
+  const sorted = notes.map((n) => ({ ...n, row: first.get(n.of) })).filter((n) => n.row).sort((a, b) => a.row.y - b.row.y);
+  let below = -Infinity;
+  for (const n of sorted) {
+    const m = measure(reads.marks.text(n.mark) || ' ', NOTE);
+    const top = Math.max(n.row.y - (n.row.height || 0) / 2, below);
+    rows.push({ mark: n.mark, x: x0 + NOTE / 2, y: top + m.height / 2, width: NOTE, height: m.height, align: 'start' });
+    below = top + m.height + m.lineHeight * 0.6;
+  }
 }
 
 // What sits at a point of the column (a mark's centre, as land hears it): the row or box there.

@@ -17,6 +17,8 @@ import { Feature, ui } from 'folio';
 import { BOOK, CHAPTER, isBook, isChapter, booksIn, tree, count, contents, markdown, fileName, moved } from './rules.js';
 import { installEditor } from './editor.js';
 import { installDocks } from './docks.js';
+import { pageOf, SIZES, MARGINS } from './pages.js';
+import { RULE } from './column.js';
 
 const { el } = ui;
 const KEY = 'book';
@@ -119,7 +121,14 @@ export function install(t) {
   const print = (id) => {
     const node = tree(t, id);
     if (!node || typeof document === 'undefined') return;
-    const page = el('div', { class: 'book-print' }, ...readingNodes(node, true));
+    // True to the room's pages: their size and margins, and a chapter on a new page.
+    const r = t.places.home(id);
+    const set = t.marks.get(r)?.rules?.[RULE] || {};
+    const size = pageOf(t, r) ? SIZES[set.pages ?? 'a4'] : null;
+    const m = MARGINS[set.margins] ?? MARGINS.normal;
+    const css = (size ? `@page { size: ${size[0]}mm ${size[1]}mm; margin: ${m}mm; }` : '')
+      + (set.chapterPage !== false ? ' .book-print h2.book-read-head { break-before: page; }' : '');
+    const page = el('div', { class: 'book-print' }, el('style', {}, css), ...readingNodes(node, true));
     document.querySelectorAll('body > .book-print').forEach((n) => n.remove());
     const title = document.title;
     document.title = node.title;
@@ -295,7 +304,7 @@ export function install(t) {
   t.slots.groups.add({ id: BOOK, name: 'Book', card: true, open: (id) => openBook(id) });
   t.slots.groups.add({ id: CHAPTER, name: 'Chapter', membership: 'one' }); // a paragraph sits in one chapter
   const editor = installEditor(t);
-  const docks = installDocks(t, { exportMarkdown, print });
+  const docks = installDocks(t, { exportMarkdown, print, layout: editor.layout });
   t.slots.commands.add({ id: 'book.move-into', keys: ['Alt+M'], zone: 'room', order: 72, words: 'move the chosen paragraph or chapter into a chapter you pick in the contents',
     when: () => editor.inBook() && !!t.ui.chosen()?.mark, run: () => docks.startMove() });
   t.slots.commands.add({ id: 'book.move-cancel', keys: ['Escape'], zone: 'room', order: 1, words: 'not moving it after all',

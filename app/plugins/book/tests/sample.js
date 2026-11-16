@@ -1,6 +1,6 @@
 // A sample book, as the world's own tables: a room seen as Book, a book of three chapters (one with
 // two sections), headings as thoughts that head their chapters, paragraphs in order, a gap still
-// open, and two thoughts not yet in the book. The tests read it, and the sample .traum handed out
+// open, a margin note, and two thoughts not yet in the book. The tests read it, and the sample .traum handed out
 // with each stage is written from it. lib: the world's lib (world/lib.js).
 
 export const TEXT = {
@@ -30,6 +30,7 @@ export const TEXT = {
     ], sections: [] },
   ],
   open: 'Autumn: the storms, the last boat, the decision about whether to stay another year.',
+  note: 'Margin note: find the real logbook from 1962 and quote a line or two.',
   loose: ['A line for later: the lamp as the only clock that matters.', 'Check: when were lighthouses on this coast automated?'],
 };
 
@@ -66,6 +67,8 @@ export function sampleInto(lib, w, tick) {
   part(made[made.length - 1], open.id);
   G.open(w, open.id, 'from world', tick());
   paras.push(open.id);
+  const note = line(TEXT.note); // a margin note on Winter's second paragraph
+  L.set(w, L.kindId('about', note.id, paras[1]), { from: note.id, to: paras[1], kind: 'about' });
   for (const l of TEXT.loose) line(l);
-  return { room: room.id, book: book.id, chapters, paras, heads };
+  return { room: room.id, book: book.id, chapters, paras, heads, note: note.id };
 }
