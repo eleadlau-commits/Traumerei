@@ -45,6 +45,9 @@ import { Surfaces } from './surface.js';
 import { ROOM_KEYS } from './keys.js';
 import * as verbs from './verbs.js';
 
+// The tables a room's drawing shows: a change to one of them, made elsewhere, is drawn (redrawSoon).
+const SHOWN = new Set(['marks', 'links', 'places', 'gaps']);
+
 export default class Room extends Feature {
   // Search (Ctrl+K: the Search plugin's panel), or null: looked up when needed (it may be imported).
   get finder() { return this.use('search'); }
@@ -152,8 +155,12 @@ export default class Room extends Feature {
     this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
     // A link of a plugin's kind made or taken away (the link hand, Links, Provoke): drawn now.
     this.on('world:moments', ({ rows, undone }) => {
-      if (undone || !this.roomId || this.draft) return; // an undo draws the room itself
-      if (rows.some((r) => r.table === 'links' && isPluginKind((r.after || r.before)?.kind))) this.drawWorld();
+      if (undone || !this.roomId) return; // an undo draws the room itself
+      if (!this.draft && rows.some((r) => r.table === 'links' && isPluginKind((r.after || r.before)?.kind))) { this.drawWorld(); return; }
+      // A change the room did not draw itself (a plugin's propose: a chapter moved, a paragraph
+      // split) is drawn on the next frame, once, when the tables it shows have changed since the
+      // room last drew them. The room's own changes draw at once, so by then there is nothing to do.
+      if (rows.some((r) => SHOWN.has(r.table))) this.redrawSoon();
     });
     this.on('world:changed', ({ undone }) => {      // a step undone or redone
       this.sel = null;
@@ -438,6 +445,18 @@ export default class Room extends Feature {
   ontology(id) { return this.w.ontology(id); }
   get mode() { return this.ontology(view(this.world, this.roomId).mode).id; }
   get ont() { return this.ontology(this.mode); }
+  // What the open room's drawing was made from: the versions of the tables it shows.
+  drawnStamp() {
+    const L = this.w?.lib;
+    try { return L ? `${this.roomId}|${L.model.marksVersion(this.world)}|${L.links.version(this.world)}|${L.places.version(this.world, this.roomId)}|${L.gaps.version(this.world)}` : ''; } catch { return ''; }
+  }
+  redrawSoon() {
+    if (this.redrawFrame) return;
+    this.redrawFrame = requestAnimationFrame(() => {
+      this.redrawFrame = 0;
+      if (this.roomId && !this.root.hidden && this.drawnAt !== this.drawnStamp()) this.drawWorld(true);
+    });
+  }
   get el() { return el; } // for an ontology drawing its canvas (ontologies/index.js)
   groupName(g) { return groupsFor(this.ontologies.find((o) => o.id === g?.of))?.name || familyOf(g?.of)?.name || 'Group'; } // Train, Chapter, a plugin's Book
   // What opens a mark by itself, from a plugin: its kind's open(mark), or its group family's

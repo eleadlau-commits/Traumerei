@@ -487,6 +487,7 @@ export class RoomView {
   // changes one thought (the first letter of a new one); the rest of the room is not laid out again.
   drawWorld(patch = false) {
     if (!this.roomId) return;
+    this.drawnAt = this.drawnStamp?.(); // what it is drawn from (Room.js redrawSoon)
     reading(this.world, () => {
       const nodes = this.markBands(this.canvasNodes()); // with the words a rule gives a unit for a zoom band
       if (patch) patchChildren(this.world$, nodes);
