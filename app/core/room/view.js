@@ -132,6 +132,10 @@ export class RoomView {
             el('option', { value: 0, ...(p.peek < 0.5 ? { selected: '' } : {}) }, 'When hovered over'),
             el('option', { value: 1, ...(p.peek >= 0.5 ? { selected: '' } : {}) }, 'Always')))),
       fold('Inside a room',
+        // Which rule a new room opens in: a plain setting, any rule that is on.
+        el('label', { class: 'renderer-slider' }, el('span', {}, 'New rooms open in'), el('span'),
+          el('select', { 'aria-label': 'New rooms open in', onchange: (e) => this.w.setDefaultRule(e.target.value) },
+            ...this.ontologies.map((o) => el('option', { value: o.id, ...(o.id === this.w.defaultRule ? { selected: '' } : {}) }, o.name)))),
         slider('Thought size', 'size', 14, 28, 1),
         // Some words in a thought bigger or smaller: chosen while writing, Ctrl+Shift+. or Ctrl+Shift+,.
         el('label', { class: 'renderer-slider' }, el('span', {}, 'Varied sizes within a thought'), el('span'),

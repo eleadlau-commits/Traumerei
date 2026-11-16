@@ -10,8 +10,8 @@ import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import * as traum from './traum.js';
-import { loadWorld, declareFamilies } from './model.js';
-import { gather, forRooms, forPage, FALLBACK } from './ontologies/index.js';
+import { loadWorld, declareFamilies, setDefaultMode, DEFAULT_MODE } from './model.js';
+import { gather, forRooms, forPage, seeing } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
 import { formatsOf } from './formats.js';
 import * as M from './moments.js';
@@ -40,7 +40,10 @@ export default class World extends Feature {
     // A mode a plugin adds or takes away (switched on or off): 'world:modes' says so; a room seen
     // through a mode that is off is seen through the fallback until it is on again.
     this.defineSlot('world.ontologies', 'A way of seeing a room\'s thoughts: { id, name, note, groups, units, point, drop, … } (see world/ontologies/index.js).')
-      .watch(() => this.emit('world:modes'));
+      .watch(() => { this.settleDefault(); this.emit('world:modes'); });
+    // Which rule a new room opens in: a plain setting (Settings → Rooms), Joyce until changed.
+    this.chosenDefault = this.storage.get('defaultRule') || DEFAULT_MODE;
+    this.settleDefault();
     // Group families, from plugins (a book, its chapters: model.js declareFamilies): their groups
     // hold parts, belong to no mode, and a card family's show as one card in every mode.
     this.defineSlot('world.families', 'A family of groups a plugin declares: { id, name, membership?, order?, card?, keep?, open?(id) } (see world/model.js, declareFamilies).')
@@ -81,6 +84,9 @@ export default class World extends Feature {
       undo: (back = true) => w.undo(back),
       get ontologies() { return w.ontologies; },
       ontology: (id) => w.ontology(id),
+      get defaultRule() { return w.defaultRule; },             // the rule a new room opens in
+      get chosenDefault() { return w.chosenDefault; },         // the one chosen in Settings → Rooms
+      setDefaultRule: (id) => w.setDefaultRule(id),
       get roomsPage() { return forPage(w.all); },   // the rooms page's own ontology (Borges), or null
       get prefs() { return w.prefs; },
       setLook: (key, value) => w.setLook({ ...w.prefs, [key]: value }),
@@ -264,8 +270,20 @@ export default class World extends Feature {
   }
   get ontologies() { return forRooms(this.all); }
   ontology(id) {
+    return this.ontologies.find((o) => o.id === id) || seeing(this.all);
+  }
+
+  // The rule a new room opens in: the one chosen when it is on, else the first room rule there is
+  // (the bare reading when none is on). Handed to the model, which reads it (defaultMode()).
+  get defaultRule() {
     const all = this.ontologies;
-    return all.find((o) => o.id === id) || all.find((o) => o.id === FALLBACK);
+    return (all.find((o) => o.id === this.chosenDefault) || all[0])?.id || DEFAULT_MODE;
+  }
+  settleDefault() { setDefaultMode(this.defaultRule); }
+  setDefaultRule(id) {
+    this.chosenDefault = String(id);
+    this.storage.set('defaultRule', this.chosenDefault);
+    this.settleDefault();
   }
 
   setLook(prefs) {

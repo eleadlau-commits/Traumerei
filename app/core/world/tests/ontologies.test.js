@@ -12,7 +12,7 @@ import { membership, emptyWorld, create, groupOf, MESSY, members, startTrain, ad
 
 test('every built-in ontology has the parts it needs', () => {
   for (const o of BUILT_IN) assert.deepEqual(missing(o), [], o.id);
-  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa']); // Russell and Proust are plugins
+  assert.deepEqual(BUILT_IN.map((o) => o.id), ['joyce', 'pessoa', 'rows']); // Russell and Proust are plugins; Rows is the bare reading
   assert.deepEqual(missing(russell), []);
   assert.ok(BUILT_IN.some((o) => o.id === FALLBACK));
   const joyce = BUILT_IN.find((o) => o.id === 'joyce');
@@ -27,7 +27,7 @@ test('ontologies from other features join the built-in ones; broken or repeated 
   };
   const skipped = [];
   const all = gather([extra, { id: 'half', name: 'Half' }, { ...BUILT_IN[0] }], (o, lacks) => skipped.push([o.id, lacks]));
-  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'sets']);
+  assert.deepEqual(all.map((o) => o.id), ['joyce', 'pessoa', 'sets', 'rows']);
   assert.deepEqual(skipped, [['half', ['note', 'units', 'point', 'drop']]]);
   assert.equal(membership('sets'), 'many');
   assert.equal(membership('joyce'), 'one');
@@ -82,4 +82,33 @@ test('Ctrl+G: each mode groups what is chosen by its own rule; Ctrl+Shift+G take
   assert.equal(ungroupChosen(russell, w, MESSY, [a.id], 13), 1);
   assert.equal(groupOf(w, a.id, 'russell'), null, 'loose in Russell again');
   assert.equal(groupChosen(pessoa, w, MESSY, [a.id, b.id]), null, 'Pessoa has no groups');
+});
+
+test('Rows, the bare reading: every thought in one column as written; listed only when no other rule is on', async () => {
+  const { forRooms, seeing } = await import('../ontologies/index.js');
+  const rows = BUILT_IN.find((o) => o.id === 'rows');
+  const w = emptyWorld();
+  const a = addThought(w, MESSY, 'first', 1), b = addThought(w, MESSY, 'second', 2);
+  assert.deepEqual(rows.units(w, MESSY).map((t) => t.id), [a.id, b.id]);
+  assert.deepEqual(rows.point(w, MESSY, b.id), { x: 0, y: 64 });
+  assert.deepEqual([...rows.layout(w, MESSY).keys()], [a.id, b.id]);
+  rows.drop(w, MESSY, b.id, 500, 500); // a drag changes nothing
+  assert.deepEqual(rows.point(w, MESSY, b.id), { x: 0, y: 64 });
+  assert.deepEqual(forRooms(gather([])).map((o) => o.id), ['joyce', 'pessoa']);
+  assert.deepEqual(forRooms([rows]).map((o) => o.id), ['rows']);
+  assert.equal(seeing(gather([])).id, 'pessoa'); // a room whose rule is off: Pessoa while it is on
+  assert.equal(seeing([rows]).id, 'rows');       // …else the bare reading
+});
+
+test('the default rule is a plain setting the model reads; writesInto names where a rule without groups writes', () => {
+  assert.equal(model.defaultMode(), 'joyce');
+  model.setDefaultMode('russell');
+  const w = emptyWorld();
+  const r = model.addRoom(w, 'Thesis', 1);
+  assert.equal(model.view(w, r.id).mode, 'russell');
+  model.setDefaultMode('joyce');
+  const pessoa = BUILT_IN.find((o) => o.id === 'pessoa'), joyce = BUILT_IN.find((o) => o.id === 'joyce');
+  assert.equal(pessoa.writesInto, 'joyce');
+  assert.equal(typeof joyce.begin, 'function');
+  assert.deepEqual(missing({ ...pessoa, writesInto: 3 }), ['writesInto']);
 });

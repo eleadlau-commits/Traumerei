@@ -20,7 +20,7 @@ import { proust } from '../../proust/rules.js';
 
 bindRussell(surface(lib));
 bindProust(surface(lib));
-const RULES = gather([russell, proust]);
+const RULES = gather([russell, proust]).filter((o) => !o.bare); // Rows (the bare reading) lays nothing out by hand
 const byId = (id) => RULES.find((o) => o.id === id);
 
 // A seeded random (the same run every time).

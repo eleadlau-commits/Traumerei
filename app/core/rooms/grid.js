@@ -4,7 +4,7 @@
 
 import {
   floorName, floorTitle,
-  MESSY, DEFAULT_MODE, room, parentOf, floorOf, isArchived, addRoom, name, update, remove, move, fold, roomThoughts,
+  MESSY, defaultMode, room, parentOf, floorOf, isArchived, addRoom, name, update, remove, move, fold, roomThoughts,
   search, cells, cellOf, roomAt, archive, archived,
   peek, DESC, roomsOn, pageCount, addPage, isBig, rooms, roomTags, addTag, removeTag,
   hasTag, tidyTag, tagsByGroup, tagGroup, setTagGroup, ONTOLOGY, makeTag, makeGroup,
@@ -229,7 +229,7 @@ export class RoomsGrid {
       el('div', { class: 'label' }, 'A new room'),
       ...this.ontologies.map((k) => el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.newRoom(c, k.id) },
         el('span', { class: 'rooms-kind-name' }, k.name), el('span', { class: 'pick-note' }, k.note || ''))),
-      el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-more', role: 'menuitem', onclick: () => this.newRoom(c, DEFAULT_MODE, 2) },
+      el('button', { type: 'button', class: 'pick rooms-kind rooms-kind-more', role: 'menuitem', onclick: () => this.newRoom(c, defaultMode(), 2) },
         el('span', { class: 'rooms-kind-name' }, 'All ontology'), el('span', { class: 'pick-note' }, '2 × 2, every mode inside')),
       el('button', { type: 'button', class: 'pick rooms-kind', role: 'menuitem', onclick: () => this.pickTwin(c) },
         el('span', { class: 'rooms-kind-name' }, 'Twin…'), el('span', { class: 'pick-note' }, '1 × 2, two modes side by side')));
@@ -245,7 +245,7 @@ export class RoomsGrid {
 
   // Twin…: the menu asks for the mode of each side (the same or not), then makes it.
   pickTwin(c) {
-    const first = this.ontologies[0]?.id || DEFAULT_MODE;
+    const first = this.ontologies[0]?.id || defaultMode();
     this.making = { col: c.col, row: c.row, twin: [first, first] };
     this.drawRooms();
     this.grid.querySelector('.rooms-twin-make')?.focus({ preventScroll: true });
@@ -1015,7 +1015,7 @@ export class RoomsGrid {
 
   // A new room of a kind (its mode), in the cell asked for (or the first free one), with
   // its name ready to write. size: 1, or 2 for All ontology (a 2 × 2 room holding every mode).
-  newRoom(cell = null, kind = DEFAULT_MODE, size = 1) {
+  newRoom(cell = null, kind = defaultMode(), size = 1) {
     const r = addRoom(this.world, 'Untitled', Date.now(), { page: this.page }, kind);
     if (r) {
       if (size !== 1) r.size = size; // its shape, before it is placed (Borges's rule)

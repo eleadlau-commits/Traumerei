@@ -26,7 +26,8 @@ list is everything it offers:
 | `settled()`, `fold()` | Nothing waits to become its own step; the change since the last step becomes part of it (so a push from clear space goes with what caused it). |
 | `writeSoon(say)`, `write()` | Written down in a moment (one timer; `say`: then `world:saved`), or now. |
 | `undo(back)` | A step back (`true`) or forward (`false`), read off the moments log (it reaches 30 days back, across reloads). False when there is none; otherwise sends `world:changed` and `world:moments`. |
-| `ontologies`, `ontology(id)` | Every ontology a room can be seen through, in order, and one by id (a missing one is Pessoa). The rooms page's own is never among them. |
+| `ontologies`, `ontology(id)` | Every ontology a room can be seen through, in order, and one by id (a missing one is the first that sees everything, `seesAll`: Pessoa while it is on, else the core's bare Rows). The rooms page's own is never among them. |
+| `defaultRule`, `chosenDefault`, `setDefaultRule(id)` | The rule a new room opens in: the one chosen in Settings → Rooms (`chosenDefault`, Joyce until changed) when it is on, else the first rule there is. Nothing in core is special about any rule. |
 | `roomsPage` | The rooms page's own ontology (Borges, from the floors feature), or `null`: rooms on the floors' cells. |
 | `prefs`, `setLook(key, value)`, `resetLook()` | Settings → Rooms' look (`look.js`: `LOOK`), saved as 'look'. |
 | `globals`, `setGlobal(of, key, value)`, `resetGlobals()` | The global ontology settings, `{ [ontology]: { key: value } }`: what a new room starts with. Saved as 'ontologies'. |

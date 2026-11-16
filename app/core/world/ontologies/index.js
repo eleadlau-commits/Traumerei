@@ -44,6 +44,14 @@
 //                         data-thought, or for a closed group) is the whole group, which a
 //                         double-click chooses; one marked data-measure="id" has its size
 //                         passed to measured() under that id (Russell: a chapter's name)
+//   writesInto            (optional) the id of the rule whose groups this one's new thoughts join,
+//                         when it makes no groups of its own (Pessoa: Joyce's trains). Without
+//                         it, or with that rule off, a new thought is left loose (in the tray)
+//   lines(w, room)        (optional) lines it draws through marks, as lists of ids (Joyce: each
+//                         train's thoughts), for the kernel's draws() (rules.js)
+//   seesAll               (optional) true: a room whose own rule is off may be seen through it
+//                         (Pessoa); the first one on, in order, is used, the core's Rows last
+//   bare                  (optional) the core's own reading (Rows): listed only when no other is on
 //   tag(w, id)            (optional) a thought's tag in the room's Timeline ({ id, name }, or
 //                         null): Joyce, its train
 //   settings              (optional) its settings: sliders { key, label, min, max, step, default },
@@ -67,8 +75,9 @@
 //                         the group it joins and returns it, or null to leave the thought loose
 //                         (it waits in the tray). draft is { x, y, for? }: where it was written,
 //                         and whatever a move put in for (c.write({ x, y, for }) starts one).
-//                         Without it, a Joyce train at x, y. An ontology without groups writes
-//                         into Joyce's trains. draft.fresh: it was asked for with Ctrl+Enter
+//                         Without it, the thought is left loose (it waits in the tray). An
+//                         ontology without groups writes into the rule it names (writesInto).
+//                         draft.fresh: it was asked for with Ctrl+Enter
 //   fresh                 (optional) the note Ctrl+Enter shows ('New cluster: type to start it.')
 //   goOn(w, room, id)     (optional) where the next thought goes after `id` (the thought kept last,
 //                         or the one chosen): a draft { train, after, x, y } (train: the group it
@@ -109,15 +118,18 @@
 import { parentOf, declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import joyce from './joyce.js';
 import pessoa from './pessoa.js';
+import rows from './rows.js';
 
-// Built into the core: Joyce (trains, the way thoughts are written in order, which every mode
-// without groups writes into) and Pessoa (each thought on its own: the plain view a room falls back
-// to). Every other mode is a plugin (Russell, Proust).
-export const BUILT_IN = [joyce, pessoa];
-export const FALLBACK = 'pessoa';
+// Built into the core for now: Joyce (trains) and Pessoa (each thought on its own); they become
+// corpus plugins in step 1a. Rows is the core's own bare reading, always there. Every other mode
+// is a plugin (Russell, Proust). Nothing here is special about Joyce: which rule a new room opens
+// in is a setting (World: defaultRule), and a room whose rule is off is seen through the first
+// rule that sees everything (seesAll), Rows last.
+export const BUILT_IN = [joyce, pessoa, rows];
+export const FALLBACK = 'rows';
 
 const NEEDS = { id: 'string', name: 'string', note: 'string', units: 'function', point: 'function', drop: 'function' };
-const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', join: 'function', centre: 'function', escape: 'function', settingChanged: 'function', layout: 'function', admit: 'function' };
+const MAY = { group: 'function', ungroup: 'function', draftPoint: 'function', tray: 'function', draw: 'function', placed: 'function', unplace: 'function', tag: 'function', blocks: 'function', shift: 'function', measured: 'function', begin: 'function', goOn: 'function', kept: 'function', press: 'function', props: 'function', join: 'function', centre: 'function', escape: 'function', settingChanged: 'function', layout: 'function', admit: 'function', lines: 'function' };
 
 // What an ontology lacks (names of its parts), or [] when it is whole.
 export function missing(o) {
@@ -128,6 +140,7 @@ export function missing(o) {
   for (const k of ['settings', 'moves']) if (o[k] != null && !Array.isArray(o[k])) out.push(k);
   if (o.roomsPage != null && typeof o.roomsPage !== 'boolean') out.push('roomsPage');
   if (o.lays != null && typeof o.lays !== 'boolean') out.push('lays');
+  if (o.writesInto != null && typeof o.writesInto !== 'string') out.push('writesInto');
   if (Array.isArray(o.moves) && o.moves.some((m) => !m || typeof m.label !== 'string' || typeof m.run !== 'function')) out.push('moves');
   return out;
 }
@@ -148,8 +161,16 @@ export function gather(extra = [], warn = () => {}) {
   return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
 }
 
-// The ontologies a room can be seen through: every one but the rooms page's own.
-export const forRooms = (all) => all.filter((o) => !o.roomsPage);
+// The ontologies a room can be seen through: every one but the rooms page's own, and the bare
+// reading (Rows) only when there is no other.
+export function forRooms(all) {
+  const rooms = all.filter((o) => !o.roomsPage);
+  const real = rooms.filter((o) => !o.bare);
+  return real.length ? real : rooms;
+}
+// The rule a room whose own rule is off is seen through: the first that sees everything, in order
+// (the bare reading last), from every rule there is.
+export const seeing = (all) => all.filter((o) => !o.roomsPage && o.seesAll).sort((a, b) => !!a.bare - !!b.bare)[0] || null;
 // The rooms page's own ontology (Borges), or null when there is none.
 export const forPage = (all) => all.find((o) => o.roomsPage) || null;
 
