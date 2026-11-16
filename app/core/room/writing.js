@@ -189,7 +189,7 @@ export class Writing {
       this.sel = null;
     }
     this.input.focus({ preventScroll: true });
-    this.drawWorld();
+    this.drawWorld(true); // only the new thought (and what it changes) is put in: the room is not laid out again
     if (seed) this.typeIn(seed);
     this.showDraft();
   }
