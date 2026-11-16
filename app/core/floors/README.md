@@ -17,17 +17,14 @@ The rooms page's floors: how big every floor is, and where a room goes when it i
 - **Moved by you:** dragging to a cell or making a room 2 × 2 works only on the board; a room
   dragged onto a full floor's number stays where it was.
 
-## Borges, the rooms page's ontology
+## The floor rule and Borges
 
-`borges.js` is the rooms page's own ontology, **Borges**, added to the world's slot
-`world.ontologies`. It has the same shape as a room's ontologies (`world/ontologies/index.js`)
-but is marked `roomsPage`: it is never a room's mode, and no list inside a room shows it. Its
-"room" is a floor (from 0), its units the rooms on that floor, a point a room's cell
-(`{ x: col, y: row }`), and `drop()` moves a room to a cell (or onto another floor) by the rule
-above. **Its rule:** rooms sit on the floors' cells and never overlap, and a room's shape
-says how many ontologies it holds: 1 × 1 one, a **Twin** (two cells wide, one high) two side by
-side, 2 × 2 all of them. `shape(w, id)` gives `{ w, h, holds }` (holds: 1, 2 or `'all'`); the
-world's `span(r)` and `shapeOf(r)` say the same, from a room's saved `size` (1, `'twin'`, 2). The rooms page reaches it through the world service's `roomsPage`.
+The rule above is the rooms page's own, in core: rooms sit on the floors' cells and never
+overlap, and a room's shape is its cells (a room's saved `size`: 1, `'twin'` two cells wide, 2 for
+2 × 2; the world's `span(r)` and `shapeOf(r)`). **Borges**, the rooms page's way of seeing these
+rooms, is a corpus plugin (`app/plugins/borges`): a rule marked `roomsPage` whose `drop` asks the
+tables to put a room on a cell (`places.put(room, 'floor:<n>', 'borges', { col, row })`), which
+comes here (`move`, `toFloor`). With Borges off the rooms page moves rooms by this rule directly.
 
 ## The floors service
 
@@ -46,7 +43,7 @@ world's `span(r)` and `shapeOf(r)` say the same, from a room's saved `size` (1, 
 
 **Event:** `floors:size` `{ cols, rows }`, when the size is changed.
 
-It saves only the chosen preset ('size'). It adds Borges to the slot `world.ontologies` and has no slots or styles of its own.
+It saves only the chosen preset ('size'). It has no slots or styles of its own.
 
 **The code.** `rule.js` is the rule (plain functions of a world and a board, no screen), tested
 in `tests/floors.test.js`; `Floors.js` keeps the preset, says the notes and draws the setting.

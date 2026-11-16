@@ -183,30 +183,7 @@ test('an empty last floor just goes', () => {
   assert.equal(pageCount(w), 1);
 });
 
-test('Borges: the rooms page ontology, rooms on cells, never a room\'s', async () => {
-  const { borges } = await import('../borges.js');
-  const { gather, missing, forRooms, forPage } = await import('../../world/ontologies/index.js');
-  const o = borges(() => M);
-  assert.deepEqual(missing(o), []);
-  const all = gather([o]);
-  assert.equal(forPage(all).id, 'borges');
-  assert.ok(!forRooms(all).some((x) => x.id === 'borges'));
-  const w = emptyWorld();
-  addPage(w);
-  const a = made(w, 'A', 0, { col: 4, row: 3 });
-  assert.deepEqual(o.units(w, 0).map((r) => r.name).sort(), ['A', 'Messy thoughts']);
-  assert.deepEqual(o.point(w, 0, a.id), { x: 4, y: 3 });
-  assert.equal(o.drop(w, 0, a.id, 0, 0), false);      // Messy's cells
-  assert.equal(o.drop(w, 0, a.id, 6, 2), true);
-  assert.deepEqual([C(w, a).col, C(w, a).row], [6, 2]);
-  assert.equal(o.drop(w, 0, a.id, 8, 0), false);      // off the board
-  assert.equal(o.drop(w, 1, a.id, 2, 1), true);       // onto Floor 2
-  assert.deepEqual([floorOf(w, a.id), C(w, a).col, C(w, a).row], [1, 2, 1]);
-});
-
-test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and rooms never overlap', async () => {
-  const { borges } = await import('../borges.js');
-  const o = borges(() => M);
+test('the floor rule: a room\'s shape is its cells, and rooms never overlap', () => {
   const w = emptyWorld();
   const one = made(w, 'One', 0, { col: 4, row: 0 });
   const twin = addRoom(w, 'Twin', 1, { page: 0 });
@@ -215,9 +192,6 @@ test('Borges\'s rule: a room\'s shape says how many ontologies it holds, and roo
   assert.deepEqual([C(w, twin).col, C(w, twin).row], [2, 0]);
   assert.deepEqual(roomAt(w, 3, 0)?.id, twin.id);      // two cells wide, one high
   assert.equal(roomAt(w, 2, 1), null);
-  assert.deepEqual(o.shape(w, one.id), { w: 1, h: 1, holds: 1 });
-  assert.deepEqual(o.shape(w, twin.id), { w: 2, h: 1, holds: 2 });
-  assert.deepEqual(o.shape(w, MESSY), { w: 2, h: 2, holds: 'all' });
   assert.equal(move(w, twin.id, 7, 4, M), false);      // its second cell would be off the board
   assert.equal(move(w, twin.id, 6, 4, M), true);
   assert.equal(resize(w, one.id, 'twin', M), true);    // One at (4, 0) grows to (5, 0)

@@ -27,7 +27,7 @@ const V2 = {
 };
 // The parts rules and views share, by name.
 const PARTS = {
-  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'create', 'defaultMode', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'offsetOf', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'roomTrains', 'roomUnits', 'search', 'seedRoomSettings', 'setOffset', 'setOrder', 'setRoomSetting', 'setSpot', 'shut', 'spotOf', 'startTrain', 'thoughtText', 'trainThoughts', 'unsetOffset', 'unsetSpot', 'update', 'view', 'within'],
+  model: ['DEFAULT_MODE', 'MESSY', 'addRoom', 'cellOf', 'create', 'defaultMode', 'floorOf', 'groupLabel', 'groupOf', 'groupsIn', 'groupsOf', 'hash', 'isGroup', 'isLeaf', 'isLooseGroup', 'itemsIn', 'join', 'kindOf', 'leave', 'members', 'offsetOf', 'parentOf', 'remove', 'replaceIn', 'room', 'roomItems', 'roomSetting', 'roomThoughts', 'roomTrains', 'roomUnits', 'roomsOn', 'search', 'seedRoomSettings', 'setOffset', 'setOrder', 'setRoomSetting', 'setSpot', 'shapeOf', 'shut', 'span', 'spotOf', 'startTrain', 'thoughtText', 'trainThoughts', 'unsetOffset', 'unsetSpot', 'update', 'view', 'within'],
   groups: ['inForeign', 'place', 'placedForeign', 'putAt', 'spot', 'spotsOf', 'trayForeign', 'unplace', 'unput', 'wait', 'waiting'],
   relations: ['RELATIONS', 'arrowsOf', 'cleanRelationList', 'cleanRelations', 'listText', 'relationEnds', 'relationEntry', 'relationName', 'relationShown', 'splitList', 'withRelation'],
   trains: ['STEP', 'setHeights', 'stepAfter'],
@@ -341,6 +341,22 @@ test('places: a home row per mark and a row per rule, rooms on floors or in the 
   assert.ok(k.places.move(loose.id, room.id, 'messy').ok);
   assert.equal(lib.model.parentOf(w, loose.id), 'messy');
   assert.ok(w.things[loose.id]); // Law 2: moving never loses a mark
+});
+
+test('places.put: a room onto a cell of a floor goes there by the floor rule, or is refused', async () => {
+  const { w, room, service } = smallWorld();
+  const R = await import('../../floors/rule.js');
+  const B = { cols: 8, rows: 5 };
+  const floors = { move: (id, col, row) => R.move(w, id, col, row, B), toFloor: (id, page, cell) => R.toFloor(w, id, page, B, cell) };
+  const k = kernel({ lib, world: service, floors });
+  R.place(w, room.id, B, { col: 4, row: 3 });
+  assert.ok(k.places.put(room.id, 'floor:0', 'borges', { col: 6, row: 2 }).ok);
+  assert.deepEqual(k.places.position(room.id, 'floor:0', 'borges'), { col: 6, row: 2 });
+  assert.equal(k.places.put(room.id, 'floor:0', 'borges', { col: 0, row: 0 }).ok, false); // Messy thoughts' cells
+  assert.equal(k.places.put(room.id, 'floor:0', 'borges', { x: 8, y: 0 }).ok, false);     // off the board
+  lib.model.addPage(w);
+  assert.ok(k.places.put(room.id, 'floor:1', 'borges', { col: 2, row: 1 }).ok);
+  assert.equal(lib.model.floorOf(w, room.id), 1);
 });
 
 test('links: part-of rows with order and relation rows with their names; join, leave and reorder', () => {
