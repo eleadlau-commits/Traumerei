@@ -10,7 +10,7 @@ import { whenMathsLoads } from './maths.js';
 import { Feature } from 'folio';
 import * as lib from './lib.js';
 import * as traum from './traum.js';
-import { loadWorld, declareFamilies, setHolds, setDefaultMode, DEFAULT_MODE } from './model.js';
+import { loadWorld, declareFamilies, declareGroupKinds, setHolds, setDefaultMode, DEFAULT_MODE } from './model.js';
 import { gather, forRooms, forPage, seeing } from './ontologies/index.js';
 import { setKinds } from './items/index.js';
 import { formatsOf } from './formats.js';
@@ -46,11 +46,18 @@ export default class World extends Feature {
     this.settleDefault();
     // Group families, from plugins (a book, its chapters: model.js declareFamilies): their groups
     // hold parts, belong to no mode, and a card family's show as one card in every mode.
-    this.defineSlot('world.families', 'A family of groups a plugin declares: { id, name, membership?, order?, card?, keep?, open?(id) } (see world/model.js, declareFamilies).')
-      .watch((slot) => {
-        declareFamilies(slot.items, (f, why) => console.warn(`World: the group family "${f?.id}" was skipped: it needs ${why}`));
-        this.emit('world:modes');
-      });
+    // One group concept: every kind of group in 'world.groups' (a rule's own, with `rule`, or a
+    // family); 'world.families' is the older slot for families, read the same (model.js).
+    const families = this.defineSlot('world.families', 'A family of groups a plugin declares (older; use world.groups): { id, name, membership?, order?, card?, keep?, open?(id) } (see world/model.js, declareFamilies).');
+    const groupKinds = this.defineSlot('world.groups', 'A kind of group: { id, name, membership?, order?, card?, keep?, open?(id), rule? } (see world/model.js, declareGroupKinds).');
+    const declareAll = () => {
+      const warn = (f, why) => console.warn(`World: the kind of group "${f?.id}" was skipped: it needs ${why}`);
+      const rest = declareGroupKinds(groupKinds.items, warn);
+      declareFamilies([...families.items, ...rest], warn);
+      this.emit('world:modes');
+    };
+    families.watch(declareAll);
+    groupKinds.watch(declareAll);
     // More kinds of item, from plugins: ITEMS follows the slot, and 'world:kinds' says it changed
     // (a thought of a kind switched off shows as a stand-in and is kept as it is).
     const kinds = this.defineSlot('world.items', 'A kind of item: { kind, name, tidy(fields, h), text(th), node(th, el) } (see world/items/index.js).');

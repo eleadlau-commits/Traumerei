@@ -99,11 +99,40 @@ export function declareOrder(of, groups) { if (groups?.order === 'kept') KEPT.ad
 // hand, or waiting in the tray), with their parts still where they are. `keep`: a group of it
 // left empty stays (a new chapter with nothing in it yet). Membership is 'many' unless it says
 // 'one' (deleting such a group never deletes its parts).
+//
+// One group concept (open core step 1a): every kind of group is said the same way, in the slot
+// 'world.groups' (t.slots.groups, which World hands to declareGroupKinds): { id, name,
+// membership?, order?, card?, keep?, open?(id), rule? }. With `rule`, they are that rule's own
+// groups (their id is the rule's: a train is of 'joyce'), laid out by it, and Ctrl+G in that rule
+// makes one; a rule may say the same on itself (its `groups`). Without `rule`, no rule lays them
+// out: a family, as above. The core's own kind is PLAIN, a plain group: what Ctrl+G makes in a rule
+// with no groups of its own, a card in every rule, its parts still where they are.
+export const PLAIN = 'group';
+const PLAIN_KIND = { id: PLAIN, name: 'Group', membership: 'many', order: 'kept', card: true, keep: false };
+const RULE_GROUPS = new Map();
+// A rule's own groups, said on the rule or in the slot ({ name, membership, order, … }), or null.
+export const groupsFor = (o) => o?.groups || (o?.id != null && RULE_GROUPS.get(o.id)) || null;
+// The slot's kinds of group: a rule's go with that rule, the rest are families. Returns the families.
+export function declareGroupKinds(list = [], warn = () => {}) {
+  for (const id of RULE_GROUPS.keys()) if (!MODES.has(id)) { delete MEMBERSHIP[id]; KEPT.delete(id); }
+  RULE_GROUPS.clear();
+  const rest = [];
+  for (const g of list) {
+    if (!g || typeof g.rule !== 'string') { rest.push(g); continue; }
+    if (g.id !== g.rule) { warn(g, 'an id that is its rule\'s'); continue; }
+    const kind = Object.freeze({ id: g.id, rule: g.rule, name: typeof g.name === 'string' && g.name ? g.name : 'Group',
+      membership: g.membership === 'many' ? 'many' : 'one', order: g.order === 'kept' ? 'kept' : 'time' });
+    RULE_GROUPS.set(g.rule, kind);
+    MEMBERSHIP[g.rule] = kind.membership;
+    declareOrder(g.rule, kind);
+  }
+  return rest;
+}
 const FAMILIES = new Map();
 export function declareFamilies(list = [], warn = () => {}) {
   for (const id of FAMILIES.keys()) { delete MEMBERSHIP[id]; KEPT.delete(id); }
   FAMILIES.clear();
-  for (const f of list) {
+  for (const f of [PLAIN_KIND, ...list]) {
     if (!f || typeof f.id !== 'string' || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(f.id)) { warn(f, 'an id of lowercase words joined by dashes'); continue; }
     if (FAMILIES.has(f.id) || MODES.has(f.id)) { warn(f, 'an id of its own, not a mode\'s'); continue; }
     const fam = Object.freeze({ id: f.id, name: typeof f.name === 'string' && f.name ? f.name : f.id, membership: f.membership === 'one' ? 'one' : 'many',
@@ -114,6 +143,7 @@ export function declareFamilies(list = [], warn = () => {}) {
   }
 }
 export const familyOf = (of) => FAMILIES.get(of) || null;
+declareFamilies(); // the plain group, before any plugin says more
 export const families = () => [...FAMILIES.values()];
 // Whether a group is a card: one of a card family's (a book), shown as one thing in every mode.
 export const isCard = (g) => isGroup(g) && !!FAMILIES.get(g.of)?.card;

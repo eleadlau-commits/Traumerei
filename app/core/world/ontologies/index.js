@@ -115,7 +115,7 @@
 // Its own data in a room lives in own(w, room, id) (model.js), saved with the world. Thoughts
 // themselves are shared by every ontology.
 
-import { parentOf, declareGroups, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
+import { parentOf, declareGroups, groupsFor, PLAIN, create, join, leave, groupsOf, members, isGroup, isLeaf, itemsIn, holds, shut } from '../model.js';
 import rows from './rows.js';
 
 // Built into the core: only Rows, the bare reading, always there. Every way of seeing a room is a
@@ -153,7 +153,7 @@ export function gather(extra = [], warn = () => {}) {
     if (seen.has(o.id)) continue;
     seen.add(o.id);
     out.push(o);
-    declareGroups(o.id, o.groups);
+    declareGroups(o.id, groupsFor(o));
   }
   return out.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
 }
@@ -218,9 +218,12 @@ function unitsOf(w, roomId, ids) {
 // groups, or nothing to group).
 // The group made is shared (groups.js): one object in the room's other modes too. One group of its
 // own chosen alone that is layout only (a train made by writing on) becomes shared as it is.
+// A rule with no groups of its own (Pessoa, Rows) makes a plain group (model.js PLAIN): one card,
+// waiting in the tray until it is placed, its parts still where they are.
 export function groupChosen(o, w, roomId, ids, now = Date.now(), opts = {}) {
+  if (!groupsFor(o)) return plainGroup(w, roomId, ids, now);
   const one = unitsOf(w, roomId, ids);
-  if (o?.groups && one.length === 1 && isGroup(one[0]) && one[0].of === o.id && !one[0].shared && !shut(w, roomId)) {
+  if (groupsFor(o) && one.length === 1 && isGroup(one[0]) && one[0].of === o.id && !one[0].shared && !shut(w, roomId)) {
     one[0].shared = true;
     return one[0];
   }
@@ -228,8 +231,16 @@ export function groupChosen(o, w, roomId, ids, now = Date.now(), opts = {}) {
   if (g) g.shared = true;
   return g;
 }
+function plainGroup(w, roomId, ids, now) {
+  const items = unitsOf(w, roomId, ids);
+  if (!items.length || (items.length === 1 && isGroup(items[0]) && items[0].of === PLAIN)) return null;
+  const g = create(w, roomId, { kind: 'group', of: PLAIN, loose: true }, now);
+  if (!g) return null;
+  for (const th of items) join(w, g.id, th.id);
+  return members(w, g.id).length ? g : null;
+}
 function makeGroup(o, w, roomId, ids, now, { loose = false } = {}) {
-  if (!o?.groups) return null;
+  if (!groupsFor(o)) return null;
   const items = unitsOf(w, roomId, ids);
   if (!items.length || (items.length === 1 && isGroup(items[0]) && items[0].of === o.id)) return null; // one group of its own: grouped already
   if (loose) {
@@ -250,7 +261,7 @@ function makeGroup(o, w, roomId, ids, now, { loose = false } = {}) {
 // Takes the chosen things out of their groups of ontology `o`: its own ungroup(), or each leaves
 // them (a group left empty goes). Returns how many came out.
 export function ungroupChosen(o, w, roomId, ids, now = Date.now()) {
-  if (!o?.groups) return 0;
+  if (!groupsFor(o)) return 0;
   // A group of groups chosen (a train of trains) comes apart one level: the groups it held are
   // free again, and it goes.
   let freed = 0;

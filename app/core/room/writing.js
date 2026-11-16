@@ -5,7 +5,7 @@
 import {
   room, view, create, update, remove, move, kindOf, isLeaf,
   groupOf, thoughtText, trainThoughts, kindFor, maths, resize, spotOf, members,
-  gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf,
+  gapState, gapOf, openGap, linksFrom, UP_LINKS, isCard, within, isGroup, familyOf, groupsFor,
 } from './world.js';
 import { clearSpot, nearSpot } from './clear.js';
 import { el } from './shared.js';
@@ -177,7 +177,7 @@ export class Writing {
     this.drawWorld();
     this.showDraft();
     const wr = this.writer;
-    this.toast(wr.fresh || (wr.begin ? `New ${(wr.groups?.name || 'group').toLowerCase()}: type to start it.` : 'New thought: type to start it (it waits in the tray).'));
+    this.toast(wr.fresh || (wr.begin ? `New ${(groupsFor(wr)?.name || 'group').toLowerCase()}: type to start it.` : 'New thought: type to start it (it waits in the tray).'));
   }
 
   // Starts a thought (if one isn't started), with `seed` as its first letters.
@@ -310,7 +310,7 @@ export class Writing {
   // Pessoa names Joyce's trains) when it makes no groups of its own and that rule is on.
   get writer() {
     const o = this.ont;
-    if (o.groups || !o.writesInto) return o;
+    if (groupsFor(o) || !o.writesInto) return o;
     return this.ontologies.find((x) => x.id === o.writesInto) || o;
   }
 
