@@ -12,7 +12,7 @@ lives in `app/plugins/` for the tests, is left out of the app by `standalone.py`
 `.traumplug` on each Release, with all of them in `starter-set.traumplug`; `tools/corpus.py` keeps
 the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file;
 `--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin). The open-core
-steps are done (plugin API 3, frozen in 1.0.5); build new non-corpus plugins only after E has
+steps are done (plugin API 3, frozen in 1.1.0); build new non-corpus plugins only after E has
 reviewed it. Change core only for what every room needs, or to
 give the plugin API something plugins lack; core never names a plugin, it looks a plugin's service
 up when it needs it, since an imported plugin starts after the core.

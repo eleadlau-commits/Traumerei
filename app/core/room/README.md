@@ -10,7 +10,7 @@ run(), on?(), visible?(), title?() }`) show in the room's rail under **Tools**. 
 (`world.items`) or group family (`world.families`) has `open` opens that way on a double-click or
 Enter, in any mode, instead of the sheet.
 
-**The bar, the strip and the zoom** (open core step 3, since 1.0.5). Plugins' words on the room's
+**The bar, the strip and the zoom** (open core step 3, since 1.1.0). Plugins' words on the room's
 bar (the slot `room.bar`: `{ id, label, title?(context), order, run(context), on?(context),
 visible?(context) }`) show at the right of the frame's top bar, beside Search (the frame's
 `words`; `bars.js` `drawBarWords`). The strip (`strip.js`, the slot `room.strip`: `{ id,
@@ -262,7 +262,7 @@ only says where (its `roomfile` service), and leaves those choices out when it i
   follows the link there; Alt+L again where it landed takes the first mark's next link. Made or
   taken away, a link is drawn at once (`world:moments`). Structure (part of, relation) stays the
   mode's own.
-- **Surfaces** (`surface.js`, since 1.0.5): a kind of mark or a rule's box that asks for a surface
+- **Surfaces** (`surface.js`, since 1.1.0): a kind of mark or a rule's box that asks for a surface
   (`slots.surfaces`, API.md) is drawn by its plugin in an element of its own, sized by the layout,
   after the mode has drawn (view.js calls `mountSurfaces()`; the element is kept across drawings,
   so a canvas keeps what it drew). A press on it goes to the room as usual (choose, drag); a click

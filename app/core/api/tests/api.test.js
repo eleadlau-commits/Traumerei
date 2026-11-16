@@ -235,7 +235,7 @@ test('without keys, a frame or the rooms page, those parts do nothing quietly', 
   t.ui.open.room('messy');
 });
 
-// ---- Step 3 of the open core (1.0.5): places and zoom ----
+// ---- Step 3 of the open core (1.1.0): places and zoom ----
 
 test('places: a bar word, a strip item and a page (with its ☰ row) are the plugin\'s own; ui.open.page asks the pages', () => {
   const app = fakeApp();
@@ -645,7 +645,7 @@ test('subscribing to a table hears the rows that land in its table, and stops wh
   assert.equal(kernel({ lib, world: service }).marks.on(() => {})(), undefined); // no events: nothing to hear, quietly
 });
 
-// Surfaces (open core, step 4, since 1.0.5): a kind or a rule's box draws in an element of its own;
+// Surfaces (open core, step 4, since 1.1.0): a kind or a rule's box draws in an element of its own;
 // pointer down to pointer up is one step.
 test('slots.surfaces: needs "surface", checks its shape, and keeps only its hooks', () => {
   const app = fakeApp();

@@ -25,7 +25,7 @@ The page is a `<dialog>` shown open (not modal) and put last in the page each ti
 shows. So while it shows, the key map, the rooms page and the room leave keys alone, as they do
 for any pop-up. While it shows `<html>` has the class `page-open` (Home hides its words).
 
-**A plugin's page** (since 1.0.5): the slot **`pages.plugin`** (`t.slots.pages`, which also puts
+**A plugin's page** (since 1.1.0): the slot **`pages.plugin`** (`t.slots.pages`, which also puts
 its row in the ☰ menu) holds `{ id, label, icon?, order?, idle?, sections?() | render() }`. It shows
 in the same frame, Home › its label: `sections()` gives the rail and rows as Settings has,
 `render()` one body. Escape or ← goes back; going into a room (`room:open`) leaves it. The

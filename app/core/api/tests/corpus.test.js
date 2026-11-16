@@ -148,7 +148,7 @@ async function drive(host, t, added) {
       if (item.exportRoom) await tryIt(`format ${item.id} out`, () => item.exportRoom(host.room));
     } else if (slot === 'rail.more') {
       await tryIt(`more ${item.id}`, () => item.run?.());
-    } else if (slot === 'room.strip') { // since 1.0.5: the strip, the room's bar, a page of its own
+    } else if (slot === 'room.strip') { // since 1.1.0: the strip, the room's bar, a page of its own
       await tryIt(`strip ${item.id}`, () => {
         if (item.visible) item.visible(host.room);
         assert.equal(typeof item.text(host.room), 'string', `strip ${item.id} says no words`);
@@ -160,7 +160,7 @@ async function drive(host, t, added) {
     } else if (slot === 'pages.plugin') {
       await tryIt(`page ${item.id}`, () => { const out = item.sections ? item.sections() : item.render(); assert.ok(out, `page ${item.id} draws nothing`); });
     } else if (slot === 'room.surfaces') {
-      // A surface (since 1.0.5): drawn for a mark of the kind that asks for it (or for a box, with
+      // A surface (since 1.1.0): drawn for a mark of the kind that asks for it (or for a box, with
       // no mark), then one gesture as a person would make it (down, moves, up: one step), a key,
       // the wheel, focus and blur, and left.
       await tryIt(`surface ${item.id}`, () => {
@@ -516,7 +516,7 @@ test('page flow: a kind that flows (a table) sits between paragraphs as one bloc
   assert.ok(!row.fragments);
 });
 
-// Step 3 (1.0.5): the strip, the room's bar and a page of its own, through the API only.
+// Step 3 (1.1.0): the strip, the room's bar and a page of its own, through the API only.
 test('word count strip: the room\'s words in the strip, the chosen thought\'s first, a bar word that hides it, a page and a menu row', () => {
   const host = makeHost();
   const { t, off } = host.plug('word-count-strip', wordCountStrip.install);
@@ -546,7 +546,7 @@ test('word count strip: the room\'s words in the strip, the chosen thought\'s fi
   assert.equal(host.app.slot('pages.plugin').items.length + host.app.slot('header.buttons').items.length + host.app.slot('room.strip').items.length, 0);
 });
 
-// Step 6 (1.0.5): the plugin written from API.md alone, by an author who had read nothing else.
+// Step 6 (1.1.0): the plugin written from API.md alone, by an author who had read nothing else.
 test('highlighter: a span written ==…==, the strip counts the thoughts that carry it, and it all goes when switched off', () => {
   const host = makeHost({ thoughts: 2 });
   const { t, off } = host.plug('highlighter', highlighter.install);

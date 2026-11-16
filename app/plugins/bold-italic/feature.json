@@ -8,7 +8,7 @@
   ],
   "plugin": {
     "api": 2,
-    "minApp": "1.0.5",
+    "minApp": "1.1.0",
     "kind": [
       "look", "command", "format"
     ],

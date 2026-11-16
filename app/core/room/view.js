@@ -404,7 +404,7 @@ export class RoomView {
     this.zoomed(v.zoom);
   }
 
-  // ---- The zoom and its bands (t.ui.zoom, since 1.0.5): every zoom goes through place() ----
+  // ---- The zoom and its bands (t.ui.zoom, since 1.1.0): every zoom goes through place() ----
 
   // The stage's band class (room-band-far, -mid, -near: shared.js BANDS) follows the zoom, and
   // those listening (onZoom) hear each change of zoom, or of room.

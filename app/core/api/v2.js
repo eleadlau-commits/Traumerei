@@ -14,7 +14,7 @@
 
 export const API_VERSION = 3;
 // The oldest version a plugin may be written for and still connect: version 3 only added to 2
-// (the open core, 1.0.5), so a plugin written for 2 connects as it is.
+// (the open core, 1.1.0), so a plugin written for 2 connects as it is.
 export const OLDEST_API = 2;
 export const TABLES = Object.freeze(['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
 
@@ -58,7 +58,7 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     holding++;
     try { return fn(); } finally { if (!--holding && held) { held = false; world.save?.(); } }
   };
-  // The same hold, open across events (since 1.0.5): a surface's gesture, pointer down to pointer
+  // The same hold, open across events (since 1.1.0): a surface's gesture, pointer down to pointer
   // up, is one step. Returns the function that lets go (once). Not in the API: the room calls it
   // through the surface (surfaceFor), never a plugin.
   const hold = () => {
@@ -506,7 +506,7 @@ export function readsOver(lib, w, ontologies = null) {
 // a chapter's room say; with x, y it lands there under that room's mode).
 export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resolve', 'place']);
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
-// A surface's id (since 1.0.5): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
+// A surface's id (since 1.1.0): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
 export const SURFACE_ID = /^[a-z][a-z0-9]*([.-][a-z0-9]+)*$/;
 export const SURFACE_HOOKS = Object.freeze(['draw', 'pointer', 'wheel', 'key', 'focus', 'blur', 'leave']);
 
@@ -523,7 +523,7 @@ export function surfaceFor(s, hold, needs = []) {
   return Object.freeze(out);
 }
 
-// What a box hands its surface (since 1.0.5): plain data (a JSON copy, deep frozen), at most
+// What a box hands its surface (since 1.1.0): plain data (a JSON copy, deep frozen), at most
 // 64 KB written out; anything else is left out.
 function boxData(data) {
   if (data === undefined) return {};
@@ -597,7 +597,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
         if (Number.isFinite(p.width) && p.width > 0) q.width = p.width;
         if (Number.isFinite(p.height) && p.height > 0) q.height = p.height;
         if (p.align === 'start') q.align = 'start';
-        // Words for a zoom band (since 1.0.5): under it the unit shows them in place of its own.
+        // Words for a zoom band (since 1.1.0): under it the unit shows them in place of its own.
         const bands = Object.fromEntries(['far', 'mid', 'near'].filter((b) => typeof p[b] === 'string' && p[b].trim()).map((b) => [b, p[b].trim().slice(0, 200)]));
         if (Object.keys(bands).length) { q.bands = Object.freeze(bands); out.banded = true; }
         const lines = Array.isArray(p.lines) && p.lines.length === 2 && p.lines.every((n) => Number.isInteger(n) && n >= 0) && p.lines[1] > p.lines[0] ? [p.lines[0], p.lines[1]] : null;
@@ -638,7 +638,7 @@ export function simpleRule(rule, lib, ontologies = () => null) {
         .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note),
           style: BOX_STYLES.includes(b.style) ? b.style : 'plain', level: [1, 2, 3].includes(b.level) ? b.level : 0,
           right: b.right == null ? '' : String(b.right), opens: typeof b.opens === 'string' && w.things[b.opens] ? b.opens : null,
-          ...(typeof b.surface === 'string' && SURFACE_ID.test(b.surface) ? { surface: b.surface, ...boxData(b.data) } : {}) })); // a surface drawn in it (since 1.0.5)
+          ...(typeof b.surface === 'string' && SURFACE_ID.test(b.surface) ? { surface: b.surface, ...boxData(b.data) } : {}) })); // a surface drawn in it (since 1.1.0)
       byRoom.set(room, { key, boxes });
       return boxes;
     };
@@ -718,10 +718,10 @@ export const SLOTS = {
   account: 'account',          // who is signed in, and their account page (Folio's slot; the first item)
   spans: 'world.spans',        // a kind of span: the look of some words in a thought, kept on the mark (world/spans.js)
   decorators: 'world.decorators', // how a thought's words are drawn, read-only: never kept (world/spans.js)
-  bar: 'room.bar',             // since 1.0.5: a word on a room's bar, beside Search (room/bars.js)
-  strip: 'room.strip',         // since 1.0.5: a tool's status, one line at the foot of a room's canvas (room/strip.js)
-  pages: 'pages.plugin',       // since 1.0.5: a page of the plugin's own, from the ☰ menu, in the frame (pages/Pages.js)
-  surfaces: 'room.surfaces',   // since 1.0.5: an element a kind or a rule's box draws in, with the pointer while focused (room/surface.js)
+  bar: 'room.bar',             // since 1.1.0: a word on a room's bar, beside Search (room/bars.js)
+  strip: 'room.strip',         // since 1.1.0: a tool's status, one line at the foot of a room's canvas (room/strip.js)
+  pages: 'pages.plugin',       // since 1.1.0: a page of the plugin's own, from the ☰ menu, in the frame (pages/Pages.js)
+  surfaces: 'room.surfaces',   // since 1.1.0: an element a kind or a rule's box draws in, with the pointer while focused (room/surface.js)
 };
 
 // The zoom's bands when no room feature runs (the room's own, room/shared.js BANDS, are the ones
@@ -804,7 +804,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
       },
     }),
   });
-  // The zoom (since 1.0.5): the room's, read and set through the open room (room/view.js).
+  // The zoom (since 1.1.0): the room's, read and set through the open room (room/view.js).
   const zoomNs = Object.freeze({
     get: () => { const z = room?.()?.zoom?.(); return z ? row({ zoom: z.zoom, band: z.band }) : null; },
     set: (zoom, at) => { const r = room?.(); const z = r?.setZoom ? r.setZoom(+zoom, at) : null; return z ? row({ ok: true, zoom: z.zoom, band: z.band }) : row({ ok: false, reason: 'No room is open' }); },

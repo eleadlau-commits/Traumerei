@@ -40,7 +40,7 @@ const sized = (p) => {
   if (p.height > 0) q.height = p.height;
   if (p.align === 'start') q.align = 'start';
   if (Array.isArray(p.fragments) && p.fragments.length) q.fragments = p.fragments;
-  if (p.bands) q.bands = p.bands; // words for a zoom band (far, mid, near), since 1.0.5
+  if (p.bands) q.bands = p.bands; // words for a zoom band (far, mid, near), since 1.1.0
   return q;
 };
 
