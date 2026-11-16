@@ -12,7 +12,10 @@
 // here touches the screen.
 
 
-export const API_VERSION = 2;
+export const API_VERSION = 3;
+// The oldest version a plugin may be written for and still connect: version 3 only added to 2
+// (the open core, 1.0.5), so a plugin written for 2 connects as it is.
+export const OLDEST_API = 2;
 export const TABLES = Object.freeze(['marks', 'places', 'links', 'distance', 'gaps', 'moments']);
 
 // The readers a context can be declared for (KERNEL.md: distance).
@@ -26,6 +29,8 @@ import { aiFor } from './ai.js';
 import { measure } from './measure.js';
 
 const row = (o) => Object.freeze(o);
+// A value copied and frozen all the way down (plain data: the rows' nested fields).
+const sealed = (v) => (v && typeof v === 'object' ? Object.freeze(Array.isArray(v) ? v.map(sealed) : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sealed(x)]))) : v);
 const rows = (list) => Object.freeze(list.map(row));
 const landed = (id) => row({ ok: true, id });
 const refuse = (reason) => row({ ok: false, reason });
@@ -83,7 +88,14 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
 
   // -- marks: today, a mark row is a thought object, frozen (its shape: world/model.js). --
   // A room's row says the mode it is seen through (`mode`), read from its view (since 1.0.3).
-  const markRow = (th) => (kindOf(th) === 'room' ? { ...th, mode: w().views?.[th.id]?.mode || model.DEFAULT_MODE } : { ...th });
+  // Every field is a copy, frozen all the way down (a kind's strokes, a thought's spans): a row can
+  // never be a way to change the world (since API 3).
+  const markRow = (th) => {
+    const out = {};
+    for (const k in th) out[k] = sealed(th[k]);
+    if (kindOf(th) === 'room') out.mode = w().views?.[th.id]?.mode || model.DEFAULT_MODE;
+    return out;
+  };
   const marks = Object.freeze({
     get: (id) => (thing(id) ? row(markRow(thing(id))) : null),
     in: (context) => rows(model.children(w(), context ?? null).map(markRow)),
@@ -91,7 +103,7 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     text: (id) => (thing(id) ? model.thoughtText(w(), thing(id)) : ''),
     // Its words with their spans written as Markdown (a kind of span that says how: bold as **…**).
     markdown: (id) => { const th = thing(id); if (!th) return ''; const text = model.thoughtText(w(), th); return th.spans ? lib.spans.markdown(text, th.spans, spanKinds?.()) : text; },
-    search: (words, most) => rows(model.search(w(), words, most).map((th) => ({ ...th }))),
+    search: (words, most) => rows(model.search(w(), words, most).map(markRow)),
     make: ({ kind = 'line', content = '', in: context = null, at = {} } = {}) => {
       if (context == null && kind !== 'room') return refuse('A mark needs a context to be made in');
       const made = kind === 'room'
@@ -764,7 +776,7 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
   frame = null, floors = null, service = () => null, room = null, gone = () => {}, ai = null, store = null, peers = null }) {
   const wanted = plugin.manifest?.plugin?.api ?? API_VERSION;
   if (wanted > API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}; this app offers ${API_VERSION}`);
-  if (wanted < API_VERSION) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION}`);
+  if (wanted < OLDEST_API) throw new Error(`${plugin.manifest?.name || plugin.id} is written for plugin API ${wanted}, which is gone; this app offers ${API_VERSION} (and still connects ${OLDEST_API})`);
   const owner = plugin.id;
   const add = (slot) => (item) => app.slot(slot).add(item, owner); // returns a function that takes it away again
   const declared = () => (app.slot(SLOTS.linkKinds)?.items || []).map((e) => (e && e.item && e.owner !== undefined ? e.item : e));

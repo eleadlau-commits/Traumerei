@@ -1,7 +1,7 @@
 # Plugin API
 
 The `traumerei` service: the one small, versioned list through which a plugin reaches the app.
-What version 2 holds is written in [`app/core/API.md`](../API.md); `v2.js` is that list in code
+What version 3 holds (version 2 and the open core's additions) is written in [`app/core/API.md`](../API.md); `v2.js` is that list in code
 (the six kernel tables of [`app/core/KERNEL.md`](../KERNEL.md)), and `tests/api.test.js` checks the three agree, so a change
 to the API is always deliberate.
 

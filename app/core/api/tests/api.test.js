@@ -58,10 +58,11 @@ function fakeApp() {
 const world = { world: lib.model.emptyWorld(), saved: 0, save() { this.saved++; return true; } };
 const plugin = (id, api = 2) => ({ id, manifest: { name: id[0].toUpperCase() + id.slice(1), plugin: { api, minApp: '1.0.0' } } });
 
-test('version 2 is exactly the written list, and no v1 name is left', () => {
+test('version 3 is exactly the written list, a plugin for 2 connects to it, and no v1 name is left', () => {
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib });
-  assert.equal(API_VERSION, 2);
-  assert.equal(t.version, 2);
+  assert.equal(API_VERSION, 3);
+  assert.equal(t.version, 3);
+  assert.deepEqual(Object.keys(connect({ app: fakeApp(), world, plugin: plugin('haiku3', 3), parts: surface(lib), lib })).sort(), V2.top);
   assert.deepEqual(Object.keys(t).sort(), V2.top);
   for (const part of Object.keys(V2).filter((k) => k !== 'top')) assert.deepEqual(Object.keys(t[part]).sort(), V2[part], part);
   for (const part of Object.keys(PARTS)) assert.deepEqual(Object.keys(t.parts[part]).sort(), PARTS[part], part);
@@ -122,10 +123,23 @@ test('the world the parts read is the one there is now; the app and the plugin s
 });
 
 test('a plugin written for another API can\'t connect, and says why', () => {
-  assert.throws(() => connect({ app: fakeApp(), world, plugin: plugin('later', 3), parts: surface(lib), lib }),
-    /Later is written for plugin API 3; this app offers 2/);
+  assert.throws(() => connect({ app: fakeApp(), world, plugin: plugin('later', 4), parts: surface(lib), lib }),
+    /Later is written for plugin API 4; this app offers 3/);
   assert.throws(() => connect({ app: fakeApp(), world, plugin: plugin('older', 1), parts: surface(lib), lib }),
-    /Older is written for plugin API 1, which is gone; this app offers 2/);
+    /Older is written for plugin API 1, which is gone; this app offers 3/);
+});
+
+test('a mark row is frozen all the way down: a plugin cannot change the world through one', () => {
+  const w = lib.model.emptyWorld(1);
+  const room = lib.model.addRoom(w, 'Study', 2);
+  const own = { world: w, saved: 0, save() { this.saved++; return true; } };
+  const t = connect({ app: fakeApp(), world: own, plugin: plugin('haiku'), parts: surface(lib), lib });
+  const id = t.marks.make({ content: 'a bold word', in: room.id }).id;
+  t.marks.edit(id, { spans: [{ from: 2, to: 6, kind: 'bold' }] });
+  const r = t.marks.get(id);
+  assert.ok(Object.isFrozen(r.spans) && Object.isFrozen(r.spans[0]));
+  try { r.spans[0].to = 99; } catch { /* strict mode throws */ }
+  assert.equal(w.things[id].spans[0].to, 6);
 });
 
 // A stand-in dock: remembers what is open, and closes it when asked.

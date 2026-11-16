@@ -24,7 +24,7 @@ stay in `app/plugins/` for the tests but are left out of the product (`tools/cor
 
 ## Plugin API
 
-A plugin reaches the app only through the `traumerei` service, the plugin API, version 2:
+A plugin reaches the app only through the `traumerei` service, the plugin API, version 3 (frozen at 1.0.5; version 2 plus the open core's additions):
 [`app/core/API.md`](../app/core/API.md). Its namespaces are named after the six tables; it changes
 only by additions. The compiler leaves out a plugin that reaches past it.
 
