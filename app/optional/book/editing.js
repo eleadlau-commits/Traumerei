@@ -125,13 +125,16 @@ export function moveOne(t, room, mark, dir) {
   return { ok: true };
 }
 
-// Moves a mark (a heading: its chapter) into another chapter or the book, at its end.
+// Moves a mark (a heading: its chapter) into another chapter or the book: a chapter at its end,
+// a paragraph at the end of its own words (before its first section, so it reads in it).
 export function moveInto(t, mark, to) {
   const id = headed(t, mark) || mark;
   if (id === to) return { ok: false, reason: 'A chapter does not go into itself.' };
   let up = to;
   while (up) { if (up === id) return { ok: false, reason: 'A chapter does not go into one it holds.' }; up = holderOf(t, up); }
-  return t.together(() => ({ ok: moveTo(t, id, to, t.links.members(to).length) }));
+  const parts = t.links.members(to).filter((x) => x !== id);
+  const first = isChapter(t.marks.get(id)) ? -1 : parts.findIndex((p) => isChapter(t.marks.get(p)));
+  return t.together(() => ({ ok: moveTo(t, id, to, first < 0 ? parts.length : first) }));
 }
 
 // A paragraph split in two at `at` (Alt+Enter): its words up to `at` stay, the rest becomes a new
