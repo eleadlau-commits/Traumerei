@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom } from './column.js';
+import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale } from './column.js';
 import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
@@ -95,7 +95,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       const d = it.depth;
       const title = nameOf(reads, it.chapter); // (an unnamed chapter: none, and no running head)
       if (d === 1) running = title;
-      const h = it.t === 'heading' ? (linesOf(it.mark).height ?? linesOf(it.mark).block) : lh * 1.3;
+      const h = it.t === 'heading' ? headHeight(measure, reads.marks.text(it.mark), W, d) : lh * 1.3; // (its words at its level's size)
       const next = items[k + 1];
       const after = next && next.t === 'para' ? lh * Math.min(2, linesOf(next.mark).lines || 1) : 0; // a heading keeps two lines of what follows
       if (d === 1 && chaptersStartPages(reads, room, set) && used) newPage();
@@ -103,7 +103,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       else if (!fresh()) y += lh * SPACE.before[d - 1];
       if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
       if (it.t === 'heading') {
-        if (it.num) boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label: it.num, style: 'heading', level: d }); // (unnumbered: none)
+        if (it.num) boxes.push(numBox(L, y, lh * headScale(d), it.num, d)); // (unnumbered: none; level with its first line)
         row(it.mark, h, { far: title }); // far off, the heading reads as its title, set large (style.css)
         if (roomFor(it.mark)) continue;
       } else {
@@ -142,7 +142,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   const last = page;
   // Click anywhere in a chapter to write there (slots.js): each slot within its page's words.
   const footAt = (yy) => { const n = Math.max(0, Math.floor((yy - top(0)) / (P.h + GAP))); return top(n) + P.h - P.m; };
-  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh, footAt });
+  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh, footAt, writing: !!reads.marks.draft?.(room) });
   // The pages behind, each numbered at its foot (not the title page), its chapter's title at its
   // head (not on a chapter's first page).
   // A page opens (a double-click on it, zoom.js) the first paragraph that starts on it, else the

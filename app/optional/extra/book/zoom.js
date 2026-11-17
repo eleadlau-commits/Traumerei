@@ -14,6 +14,7 @@
 import { RULE } from './column.js';
 import { placeOf, pageAt, ranges, GUTTER, pageOf, gridOf, setGrid, stepCount } from './pages.js';
 import { BLOCKS, acrossOf, setAcross, stepAcross } from './blocks.js';
+import { stageBox } from './side.js';
 export { pageAt } from './pages.js';
 
 // Where t.ui.open.mark leaves the middle of the screen: a little right of and below the mark's
@@ -92,9 +93,12 @@ export function installZoom(t, { layout, keep = (fn) => fn() }) {
   const inBook = () => { const r = room(); return !!r && t.marks.get(r)?.mode === RULE; };
   // The height of the canvas on the screen: the window less the room's top bar and status line.
   const viewH = () => (typeof window === 'undefined' ? 800 : Math.max(240, window.innerHeight - 84));
-  // Its width: the window less the room's rail and the Book's own docks, while they show.
+  // Its width: the stage that shows (between the docks; on a Twin, its half), else the window
+  // less the room's rail and the Book's own docks, while they show.
   const viewW = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return 1200;
+    const s = stageBox();
+    if (s) return Math.max(320, s.width);
     let w = window.innerWidth - 234;
     for (const body of document.querySelectorAll('.book-contents, .book-hand')) { const r = body.getBoundingClientRect(); if (r.width) w -= r.width + 32; }
     return Math.max(320, w);

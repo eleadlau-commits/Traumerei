@@ -92,7 +92,7 @@ function holdsTogether(t, s, L, why) {
     const b = numbers[i], r = L.rows.find((x) => x.mark === h.mark);
     assert.equal(b.label, h.num);
     assert.ok(h.num.split('.').length <= 3, `${why}: three levels at most (${h.num})`);
-    assert.ok(Math.abs(b.y - (r.y - r.height / 2 - lh * 0.15)) < 0.5, `${why}: ${h.num} level with its heading`);
+    assert.ok(Math.abs(b.y - (r.y - r.height / 2 - lh * C.headScale(h.depth) * 0.15)) < 0.5, `${why}: ${h.num} level with its heading (its line at its level's size)`);
     assert.equal(pageOfPoint(b.x + b.w + lh * 0.3, b.y + b.h / 2), pageOfPoint(r.x, r.y), `${why}: ${h.num} on its heading's page`);
   });
 }

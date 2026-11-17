@@ -76,9 +76,10 @@ const heading = (n, name, rPr, before, after) => `<w:style w:type="paragraph" w:
 const STYLES = `<w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia" w:eastAsia="Georgia" w:cs="Georgia"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-GB"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:widowControl/><w:spacing w:after="160" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>`
   + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>'
   + '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:jc w:val="center"/></w:pPr><w:rPr><w:sz w:val="48"/><w:szCs w:val="48"/></w:rPr></w:style>'
-  + heading(1, 'heading 1', '<w:b/><w:smallCaps/><w:sz w:val="32"/><w:szCs w:val="32"/>', 0, 360)
-  + heading(2, 'heading 2', '<w:b/><w:sz w:val="26"/><w:szCs w:val="26"/>', 360, 120)
-  + heading(3, 'heading 3', '<w:i/>', 240, 80)
+  // Stepping down as they nest, as on the pages (column.js HEAD_SCALE, over 12 pt): 17.5, 14.5, 12.5 pt.
+  + heading(1, 'heading 1', '<w:b/><w:smallCaps/><w:sz w:val="35"/><w:szCs w:val="35"/>', 0, 360)
+  + heading(2, 'heading 2', '<w:b/><w:sz w:val="29"/><w:szCs w:val="29"/>', 360, 120)
+  + heading(3, 'heading 3', '<w:i/><w:sz w:val="25"/><w:szCs w:val="25"/>', 240, 80)
   + '<w:style w:type="paragraph" w:styleId="Caption"><w:name w:val="caption"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:rPr><w:i/><w:sz w:val="20"/></w:rPr></w:style>'
   + '<w:style w:type="paragraph" w:styleId="Header"><w:name w:val="header"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:rPr><w:smallCaps/><w:sz w:val="18"/></w:rPr></w:style>'
   + '<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:style>'

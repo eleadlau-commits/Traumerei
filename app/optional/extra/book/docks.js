@@ -12,6 +12,7 @@ import { holderOf, moveInto } from './editing.js';
 import { BLOCKS, ACROSS, acrossOf, setAcross, frameChosen } from './blocks.js';
 import { chapterOf, rename, setNumbered, unnumberedAbove } from './nest.js';
 import { zoneOf, landing, dropTo } from './treedrop.js';
+import { otherSide, twinOf, fitZoom, stageBox, leftShown } from './side.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
@@ -28,9 +29,23 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   const done = (list) => { dragging = null; for (const li of list.children) li.classList.remove(...LIT, 'book-dragged'); };
 
   const bookOf = (r) => booksIn(t, r)[0]?.id || null;
+  // The room the docks are about: the open room when it is seen as Book (or Book · blocks); on a
+  // Twin, the other side when that one is, so the docks stay put while you work on the other half
+  // (closing them there moved the canvas and left the Loose tray showing). null: none.
+  const isBookMode = (r) => { const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; };
+  const bookRoom = () => {
+    const r = room();
+    if (!r || isBookMode(r)) return r || null;
+    const o = otherSide(t, r);
+    return o && isBookMode(o) ? o : null;
+  };
+  // The chosen mark (or the caret's), when it is in room r: on a Twin's other side it is not ours.
+  const inHandOf = (r) => { const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark; return id && t.places.home(id) === r ? id : null; };
   // The chapter (or book) the chosen mark, or the caret, is in.
   const here = () => {
-    const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark;
+    const r = bookRoom();
+    if (r !== room()) return null; // (the other side of a Twin is open: nothing of the book in hand)
+    const id = inHandOf(r);
     if (!id) return frameChosen(t); // (a chapter block's frame chosen, Book · blocks)
     return headed(t, id) || (isChapter(t.marks.get(id)) ? id : holderOf(t, id));
   };
@@ -61,7 +76,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   // ---- Left: the contents ----
 
   const contents = () => {
-    const r = room();
+    const r = bookRoom();
     const b = r && bookOf(r);
     if (!b) return [el('p', { class: 'hint' }, 'No book in this room yet. Ctrl+Alt+J makes one.')];
     const lit = here();
@@ -171,11 +186,11 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
         el('p', { class: 'hint' }, 'Alt+U numbered or not · Alt+Shift+H unnamed or named by its first paragraph · Alt+Shift+C a chapter inside it · Alt+C a chapter around it · Ctrl+] deeper · Ctrl+[ up · Ctrl+Up / Ctrl+Down move it · drag its heading to nest it')));
   };
   const inHand = () => {
-    const r = room();
+    const r = bookRoom();
     const b = r && bookOf(r);
     if (!b) return [el('p', { class: 'hint' }, 'No book in this room yet.'), el('div', { class: 'box-btns' }, btn('Make a book', () => openAll(true)))];
-    const id = t.ui.text.caret()?.mark || t.ui.chosen()?.mark;
-    const ch = id ? (headed(t, id) || (isChapter(t.marks.get(id)) ? id : null)) : frameChosen(t);
+    const id = r === room() ? inHandOf(r) : null;
+    const ch = id ? (headed(t, id) || (isChapter(t.marks.get(id)) ? id : null)) : r === room() ? frameChosen(t) : null;
     const out = [];
     const locked = t.distance.shut(b);
     const title = el('input', { class: 'pop-name title-field book-title', value: t.marks.get(b)?.title || '', 'aria-label': 'The book\'s title', maxlength: 120, disabled: locked,
@@ -210,16 +225,26 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
 
   // ---- Drawing ----
 
-  const stamp = () => `${room()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`; // (here: a chosen frame too)
-  // The docks belong to a room seen as Book: out of it (the rooms page, another room, another
-  // mode), they close.
-  const inBookRoom = () => { const r = room(); const m = r && t.marks.get(r)?.mode; return m === RULE || m === BLOCKS; }; // (Book · blocks keeps them)
+  const stamp = () => `${room()}|${bookRoom()}|${here()}|${t.ui.chosen()?.mark}|${moving}|${t.moments.seq?.() ?? ''}`; // (here: a chosen frame too)
+  // The docks belong to a room seen as Book (or to a Twin with a side seen as Book): out of it
+  // (the rooms page, another room, another mode), they close.
+  const inBookRoom = () => !!bookRoom(); // (Book · blocks keeps them)
+  // The left dock as Book found it: when it was hidden (only the room's Loose strip at its edge),
+  // it is hidden again once the contents close, so the Loose tray never stays open in its place.
+  // (A plugin's dock has no hide: the docks' own command, Ctrl+Alt+L, hides it; core-gaps.md.)
+  let leftWas = true;
+  const tuckLeft = () => {
+    if (leftWas || !leftShown() || docks()?.left?.isOpen(LEFT)) return;
+    leftWas = true;
+    try { t.slots.commands.run('docks.left'); } catch { /* no docks' keys: it stays */ }
+  };
   const closeAll = () => {
     const d = docks();
     if (left) d?.left?.close(LEFT, true);
     if (right) d?.right?.close(RIGHT, true);
     left = right = null; moving = null;
     if (timer) { clearInterval(timer); timer = null; }
+    setTimeout(tuckLeft, 0);
   };
   const draw = (force = false) => {
     if ((left || right) && !inBookRoom()) { closeAll(); return; }
@@ -238,11 +263,12 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     const d = docks()?.left;
     if (!d) return;
     if (!d.isOpen(LEFT)) {
+      leftWas = leftShown();
       left = el('div', { class: 'book book-contents' });
       await d.open({ key: LEFT, tab: 'Contents', kind: 'Book', title: '', label: 'Contents', body: left,
-        drop: { accepts: (ids, target) => !!target?.dataset?.drop && ids.length > 0,
+        drop: { accepts: (ids, target) => !!target?.dataset?.drop && ids.length > 0 && ids.every((id) => t.places.home(id) === bookRoom()), // (not yet from a Twin's other side)
           drop: (ids, target) => { const n = t.together(() => ids.filter((id) => moveInto(t, id, target.dataset.drop).ok).length); if (n) t.ui.toast(`${n === 1 ? 'A paragraph' : `${n} paragraphs`} moved into ${titleOf(t, target.dataset.drop)}.`); } },
-        onClose: () => { left = null; moving = null; unwatch(); } });
+        onClose: () => { left = null; moving = null; unwatch(); setTimeout(tuckLeft, 0); } });
     } else d.show(LEFT);
     draw(true); watch();
   };
@@ -257,7 +283,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   };
   // Ctrl+Alt+J: both docks (and a book first, when the room has none and make is asked).
   const openAll = async (make = false) => {
-    const r = room();
+    const r = bookRoom() || room();
     if (!r) return;
     if (make && !bookOf(r)) {
       if (t.distance.shut(r)) { t.ui.toast('This room is locked.'); return; }
@@ -267,17 +293,50 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     await openRight();
     setTimeout(fit, 60);
   };
-  // The column fitted between the docks: zoomed out (never in) until a line and its heading
-  // numbers fit the canvas between the two docks (read off the docks' own bodies).
+  // Ctrl+Alt+J, or Tools → Book: the docks shown, or hidden when they show (the left dock as it was).
+  const showing = () => { const d = docks(); return !!(d?.left?.isShowing(LEFT) || d?.right?.isShowing(RIGHT)); };
+  const toggleAll = () => { if (showing()) closeAll(); else openAll(true); };
+  // How wide the book reads on the canvas: the page or spread (or the column and its numbers) and air.
+  const needOf = (r) => (pageOf(t, r) ? sheetWidth(t, r) + 80 : textWidth(t, r) + 160);
+  // The column fitted to the canvas it has (between the docks, and in a Twin its half): zoomed out
+  // (never in) until a line and its heading numbers fit. Read off the stage that shows; without
+  // one, between the docks' own bodies.
   const fit = () => {
     const r = room();
-    if (!r || !left || !right || typeof window === 'undefined' || t.marks.get(r)?.mode === BLOCKS) return; // (the board is not fitted)
-    const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
-    const room$ = (b.width ? b.left : window.innerWidth) - (a.width ? a.right : 0);
-    const p = pageOf(t, r);
-    const need = p ? sheetWidth(t, r) + 80 : textWidth(t, r) + 160; // the page or spread (or the column and its numbers) and air
-    const z = t.ui.zoom?.get()?.zoom || 1;
-    if (room$ > 0 && room$ < need * z) t.ui.zoom.set(Math.max(0.5, Math.floor((room$ / need) * 20) / 20));
+    if (!r || r !== bookRoom() || !left || !right || typeof window === 'undefined' || t.marks.get(r)?.mode === BLOCKS) return; // (the board is not fitted)
+    const s = stageBox(), a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
+    const room$ = s ? s.width : (b.width ? b.left : window.innerWidth) - (a.width ? a.right : 0);
+    const z = fitZoom(room$, needOf(r), t.ui.zoom?.get()?.zoom || 1);
+    if (z) t.ui.zoom.set(z);
+  };
+  // A Twin's side seen as Book, the first time you work there since the Twin opened: the view
+  // placed again on its own half (the room opens a Twin measuring the whole canvas, so its first
+  // look sat half a side to the right, under the divider, until a click on the other side put it
+  // back; core-gaps.md), and the column zoomed out to fit the half. A zoom set to what it is
+  // places the view again where it is, and moves nothing else. Later switches leave the view be.
+  const boardWidth = (r) => {
+    let lo = Infinity, hi = -Infinity;
+    try { for (const b of t.rules.draws(BLOCKS, r).boxes || []) { lo = Math.min(lo, b.x); hi = Math.max(hi, b.x + b.w); } } catch { return 0; }
+    return hi > lo ? hi - lo + 80 : 0;
+  };
+  let twinNow = null; const settled = new Set();
+  const settle = (r) => {
+    if (room() !== r || !isBookMode(r) || typeof window === 'undefined') return;
+    const now = t.ui.zoom?.get?.()?.zoom;
+    if (!now) return;
+    const s = stageBox();
+    // (Book · blocks: the board, as wide as its outlines are drawn, zoomed out as far as the zoom goes)
+    const board = t.marks.get(r)?.mode === BLOCKS;
+    const z = s ? (board ? fitZoom(s.width, boardWidth(r), now, 0.25) : fitZoom(s.width, needOf(r), now)) : null;
+    t.ui.zoom.set(z || now);
+  };
+  const onRoom = (r) => {
+    const tw = twinOf(t, r);
+    if (tw !== twinNow) { twinNow = tw; settled.clear(); }
+    if (!tw || !isBookMode(r) || settled.has(r)) return;
+    settled.add(r);
+    const go = () => settle(r);
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(go)); else setTimeout(go, 0);
   };
   // Alt+M: the chosen paragraph (or heading's chapter) into a chapter picked in the contents.
   const startMove = async () => {
@@ -290,6 +349,10 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   const cancelMove = () => { if (!moving) return false; moving = null; draw(true); return true; };
 
   for (const on of [t.marks.on, t.links.on, t.gaps.on]) on(() => { if (left || right) draw(true); });
-  t.ui.zoom?.on?.(() => { if (left || right) draw(); }); // a change of room is heard here at once
-  return { openAll, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo, keep };
+  let roomWas = null;
+  t.ui.zoom?.on?.((e) => {
+    if (e?.context !== roomWas) { roomWas = e?.context ?? null; try { onRoom(roomWas); } catch { /* no places: left be */ } }
+    if (left || right) draw();
+  }); // a change of room is heard here at once
+  return { openAll, toggleAll, showing, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo, keep };
 }

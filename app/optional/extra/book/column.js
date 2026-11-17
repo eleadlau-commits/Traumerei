@@ -130,6 +130,33 @@ export function draftRoom(reads, room, measure, W) {
   return { after: d.after, h: DRAFT_TOP + h };
 }
 
+// A heading's number in the left margin, hung as a book sets it: the box ends NUM_GAP line
+// heights before the column, wide enough for the number however deep (12.10.3), and the number is
+// set flush right in it (style.css), so it never runs into the heading, at any level or band.
+// Wide by its digits and points (a digit about half a line height at the number's size, a point a
+// quarter), never narrower than it was (1.9 line heights).
+export const NUM_GAP = 0.5;
+// The headings' sizes, stepping down as they nest, as a book sets them: a chapter's (level 1) the
+// largest, a section's next, a subsection's (3, and deeper) a touch over the text; in ems of the
+// reading size (style.css sets each heading's words so; the Word document and print step the same).
+// A heading's row is as tall as its words at that size: its lines measured at the column's width
+// over the scale (what wraps at the larger size), each line the larger height.
+export const HEAD_SCALE = Object.freeze([1.45, 1.2, 1.05]);
+export const headScale = (depth) => HEAD_SCALE[Math.min(HEAD_SCALE.length, Math.max(1, depth || 1)) - 1];
+export function headHeight(measure, text, W, depth) {
+  const s = headScale(depth);
+  return measure(text || ' ', W / s).height * s;
+}
+export const numWidth = (num, lh) => {
+  const s = String(num || '');
+  const digits = (s.match(/[0-9]/g) || []).length, other = s.length - digits;
+  return lh * Math.max(1.9, digits * 0.5 + other * 0.3 + 0.4);
+};
+export function numBox(L, y, lh, num, level) {
+  const w = numWidth(num, lh);
+  return { x: L - lh * NUM_GAP - w, y: y - lh * 0.15, w, h: lh * 1.3, label: num, style: 'heading', level };
+}
+
 // The column: rows for the marks (centre, width, height, words set flush left) and boxes behind
 // them (the title, each heading's number, the line over the thoughts not yet in the book).
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
@@ -168,8 +195,8 @@ export function column(reads, room, measure, size = () => null, set = null) {
       y += lh * SPACE.before[it.depth - 1];
       const label = it.num;
       if (it.t === 'heading') {
-        const h = heightOf(it.mark);
-        if (label) boxes.push({ x: L - lh * 2.2, y: y - lh * 0.15, w: lh * 1.9, h: lh * 1.3, label, style: 'heading', level: it.depth }); // (unnumbered: none)
+        const h = headHeight(measure, reads.marks.text(it.mark), W, it.depth);
+        if (label) boxes.push(numBox(L, y, lh * headScale(it.depth), label, it.depth)); // (unnumbered: none; level with its first line)
         place(it.mark, h, { far: titleOf(reads, it.chapter) }); // far off: its title, large
       } else {
         boxes.push({ x: L - lh * 2.2, y, w: W + lh * 2.2, h: lh * 1.3, label: chapterLabel(reads, it.chapter, label), style: 'heading', level: it.depth, opens: it.chapter });
@@ -187,7 +214,7 @@ export function column(reads, room, measure, size = () => null, set = null) {
     }
   }
   // Click anywhere in a chapter to write there (slots.js): first among the boxes, the last first.
-  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh });
+  const slots = slotsOf(reads, items, at, spansOf(items, rows, own), { L, W, lh, writing: !!reads.marks.draft?.(room) });
   placeNotes(reads, rows, notes, measure, W / 2 + lh * 1.6);
   return { rows, boxes: [...slots.slice().reverse(), ...boxes], slots, width: W, lineHeight: lh };
 }
