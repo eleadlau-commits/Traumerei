@@ -11,7 +11,7 @@
 // when the system asks for less motion. Where the view is now is read off the canvas (API 3 has
 // no way to ask); without it, t.ui.open.mark and two zooms, as before.
 
-import { RULE } from './column.js';
+import { RULE, typeOf, setType, stepType } from './column.js';
 import { placeOf, pageAt, ranges, GUTTER, pageOf, gridOf, setGrid, stepCount } from './pages.js';
 import { BLOCKS, acrossOf, setAcross, stepAcross } from './blocks.js';
 import { stageBox } from './side.js';
@@ -230,6 +230,15 @@ export function installZoom(t, { layout, keep = (fn) => fn() }) {
     if (lay.pages && n) keep(() => toPage(r, id, n));
     return res;
   };
+  // Type size (column.js typeOf): set to v (a percent, as TYPES has it), the zoom changed by as
+  // much, so the page keeps its size on the screen and the words grow or shrink on it, and the
+  // page in hand brought back into view. → the result of setType.
+  const retype = (r, v) => {
+    const was = typeOf(t, r), now = t.ui.zoom?.get?.()?.zoom;
+    const here = room() === r && (inBook() || board());
+    if (now && here) t.ui.zoom.set(Math.min(MAX, Math.max(MIN, now * (+v / 100) / was)));
+    return here && inBook() ? regrid(r, () => setType(t, r, v)) : setType(t, r, v); // (the board: no pages to bring back)
+  };
   // Keys, in a room seen as Book with pages: Alt+= one more, Alt+- one fewer, Alt+G columns or
   // rows. In Book · blocks, Alt+= and Alt+-: blocks across.
   const say = (res) => { if (res && res.ok === false && res.reason) t.ui.toast(res.reason); };
@@ -250,7 +259,19 @@ export function installZoom(t, { layout, keep = (fn) => fn() }) {
   cmd({ id: 'book.grid-fix', keys: ['Alt+G'], words: 'pages side by side: fix the columns, or the rows',
     when: paged, run: () => step({ grid: grid().fix === 'columns' ? 'rows' : 'columns' }) });
 
+  // Alt+Shift+= / Alt+Shift+-: the type a step larger or smaller (Book and Book · blocks). Written
+  // as what they type, + and _ (a sign's key ignores Shift: keys/keymap.js), so they never clash
+  // with Alt+= and Alt+- (pages side by side).
+  const typeStep = (dir) => {
+    const r = room(), v = stepType(Math.round(typeOf(t, r) * 100), dir);
+    say(retype(r, v));
+    t.ui.toast(`Type ${v}%.`);
+  };
+  const either = () => inBook() || board();
+  cmd({ id: 'book.type-larger', keys: ['Alt++'], words: 'type size: one step larger (everything in proportion; the page stays)', when: either, run: () => typeStep(1) });
+  cmd({ id: 'book.type-smaller', keys: ['Alt+_'], words: 'type size: one step smaller (everything in proportion; the page stays)', when: either, run: () => typeStep(-1) });
+
   if (typeof window !== 'undefined') window.addEventListener('pointerdown', onPress, true);
   const stop = () => { if (typeof window !== 'undefined') window.removeEventListener('pointerdown', onPress, true); };
-  return { bring, toPage, regrid, stop: () => { stop(); if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame); } };
+  return { bring, toPage, regrid, retype, stop: () => { stop(); if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame); } };
 }

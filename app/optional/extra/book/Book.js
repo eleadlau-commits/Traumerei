@@ -20,7 +20,7 @@ import { installDocks } from './docks.js';
 import { installZoom } from './zoom.js';
 import { installBlocks } from './blocks.js';
 import { pageOf, SIZES, MARGINS } from './pages.js';
-import { RULE } from './column.js';
+import { RULE, typeOf } from './column.js';
 import { wordDoc, DOCX } from './word.js';
 
 const { el } = ui;
@@ -135,7 +135,8 @@ export function install(t) {
     const size = pageOf(t, r) ? SIZES[set.pages ?? 'a4'] : null;
     const m = MARGINS[set.margins] ?? MARGINS.normal;
     const css = (size ? `@page { size: ${size[0]}mm ${size[1]}mm; margin: ${m}mm; }` : '')
-      + (set.chapterPage !== false ? ' .book-print h2.book-read-head { break-before: page; }' : '');
+      + (set.chapterPage !== false ? ' .book-print h2.book-read-head { break-before: page; }' : '')
+      + (typeOf(t, r) !== 1 ? ` body.book-printing > .book-print { font-size: ${Math.round(12 * typeOf(t, r) * 10) / 10}pt; }` : ''); // (the room's Type size: every size in ems of it)
     const page = el('div', { class: 'book-print' }, el('style', {}, css), ...readingNodes(node, true));
     document.querySelectorAll('body > .book-print').forEach((n) => n.remove());
     const title = document.title;
@@ -317,7 +318,7 @@ export function install(t) {
   const editor = installEditor(t);
   const zoom = installZoom(t, { layout: editor.layout, keep: (fn) => docks.keep(fn) }); // far off a shelf of pages; going there
   installBlocks(t); // Book · blocks, its sibling rule (blocks.js)
-  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout, bring: zoom.bring, regrid: zoom.regrid });
+  const docks = installDocks(t, { exportMarkdown, exportWord, print, layout: editor.layout, bring: zoom.bring, regrid: zoom.regrid, retype: zoom.retype });
   // In the room's ⋯ More too, beside the room file's own Export: the room's first book.
   t.slots.formats.add({ id: 'book-docx', name: 'Book as a Word document (.docx)', accepts: () => false,
     exportRoom: (r) => { const b = booksIn(t, r)[0]; return b ? exportWord(b.id) : t.ui.toast('No book in this room yet.'); } });

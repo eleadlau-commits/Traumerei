@@ -6,7 +6,7 @@
 
 import { ui } from 'folio';
 import { isChapter, isNumbered, booksIn, wordCount } from './rules.js';
-import { RULE, read, headed, headOf, titleOf, nameOf, aboutOf, ABOUT } from './column.js';
+import { RULE, read, headed, headOf, titleOf, nameOf, aboutOf, ABOUT, TYPES, typeOf, setType } from './column.js';
 import { pageOf, textWidth, ranges, sheetWidth, gridOf, setGrid, COUNTS } from './pages.js';
 import { holderOf, moveInto } from './editing.js';
 import { BLOCKS, ACROSS, acrossOf, setAcross, frameChosen } from './blocks.js';
@@ -17,7 +17,7 @@ import { otherSide, twinOf, fitZoom, stageBox, leftShown } from './side.js';
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
 
-export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id), regrid = (r, write) => write() }) {
+export function installDocks(t, { exportMarkdown, exportWord, print, layout, bring = (id) => t.ui.open.mark(id), regrid = (r, write) => write(), retype = (r, v) => setType(t, r, v) }) {
   const room = () => t.ui.chosen()?.context || null;
   const docks = () => t.ui.docks || null;
   let left = null, right = null;   // the bodies, while open
@@ -155,6 +155,15 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
         ...COUNTS.map((n) => word(String(n), g.count === n, { count: n }, `${n} ${g.fix === 'columns' ? 'across' : 'down'}${n === 2 && g.fix === 'columns' ? ': facing pages' : ''} (Alt+= / Alt+-)`))),
       el('p', { class: 'hint' }, `${now} · Alt+= more · Alt+- fewer · Alt+G columns or rows`));
   };
+  // Type size: everything smaller or larger in proportion, the page as it is (Alt+Shift+= and Alt+Shift+-).
+  const typeControl = (r) => {
+    const now = String(Math.round(typeOf(t, r) * 100));
+    return el('div', { class: 'book-grid', role: 'group', 'aria-label': 'Type size' },
+      el('span', { class: 'label' }, 'Type size'),
+      el('div', { class: 'seg book-grid-row' }, ...TYPES.map((v) => el('button', { type: 'button', class: 'word', 'aria-pressed': v === now ? 'true' : 'false', title: `${v}%: the words, headings, spacing and margin numbers together (Alt+Shift+= / Alt+Shift+-)`,
+        onclick: () => { const res = retype(r, v); if (res && res.ok === false && res.reason) t.ui.toast(res.reason); } }, `${v}%`))),
+      el('p', { class: 'hint' }, 'Everything in proportion; the page stays · Alt+Shift+= larger · Alt+Shift+- smaller'));
+  };
   // Book · blocks: how many blocks to a row (Alt+= and Alt+-).
   const blocksControl = (r) => {
     const n = acrossOf(t, r);
@@ -200,6 +209,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     out.push(title, el('p', { class: 'hint book-stats' }, `${all.paras} paragraphs · ${all.words.toLocaleString()} words${all.open ? ` · ${all.open} still open` : ' · nothing open'}`));
     if (t.marks.get(r)?.mode === BLOCKS) out.push(blocksControl(r));
     else if (pageOf(t, r)) out.push(gridControl(r));
+    out.push(typeControl(r));
     if (ch) out.push(chapterSection(r, ch, 'Chapter in hand', locked));
     else if (id && t.marks.get(id) && aboutOf(t, id)) {
       const of = aboutOf(t, id);

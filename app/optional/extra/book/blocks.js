@@ -11,7 +11,7 @@
 // the rule. Only the plugin API (app/core/API.md). Tested in app/core/api/tests/book-blocks.test.js.
 
 import { wordCount } from './rules.js';
-import { read, after, headed, aboutOf, nameOf } from './column.js';
+import { read, after, headed, aboutOf, nameOf, typeOf } from './column.js';
 import { DEEPEST, depthOf, levels } from './treedrop.js';
 import { isChapter } from './rules.js';
 import { holderOf, leaveBook, afterGesture } from './editing.js';
@@ -46,7 +46,10 @@ export const stepAcross = (n, dir) => ACROSS[Math.max(0, Math.min(ACROSS.length 
 //   tray      { x, y, w, h }: the thoughts not yet in the book
 //   cells     Map(mark → { x0, y0, x1, y1 }): where each mark shows (a heading: its label strip)
 export function board(reads, room, measure, set = null) {
-  const { block: BW, lines: LINES, frame: F, gap: G, pad: PAD, note: NL } = BOARD;
+  // A smaller type (the Book's Type size, column.js typeOf): the blocks, frames and gaps as many
+  // times larger in the room's units, so a block holds more words in the same proportions.
+  const k = 1 / typeOf(reads, room);
+  const { lines: LINES, note: NL } = BOARD, BW = BOARD.block * k, F = BOARD.frame * k, G = BOARD.gap * k, PAD = BOARD.pad * k;
   const COLS = acrossOf(reads, room, set);
   const lh = measure('M', BW).lineHeight || 27.5;
   const BH = lh * LINES;
