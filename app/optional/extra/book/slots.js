@@ -38,7 +38,9 @@ export function targetOf(reads, it, at) {
 //   spans       Map(item index → { top, bottom }): where each item of the book is drawn
 //   L, W, lh    the column's left edge, width and line height
 //   footAt(y)   the foot of the page's words at y (pages), or null (one column)
-export function slotsOf(reads, items, at, spans, { L, W, lh, footAt = null }) {
+//   writing     a thought is being written in the room (reads.marks.draft): no slot says how to
+//               write, since you already are (the hint comes back once it is kept or dropped)
+export function slotsOf(reads, items, at, spans, { L, W, lh, footAt = null, writing = false }) {
   const out = [];
   let end = items.findIndex((x) => x.t === 'loose');
   if (end < 0) end = items.length;
@@ -63,7 +65,8 @@ export function slotsOf(reads, items, at, spans, { L, W, lh, footAt = null }) {
     if (h < min) { if (ends) h = min; else { top = (y0 + y1) / 2 - min / 2; h = min; } }
     // An empty chapter (only its heading) or an empty book: a quiet line says how to write in it.
     let label = '';
-    if (it.t === 'heading' || it.t === 'chapter') {
+    if (writing) label = '';
+    else if (it.t === 'heading' || it.t === 'chapter') {
       if (!reads.links.members(it.chapter).some((id) => id !== it.mark)) label = HINT;
     } else if (it.t === 'title' && !reads.links.members(it.book).length) label = HINT;
     out.push({ x: L, y: top, w: W, h, style: SLOT, level: ends ? 1 : 2, ...(label ? { label } : {}), slot: { ...target, end: ends } });

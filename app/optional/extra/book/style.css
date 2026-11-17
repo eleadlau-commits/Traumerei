@@ -122,3 +122,35 @@
 .room[data-mode="book-page"]:is(:not([data-book-slot="on"]), :has(.room-draft, .room-float.selected)) .room-cell-shelf.chosen::after { display: none; }
 .room[data-mode="book-page"] .room-band-far .room-cell-shelf { pointer-events: none; }
 .room[data-mode="book-page"] .room-band-far .room-cell-shelf .room-cell-label { display: none; }
+
+/* Headings step down as they nest (column.js HEAD_SCALE: 1.45, 1.2, 1.05 of the reading size; each
+   heading's row is laid out that tall). A heading row is the one with far band words; its level
+   is read off the decorator's look on it: small capitals a chapter, bold a section, italic deeper. */
+.room[data-mode="book-page"] .room-float[data-band-far]:has(.span-caps) { --book-head: 1.45; }
+.room[data-mode="book-page"] .room-float[data-band-far]:has(.span-bold):not(:has(.span-caps)) { --book-head: 1.2; }
+.room[data-mode="book-page"] .room-float[data-band-far]:has(.span-italic):not(:has(.span-bold)) { --book-head: 1.05; }
+.room[data-mode="book-page"] .room-float[data-band-far] { font-size: calc(var(--t-title) * var(--book-head, 1)); }
+/* A heading's number, hung in the left margin (column.js numBox): set flush right in its box, which
+   ends a fixed gap before the heading, at its level's size and level with its first line, so a
+   deep one (12.10.3) grows into the margin and never into the words. */
+.room[data-mode="book-page"] .room-cell-heading:not(.room-cell-opens) { --book-head: 1.45; }
+.room[data-mode="book-page"] .room-cell-heading.room-cell-l2:not(.room-cell-opens) { --book-head: 1.2; }
+.room[data-mode="book-page"] .room-cell-heading.room-cell-l3:not(.room-cell-opens) { --book-head: 1.05; }
+.room[data-mode="book-page"] .room-cell-heading:not(.room-cell-opens) .room-cell-label {
+  left: auto; right: 0; text-align: right; overflow: visible;
+  font-family: var(--font-read); font-variant-numeric: tabular-nums;
+  font-size: calc(var(--t-title) * var(--book-head) * .82);
+  line-height: calc(var(--t-title) * 1.45 * var(--book-head)); top: calc(var(--t-title) * 1.45 * var(--book-head) * .15);
+}
+/* Far off: a section's title a step under a chapter's, a subsection's under that. */
+.room[data-mode="book-page"] .room-band-far .room-float[data-band-far]:has(.span-bold):not(:has(.span-caps))::after { font-size: calc(var(--t-read, 19px) * 4); line-height: 1; }
+.room[data-mode="book-page"] .room-band-far .room-float[data-band-far]:has(.span-italic):not(:has(.span-bold))::after { font-size: calc(var(--t-read, 19px) * 3); line-height: 1; }
+.room[data-mode="book-page"] .room-band-far .room-cell-heading:not(.room-cell-opens) .room-cell-label { font-size: calc(var(--t-read, 19px) * 3 * var(--book-head) / 1.45); line-height: 1; top: auto; bottom: 0; }
+/* Book · blocks: the outlines' labels step down the same way (a chapter's, a section's, deeper). */
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l1 .room-cell-label { font-size: 1.3em; }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l2 .room-cell-label { font-size: 1.15em; }
+[data-mode="book-blocks"] .room-cell-quiet.room-cell-l3 .room-cell-label { font-size: 1.02em; font-weight: 500; font-style: italic; }
+/* The reading view and print: the same steps (h2 a chapter, h3 a section, h4 deeper). */
+h2.book-read-head { font-size: 1.45em; font-variant: small-caps; font-weight: 600; }
+h3.book-read-head { font-size: 1.2em; font-weight: 600; }
+h4.book-read-head, h5.book-read-head, h6.book-read-head { font-size: 1.05em; font-style: italic; }

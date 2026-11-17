@@ -158,7 +158,7 @@ export function install(t) {
   const openRoomBooks = () => {
     const r = room();
     if (!r) return;
-    if (editor.inBoth()) { docks.openAll(true); return; } // a room seen as Book: contents left, in hand right
+    if (editor.inBoth() || docks.showing()) { docks.toggleAll(); return; } // a room seen as Book: contents left, in hand right (again: hidden)
     const books = booksIn(t, r);
     if (books.length === 1) { openBook(books[0].id); return; }
     if (!books.length) { newBook(); return; }
@@ -326,8 +326,8 @@ export function install(t) {
   t.slots.commands.add({ id: 'book.move-cancel', keys: ['Escape'], zone: 'room', order: 1, words: 'not moving it after all',
     when: () => docks.moving(), run: () => docks.cancelMove() });
   t.slots.buttons.add({ id: 'book', label: 'Book', icon: ICON, order: 40, visible: () => !!room(),
-    title: () => 'This room\'s books (Ctrl+Alt+J): a contents page, chapters of thoughts, export', on: () => !!dock()?.isShowing(KEY), run: openRoomBooks });
-  t.slots.commands.add({ id: 'book.open', keys: ['Ctrl+Alt+J'], zone: 'room', order: 70, words: 'Open this room\'s book, or make one', when: () => !!room(), run: openRoomBooks });
+    title: () => 'This room\'s books (Ctrl+Alt+J): a contents page, chapters of thoughts, export', on: () => !!dock()?.isShowing(KEY) || docks.showing(), run: openRoomBooks });
+  t.slots.commands.add({ id: 'book.open', keys: ['Ctrl+Alt+J'], zone: 'room', order: 70, words: 'Open this room\'s book, or make one (seen as Book: show or hide its docks)', when: () => !!room(), run: openRoomBooks });
   t.slots.commands.add({ id: 'book.new', zone: 'room', order: 71, words: 'A new book in this room', when: () => !!room(), run: () => newBook() });
   // Redrawn as the tables change (a thought written, a chapter made, an undo).
   const redraw = () => { if (body) draw(); };

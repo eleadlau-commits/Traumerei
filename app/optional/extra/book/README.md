@@ -21,7 +21,12 @@ and room settings that redraw).
 - A chapter's **heading** is a thought linked to it by a `heads` link and kept as its first part,
   so the caret runs through it and it is written in like a paragraph. It reads bold small
   capitals (a chapter), bold (a section) or italic (deeper), by a decorator; its number sits in
-  the left margin.
+  the left margin. Headings step down in size as they nest, as a book sets them (`column.js`
+  `HEAD_SCALE`: 1.45, 1.2 and 1.05 of the reading size), and each heading's row is laid out that
+  tall, so the pages break where the room draws them; the Word document (17.5, 14.5, 12.5 pt),
+  print, Book · blocks' outline labels and the far band step the same way. The number hangs in
+  the margin set flush right in a box that ends half a line before the heading, as wide as the
+  number needs (`numBox`), so a deep one (12.10.3) grows into the margin, never into the words.
 
 ## What it adds
 
@@ -59,7 +64,14 @@ and room settings that redraw).
 - **Margin notes**: a thought linked `about` a paragraph, drawn beside it (to the right of the
   page), out of the flow and out of the export. Alt+N on a chosen paragraph makes it a note on
   the one before it; Alt+N on a note puts it back after that paragraph.
-- **Docks**, Ctrl+Alt+J in a room seen as Book (or Tools → Book):
+- **Docks**, Ctrl+Alt+J in a room seen as Book (or Tools → Book; again hides them). The left
+  dock is left as Book found it: when only the room's Loose strip showed there, closing the
+  contents (× or Tools → Book) hides the dock again rather than leaving the Loose tray open.
+  On a **Twin** with a side seen as Book (`side.js`), the docks stay while you work on the other
+  half, still about the book (nothing of the other side is in hand; thoughts from there can't yet
+  be dropped on a chapter), so switching sides never moves the canvas. The first time the Book
+  side is live it is placed on its own half and zoomed out, if it must be, to fit it, margin
+  numbers and all (core opens a Twin measuring the whole canvas: core-gaps.md 15):
   - left, **Contents**: chapters and sections numbered as they nest, their pages, words and
     open gaps for each; the chapter you are in is lit; a click goes to its heading. **Drag a
     line** onto another (`treedrop.js`, one step, Ctrl+Z takes it back): its top third puts it
@@ -75,7 +87,7 @@ and room settings that redraw).
     chapter (its Title, typed or emptied; Numbered · Unnumbered; its keys), paragraph (its page,
     its notes, and its chapter's Title and numbering) or note in hand; Export Markdown, Word document,
     Print or PDF (both at the room's page size and margins, a chapter on a new page).
-  - the column is zoomed out, if it must be, to fit between the docks.
+  - the column is zoomed out, if it must be, to fit the canvas between the docks (on a Twin, its half).
 - **Keys on the chosen paragraph** (room seen as Book):
   - Ctrl+Alt+H: make it a heading at the level of the one it sits under, right after that one: a
     paragraph of chapter 3 becomes chapter 4, one of section 3.1 section 3.2, taking with it what
@@ -109,7 +121,7 @@ and room settings that redraw).
   appear in place, under the heading or paragraph above, and the lines below make room. Enter
   keeps the paragraph exactly there, in that chapter or section, as one step (one Ctrl+Z), and the
   caret goes on under it, so paragraph after paragraph is typed in order. An empty chapter (or an
-  empty book) says "Click here, or choose a paragraph, and type" in that space. Choosing a
+  empty book) says "Click here, or choose a paragraph, and type" in that space. It says nothing while a paragraph is being typed anywhere in the room (`reads.marks.draft`), and comes back once it is kept or dropped. Choosing a
   paragraph and typing works as before: the new one lands right after it. A click on the caret's
   own slot keeps it. Far off (the shelf of pages) the slots take no clicks, so a double-click
   still goes to a page; paragraphs, headings and margin notes stay on top of the slots, so
@@ -194,7 +206,7 @@ chapter block's, or the chosen paragraph's own chapter). Each is one step, one C
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-twin.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the

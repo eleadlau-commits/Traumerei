@@ -129,6 +129,41 @@ test('book slots: an empty chapter has a slot under its heading with a hint, and
   assert.deepEqual(t.links.members(bare.id), [c]);
 });
 
+test('book slots: while a thought is being written the hint goes, from every slot, and comes back when it is kept or dropped', () => {
+  const { host, s, rule, slotAfter, lay } = setUp();
+  const { model, links: Lk } = host.lib;
+  const ch = model.create(host.w, s.room, { kind: 'group', of: 'book-chapter', title: 'Autumn', family: true, x: 0, y: 0 }, host.tick());
+  model.join(host.w, s.book, ch.id);
+  const head = model.create(host.w, s.room, { kind: 'line', text: 'Autumn' }, host.tick());
+  model.join(host.w, ch.id, head.id);
+  Lk.set(host.w, Lk.kindId('heads', head.id, ch.id), { from: head.id, to: ch.id, kind: 'heads' });
+  const bare = model.create(host.w, s.room, { kind: 'group', of: 'book-chapter', title: 'Coda', family: true, x: 0, y: 0 }, host.tick());
+  model.join(host.w, s.book, bare.id);
+  host.world.save();
+  // As the room draws: the layout first (its arrange reads the draft, so the rule's memo keys
+  // both the layout and the boxes by it from then on), then the boxes.
+  const hints = () => { rule.layout(host.w, s.room); return rule.boxes(host.w, s.room).filter((b) => b.label === SL.HINT).length; };
+  let draft = null;
+  host.lib.draft.setSource((context) => (context === s.room ? draft : null));
+  try {
+    for (const pages of ['a4', 'none']) {
+      set(host, s.room, { pages });
+      draft = null;
+      assert.equal(hints(), 2, `${pages}: two empty chapters, two hints`);
+      assert.ok(slotAfter(lay(), head.id).label === SL.HINT);
+      draft = { text: 'T', after: head.id }; // the first key, in the slot under the heading
+      assert.equal(hints(), 0, `${pages}: typing: no hint, on that slot or another (the drawing heard the draft)`);
+      assert.ok(!lay().slots.some((b) => b.label), 'the layout too');
+      draft = { text: 'The storms come in October.', after: head.id };
+      assert.equal(hints(), 0, 'still none as the words grow');
+      draft = { text: 'Nothing chosen' }; // a thought written with nothing chosen
+      assert.equal(hints(), 0, 'none for a draft after no mark either');
+      draft = null; // dropped (Escape) or kept elsewhere
+      assert.equal(hints(), 2, `${pages}: the hints come back`);
+    }
+  } finally { host.lib.draft.setSource(null); }
+});
+
 test('book slots: on a grid of pages, spreads and Pages: None, each slot sits with its page', () => {
   const { host, t, s, lay, keep, indexOf, slotAfter } = setUp();
   const winter = s.chapters[0];
