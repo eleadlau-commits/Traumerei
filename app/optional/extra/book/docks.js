@@ -305,7 +305,9 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   };
   // Ctrl+Alt+J, or Tools → Book: the docks shown, or hidden when they show (the left dock as it was).
   const showing = () => { const d = docks(); return !!(d?.left?.isShowing(LEFT) || d?.right?.isShowing(RIGHT)); };
-  const toggleAll = () => { if (showing()) closeAll(); else openAll(true); };
+  // Hiding them hides the left dock too, so the Loose tray never shows in the contents' place
+  // (the Loose strip at the edge, or Ctrl+Alt+L, still opens it).
+  const toggleAll = () => { if (showing()) { leftWas = false; closeAll(); } else openAll(true); };
   // How wide the book reads on the canvas: the page or spread (or the column and its numbers) and air.
   const needOf = (r) => (pageOf(t, r) ? sheetWidth(t, r) + 80 : textWidth(t, r) + 160);
   // The column fitted to the canvas it has (between the docks, and in a Twin its half): zoomed out
@@ -359,9 +361,25 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   const cancelMove = () => { if (!moving) return false; moving = null; draw(true); return true; };
 
   for (const on of [t.marks.on, t.links.on, t.gaps.on]) on(() => { if (left || right) draw(true); });
+  // A room turned to Book (or Book · blocks) while the left dock shows (the Loose tray): the
+  // contents take its place, and the book in hand comes to the right.
+  let modeWas = null;
+  const modeCheck = () => {
+    const r = room(), m = r ? t.marks.get(r)?.mode : null, was = modeWas;
+    modeWas = r ? `${r}|${m}` : null;
+    if (!r || modeWas === was || !was || !was.startsWith(`${r}|`) || !isBookMode(r) || left) return;
+    if (leftShown()) setTimeout(() => { if (!left && isBookMode(room())) openAll(false); }, 0);
+  };
+  t.marks.on(modeCheck);
+  // A change of mode has no event: the room's canvas says its mode (data-mode), so it is watched
+  // there (core-gaps.md: no mode event for plugins).
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+    new MutationObserver(() => modeCheck()).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-mode'] });
+  }
   let roomWas = null;
   t.ui.zoom?.on?.((e) => {
-    if (e?.context !== roomWas) { roomWas = e?.context ?? null; try { onRoom(roomWas); } catch { /* no places: left be */ } }
+    if (e?.context !== roomWas) { roomWas = e?.context ?? null; modeWas = roomWas ? `${roomWas}|${t.marks.get(roomWas)?.mode}` : null; try { onRoom(roomWas); } catch { /* no places: left be */ } }
+    modeCheck();
     if (left || right) draw();
   }); // a change of room is heard here at once
   return { openAll, toggleAll, showing, openLeft, openRight, startMove, cancelMove, moving: () => !!moving, draw, fit, goTo, keep };
