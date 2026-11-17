@@ -10,7 +10,7 @@
 
 import { tree, numberer, under, headingWords } from './rules.js';
 import { SIZES, MARGINS } from './pages.js';
-import { settingOf } from './column.js';
+import { settingOf, typeOf } from './column.js';
 import { zip } from './zip.js';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -84,6 +84,12 @@ const STYLES = `<w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr><w:
   + '<w:style w:type="paragraph" w:styleId="Header"><w:name w:val="header"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:rPr><w:smallCaps/><w:sz w:val="18"/></w:rPr></w:style>'
   + '<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:style>'
   + '</w:styles>';
+// The styles at the room's Type size (column.js typeOf): every size and every space before and
+// after a paragraph in proportion (the line spacing is a multiple already); the page as it is.
+export function stylesFor(scale = 1) {
+  if (scale === 1) return STYLES;
+  return STYLES.replace(/(w:sz(?:Cs)?|w:before|w:after) ?(w:val)?="(\d+)"/g, (all, k, v, n) => all.replace(`"${n}"`, `"${Math.max(1, Math.round(+n * scale))}"`));
+}
 const field = (code) => `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
 const HEADER = `<w:hdr xmlns:w="${W}"><w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr>${field('STYLEREF "heading 1" \\* MERGEFORMAT')}</w:p></w:hdr>`;
 const FOOTER = `<w:ftr xmlns:w="${W}"><w:p><w:pPr><w:pStyle w:val="Footer"/></w:pPr>${field('PAGE')}</w:p></w:ftr>`;
@@ -156,7 +162,7 @@ export function wordDoc(reads, id) {
     { name: '_rels/.rels', data: xml(rels) },
     { name: 'docProps/core.xml', data: xml(core) },
     { name: 'word/document.xml', data: xml(doc) },
-    { name: 'word/styles.xml', data: xml(STYLES) },
+    { name: 'word/styles.xml', data: xml(stylesFor(typeOf(reads, room))) },
     { name: 'word/header1.xml', data: xml(HEADER) },
     { name: 'word/footer1.xml', data: xml(FOOTER) },
     { name: 'word/_rels/document.xml.rels', data: xml(docRels) },

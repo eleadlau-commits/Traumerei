@@ -11,7 +11,7 @@
 // paragraph under the heading or paragraph above it, and Enter keeps it exactly there.
 
 import { isChapter } from './rules.js';
-import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf } from './column.js';
+import { RULE, HEADS, ABOUT, after, flow, headed, aboutOf, TYPES } from './column.js';
 import { shape, textWidth, SIZES, COUNTS } from './pages.js';
 import { BLOCKS, frameChosen } from './blocks.js';
 import { chapterOf, wrap, addSection, toggleName, toggleNumbered } from './nest.js';
@@ -62,6 +62,7 @@ export function installEditor(t) {
       { key: 'chapterPage', label: 'A chapter starts a page', type: 'switch', default: true },
       { key: 'grid', label: 'Pages side by side: fix', type: 'choice', default: 'columns', options: [['columns', 'Columns (rows follow)'], ['rows', 'Rows (columns follow)']] },
       { key: 'count', label: 'How many (2 columns: facing pages)', type: 'choice', default: '1', options: COUNTS.map((n) => [String(n), String(n)]) },
+      { key: 'type', label: 'Type size (everything in proportion; the page stays)', type: 'choice', default: '100', options: TYPES.map((v) => [v, `${v}%`]) },
       { key: 'width', label: 'Column width (with Pages: None)', type: 'choice', default: 'book', options: [['narrow', 'Narrow'], ['book', 'Book'], ['wide', 'Wide']] },
     ],
     arrange: (reads, context, set) => laid(reads, context, set).rows,

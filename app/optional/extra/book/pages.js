@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale } from './column.js';
+import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale, typeOf } from './column.js';
 import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
@@ -21,8 +21,9 @@ export function pageOf(reads, room, set = null) {
   const key = settingOf(reads, room, 'pages', set) ?? 'a4';
   const size = SIZES[key];
   if (!size) return null;
-  const m = (MARGINS[settingOf(reads, room, 'margins', set)] ?? MARGINS.normal) * MM;
-  const w = Math.round(size[0] * MM), h = Math.round(size[1] * MM);
+  const k = MM / typeOf(reads, room, set); // (a smaller type: the page as many times larger in the room's units)
+  const m = (MARGINS[settingOf(reads, room, 'margins', set)] ?? MARGINS.normal) * k;
+  const w = Math.round(size[0] * k), h = Math.round(size[1] * k);
   return { w, h, m, text: Math.round(w - 2 * m), name: size[2], key };
 }
 // The width the words are set at: the page's measure, or the column's.

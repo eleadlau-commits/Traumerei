@@ -31,7 +31,7 @@
 @media print {
   body.book-printing > *:not(.book-print) { display: none !important; }
   body.book-printing > .book-print { display: block; color: #000; background: #fff; padding: 0; font-size: 12pt; }
-  .book-print h1 { font-size: 22pt; margin: 0 0 18pt; }
+  .book-print h1 { font-size: 1.85em; margin: 0 0 1.5em; } /* (in ems of the type: the room's Type size, Book.js print) */
   .book-print .book-read-head { page-break-after: avoid; }
 }
 

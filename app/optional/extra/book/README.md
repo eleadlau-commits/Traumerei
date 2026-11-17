@@ -35,6 +35,15 @@ and room settings that redraw).
   normal, wide), A chapter starts a page (on), Pages side by side (fix Columns or Rows, and how
   many: 1, 2, 3, 4 or 6; Columns 1 by default, one under another), Column (Narrow, Book, Wide;
   without pages).
+- **Type size** (0.4.5; the ⚙ beside Book, the right dock, or Alt+Shift+= / Alt+Shift+-, in
+  Book and Book · blocks): 70%, 80%, 90%, 100%, 110% or 125%. The words, the headings at each
+  level, the line spacing, the space between paragraphs and the margin numbers get smaller or
+  larger together, so the proportions hold and more (or less) fits on a page. The page size and
+  margins stay. The room draws words at one size, so the book is laid out with the page, its
+  margins, the column and a block on the board as many times larger as the type is smaller
+  (`column.js` `typeOf`). The dock and the keys change the zoom by as much, so the page keeps its
+  size on the screen and the words shrink or grow on it. The Word document (`stylesFor`) and print
+  set the type itself at that size. Kept per room under the rule (`type`).
 - **Pages side by side** (with pages): fix the columns and that many pages sit across, the rows
   following as many as the book needs; two columns (or four, or six) pair them as facing pages,
   the title page alone on the right as a recto, a narrow gutter between the two. Fix the rows and
@@ -206,7 +215,7 @@ chapter block's, or the chosen paragraph's own chapter). Each is one step, one C
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-twin.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-twin.test.js`, `book-headings.test.js`, `book-type.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the

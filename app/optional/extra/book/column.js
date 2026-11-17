@@ -25,9 +25,31 @@ export function settingOf(reads, room, key, set = null) {
   if (set && set[key] !== undefined) return set[key];
   return reads.marks.get(room)?.rules?.[RULE]?.[key];
 }
-// The column width a room asked for (its settings under the rule), or the book's.
+// Type size: the words, the headings at each level, the line spacing, the space between
+// paragraphs and the margin numbers, all smaller or larger together, against a page (or column)
+// that stays as it is, so more (or less) fits on it. Kept per room under the rule (`type`, in
+// percent). The room draws words at one size, so the book is laid out with everything that is
+// not type (the page, its margins, the column, the gap between pages, a block on the board) as
+// many times larger as the type is smaller: the same proportions; on the screen the zoom shows it
+// (the dock and the keys zoom so that the page keeps its size there, zoom.js). The Word document
+// and print set the type itself at that size (word.js, Book.js).
+export const TYPES = Object.freeze(['70', '80', '90', '100', '110', '125']);
+export function typeOf(reads, room, set = null) {
+  const v = String(settingOf(reads, room, 'type', set) ?? '100');
+  return TYPES.includes(v) ? +v / 100 : 1;
+}
+export const stepType = (v, dir) => TYPES[Math.max(0, Math.min(TYPES.length - 1, Math.max(0, TYPES.indexOf(String(v))) + dir))];
+export function setType(t, room, v) {
+  const m = t.marks.get(room);
+  if (!m) return { ok: false, reason: 'No such room' };
+  if (!TYPES.includes(String(v))) return { ok: false, reason: 'No such type size' };
+  return t.marks.edit(room, { rules: { ...(m.rules || {}), [RULE]: { ...(m.rules?.[RULE] || {}), type: String(v) } } });
+}
+
+// The column width a room asked for (its settings under the rule), or the book's; at a smaller
+// type, as many times wider in the room's units (typeOf).
 export function widthOf(reads, room, set = null) {
-  return WIDTHS[settingOf(reads, room, 'width', set)] || WIDTHS.book;
+  return (WIDTHS[settingOf(reads, room, 'width', set)] || WIDTHS.book) / typeOf(reads, room, set);
 }
 
 // The heading thought of a chapter (the mark that heads it), or null.
