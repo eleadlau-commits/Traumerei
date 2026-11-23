@@ -37,8 +37,8 @@ class CorpusTest(unittest.TestCase):
 
     def test_the_folder_says_which_are_in_the_starter_set(self):
         from tools.corpus import APART, IN_STARTER, plugins
-        self.assertEqual(set(plugins('optional/extra')), {'book', 'provoke'})  # E: Book comes on its own
-        self.assertEqual(set(IN_STARTER), set(APART) - {'book', 'provoke'})
+        self.assertEqual(set(plugins('optional/extra')), {'book', 'provoke', 'reading'})  # E: Book and Reading notes come on their own
+        self.assertEqual(set(IN_STARTER), set(APART) - {'book', 'provoke', 'reading'})
         for pid in ('home', 'search', 'gaps', 'returns', 'desk', 'export'):
             self.assertIn(pid, IN_STARTER)
 
@@ -84,11 +84,13 @@ class CorpusTest(unittest.TestCase):
             self.assertEqual([p.stem for p in paths], [*APART, 'starter-set'])
             starter = json.loads(paths[-1].read_text('utf-8'))
             self.assertEqual(starter['format'], 'traumset/1')
-            self.assertEqual(len(starter['plugins']), len(APART) - 2)  # all but app/optional/extra/: Provoke and Book
+            self.assertEqual(len(starter['plugins']), len(APART) - 3)  # all but app/optional/extra/: Provoke, Book and Reading notes
             self.assertFalse(any('"id": "provoke"' in p for p in starter['plugins']))
             self.assertFalse(any('"id": "book"' in p for p in starter['plugins']), 'Book ships on its own')
             self.assertIn('book', [p.stem for p in paths])
             self.assertIn('provoke', [p.stem for p in paths])
+            self.assertFalse(any('"id": "reading"' in p for p in starter['plugins']), 'Reading notes ships on its own')
+            self.assertIn('reading', [p.stem for p in paths])
         finally:
             shutil.rmtree(tmp)
 

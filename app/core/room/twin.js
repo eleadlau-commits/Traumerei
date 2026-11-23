@@ -6,7 +6,8 @@
 // The two sides share one loose tray: the left dock lists both sides' loose thoughts, and one
 // dragged onto either canvas goes to that side. Its methods join the Room class (mixIn in
 // Room.js), so `this` is the feature; it keeps only `this.otherEl` (the other side's panel),
-// `this.otherWorld` (what is drawn there) and `this.dividerEl` (the line between the halves).
+// `this.otherWorld` (what is drawn there), `this.dividerEl` (the line between the halves) and
+// `this.twinLaid` (which half the live canvas was last laid out in).
 // The divider drags left and right; where it sits is kept per Twin as the left half's share of
 // the width, on this device only (a way of looking, never part of the world or a .traum file).
 // Double-click it for half and half again.
@@ -90,15 +91,23 @@ export class Twin {
   drawTwin() {
     const other = this.otherSide;
     const me = this.roomId && room(this.world, this.roomId);
+    // The live canvas's half: none, the left one or the right one, and the divider's share. When
+    // it changes (opening a Twin, switching sides, leaving one) the stage has a new width, and
+    // drawRoom placed the world against the old one: place it again, or it sits off by half the
+    // difference until the next wheel or zoom makes it jump.
+    const right = !!other && !!me && sideOf(this.world, me.id) === 1;
+    const laid = other ? `${right ? 'R' : 'L'}${this.twinSplit}` : '';
     this.roomPage.classList.toggle('twin', !!other);
-    this.roomPage.classList.toggle('twin-right', !!other && !!me && sideOf(this.world, me.id) === 1);
+    this.roomPage.classList.toggle('twin-right', right);
     this.otherEl.hidden = this.dividerEl.hidden = !other;
-    if (!other) { this.otherWorld.replaceChildren(); this.roomPage.style.removeProperty('--twin-split'); return; }
+    const moved = laid !== this.twinLaid;
+    this.twinLaid = laid;
+    if (!other) { this.otherWorld.replaceChildren(); this.roomPage.style.removeProperty('--twin-split'); if (moved) this.place(); return; }
     this.roomPage.style.setProperty('--twin-split', String(this.twinSplit));
     const o = this.ontology(view(this.world, other.id).mode);
     this.otherLabel.textContent = `${other.name} · ${o.name} · click to work here`;
     this.otherWorld.replaceChildren(...this.sideNodes(other.id));
-    this.placeOther();
+    if (moved) this.place(); else this.placeOther(); // place() places the other side too
   }
 
   // The other side's view, centred in its half (after a resize, or the docks moving the room).

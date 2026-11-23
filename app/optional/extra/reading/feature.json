@@ -1,0 +1,25 @@
+{
+  "name": "Reading notes",
+  "description": "A Zotero-like library in a room: sources with metadata and a citation key, each with a stream of notes; the sources in the left dock, the open one's details in the right dock.",
+  "version": "0.1.0",
+  "main": "Reading.js",
+  "styles": [
+    "style.css"
+  ],
+  "requires": [
+    "api"
+  ],
+  "plugin": {
+    "api": 3,
+    "minApp": "1.1.2",
+    "kind": [
+      "mode",
+      "view",
+      "editor",
+      "command"
+    ],
+    "load": "start",
+    "author": "E",
+    "needs": []
+  }
+}
