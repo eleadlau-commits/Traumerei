@@ -1,7 +1,7 @@
 # Reading notes: core gaps
 
 Plan of record: E's edited plan of 23 Nov 2026. No core changes. Every stage works on plugin API
-3 as it is (app 1.1.2); none of these blocks anything. They are the three core asks, in the order
+3 as it is (app 1.1.2); none of these blocks anything. They are the core asks, in the order
 worth fixing, brought to E as one batch, never one at a time. Each would be additive only, as the
 freeze allows (`v2.js`, `API.md` and `tests/api.test.js` together), as its own small PR, and only
 once E says so.
@@ -47,6 +47,18 @@ no rewrite when core ships.
   browser.
 - **Without it (the plan as written):** paste the path once on attach (kept relative to a
   per-computer library folder); Verify by picking the file again; Copy path and page on a quote.
+
+### 4. A rule can't read what the person has open (found building stage 1)
+- **Missing:** a rule's `arrange` and `draw` are handed only the tables and the room's settings.
+  Which source is open is the session's choice, not content, so it is in neither; writing it into
+  the room (`marks.edit` of the room's `rules`) would make every switch of source an undo step and
+  a moment in the log.
+- **Why it matters:** the plan's canvas shows the open source's stream only.
+- **Meanwhile (0.1):** every source is its own column side by side, and opening one slides the view
+  to it (`viewGo`), so the open source's stream is what the canvas shows; the others sit off to
+  the side. Helper: the open source is kept by the plugin per room, for the session.
+- **Addition:** a rule's hooks also handed a per-room view value the plugin sets without a step
+  (for example `t.rules.view(room, value)` read as `reads.view`), never saved in the tables.
 
 ## Not core: stage 0
 
