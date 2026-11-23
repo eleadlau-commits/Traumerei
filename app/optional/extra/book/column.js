@@ -17,7 +17,15 @@ export const ABOUT = 'about'; // a margin note: a thought linked about a paragra
 
 // The column's measures, in world units (a thought is about 200 wide; the reading size is 19).
 export const WIDTHS = Object.freeze({ narrow: 480, book: 600, wide: 760 });
-export const SPACE = Object.freeze({ para: 0.55, before: [2.6, 1.9, 1.4], after: 0.5, title: 4.2, loose: 2.4 });
+// Every thought is a block of its own to the room's clear-space, which keeps 18 world units
+// between blocks (core room/clear.js GAP). Laid closer, it pushes them apart after every redraw,
+// a drop apiece the Book can only refuse, so the same push comes back each time: a 1,500-thought
+// room took seconds to open and to keep a thought. So whatever sits under a thought sits at least
+// CLEAR below it (`air`): after a paragraph, a heading, a thought not yet in the book (`stray`), a
+// margin note, and a block's note in Book · blocks (Book 0.4.7; before, 15 units under a paragraph).
+export const CLEAR = 20;
+export const SPACE = Object.freeze({ para: 0.55, stray: 0.55, before: [2.6, 1.9, 1.4], after: 0.5, title: 4.2, loose: 2.4 });
+export const air = (lh, space) => Math.max(lh * space, CLEAR);
 
 // One of the room's settings under the rule: from `set` (the values a hook is handed, the room's
 // or else those for new rooms), else the room's own as it keeps them.
@@ -225,14 +233,14 @@ export function column(reads, room, measure, size = () => null, set = null) {
         own.set(k, { top: y, bottom: y + lh * 1.3 });
         y += lh * 1.3;
       }
-      y += lh * SPACE.after;
+      y += air(lh, SPACE.after);
     } else if (it.t === 'loose') {
       y += lh * SPACE.loose;
       boxes.push({ x: L, y, w: W, h: lh * 1.2, label: 'Not in the book yet', style: 'line' });
       y += lh * 1.6;
     } else {
       place(it.mark, heightOf(it.mark));
-      y += lh * SPACE.para;
+      y += air(lh, it.t === 'stray' ? SPACE.stray : SPACE.para);
     }
   }
   // Click anywhere in a chapter to write there (slots.js): first among the boxes, the last first.
@@ -255,7 +263,7 @@ export function placeNotes(reads, rows, notes, measure, x0) {
     const m = measure(reads.marks.text(n.mark) || ' ', NOTE);
     const top = Math.max(n.row.y - (n.row.height || 0) / 2, below);
     rows.push({ mark: n.mark, x: x0 + NOTE / 2, y: top + m.height / 2, width: NOTE, height: m.height, align: 'start' });
-    below = top + m.height + m.lineHeight * 0.6;
+    below = top + m.height + air(m.lineHeight, 0.6);
   }
 }
 

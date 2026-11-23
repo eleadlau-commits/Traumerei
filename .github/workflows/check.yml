@@ -47,8 +47,10 @@ jobs:
           SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs
       - name: Pack the plugins shipped apart and the starter set, to import into the preview
         run: python build.py pack-plugin --all --out packed
-      - name: Speed budgets with a plugin's room open (Book, at its sample's size)
-        run: SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs --plugin packed/book.traumplug --world app/optional/extra/book/tests/sample.js --pad 0
+      - name: Speed budgets with a plugin's room open (Book, its sample and 1,500 thoughts not yet in the book)
+        run: SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs --plugin packed/book.traumplug --world app/optional/extra/book/tests/sample.js --pad 1500
+      - name: Speed budgets with a plugin's room open (Book, a book of 1,550 paragraphs on pages)
+        run: SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs --plugin packed/book.traumplug --world app/optional/extra/book/tests/big.js --pad 0
       - name: Speed budgets with a plugin's room open (Reading notes, its sample padded to 1,500)
         run: SPEED_BROWSER="$(command -v google-chrome)" node tests/speed.mjs --plugin packed/reading.traumplug --world app/optional/extra/reading/tests/sample.js
       - name: Attach them as a download

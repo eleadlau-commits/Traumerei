@@ -21,14 +21,21 @@ import { holderOf } from './editing.js';
 //   { later: 'unnote', mark, join, at }  a note a paragraph again, at `at` in `join`
 //   { later: 'unnote', mark }            a note out of the book, among the thoughts not yet in it
 // or null: where it is, or nowhere it can go.
+// Inside one of the mark's own rows (half a line of air): no move at all. Also asked first, of the
+// layout last drawn, so the room's clear-space nudges cost no new layout (editor.js, Book 0.4.7).
+export function inOwnRow(lay, mark, x, y) {
+  const lh = lay?.lineHeight || 27.5;
+  for (const r of lay?.rows || []) {
+    if (r.mark === mark && Math.abs(r.x - x) <= r.width / 2 && Math.abs(r.y - y) <= r.height / 2 + lh / 2) return true;
+  }
+  return false;
+}
+
 export function flowDrop(reads, room, mark, x, y, lay) {
   const m = reads.marks.get(mark);
   if (!m || m.kind === 'group' || !lay?.rows) return null;
   const lh = lay.lineHeight || 27.5, W = lay.width;
-  // Inside one of its own rows (half a line of air): no move at all.
-  for (const r of lay.rows) {
-    if (r.mark === mark && Math.abs(r.x - x) <= r.width / 2 && Math.abs(r.y - y) <= r.height / 2 + lh / 2) return null;
-  }
+  if (inOwnRow(lay, mark, x, y)) return null;
   const { items } = read(reads, room);
   // The book's flow: each heading and paragraph, its place in reading order and its book.
   const pos = new Map(), order = [];

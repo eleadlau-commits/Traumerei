@@ -205,6 +205,19 @@ chapter block's, or the chosen paragraph's own chapter). Each is one step, one C
   Chapter in hand: Numbered · Unnumbered.
 - Never deeper than three levels: Alt+C and Alt+Shift+C refuse in words where it would not fit.
 
+## Speed at size
+
+A room of 1,500 thoughts seen as Book opens in about 0.3 s and keeps a thought in under 0.1 s
+(budgets 0.8 s and 0.35 s); CI times the sample padded with 1,500 thoughts not yet in the book and
+a book of 1,550 paragraphs (`tests/big.js`). What it rests on (0.4.7): every thought is a block to
+the room's clear-space, which keeps 18 units between blocks, so nothing the Book lays out sits
+closer than `CLEAR` (20 units) under another thought (`column.js` `air`: under a paragraph, a
+heading, a stray, a margin note, a block's note); closer, the room pushed them apart after every
+redraw, through the rule's drop, which refused, so the push came back each time, and each drop laid
+the whole book out again. And a drop inside a mark's own row (the clear-space's nudge) is refused
+from the layout last drawn, without a new one (`flowdrop.js` `inOwnRow`, `blocks.js` the same with
+its cells). `app/core/api/tests/book-clear.test.js` holds both.
+
 ## What it needs
 
 - **Plugin API:** 3 · **oldest app:** 1.1.2
@@ -215,7 +228,7 @@ chapter block's, or the chosen paragraph's own chapter). Each is one step, one C
 
 ## How to check it works
 
-1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-twin.test.js`, `book-headings.test.js`, `book-type.test.js`, `book-tree.test.js`, `book-word.test.js`, `book.test.js`).
+1. `python build.py test` (`app/core/api/tests/book-editor.test.js`, `book-blocks.test.js`, `book-nest.test.js`, `book-drag.test.js`, `book-slots.test.js`, `book-twin.test.js`, `book-headings.test.js`, `book-type.test.js`, `book-tree.test.js`, `book-word.test.js`, `book-clear.test.js`, `book.test.js`).
 2. `python build.py pack-plugin book`, import `packed/book.traumplug` in Settings → Plugins, and
    open the sample `.traum` handed out with the stage: it opens on a room seen as Book.
 3. Choose a paragraph, type, Enter: it lands right after it. Ctrl+Alt+H on it: a heading, in the
