@@ -10,7 +10,7 @@ stress corpus, which is left out of the product too; `tools/corpus.py`). Every o
 in `app/optional/`, is left out of the app, and reaches people as a `.traumplug` (§7) after every
 merge to main (the rolling `plugins-latest` prerelease, see `app/optional/README.md`) and on each
 Release. The folder says whether it is also in `starter-set.traumplug`: `app/optional/starter/<id>/`
-is, `app/optional/extra/<id>/` (Book, Provoke) comes only on its own. A plugin reaches another plugin only through the API
+is, `app/optional/extra/<id>/` (Book, Provoke, Reading notes) comes only on its own. A plugin reaches another plugin only through the API
 (`t.peers`), since an imported one can't `use` anything but the plugin API.
 
 ## 1. Make the folder

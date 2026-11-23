@@ -1,0 +1,12 @@
+/* Reading notes: layout only; the look is Folio's (base.css). */
+.reading { display: flex; flex-direction: column; gap: var(--s-3, 12px); padding: var(--s-2, 8px) var(--s-3, 12px); }
+.reading-list { display: flex; flex-direction: column; }
+.reading-src { display: grid; row-gap: 2px; line-height: 1.35; grid-template-columns: 1fr auto; grid-template-areas: "key who" "title title" "n n"; column-gap: var(--s-2, 8px); text-align: left; padding: var(--s-2, 8px) 0; width: 100%; }
+.reading-src-key { grid-area: key; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reading-src-who { grid-area: who; white-space: nowrap; }
+.reading-src-title { grid-area: title; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reading-src-n { grid-area: n; }
+.reading-form { display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.reading-kv { display: flex; flex-direction: column; gap: 2px; }
+.reading-field { width: 100%; resize: vertical; font: inherit; }
+.reading-src > span { margin: 0; padding: 0; }
