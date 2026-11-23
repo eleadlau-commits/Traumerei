@@ -11,7 +11,7 @@ core) and the stress corpus (`docs/CORPUS.md`, off and left out of the product).
 optional plugin: it lives in its own folder in `app/optional/starter/` or `app/optional/extra/` (tested like the rest), is left out of
 the app by `standalone.py`, and ships as a `.traumplug` after every merge to main (the rolling
 `plugins-latest` prerelease, `plugins.yml`) and on each Release; the folder decides the starter set: `app/optional/starter/` is
-packed into `starter-set.traumplug` too, `app/optional/extra/` (Book, Provoke) only on its own; `tools/corpus.py` keeps
+packed into `starter-set.traumplug` too, `app/optional/extra/` (Book, Provoke, Reading notes) only on its own; `tools/corpus.py` keeps
 the lists and the build refuses a stray. Start one with `python build.py new-plugin <id>` (a file in `app/optional/extra/`; `--starter` for the starter set;
 `--corpus` only for a corpus plugin) and follow `app/plugins/README.md` (Make a plugin); the `traumerei-plugin` skill
 (`.claude/skills/traumerei-plugin/`) walks an idea through the API first, and `python build.py check

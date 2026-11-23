@@ -7,7 +7,7 @@ merge to main (plugins.yml, the rolling "plugins-latest" release) and each relea
 .traumplug (`python build.py pack-plugin --all`), imported in Settings → Plugins. The folder says
 whether it is in the starter set (E, 16 Nov 2026):
 - app/optional/starter/<id>/: also packed together into starter-set.traumplug.
-- app/optional/extra/<id>/: only on its own (Book, Provoke).
+- app/optional/extra/<id>/: only on its own (Book, Provoke, Reading notes).
 
 The corpus has two parts:
 - ROOM_TYPES: the ways of seeing a room, built into the app and on (Joyce, Pessoa, Russell,
