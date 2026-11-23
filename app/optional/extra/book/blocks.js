@@ -11,7 +11,7 @@
 // the rule. Only the plugin API (app/core/API.md). Tested in app/core/api/tests/book-blocks.test.js.
 
 import { wordCount } from './rules.js';
-import { read, after, headed, aboutOf, nameOf, typeOf } from './column.js';
+import { read, after, headed, aboutOf, nameOf, typeOf, CLEAR } from './column.js';
 import { DEEPEST, depthOf, levels } from './treedrop.js';
 import { isChapter } from './rules.js';
 import { holderOf, leaveBook, afterGesture } from './editing.js';
@@ -50,6 +50,7 @@ export function board(reads, room, measure, set = null) {
   // times larger in the room's units, so a block holds more words in the same proportions.
   const k = 1 / typeOf(reads, room);
   const { lines: LINES, note: NL } = BOARD, BW = BOARD.block * k, F = BOARD.frame * k, G = BOARD.gap * k, PAD = BOARD.pad * k;
+  const NG = Math.max(F, CLEAR); // above a note in a block's frame: clear of the room's clear-space (column.js CLEAR)
   const COLS = acrossOf(reads, room, set);
   const lh = measure('M', BW).lineHeight || 27.5;
   const BH = lh * LINES;
@@ -83,16 +84,16 @@ export function board(reads, room, measure, set = null) {
   const grid = (ids, left, y, out) => {
     for (let r = 0; r < ids.length; r += COLS) {
       const row = ids.slice(r, r + COLS);
-      const h = Math.max(...row.map((id) => BH + (notesOf.get(id)?.length || 0) * (lh * NL + F)));
+      const h = Math.max(...row.map((id) => BH + (notesOf.get(id)?.length || 0) * (lh * NL + NG)));
       row.forEach((id, k) => {
         const x0 = left + k * CW, cx = x0 + F + BW / 2;
         const box = { x0, y0: y, x1: x0 + BW + 2 * F, y1: y + h + 2 * F };
         rows.push({ mark: id, x: cx, y: y + F + BH / 2, width: BW, height: BH, align: 'start', ...clip(id, BW, LINES) });
-        let ny = y + F + BH + F;
+        let ny = y + F + BH + NG;
         for (const n of notesOf.get(id) || []) {
           rows.push({ mark: n, x: cx + 12, y: ny + lh * NL / 2, width: BW - 24, height: lh * NL, align: 'start', ...clip(n, BW - 24, NL) });
           cells.set(n, { x0: box.x0, y0: ny, x1: box.x1, y1: ny + lh * NL });
-          ny += lh * NL + F;
+          ny += lh * NL + NG;
         }
         const open = reads.gaps.of(id)?.state === 'open';
         frames.push({ x: box.x0, y: box.y0, w: box.x1 - box.x0, h: box.y1 - box.y0, style: open ? 'shelf' : 'plain', ...(open ? { note: 'to write' } : {}) });
@@ -120,7 +121,7 @@ export function board(reads, room, measure, set = null) {
       const strip = node.head || name || node.num ? lh * 1.9 : lh * 1.1;
       if (node.head) {
         const hw = w - 2 * PAD - num;
-        rows.push({ mark: node.head, x: left + num + hw / 2, y: y + strip / 2 + lh * 0.15, width: hw, height: lh, align: 'start', far: [node.num, (reads.marks.text(node.head) || '').split('\n')[0].slice(0, 60)].filter(Boolean).join('  '), ...clip(node.head, hw, 1) });
+        rows.push({ mark: node.head, x: left + num + hw / 2, y: Math.min(y + strip / 2 + lh * 0.15, y + strip + F - CLEAR - lh / 2), width: hw, height: lh, align: 'start', far: [node.num, (reads.marks.text(node.head) || '').split('\n')[0].slice(0, 60)].filter(Boolean).join('  '), ...clip(node.head, hw, 1) });
         cells.set(node.head, { x0: x, y0: y, x1: x + w, y1: y + strip });
       }
       let sy = y + strip;
@@ -228,14 +229,19 @@ export function installBlocks(t) {
   const ICON = '<rect x="3" y="4" width="8" height="6"/><rect x="13" y="4" width="8" height="6"/><rect x="3" y="14" width="8" height="6"/><rect x="13" y="14" width="8" height="6" stroke-dasharray="2 2"/>';
   // Out of the book: no proposal takes a mark out of a group alone, so the plugin does it, one step,
   // as soon as the room's gesture is over (the drop itself changes nothing).
+  const last = new Map(); // room → the board last drawn
+  const laid = (reads, context, set) => { const lay = board(reads, context, measure, set); last.set(context, lay); return lay; };
   const leave = (mark) => afterGesture(t, () => leaveBook(t, mark), 'Out of the book, in the tray. Ctrl+Z puts it back.');
   t.slots.rules.add({
     id: BLOCKS, name: 'Book · blocks', note: 'the book as blocks: a frame for each paragraph, an outline for each chapter; drag to reorder', icon: ICON, order: 31,
     claims: ['book', 'book-chapter'],
     settings: [{ key: 'across', label: 'Blocks across', type: 'choice', default: String(BOARD.cols), options: ACROSS.map((n) => [String(n), String(n)]) }],
-    arrange: (reads, context, set) => board(reads, context, measure, set).rows,
-    draw: (reads, context, set) => board(reads, context, measure, set).boxes,
+    arrange: (reads, context, set) => laid(reads, context, set).rows,
+    draw: (reads, context, set) => laid(reads, context, set).boxes,
     drop: (reads, context, mark, x, y, set) => {
+      // The room's clear-space nudges a block it finds too close by calling drop: inside its own
+      // cell of the board last drawn that is nothing, with no new board (Book 0.4.7, as editor.js).
+      if (inside(last.get(context)?.cells.get(mark), x, y)) return null;
       const p = dropAt(reads, context, mark, x, y, board(reads, context, measure, set));
       if (p?.leave) { leave(p.mark); return null; }
       if (p?.refuse) { t.ui.toast(p.refuse); return null; }

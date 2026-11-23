@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale, typeOf } from './column.js';
+import { RULE, SPACE, air, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale, typeOf } from './column.js';
 import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
@@ -102,7 +102,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       if (d === 1 && chaptersStartPages(reads, room, set) && used) newPage();
       if (d === 1 && fresh()) { y = top(page) + P.h * 0.2; heads[page] = ''; } // a chapter's first page: its heading dropped, no running head
       else if (!fresh()) y += lh * SPACE.before[d - 1];
-      if (y + h + lh * SPACE.after + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
+      if (y + h + air(lh, SPACE.after) + after > foot()) { newPage(); if (d === 1) { y = top(page) + P.h * 0.2; heads[page] = ''; } }
       if (it.t === 'heading') {
         if (it.num) boxes.push(numBox(L, y, lh * headScale(d), it.num, d)); // (unnumbered: none; level with its first line)
         row(it.mark, h, { far: title }); // far off, the heading reads as its title, set large (style.css)
@@ -112,7 +112,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
         own.set(k, { top: y, bottom: y + h });
         y += h; used = true;
       }
-      y += lh * SPACE.after;
+      y += air(lh, SPACE.after);
       continue;
     }
     // A paragraph (or a table, a figure: a block, on the next page when it does not fit).
@@ -138,7 +138,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
       }
     }
     if (roomFor(it.mark)) continue;
-    y += lh * SPACE.para;
+    y += air(lh, SPACE.para);
   }
   const last = page;
   // Click anywhere in a chapter to write there (slots.js): each slot within its page's words.
@@ -164,7 +164,7 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
     for (const it of items.slice(loose + 1)) {
       const h = (linesOf(it.mark).height ?? linesOf(it.mark).block);
       rows.push({ mark: it.mark, x: 0, y: y + h / 2, width: W, height: h, align: 'start' });
-      y += h + lh * SPACE.para + (draft && draft.after === it.mark ? draft.h : 0);
+      y += h + air(lh, SPACE.stray) + (draft && draft.after === it.mark ? draft.h : 0);
     }
   }
   placeNotes(reads, rows, notes, measure, P.w / 2 + lh * 1.6);
