@@ -14,6 +14,7 @@ const R = await load('Reading.js');
 const X = await load('rules.js');
 const D = await load('docks.js');
 const S = await load('tests/sample.js');
+const N = await load('notes.js');
 
 function setUp() {
   const host = makeHost({ thoughts: 2 });
@@ -29,24 +30,28 @@ function setUp() {
   return { host, t, off, api, s, rule, lay };
 }
 
-test('reading: the sample library is four sources, each a column of its notes, Darwin first', () => {
-  const { t, s, lay } = setUp();
+test('reading: the sample library is five sources, each a column of its notes, Darwin first, its 6th edition next', () => {
+  const { host, t, s, lay } = setUp();
   const L = lay();
-  assert.deepEqual(L.columns.map((c) => t.marks.get(c.source).citekey), ['darwin1859origin', 'mill1859liberty', 'thoreau1854walden', 'wollstonecraft1792vindication']);
+  assert.deepEqual(L.columns.map((c) => t.marks.get(c.source).citekey), ['darwin1859origin', 'darwin1872origin', 'mill1859liberty', 'thoreau1854walden', 'wollstonecraft1792vindication']);
   assert.equal(L.rows.length, s.notes.length, 'every note placed');
-  assert.deepEqual(X.notesOf(t, s.sources[0]), s.notes.slice(0, 3), 'in stream order');
+  assert.deepEqual(X.notesOf(t, s.sources[0]), s.notes.slice(0, 4), 'in stream order');
+  assert.equal(X.quoteOf(t, s.quotes[0]).label, 'p. 490');
+  assert.equal(X.aboutOf(t, s.comments[0]), s.quotes[0]);
+  assert.equal(X.editionOf(t, s.sources[1]), s.sources[0]);
+  assert.deepEqual(brokenLaws(host.w), []);
 });
 
 test('reading: a note kept after the chosen one lands right after it, in its source, as one step', () => {
   const { host, t, s, rule, lay } = setUp();
   const [darwin] = s.sources;
-  const [first] = X.notesOf(t, darwin);
+  const first = X.notesOf(t, darwin).at(-1);
   host.choose(s.room, first);
   const row = lay().rows.find((r) => r.mark === first);
   const th = host.lib.model.create(host.w, s.room, { kind: 'line', text: 'A new note.' }, host.tick());
   rule.land(host.w, s.room, th.id, row.x, row.y);
   host.world.save();
-  assert.deepEqual(X.notesOf(t, darwin).slice(0, 2), [first, th.id]);
+  assert.deepEqual(X.notesOf(t, darwin).slice(-2), [first, th.id]);
   assert.deepEqual(brokenLaws(host.w), []);
   host.world.undo();
   assert.ok(!t.marks.get(th.id), 'one Ctrl+Z takes the note and its place back together');
@@ -54,7 +59,7 @@ test('reading: a note kept after the chosen one lands right after it, in its sou
 
 test('reading: with no note under it, a note lands at the end of the open source', () => {
   const { host, t, s, rule, api } = setUp();
-  const mill = s.sources[1];
+  const mill = s.sources[2];
   api.open(mill, { go: false });
   const th = host.lib.model.create(host.w, s.room, { kind: 'line', text: 'Another.' }, host.tick());
   rule.land(host.w, s.room, th.id, 0, -5000);
@@ -126,4 +131,110 @@ test('reading: a library of 1,500 notes in 20 sources: laid out again in under 5
   assert.equal(t.rules.layout(X.RULE, r.id).length, 1501);
   const again = performance.now() - t1;
   assert.ok(again < 50, `laid out again in ${again.toFixed(1)} ms`);
+});
+
+// ---- 0.2: quotes, comments, reordering, editions ----
+
+// A note kept in a source, as Enter keeps it (the land proposal), then what the plugin does just after.
+function keep(host, t, api, rule, room, words, after) {
+  const L = X.layout(t, room, (a, b) => t.ui.measure(a, b));
+  const row = after ? L.rows.find((r) => r.mark === after) : { x: 0, y: -5000 };
+  if (after) host.choose(room, after);
+  const th = host.lib.model.create(host.w, room, { kind: 'line', text: words }, host.tick());
+  rule.land(host.w, room, th.id, row.x, row.y);
+  host.world.save();
+  api.kept(th.id, after || null);
+  host.world.save();
+  return th.id;
+}
+
+test('reading: a note typed as a quote with its page is a quote; the page is the link\'s label, off its words', () => {
+  const { host, t, s, rule, api } = setUp();
+  const mill = s.sources[2];
+  api.open(mill, { go: false });
+  const id = keep(host, t, api, rule, s.room, '"Over himself, over his own body and mind, the individual is sovereign." p. 22');
+  assert.equal(t.marks.get(id).text, '"Over himself, over his own body and mind, the individual is sovereign."');
+  assert.equal(X.quoteOf(t, id).label, 'p. 22');
+  assert.equal(X.quoteOf(t, id).to, mill);
+  // Edited to another page: the label follows.
+  t.marks.edit(id, { text: `${t.marks.get(id).text} p. 23` });
+  N.asQuote(t, id);
+  assert.equal(X.quoteOf(t, id).label, 'p. 23');
+  assert.ok(!t.marks.get(id).text.includes('p. 23'));
+  // Alt+Q: a note again, its page back in its words, nothing lost.
+  N.toggleQuote(t, id);
+  assert.ok(!X.isQuote(t, id));
+  assert.ok(t.marks.get(id).text.endsWith('p. 23'));
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: a note written after a quote is a comment under it; Alt+← and Alt+→ take it out and back', () => {
+  const { host, t, s, rule, api } = setUp();
+  const thoreau = s.sources[3];
+  const q = s.quotes.find((id) => X.sourceOf(t, id) === thoreau);
+  api.open(thoreau, { go: false });
+  const c = keep(host, t, api, rule, s.room, 'Deliberately: the word does the arguing.', q);
+  assert.equal(X.aboutOf(t, c), q);
+  assert.deepEqual(X.streamOf(t, thoreau).slice(0, 2), [{ id: q, under: null }, { id: c, under: q }]);
+  assert.ok(N.unnest(t, c).ok);
+  assert.equal(X.aboutOf(t, c), null);
+  assert.equal(X.streamOf(t, thoreau)[1].id, c, 'right after the quote\'s block');
+  assert.ok(N.nest(t, c).ok);
+  assert.equal(X.aboutOf(t, c), q);
+  assert.ok(N.nest(t, q).ok === false, 'a quote stands on its own');
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: Alt+Shift+↓ moves a quote with its comments down the stream, as one step', () => {
+  const { host, t, s } = setUp();
+  const darwin = s.sources[0];
+  const [q] = X.notesOf(t, darwin);
+  const before = X.notesOf(t, darwin);
+  assert.ok(N.step(t, q, 1).ok);
+  host.world.save();
+  const now = X.notesOf(t, darwin);
+  assert.equal(now[0], before[3], 'the note that was after the block is first');
+  assert.deepEqual(now.slice(1), before.slice(0, 3), 'the quote carried its two comments');
+  host.world.undo();
+  assert.deepEqual(X.notesOf(t, darwin), before, 'one Ctrl+Z puts it back');
+});
+
+test('reading: a quote dragged to another source takes its page and comments along', () => {
+  const { host, t, s } = setUp();
+  const [darwin, , mill] = s.sources;
+  const q = s.quotes[0];
+  const kids = X.blockOf(t, q).slice(1);
+  assert.ok(N.move(t, q, { source: mill, under: null, before: null }).ok);
+  host.world.save();
+  assert.deepEqual(X.notesOf(t, mill).slice(-3), [q, ...kids]);
+  assert.equal(X.quoteOf(t, q).to, mill);
+  assert.equal(X.quoteOf(t, q).label, 'p. 490');
+  assert.ok(!X.notesOf(t, darwin).includes(q));
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: a new edition copies the metadata, takes its own key and folds under its source', () => {
+  const { host, t, s, api } = setUp();
+  const mill = s.sources[2];
+  api.open(mill, { go: false });
+  const out = N.newEdition(t, mill);
+  assert.ok(out.ok);
+  const e = t.marks.get(out.id);
+  assert.equal(e.title, 'On Liberty');
+  assert.deepEqual(e.authors, ['Mill, John Stuart']);
+  assert.equal(X.editionOf(t, out.id), mill);
+  assert.ok(e.citekey && e.citekey !== t.marks.get(mill).citekey, 'its own key');
+  assert.ok(N.setEditionOf(t, mill, out.id).ok === false, 'one with editions is not an edition');
+  assert.ok(N.setEditionOf(t, out.id, null).ok);
+  assert.equal(X.editionOf(t, out.id), null);
+  // Carried by a .traum file: the edition, the quotes' pages and the comments come back.
+  const back = t.carriers.land(t.carriers.read(t.carriers.text(s.room)));
+  assert.ok(back.ok);
+  const marks = t.marks.in(back.id);
+  const q = marks.find((m) => m.text?.startsWith('"There is grandeur') && X.quoteOf(t, m.id)?.label === 'p. 490');
+  assert.ok(q, 'the quote and its page');
+  assert.equal(t.links.to(q.id, X.COMMENT).length, 2, 'its comments');
+  const sixth = marks.find((m) => m.citekey === 'darwin1872origin');
+  assert.ok(sixth && X.editionOf(t, sixth.id), 'the edition link');
+  assert.deepEqual(brokenLaws(host.w), []);
 });

@@ -18,6 +18,12 @@ a source file's path and hash).
   group's title; its own fields: `type`, `citekey`, `authors` (a list, "Family, Given"), `year`,
   `edition`, `container`, `volume`, `issue`, `pages`, `publisher`, `doi`, `url`, `isbn`, `file`.
 - A **note** is a line thought, `part of` its source, in stream order.
+- A **quote** is a note with a quiet `reading quote` link to its source; the link's label is its
+  anchor, the printed page of that edition (`p. 112`, `pp. 112–113`, `p. xiv`).
+- A **comment** is a note with no quote link. A comment on a quote has a quiet `reading comment`
+  link to it and sits under it, right after it in the stream.
+- An **edition** is a source of its own (its own key, its own pages) with a quiet `reading
+  edition` link to the source it is an edition of. A quote belongs to exactly one edition.
 
 ## What it adds (0.1)
 
@@ -42,9 +48,38 @@ a source file's path and hash).
 - **New library** (☰ menu, or the command): a room already seen as Library, from a small `.traum`
   (a plugin can't set a room's mode; the file carries it), gone into.
 
+## What it adds (0.2)
+
+- **Quotes**: a note begun with a quotation mark (or with `> `) is a quote; a page typed at its
+  end (`"…" p. 112`, `"…" (pp. 112-13)`, `"…" @xiv`) is taken off its words into the quote's
+  anchor, shown in the column's gutter at its left, and quotes are drawn in italic. Edit the page
+  at the end of its words the same way. A note that only ends in a page ("compare p. 40") stays
+  a comment. **Alt+Q** makes the chosen note a quote, or a quote a note again (its page put back
+  at the end of its words, so nothing is lost).
+- **Comments under quotes**: a note written after a quote, or after a comment under it, is a
+  comment under that quote, indented. **Alt+←** takes a comment out from under its quote (right
+  after the quote's comments); **Alt+→** puts a note under the quote before it.
+- **Reordering**: **Alt+Shift+↑ / ↓** moves the chosen note one place up or down (a quote carries
+  its comments; a comment moves among its quote's comments). **Drag** a note: between two notes
+  it stands there; among a quote's comments it goes under that quote; into another column it goes
+  to that source (a quote takes its page and comments along); onto Unfiled it leaves its source.
+  Each is one step.
+- **Editions**: **New edition** (left dock, or Alt+Shift+E) makes an edition of the open source:
+  its title, authors and the rest copied, no year or edition yet (the Edition field is ready to
+  write), its own key. Details has **Edition of** to link a source to another, or unlink it.
+  Editions come right after their source, in the list and on the canvas, and fold into its line
+  in the left dock ("▸ 1 edition"; → shows them, ← folds them).
+
+Typing a quote or a comment under a quote is done just after Enter, as its own step (no proposal
+links a note, Book's way): the first Ctrl+Z takes back the quote or the nesting, the second the
+note.
+
 ## How it is made
 
-- `rules.js`: plain functions (sources, keys, the layout, where a note lands, the new library).
+- `rules.js`: plain functions (sources, keys, anchors, the stream with its comments, the layout,
+  where a note lands or is let go, the new library).
+- `notes.js`: the gestures on notes and editions, each one step (`asQuote`, `toggleQuote`, `move`,
+  `nest`, `unnest`, `step`, `newEdition`, `setEditionOf`).
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
 - `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
   `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,
@@ -72,3 +107,6 @@ a source file's path and hash).
    a room seen as Library, the sources in the left dock, Darwin open.
 3. Type, Enter: the note lands at the end of Darwin's stream. Alt+↓: Mill. Alt+Shift+N: a new
    source, its Title ready to write.
+4. Type `"…" p. 95`, Enter: a quote, its page in the gutter. Type again, Enter: a comment under
+   it. Alt+Shift+↑ moves the quote and its comment up. In the left dock, → on Darwin shows its
+   6th edition.
