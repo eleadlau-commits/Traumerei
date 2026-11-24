@@ -16,6 +16,10 @@ import { RULE, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, so
 import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
 import { TAG, tagSpans } from './find.js';
 import { onModeChange, roomMode, viewGet, viewGo, stageBox, fileHandles } from './compat.js';
+import { importBib, importZotero } from './io.js';
+import { writeBib } from './bibtex.js';
+import { markdownOf } from './cite.js';
+import { wordDoc, DOCX_TYPE } from './word.js';
 import { attachment, fullPath, pathAndPage, filePage, verify as sameFile, linkOf } from './files.js';
 import { installDocks } from './docks.js';
 
@@ -262,7 +266,35 @@ export function install(t) {
     return copy(pathAndPage(f, folderOf(t.places.home(src)), anchor));
   };
 
-  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource,
+  // ---- In and out: BibTeX (Zotero's metadata), Zotero's annotations, Markdown, Word ----
+  const nameOf = (r) => String(t.marks.get(r)?.name || t.marks.get(r)?.title || 'Library').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Library';
+  const pickText = async (accept) => { const f = await t.ui.files?.open?.(accept); return f ? { name: f.name, text: await f.text() } : null; };
+  const bibIn = async () => {
+    const r = here();
+    if (!r || !inLibrary()) return null;
+    const f = await pickText('.bib,.bibtex,.txt');
+    if (!f) return null;
+    const out = say(importBib(t, r, f.text));
+    if (out?.ok) { t.ui.toast(`${out.made} ${out.made === 1 ? 'source' : 'sources'} added${out.kept ? `; ${out.kept} already here, left as they are` : ''}.`); docks.draw(); }
+    return out;
+  };
+  const zoteroIn = async () => {
+    const r = here(), src = r ? openOf(r) : null;
+    if (!src) { t.ui.toast('Open the source the annotations are from first.'); return null; }
+    const f = await pickText('.md,.markdown,.txt');
+    if (!f) return null;
+    const out = say(importZotero(t, src, f.text));
+    if (out?.ok) { t.ui.toast(`${out.quotes} ${out.quotes === 1 ? 'quote' : 'quotes'}, ${out.comments} ${out.comments === 1 ? 'comment' : 'comments'} and ${out.notes} ${out.notes === 1 ? 'note' : 'notes'} into ${t.marks.get(src).citekey || 'the source'}.`); jump(r, src); }
+    return out;
+  };
+  const save = (name, content, type) => t.ui.files?.save?.(name, content, type);
+  const bibOut = () => { const r = here(); return r ? save(`${nameOf(r)}.bib`, writeBib(sourcesIn(t, r)), 'application/x-bibtex') : null; };
+  const mdOut = () => { const r = here(); return r ? save(`${nameOf(r)}.md`, markdownOf(t, r, nameOf(r)), 'text/markdown') : null; };
+  const wordOut = () => { const r = here(); return r ? save(`${nameOf(r)}.docx`, new Blob([wordDoc(t, r, nameOf(r))], { type: DOCX_TYPE }), DOCX_TYPE) : null; };
+  // A .bib file comes in from the left dock's Import BibTeX… only: as a format (slots.formats) it would
+  // also answer the app's Import with no file picked, ahead of the room file (core-gaps.md, gap 10).
+
+  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
     folder: folderOf, setFolder, pick, attach, setOffset, copyPath, showFile, canShow: () => handles.native, verify: verifyFile, detach, openLink, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).
@@ -301,6 +333,11 @@ export function install(t) {
   cmd({ id: 'reading.new-edition', keys: ['Alt+Shift+E'], zone: 'room', words: 'a new edition of the open source', when: inLibrary, run: () => edition() });
   cmd({ id: 'reading.copy-path', keys: ['Alt+Shift+P'], zone: 'room', words: 'copy the chosen quote\'s file path and page', when: inLibrary, run: () => copyQuote() });
   cmd({ id: 'reading.open-link', keys: ['Alt+Shift+O'], zone: 'room', words: 'open the open source\'s DOI or URL in the browser', when: inLibrary, run: () => { const r = here(); const s = r ? openOf(r) : null; if (s) openLink(s); } });
+  cmd({ id: 'reading.import-bib', zone: 'room', words: 'add sources from a BibTeX file (Zotero: Export → BibTeX)', when: inLibrary, run: () => bibIn() });
+  cmd({ id: 'reading.import-zotero', zone: 'room', words: 'add Zotero annotations (a note exported as Markdown) to the open source', when: inLibrary, run: () => zoteroIn() });
+  cmd({ id: 'reading.export-bib', zone: 'room', words: 'export this library as BibTeX', when: inLibrary, run: () => bibOut() });
+  cmd({ id: 'reading.export-md', zone: 'room', words: 'export the notes as Markdown with Pandoc citations', when: inLibrary, run: () => mdOut() });
+  cmd({ id: 'reading.export-word', zone: 'room', words: 'export the notes as a Word document (Chicago author-date)', when: inLibrary, run: () => wordOut() });
   cmd({ id: 'reading.find', keys: ['Alt+F'], zone: 'room', words: 'find in this library\'s notes: words, #tag', when: inLibrary, run: () => docks.focusFind() });
   cmd({ id: 'reading.new-library', zone: 'everywhere', words: 'a new library: a room seen as Library', run: () => newLibrary() });
   t.slots.menu.add({ id: 'reading.library', label: 'New library', icon: 'book', order: 64, onClick: () => newLibrary() });
@@ -325,7 +362,7 @@ export function install(t) {
     }
   });
 
-  return { open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept, attach, setOffset, detach, folderOf, setFolder, copyQuote, openLink };
+  return { bibIn, zoteroIn, bibOut, mdOut, wordOut, open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept, attach, setOffset, detach, folderOf, setFolder, copyQuote, openLink };
 }
 
 export default class Reading extends Feature {

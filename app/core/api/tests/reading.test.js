@@ -16,6 +16,9 @@ const D = await load('docks.js');
 const S = await load('tests/sample.js');
 const N = await load('notes.js');
 const F = await load('find.js');
+const IO = await load('io.js');
+const C = await load('cite.js');
+const WD = await load('word.js');
 
 function setUp() {
   const host = makeHost({ thoughts: 2 });
@@ -310,4 +313,53 @@ test('reading: a file attached keeps only its path, name, size, hash and page of
   host.world.save();
   assert.equal(t.marks.get(darwin).file ?? null, null);
   assert.deepEqual(brokenLaws(host.w), []);
+});
+
+// ---- 0.5: in and out ----
+
+test('reading: a BibTeX file adds its sources; one already here by key is left as it is; one step', () => {
+  const { host, t, s } = setUp();
+  const before = X.sourcesIn(t, s.room).length;
+  const bib = `@book{darwin1859origin, author={Darwin, Charles}, title={Changed title}, year=1859}
+@book{hobbes1651leviathan, author={Hobbes, Thomas}, title={Leviathan}, year={1651}, publisher={Andrew Crooke}}
+@article{, author={Smith, Adam}, title={A Theory}, year=1759}`;
+  const out = IO.importBib(t, s.room, bib);
+  host.world.save();
+  assert.deepEqual([out.made, out.kept], [2, 1]);
+  const all = X.sourcesIn(t, s.room);
+  assert.equal(all.length, before + 2);
+  assert.equal(all.find((x) => x.citekey === 'darwin1859origin').title, 'On the Origin of Species by Means of Natural Selection', 'left as it is');
+  assert.equal(all.find((x) => x.citekey === 'hobbes1651leviathan').publisher, 'Andrew Crooke');
+  assert.ok(all.find((x) => x.citekey === 'smith1759theory'), 'no key: one made');
+  host.world.undo();
+  assert.equal(X.sourcesIn(t, s.room).length, before, 'one Ctrl+Z takes them all back');
+});
+
+test('reading: Zotero annotations come in as quotes with their pages and comments under them', () => {
+  const { host, t, s } = setUp();
+  const mill = s.sources[2];
+  const n0 = X.notesOf(t, mill).length;
+  const out = IO.importZotero(t, mill, '“Over himself the individual is sovereign” ([Mill, 1859, p. 22](zotero://select/x)) The core claim.\n\nA note.');
+  host.world.save();
+  assert.deepEqual([out.quotes, out.comments, out.notes], [1, 1, 1]);
+  const [q, c, n] = X.notesOf(t, mill).slice(n0);
+  assert.equal(X.quoteOf(t, q).label, 'p. 22');
+  assert.equal(X.aboutOf(t, c), q);
+  assert.ok(!X.isQuote(t, n) && !X.aboutOf(t, n));
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: Markdown cites with Pandoc keys; Word is a .docx in Chicago author-date', () => {
+  const { t, s } = setUp();
+  const md = C.markdownOf(t, s.room, 'Sample');
+  assert.ok(md.startsWith('---\ntitle: "Sample"'));
+  assert.ok(md.includes('## On Liberty [@mill1859liberty]'));
+  assert.ok(md.includes('> "The only freedom which deserves the name, is that of pursuing our own good in our own way, so long as we do not attempt to deprive others of theirs." [@mill1859liberty, p. 27]'));
+  assert.ok(md.includes('The harm principle in one sentence.'));
+  assert.ok(md.includes('[@darwin1872origin, p. 429]'), 'each edition cites its own key and pages');
+  const bytes = WD.wordDoc(t, s.room, 'Sample');
+  assert.equal(String.fromCharCode(bytes[0], bytes[1]), 'PK', 'a zip');
+  const xml = WD.bodyOf(t, s.room, 'Sample').join('');
+  assert.ok(xml.includes('(Mill 1859, 27)'));
+  assert.ok(xml.includes('Darwin, Charles. 1872. '), 'References');
 });

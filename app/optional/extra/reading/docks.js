@@ -146,6 +146,10 @@ export function installDocks(t, o) {
     left.replaceChildren(
       el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource()), open ? btn('New edition', () => o.newEdition?.()) : null),
       findBox, tagRow, body,
+      el('details', { class: 'reading-io' }, el('summary', { class: 'label' }, 'In and out'),
+        el('div', { class: 'box-btns' }, btn('Import BibTeX…', () => o.bibIn?.()), btn('Import Zotero notes…', () => o.zoteroIn?.())),
+        el('div', { class: 'box-btns' }, btn('BibTeX', () => o.bibOut?.()), btn('Markdown', () => o.mdOut?.()), btn('Word', () => o.wordOut?.())),
+        el('p', { class: 'hint' }, 'Zotero: its metadata through Export → BibTeX; its annotations through Add Note from Annotations, then the note exported as Markdown, into the open source. Markdown cites with Pandoc keys; Word in Chicago author-date, with References.')),
       el('p', { class: 'hint reading-keys' }, 'Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
     drawTags();
     drawBody();
