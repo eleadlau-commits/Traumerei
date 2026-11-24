@@ -153,7 +153,12 @@ export default class Room extends Feature {
     this.on('world:maths', () => { if (this.roomId) this.drawWorld(); }); // KaTeX has loaded: formulas draw as mathematics
     this.on('world:modes', () => { if (this.roomId) { this.sel = null; this.drawRoom(); } }); // a mode came or went (a plugin)
     this.on('world:kinds', () => { this.drawKindKeys(live); if (this.roomId) this.drawWorld(); }); // a kind of item came or went (a plugin)
-    this.on('world:saved', () => { if (this.roomId) this.showSaved(); });
+    this.on('world:saved', () => {
+      if (!this.roomId) return;
+      this.showSaved();
+      // The open room's mode changed outside it (a plugin's marks.edit, since 1.1.4): drawn in it.
+      if (this.drawnMode && this.drawnMode !== this.mode) { this.sel = null; this.drawRoom(); }
+    });
     // A link of a plugin's kind made or taken away (the link hand, Links, Provoke): drawn now.
     this.on('world:moments', ({ rows, undone }) => {
       if (undone || !this.roomId) return; // an undo draws the room itself

@@ -129,14 +129,27 @@ export function kernel({ lib, world, events = null, gone = () => {}, floors = nu
     draft: (context) => lib.draft?.of(context) ?? null,
     make: ({ kind = 'line', content = '', in: context = null, at = {} } = {}) => {
       if (context == null && kind !== 'room') return refuse('A mark needs a context to be made in');
+      if (kind === 'room' && at?.mode != null && !rules().includes(String(at.mode))) return refuse('No such mode'); // a room made with its mode (since 1.1.4)
       const made = kind === 'room'
-        ? model.addRoom(w(), content, undefined, at)
+        ? model.addRoom(w(), content, undefined, at, at?.mode != null ? String(at.mode) : undefined)
         : model.create(w(), context, { title: at.title, x: at.x, y: at.y, ...(content && typeof content === 'object' ? content : { text: content }), kind }); // words, or a kind's own fields
       return land(!!made, made?.id, 'The context is locked, cannot hold this kind, or the mark would be empty');
     },
     edit: (id, fields = {}) => {
       if (!thing(id)) return refuse('No such mark');
       if (['kind', 'parent', 'members', 'id'].some((k) => k in fields)) return refuse('A mark\'s kind, context, members and id change only through places and links');
+      // A room's mode (since 1.1.4): one of the rules there are; a small room keeps the one it was
+      // made with, as on the rooms page (only a 2 × 2 room switches).
+      if (fields && 'mode' in fields) {
+        const th = thing(id), mode = String(fields.mode ?? '');
+        if (kindOf(th) !== 'room') return refuse('Only a room is seen through a mode');
+        if (!rules().includes(mode)) return refuse('No such mode');
+        if (!model.isBig(th) && model.view(w(), id).mode !== mode) return refuse('A small room keeps the mode it was made with: only a 2 × 2 room switches');
+        const { mode: _, ...rest } = fields;
+        if (Object.keys(rest).length && !model.update(w(), id, rest)) return refuse('The mark is locked');
+        model.view(w(), id).mode = mode;
+        return land(true, id);
+      }
       if (model.update(w(), id, fields)) return land(true, id);
       if (!thing(id)) { save(); return row({ ok: true, id, removed: true }); } // left empty, so it went (Law 2: by the maker's hand)
       return refuse('The mark is locked');

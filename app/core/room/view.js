@@ -178,6 +178,7 @@ export class RoomView {
 
   drawRoom() {
     const r = room(this.world, this.roomId);
+    this.drawnMode = this.mode; // (world:saved draws again when it changed outside the room)
     if (this.choiceHeard?.size) this.choiceSoon(); // the mode may have changed (an undo, a room opened): t.ui.chosen.on hears it
     this.paintRoom();
     const twin = twinOf(this.world, r.id); // a Twin's side: the Twin's name, then the side's
