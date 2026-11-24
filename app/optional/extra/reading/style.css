@@ -12,3 +12,8 @@
 .reading-src > span { margin: 0; padding: 0; }
 .reading-src-eds { grid-area: eds; white-space: nowrap; cursor: pointer; }
 .reading-src-edition { padding-left: var(--s-4, 16px); }
+.reading-find { width: 100%; font: inherit; }
+.reading-tags { display: flex; flex-wrap: wrap; gap: var(--s-1, 4px) var(--s-2, 8px); }
+.reading-tags[hidden] { display: none; }
+.reading-hit { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: var(--s-2, 8px) 0; width: 100%; line-height: 1.35; }
+.reading-body { display: flex; flex-direction: column; gap: var(--s-2, 8px); }

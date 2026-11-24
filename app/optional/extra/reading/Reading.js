@@ -13,7 +13,8 @@
 import { Feature, ui } from 'folio';
 import { RULE, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
   autoKey, uniqueKey, keysIn, libraryTraum, parseQuote, isQuote, aboutOf, streamOf, COLUMN } from './rules.js';
-import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf } from './notes.js';
+import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
+import { TAG, tagSpans } from './find.js';
 import { onModeChange, roomMode, viewGet, viewGo, stageBox } from './compat.js';
 import { installDocks } from './docks.js';
 
@@ -34,6 +35,7 @@ export function install(t) {
 
   // ---- The shape: a source is a group of its own family, its metadata the group's fields ----
   t.slots.groups.add({ id: SOURCE, name: 'Source', membership: 'one', order: 'kept', fields: [...FIELDS], tidy: tidySource });
+  t.slots.groups.add({ id: TAG, name: 'Tag', membership: 'many', order: 'time' });
 
   // The source open in each library (this session's: which one you are reading is not content).
   const opened = new Map();
@@ -59,7 +61,7 @@ export function install(t) {
   const laid = (reads, context) => { const L = layout(reads, context, measure); last.set(context, L); return L; };
   t.slots.rules.add({
     id: RULE, name: 'Library', note: 'a library of sources: each one\'s notes in a column, its details in the docks', icon: ICON, order: 32,
-    claims: [SOURCE],
+    claims: [SOURCE, TAG],
     arrange: (reads, context) => laid(reads, context).rows,
     draw: (reads, context) => (last.get(context) || laid(reads, context)).boxes,
     land: (reads, context, mark, x, y) => {
@@ -86,9 +88,13 @@ export function install(t) {
   const ownRow = (L, mark, x, y) => L.rows.some((r) => r.mark === mark && Math.abs(r.x - x) <= r.width / 2 && Math.abs(r.y - y) <= r.height / 2 + 14);
 
   // A note just kept with Enter: a quote, or a comment under the quote it was written after.
+  // And its #tags: in each tag it names. All one step.
   const kept = (mark, after) => {
     const m = t.marks.get(mark);
     if (!m || m.kind !== 'line') return null;
+    return t.together(() => { const r = shape(mark, after, m); syncTags(t, mark); return r; });
+  };
+  const shape = (mark, after, m) => {
     if (parseQuote(m.text)) return asQuote(t, mark);
     const src = sourceOf(t, mark);
     if (!after || !src || sourceOf(t, after) !== src) return null;
@@ -99,17 +105,19 @@ export function install(t) {
     return move(t, mark, { source: src, under: q, before });
   };
 
-  // A note edited to read as a quote ('"…" p. 113'): its page taken off its words into the link.
+  // A note edited to read as a quote ('"…" p. 113'): its page taken off its words into the link;
+  // edited to name other #tags: in those tags. Done just after, as one step.
   t.marks.on(({ rows, undone }) => {
     if (undone || (rows || []).some((r) => r.kind === 'undone' || r.kind === 'redone')) return;
     for (const r of rows || []) {
       if (r.kind !== 'edited' || !r.mark) continue;
       const m = t.marks.get(r.mark);
-      if (!m || m.kind !== 'line' || !sourceOf(t, r.mark)) continue;
+      if (!m || m.kind !== 'line') continue;
       const home = t.places.home(r.mark);
       if (!home || t.marks.get(home)?.mode !== RULE) continue;
-      const q = parseQuote(m.text);
-      if (q && (q.anchor || !isQuote(t, r.mark))) later(() => asQuote(t, r.mark));
+      const id = r.mark;
+      const q = sourceOf(t, id) ? parseQuote(m.text) : null;
+      later(() => t.together(() => { const a = q && (q.anchor || !isQuote(t, id)) ? asQuote(t, id) : null; syncTags(t, id); return a; }));
     }
   });
 
@@ -123,17 +131,38 @@ export function install(t) {
     if (!q && !quotes.has(`-${mark.id}`)) { q = isQuote(t, mark.id); quotes.add(q ? mark.id : `-${mark.id}`); }
     return q ? [{ from: 0, to: text.length, class: 'italic' }] : [];
   } });
+  // #tags read as tags (the room's quiet class), in the thought being written too.
+  t.slots.decorators.add({ id: 'reading.tags', decorate: (text) => (text && text.includes('#') && inLibrary() ? tagSpans(text).map((sp) => ({ ...sp, class: 'quiet' })) : []) });
 
   // ---- Opening a source: the docks follow, the view slides to its column, its last note chosen ----
-  const jump = (r, id) => {
-    const col = layout(t, r, measure).columns.find((c) => c.source === id);
-    if (!col) return false;
-    // The whole column in view: zoomed out when the canvas between the docks is narrower.
+  // The view slid to a point of the canvas (x the column's middle, y the point to put at `top` of
+  // the canvas, else in its middle), the whole column in view: zoomed out when the canvas between
+  // the docks is narrower.
+  const slide = (x, y, top = true) => {
     const box = stageBox();
     const now = viewGet(t)?.zoom || t.ui.zoom?.get?.()?.zoom || 1;
     const z = box?.width ? Math.min(now, box.width / (COLUMN.width + 48)) : now;
     const h = (box?.height || 800) / z;
-    return viewGo(t, { x: col.x, y: col.top - 80 + h / 2, zoom: z });
+    return viewGo(t, { x, y: top ? y - 80 + h / 2 : y, zoom: z });
+  };
+  const jump = (r, id) => {
+    const col = layout(t, r, measure).columns.find((c) => c.source === id);
+    return col ? slide(col.x, col.top) : false;
+  };
+  // A note gone to (a result of Find): its source opened, the view slid to it, it chosen.
+  const goTo = (id) => {
+    const r = t.places.home(id);
+    const src = sourceOf(t, id);
+    if (!r || !t.marks.get(id)) return false;
+    if (here() !== r) { t.ui.open?.mark?.(id); return true; }
+    if (src) opened.set(r, src);
+    const L = layout(t, r, measure);
+    const row = L.rows.find((x) => x.mark === id);
+    const col = L.columns.find((c) => c.notes.includes(id));
+    if (row && col) slide(col.x, row.y, false);
+    t.ui.choose?.([id]);
+    docks.draw(); docks.lit();
+    return true;
   };
   // draw: false when a dock field is being written (its own dock keeps the caret).
   const open = (id, { go = true, draw = true } = {}) => {
@@ -181,7 +210,7 @@ export function install(t) {
     return out.id;
   };
 
-  const docks = installDocks(t, { room: here, inLibrary, openOf, open, newSource, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
+  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).
   let visit = null;
@@ -217,6 +246,7 @@ export function install(t) {
     return out?.id || null;
   };
   cmd({ id: 'reading.new-edition', keys: ['Alt+Shift+E'], zone: 'room', words: 'a new edition of the open source', when: inLibrary, run: () => edition() });
+  cmd({ id: 'reading.find', keys: ['Alt+F'], zone: 'room', words: 'find in this library\'s notes: words, #tag', when: inLibrary, run: () => docks.focusFind() });
   cmd({ id: 'reading.new-library', zone: 'everywhere', words: 'a new library: a room seen as Library', run: () => newLibrary() });
   t.slots.menu.add({ id: 'reading.library', label: 'New library', icon: 'book', order: 64, onClick: () => newLibrary() });
 
@@ -240,7 +270,7 @@ export function install(t) {
     }
   });
 
-  return { open, openOf, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept };
+  return { open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept };
 }
 
 export default class Reading extends Feature {

@@ -5,6 +5,9 @@
 // each stage is written from it (node app/optional/extra/reading/tests/write-sample.mjs).
 // lib: the world's lib (world/lib.js).
 
+import { tagsIn } from '../find.js';
+import { FIELDS, tidySource } from '../rules.js';
+
 export const LIBRARY = 'Reading notes: a sample library';
 
 // A note is its words; { q, p } a quote and its printed page ('' for none); { c } a comment under
@@ -12,26 +15,26 @@ export const LIBRARY = 'Reading notes: a sample library';
 export const SOURCES = [
   { title: 'On the Origin of Species by Means of Natural Selection', type: 'book', citekey: 'darwin1859origin', authors: ['Darwin, Charles'], year: '1859', edition: '1st', publisher: 'John Murray', notes: [
     { q: '"There is grandeur in this view of life, with its several powers, having been originally breathed into a few forms or into one."', p: 'p. 490' },
-    { c: 'The closing paragraph answers the book\'s critics in advance: wonder survives the mechanism.' },
+    { c: 'The closing paragraph answers the book\'s critics in advance: wonder survives the mechanism. #wonder' },
     { c: 'Compare the "tangled bank" image with Thoreau\'s pond: both make one place stand for the whole.' },
     'Read the 6th edition\'s ending beside this one.',
   ] },
   { title: 'On the Origin of Species by Means of Natural Selection', type: 'book', citekey: 'darwin1872origin', authors: ['Darwin, Charles'], year: '1872', edition: '6th', publisher: 'John Murray', editionOf: 'darwin1859origin', notes: [
     { q: '"There is grandeur in this view of life, with its several powers, having been originally breathed by the Creator into a few forms or into one."', p: 'p. 429' },
-    { c: 'From the second edition on, "by the Creator" is added.' },
+    { c: 'From the second edition on, "by the Creator" is added. #wonder' },
   ] },
   { title: 'On Liberty', type: 'book', citekey: 'mill1859liberty', authors: ['Mill, John Stuart'], year: '1859', publisher: 'John W. Parker and Son', notes: [
     { q: '"The only freedom which deserves the name, is that of pursuing our own good in our own way, so long as we do not attempt to deprive others of theirs."', p: 'p. 27' },
-    { c: 'The harm principle in one sentence. Where does Mill put speech that only offends?' },
+    { c: 'The harm principle in one sentence. Where does Mill put speech that only offends? #liberty #harm' },
   ] },
   { title: 'Walden; or, Life in the Woods', type: 'book', citekey: 'thoreau1854walden', authors: ['Thoreau, Henry David'], year: '1854', publisher: 'Ticknor and Fields', notes: [
     { q: '"I went to the woods because I wished to live deliberately, to front only the essential facts of life."', p: 'p. 98' },
-    'The ledger of costs in "Economy" is the book\'s method in small: count everything, then ask what it was for.',
+    'The ledger of costs in "Economy" is the book\'s method in small: count everything, then ask what it was for. #method',
   ] },
   { title: 'A Vindication of the Rights of Woman', type: 'book', citekey: 'wollstonecraft1792vindication', authors: ['Wollstonecraft, Mary'], year: '1792', publisher: 'J. Johnson', notes: [
     { q: '"I do not wish them to have power over men; but over themselves."', p: '' },
     { c: 'Page to check against the first edition.' },
-    'Education as the hinge of the whole argument: read with Mill on liberty of thought.',
+    'Education as the hinge of the whole argument: read with Mill on liberty of thought. #education #liberty',
   ] },
 ];
 
@@ -39,6 +42,9 @@ export const SOURCES = [
 export function sampleWorld(lib, now = 1_795_400_000_000) {
   let clock = now;
   const tick = () => (clock += 1000);
+  // The plugin's families as it declares them (slots.groups): a source holds a note alone, a tag
+  // shares it.
+  lib.model.declareFamilies([{ id: 'reading-source', name: 'Source', membership: 'one', order: 'kept', fields: [...FIELDS], tidy: tidySource }, { id: 'reading-tag', name: 'Tag', membership: 'many', order: 'time' }]);
   const w = lib.model.emptyWorld(tick());
   return { w, ...sampleInto(lib, w, tick) };
 }
@@ -49,7 +55,11 @@ export function sampleInto(lib, w, tick) {
   const { model, links: L } = lib;
   const room = model.addRoom(w, LIBRARY, tick(), {}, 'reading-library');
   const sources = [], notes = [], quotes = [], comments = [];
-  const byKey = new Map();
+  const byKey = new Map(), tags = new Map();
+  const tagOf = (word) => {
+    if (!tags.has(word)) tags.set(word, model.create(w, room.id, { kind: 'group', of: 'reading-tag', family: true, x: 0, y: 0, title: word }, tick()).id);
+    return tags.get(word);
+  };
   const link = (from, to, kind, label) => L.set(w, L.kindId(kind, from, to), { from, to, kind, ...(label ? { label } : {}) });
   for (const s of SOURCES) {
     const { notes: words, editionOf, ...fields } = s;
@@ -63,10 +73,11 @@ export function sampleInto(lib, w, tick) {
       const th = model.create(w, room.id, { kind: 'line', text }, tick());
       model.join(w, g.id, th.id);
       notes.push(th.id);
+      for (const word of tagsIn(text)) model.join(w, tagOf(word), th.id);
       if (n.q) { link(th.id, g.id, 'reading quote', n.p); quote = th.id; quotes.push(th.id); }
       else if (n.c && quote) { link(th.id, quote, 'reading comment'); comments.push(th.id); }
       else quote = null;
     }
   }
-  return { room: room.id, sources, notes, quotes, comments };
+  return { room: room.id, sources, notes, quotes, comments, tags: Object.fromEntries(tags) };
 }
