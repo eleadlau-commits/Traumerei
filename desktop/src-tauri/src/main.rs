@@ -11,6 +11,7 @@ use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+mod handles;
 mod sidecar;
 mod store;
 
@@ -34,8 +35,11 @@ fn main() {
         .manage(sidecar::Sidecars::default())
         .invoke_handler(tauri::generate_handler![save_file, take_opened, open_link, sign_in_port, sign_in_wait,
             store_write, store_read, store_list, store_delete, store_clear,
-            sidecar_start, sidecar_stop, sidecar_running])
+            sidecar_start, sidecar_stop, sidecar_running,
+            pick_file, read_picked, show_file, hash_file])
         .setup(|app| {
+            let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            app.manage(handles::Handed::new(data.join("handed-paths.txt")));
             if let Some(window) = app.get_webview_window("main") {
                 quiet_webview(&window);
             }
@@ -87,6 +91,54 @@ async fn save_file(app: tauri::AppHandle, name: String, bytes: Vec<u8>) -> Resul
     let path = path.into_path().map_err(|e| e.to_string())?;
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(true)
+}
+
+/// The page's t.ui.files.open in the desktop app (app/core/api/files.js): Windows' Open dialog,
+/// filtered by the input's accept ('.pdf,.traum'), and the file picked remembered (handles.rs), so
+/// it can be shown, read or hashed later. (path, name, bytes) or None when cancelled; the bytes
+/// are read with read_picked.
+#[tauri::command]
+async fn pick_file(app: tauri::AppHandle, accept: String) -> Result<Option<(String, String, u64)>, String> {
+    let mut dialog = app.dialog().file();
+    let exts = handles::extensions(&accept);
+    if !exts.is_empty() {
+        let names: Vec<&str> = exts.iter().map(String::as_str).collect();
+        dialog = dialog.add_filter(exts.join(", ").to_uppercase(), &names);
+    }
+    let Some(path) = dialog.blocking_pick_file() else { return Ok(None) };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let said = app.state::<handles::Handed>().remember(&path).ok_or("not a file")?;
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    Ok(Some((said, name, bytes)))
+}
+
+/// A picked file's bytes, as a raw answer (an ArrayBuffer on the page). Only a file picked here.
+#[tauri::command]
+fn read_picked(app: tauri::AppHandle, path: String) -> Result<tauri::ipc::Response, String> {
+    let p = app.state::<handles::Handed>().check(&path)?;
+    std::fs::read(p).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+}
+
+/// t.ui.files.show: a picked file opened in its own app, or (reveal, or a program) shown in its
+/// folder in Explorer. Answers "opened" or "revealed".
+#[tauri::command]
+fn show_file(app: tauri::AppHandle, path: String, reveal: bool) -> Result<String, String> {
+    let p = app.state::<handles::Handed>().check(&path)?;
+    if reveal || handles::runs(&p) {
+        app.opener().reveal_item_in_dir(&p).map_err(|e| e.to_string())?;
+        return Ok("revealed".into());
+    }
+    app.opener().open_path(p.to_string_lossy().into_owned(), None::<&str>).map_err(|e| e.to_string())?;
+    Ok("opened".into())
+}
+
+/// t.ui.files.hash: ("sha256:<hex>", bytes) of a picked file, never its contents.
+#[tauri::command]
+async fn hash_file(app: tauri::AppHandle, path: String) -> Result<(String, u64), String> {
+    let p = app.state::<handles::Handed>().check(&path)?;
+    let bytes = std::fs::metadata(&p).map_err(|e| e.to_string())?.len();
+    Ok((sidecar::checksum(&p)?, bytes))
 }
 
 /// The page's t.ui.link: an https address, in the person's default browser.

@@ -39,6 +39,11 @@ export async function roundTrip(urlFor) {
   } catch { return null; }
 }
 
+// A picked file's type, from its name, for the File the page gets (the shell hands bytes only).
+const TYPES = { pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', traum: 'text/plain', bib: 'text/plain', json: 'application/json',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', epub: 'application/epub+zip' };
+const typeFor = (name) => TYPES[String(name).split('.').pop().toLowerCase()] || '';
+
 // download(name, content, type): the browser's download; picker(accept): Folio's ui.filePicker.
 export function files({ download, picker }) {
   const pickers = new Map();
@@ -54,12 +59,46 @@ export function files({ download, picker }) {
       for (const fn of [...hearing]) fn(file);
     }
   };
+  const input = (accept) => {
+    if (typeof document === 'undefined') return Promise.resolve(null);
+    if (!pickers.has(accept)) pickers.set(accept, picker(accept));
+    return pickers.get(accept).pick();
+  };
   return Object.freeze({
-    // Resolves with the chosen File (name, text()), or null when none is chosen.
-    open(accept = '') {
-      if (typeof document === 'undefined') return Promise.resolve(null);
-      if (!pickers.has(accept)) pickers.set(accept, picker(accept));
-      return pickers.get(accept).pick();
+    // Resolves with the chosen File (name, text()), or null when none is chosen. In the desktop
+    // app (since 1.1.4) Windows' Open dialog comes from the shell (pick_file), which remembers the
+    // file, and the File also carries `path`, for show() and hash() later.
+    async open(accept = '') {
+      const s = shell();
+      if (!s) return input(accept);
+      let got;
+      try { got = await s.invoke('pick_file', { accept: String(accept) }); } catch { return input(accept); } // an older shell: the webview's own dialog
+      if (!got) return null;
+      const [path, name] = got;
+      try {
+        const bytes = await s.invoke('read_picked', { path });
+        const file = new File([bytes instanceof ArrayBuffer ? bytes : new Uint8Array(bytes)], name, { type: typeFor(name) });
+        Object.defineProperty(file, 'path', { value: path, enumerable: true });
+        return file;
+      } catch { return null; }
+    },
+    // Since 1.1.4, the desktop app only, and only for a path open() handed out here (on this
+    // computer, in any session): opens the file in its own app ({ page } is passed on where a
+    // viewer could take it; today none is, so `page` comes back false), or with { reveal: true }
+    // (and always for a program) shows it in its folder in Explorer. → { ok, how: 'opened' |
+    // 'revealed', page: false } or { ok: false, reason }.
+    async show(path, { page = null, reveal = false } = {}) {
+      const s = shell();
+      if (!s) return { ok: false, reason: 'Files on this computer open only in the desktop app' };
+      try { const how = await s.invoke('show_file', { path: String(path), reveal: !!reveal }); return { ok: true, how, page: false }; }
+      catch (err) { return { ok: false, reason: String(err?.message || err) }; }
+    },
+    // Since 1.1.4, the same paths only: { sha256: 'sha256:<hex>', bytes }, never the contents;
+    // null in a browser or for a path refused.
+    async hash(path) {
+      const s = shell();
+      if (!s) return null;
+      try { const [sha256, bytes] = await s.invoke('hash_file', { path: String(path) }); return { sha256, bytes }; } catch { return null; }
     },
     // Hands the person a file: content words or a Blob (a zip, a picture). Resolves true once it
     // is saved (a browser download always is), false when the person cancels or it can't be written.

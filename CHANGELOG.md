@@ -24,6 +24,9 @@ The core gaps Book and Reading notes found (`app/core/core-gaps.md`), additive t
 - `ui.zoom.get()` gives the view's centre `x`, `y`; `ui.zoom.go({ x, y, zoom }, { ms })` moves
   the view there eased (gap 2).
 - `ui.docks.left/right` gain `hide()`, `show()` with no key, and `shown` (gap 6).
+- Desktop file handles: in the desktop app `ui.files.open` gives the picked `File` a `path`, and
+  `ui.files.show(path, { reveal? })` and `ui.files.hash(path)` reach that file again, only a file
+  picked in the app (gap 3).
 - A simple rule with `hand: false` (or `clear: false`) is left alone by the room's clear-space,
   so its close rows are never pushed and pushed back (gap 5).
 - `t.rules.layout` of a rule that reads `marks.draft` follows the thought being written (gap 7).
