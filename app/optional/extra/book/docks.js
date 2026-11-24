@@ -12,7 +12,7 @@ import { holderOf, moveInto } from './editing.js';
 import { BLOCKS, ACROSS, acrossOf, setAcross, frameChosen } from './blocks.js';
 import { chapterOf, rename, setNumbered, unnumberedAbove } from './nest.js';
 import { zoneOf, landing, dropTo } from './treedrop.js';
-import { otherSide, twinOf, fitZoom, stageBox, leftShown } from './side.js';
+import { otherSide, twinOf, fitZoom, stageBox } from './side.js';
 
 const { el } = ui;
 const LEFT = 'book.contents', RIGHT = 'book.hand';
@@ -241,12 +241,12 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
   const inBookRoom = () => !!bookRoom(); // (Book · blocks keeps them)
   // The left dock as Book found it: when it was hidden (only the room's Loose strip at its edge),
   // it is hidden again once the contents close, so the Loose tray never stays open in its place.
-  // (A plugin's dock has no hide: the docks' own command, Ctrl+Alt+L, hides it; core-gaps.md.)
+  const leftShown = () => !!docks()?.left?.shown;
   let leftWas = true;
   const tuckLeft = () => {
     if (leftWas || !leftShown() || docks()?.left?.isOpen(LEFT)) return;
     leftWas = true;
-    try { t.slots.commands.run('docks.left'); } catch { /* no docks' keys: it stays */ }
+    docks().left.hide();
   };
   const closeAll = () => {
     const d = docks();
@@ -321,11 +321,8 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     const z = fitZoom(room$, needOf(r), t.ui.zoom?.get()?.zoom || 1);
     if (z) t.ui.zoom.set(z);
   };
-  // A Twin's side seen as Book, the first time you work there since the Twin opened: the view
-  // placed again on its own half (the room opens a Twin measuring the whole canvas, so its first
-  // look sat half a side to the right, under the divider, until a click on the other side put it
-  // back; core-gaps.md), and the column zoomed out to fit the half. A zoom set to what it is
-  // places the view again where it is, and moves nothing else. Later switches leave the view be.
+  // A Twin's side seen as Book, the first time you work there since the Twin opened: the column
+  // zoomed out to fit the half. Later switches leave the view be.
   const boardWidth = (r) => {
     let lo = Infinity, hi = -Infinity;
     try { for (const b of t.rules.draws(BLOCKS, r).boxes || []) { lo = Math.min(lo, b.x); hi = Math.max(hi, b.x + b.w); } } catch { return 0; }
@@ -340,7 +337,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     // (Book · blocks: the board, as wide as its outlines are drawn, zoomed out as far as the zoom goes)
     const board = t.marks.get(r)?.mode === BLOCKS;
     const z = s ? (board ? fitZoom(s.width, boardWidth(r), now, 0.25) : fitZoom(s.width, needOf(r), now)) : null;
-    t.ui.zoom.set(z || now);
+    if (z) t.ui.zoom.set(z);
   };
   const onRoom = (r) => {
     const tw = twinOf(t, r);
@@ -370,12 +367,7 @@ export function installDocks(t, { exportMarkdown, exportWord, print, layout, bri
     if (!r || modeWas === was || !was || !was.startsWith(`${r}|`) || !isBookMode(r) || left) return;
     if (leftShown()) setTimeout(() => { if (!left && isBookMode(room())) openAll(false); }, 0);
   };
-  t.marks.on(modeCheck);
-  // A change of mode has no event: the room's canvas says its mode (data-mode), so it is watched
-  // there (core-gaps.md: no mode event for plugins).
-  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
-    new MutationObserver(() => modeCheck()).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-mode'] });
-  }
+  t.ui.chosen.on(modeCheck); // (heard on each change of the open room's mode too)
   let roomWas = null;
   t.ui.zoom?.on?.((e) => {
     if (e?.context !== roomWas) { roomWas = e?.context ?? null; modeWas = roomWas ? `${roomWas}|${t.marks.get(roomWas)?.mode}` : null; try { onRoom(roomWas); } catch { /* no places: left be */ } }

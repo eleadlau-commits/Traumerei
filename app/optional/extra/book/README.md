@@ -10,8 +10,9 @@ is being written, the lines below move down to make room for it (`reads.marks.dr
 page too.
 
 A plugin, shipped as `book.traumplug` (never built into the app). It reaches the app only
-through the plugin API (`app/core/API.md`), and needs app 1.1.2 (the `join` proposal, `ui.text.edit`, quiet link kinds,
-and room settings that redraw).
+through the plugin API (`app/core/API.md`), and needs app 1.1.4 (the `join` proposal, `ui.text.edit`, quiet link kinds,
+room settings that redraw; since Book 0.5.0 the mode on `ui.chosen`, `ui.zoom.go`, the docks'
+`hide`, and a room's clear-space leaving a rule that places its own marks alone).
 
 ## The shape (all in the tables, Law 8)
 
@@ -79,8 +80,7 @@ and room settings that redraw).
   On a **Twin** with a side seen as Book (`side.js`), the docks stay while you work on the other
   half, still about the book (nothing of the other side is in hand; thoughts from there can't yet
   be dropped on a chapter), so switching sides never moves the canvas. The first time the Book
-  side is live it is placed on its own half and zoomed out, if it must be, to fit it, margin
-  numbers and all (core opens a Twin measuring the whole canvas: core-gaps.md 15):
+  side is live it is zoomed out, if it must be, to fit its half, margin numbers and all:
   - left, **Contents**: chapters and sections numbered as they nest, their pages, words and
     open gaps for each; the chapter you are in is lit; a click goes to its heading. **Drag a
     line** onto another (`treedrop.js`, one step, Ctrl+Z takes it back): its top third puts it
@@ -209,18 +209,14 @@ chapter block's, or the chosen paragraph's own chapter). Each is one step, one C
 
 A room of 1,500 thoughts seen as Book opens in about 0.3 s and keeps a thought in under 0.1 s
 (budgets 0.8 s and 0.35 s); CI times the sample padded with 1,500 thoughts not yet in the book and
-a book of 1,550 paragraphs (`tests/big.js`). What it rests on (0.4.7): every thought is a block to
-the room's clear-space, which keeps 18 units between blocks, so nothing the Book lays out sits
-closer than `CLEAR` (20 units) under another thought (`column.js` `air`: under a paragraph, a
-heading, a stray, a margin note, a block's note); closer, the room pushed them apart after every
-redraw, through the rule's drop, which refused, so the push came back each time, and each drop laid
-the whole book out again. And a drop inside a mark's own row (the clear-space's nudge) is refused
-from the layout last drawn, without a new one (`flowdrop.js` `inOwnRow`, `blocks.js` the same with
-its cells). `app/core/api/tests/book-clear.test.js` holds both.
+a book of 1,550 paragraphs (`tests/big.js`). Book and Book · blocks place every mark themselves
+(`hand: false`), so the room's clear-space leaves them alone (app 1.1.4) and paragraphs sit as close
+as the type asks (`app/core/api/tests/book-clear.test.js`). Book 0.4.7 kept every row 20
+units under the one above instead, to stay out of its way.
 
 ## What it needs
 
-- **Plugin API:** 3 · **oldest app:** 1.1.2
+- **Plugin API:** 3 · **oldest app:** 1.1.4
 
 ## What it saves
 

@@ -1,7 +1,7 @@
 // Book (app/optional/book): the thought being written after a chosen paragraph has room made for
 // it (reads.marks.draft): what follows moves down by the draft's height, on pages too, and with no
-// draft nothing moves. And going to a page is one move: the zoom maths of zoom.js (setsFor,
-// between, ease), checked against what t.ui.zoom.set does to the view.
+// draft nothing moves. And going to a page is one move: the mark chosen and one eased
+// t.ui.zoom.go (since app 1.1.4).
 
 import { test, assert } from 'folio/testing';
 import { makeHost } from './host.js';
@@ -114,48 +114,34 @@ test('book draft: a 1,500-paragraph book with a draft still lays out in under 50
   } finally { host.lib.draft.setSource(null); }
 });
 
-// What t.ui.zoom.set(z, at) does to the view (room/view.js setZoom): the middle becomes
-// at + (V − at)·z0/z.
-const run = (v, steps) => steps.reduce((a, st) => ({ x: st.at.x + (a.x - st.at.x) * a.zoom / st.zoom, y: st.at.y + (a.y - st.at.y) * a.zoom / st.zoom, zoom: st.zoom }), v);
-const near = (a, b, e = 1e-6) => Math.abs(a.x - b.x) < e && Math.abs(a.y - b.y) < e && Math.abs(a.zoom - b.zoom) < 1e-9;
-
-test('book draft: going to a page is one move: each frame one zoom.set (two when the zoom stays), landing exactly', () => {
-  const cases = [
-    [{ x: 120, y: 900, zoom: 0.3 }, { x: 0, y: 2000, zoom: 0.8 }], // far off to a page: slide and zoom in
-    [{ x: 0, y: 0, zoom: 1 }, { x: 50, y: -400, zoom: 1 }],        // the same zoom: a slide
-    [{ x: 10, y: 10, zoom: 2 }, { x: -40, y: 70, zoom: 4 }],
-    [{ x: 0, y: 0, zoom: 4 }, { x: 300, y: 300, zoom: 4 }],        // at the zoom's limit
-    [{ x: 0, y: 0, zoom: 0.4999 }, { x: 9, y: 9, zoom: 0.4999 }],  // by a band's edge
-  ];
-  for (const [a, b] of cases) {
-    // At once (less motion asked for).
-    assert.ok(near(run(a, Z.setsFor(a, b)), b), `at once to ${b.x},${b.y}`);
-    // Frame by frame: each frame lands on the eased way between, the zoom on a log scale.
-    let v = a, frames = 0, maxStep = 0;
-    for (let f = 1; f <= 24; f++) {
-      const want = Z.between(a, b, Z.ease(f / 24));
-      const steps = Z.setsFor(v, want);
-      assert.ok(steps.length <= 2);
-      for (const st of steps) if (st.zoom !== want.zoom) assert.equal(Z.setsFor({ x: 0, y: 0, zoom: want.zoom }, { x: 1, y: 0, zoom: want.zoom })[0].zoom, st.zoom, 'a hair\'s zoom, within its band');
-      const next = run(v, steps);
-      assert.ok(near(next, want, 1e-5), `frame ${f}`);
-      maxStep = Math.max(maxStep, Math.hypot(next.x - v.x, next.y - v.y));
-      v = next; frames++;
-    }
-    assert.ok(near(v, b, 1e-5), 'ends where it was going');
-    const all = Math.hypot(b.x - a.x, b.y - a.y);
-    assert.ok(maxStep <= all * 0.12 + 1e-9, 'no frame jumps: the move is spread over the frames');
-  }
-  // The hair's zoom never leaves its band nor the zoom's limits.
-  for (const z of [0.25, 0.4999, 0.5, 1.7499, 1.75, 4]) {
-    const st = Z.setsFor({ x: 0, y: 0, zoom: z }, { x: 5, y: 5, zoom: z });
-    assert.equal(st.length, 2);
-    const band = (q) => (q < 0.5 ? 0 : q < 1.75 ? 1 : 2);
-    assert.equal(band(st[0].zoom), band(z));
-    assert.ok(st[0].zoom <= 4 && st[0].zoom >= 0.25);
-  }
-  assert.deepEqual(Z.setsFor({ x: 1, y: 2, zoom: 1 }, { x: 1, y: 2, zoom: 1 }), [], 'there already: nothing');
-  assert.equal(Z.ease(0), 0); assert.equal(Z.ease(1), 1); assert.equal(Z.ease(0.5), 0.5);
-  const ms = Z.moveMs({ x: 0, y: 0, zoom: 0.3 }, { x: 0, y: 3000, zoom: 0.8 });
-  assert.ok(ms >= 260 && ms <= 520);
+test('book draft: going to a page is one move: the mark chosen, then one eased t.ui.zoom.go to the page', () => {
+  const lay = { origin: -300, pitch: 1066, page: { w: 714, h: 1010 }, pages: 3, rows: [], pageOf: new Map([['p', 2]]) };
+  const calls = [], chosen = [];
+  let view = { x: 120, y: 900, zoom: 0.3, band: 'far' };
+  const t = {
+    ui: {
+      chosen: () => ({ context: 'r', mark: chosen.at(-1) ?? null }),
+      choose: (ids) => { chosen.push(...ids); return { ok: true }; },
+      open: { mark: () => { calls.push('open'); return true; } },
+      zoom: { get: () => view, go: (to, o) => { calls.push({ to, ms: o.ms }); view = { ...view, ...to }; return { ok: true, ...to }; }, set: () => ({ ok: true }) },
+      toast: () => {},
+    },
+    marks: { get: (id) => (id === 'r' ? { mode: C.RULE } : null) },
+    places: { home: (id) => (id === 'p' ? 'r' : null) },
+    slots: { commands: { add: () => {} } },
+  };
+  const z = Z.installZoom(t, { layout: () => lay });
+  assert.ok(z.toPage('r', 'p', 2, 0.8));
+  assert.deepEqual(chosen, ['p'], 'the mark chosen, the room not opened again');
+  assert.equal(calls.length, 1, 'one move');
+  const { to, ms } = calls[0];
+  assert.equal(to.zoom, 0.8);
+  const top = P.pageTop(lay, 2);
+  assert.ok(to.x === 0 && to.y >= top && to.y <= top + lay.page.h, `to page 2 (${Math.round(to.y)}, its top at ${top})`);
+  assert.ok(ms >= 260 && ms <= 520, 'longer the further it goes, within 260 to 520 ms');
+  // A mark the room does not place: opened, then the view to its page.
+  calls.length = 0;
+  assert.ok(z.toPage('r', 'elsewhere', 2));
+  assert.equal(calls[0], 'open');
+  z.stop();
 });
