@@ -70,8 +70,9 @@ as a file: `tools/corpus.py` lists it among those shipped apart on its own.
 **With no repo** (a chat), if you can run code: `node scripts/run_tests.mjs <id>/` runs its
 tests (with a stand-in for `folio`, so test plain functions), then `python scripts/traumplug.py
 <id>/ --out .` makes the same import checks the app makes and writes `<id>.traumplug`. The packer
-puts every file in one scope, so no top-level name may be declared in two files; it takes one
-main file plus files imported by `./name.js` (no `* as`, no `export { … }` lists, no packages).
+keeps each file in its own scope, as a module (the same top-level name may be declared in two
+files); it takes one main file plus files imported by `./name.js` (no `* as`, no `export { … }`
+lists, no destructured exports, no packages).
 If you cannot run code, write the package by hand in the format in `reference/no-repo.md`. Go
 through the self-check list there. Hand over the folder and the `.traumplug`, and tell the person
 the full check is `python build.py check <file>.traumplug` in the repo.

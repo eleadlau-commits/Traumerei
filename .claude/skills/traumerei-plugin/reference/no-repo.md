@@ -49,7 +49,7 @@ factory `App`, `Feature`, `ui`, `time` and `VERSION`, nothing else.
 - [ ] Command ids are `<id>.<name>`; keys don't clash with the app's (Ctrl+K, Ctrl+G, Ctrl+F, Ctrl+L, Ctrl+M, Ctrl+R, Ctrl+D, Ctrl+Alt+D/G/R/T/V/B).
 - [ ] Look from Folio's classes (`hint`, `small`, `word`); CSS only for layout.
 - [ ] Tests pass: `node scripts/run_tests.mjs <id>/`.
-- [ ] No top-level name is declared in two files (the packer joins them into one scope).
+- [ ] By hand, one scope holds it all, so no top-level name is declared twice (or keep each file in its own `const f = (() => { …; return { a, b }; })();` as `scripts/traumplug.py` does).
 - [ ] Parses: `node --check <file>` if node is at hand (rename to `.mjs` first).
 
 The full check (laws, switching off and on, round-trip, budgets) runs in the repo:

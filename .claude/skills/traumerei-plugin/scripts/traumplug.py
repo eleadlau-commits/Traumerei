@@ -13,6 +13,9 @@ the id, name, version, the plugin block (api, minApp, kind and needs from the on
 requires only "api", imports nothing bare but 'folio', and asks for no service but 'traumerei'.
 If `node` is installed, it also checks the package parses.
 
+Each file keeps its own scope, as a module does: it runs once, in dependency order, inside its own
+function that hands back what it exports, so two files may declare the same top-level name.
+
 The package (format traumplug/1) is one JavaScript module:
     export const manifest = {...}; export const css = "..."; export default (__folio__) => { ...; return Class; };
 """
@@ -67,11 +70,16 @@ def check_manifest(m: dict, pid: str) -> None:
             raise Problem(f'"requires" has "{r}"; an imported plugin may require only "api".')
 
 
+EXPORTED = re.compile(r'^\s*export\s+(?:default\s+)?(?:const|let|var|function\*?|async\s+function\*?|class)\s+([A-Za-z_$][\w$]*)', re.M)
+
+
 def strip_exports(code: str) -> str:
-    code = re.sub(r'^(\s*)export\s+default\s+(class|function|async\s+function)\b', r'\1\2', code, flags=re.M)
-    code = re.sub(r'^(\s*)export\s+(const|let|var|function|async\s+function|class)\b', r'\1\2', code, flags=re.M)
     if re.search(r'^\s*export\s*\{', code, re.M):
         raise Problem('Write `export const/function` in place, not `export { … }` lists.')
+    if re.search(r'^\s*export\s+(const|let|var)\s*[\[{]', code, re.M):
+        raise Problem('Export each name on its own (`export const a = …`), not a destructuring.')
+    code = re.sub(r'^(\s*)export\s+default\s+(class|function|async\s+function)\b', r'\1\2', code, flags=re.M)
+    code = re.sub(r'^(\s*)export\s+(const|let|var|function|async\s+function|class)\b', r'\1\2', code, flags=re.M)
     return code
 
 
@@ -83,15 +91,17 @@ def default_name(code: str) -> str:
 
 
 def bundle(folder: Path, main: str) -> str:
-    """The plugin's code, its relative imports inlined once each (dependencies first)."""
-    done: list[Path] = []
+    """The plugin's code, each file in its own scope (as a module is), dependencies first. A file is
+    a function run once, handing back what it exports; a file importing from it takes those names
+    from it. So the same top-level name may be declared in two files, as in the repo's packer."""
+    done: dict[Path, str] = {}   # file → the name its exports are kept under
     pieces: list[str] = []
     folio_names: set[str] = set()
 
-    def visit(path: Path, stack: tuple):
+    def visit(path: Path, stack: tuple) -> str:
         path = path.resolve()
         if path in done:
-            return
+            return done[path]
         if path in stack:
             raise Problem(f'{path.name} imports itself through a loop.')
         if not path.is_file():
@@ -99,17 +109,19 @@ def bundle(folder: Path, main: str) -> str:
         code = path.read_text('utf-8')
         if BARE_IMPORT.search(code):
             raise Problem(f'{path.name}: side-effect imports are not allowed.')
-        aliases = []
+        takes = []
         for m in IMPORT.finditer(code):
             what, src = m.group('what').strip(), m.group('src')
             if src == 'folio':
                 inner = re.fullmatch(r'\{([^}]*)\}', what)
                 if not inner:
                     raise Problem(f"{path.name}: import from 'folio' as `import {{ Feature, ui }} from 'folio'`.")
-                for name in [n.strip() for n in inner.group(1).split(',') if n.strip()]:
+                names = [n.strip() for n in inner.group(1).split(',') if n.strip()]
+                for name in names:
                     if name.split(' as ')[0].strip() not in FOLIO:
                         raise Problem(f"{path.name}: 'folio' offers only {', '.join(FOLIO)}.")
-                    folio_names.add(name)
+                    folio_names.add(name.split(' as ')[0].strip())
+                takes.append('const { ' + ', '.join(n.replace(' as ', ': ') for n in names) + ' } = __folio__;')
             elif src.startswith('./') or src.startswith('../'):
                 if not src.endswith('.js'):
                     raise Problem(f'{path.name}: write the file name in full, "{src}.js".')
@@ -118,20 +130,27 @@ def bundle(folder: Path, main: str) -> str:
                 inner = re.fullmatch(r'\{([^}]*)\}', what)
                 if not inner:
                     raise Problem(f'{path.name}: import names (`import {{ a, b }} from "{src}"`), not a default.')
-                for name in [n.strip() for n in inner.group(1).split(',') if n.strip()]:
-                    if ' as ' in name:
-                        a, b = [x.strip() for x in name.split(' as ')]
-                        aliases.append(f'const {b} = {a};')
-                visit(path.parent / src, stack + (path,))
+                names = [n.strip() for n in inner.group(1).split(',') if n.strip()]
+                held = visit(path.parent / src, stack + (path,))
+                gives = done_exports[held]
+                for name in names:
+                    if name.split(' as ')[0].strip() not in gives:
+                        raise Problem(f'{path.name}: "{src}" exports no "{name.split(" as ")[0].strip()}".')
+                takes.append('const { ' + ', '.join(n.replace(' as ', ': ') for n in names) + f' }} = {held};')
             else:
                 raise Problem(f'{path.name}: "{src}" is a bare import; a plugin brings no packages (only \'folio\').')
-        body = IMPORT.sub('', code)
-        pieces.append(f'// ---- {path.name}\n' + '\n'.join(aliases) + '\n' + strip_exports(body))
-        done.append(path)
+        body = strip_exports(IMPORT.sub('', code))
+        exports = list(dict.fromkeys(EXPORTED.findall(code)))
+        held = f'__file{len(pieces)}__'
+        pieces.append(f'// ---- {path.name}\nconst {held} = (() => {{\n' + '\n'.join(takes) + '\n' + body
+                      + f'\nreturn {{ {", ".join(exports)} }};\n}})();')
+        done[path] = held
+        done_exports[held] = set(exports)
+        return held
 
-    visit(folder / main, ())
-    head = f"const {{ {', '.join(sorted(folio_names))} }} = __folio__;\n" if folio_names else ''
-    return head + '\n'.join(pieces)
+    done_exports: dict[str, set] = {}
+    main_held = visit(folder / main, ())
+    return '\n'.join(pieces), main_held
 
 
 def pack(folder: Path, out: Path) -> Path:
@@ -142,7 +161,7 @@ def pack(folder: Path, out: Path) -> Path:
     main = raw.get('main', 'index.js')
     main_code = (folder / main).read_text('utf-8')
     cls = default_name(main_code)
-    code = bundle(folder, main)
+    code, main_held = bundle(folder, main)
     for _, name in re.findall(r'\.use\(\s*([\'"])([\w.:-]+)\1', code):
         if name != 'traumerei':
             raise Problem(f'It asks for "{name}"; a plugin reaches the app only through the plugin API (use(\'traumerei\')).')
@@ -155,7 +174,7 @@ def pack(folder: Path, out: Path) -> Path:
             f'Packed by traumplug.py; import it in Settings → Plugins.\n'
             f'export const manifest = {json.dumps(manifest, ensure_ascii=False)};\n'
             f'export const css = {json.dumps(css, ensure_ascii=False)};\n'
-            f'export default (__folio__) => {{\n{code}\nreturn {cls};\n}};\n')
+            f'export default (__folio__) => {{\n{code}\nreturn {main_held}.{cls};\n}};\n')
     node = shutil.which('node')
     if node:
         with tempfile.TemporaryDirectory() as d:
