@@ -853,7 +853,20 @@ function dockFor(dock, gone) {
       return handle;
     },
     close: (key, force) => dock.close(key, force),
-    show: (key) => dock.show(key),
+    // show(key) brings that tab to the front (and the dock back); since 1.1.4 show() with no key
+    // brings the dock back as it was, and hide() tucks it away, keeping what it holds. Each says
+    // whether the dock shows (show) or is hidden (hide) afterwards.
+    show: (key) => {
+      if (key != null) return dock.show(key);
+      if (dock.shown) return true;
+      return !!dock.toggle?.() && !!dock.shown;
+    },
+    hide: () => {
+      if (!dock.shown) return true;
+      dock.toggle?.();
+      return !dock.shown;
+    },
+    get shown() { return !!dock.shown; },
     isOpen: (key) => dock.isOpen(key),
     isShowing: (key) => dock.isShowing(key),
   });
@@ -912,7 +925,15 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
   });
   // The zoom (since 1.1.0): the room's, read and set through the open room (room/view.js).
   const zoomNs = Object.freeze({
-    get: () => { const z = room?.()?.zoom?.(); return z ? row({ zoom: z.zoom, band: z.band }) : null; },
+    // Since 1.1.4 also the view's centre { x, y } in world units.
+    get: () => { const z = room?.()?.zoom?.(); return z ? row({ zoom: z.zoom, band: z.band, x: z.x ?? 0, y: z.y ?? 0 }) : null; },
+    // Since 1.1.4: the view to { x?, y?, zoom? } (what is left out stays), eased over ms (320 by
+    // default, at most 2000; 0 at once, and at once when the system asks for less motion).
+    go: (to = {}, { ms } = {}) => {
+      const r = room?.();
+      const end = r?.goView ? r.goView(to || {}, ms) : null;
+      return end ? row({ ok: true, x: end.x, y: end.y, zoom: end.zoom }) : row({ ok: false, reason: 'No room is open' });
+    },
     set: (zoom, at) => { const r = room?.(); const z = r?.setZoom ? r.setZoom(+zoom, at) : null; return z ? row({ ok: true, zoom: z.zoom, band: z.band }) : row({ ok: false, reason: 'No room is open' }); },
     on: (fn) => {
       const r = room?.();
@@ -923,19 +944,20 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
     },
     get bands() { return room?.()?.bands || BANDS_FALLBACK; },
   });
-  // What the person is looking at: { context, mark, marks } (marks since 1.1.1: all that is chosen;
-  // mark the one chosen, null when several are), or null outside a room; chosen.on(fn) hears each change (since 1.1.1).
+  // What the person is looking at: { context, mark, marks, mode } (marks since 1.1.1: all that is chosen;
+  // mark the one chosen, null when several are; mode since 1.1.4: the open room's), or null outside
+  // a room; chosen.on(fn) hears each change (since 1.1.1), of the room's mode too (since 1.1.4).
   const chosenOf = (r) => {
     const context = r?.id?.() ?? null;
     if (context == null) return null;
     const marks = r.chosenAll ? [...r.chosenAll()] : (r.chosen?.() != null ? [r.chosen()] : []);
-    return row({ context, mark: r.chosen?.() ?? null, marks: Object.freeze(marks) });
+    return row({ context, mark: r.chosen?.() ?? null, marks: Object.freeze(marks), mode: r.mode?.() ?? tables.marks.get(context)?.mode ?? null });
   };
   const chosenFn = () => chosenOf(room?.());
   chosenFn.on = (fn) => {
     const r = room?.();
     if (!r?.onChosen) return () => {};
-    const off = r.onChosen((o) => fn(row({ context: o.context, mark: o.mark, marks: Object.freeze([...o.marks]) })));
+    const off = r.onChosen((o) => fn(row({ context: o.context, mark: o.mark, marks: Object.freeze([...o.marks]), mode: o.mode ?? null })));
     gone(off);
     return off;
   };

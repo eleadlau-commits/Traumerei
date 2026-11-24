@@ -8,6 +8,7 @@ import {
   light, twinOf, relationsRow, reading, showSizes,
 } from './world.js';
 import { clearSpace, OVERLAP } from './clear.js';
+import { goView } from './centre.js';
 import { patchChildren } from './patch.js';
 import { ui } from 'folio';
 import { el, railIcon, railWord, bandOf } from './shared.js';
@@ -177,6 +178,7 @@ export class RoomView {
 
   drawRoom() {
     const r = room(this.world, this.roomId);
+    if (this.choiceHeard?.size) this.choiceSoon(); // the mode may have changed (an undo, a room opened): t.ui.chosen.on hears it
     this.paintRoom();
     const twin = twinOf(this.world, r.id); // a Twin's side: the Twin's name, then the side's
     if (this.renaming === r.id) {
@@ -430,12 +432,17 @@ export class RoomView {
     return () => this.zoomers.delete(fn);
   }
 
-  // The open room's zoom and its band, or null outside a room.
+  // The open room's zoom and its band, and (since 1.1.4) the view's centre in world units, or null
+  // outside a room.
   zoomNow() {
     if (!this.roomId || this.root.hidden) return null;
-    const zoom = view(this.world, this.roomId).zoom || 1;
-    return { zoom, band: bandOf(zoom) };
+    const v = view(this.world, this.roomId);
+    const zoom = v.zoom || 1;
+    return { zoom, band: bandOf(zoom), x: v.x || 0, y: v.y || 0 };
   }
+
+  // The view to { x, y, zoom }, eased over ms (centre.js goView; t.ui.zoom.go, since 1.1.4).
+  goView(to, ms) { return goView(this, to, ms); }
 
   // Zooms the open room to `zoom` (kept within ZOOM), with the world point `at` ({ x, y }; the
   // middle of the screen by default) staying where it is on the screen. Saved as a wheel's is.
