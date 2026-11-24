@@ -7,8 +7,9 @@
 
 import { ui } from 'folio';
 import { find, tagsOf, snippet } from './find.js';
+import { collectionTree, sourcesUnder, collectionsOf, collectionLanding, zoneOf } from './collections.js';
 import { fullPath, sizeOf, linkOf, offsetOf, isAbsolute } from './files.js';
-import { RULE, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn, editionOf, editionsOf } from './rules.js';
+import { isLibraryMode, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn, editionOf, editionsOf } from './rules.js';
 
 const { el } = ui;
 export const LEFT = 'reading.sources';
@@ -138,24 +139,108 @@ export function installDocks(t, o) {
     const next = items[Math.max(0, Math.min(items.length - 1, (i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1))))];
     if (next) { e.preventDefault(); next.focus(); }
   });
+  // ---- Collections: a tree above the list; one chosen shows only its sources (and those of the
+  // collections inside it). A source dragged onto a collection goes in it; a collection dragged
+  // onto another goes inside it (the middle of its line) or beside it (its top or bottom third).
+  const SRC_DRAG = 'application/x-reading-source', COLL_DRAG = 'application/x-reading-collection';
+  const shownColl = new Map(); // room → the collection shown (this session's), or none
+  let renaming = null; // the collection whose name is being written
+  let collBox = null;
+  const collOf = (r) => { const c = r ? shownColl.get(r) : null; return c && collectionTree(t, r).some((n) => n.id === c) ? c : null; };
+  const showColl = (r, c) => { if (c) shownColl.set(r, c); else shownColl.delete(r); drawLeft(); left?.querySelector(`.reading-coll[aria-selected="true"]`)?.focus(); };
+  const dropZone = (row, target) => {
+    row.addEventListener('dragover', (e) => {
+      const types = [...(e.dataTransfer?.types || [])];
+      if (!types.includes(SRC_DRAG) && !(types.includes(COLL_DRAG))) return;
+      e.preventDefault();
+      row.classList.add('st-drop');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('st-drop'));
+    row.addEventListener('drop', (e) => {
+      row.classList.remove('st-drop');
+      const src = e.dataTransfer.getData(SRC_DRAG), coll = e.dataTransfer.getData(COLL_DRAG);
+      if (!src && !coll) return;
+      e.preventDefault();
+      if (src && target) o.putIn?.(src, target);
+      else if (coll && coll !== target) {
+        const box = row.getBoundingClientRect();
+        const to = collectionLanding(t, coll, target, target ? zoneOf(e.clientY, box.top, box.height) : 'into');
+        if (to.reason) t.ui.toast(to.reason); else o.moveCollection?.(coll, to.parent);
+      }
+    });
+  };
+  const drawColls = () => {
+    if (!collBox || collBox.contains(document.activeElement) && document.activeElement?.tagName === 'INPUT') return; // never under the caret
+    const r = o.room();
+    const nodes = r ? collectionTree(t, r) : [];
+    const on = collOf(r);
+    const all = r ? sourcesIn(t, r).length : 0;
+    const row = (id, label, n, depth) => {
+      const b = el('button', { type: 'button', role: 'treeitem', 'data-id': id || '', 'aria-level': String(depth || 1), 'aria-selected': (id || null) === on ? 'true' : 'false',
+        class: `reading-coll pick reading-coll-d${depth || 0}${(id || null) === on ? ' st-sel' : ''}`, draggable: id ? 'true' : 'false', onclick: () => showColl(r, id) },
+      el('span', { class: 'reading-coll-name' }, label), el('span', { class: 'pick-note' }, ` ${n}`));
+      if (id) b.addEventListener('dragstart', (e) => { e.dataTransfer.setData(COLL_DRAG, id); e.dataTransfer.effectAllowed = 'move'; });
+      dropZone(b, id);
+      return b;
+    };
+    const items = [row(null, 'All sources', all, 0), ...nodes.map((n) => {
+      if (n.id !== renaming) return row(n.id, n.name, n.all, n.depth);
+      const input = el('input', { type: 'text', class: `reading-field reading-coll-d${n.depth}`, 'aria-label': 'Collection name', spellcheck: 'false', autocomplete: 'off' });
+      input.value = n.name;
+      const done = (keepIt) => { if (renaming !== n.id) return; renaming = null; if (keepIt) o.renameCollection?.(n.id, input.value); input.blur(); drawColls(); left?.querySelector(`.reading-coll[data-id="${n.id}"]`)?.focus(); };
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } });
+      input.addEventListener('blur', () => done(true));
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+      return input;
+    })];
+    const tree = el('div', { class: 'reading-list reading-colls', role: 'tree', 'aria-label': 'Collections' }, ...items);
+    // Keys on a collection: Enter shows it, F2 renames it, Delete deletes it (its sources stay),
+    // Alt+→ puts it inside the one above it, Alt+← takes it up a level.
+    tree.addEventListener('keydown', (e) => {
+      const id = document.activeElement?.dataset?.id;
+      if (!id) return;
+      if (e.key === 'F2') { e.preventDefault(); e.stopPropagation(); renaming = id; drawColls(); }
+      else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); o.removeCollection?.(id); }
+      else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault(); e.stopPropagation();
+        const i = nodes.findIndex((n) => n.id === id), me = nodes[i];
+        if (e.key === 'ArrowLeft') { if (me.parent) o.moveCollection?.(id, nodes.find((n) => n.id === me.parent)?.parent || null); }
+        else { const above = nodes.slice(0, i).reverse().find((n) => n.depth === me.depth); if (above) o.moveCollection?.(id, above.id); }
+        setTimeout(() => left?.querySelector(`.reading-coll[data-id="${id}"]`)?.focus(), 0);
+      }
+    });
+    walk(tree, null);
+    collBox.replaceChildren(
+      el('div', { class: 'reading-colls-head' }, el('span', { class: 'label' }, 'Collections'),
+        btn('New collection', () => { const c = o.newCollection?.(on); if (c) { renaming = c; drawColls(); } })),
+      tree);
+  };
+  // A new collection's name, ready to write (Alt+Shift+C).
+  const nameNew = (c) => { if (c) { renaming = c; drawColls(); } };
+  // The collections tree, focused on the one shown (Alt+Shift+L).
+  const focusColls = () => (left?.querySelector('.reading-coll[aria-selected="true"]') || left?.querySelector('.reading-coll'))?.focus();
+
   const drawLeft = () => {
     if (!left) return;
-    if (!findBox) { findBox = makeFind(); tagRow = el('div', { class: 'reading-tags', 'aria-label': 'Tags' }); body = el('div', { class: 'reading-body' }); }
+    if (!findBox) { findBox = makeFind(); tagRow = el('div', { class: 'reading-tags', 'aria-label': 'Tags' }); body = el('div', { class: 'reading-body' }); collBox = el('div', { class: 'reading-colls-box' }); }
     const r = o.room();
     const open = r ? o.openOf(r) : null;
     left.replaceChildren(
       el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource()), open ? btn('New edition', () => o.newEdition?.()) : null),
-      findBox, tagRow, body,
+      collBox, findBox, tagRow, body,
       el('details', { class: 'reading-io' }, el('summary', { class: 'label' }, 'In and out'),
         el('div', { class: 'box-btns' }, btn('Import BibTeX…', () => o.bibIn?.()), btn('Import Zotero notes…', () => o.zoteroIn?.())),
         el('div', { class: 'box-btns' }, btn('BibTeX', () => o.bibOut?.()), btn('Markdown', () => o.mdOut?.()), btn('Word', () => o.wordOut?.())),
         el('p', { class: 'hint' }, 'Zotero: its metadata through Export → BibTeX; its annotations through Add Note from Annotations, then the note exported as Markdown, into the open source. Markdown cites with Pandoc keys; Word in Chicago author-date, with References.')),
-      el('p', { class: 'hint reading-keys' }, 'Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+      el('p', { class: 'hint reading-keys' }, 'Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+    drawColls();
     drawTags();
     drawBody();
   };
   const sourceList = (r) => {
-    const srcs = r ? sourcesIn(t, r) : [];
+    const coll = collOf(r);
+    const inColl = coll ? new Set(sourcesUnder(t, coll)) : null;
+    const srcs = r ? sourcesIn(t, r).filter((s) => !inColl || inColl.has(s.id)) : [];
     const open = r ? o.openOf(r) : null;
     const openMain = open ? (editionOf(t, open) || open) : null;
     const shownSrc = srcs.filter((s) => { const m = editionOf(t, s.id); return !m || unfolded.has(m) || m === openMain && open === s.id; });
@@ -168,7 +253,7 @@ export function installDocks(t, o) {
       return el('button', {
         type: 'button', role: 'option', 'data-id': s.id, 'aria-expanded': eds ? String(unfolded.has(s.id)) : null,
         'aria-selected': s.id === open ? 'true' : 'false', title: s.title || 'Untitled', class: `reading-src pick${s.id === open ? ' st-sel' : ''}${main ? ' reading-src-edition' : ''}`,
-        onclick: () => o.open(s.id),
+        onclick: () => o.open(s.id), draggable: 'true', ondragstart: (e) => { e.dataTransfer.setData(SRC_DRAG, s.id); e.dataTransfer.effectAllowed = 'link'; },
       },
       el('span', { class: 'reading-src-key' }, s.citekey || '—'),
       el('span', { class: 'reading-src-who pick-note' }, main ? `${s.edition ? `${s.edition} ed., ` : ''}${s.year || 'n.d.'}` : authorYear(s)),
@@ -186,6 +271,7 @@ export function installDocks(t, o) {
       }
     });
     walk(list, () => findBox?.focus());
+    if (!srcs.length && coll) return el('p', { class: 'hint' }, 'No sources in this collection yet. Drag one onto it, or tick it in Details; New source makes one in it.');
     return srcs.length ? list : el('p', { class: 'hint' }, 'No sources yet. New source (Alt+Shift+N) makes the first.');
   };
 
@@ -256,8 +342,23 @@ export function installDocks(t, o) {
     const n = notesOf(t, id).length;
     right.replaceChildren(
       el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked)), linkRow(src), editionField(src, locked)),
+      collSection(src, locked),
       fileSection(src, locked),
       el('p', { class: 'hint' }, `${n} ${n === 1 ? 'note' : 'notes'}. Enter keeps a field; Ctrl+Enter is a new line in Title and Authors.`));
+  };
+
+  // The collections the source is in: each a box to tick (Space), indented as in the tree.
+  const collSection = (src, locked) => {
+    const r = t.places.home(src.id);
+    const nodes = collectionTree(t, r);
+    if (!nodes.length) return null;
+    const mine = new Set(collectionsOf(t, src.id));
+    return el('section', { class: 'reading-in-colls' }, el('h3', { class: 'label' }, 'In collections'),
+      ...nodes.map((n) => {
+        const id = `reading-c-${n.id}`;
+        const box = el('input', { type: 'checkbox', id, checked: mine.has(n.id), disabled: locked, onchange: () => (box.checked ? o.putIn?.(src.id, n.id) : o.takeOut?.(src.id, n.id)) });
+        return el('label', { class: `reading-in-coll reading-coll-d${n.depth}`, for: id }, box, ` ${n.name}`);
+      }));
   };
 
   // "Edition of": nothing, or another source of the library (one that is no edition itself).
@@ -358,7 +459,7 @@ export function installDocks(t, o) {
     left = right = null;
   };
   // Open in a room seen as Library, closed anywhere else.
-  const sync = (rm) => { if (rm && rm.mode === RULE) return openAll(); if (left || right) closeAll(); return null; };
+  const sync = (rm) => { if (rm && isLibraryMode(rm.mode)) return openAll(); if (left || right) closeAll(); return null; };
 
   // The open source's Title, ready to write (a new source).
   const focus = (key = 'title') => { drawRight(true); const f = right?.querySelector(`#reading-f-${key}`); if (f) { f.focus(); f.select?.(); } };
@@ -368,5 +469,5 @@ export function installDocks(t, o) {
   const focusFind = async (q = null) => { if (!left) await openAll(); if (q != null) setQuery(q); findBox?.focus(); findBox?.select?.(); };
 
   for (const on of [t.marks.on, t.links.on]) on?.(() => { if (left || right) draw(); });
-  return { sync, draw, focus, lit, focusFind, closeAll, showing: () => !!(left || right) };
+  return { sync, draw, focus, lit, focusFind, closeAll, showing: () => !!(left || right), collection: () => collOf(o.room()), nameNew, focusColls, showColl: (c) => showColl(o.room(), c), ready: async () => { if (!left) await openAll(); } };
 }

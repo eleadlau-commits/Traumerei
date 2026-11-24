@@ -20,3 +20,11 @@
 .reading-file { display: flex; flex-direction: column; gap: var(--s-2, 8px); }
 .reading-file-path { overflow-wrap: anywhere; }
 .reading-file-name { margin: 0; overflow-wrap: anywhere; }
+.reading-colls-box { display: flex; flex-direction: column; gap: var(--s-1, 4px); }
+.reading-colls-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2, 8px); }
+.reading-coll { display: flex; justify-content: space-between; text-align: left; width: 100%; padding: var(--s-1, 4px) 0; }
+.reading-coll-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reading-coll-d2 { padding-left: var(--s-4, 16px); }
+.reading-coll-d3 { padding-left: calc(2 * var(--s-4, 16px)); }
+.reading-in-colls { display: flex; flex-direction: column; gap: var(--s-1, 4px); }
+.reading-in-coll { display: flex; align-items: center; gap: var(--s-1, 4px); }

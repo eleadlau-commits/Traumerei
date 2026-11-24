@@ -19,6 +19,7 @@ const F = await load('find.js');
 const IO = await load('io.js');
 const C = await load('cite.js');
 const WD = await load('word.js');
+const K = await load('collections.js');
 
 function setUp() {
   const host = makeHost({ thoughts: 2 });
@@ -362,4 +363,120 @@ test('reading: Markdown cites with Pandoc keys; Word is a .docx in Chicago autho
   const xml = WD.bodyOf(t, s.room, 'Sample').join('');
   assert.ok(xml.includes('(Mill 1859, 27)'));
   assert.ok(xml.includes('Darwin, Charles. 1872. '), 'References');
+});
+
+// ---- 0.6: collections and boards ----
+
+test('reading: collections nest; a source sits in several; the tree reads by name with counts', () => {
+  const { host, t, s } = setUp();
+  const { 'Natural history': nat, 'Political philosophy': pol, Liberty: lib } = s.collections;
+  const tree = K.collectionTree(t, s.room);
+  assert.deepEqual(tree.map((n) => [n.name, n.depth, n.all]), [['Natural history', 1, 3], ['Political philosophy', 1, 2], ['Liberty', 2, 2]]);
+  assert.equal(K.collectionParent(t, lib), pol);
+  const wollstonecraft = s.sources[4];
+  assert.deepEqual(K.collectionsOf(t, wollstonecraft), [lib, pol]);
+  assert.deepEqual(K.sourcesUnder(t, pol).length, 2, 'Political philosophy shows Liberty\'s sources too');
+  assert.ok(!K.sourcesUnder(t, nat).includes(wollstonecraft));
+  assert.equal(X.sourcesIn(t, s.room).length, 5, 'collections are no sources');
+  assert.equal(X.layout(t, s.room, (a, b) => t.ui.measure(a, b)).columns.length, 5, 'and no columns');
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: a source put in and taken out of a collection, each one step; a collection made inside another', () => {
+  const { host, t, s } = setUp();
+  const { 'Natural history': nat, Liberty: lib } = s.collections;
+  const mill = s.sources[2];
+  assert.ok(K.putIn(t, mill, nat).ok);
+  host.world.save();
+  assert.ok(K.sourcesInCollection(t, nat).includes(mill));
+  assert.ok(K.sourcesInCollection(t, lib).includes(mill), 'still in Liberty');
+  host.world.undo();
+  assert.ok(!K.sourcesInCollection(t, nat).includes(mill));
+  assert.ok(K.takeOut(t, mill, lib).ok);
+  host.world.save();
+  assert.ok(!K.sourcesInCollection(t, lib).includes(mill));
+  assert.ok(t.marks.get(mill), 'the source stays in the library');
+  const sub = K.newCollection(t, s.room, 'Harm', lib);
+  host.world.save();
+  assert.ok(sub.ok);
+  assert.equal(K.collectionParent(t, sub.id), lib);
+  assert.equal(K.collectionDepth(t, sub.id), 3);
+  assert.equal(K.newCollection(t, s.room, 'Too deep', sub.id).ok, false, 'three levels at most');
+  assert.equal(K.putIn(t, s.notes[0], nat).ok, false, 'only a source goes in a collection');
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: a collection moves inside another, never inside itself; deleted, its sources stay and its own collections move up', () => {
+  const { host, t, s } = setUp();
+  const { 'Natural history': nat, 'Political philosophy': pol, Liberty: lib } = s.collections;
+  assert.equal(K.moveCollection(t, pol, lib).ok, false, 'not inside itself');
+  assert.ok(K.moveCollection(t, lib, nat).ok);
+  host.world.save();
+  assert.equal(K.collectionParent(t, lib), nat);
+  assert.deepEqual(K.collectionLanding(t, nat, lib, 'into').reason ? 'refused' : 'ok', 'refused');
+  assert.deepEqual(K.collectionLanding(t, pol, lib, 'before'), { parent: nat });
+  host.world.undo();
+  assert.equal(K.collectionParent(t, lib), pol);
+  const n = t.marks.in(s.room).length;
+  assert.ok(K.removeCollection(t, pol).ok);
+  host.world.save();
+  assert.ok(!t.marks.get(pol));
+  assert.equal(K.collectionParent(t, lib), null, 'Liberty moved up to the top');
+  assert.equal(t.marks.in(s.room).length, n - 1, 'only the collection went');
+  assert.equal(X.sourcesIn(t, s.room).length, 5);
+  assert.deepEqual(brokenLaws(host.w), []);
+  host.world.undo();
+  assert.ok(t.marks.get(pol));
+  assert.equal(K.collectionParent(t, lib), pol, 'one undo brings it all back');
+});
+
+test('reading: Library · blocks lays each source out as a block of its notes, none overlapping; a note dragged into another block moves there', () => {
+  const { host, t, s } = setUp();
+  const blocks = host.added('reading').find((a) => a.slot === 'world.ontologies' && a.item.id === X.BLOCKS_RULE)?.item;
+  assert.ok(blocks, 'the second rule');
+  const measure = (a, b) => t.ui.measure(a, b);
+  const L = X.layout(t, s.room, measure, 3);
+  assert.ok(L.blocks, 'blocks');
+  assert.equal(L.rows.length, s.notes.length, 'every note placed');
+  assert.equal(L.columns.length, 5);
+  const frames = L.columns.map((c) => ({ x0: c.left, x1: c.right, y0: c.top - X.BLOCK.pad, y1: c.bottom + X.BLOCK.pad }));
+  for (let i = 0; i < frames.length; i++) for (let j = i + 1; j < frames.length; j++) {
+    const a = frames[i], b = frames[j];
+    assert.ok(a.x1 <= b.x0 || b.x1 <= a.x0 || a.y1 <= b.y0 || b.y1 <= a.y0, `blocks ${i} and ${j} apart`);
+  }
+  assert.equal(new Set(L.columns.map((c) => c.x)).size, 3, 'three across');
+  for (const r of L.rows) {
+    const c = L.columns.find((cc) => cc.notes.includes(r.mark));
+    assert.ok(r.x - r.width / 2 >= c.left - 0.5 && r.x + r.width / 2 <= c.right + 0.5, `each note inside its block ${JSON.stringify([r.x, r.width, c.left, c.right])}`);
+  }
+  // Rows at least 20 apart (the room's clear-space: core-gaps.md, gap 5).
+  for (const c of L.columns) for (let i = 1; i < c.notes.length; i++) {
+    const a = L.rows.find((r) => r.mark === c.notes[i - 1]), b = L.rows.find((r) => r.mark === c.notes[i]);
+    assert.ok(b.y - b.height / 2 - (a.y + a.height / 2) >= 19.99, `rows apart ${b.y - b.height / 2 - (a.y + a.height / 2)}`);
+  }
+  // Thoreau's last note dragged to the end of Mill's block.
+  const thoreau = s.sources[3], mill = s.sources[2];
+  const note = X.notesOf(t, thoreau).at(-1);
+  const col = L.columns.find((c) => c.source === mill);
+  const to = X.dropAt(t, s.room, note, col.x, col.bottom - 2, L);
+  assert.deepEqual(to, { source: mill, under: null, before: null });
+  N.move(t, note, to);
+  host.world.save();
+  assert.equal(X.notesOf(t, mill).at(-1), note);
+  assert.equal(X.dropAt(t, s.room, note, col.right + 400, col.top, L), null, 'between blocks: nowhere');
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: Library · blocks opens a 1,500-note library in under 120 ms', () => {
+  const { t, s } = setUp();
+  const many = [];
+  for (let i = 0; i < 1500; i++) many.push(t.marks.make({ content: `Note ${i}: a few words to wrap, about the reading.`, in: s.room }).id);
+  const src = s.sources[0];
+  t.together(() => { for (const id of many) t.links.link(id, src, 'part of'); });
+  const measure = (a, b) => t.ui.measure(a, b);
+  const t0 = performance.now();
+  const L = X.layout(t, s.room, measure, 4);
+  const ms = performance.now() - t0;
+  assert.ok(L.rows.length >= 1500);
+  assert.ok(ms < 120, `${ms.toFixed(1)} ms`);
 });

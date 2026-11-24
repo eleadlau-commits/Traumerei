@@ -8,6 +8,9 @@
 // note is a line thought, `part of` its source, in stream order. No source text is ever kept.
 
 export const RULE = 'reading-library';
+// The sibling rule (Arrange by, or Tab): the same library as a board of blocks.
+export const BLOCKS_RULE = 'reading-blocks';
+export const isLibraryMode = (mode) => mode === RULE || mode === BLOCKS_RULE;
 export const SOURCE = 'reading-source';
 // Quiet link kinds (the Library draws them itself): a quote to its source, its label the anchor
 // ("p. 112"); a comment to the quote it is about; an edition to the source it is an edition of.
@@ -204,14 +207,25 @@ export const COLUMN = Object.freeze({ width: 560, gap: 220, head: 120, space: 22
 // The centre x of column i.
 export const columnX = (i) => i * (COLUMN.width + COLUMN.gap);
 
+// ---- Library · blocks: each source a block of its notes in a frame, the blocks a board ----
+
+// World units: a block's width (its notes' words wrap inside it), the air inside its frame and
+// between frames; `across` blocks to a row (the room's setting under the rule), each block going
+// under the shortest column of blocks so far, in the sources' order.
+export const BLOCK = Object.freeze({ width: 360, gap: 56, head: 92, space: 20, empty: 56, indent: 28, gutter: 64, pad: 18 });
+export const BLOCKS_ACROSS = Object.freeze([2, 3, 4, 6]);
+export const acrossOf = (set) => { const n = Number(set?.across); return BLOCKS_ACROSS.includes(n) ? n : 3; };
+
 // The library laid out: { rows (arrange's), boxes (draw's), columns: [{ source, x, top, bottom,
-// notes, units }] }: each source a column, and after them a column of the room's thoughts in no
-// source (Unfiled, `source: null`), so every thought is placed. A quote's page stands in the
-// column's gutter at its left; the comments on a quote sit under it, indented. `units` are the column's blocks
-// ({ head, ids, top, bottom }: a note and the comments under it), for dropping and keys. The
-// thought being written (reads.marks.draft) after a note opens room under it.
-export function layout(reads, room, measure) {
-  const W = COLUMN.width, I = COLUMN.indent, G = COLUMN.gutter;
+// notes, units, left, right, w }], blocks }: each source a column (or, with `across`, a block of
+// the board), and after them one of the room's thoughts in no source (Unfiled, `source: null`), so
+// every thought is placed. A quote's page stands in the gutter at its left; the comments on a
+// quote sit under it, indented. `units` are the column's blocks ({ head, ids, top, bottom }: a note
+// and the comments under it), for dropping and keys. The thought being written
+// (reads.marks.draft) after a note opens room under it.
+export function layout(reads, room, measure, across = 0) {
+  const S = across ? BLOCK : COLUMN;
+  const W = S.width, I = S.indent, G = S.gutter, P = across ? BLOCK.pad : 0;
   const draft = reads.marks.draft?.(room) || null;
   const rows = [], boxes = [], columns = [];
   // One read of the room: its marks by id (each reads.marks.get is a frozen copy: 1,500 of them
@@ -219,9 +233,21 @@ export function layout(reads, room, measure) {
   const all = reads.marks.in(room);
   const byId = new Map(all.map((m) => [m.id, m]));
   const filed = new Set();
-  const column = (source, x, head, stream) => {
-    boxes.push({ x: x - W / 2, y: 0, w: W, h: COLUMN.head - 30, style: 'heading', level: 1, ...head });
-    let y = COLUMN.head;
+  // Where the next one goes: the next column, or under the shortest column of blocks.
+  const pitch = W + 2 * P + BLOCK.gap;
+  const tops = across ? new Array(across).fill(0) : null;
+  let n = 0;
+  const place = () => {
+    if (!across) return { x: columnX(n++), y0: 0, k: -1 };
+    let k = 0;
+    for (let i = 1; i < across; i++) if (tops[i] < tops[k] - 0.5) k = i;
+    return { x: (k - (across - 1) / 2) * pitch, y0: tops[k], k };
+  };
+  const column = (source, head, stream) => {
+    const { x, y0, k } = place();
+    const frame = across ? boxes.push(null) - 1 : -1;
+    boxes.push({ x: x - W / 2, y: y0, w: W, h: S.head - 30, style: 'heading', level: across ? 2 : 1, ...head });
+    let y = y0 + S.head;
     const units = [];
     for (const { id, under } of stream) {
       // A source's notes leave a gutter at the left for the quotes' pages (Unfiled has none).
@@ -237,27 +263,43 @@ export function layout(reads, room, measure) {
       }
       y += h;
       if (units.length) units[units.length - 1].bottom = y;
-      y += COLUMN.space;
-      if (draft?.after === id) y += Math.max(draft.height || 40, 24) + COLUMN.space;
+      y += S.space;
+      if (draft?.after === id) y += Math.max(draft.height || 40, 24) + S.space;
     }
     if (!stream.length && source) {
-      boxes.push({ x: x - W / 2, y, w: W, h: COLUMN.empty, note: 'No notes yet. Type to add one.', style: 'quiet' });
-      y += COLUMN.empty;
+      boxes.push({ x: x - W / 2, y, w: W, h: S.empty, note: 'No notes yet. Type to add one.', style: 'quiet' });
+      y += S.empty;
     }
-    columns.push({ source, x, top: 0, bottom: y, notes: stream.map((n) => n.id), units });
+    if (across) {
+      boxes[frame] = { x: x - W / 2 - P, y: y0 - P, w: W + 2 * P, h: y - y0 + 2 * P, style: 'plain' };
+      tops[k] = y + P + BLOCK.gap + P;
+    }
+    columns.push({ source, x, top: y0, bottom: y, notes: stream.map((m) => m.id), units, left: x - W / 2 - P, right: x + W / 2 + P, w: W });
   };
   const srcs = orderSources(reads, all.filter(isSource));
-  srcs.forEach((src, i) => {
+  for (const src of srcs) {
     const notes = reads.links.members(src.id).filter((id) => byId.get(id)?.kind === 'line');
     for (const id of notes) filed.add(id);
     const main = editionOf(reads, src.id);
     const of = main && byId.get(main)?.citekey ? ` · edition of ${byId.get(main).citekey}` : '';
     const ed = src.edition ? ` · ${src.edition} ed.` : '';
-    column(src.id, columnX(i), { label: src.title || 'Untitled', note: (src.citekey ? `${authorYear(src)} · ${src.citekey}` : authorYear(src)) + ed + of }, streamOf(reads, src.id, notes));
-  });
-  const unfiled = all.filter((m) => m.kind === 'line' && !filed.has(m.id)).map((id) => ({ id: id.id, under: null }));
-  if (unfiled.length) column(null, columnX(srcs.length), { label: 'Unfiled', note: 'notes in no source' }, unfiled);
-  return { rows, boxes, columns };
+    column(src.id, { label: src.title || 'Untitled', note: (src.citekey ? `${authorYear(src)} · ${src.citekey}` : authorYear(src)) + ed + of }, streamOf(reads, src.id, notes));
+  }
+  const unfiled = all.filter((m) => m.kind === 'line' && !filed.has(m.id)).map((m) => ({ id: m.id, under: null }));
+  if (unfiled.length) column(null, { label: 'Unfiled', note: 'notes in no source' }, unfiled);
+  return { rows, boxes, columns, blocks: !!across };
+}
+
+// The column (or block) a point is over, or null: on the board the block it is in (with half the
+// air around it); in columns the nearest, within half the air beside it.
+export function columnAt(lay, x, y) {
+  if (!lay?.columns?.length) return null;
+  if (lay.blocks) {
+    const a = BLOCK.gap / 2 + BLOCK.pad;
+    return lay.columns.find((c) => x >= c.left - BLOCK.gap / 2 && x <= c.right + BLOCK.gap / 2 && y >= c.top - a && y <= c.bottom + a) || null;
+  }
+  const col = nearest(lay.columns, x);
+  return col && Math.abs(col.x - x) <= COLUMN.width / 2 + COLUMN.gap / 2 ? col : null;
 }
 
 // Where a note let go at x, y goes (a drag): { source, under, before } for move() (notes.js), or
@@ -266,9 +308,9 @@ export function layout(reads, room, measure) {
 // that is no quote and holds no comments of its own). Over Unfiled: out of its source.
 export function dropAt(reads, room, mark, x, y, lay) {
   const m = reads.marks.get(mark);
-  if (!m || m.kind !== 'line' || !lay?.columns?.length) return null;
-  const col = nearest(lay.columns, x);
-  if (!col || Math.abs(col.x - x) > COLUMN.width / 2 + COLUMN.gap / 2) return null;
+  if (!m || m.kind !== 'line') return null;
+  const col = columnAt(lay, x, y);
+  if (!col) return null;
   if (!col.source) return sourceOf(reads, mark) ? { source: null, under: null, before: null } : null;
   const own = blockOf(reads, mark);
   const canNest = !isQuote(reads, mark) && own.length === 1;
@@ -276,7 +318,7 @@ export function dropAt(reads, room, mark, x, y, lay) {
   for (let i = 0; i < units.length; i++) {
     const u = units[i];
     if (y < u.top) return { source: col.source, under: null, before: u.head };
-    if (y > u.bottom + COLUMN.space / 2) continue;
+    if (y > u.bottom + (lay.blocks ? BLOCK : COLUMN).space / 2) continue;
     const firstH = (lay.rows.find((r) => r.mark === u.head)?.height) || 24;
     if (y < u.top + firstH / 2) return { source: col.source, under: null, before: u.head };
     if (canNest && isQuote(reads, u.head)) {
@@ -311,9 +353,10 @@ export const nearest = (columns, x) => columns.reduce((best, c) => (!best || Mat
 
 // ---- A new library ----
 
-// A new, empty library as a .traum file (traum/3): one room, already seen as Library, carried by
-// the file because a plugin can't set a room's mode itself (core-gaps.md).
-export function libraryTraum(name = 'Library') {
+// A new, empty library as a .traum file (traum/3): one room, already seen as Library (or `mode`,
+// Library · blocks), carried by the file because a plugin can't set a room's mode itself; 2 × 2 on
+// its floor, as only a big room switches its mode (Tab: Library, Library · blocks) (core-gaps.md, gap 11).
+export function libraryTraum(name = 'Library', mode = RULE) {
   const title = String(name).replace(/[\r\n]+/g, ' ').trim() || 'Library';
-  return ['---', 'format: traum/3', 'context: ^1', '---', '', '# Marks', '', `## ^1 room: ${title}`, `mode: ${RULE}`, ''].join('\n');
+  return ['---', 'format: traum/3', 'context: ^1', '---', '', '# Marks', '', `## ^1 room: ${title}`, `mode: ${isLibraryMode(mode) ? mode : RULE}`, 'material.size: 2', ''].join('\n');
 }

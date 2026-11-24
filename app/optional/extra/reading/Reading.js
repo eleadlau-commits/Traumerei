@@ -11,7 +11,7 @@
 // helpers in compat.js (core-gaps.md).
 
 import { Feature, ui } from 'folio';
-import { RULE, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
+import { RULE, BLOCKS_RULE, isLibraryMode, acrossOf, BLOCKS_ACROSS, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
   autoKey, uniqueKey, keysIn, libraryTraum, parseQuote, isQuote, aboutOf, streamOf, quoteOf, COLUMN } from './rules.js';
 import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
 import { TAG, tagSpans } from './find.js';
@@ -22,7 +22,9 @@ import { markdownOf } from './cite.js';
 import { wordDoc, DOCX_TYPE } from './word.js';
 import { attachment, fullPath, pathAndPage, filePage, verify as sameFile, linkOf } from './files.js';
 import { installDocks } from './docks.js';
+import { COLLECTION, newCollection, renameCollection, putIn, takeOut, moveCollection, removeCollection, collectionDepth, COLLECTION_DEPTH } from './collections.js';
 
+const BLOCKS_ICON = '<rect x="3" y="4" width="8" height="7"/><rect x="13" y="4" width="8" height="11"/><rect x="3" y="13" width="8" height="7"/>';
 const ICON = '<path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="M15.5 4.6l3.8-1 3.6 15.5-3.8 1z"/>';
 
 export function install(t) {
@@ -35,12 +37,13 @@ export function install(t) {
     return m;
   };
   const here = () => t.ui.chosen()?.context || null;
-  const inLibrary = () => { const r = here(); return !!r && t.marks.get(r)?.mode === RULE; };
+  const inLibrary = () => { const r = here(); return !!r && isLibraryMode(t.marks.get(r)?.mode); };
   const say = (r) => { if (r && r.ok === false && r.reason) t.ui.toast(r.reason); return r; };
 
   // ---- The shape: a source is a group of its own family, its metadata the group's fields ----
   t.slots.groups.add({ id: SOURCE, name: 'Source', membership: 'one', order: 'kept', fields: [...FIELDS], tidy: tidySource });
   t.slots.groups.add({ id: TAG, name: 'Tag', membership: 'many', order: 'time' });
+  t.slots.groups.add({ id: COLLECTION, name: 'Collection', membership: 'many', order: 'kept' });
 
   // The source open in each library (this session's: which one you are reading is not content).
   const opened = new Map();
@@ -59,36 +62,44 @@ export function install(t) {
   // Something done just after a gesture, as its own step (no proposal links a note): Book's way.
   const later = (fn) => setTimeout(() => say(fn()), 0);
 
-  // ---- The Library rule ----
+  // ---- The Library rules: Library (each source a column) and Library · blocks (a board) ----
   // The layout last drawn in each library: a drop asked of it (the room's clear-space nudges a
   // mark it finds too close by calling drop) costs no new layout.
   const last = new Map();
-  const laid = (reads, context) => { const L = layout(reads, context, measure); last.set(context, L); return L; };
-  t.slots.rules.add({
-    id: RULE, name: 'Library', note: 'a library of sources: each one\'s notes in a column, its details in the docks', icon: ICON, order: 32,
-    claims: [SOURCE, TAG],
-    arrange: (reads, context) => laid(reads, context).rows,
-    draw: (reads, context) => (last.get(context) || laid(reads, context)).boxes,
-    land: (reads, context, mark, x, y) => {
-      const L = layout(reads, context, measure);
-      const p = landing(reads, context, mark, x, y, openOf(context), L);
-      // Just after: a quote typed ('"…" p. 112') linked with its page; a note written after a quote
-      // (or a comment under it) a comment under that quote.
-      const after = L.rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1)?.mark || null;
-      later(() => kept(mark, after));
-      return p;
-    },
-    // A note dragged: where it is let go reads as a place in a stream (dropAt), done just after
-    // the gesture as one step (a comment's link moves with it, which no proposal can do).
-    drop: (reads, context, mark, x, y) => {
-      const L = last.get(context);
-      if (!L || ownRow(L, mark, x, y)) return null;
-      const to = dropAt(reads, context, mark, x, y, L);
-      if (to) later(() => move(t, mark, to));
-      return null;
-    },
-    hand: false,
-  });
+  // How a room seen as either lays out: its blocks across (its setting under the blocks rule), or 0 for columns.
+  const acrossIn = (reads, r, set = null) => (reads.marks.get(r)?.mode === BLOCKS_RULE ? acrossOf(set || reads.marks.get(r)?.rules?.[BLOCKS_RULE]) : 0);
+  const layOf = (r) => layout(t, r, measure, acrossIn(t, r));
+  const rule = (id, across) => {
+    const laid = (reads, context, set) => { const L = layout(reads, context, measure, across(reads, context, set)); last.set(context, L); return L; };
+    return {
+      claims: [SOURCE, TAG, COLLECTION],
+      arrange: (reads, context, set) => laid(reads, context, set).rows,
+      draw: (reads, context, set) => (last.get(context) || laid(reads, context, set)).boxes,
+      land: (reads, context, mark, x, y, set) => {
+        const L = layout(reads, context, measure, across(reads, context, set));
+        const p = landing(reads, context, mark, x, y, openOf(context), L);
+        // Just after: a quote typed ('"…" p. 112') linked with its page; a note written after a quote
+        // (or a comment under it) a comment under that quote.
+        const after = L.rows.find((r) => r.mark !== mark && Math.abs(r.x - x) < 1 && Math.abs(r.y - y) < 1)?.mark || null;
+        later(() => kept(mark, after));
+        return p;
+      },
+      // A note dragged: where it is let go reads as a place in a stream (dropAt), done just after
+      // the gesture as one step (a comment's link moves with it, which no proposal can do).
+      drop: (reads, context, mark, x, y) => {
+        const L = last.get(context);
+        if (!L || ownRow(L, mark, x, y)) return null;
+        const to = dropAt(reads, context, mark, x, y, L);
+        if (to) later(() => move(t, mark, to));
+        return null;
+      },
+      hand: false,
+    };
+  };
+  t.slots.rules.add({ id: RULE, name: 'Library', note: 'a library of sources: each one\'s notes in a column, its details in the docks', icon: ICON, order: 32, ...rule(RULE, () => 0) });
+  t.slots.rules.add({ id: BLOCKS_RULE, name: 'Library · blocks', note: 'the library as a board: each source a block holding its notes; drag a note into another block', icon: BLOCKS_ICON, order: 33,
+    settings: [{ key: 'across', label: 'Blocks across', type: 'choice', default: '3', options: BLOCKS_ACROSS.map((n) => [String(n), String(n)]) }],
+    ...rule(BLOCKS_RULE, (reads, context, set) => acrossOf(set)) });
   // Inside its own row (half a row's air): no move (the room's clear-space nudges, Book 0.4.7).
   const ownRow = (L, mark, x, y) => L.rows.some((r) => r.mark === mark && Math.abs(r.x - x) <= r.width / 2 && Math.abs(r.y - y) <= r.height / 2 + 14);
 
@@ -119,7 +130,7 @@ export function install(t) {
       const m = t.marks.get(r.mark);
       if (!m || m.kind !== 'line') continue;
       const home = t.places.home(r.mark);
-      if (!home || t.marks.get(home)?.mode !== RULE) continue;
+      if (!home || !isLibraryMode(t.marks.get(home)?.mode)) continue;
       const id = r.mark;
       const q = sourceOf(t, id) ? parseQuote(m.text) : null;
       later(() => t.together(() => { const a = q && (q.anchor || !isQuote(t, id)) ? asQuote(t, id) : null; syncTags(t, id); return a; }));
@@ -143,16 +154,20 @@ export function install(t) {
   // The view slid to a point of the canvas (x the column's middle, y the point to put at `top` of
   // the canvas, else in its middle), the whole column in view: zoomed out when the canvas between
   // the docks is narrower.
-  const slide = (x, y, top = true) => {
+  const slide = (x, y, top = true, width = COLUMN.width, least = 0) => {
     const box = stageBox();
     const now = viewGet(t)?.zoom || t.ui.zoom?.get?.()?.zoom || 1;
-    const z = box?.width ? Math.min(now, box.width / (COLUMN.width + 48)) : now;
+    const z = box?.width ? Math.min(now, Math.max(least, box.width / (width + 48))) : now;
     const h = (box?.height || 800) / z;
-    return viewGo(t, { x, y: top ? y - 80 + h / 2 : y, zoom: z });
+    return viewGo(t, { x, y: top ? y - 80 / z + h / 2 : y, zoom: z });
   };
+  // How wide a view to fit: a column; on the board, the whole board as far out as half size (the
+  // blocks around the one gone to in view, their words still read).
+  const widthOf = (L, col) => (L.blocks ? [Math.max(...L.columns.map((c) => c.right)) - Math.min(...L.columns.map((c) => c.left)), 0.5] : [col.w || COLUMN.width, 0]);
   const jump = (r, id) => {
-    const col = layout(t, r, measure).columns.find((c) => c.source === id);
-    return col ? slide(col.x, col.top) : false;
+    const L = layOf(r);
+    const col = L.columns.find((c) => c.source === id);
+    return col ? slide(col.x, col.top, true, ...widthOf(L, col)) : false;
   };
   // A note gone to (a result of Find): its source opened, the view slid to it, it chosen.
   const goTo = (id) => {
@@ -161,10 +176,10 @@ export function install(t) {
     if (!r || !t.marks.get(id)) return false;
     if (here() !== r) { t.ui.open?.mark?.(id); return true; }
     if (src) opened.set(r, src);
-    const L = layout(t, r, measure);
+    const L = layOf(r);
     const row = L.rows.find((x) => x.mark === id);
     const col = L.columns.find((c) => c.notes.includes(id));
-    if (row && col) slide(col.x, row.y, false);
+    if (row && col) slide(col.x, row.y, false, ...widthOf(L, col));
     t.ui.choose?.([id]);
     docks.draw(); docks.lit();
     return true;
@@ -198,7 +213,13 @@ export function install(t) {
     if (!r || !inLibrary()) return null;
     if (t.distance.shut(r)) { t.ui.toast('This library is locked.'); return null; }
     const citekey = uniqueKey(autoKey({ title: 'Untitled' }), keysIn(t, r));
-    const made = say(t.marks.make({ kind: 'group', content: { title: 'Untitled', of: SOURCE, type: 'book', citekey }, in: r }));
+    // In the collection shown in the list, when one is: Zotero's way.
+    const coll = docks.collection?.() || null;
+    const made = say(t.together(() => {
+      const m = t.marks.make({ kind: 'group', content: { title: 'Untitled', of: SOURCE, type: 'book', citekey }, in: r });
+      if (m?.ok !== false && coll) putIn(t, m.id, coll);
+      return m;
+    }));
     if (!made?.ok) return null;
     open(made.id);
     docks.focus('title');
@@ -206,9 +227,9 @@ export function install(t) {
   };
 
   // A new library: a room already seen as Library, landed from a .traum (a plugin can't set a
-  // room's mode; the file carries it), then gone into.
-  const newLibrary = () => {
-    const got = t.carriers.read(libraryTraum('Library'));
+  // room's mode; the file carries it), 2 × 2 so Tab switches it to Library · blocks, then gone into.
+  const newLibrary = (mode = RULE) => {
+    const got = t.carriers.read(libraryTraum('Library', mode));
     const out = got ? say(t.carriers.land(got)) : { ok: false };
     if (!out?.ok) { if (!got) t.ui.toast('The new library could not be made.'); return null; }
     t.ui.open?.room?.(out.id);
@@ -294,15 +315,34 @@ export function install(t) {
   // A .bib file comes in from the left dock's Import BibTeX… only: as a format (slots.formats) it would
   // also answer the app's Import with no file picked, ahead of the room file (core-gaps.md, gap 10).
 
-  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
+  // ---- Collections: made, named, nested, deleted (their sources stay); sources put in and taken out ----
+  const collection = (inside = null) => {
+    const r = here();
+    if (!r || !inLibrary()) return null;
+    if (t.distance.shut(r)) { t.ui.toast('This library is locked.'); return null; }
+    const deep = inside && collectionDepth(t, inside) >= COLLECTION_DEPTH;
+    const out = say(newCollection(t, r, 'New collection', deep ? null : inside));
+    return out?.ok ? out.id : null;
+  };
+  const collections = {
+    newCollection: collection,
+    renameCollection: (c, name) => say(renameCollection(t, c, name)),
+    putIn: (src, c) => { const out = say(putIn(t, src, c)); if (out?.ok && !out.already) t.ui.toast(`In ${t.marks.get(c)?.title || 'the collection'}.`); return out; },
+    takeOut: (src, c) => say(takeOut(t, src, c)),
+    moveCollection: (c, parent) => say(moveCollection(t, c, parent)),
+    removeCollection: (c) => { const name = t.marks.get(c)?.title || 'collection'; const out = say(removeCollection(t, c)); if (out?.ok) t.ui.toast(`${name} deleted; its sources stay in the library. Ctrl+Z brings it back.`); return out; },
+  };
+
+  const docks = installDocks(t, { ...collections, room: here, inLibrary, openOf, open, goTo, newSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
     folder: folderOf, setFolder, pick, attach, setOffset, copyPath, showFile, canShow: () => handles.native, verify: verifyFile, detach, openLink, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).
   let visit = null;
   const settle = (rm) => {
     const opening = docks.sync(rm);
-    if (!rm || rm.mode !== RULE || visit === rm.room) { if (!rm || rm.mode !== RULE) visit = null; return; }
-    visit = rm.room;
+    const seen = rm ? `${rm.room}|${rm.mode}` : null;
+    if (!rm || !isLibraryMode(rm.mode) || visit === seen) { if (!rm || !isLibraryMode(rm.mode)) visit = null; return; }
+    visit = seen;
     // Once the docks are open (the canvas between them is its width then), the open source in view.
     const go = () => { if (here() === rm.room) { const s = openOf(rm.room); if (s) open(s); } };
     const soon = () => { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(go)); else go(); };
@@ -338,13 +378,16 @@ export function install(t) {
   cmd({ id: 'reading.export-bib', zone: 'room', words: 'export this library as BibTeX', when: inLibrary, run: () => bibOut() });
   cmd({ id: 'reading.export-md', zone: 'room', words: 'export the notes as Markdown with Pandoc citations', when: inLibrary, run: () => mdOut() });
   cmd({ id: 'reading.export-word', zone: 'room', words: 'export the notes as a Word document (Chicago author-date)', when: inLibrary, run: () => wordOut() });
+  cmd({ id: 'reading.new-collection', keys: ['Alt+Shift+C'], zone: 'room', words: 'a new collection (inside the one shown in the list)', when: inLibrary,
+    run: async () => { await docks.ready(); const c = collection(docks.collection?.() || null); if (c) docks.nameNew(c); } });
+  cmd({ id: 'reading.collections', keys: ['Alt+Shift+L'], zone: 'room', words: 'go to the collections in the list', when: inLibrary, run: async () => { await docks.ready(); docks.focusColls(); } });
   cmd({ id: 'reading.find', keys: ['Alt+F'], zone: 'room', words: 'find in this library\'s notes: words, #tag', when: inLibrary, run: () => docks.focusFind() });
   cmd({ id: 'reading.new-library', zone: 'everywhere', words: 'a new library: a room seen as Library', run: () => newLibrary() });
   t.slots.menu.add({ id: 'reading.library', label: 'New library', icon: 'book', order: 64, onClick: () => newLibrary() });
 
   // A note chosen (clicked, or walked to) opens its source: the docks follow, the view stays.
   t.ui.chosen.on?.((c) => {
-    if (!c?.context || !c.mark || t.marks.get(c.context)?.mode !== RULE) return;
+    if (!c?.context || !c.mark || !isLibraryMode(t.marks.get(c.context)?.mode)) return;
     const src = sourceOf(t, c.mark);
     if (src && opened.get(c.context) !== src) { opened.set(c.context, src); docks.draw(); docks.lit(); }
   });
@@ -362,7 +405,7 @@ export function install(t) {
     }
   });
 
-  return { bibIn, zoteroIn, bibOut, mdOut, wordOut, open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept, attach, setOffset, detach, folderOf, setFolder, copyQuote, openLink };
+  return { ...collections, showCollection: (c) => docks.showColl(c), collection: () => docks.collection(), layOf, bibIn, zoteroIn, bibOut, mdOut, wordOut, open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept, attach, setOffset, detach, folderOf, setFolder, copyQuote, openLink };
 }
 
 export default class Reading extends Feature {

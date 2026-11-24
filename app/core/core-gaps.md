@@ -20,6 +20,7 @@ Book's list names the same gap, its number is given, so the core session fixes i
 | 8 | A chosen slot has no API word | Book (B-e, its gap 11) | Choose the mark above the slot |
 | 9 | The packer puts every file of a plugin in one scope | Reading, stage 1 | No top-level name in two files |
 | 10 | A format can't say it only takes files it accepts | Reading, stage 5 | No format; .bib in from the dock |
+| 11 | A plugin can't set a room's mode; a small room keeps one | Reading, stage 6 | New library is 2 × 2, its mode from a .traum |
 
 1 to 5 matter most: 1 and 2 because two plugins scrape the same markup and break together, 3
 because it is the jump readers feel most, 4 because it is the plan's canvas, 5 because it costs
@@ -154,3 +155,13 @@ with no file picked yet, whatever its `accepts` says. A plugin format that only 
 no-file path skips a format that has no way to ask for a file (say an `asks: true` flag, or only
 formats that `accepts(null)`). Fallback: Reading notes registers no format; .bib comes in from its
 left dock's Import BibTeX… only.
+
+## 11. A plugin can't set a room's mode, and a small room keeps one (stage 6)
+
+Reading notes has two modes of one library, Library and Library · blocks (as Book has Book and
+Book · blocks). A plugin can't set a room's mode, so a new library lands from a .traum that
+carries it; and only a 2 × 2 room switches its mode (the rail, Tab), so a library made small can't
+go to its blocks at all. Wanted: `rooms.mode(room, id)` (or `ui.open.room(id, { mode })`) to set
+the open room's mode, one of the modes it may take, and a way for a rule to name its siblings so
+a small room switches between them (Tab) without growing. Fallback: New library and the sample
+are 2 × 2 (`material.size: 2` in the .traum), so Tab works there.
