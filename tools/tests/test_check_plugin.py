@@ -83,6 +83,29 @@ class CheckPluginTest(unittest.TestCase):
         with self.assertRaisesRegex(packer.Problem, 'bare import'):
             packer.pack(folder, self.tmp)
 
+    def test_the_packer_keeps_each_file_in_its_own_scope(self):
+        # core-gaps.md gap 9: the same top-level name in two files packs and runs, as with the repo's packer.
+        packer = skill_packer()
+        folder = self.tmp / 'two-files'
+        folder.mkdir()
+        (folder / 'feature.json').write_text('{"name": "Two", "main": "Two.js", "requires": ["api"], '
+                                             '"plugin": {"api": 3, "minApp": "1.1.2", "kind": ["tool"]}}', 'utf-8')
+        (folder / 'parts.js').write_text("import { ui } from 'folio';\nconst { el } = ui;\nexport const part = () => el('part');\n", 'utf-8')
+        (folder / 'Two.js').write_text("import { Feature, ui } from 'folio';\nimport { part as p } from './parts.js';\nconst { el } = ui;\n"
+                                       "export default class Two extends Feature { both() { return [p(), el('main')]; } }\n", 'utf-8')
+        path = packer.pack(folder, self.tmp)
+        node = shutil.which('node')
+        if node:
+            probe = self.tmp / 'probe.mjs'
+            probe.write_text(path.read_text('utf-8'), 'utf-8')
+            run = __import__('subprocess').run([node, '--input-type=module', '-e',
+                f"const m = await import({str(probe.as_uri())!r}); class Feature {{}}; const C = m.default({{ Feature, ui: {{ el: (t) => t }} }});"
+                " console.log(JSON.stringify(new C().both()));"], capture_output=True, text=True)
+            self.assertEqual(run.stdout.strip(), '["part","main"]', run.stderr)
+        (folder / 'Two.js').write_text("import { Feature } from 'folio';\nimport { nothing } from './parts.js';\nexport default class Two extends Feature {}\n", 'utf-8')
+        with self.assertRaisesRegex(packer.Problem, 'exports no "nothing"'):
+            packer.pack(folder, self.tmp)
+
 
 if __name__ == '__main__':
     unittest.main()

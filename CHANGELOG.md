@@ -32,6 +32,8 @@ The core gaps Book and Reading notes found (`app/core/core-gaps.md`), additive t
 - A format may say `asks: false`: Import with no file picked yet skips it (gap 10).
 - A plugin sets a room's mode: `marks.edit(room, { mode })` for a 2 × 2 room (a small room keeps
   the mode it was made with), and `marks.make({ kind: 'room', at: { mode } })` (gap 11).
+- The skill's no-repo packer (`scripts/traumplug.py`) keeps each file in its own scope, as the
+  repo's packer always did, so two files may declare the same top-level name (gap 9).
 
 ## 1.1.3
 
