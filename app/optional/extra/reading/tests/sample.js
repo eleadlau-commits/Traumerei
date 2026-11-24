@@ -60,8 +60,6 @@ export function sampleWorld(lib, now = 1_795_400_000_000) {
 export function sampleInto(lib, w, tick) {
   const { model, links: L } = lib;
   const room = model.addRoom(w, LIBRARY, tick(), {}, 'reading-library');
-  // 2 × 2 on its floor: a big room switches its mode (Tab: Library, Library · blocks…).
-  room.size = 2;
   const sources = [], notes = [], quotes = [], comments = [];
   const byKey = new Map(), tags = new Map();
   const tagOf = (word) => {

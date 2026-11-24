@@ -30,8 +30,8 @@ a source file's path and hash).
   name. A source is `part of` each collection it is in (any number); a collection `part of` the
   one it sits in (one at most, three levels deep at most). Deleting a collection never deletes
   its sources.
-- **Library · blocks** (rule `reading-blocks`) is the same library seen as a board: nothing in the
-  tables changes between the two.
+- **Blocks** are the same library seen as a board, Library's own setting (`across` in the room's
+  `rules`: 0 for columns, or 2, 3, 4 or 6 blocks across). Only that setting changes.
 
 ## What it adds (0.1)
 
@@ -121,8 +121,8 @@ In the left dock's **In and out** (and as commands):
   stays whole), title, year, edition, journal or book, volume, issue, pages, publisher, DOI, URL,
   ISBN. LaTeX accents come in as letters; an abstract or a note never comes in. A source already
   here by key (or by title and year) is left as it is; an entry with no key is given one. One
-  step. (Only from here: as a file format it would answer the app's own Import too, core-gaps.md
-  gap 10.)
+  step. From app 1.1.4 a `.bib` file opened or dropped makes a new library of its sources, or
+  dropped into a library adds them (a format with `asks: false`, core-gaps.md gap 10).
 - **Import Zotero notes…**: Zotero's annotations (Add Note from Annotations, then the note
   exported as Markdown) into the open source: each highlight a quote with its page, its comment a
   comment under it, any other paragraph a note. Zotero's links, headings and images stay out.
@@ -150,18 +150,32 @@ note.
   onto another: the middle of its line puts it inside, its top or bottom third beside it
   (Book's treedrop). The keyboard way for sources: Details → **In collections**, a box to tick
   for each.
-- **Library · blocks**, a second mode: each source a block in a thin frame, holding its notes
-  (quotes with their pages, comments set in under them), the blocks a board 3 across (⚙: 2, 3,
-  4 or 6), each going under the shortest column so far. A note dragged into another block moves
+- **Blocks** (0.6 had them as a second mode, Library · blocks; 0.6.1 made them Library's own
+  setting): each source a block in a thin frame, holding its notes (quotes with their pages,
+  comments set in under them), the blocks a board 2, 3, 4 or 6 across, each going under the
+  shortest column so far. A note dragged into another block moves
   there, between the notes it is let go between (or under a quote, as a comment), one step;
   typing after a note lands right after it, as in Library. The docks, Find and the keys are the
   same; going to a source shows the board around it, as far out as half size.
-- A library is 2 × 2 on its floor (New library, and the sample), since only a big room switches
-  its mode: Tab, or the rail's Modes, goes between Library and Library · blocks. (A plugin can't
-  set a room's mode, and a small room keeps one: core-gaps.md, gap 11.)
 - Notes already move between sources by dragging (0.2), in both modes.
 - The canvas shows every source whichever collection is shown: a rule can't read what the person
   has chosen in a dock (core-gaps.md, gap 4).
+
+## What changed in 0.6.1 (lighter and faster)
+
+- **Blocks are a setting, not a mode**, as core asked (core-gaps.md, gap 11): ⚙ → Sources as
+  (Columns, Blocks 2, 3, 4 or 6 across), or **Alt+B** to go between columns and blocks, in any
+  library, small or 2 × 2. It is kept in the room (one step, Ctrl+Z takes it back). A room 0.6
+  saw as Library · blocks is moved over when opened (from 1.1.4). New library is no longer 2 × 2.
+- **.bib as a file format** again (from 1.1.4, `asks: false`): open or drop one.
+- **Attach** takes the path of a file picked in the desktop app (1.1.4), with no path to paste.
+- **Faster:** the docks redraw once per change, not once per table (a kept note changed marks
+  and links, and Enter is two steps, so four redraws became two); Enter's landing reuses the
+  layout just drawn instead of making another.
+- The plugin's own surface: `install` returns only what the host tests reach.
+- The fallback helpers (`compat.js`, `view.js`) stay while the app before 1.1.4 is the one
+  released; on 1.1.4 they already use core's own words (mode on `ui.chosen`, `ui.zoom.get`/`go`,
+  `ui.files` path).
 
 ## How it is made
 
@@ -212,4 +226,4 @@ note.
 5. Alt+F, type `grandeur`: both editions' quotes, with their pages; Enter on one goes to it. A
    click on `#liberty` finds Mill and Wollstonecraft.
 6. Click Liberty in Collections: Mill and Wollstonecraft. Drag Walden onto Natural history.
-   Tab (nothing chosen): Library · blocks, each source a block; drag a note into another block.
+   Alt+B: each source a block; drag a note into another block. Alt+B again: columns.
