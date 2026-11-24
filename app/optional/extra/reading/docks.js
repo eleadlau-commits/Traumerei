@@ -6,7 +6,7 @@
 // Only the plugin API (t.ui.docks) and Folio's ui.el; the look is Folio's classes.
 
 import { ui } from 'folio';
-import { RULE, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn } from './rules.js';
+import { RULE, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn, editionOf, editionsOf } from './rules.js';
 
 const { el } = ui;
 export const LEFT = 'reading.sources';
@@ -67,7 +67,7 @@ export function followsAuto(src, taken) {
   return k === base || (k.startsWith(base) && /^[a-z]+$/.test(k.slice(base.length)));
 }
 
-// docks({ room, inLibrary, openOf, open, newSource }) → { sync, draw, focus, closeAll }
+// docks({ room, inLibrary, openOf, open, newSource, newEdition, setEditionOf }) → { sync, draw, focus, closeAll }
 export function installDocks(t, o) {
   const docks = () => t.ui.docks || null;
   let left = null, right = null; // the bodies, while open
@@ -76,34 +76,55 @@ export function installDocks(t, o) {
   const btn = (label, fn, cls = '') => el('button', { type: 'button', class: `box-btn ${cls}`.trim(), onclick: fn }, label);
 
   // ---- Left: Sources ----
+  // A source's editions fold into its line ("2 editions"); unfolded with → (or a click on the
+  // count), folded with ←; the open one's always shown. This session's, per source.
+  const unfolded = new Set();
   const drawLeft = () => {
     if (!left) return;
     const r = o.room();
     const srcs = r ? sourcesIn(t, r) : [];
     const open = r ? o.openOf(r) : null;
-    const list = el('div', { class: 'reading-list', role: 'listbox', 'aria-label': 'Sources' }, ...srcs.map((s) => {
+    const openMain = open ? (editionOf(t, open) || open) : null;
+    const shownSrc = srcs.filter((s) => { const m = editionOf(t, s.id); return !m || unfolded.has(m) || m === openMain && open === s.id; });
+    const list = el('div', { class: 'reading-list', role: 'listbox', 'aria-label': 'Sources' }, ...shownSrc.map((s) => {
       const n = notesOf(t, s.id).length;
+      const main = editionOf(t, s.id);
+      const eds = main ? 0 : editionsOf(t, s.id).length;
+      const fold = eds ? el('span', { class: 'reading-src-eds pick-note', title: unfolded.has(s.id) ? 'Fold the editions (←)' : 'Show the editions (→)',
+        onclick: (e) => { e.stopPropagation(); toggle(s.id); } }, `${unfolded.has(s.id) ? '▾' : '▸'} ${eds} ${eds === 1 ? 'edition' : 'editions'}`) : null;
       return el('button', {
-        type: 'button', role: 'option', 'data-id': s.id,
-        'aria-selected': s.id === open ? 'true' : 'false', title: s.title || 'Untitled', class: `reading-src pick${s.id === open ? ' st-sel' : ''}`,
+        type: 'button', role: 'option', 'data-id': s.id, 'aria-expanded': eds ? String(unfolded.has(s.id)) : null,
+        'aria-selected': s.id === open ? 'true' : 'false', title: s.title || 'Untitled', class: `reading-src pick${s.id === open ? ' st-sel' : ''}${main ? ' reading-src-edition' : ''}`,
         onclick: () => o.open(s.id),
       },
       el('span', { class: 'reading-src-key' }, s.citekey || '—'),
-      el('span', { class: 'reading-src-who pick-note' }, authorYear(s)),
+      el('span', { class: 'reading-src-who pick-note' }, main ? `${s.edition ? `${s.edition} ed., ` : ''}${s.year || 'n.d.'}` : authorYear(s)),
       el('span', { class: 'reading-src-title' }, s.title || 'Untitled'),
-      el('span', { class: 'reading-src-n pick-note' }, `${n} ${n === 1 ? 'note' : 'notes'}`));
+      el('span', { class: 'reading-src-n pick-note' }, `${n} ${n === 1 ? 'note' : 'notes'}`), fold);
     }));
     list.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       const items = [...list.querySelectorAll('.reading-src')];
       const i = items.indexOf(document.activeElement);
+      if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && i >= 0) {
+        const id = items[i].dataset.id, main = editionOf(t, id) || id;
+        if (e.key === 'ArrowRight' && !unfolded.has(main) && editionsOf(t, main).length) { e.preventDefault(); toggle(main, id); }
+        else if (e.key === 'ArrowLeft' && unfolded.has(main)) { e.preventDefault(); toggle(main, main); }
+        return;
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       const next = items[Math.max(0, Math.min(items.length - 1, (i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1))))];
       if (next) { e.preventDefault(); next.focus(); }
     });
     left.replaceChildren(
-      el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource())),
+      el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource()), open ? btn('New edition', () => o.newEdition?.()) : null),
       srcs.length ? list : el('p', { class: 'hint' }, 'No sources yet. New source (Alt+Shift+N) makes the first.'),
-      el('p', { class: 'hint reading-keys' }, 'Alt+↓ / Alt+↑: the next or previous source.'));
+      el('p', { class: 'hint reading-keys' }, 'Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+  };
+  // Fold or unfold a source's editions; the focus stays on `keep` (a line's id).
+  const toggle = (main, keep = main) => {
+    if (unfolded.has(main)) unfolded.delete(main); else unfolded.add(main);
+    drawLeft();
+    left?.querySelector(`.reading-src[data-id="${keep}"]`)?.focus();
   };
 
   // ---- Right: Details ----
@@ -165,8 +186,21 @@ export function installDocks(t, o) {
     const locked = !!t.distance.shut(id);
     const n = notesOf(t, id).length;
     right.replaceChildren(
-      el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked))),
+      el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked)), editionField(src, locked)),
       el('p', { class: 'hint' }, `${n} ${n === 1 ? 'note' : 'notes'}. Enter keeps a field; Ctrl+Enter is a new line in Title and Authors.`));
+  };
+
+  // "Edition of": nothing, or another source of the library (one that is no edition itself).
+  const editionField = (src, locked) => {
+    const r = t.places.home(src.id);
+    const main = editionOf(t, src.id);
+    const hasOwn = editionsOf(t, src.id).length > 0;
+    const others = sourcesIn(t, r).filter((s) => s.id !== src.id && !editionOf(t, s.id));
+    const sel = el('select', { id: 'reading-f-editionof', disabled: locked || hasOwn,
+      onchange: () => { o.setEditionOf?.(src.id, sel.value || null); drawLeft(); } },
+    el('option', { value: '', selected: !main }, hasOwn ? '— (its editions are listed under it)' : '— (none)'),
+    ...others.map((s) => el('option', { value: s.id, selected: main === s.id }, `${s.citekey || '—'}: ${s.title || 'Untitled'}`)));
+    return el('label', { class: 'kv reading-kv', for: 'reading-f-editionof' }, el('span', { class: 'label' }, 'Edition of'), sel);
   };
 
   const draw = (force = false) => { drawLeft(); drawRight(force); };
@@ -196,7 +230,7 @@ export function installDocks(t, o) {
     left = right = null;
   };
   // Open in a room seen as Library, closed anywhere else.
-  const sync = (rm) => { if (rm && rm.mode === RULE) openAll(); else if (left || right) closeAll(); };
+  const sync = (rm) => { if (rm && rm.mode === RULE) return openAll(); if (left || right) closeAll(); return null; };
 
   // The open source's Title, ready to write (a new source).
   const focus = (key = 'title') => { drawRight(true); const f = right?.querySelector(`#reading-f-${key}`); if (f) { f.focus(); f.select?.(); } };
