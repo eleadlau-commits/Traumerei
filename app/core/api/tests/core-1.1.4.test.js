@@ -76,3 +76,53 @@ test('gap 6: ui.docks.<side>.hide() tucks the dock away and show() brings it bac
   holds = false;
   assert.equal(d.show(), false); // nothing to bring back
 });
+
+// Gap 5: the room's clear-space leaves alone a rule that places every mark itself.
+test('gap 5: a rule with hand: false, or clear: false, says the room\'s clear-space leaves its marks alone', () => {
+  const host = makeHost({ thoughts: 1 });
+  host.plug('clearing', (k) => {
+    k.slots.rules.add({ id: 'free-hand', name: 'Free', arrange: () => [] });
+    k.slots.rules.add({ id: 'no-hand', name: 'Fixed', hand: false, arrange: () => [] });
+    k.slots.rules.add({ id: 'no-clear', name: 'Close rows', clear: false, arrange: () => [] });
+  });
+  const rule = (id) => host.added('clearing').find((a) => a.slot === 'world.ontologies' && a.item.id === id).item;
+  assert.deepEqual(['free-hand', 'no-hand', 'no-clear'].map((id) => rule(id).clears), [true, false, false]);
+});
+
+// Gap 7: t.rules.layout of a rule that reads the draft follows the draft, as the room draws it.
+test('gap 7: the kernel\'s remembered layout of a draft-reading rule follows the thought being written', () => {
+  const host = makeHost({ thoughts: 2 });
+  let draft = null;
+  host.lib.draft.setSource((context) => (context === host.room ? draft : null));
+  try {
+    host.plug('column', (k) => k.slots.rules.add({ id: 'column', name: 'Column', arrange: (reads, context) => {
+      const d = reads.marks.draft(context);
+      return reads.marks.in(context).map((m, i) => ({ mark: m.id, x: 0, y: i * 40 + (i > 0 && d ? d.height || 0 : 0) }));
+    } }));
+    host.plug('still', (k) => k.slots.rules.add({ id: 'still', name: 'Still', arrange: (reads, context) => reads.marks.in(context).map((m, i) => ({ mark: m.id, x: 0, y: i * 40 })) }));
+    const rule = (id) => host.added(id).find((a) => a.slot === 'world.ontologies').item;
+    const second = host.lib.model.children(host.w, host.room)[1].id;
+    const yOf = (o) => host.lib.rules.layout(o, host.w, host.room).get(second).y;
+    assert.equal(yOf(rule('column')), 40);
+    draft = { text: 'a', after: host.ids[0], height: 30 };
+    assert.equal(yOf(rule('column')), 70); // the draft grew: the kernel's memo follows
+    draft = { ...draft, height: 60 };
+    assert.equal(yOf(rule('column')), 100);
+    const still = host.lib.rules.layout(rule('still'), host.w, host.room);
+    draft = { ...draft, height: 90 };
+    assert.equal(host.lib.rules.layout(rule('still'), host.w, host.room), still); // a rule that never read it: the same map
+  } finally { host.lib.draft.setSource(null); }
+});
+
+// Gap 8: a box a rule draws may say a thought begun in it goes after a mark of the room.
+test('gap 8: a drawn box keeps `after` when it names a mark of the room, and drops it otherwise', () => {
+  const host = makeHost({ thoughts: 2 });
+  const [a] = host.lib.model.children(host.w, host.room).map((m) => m.id);
+  const elsewhere = host.lib.model.children(host.w, host.other)[0]?.id ?? 'nope';
+  host.plug('slots', (k) => k.slots.rules.add({ id: 'slotted', name: 'Slotted', arrange: () => [],
+    draw: () => [{ x: 0, y: 0, w: 10, h: 10, style: 'quiet', after: a }, { x: 0, y: 20, w: 10, h: 10, after: elsewhere }, { x: 0, y: 40, w: 10, h: 10 }] }));
+  const rule = host.added('slots').find((x) => x.slot === 'world.ontologies').item;
+  const boxes = rule.boxes(host.w, host.room);
+  assert.deepEqual(boxes.map((b) => b.after ?? null), [a, null, null]);
+  assert.ok(!('after' in boxes[2]));
+});

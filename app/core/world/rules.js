@@ -24,6 +24,7 @@
 import * as P from './places.js';
 import * as L from './links.js';
 import * as G from './gaps.js';
+import * as D from './draft.js';
 import { shut, marksVersion, parentOf, isGroup, groupsFor } from './model.js';
 import { netFor } from './ontologies/relations.js';
 
@@ -32,6 +33,9 @@ const MEMO = new WeakMap(); // ontology → Map context → { key, map }
 // The tables' state for one context, as one key: equal keys mean nothing that a layout reads changed.
 // (Gaps and moments ahead count too: a rule such as Calendar lays marks out by their dates.)
 const keyOf = (w, context) => `${P.version(w, context)}|${L.version(w)}|${marksVersion(w)}|${G.version(w)}|${JSON.stringify(w.ahead || {})}`;
+// A rule whose layout read the thought being written is remembered by it too (since 1.1.4), so
+// t.rules.layout follows the draft as the room draws it.
+const keyFor = (o, w, context) => keyOf(w, context) + (o.readsDraft?.(w, context) ? `|${D.key(context)}` : '');
 
 // A point, with the size, fragments and band words a rule gave it (a thin rule's width, height, fragments, bands).
 const sized = (p) => {
@@ -63,11 +67,11 @@ function lay(o, w, context) {
 export function layout(o, w, context) {
   let byContext = MEMO.get(o);
   if (!byContext) MEMO.set(o, (byContext = new Map()));
-  const key = keyOf(w, context);
+  const key = keyFor(o, w, context);
   const had = byContext.get(context);
   if (had && had.key === key && had.w === w) return had.map;
   const map = lay(o, w, context);
-  byContext.set(context, { key, w, map });
+  byContext.set(context, { key: keyFor(o, w, context), w, map }); // (read again: the layout may have found it reads the draft)
   return map;
 }
 // Forget every remembered layout (a rule's measuring changed its steps: Joyce's heights).

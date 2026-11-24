@@ -515,7 +515,7 @@ export function readsOver(lib, w, ontologies = null) {
 }
 
 // A simple rule (API.md, Rules): { id, name, note?, icon?, order?, arrange(reads, context) →
-// [{ mark, x, y }] , hand? }. It reads only the tables and says where each mark of the context
+// [{ mark, x, y }] , hand?, clear? }. It reads only the tables and says where each mark of the context
 // sits; the kernel makes it a full mode: its units are the context's marks (a group as one), a
 // mark dragged keeps where it was put (a rule row of places) unless hand is false, a mark
 // arrange() leaves out sits in a row below the rest. Remembered until the tables it reads change.
@@ -708,6 +708,9 @@ export function simpleRule(rule, lib, ontologies = () => null, globals = () => n
     },
     unplace: hand ? (w, room, id) => groups.unplace(w, room, rule.id, id) : undefined,
     placed: () => true,
+    // Since 1.1.4: the room's clear-space leaves alone a rule that places every mark itself
+    // (hand: false: a push could never stick) or says clear: false.
+    clears: hand && rule.clear !== false,
   };
   // The boxes it draws, remembered with the layout's key; each checked to be a box.
   if (rule.draw) {
@@ -722,6 +725,7 @@ export function simpleRule(rule, lib, ontologies = () => null, globals = () => n
         .map((b) => Object.freeze({ x: b.x, y: b.y, w: b.w, h: b.h, label: b.label == null ? '' : String(b.label), note: b.note == null ? '' : String(b.note),
           style: BOX_STYLES.includes(b.style) ? b.style : 'plain', level: [1, 2, 3].includes(b.level) ? b.level : 0,
           right: b.right == null ? '' : String(b.right), opens: typeof b.opens === 'string' && w.things[b.opens] ? b.opens : null,
+          ...(typeof b.after === 'string' && w.things[b.after] && model.parentOf(w, b.after) === room ? { after: b.after } : {}), // a thought begun in it is written after this mark (since 1.1.4)
           ...(typeof b.surface === 'string' && SURFACE_ID.test(b.surface) ? { surface: b.surface, ...boxData(b.data) } : {}) })); // a surface drawn in it (since 1.1.0)
       byRoom.set(room, { key, boxes });
       return boxes;

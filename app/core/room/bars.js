@@ -604,6 +604,9 @@ export class Bars {
     // A simple rule with land() (a book): the next thought is written after the mark chosen, or the
     // one kept just before, drawn under it (view.js), and land() hears where (writing.js keepNew).
     if (this.ont.land && !this.fresh) {
+      // A chosen box that says where a thought begun in it goes (a slot's `after`, since 1.1.4).
+      const box = this.boxAt?.room === this.roomId ? this.ont.boxes?.(this.world, this.roomId)?.[this.boxAt.i] : null;
+      if (box?.after && this.world.things[box.after] && this.ont.point?.(this.world, this.roomId, box.after)) return { train: null, near: box.after, ...this.under(box.after) };
       const chosen = this.sel && this.sel.kind !== 'many' ? this.sel.id : null;
       const near = [chosen, cur].find((id) => id && this.world.things[id] && parentOf(this.world, id) === this.roomId && this.ont.point?.(this.world, this.roomId, id));
       if (near) return { train: null, near, ...this.under(near) };
