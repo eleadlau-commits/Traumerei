@@ -180,6 +180,7 @@ export default class Room extends Feature {
       hasDraft: (id) => !!this.drafts[id],      // a thought was left half written there
       id: () => (this.root.hidden ? null : this.roomId), // the open room, while it shows
       chosen: () => (!this.root.hidden && this.sel && this.sel.kind !== 'many' ? this.sel.id : null), // the one thing chosen there
+      mode: () => (this.root.hidden || !this.roomId ? null : this.mode), // the open room's mode (t.ui.chosen().mode, since 1.1.4)
       go: (id, room) => { if (this.world.things[id]) this.goTo({ id, room }); }, // the view on a mark in a room, and it chosen
       text: this.textService(),                 // the words being written: caret, select, replace, style (writing.js)
       // The zoom (t.ui.zoom, since 1.1.0): its bands, the open room's zoom and band (or null),
@@ -187,6 +188,7 @@ export default class Room extends Feature {
       bands: BANDS,
       zoom: () => this.zoomNow(),
       setZoom: (zoom, at) => this.setZoom(zoom, at),
+      goView: (to, ms) => this.goView(to, ms), // the view to { x, y, zoom }, eased (t.ui.zoom.go, since 1.1.4)
       onZoom: (fn) => this.onZoom(fn),
       // What is chosen, all of it (t.ui.chosen().marks, since 1.1.1), choosing marks of the open
       // room, hearing each change of the choice, and drawing marks again on the next frame.
@@ -216,7 +218,8 @@ export default class Room extends Feature {
   }
 
   // What is chosen (sel): every change is heard by the plugins listening (t.ui.chosen.on, since
-  // 1.1.1), once per change, after the gesture that made it.
+  // 1.1.1), once per change, after the gesture that made it; a change of the open room's mode too
+  // (since 1.1.4: setMode, undo, a room opened, all reach here through sel or drawRoom).
   get sel() { return this._sel ?? null; }
   set sel(v) { this._sel = v; if (this.choiceHeard?.size) this.choiceSoon(); }
   chosenIds() { const s = this._sel; return s ? [...(s.ids || [s.id])].filter((id) => this.world.things[id]) : []; }
@@ -230,10 +233,11 @@ export default class Room extends Feature {
     queueMicrotask(() => {
       this.choiceWaiting = false;
       const marks = this.roomId && !this.root.hidden ? this.chosenIds() : [];
-      const said = `${this.roomId}|${marks.join(',')}`;
+      const mode = this.roomId && !this.root.hidden ? this.mode : null;
+      const said = `${this.roomId}|${mode}|${marks.join(',')}`;
       if (said === this.choiceSaid) return;
       this.choiceSaid = said;
-      const o = Object.freeze({ context: this.roomId ?? null, mark: marks.length === 1 ? marks[0] : null, marks: Object.freeze(marks) });
+      const o = Object.freeze({ context: this.roomId ?? null, mark: marks.length === 1 ? marks[0] : null, marks: Object.freeze(marks), mode });
       for (const fn of [...(this.choiceHeard || [])]) { try { fn(o); } catch (err) { console.warn('Room: a choice listener failed', err); } }
     });
   }

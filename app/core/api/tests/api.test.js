@@ -158,7 +158,7 @@ test('a plugin\'s dock tabs are its own, and all close when it is switched off',
   const leaving = [];
   const t = connect({ app: fakeApp(), world, plugin: plugin('time'), parts: surface(lib), lib, docks, gone: (fn) => leaving.push(fn) });
   const d = t.ui.docks;
-  assert.deepEqual(Object.keys(d.right).sort(), ['close', 'isOpen', 'isShowing', 'open', 'show']);
+  assert.deepEqual(Object.keys(d.right).sort(), ['close', 'hide', 'isOpen', 'isShowing', 'open', 'show', 'shown']);
   let closed = 0;
   await d.right.open({ key: 'time', body: null, onClose: () => closed++ });
   await d.left.open({ key: 'notes', body: null });
@@ -270,7 +270,7 @@ test('ui.zoom reads, sets and hears the open room\'s zoom with its bands; outsid
     setZoom: (z, at) => { zoom = Math.min(4, Math.max(0.25, z)); for (const fn of listeners) fn({ zoom, band: band(zoom), context: 'r1', at }); return { zoom, band: band(zoom) }; },
     onZoom: (fn) => { listeners.add(fn); return () => listeners.delete(fn); } };
   const t = connect({ app: fakeApp(), world, plugin: plugin('haiku'), parts: surface(lib), lib, room: () => room, gone: (fn) => leaving.push(fn) });
-  assert.deepEqual(t.ui.zoom.get(), { zoom: 1, band: 'mid' });
+  assert.deepEqual(t.ui.zoom.get(), { zoom: 1, band: 'mid', x: 0, y: 0 }); // since 1.1.4 with the view's centre
   assert.equal(t.ui.zoom.bands, bands);
   t.ui.zoom.on((z) => heard.push(z));
   assert.deepEqual(t.ui.zoom.set(0.3, { x: 10, y: 20 }), { ok: true, zoom: 0.3, band: 'far' });

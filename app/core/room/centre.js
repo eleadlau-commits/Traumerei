@@ -57,18 +57,19 @@ export function centreChosen(c) {
 
 // Moves the view to `to` ({ x, y, zoom }) smoothly (at once if the system asks for less motion),
 // and saves it when it gets there. A new glide, or the room left, stops the one before.
-export function glide(c, to) {
+// ms: how long it takes (GLIDE_MS by default; 0 at once).
+export function glide(c, to, ms = GLIDE_MS) {
   const v = view(c.world, c.roomId);
   const roomId = c.roomId;
   cancelAnimationFrame(c.glideFrame);
   const from = { x: v.x, y: v.y, zoom: v.zoom };
   const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const end = () => { Object.assign(v, to); c.place(); c.save(); };
-  if (still) { end(); return; }
+  if (still || !(ms > 0)) { end(); return; }
   const t0 = performance.now();
   const step = (now) => {
     if (c.roomId !== roomId) return;
-    const t = Math.min(1, (now - t0) / GLIDE_MS);
+    const t = Math.min(1, (now - t0) / ms);
     if (t >= 1) { end(); return; }
     const k = 1 - (1 - t) ** 3; // eases out
     // The zoom moves on a log scale, so zooming in and out feel the same.
@@ -79,4 +80,16 @@ export function glide(c, to) {
     c.glideFrame = requestAnimationFrame(step);
   };
   c.glideFrame = requestAnimationFrame(step);
+}
+
+// The view to `to` ({ x?, y?, zoom? }, world units; what is left out stays as it is), eased over
+// `ms` (GLIDE_MS by default, at most 2 s; 0 at once, and at once when the system asks for less
+// motion). t.ui.zoom.go, since 1.1.4. Returns where it goes, or null outside a room.
+export function goView(c, to = {}, ms = GLIDE_MS) {
+  if (!c.roomId || c.root.hidden) return null;
+  const v = view(c.world, c.roomId);
+  const num = (n, d) => (Number.isFinite(+n) && n !== null && n !== '' ? +n : d);
+  const end = { x: num(to?.x, v.x), y: num(to?.y, v.y), zoom: Math.min(ZOOM.max, Math.max(ZOOM.min, num(to?.zoom, v.zoom))) };
+  glide(c, end, Math.max(0, Math.min(2000, num(ms, GLIDE_MS))));
+  return end;
 }

@@ -6,6 +6,7 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.4 | 3 | 1 | traum/3 |
 | 1.1.3 | 3 | 1 | traum/3 |
 | 1.1.2 | 3 | 1 | traum/3 |
 | 1.1.1 | 3 | 1 | traum/3 |
@@ -14,6 +15,15 @@ version with `python build.py release <version>`.
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.1.4
+
+The core gaps Book and Reading notes found (`app/core/core-gaps.md`), additive to plugin API 3:
+
+- `ui.chosen()` carries the open room's `mode`, and `ui.chosen.on` fires when it changes (gap 1).
+- `ui.zoom.get()` gives the view's centre `x`, `y`; `ui.zoom.go({ x, y, zoom }, { ms })` moves
+  the view there eased (gap 2).
+- `ui.docks.left/right` gain `hide()`, `show()` with no key, and `shown` (gap 6).
 
 ## 1.1.3
 
