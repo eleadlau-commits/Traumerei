@@ -42,6 +42,11 @@ function of them, the rooms page's own rules) and fixed where they fit:
 because it is the jump readers feel most, 4 because it is the plan's canvas, 5 because it costs
 seconds in any rule with close rows.
 
+**Reading notes 0.6.1** uses the fixes: 10 (its .bib format says `asks: false`), 11 as core
+suggests (blocks are Library's own setting, so any room switches; New library is no longer 2 × 2),
+3 (Attach takes a picked file's path). Its helpers for 1 to 3 already use core's words on 1.1.4;
+they stay for 1.1.3 until 1.1.4 is released. 4 stays as columns side by side.
+
 ## Fallback helpers from day one
 
 Each gap sits behind one small helper in the plugin. The helper uses the new API if the app has it

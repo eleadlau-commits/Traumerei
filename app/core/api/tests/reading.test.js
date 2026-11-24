@@ -430,12 +430,16 @@ test('reading: a collection moves inside another, never inside itself; deleted, 
   assert.equal(K.collectionParent(t, lib), pol, 'one undo brings it all back');
 });
 
-test('reading: Library · blocks lays each source out as a block of its notes, none overlapping; a note dragged into another block moves there', () => {
-  const { host, t, s } = setUp();
-  const blocks = host.added('reading').find((a) => a.slot === 'world.ontologies' && a.item.id === X.BLOCKS_RULE)?.item;
-  assert.ok(blocks, 'the second rule');
+test('reading: as blocks (the room\'s setting) each source is a block of its notes, none overlapping; a note dragged into another block moves there', () => {
+  const { host, t, s, rule } = setUp();
+  assert.ok(rule.settings.find((x) => x.key === 'across'), 'Sources as: a setting of Library');
+  assert.ok(X.setAcross(t, s.room, 3).ok);
+  host.world.save();
+  assert.equal(X.acrossOf(t.marks.get(s.room).rules[X.RULE]), 3, 'kept in the room');
   const measure = (a, b) => t.ui.measure(a, b);
   const L = X.layout(t, s.room, measure, 3);
+  assert.equal(t.rules.layout(X.RULE, s.room).length, L.rows.length, 'the rule lays it out so');
+  assert.ok(t.rules.draws(X.RULE, s.room).boxes.some((b) => b.style === 'plain'), 'in frames');
   assert.ok(L.blocks, 'blocks');
   assert.equal(L.rows.length, s.notes.length, 'every note placed');
   assert.equal(L.columns.length, 5);
@@ -467,7 +471,7 @@ test('reading: Library · blocks lays each source out as a block of its notes, n
   assert.deepEqual(brokenLaws(host.w), []);
 });
 
-test('reading: Library · blocks opens a 1,500-note library in under 120 ms', () => {
+test('reading: as blocks, a 1,500-note library lays out in under 120 ms', () => {
   const { t, s } = setUp();
   const many = [];
   for (let i = 0; i < 1500; i++) many.push(t.marks.make({ content: `Note ${i}: a few words to wrap, about the reading.`, in: s.room }).id);

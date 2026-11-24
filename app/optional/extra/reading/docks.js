@@ -232,7 +232,7 @@ export function installDocks(t, o) {
         el('div', { class: 'box-btns' }, btn('Import BibTeX…', () => o.bibIn?.()), btn('Import Zotero notes…', () => o.zoteroIn?.())),
         el('div', { class: 'box-btns' }, btn('BibTeX', () => o.bibOut?.()), btn('Markdown', () => o.mdOut?.()), btn('Word', () => o.wordOut?.())),
         el('p', { class: 'hint' }, 'Zotero: its metadata through Export → BibTeX; its annotations through Add Note from Annotations, then the note exported as Markdown, into the open source. Markdown cites with Pandoc keys; Word in Chicago author-date, with References.')),
-      el('p', { class: 'hint reading-keys' }, 'Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+      el('p', { class: 'hint reading-keys' }, 'Alt+B: columns or blocks. Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
     drawColls();
     drawTags();
     drawBody();
@@ -403,7 +403,7 @@ export function installDocks(t, o) {
     if (!f?.rel) {
       return el('section', { class: 'reading-file' }, head,
         el('p', { class: 'hint' }, 'No file. The file stays where it is: the library keeps its path and fingerprint, never its text.'),
-        locked ? null : el('div', { class: 'box-btns' }, btn('Attach file…', async () => { const got = await o.pick?.(); if (got) { pending = { id: src.id, got }; drawRight(true); right?.querySelector('#reading-f-path')?.focus(); } })),
+        locked ? null : el('div', { class: 'box-btns' }, btn('Attach file…', async () => { const got = await o.pick?.(); if (!got) return; if (got.path) { o.attach?.(src.id, got, got.path); drawRight(true); return; } pending = { id: src.id, got }; drawRight(true); right?.querySelector('#reading-f-path')?.focus(); })),
         folderRow);
     }
     const whole = fullPath(folder, f.rel);
@@ -468,6 +468,14 @@ export function installDocks(t, o) {
   // The Find field, ready to type (Alt+F); `q` put in it first when given.
   const focusFind = async (q = null) => { if (!left) await openAll(); if (q != null) setQuery(q); findBox?.focus(); findBox?.select?.(); };
 
-  for (const on of [t.marks.on, t.links.on]) on?.(() => { if (left || right) draw(); });
+  // The tables changed: one redraw once the step is over (a step changes marks and links together,
+  // and Enter is two steps: the note, then its quote or nesting).
+  let queued = false;
+  const redraw = () => {
+    if (queued || !(left || right)) return;
+    queued = true;
+    queueMicrotask(() => { queued = false; if (left || right) draw(); });
+  };
+  for (const on of [t.marks.on, t.links.on]) on?.(redraw);
   return { sync, draw, focus, lit, focusFind, closeAll, showing: () => !!(left || right), collection: () => collOf(o.room()), nameNew, focusColls, showColl: (c) => showColl(o.room(), c), ready: async () => { if (!left) await openAll(); } };
 }

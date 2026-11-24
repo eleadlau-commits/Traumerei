@@ -52,10 +52,12 @@ test('collections: a collection let go on a line goes inside it from the middle,
   assert.ok(collectionLanding(R, 'A', 'B', 'into').reason, 'not inside what it holds');
 });
 
-test('Library · blocks: blocks across, each under the shortest column so far; a point finds its block', () => {
+test('blocks: blocks across, each under the shortest column so far; a point finds its block', () => {
   const R = reads();
   assert.equal(acrossOf({ across: '2' }), 2);
-  assert.equal(acrossOf({ across: '5' }), 3, 'a count not offered: 3');
+  assert.equal(acrossOf({ across: '5' }), 0, 'a count not offered: columns');
+  assert.equal(acrossOf({ across: '0' }), 0, 'columns');
+  assert.equal(acrossOf(null), 0, 'columns by default');
   const L = layout(R, 'r', measure, 2);
   assert.ok(L.blocks);
   assert.deepEqual(L.columns.map((c) => c.source), ['a', 'b', 'c']);

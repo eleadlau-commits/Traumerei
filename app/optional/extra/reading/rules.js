@@ -8,7 +8,8 @@
 // note is a line thought, `part of` its source, in stream order. No source text is ever kept.
 
 export const RULE = 'reading-library';
-// The sibling rule (Arrange by, or Tab): the same library as a board of blocks.
+// 0.6's second mode, now Library's own setting (Blocks across): a room still seen as it is moved
+// over when opened.
 export const BLOCKS_RULE = 'reading-blocks';
 export const isLibraryMode = (mode) => mode === RULE || mode === BLOCKS_RULE;
 export const SOURCE = 'reading-source';
@@ -207,14 +208,20 @@ export const COLUMN = Object.freeze({ width: 560, gap: 220, head: 120, space: 22
 // The centre x of column i.
 export const columnX = (i) => i * (COLUMN.width + COLUMN.gap);
 
-// ---- Library · blocks: each source a block of its notes in a frame, the blocks a board ----
+// ---- Blocks: each source a block of its notes in a frame, the blocks a board ----
 
 // World units: a block's width (its notes' words wrap inside it), the air inside its frame and
-// between frames; `across` blocks to a row (the room's setting under the rule), each block going
-// under the shortest column of blocks so far, in the sources' order.
+// between frames; `across` blocks to a row (the room's setting under the rule, Columns by default),
+// each block going under the shortest column of blocks so far, in the sources' order.
 export const BLOCK = Object.freeze({ width: 360, gap: 56, head: 92, space: 20, empty: 56, indent: 28, gutter: 64, pad: 18 });
 export const BLOCKS_ACROSS = Object.freeze([2, 3, 4, 6]);
-export const acrossOf = (set) => { const n = Number(set?.across); return BLOCKS_ACROSS.includes(n) ? n : 3; };
+export const acrossOf = (set) => { const n = Number(set?.across); return BLOCKS_ACROSS.includes(n) ? n : 0; };
+// The room's setting: columns (0) or blocks `n` across, kept in the room's rules (one step, as the ⚙ does).
+export function setAcross(t, room, n) {
+  const m = t.marks.get(room);
+  if (!m) return { ok: false, reason: 'No such room' };
+  return t.marks.edit(room, { rules: { ...(m.rules || {}), [RULE]: { ...(m.rules?.[RULE] || {}), across: String(n) } } });
+}
 
 // The library laid out: { rows (arrange's), boxes (draw's), columns: [{ source, x, top, bottom,
 // notes, units, left, right, w }], blocks }: each source a column (or, with `across`, a block of
@@ -287,7 +294,7 @@ export function layout(reads, room, measure, across = 0) {
   }
   const unfiled = all.filter((m) => m.kind === 'line' && !filed.has(m.id)).map((m) => ({ id: m.id, under: null }));
   if (unfiled.length) column(null, { label: 'Unfiled', note: 'notes in no source' }, unfiled);
-  return { rows, boxes, columns, blocks: !!across };
+  return { rows, boxes, columns, blocks: !!across, across };
 }
 
 // The column (or block) a point is over, or null: on the board the block it is in (with half the
@@ -353,10 +360,9 @@ export const nearest = (columns, x) => columns.reduce((best, c) => (!best || Mat
 
 // ---- A new library ----
 
-// A new, empty library as a .traum file (traum/3): one room, already seen as Library (or `mode`,
-// Library · blocks), carried by the file because a plugin can't set a room's mode itself; 2 × 2 on
-// its floor, as only a big room switches its mode (Tab: Library, Library · blocks) (core-gaps.md, gap 11).
-export function libraryTraum(name = 'Library', mode = RULE) {
+// A new, empty library as a .traum file (traum/3): one room, already seen as Library, carried by
+// the file (on 1.1.3 a plugin can't make a room with its mode; 1.1.4's marks.make at.mode can).
+export function libraryTraum(name = 'Library') {
   const title = String(name).replace(/[\r\n]+/g, ' ').trim() || 'Library';
-  return ['---', 'format: traum/3', 'context: ^1', '---', '', '# Marks', '', `## ^1 room: ${title}`, `mode: ${isLibraryMode(mode) ? mode : RULE}`, 'material.size: 2', ''].join('\n');
+  return ['---', 'format: traum/3', 'context: ^1', '---', '', '# Marks', '', `## ^1 room: ${title}`, `mode: ${RULE}`, ''].join('\n');
 }
