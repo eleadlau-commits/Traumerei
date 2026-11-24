@@ -118,7 +118,9 @@ test('Enter lands a note after the chosen one in the open source, else at the en
 test('a new library is a traum/3 text of one room seen as Library', () => {
   const text = libraryTraum('My: Library\n');
   assert.match(text, /^---\nformat: traum\/3\ncontext: \^1\n---/);
-  assert.match(text, /## \^1 room: My: Library\nmode: reading-library\n/);
+  assert.match(text, /## \^1 room: My: Library\nmode: reading-library\nmaterial.size: 2\n/);
+  assert.match(libraryTraum('B', 'reading-blocks'), /mode: reading-blocks\n/, 'or seen as blocks');
+  assert.match(libraryTraum('C', 'calendar'), /mode: reading-library\n/, 'never another mode');
 });
 
 test('Details: a field\'s words as an edit, a key kept unique and valid, an auto key following the source', () => {

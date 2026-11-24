@@ -38,22 +38,30 @@ export const SOURCES = [
   ] },
 ];
 
+// Collections (Zotero's): a name, the sources right in it (by key), and the collections inside it.
+export const COLLECTIONS = [
+  { name: 'Natural history', keys: ['darwin1859origin', 'darwin1872origin', 'thoreau1854walden'] },
+  { name: 'Political philosophy', keys: ['wollstonecraft1792vindication'], kids: [{ name: 'Liberty', keys: ['mill1859liberty', 'wollstonecraft1792vindication'] }] },
+];
+
 // Builds the sample in a fresh world; returns { w, room, sources, notes }.
 export function sampleWorld(lib, now = 1_795_400_000_000) {
   let clock = now;
   const tick = () => (clock += 1000);
   // The plugin's families as it declares them (slots.groups): a source holds a note alone, a tag
   // shares it.
-  lib.model.declareFamilies([{ id: 'reading-source', name: 'Source', membership: 'one', order: 'kept', fields: [...FIELDS], tidy: tidySource }, { id: 'reading-tag', name: 'Tag', membership: 'many', order: 'time' }]);
+  lib.model.declareFamilies([{ id: 'reading-source', name: 'Source', membership: 'one', order: 'kept', fields: [...FIELDS], tidy: tidySource }, { id: 'reading-tag', name: 'Tag', membership: 'many', order: 'time' }, { id: 'reading-collection', name: 'Collection', membership: 'many', order: 'kept' }]);
   const w = lib.model.emptyWorld(tick());
   return { w, ...sampleInto(lib, w, tick) };
 }
 
 // Builds the sample in a world there is (a test's host); tick() gives each moment its time.
-// → { room, sources, notes, quotes, comments }.
+// → { room, sources, notes, quotes, comments, tags, collections (by name) }.
 export function sampleInto(lib, w, tick) {
   const { model, links: L } = lib;
   const room = model.addRoom(w, LIBRARY, tick(), {}, 'reading-library');
+  // 2 × 2 on its floor: a big room switches its mode (Tab: Library, Library · blocks…).
+  room.size = 2;
   const sources = [], notes = [], quotes = [], comments = [];
   const byKey = new Map(), tags = new Map();
   const tagOf = (word) => {
@@ -79,5 +87,14 @@ export function sampleInto(lib, w, tick) {
       else quote = null;
     }
   }
-  return { room: room.id, sources, notes, quotes, comments, tags: Object.fromEntries(tags) };
+  const collections = {};
+  const collect = (c, parent) => {
+    const g = model.create(w, room.id, { kind: 'group', of: 'reading-collection', family: true, x: 0, y: 0, title: c.name }, tick());
+    collections[c.name] = g.id;
+    if (parent) model.join(w, parent, g.id);
+    for (const k of c.keys || []) model.join(w, g.id, byKey.get(k));
+    for (const kid of c.kids || []) collect(kid, g.id);
+  };
+  for (const c of COLLECTIONS) collect(c, null);
+  return { room: room.id, sources, notes, quotes, comments, tags: Object.fromEntries(tags), collections };
 }

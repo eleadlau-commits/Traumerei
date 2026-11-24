@@ -26,6 +26,12 @@ a source file's path and hash).
   as `#word` in a note.
 - An **edition** is a source of its own (its own key, its own pages) with a quiet `reading
   edition` link to the source it is an edition of. A quote belongs to exactly one edition.
+- A **collection** is a group of the family `reading-collection` (membership many), its title its
+  name. A source is `part of` each collection it is in (any number); a collection `part of` the
+  one it sits in (one at most, three levels deep at most). Deleting a collection never deletes
+  its sources.
+- **Library · blocks** (rule `reading-blocks`) is the same library seen as a board: nothing in the
+  tables changes between the two.
 
 ## What it adds (0.1)
 
@@ -132,6 +138,31 @@ Typing a quote or a comment under a quote is done just after Enter, as its own s
 links a note, Book's way): the first Ctrl+Z takes back the quote or the nesting, the second the
 note.
 
+## What it adds (0.6)
+
+- **Collections**, as Zotero has them, in the left dock above Find: All sources, then each
+  collection by name with the sources in it (and in the collections inside it). A click (or
+  Enter) shows only its sources; New source then makes one in it. **New collection**
+  (Alt+Shift+C) makes one inside the collection shown, its name ready to write. Alt+Shift+L goes
+  to the tree: ↑ / ↓ walk it, F2 renames, Delete deletes (its sources stay; the collections
+  inside it move up), Alt+→ puts it inside the collection above it, Alt+← takes it up a level.
+- **Drag a source onto a collection** to put it in (it stays in the others). Drag a collection
+  onto another: the middle of its line puts it inside, its top or bottom third beside it
+  (Book's treedrop). The keyboard way for sources: Details → **In collections**, a box to tick
+  for each.
+- **Library · blocks**, a second mode: each source a block in a thin frame, holding its notes
+  (quotes with their pages, comments set in under them), the blocks a board 3 across (⚙: 2, 3,
+  4 or 6), each going under the shortest column so far. A note dragged into another block moves
+  there, between the notes it is let go between (or under a quote, as a comment), one step;
+  typing after a note lands right after it, as in Library. The docks, Find and the keys are the
+  same; going to a source shows the board around it, as far out as half size.
+- A library is 2 × 2 on its floor (New library, and the sample), since only a big room switches
+  its mode: Tab, or the rail's Modes, goes between Library and Library · blocks. (A plugin can't
+  set a room's mode, and a small room keeps one: core-gaps.md, gap 11.)
+- Notes already move between sources by dragging (0.2), in both modes.
+- The canvas shows every source whichever collection is shown: a rule can't read what the person
+  has chosen in a dock (core-gaps.md, gap 4).
+
 ## How it is made
 
 - `rules.js`: plain functions (sources, keys, anchors, the stream with its comments, the layout,
@@ -143,6 +174,8 @@ note.
 - `bibtex.js`, `zotero.js`, `io.js`: BibTeX in and out, Zotero's annotations in, as one step each.
 - `cite.js`, `word.js`: Chicago author-date and Pandoc citations, the Markdown and Word exports;
   `zip.js` is copied from Book 0.4.7.
+- `collections.js`: the collection tree, and its gestures, each one step (`newCollection`,
+  `renameCollection`, `putIn`, `takeOut`, `moveCollection`, `removeCollection`).
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
 - `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
   `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,
@@ -178,3 +211,5 @@ note.
    6th edition.
 5. Alt+F, type `grandeur`: both editions' quotes, with their pages; Enter on one goes to it. A
    click on `#liberty` finds Mill and Wollstonecraft.
+6. Click Liberty in Collections: Mill and Wollstonecraft. Drag Walden onto Natural history.
+   Tab (nothing chosen): Library · blocks, each source a block; drag a note into another block.
