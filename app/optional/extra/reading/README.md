@@ -7,7 +7,7 @@ each source's notes are a column, the open source's in view. Choose a source, ty
 note lands at the end of its stream, or right after the chosen note.
 
 A plugin, shipped as `reading.traumplug` on plugins-latest (never built in, never in the starter
-set). It reaches the app only through the plugin API (`app/core/API.md`), and needs app 1.1.2. No
+set). It reaches the app only through the plugin API (`app/core/API.md`), and needs app 1.1.4. No
 source text is ever kept, in the room or anywhere else: only notes and metadata (and, from 0.4,
 a source file's path and hash).
 
@@ -173,9 +173,14 @@ note.
   and links, and Enter is two steps, so four redraws became two); Enter's landing reuses the
   layout just drawn instead of making another.
 - The plugin's own surface: `install` returns only what the host tests reach.
-- The fallback helpers (`compat.js`, `view.js`) stay while the app before 1.1.4 is the one
-  released; on 1.1.4 they already use core's own words (mode on `ui.chosen`, `ui.zoom.get`/`go`,
-  `ui.files` path).
+
+## What changed in 0.6.2 (needs app 1.1.4)
+
+- The fallback helpers are gone: `compat.js` keeps only core's own words (mode on `ui.chosen`,
+  `ui.zoom.get` / `go`, `ui.files` path, show and hash), and `view.js` (the smooth jump's
+  arithmetic) went with them.
+- New library is a room made seen as Library (`marks.make` with `at.mode`), no .traum in between;
+  a .bib opened makes one the same way.
 
 ## How it is made
 
@@ -191,17 +196,15 @@ note.
 - `collections.js`: the collection tree, and its gestures, each one step (`newCollection`,
   `renameCollection`, `putIn`, `takeOut`, `moveCollection`, `removeCollection`).
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
-- `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
-  `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,
-  else the workaround, so the plugin works on 1.1.2 and switches over with no rewrite.
-- `view.js`: the arithmetic of a smooth jump, copied from Book 0.4.6 (`zoom.js`).
+- `compat.js`: the app's words for the room's mode, the view and files, in one place
+  (`onModeChange`, `viewGet` / `viewGo`, `stageBox`, `fileHandles`; core-gaps.md gaps 1 to 3).
 - The source open in a library is the session's (which one you are reading is not content), so
   the rule can't read it: each source is its own column and the view goes to the open one
   (core-gaps.md).
 
 ## What it needs
 
-- **Plugin API:** 3 · **oldest app:** 1.1.2 · **needs:** `files` (picking a file to attach or
+- **Plugin API:** 3 · **oldest app:** 1.1.4 · **needs:** `files` (picking a file to attach or
   verify), `store` (the library folder, this computer's)
 
 ## What it saves

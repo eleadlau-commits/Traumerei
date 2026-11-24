@@ -357,12 +357,3 @@ export function landing(reads, room, mark, x, y, open, lay) {
 }
 
 export const nearest = (columns, x) => columns.reduce((best, c) => (!best || Math.abs(c.x - x) < Math.abs(best.x - x) ? c : best), null);
-
-// ---- A new library ----
-
-// A new, empty library as a .traum file (traum/3): one room, already seen as Library, carried by
-// the file (on 1.1.3 a plugin can't make a room with its mode; 1.1.4's marks.make at.mode can).
-export function libraryTraum(name = 'Library') {
-  const title = String(name).replace(/[\r\n]+/g, ' ').trim() || 'Library';
-  return ['---', 'format: traum/3', 'context: ^1', '---', '', '# Marks', '', `## ^1 room: ${title}`, `mode: ${RULE}`, ''].join('\n');
-}
