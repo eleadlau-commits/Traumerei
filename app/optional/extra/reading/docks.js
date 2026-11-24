@@ -7,6 +7,7 @@
 
 import { ui } from 'folio';
 import { find, tagsOf, snippet } from './find.js';
+import { fullPath, sizeOf, linkOf, offsetOf, isAbsolute } from './files.js';
 import { RULE, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn, editionOf, editionsOf } from './rules.js';
 
 const { el } = ui;
@@ -68,7 +69,8 @@ export function followsAuto(src, taken) {
   return k === base || (k.startsWith(base) && /^[a-z]+$/.test(k.slice(base.length)));
 }
 
-// docks({ room, inLibrary, openOf, open, goTo, newSource, newEdition, setEditionOf }) → { sync, draw, focus, lit, focusFind, closeAll }
+// docks({ room, inLibrary, openOf, open, goTo, newSource, newEdition, setEditionOf, folder, setFolder,
+//   pick, attach, setOffset, copyPath, showFile, canShow, verify, detach, openLink }) → { sync, draw, focus, lit, focusFind, closeAll }
 export function installDocks(t, o) {
   const docks = () => t.ui.docks || null;
   let left = null, right = null; // the bodies, while open
@@ -249,7 +251,8 @@ export function installDocks(t, o) {
     const locked = !!t.distance.shut(id);
     const n = notesOf(t, id).length;
     right.replaceChildren(
-      el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked)), editionField(src, locked)),
+      el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked)), linkRow(src), editionField(src, locked)),
+      fileSection(src, locked),
       el('p', { class: 'hint' }, `${n} ${n === 1 ? 'note' : 'notes'}. Enter keeps a field; Ctrl+Enter is a new line in Title and Authors.`));
   };
 
@@ -264,6 +267,64 @@ export function installDocks(t, o) {
     el('option', { value: '', selected: !main }, hasOwn ? '— (its editions are listed under it)' : '— (none)'),
     ...others.map((s) => el('option', { value: s.id, selected: main === s.id }, `${s.citekey || '—'}: ${s.title || 'Untitled'}`)));
     return el('label', { class: 'kv reading-kv', for: 'reading-f-editionof' }, el('span', { class: 'label' }, 'Edition of'), sel);
+  };
+
+  // The DOI or URL, opened in the browser (Alt+Shift+O).
+  const linkRow = (src) => {
+    const url = linkOf(src);
+    return url ? el('div', { class: 'box-btns' }, btn(src.doi ? 'Open the DOI' : 'Open the URL', () => o.openLink?.(src.id))) : null;
+  };
+
+  // ---- The source's file: kept outside the room, by path and hash ----
+  // Attach: pick the file (its size and SHA-256 worked out here; nothing of it kept but those),
+  // then its path, pasted once (a browser is never told it). Verify: pick it again. Copy path.
+  // The library folder is this computer's (t.store), never in the room.
+  let pending = null; // a file picked, waiting for its path: { id, got }
+  const fileSection = (src, locked) => {
+    const r = t.places.home(src.id);
+    const folder = o.folder?.(r) || '';
+    const f = src.file;
+    const head = el('h3', { class: 'label reading-file-head' }, 'File');
+    const folderRow = el('label', { class: 'kv reading-kv', for: 'reading-f-folder' }, el('span', { class: 'label' }, 'Library folder on this computer'),
+      textField('reading-f-folder', folder, (v) => { o.setFolder?.(r, v.trim()); drawRight(true); }, 'C:\\Users\\you\\Library'));
+    if (pending && pending.id === src.id) {
+      const g = pending.got;
+      return el('section', { class: 'reading-file' }, head,
+        el('p', { class: 'hint' }, `${g.name}, ${sizeOf(g.bytes)}. Paste its whole path (in Explorer: Shift+right-click, Copy as path), then Enter.`),
+        el('label', { class: 'kv reading-kv', for: 'reading-f-path' }, el('span', { class: 'label' }, 'Its path'),
+          textField('reading-f-path', g.path || '', (v) => { const got = pending.got; pending = null; o.attach?.(src.id, got, v); drawRight(true); }, folder ? fullPath(folder, g.name) : 'C:\\…\\file.pdf', true)),
+        el('div', { class: 'box-btns' }, btn('Cancel', () => { pending = null; drawRight(true); })), folderRow);
+    }
+    if (!f?.rel) {
+      return el('section', { class: 'reading-file' }, head,
+        el('p', { class: 'hint' }, 'No file. The file stays where it is: the library keeps its path and fingerprint, never its text.'),
+        locked ? null : el('div', { class: 'box-btns' }, btn('Attach file…', async () => { const got = await o.pick?.(); if (got) { pending = { id: src.id, got }; drawRight(true); right?.querySelector('#reading-f-path')?.focus(); } })),
+        folderRow);
+    }
+    const whole = fullPath(folder, f.rel);
+    return el('section', { class: 'reading-file' }, head,
+      el('p', { class: 'reading-file-name' }, f.name || f.rel),
+      el('p', { class: 'hint reading-file-path', title: whole }, `${whole}${!folder && !isAbsolute(f.rel) ? ' (set the library folder below)' : ''}`),
+      el('p', { class: 'hint' }, `${sizeOf(f.bytes)} · SHA-256 ${String(f.sha256 || '').slice(0, 12)}…`),
+      el('label', { class: 'kv reading-kv', for: 'reading-f-offset' }, el('span', { class: 'label' }, 'Page offset (file page − printed page)'),
+        textField('reading-f-offset', String(f.pageOffset || 0), (v) => { o.setOffset?.(src.id, offsetOf(v)); }, '0')),
+      el('div', { class: 'box-btns' },
+        btn('Copy path', () => o.copyPath?.(src.id)),
+        o.canShow?.() ? btn('Open', () => o.showFile?.(src.id)) : null,
+        locked ? null : btn('Verify…', () => o.verify?.(src.id)),
+        locked ? null : btn('Detach', () => o.detach?.(src.id))),
+      folderRow);
+  };
+  // A one-line field: Enter keeps it (keep(words)), Escape puts it back.
+  const textField = (id, value, keepIt, placeholder = '', focusNow = false) => {
+    const input = el('input', { id, type: 'text', class: 'reading-field', placeholder, spellcheck: 'false', autocomplete: 'off' });
+    input.value = value;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); keepIt(input.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.value = value; input.blur(); }
+    });
+    if (focusNow) setTimeout(() => input.focus(), 0);
+    return input;
   };
 
   const draw = (force = false) => { drawLeft(); drawRight(force); };

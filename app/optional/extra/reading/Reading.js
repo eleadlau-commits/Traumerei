@@ -12,10 +12,11 @@
 
 import { Feature, ui } from 'folio';
 import { RULE, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
-  autoKey, uniqueKey, keysIn, libraryTraum, parseQuote, isQuote, aboutOf, streamOf, COLUMN } from './rules.js';
+  autoKey, uniqueKey, keysIn, libraryTraum, parseQuote, isQuote, aboutOf, streamOf, quoteOf, COLUMN } from './rules.js';
 import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
 import { TAG, tagSpans } from './find.js';
-import { onModeChange, roomMode, viewGet, viewGo, stageBox } from './compat.js';
+import { onModeChange, roomMode, viewGet, viewGo, stageBox, fileHandles } from './compat.js';
+import { attachment, fullPath, pathAndPage, filePage, verify as sameFile, linkOf } from './files.js';
 import { installDocks } from './docks.js';
 
 const ICON = '<path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="M15.5 4.6l3.8-1 3.6 15.5-3.8 1z"/>';
@@ -210,7 +211,59 @@ export function install(t) {
     return out.id;
   };
 
-  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
+  // ---- Linked files: the room keeps path, name, size, SHA-256 and page offset; the library folder
+  // is this computer's (t.store, one per library), never in the .traum ----
+  const handles = fileHandles(t);
+  const folderOf = (r) => (r ? String(t.store?.get?.(`folder.${r}`, '') || '') : '');
+  const setFolder = (r, v) => { if (!r) return; if (v) t.store?.set?.(`folder.${r}`, v); else t.store?.remove?.(`folder.${r}`); };
+  const fileOf = (id) => { const s = t.marks.get(id); return isSource(s) && s.file?.rel ? s.file : null; };
+  const pick = async () => { try { return await handles.pick(); } catch { t.ui.toast('The file could not be read.'); return null; } };
+  const attach = (id, got, path) => {
+    const r = t.places.home(id);
+    const { file, folder } = attachment(got, path || got.path, folderOf(r), fileOf(id)?.pageOffset || 0);
+    if (folder) setFolder(r, folder);
+    const out = say(t.marks.edit(id, { file }));
+    if (out?.ok !== false) t.ui.toast(folder ? `Attached. The library folder on this computer is now ${folder}.` : 'Attached.');
+    return out;
+  };
+  const setOffset = (id, n) => { const f = fileOf(id); if (f && f.pageOffset !== n) say(t.marks.edit(id, { file: { ...f, pageOffset: n } })); };
+  const detach = (id) => { if (fileOf(id)) say(t.marks.edit(id, { file: null })); };
+  const copy = async (words) => {
+    if (!words) return false;
+    try { await navigator.clipboard.writeText(words); t.ui.toast(`Copied: ${words}`); return true; } catch { t.ui.toast(words); return false; }
+  };
+  const copyPath = (id) => { const f = fileOf(id); return f ? copy(pathAndPage(f, folderOf(t.places.home(id)))) : (t.ui.toast('This source has no file.'), false); };
+  const verifyFile = async (id) => {
+    const f = fileOf(id);
+    if (!f) return null;
+    const got = await pick();
+    if (!got) return null;
+    const v = sameFile(f, got);
+    t.ui.toast(v === 'same' ? `The same file (${f.name}).` : v === 'changed' ? `${got.name} has changed since it was attached. Attach it again to keep the new one.` : `That is another file (${got.name}), not ${f.name}.`);
+    return v;
+  };
+  const showFile = (id, anchor = '') => {
+    const f = fileOf(id);
+    if (!f) return false;
+    const page = anchor ? filePage(anchor, f.pageOffset) : null;
+    return handles.show(fullPath(folderOf(t.places.home(id)), f.rel), page);
+  };
+  const openLink = (id) => { const url = linkOf(t.marks.get(id)); if (!url) { t.ui.toast('This source has no DOI or https URL.'); return false; } return t.ui.link(url) !== false; };
+  // The chosen quote's path and page (Alt+Shift+P): its source's file, its page and the file's page.
+  const copyQuote = () => {
+    const c = t.ui.chosen();
+    const id = c?.mark;
+    const r = here();
+    const src = id ? (isSource(t.marks.get(id)) ? id : sourceOf(t, id)) : (r ? openOf(r) : null);
+    if (!src) { t.ui.toast('Choose a quote or a source first.'); return false; }
+    const f = fileOf(src);
+    if (!f) { t.ui.toast('Its source has no file: attach one in Details.'); return false; }
+    const anchor = id && id !== src ? (quoteOf(t, id)?.label || '') : '';
+    return copy(pathAndPage(f, folderOf(t.places.home(src)), anchor));
+  };
+
+  const docks = installDocks(t, { room: here, inLibrary, openOf, open, goTo, newSource,
+    folder: folderOf, setFolder, pick, attach, setOffset, copyPath, showFile, canShow: () => handles.native, verify: verifyFile, detach, openLink, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).
   let visit = null;
@@ -246,6 +299,8 @@ export function install(t) {
     return out?.id || null;
   };
   cmd({ id: 'reading.new-edition', keys: ['Alt+Shift+E'], zone: 'room', words: 'a new edition of the open source', when: inLibrary, run: () => edition() });
+  cmd({ id: 'reading.copy-path', keys: ['Alt+Shift+P'], zone: 'room', words: 'copy the chosen quote\'s file path and page', when: inLibrary, run: () => copyQuote() });
+  cmd({ id: 'reading.open-link', keys: ['Alt+Shift+O'], zone: 'room', words: 'open the open source\'s DOI or URL in the browser', when: inLibrary, run: () => { const r = here(); const s = r ? openOf(r) : null; if (s) openLink(s); } });
   cmd({ id: 'reading.find', keys: ['Alt+F'], zone: 'room', words: 'find in this library\'s notes: words, #tag', when: inLibrary, run: () => docks.focusFind() });
   cmd({ id: 'reading.new-library', zone: 'everywhere', words: 'a new library: a room seen as Library', run: () => newLibrary() });
   t.slots.menu.add({ id: 'reading.library', label: 'New library', icon: 'book', order: 64, onClick: () => newLibrary() });
@@ -270,7 +325,7 @@ export function install(t) {
     }
   });
 
-  return { open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept };
+  return { open, openOf, goTo, newSource, newLibrary, newEdition: edition, sourceOf: (id) => sourceOf(t, id), kept, attach, setOffset, detach, folderOf, setFolder, copyQuote, openLink };
 }
 
 export default class Reading extends Feature {

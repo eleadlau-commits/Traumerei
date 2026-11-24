@@ -17,3 +17,6 @@
 .reading-tags[hidden] { display: none; }
 .reading-hit { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: var(--s-2, 8px) 0; width: 100%; line-height: 1.35; }
 .reading-body { display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.reading-file { display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.reading-file-path { overflow-wrap: anywhere; }
+.reading-file-name { margin: 0; overflow-wrap: anywhere; }

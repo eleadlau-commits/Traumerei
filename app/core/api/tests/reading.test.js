@@ -289,3 +289,25 @@ test('reading: Find in a library of 1,500 notes answers in under 50 ms', () => {
   assert.ok(got.notes.length > 200 - 1, `found ${got.notes.length}`);
   assert.ok(ms < 50, `answered in ${ms.toFixed(1)} ms`);
 });
+
+// ---- 0.4: linked files ----
+
+test('reading: a file attached keeps only its path, name, size, hash and page offset, carried by the .traum; detached, gone', () => {
+  const { host, t, s, api } = setUp();
+  const darwin = s.sources[0];
+  const got = { name: 'origin.pdf', bytes: 812345, sha256: 'ab'.repeat(32), path: null };
+  assert.ok(api.attach(darwin, got, 'C:\\Users\\E\\Library\\origin.pdf').ok !== false);
+  host.world.save();
+  assert.deepEqual(t.marks.get(darwin).file, { rel: 'origin.pdf', name: 'origin.pdf', bytes: 812345, sha256: 'ab'.repeat(32), pageOffset: 0 });
+  api.setOffset(darwin, 18);
+  host.world.save();
+  assert.equal(t.marks.get(darwin).file.pageOffset, 18);
+  const text = t.carriers.text(s.room);
+  assert.ok(text.includes('origin.pdf') && !text.includes('C:\\Users'), 'the path relative to the folder; the folder is this computer\'s, not the file\'s');
+  const back = t.carriers.land(t.carriers.read(text));
+  assert.equal(t.marks.in(back.id).find((m) => m.citekey === 'darwin1859origin').file.pageOffset, 18);
+  api.detach(darwin);
+  host.world.save();
+  assert.equal(t.marks.get(darwin).file ?? null, null);
+  assert.deepEqual(brokenLaws(host.w), []);
+});
