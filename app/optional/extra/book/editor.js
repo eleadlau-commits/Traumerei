@@ -17,7 +17,7 @@ import { BLOCKS, frameChosen } from './blocks.js';
 import { chapterOf, wrap, addSection, toggleName, toggleNumbered } from './nest.js';
 import { isNumbered } from './rules.js';
 import { holderOf, makeHeading, unmakeHeading, demote, promote, moveOne, split, before, pasteParagraphs, makeNote, unmakeNote, noteOn, noteInto, leaveBook, afterGesture } from './editing.js';
-import { flowDrop, inOwnRow } from './flowdrop.js';
+import { flowDrop } from './flowdrop.js';
 import { slotAt, SLOT } from './slots.js';
 
 const ICON = '<path d="M7 4h10M7 8h10M7 12h10M7 16h6"/><path d="M4 3v18"/>';
@@ -40,13 +40,11 @@ export function installEditor(t) {
   const begun = new Map();    // room → { join, at } of the slot typing began in
   let landed = () => {};      // told whether a paragraph was kept in a slot (below)
   const drawn = new Map();    // room → the slots of the layout last drawn (with the room's settings)
-  const last = new Map();     // room → the layout last drawn
   const laid = (reads, context, set) => {
     const d = reads.marks.draft?.(context);
     if (d) drafted.set(context, d.after || null);
     const lay = shape(reads, context, measure, size, set);
     drawn.set(context, lay.slots);
-    last.set(context, lay);
     return lay;
   };
 
@@ -73,10 +71,6 @@ export function installEditor(t) {
     // with the gesture; out of the book, or into or out of the margin as a note, the plugin does
     // just after it, one step of its own (no proposal leaves a group or links a note).
     drop: (reads, context, mark, x, y, set) => {
-      // The room's clear-space nudges a block it finds too close by calling drop, once a block on
-      // every pass: inside its own row of the layout last drawn that is nothing, with no new layout
-      // (one per nudge made a big room's open and Enter take seconds; Book 0.4.7).
-      if (inOwnRow(last.get(context), mark, x, y)) return null;
       const p = flowDrop(reads, context, mark, x, y, shape(reads, context, measure, size, set));
       if (!p?.later) return p;
       if (p.later === 'leave') afterGesture(t, () => leaveBook(t, p.mark), 'Out of the book. Ctrl+Z puts it back.');

@@ -29,6 +29,3 @@ export function stageBox() {
   const b = stage?.getBoundingClientRect();
   return b && b.width ? b : null;
 }
-
-// Whether the left dock shows (not only its strip): <html> has dock-left-open (docks README).
-export const leftShown = () => typeof document !== 'undefined' && document.documentElement.classList.contains('dock-left-open');

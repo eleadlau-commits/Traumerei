@@ -234,7 +234,7 @@ test('book editor: far off, each heading reads as its title; a page opens its fi
   assert.equal(bands.get(s.heads[0]).far, 'Winter');
 });
 
-test('book editor: going to a page: the zoom that fills the height, and two zooms that move the view', () => {
+test('book editor: going to a page: the zoom that fills the height, and where the view goes', () => {
   assert.equal(Z.fillHeight(1010, 1034), 1);
   assert.equal(Z.fillHeight(1010, 300), 0.5, 'never under mid: the words still read');
   assert.equal(Z.fillHeight(100, 4000), 4);
@@ -243,12 +243,6 @@ test('book editor: going to a page: the zoom that fills the height, and two zoom
   assert.deepEqual(Z.pageCentre(lay, 1, 1, 1100), { x: 0, y: -300 + 505 }, 'the whole page, when it fits');
   const c = Z.pageCentre(lay, 2, 1, 600);
   assert.ok(Math.abs(c.y - (766 - 12 + 300)) < 1e-9, 'else its top, with a little air');
-  // What t.ui.zoom.set(z, at) does to the view's middle (room/view.js setZoom): at + (V - at) * z0 / z.
-  const run = (V, z0, steps) => steps.reduce((v, st) => ({ x: st.at.x + (v.x - st.at.x) * v.z / st.zoom, y: st.at.y + (v.y - st.at.y) * v.z / st.zoom, z: st.zoom }), { ...V, z: z0 });
-  for (const [V, z0, C2, z] of [[{ x: 120, y: 900 }, 0.3, { x: 0, y: 2000 }, 0.8], [{ x: 0, y: 0 }, 1, { x: 50, y: -400 }, 1], [{ x: 10, y: 10 }, 2, { x: -40, y: 70 }, 4]]) {
-    const end = run(V, z0, Z.aim(V, z0, C2, z));
-    assert.ok(Math.abs(end.x - C2.x) < 1e-6 && Math.abs(end.y - C2.y) < 1e-6 && end.z === z, `to ${C2.x},${C2.y} at ${z}`);
-  }
 });
 
 test('book editor: pages side by side: columns or rows fixed, facing pages, notes in the outer margin', () => {
