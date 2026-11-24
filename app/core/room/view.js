@@ -613,6 +613,7 @@ export class RoomView {
         return;
       }
     }
+    if (ont.clears === false) return; // a rule that places every mark itself (hand: false, or clear: false; since 1.1.4)
     const overlap = this.setting('overlap') !== false;
     const blocks = ont.blocks ? ont.blocks(w, roomId) : ont.units(w, roomId).map((u) => ({ id: u.id, thoughts: [u.id], hand: false, at: u.at ?? 0 }));
     const nodes = new Map();

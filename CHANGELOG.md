@@ -24,6 +24,11 @@ The core gaps Book and Reading notes found (`app/core/core-gaps.md`), additive t
 - `ui.zoom.get()` gives the view's centre `x`, `y`; `ui.zoom.go({ x, y, zoom }, { ms })` moves
   the view there eased (gap 2).
 - `ui.docks.left/right` gain `hide()`, `show()` with no key, and `shown` (gap 6).
+- A simple rule with `hand: false` (or `clear: false`) is left alone by the room's clear-space,
+  so its close rows are never pushed and pushed back (gap 5).
+- `t.rules.layout` of a rule that reads `marks.draft` follows the thought being written (gap 7).
+- A box a rule draws may say `after: mark`: a thought begun while it is chosen is written after
+  that mark (a book's empty slot) (gap 8).
 
 ## 1.1.3
 

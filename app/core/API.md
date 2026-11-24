@@ -166,7 +166,7 @@ row of `links`. `t.rules` reads each mode as the kernel sees it, frozen:
 | Member | What it gives |
 |---|---|
 | `list()` | `[{ id, name }]`: the modes a room can be seen through |
-| `layout(rule, context)` | `[{ mark, context, rule, position: { x, y } }]`: where each unit sits under that rule, from the rows; remembered until the tables change (a 1,500-thought room lays out in under 50 ms) |
+| `layout(rule, context)` | `[{ mark, context, rule, position: { x, y } }]`: where each unit sits under that rule, from the rows; remembered until the tables change (a 1,500-thought room lays out in under 50 ms), and since 1.1.4, for a rule whose `arrange` reads `marks.draft`, until the thought being written grows or shrinks too (so it never lags the room's own drawing) |
 | `admit(rule, proposal)` | `{ ok: true }` or `{ ok: false, reason }` for `{ kind: 'place', mark, context, position? }` or `{ kind: 'link', from, to, link, rule? }` (Russell refuses a loop). Changes nothing |
 | `moves(rule, context, mark)` | `[{ id, label }]`: what the rule offers for a chosen mark |
 | `draws(rule, context)` | `{ lines: [[mark…]], arrows: [{ from, to, label }], boxes: [{ x, y, w, h, label, note }] }`: what it draws beside the marks, as data |
@@ -179,6 +179,7 @@ t.slots.rules.add({
   arrange: (reads, context) => reads.marks.in(context).map((m, i) => ({ mark: m.id, x: (i % 6) * 240, y: Math.floor(i / 6) * 160 })),
   admit: (reads, proposal) => true, // optional: a reason in words refuses a position or a link
   hand: true,                       // optional: a mark dragged keeps where it was put (default true)
+  clear: true,                      // optional, since 1.1.4: false (or hand: false) and the room's clear-space never pushes its marks
 });
 ```
 
@@ -213,7 +214,7 @@ no state. Each reads the same `reads` and returns data; the kernel does the rest
 
 | Hook | Called when | Returns |
 |---|---|---|
-| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet`, `page` (a sheet of paper, since 1.1.0) (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it); `surface` a surface's id, drawn filling the box, and `data` what the box hands it (plain data, read from the same `reads`; since 1.1.0: Surfaces, below). A tap on a box chooses it. |
+| `draw(reads, context)` | the room is drawn | `[{ x, y, w, h, label?, note?, right?, style?, level?, opens? }]`: boxes drawn behind the marks (`x, y` is a box's top-left corner; a mark's `x, y` from `arrange` is its centre). `right`: words on its right; `style` one of `plain` (the default), `title`, `heading`, `line`, `shelf`, `quiet`, `page` (a sheet of paper, since 1.1.0) (the room's classes); `level` 1 to 3; `opens` a mark's id, gone to on a double-click (a room: into it); `surface` a surface's id, drawn filling the box, and `data` what the box hands it (plain data, read from the same `reads`; since 1.1.0: Surfaces, below). A tap on a box chooses it. Since 1.1.4 `after`, a mark of the room: a thought begun while the box is chosen (a slot) is written after that mark, drawn under it as one written after a chosen mark is, and `land` hears the box (an invisible slot draws with `style: 'quiet'`). |
 | `drop(reads, context, mark, x, y)` | a mark is let go at `x, y` | a proposal, a list of them, or nothing |
 | `land(reads, context, mark, x, y)` | a new thought is kept while a box is chosen (`x, y` its centre), or at the point Add was asked at; since 1.1.1 also when it was written after a mark (the one chosen when writing began, or the thought kept just before with Enter: `x, y` that mark's centre, its first fragment's for one in pieces), and the thought being written is drawn under that mark, at its width | a proposal, a list of them, or nothing |
 
