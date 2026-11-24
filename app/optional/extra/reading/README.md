@@ -115,7 +115,8 @@ In the left dock's **In and out** (and as commands):
   stays whole), title, year, edition, journal or book, volume, issue, pages, publisher, DOI, URL,
   ISBN. LaTeX accents come in as letters; an abstract or a note never comes in. A source already
   here by key (or by title and year) is left as it is; an entry with no key is given one. One
-  step. A `.bib` file opened or dropped makes a new library of its sources.
+  step. (Only from here: as a file format it would answer the app's own Import too, core-gaps.md
+  gap 10.)
 - **Import Zotero notes…**: Zotero's annotations (Add Note from Annotations, then the note
   exported as Markdown) into the open source: each highlight a quote with its page, its comment a
   comment under it, any other paragraph a note. Zotero's links, headings and images stay out.
