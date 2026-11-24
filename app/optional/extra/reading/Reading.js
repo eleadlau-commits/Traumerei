@@ -6,13 +6,13 @@
 //
 // A plugin, shipped as reading.traumplug (never built in). It reaches the app only through the
 // plugin API (app/core/API.md): slots.groups, slots.rules, slots.commands, slots.menu, the tables,
-// carriers (New library), ui.docks, ui.zoom, ui.choose. Saved data: none outside the tables (Law
-// 8). No source text is ever kept, in the room or anywhere else. Core gaps sit behind the fallback
-// helpers in compat.js (core-gaps.md).
+// ui.docks, ui.zoom, ui.choose, ui.files. Saved data: none outside the tables (Law 8). No source
+// text is ever kept, in the room or anywhere else. The app's words for the room's mode, the view
+// and files are in compat.js (core-gaps.md).
 
 import { Feature, ui } from 'folio';
 import { RULE, BLOCKS_RULE, isLibraryMode, acrossOf, setAcross, BLOCKS_ACROSS, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
-  autoKey, uniqueKey, keysIn, libraryTraum, parseQuote, isQuote, aboutOf, streamOf, quoteOf, COLUMN } from './rules.js';
+  autoKey, uniqueKey, keysIn, parseQuote, isQuote, aboutOf, streamOf, quoteOf, COLUMN } from './rules.js';
 import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
 import { TAG, tagSpans } from './find.js';
 import { onModeChange, roomMode, viewGet, viewGo, stageBox, fileHandles } from './compat.js';
@@ -154,7 +154,7 @@ export function install(t) {
   // fresh: from size 1 (the shape just changed), not from the zoom now.
   const slide = (x, y, top = true, width = COLUMN.width, least = 0, fresh = false) => {
     const box = stageBox();
-    const now = fresh ? 1 : viewGet(t)?.zoom || t.ui.zoom?.get?.()?.zoom || 1;
+    const now = fresh ? 1 : viewGet(t)?.zoom || 1;
     const z = box?.width ? Math.min(now, Math.max(least, box.width / (width + 48))) : now;
     const h = (box?.height || 800) / z;
     return viewGo(t, { x, y: top ? y - 80 / z + h / 2 : y, zoom: z });
@@ -224,12 +224,11 @@ export function install(t) {
     return made.id;
   };
 
-  // A new library: a room already seen as Library, landed from a .traum (a plugin can't set a
-  // room's mode before 1.1.4; the file carries it), then gone into.
+  // A new library: a room made seen as Library (marks.make's at.mode), then gone into.
+  const libraryRoom = (name = 'Library') => t.marks.make({ kind: 'room', content: String(name).replace(/[\r\n]+/g, ' ').trim() || 'Library', at: { mode: RULE } });
   const newLibrary = () => {
-    const got = t.carriers.read(libraryTraum('Library'));
-    const out = got ? say(t.carriers.land(got)) : { ok: false };
-    if (!out?.ok) { if (!got) t.ui.toast('The new library could not be made.'); return null; }
+    const out = say(libraryRoom());
+    if (!out?.ok) return null;
     t.ui.open?.room?.(out.id);
     return out.id;
   };
@@ -311,18 +310,14 @@ export function install(t) {
   const mdOut = () => { const r = here(); return r ? save(`${nameOf(r)}.md`, markdownOf(t, r, nameOf(r)), 'text/markdown') : null; };
   const wordOut = () => { const r = here(); return r ? save(`${nameOf(r)}.docx`, new Blob([wordDoc(t, r, nameOf(r))], { type: DOCX_TYPE }), DOCX_TYPE) : null; };
   // A .bib file opened or dropped: a new library of its sources; into a library, its sources added.
-  // Only from 1.1.4 (ui.zoom.go says so), where `asks: false` keeps it out of the app's Import with
-  // no file picked (core-gaps.md, gap 10); before, Import BibTeX… in the left dock.
-  if (typeof t.ui.zoom?.go === 'function') {
-    t.slots.formats?.add?.({ id: 'reading-bib', name: 'BibTeX library', asks: false, accepts: (file) => /\.(bib|bibtex)$/i.test(file?.name || ''),
-      importRoom: async ({ file } = {}) => {
-        if (!file) return null;
-        const text = await file.text();
-        const got = t.carriers.read(libraryTraum(String(file.name || 'Library').replace(/\.(bib|bibtex)$/i, '')));
-        return got ? t.together(() => { const made = t.carriers.land(got); if (!made?.ok) return null; say(importBib(t, made.id, text)); return { id: made.id }; }) : null;
-      },
-      importInto: async (roomId, { file } = {}) => (file && isLibraryMode(t.marks.get(roomId)?.mode) ? importBib(t, roomId, await file.text())?.ok === true : false) });
-  }
+  // `asks: false` keeps it out of the app's Import with no file picked (core-gaps.md, gap 10).
+  t.slots.formats?.add?.({ id: 'reading-bib', name: 'BibTeX library', asks: false, accepts: (file) => /\.(bib|bibtex)$/i.test(file?.name || ''),
+    importRoom: async ({ file } = {}) => {
+      if (!file) return null;
+      const text = await file.text();
+      return t.together(() => { const made = libraryRoom(String(file.name || 'Library').replace(/\.(bib|bibtex)$/i, '')); if (!made?.ok) return null; say(importBib(t, made.id, text)); return { id: made.id }; });
+    },
+    importInto: async (roomId, { file } = {}) => (file && isLibraryMode(t.marks.get(roomId)?.mode) ? importBib(t, roomId, await file.text())?.ok === true : false) });
 
   // ---- Collections: made, named, nested, deleted (their sources stay); sources put in and taken out ----
   const collection = (inside = null) => {
@@ -351,7 +346,6 @@ export function install(t) {
   const settle = (rm) => {
     const opening = docks.sync(rm);
     // A room 0.6 saw as Library · blocks: seen as Library, as blocks 3 across (one step, once).
-    // (Refused before 1.1.4: the docks still work there.)
     if (rm?.mode === BLOCKS_RULE && !moved.has(rm.room)) {
       moved.add(rm.room);
       const m = t.marks.get(rm.room);

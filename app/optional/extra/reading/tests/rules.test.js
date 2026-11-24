@@ -1,12 +1,11 @@
 // Tests for Reading notes' plain functions: rules.js (sources, citation keys, the Library rule's
-// layout and landing), docks.js (what a field's words do to a source) and view.js / compat.js
-// (the fallback helpers' arithmetic).
+// layout and landing), docks.js (what a field's words do to a source) and compat.js (the app's
+// words for the mode, the view and files).
 
 import { test, assert } from 'folio/testing';
-import { tidySource, familyName, autoKey, uniqueKey, validKey, sourcesIn, notesOf, sourceOf, authorYear, layout, landing, libraryTraum, columnX, COLUMN, RULE,
+import { tidySource, familyName, autoKey, uniqueKey, validKey, sourcesIn, notesOf, sourceOf, authorYear, layout, landing, columnX, COLUMN, RULE,
   QUOTE, COMMENT, EDITION, parseQuote, anchorOf, pageOf, streamOf, blockOf, dropAt, isQuote, aboutOf, editionOf } from '../rules.js';
 import { editFor, followsAuto, shown } from '../docks.js';
-import { setsFor, viewFromTransform, between, moveMs } from '../view.js';
 import { roomMode, fileHandles, viewGet } from '../compat.js';
 
 // A library of two sources (b sorts before a by key) and a loose thought.
@@ -115,12 +114,6 @@ test('Enter lands a note after the chosen one in the open source, else at the en
   assert.equal(landing({ ...r, marks: { ...r.marks, in: () => [] } }, 'r', 'new', 0, 0, null, { rows: [], columns: [] }), null);
 });
 
-test('a new library is a traum/3 text of one room seen as Library', () => {
-  const text = libraryTraum('My: Library\n');
-  assert.match(text, /^---\nformat: traum\/3\ncontext: \^1\n---/);
-  assert.match(text, /## \^1 room: My: Library\nmode: reading-library\n/);
-});
-
 test('Details: a field\'s words as an edit, a key kept unique and valid, an auto key following the source', () => {
   const src = { id: 'b', title: 'Origin', citekey: 'darwin1859origin', authors: ['Darwin, Charles'], year: '1859' };
   const taken = new Set(['thoreau1854walden']);
@@ -141,37 +134,28 @@ test('Details: a field\'s words as an edit, a key kept unique and valid, an auto
   assert.deepEqual(editFor(src, 'title', '  ', taken).fields.title, 'Untitled');
 });
 
-test('a smooth jump: the zoom calls that land the view where asked, at the same zoom too', () => {
-  const at = (V, z0, s) => ({ x: s.at.x + (V.x - s.at.x) * z0 / s.zoom, y: s.at.y + (V.y - s.at.y) * z0 / s.zoom });
-  const a = { x: 0, y: 0, zoom: 1 }, b = { x: 780, y: 300, zoom: 1 };
-  const steps = setsFor(a, b);
-  let V = { x: a.x, y: a.y }, z = a.zoom;
-  for (const s of steps) { V = at(V, z, s); z = s.zoom; }
-  assert.ok(Math.abs(V.x - b.x) < 1e-6 && Math.abs(V.y - b.y) < 1e-6 && z === 1);
-  assert.deepEqual(setsFor(a, a), []);
-  assert.deepEqual(between(a, b, 0.5), { x: 390, y: 150, zoom: 1 });
-  assert.ok(moveMs(a, b) >= 260 && moveMs(a, b) <= 520);
-  assert.deepEqual(viewFromTransform('translate(100px, 50px) scale(2)', 800, 600, 2), { x: 150, y: 125, zoom: 2 });
-  assert.equal(viewFromTransform('translate(100px, 50px) scale(2)', 800, 600, 1), null, 'a zoom that disagrees: not read');
-});
-
-test('fallback helpers: the new API when the app has it, the workaround when not', async () => {
+test('the app\'s words: the mode from ui.chosen, the view from ui.zoom, files by path and hash', async () => {
   const room = (c) => ({ ui: { chosen: () => c }, marks: { get: () => ({ mode: 'joyce' }) } });
   assert.deepEqual(roomMode(room({ context: 'r', mode: RULE })), { room: 'r', mode: RULE }, 'the app says the mode');
   assert.deepEqual(roomMode(room({ context: 'r' })), { room: 'r', mode: 'joyce' }, 'else read off the room');
   assert.equal(roomMode(room(null)), null);
   assert.deepEqual(viewGet({ ui: { zoom: { get: () => ({ zoom: 1.5, x: 10, y: 20 }) } } }), { x: 10, y: 20, zoom: 1.5 }, 'ui.zoom.get with x, y');
-  assert.equal(viewGet({ ui: { zoom: { get: () => ({ zoom: 1 }) } } }), null, 'no screen to read here');
-  const plain = fileHandles({ ui: { files: { open: async () => null } } });
-  assert.equal(plain.native, false);
-  assert.equal(await plain.show('/x.pdf', 3), false, 'without the core addition: the caller copies path and page');
-  assert.equal(await plain.hash('/x.pdf'), null, 'without it: pick the file again');
+  assert.equal(viewGet({ ui: { zoom: { get: () => null } } }), null, 'outside a room');
   const asked = [];
-  const native = fileHandles({ ui: { files: { show: async (p, o) => { asked.push([p, o]); return { ok: true }; }, hash: async () => ({ sha256: 'ab', bytes: 2 }) } } });
-  assert.ok(native.native);
-  assert.equal(await native.show('/x.pdf', 130), true);
+  const file = { name: 'x.pdf', path: 'C:\\x.pdf', arrayBuffer: async () => new Uint8Array([1, 2]).buffer };
+  const h = fileHandles({ ui: { files: { open: async () => file, show: async (p, o) => { asked.push([p, o]); return { ok: true }; }, hash: async () => ({ sha256: 'sha256:ab', bytes: 2 }) } } });
+  assert.equal(h.native, false, 'not known before a file is picked');
+  const got = await h.pick();
+  assert.equal(got.path, 'C:\\x.pdf');
+  assert.equal(got.sha256.length, 64);
+  assert.ok(h.native, 'a picked file with a path: the desktop app');
+  assert.equal(await h.show('/x.pdf', 130), true);
   assert.deepEqual(asked, [['/x.pdf', { page: 130 }]]);
-  assert.deepEqual(await native.hash('/x.pdf'), { sha256: 'ab', bytes: 2 });
+  assert.deepEqual(await h.hash('/x.pdf'), { sha256: 'ab', bytes: 2 }, 'the app\'s sha256: prefix off');
+  const browser = fileHandles({ ui: { files: { open: async () => ({ ...file, path: undefined }), show: async () => ({ ok: false, reason: 'desktop only' }), hash: async () => null } } });
+  assert.equal((await browser.pick()).path, null);
+  assert.equal(browser.native, false);
+  assert.equal(await browser.show('/x.pdf'), false, 'refused: the caller copies path and page');
 });
 
 // ---- 0.2: quotes, comments, editions ----
