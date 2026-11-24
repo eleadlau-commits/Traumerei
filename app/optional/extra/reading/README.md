@@ -89,6 +89,24 @@ a source file's path and hash).
 - The canvas shows every note while you find: which notes match is this session's view, which a
   rule can't read on API 3 (core-gaps.md, gap 4).
 
+## What it adds (0.4)
+
+- **Linked files**, as Zotero keeps a PDF: the file stays where it is. **Attach file…** (Details,
+  File) picks it; its size and SHA-256 are worked out here and nothing else of it is read or
+  kept. Then its whole path is pasted once (a browser is never told it; in Explorer, Shift+right-
+  click, Copy as path). The source keeps `file: { rel, name, bytes, sha256, pageOffset }`: the
+  path relative to the **library folder**, which is this computer's (kept in the plugin's store,
+  one per library, never in the `.traum`); the first file attached sets it to its own folder, and
+  Details shows it to change. A file outside the folder is kept by its whole path.
+- **Page offset**: file page minus printed page (PDF page 130 for p. 112 is 18), set once per
+  file. A quote's anchor is always the printed page; front matter (p. xiv) has no file page.
+- **Verify…** picks the file again: the same file, changed since it was attached, or another.
+  **Copy path** copies its whole path; **Alt+Shift+P** on a quote copies its path, its page and
+  the file's page (`…\origin.pdf, p. 112 (file page 130)`). **Detach** takes the link off.
+- **DOI or URL**: Details has Open the DOI (or URL), and **Alt+Shift+O** opens it in the browser.
+- Opening the file at a quote's page waits on desktop file handles (core-gaps.md, gap 3): the
+  helper (`compat.js` `fileHandles`) uses them once the app has them, and **Open** appears then.
+
 Typing a quote or a comment under a quote is done just after Enter, as its own step (no proposal
 links a note, Book's way): the first Ctrl+Z takes back the quote or the nesting, the second the
 note.
@@ -100,6 +118,7 @@ note.
 - `notes.js`: the gestures on notes and editions, each one step (`asQuote`, `toggleQuote`, `move`,
   `nest`, `unnest`, `step`, `syncTags`, `newEdition`, `setEditionOf`).
 - `find.js`: tags read from words, the library's tags, and Find.
+- `files.js`: paths relative to the library folder, a quote's file page, Verify, Copy path.
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
 - `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
   `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,
@@ -111,11 +130,14 @@ note.
 
 ## What it needs
 
-- **Plugin API:** 3 · **oldest app:** 1.1.2 · **needs:** nothing
+- **Plugin API:** 3 · **oldest app:** 1.1.2 · **needs:** `files` (picking a file to attach or
+  verify), `store` (the library folder, this computer's)
 
 ## What it saves
 
-- Nothing outside the tables.
+- In the tables: everything of the library, and of a linked file only its path, name, size,
+  SHA-256 and page offset.
+- In the plugin's store, on this computer: the library folder of each library.
 
 ## Check it
 

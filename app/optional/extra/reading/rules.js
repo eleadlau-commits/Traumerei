@@ -37,7 +37,10 @@ export function tidySource(g) {
   const key = words(g.citekey).replace(/\s+/g, '');
   out.citekey = key || null;
   for (const k of TEXT_FIELDS) out[k] = words(g[k]) || null;
-  out.file = g.file && typeof g.file === 'object' ? g.file : null;
+  // A linked file: only its path (relative to the library folder), name, size, SHA-256 and page
+  // offset; never its text.
+  const f = g.file && typeof g.file === 'object' && g.file.rel ? g.file : null;
+  out.file = f ? { rel: String(f.rel), name: String(f.name || ''), bytes: Math.max(0, Number(f.bytes) | 0), sha256: String(f.sha256 || '').toLowerCase().replace(/[^0-9a-f]/g, '').slice(0, 64), pageOffset: Number.isFinite(+f.pageOffset) ? Math.trunc(+f.pageOffset) : 0 } : null;
   return out;
 }
 
