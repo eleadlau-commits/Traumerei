@@ -22,6 +22,22 @@ Book's list names the same gap, its number is given, so the core session fixes i
 | 10 | A format can't say it only takes files it accepts | Reading, stage 5 | No format; .bib in from the dock |
 | 11 | A plugin can't set a room's mode; a small room keeps one | Reading, stage 6 | New library is 2 × 2, its mode from a .traum |
 
+**Status (24 Nov 2026, app 1.1.4).** Read against the philosophy (six tables, a rule a pure
+function of them, the rooms page's own rules) and fixed where they fit:
+
+- **Fixed:** 1 (`ui.chosen` carries `mode`), 2 (`ui.zoom.get` x, y; `ui.zoom.go`), 3 (desktop
+  `ui.files` `path`, `show`, `hash`; a dropped file still has no path, and no viewer takes a page
+  yet), 5 (`hand: false` or `clear: false`: no clear-space), 6 (`ui.docks.<side>.hide`/`show`),
+  7 (`rules.layout` follows the draft), 8 (a box's `after`), 9 (the no-repo packer scopes each
+  file; the repo's packer always did), 10 (a format's `asks: false`), 11 in part
+  (`marks.edit(room, { mode })` for a 2 × 2 room, `marks.make` with `at.mode`).
+- **Left out on purpose:** 4, a per-room view value handed to a rule: a rule is a pure function
+  of the tables, so what the canvas shows must come from the file, never from unsaved session
+  state (the same .traum would look different on each computer). Use the side-by-side columns
+  and `ui.zoom.go` to bring the open source into view. And 11's second half, Tab between
+  "sibling" modes in a small room: one mode for a small room is the rooms page's rule; two faces
+  of one rule are a room setting (a thin rule's `toggle`).
+
 1 to 5 matter most: 1 and 2 because two plugins scrape the same markup and break together, 3
 because it is the jump readers feel most, 4 because it is the plan's canvas, 5 because it costs
 seconds in any rule with close rows.

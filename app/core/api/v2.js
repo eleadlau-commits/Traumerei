@@ -1048,6 +1048,10 @@ export function connect({ app, world, plugin, parts, lib = null, events = null, 
         open: (accept = '') => (files ? files.open(String(accept)) : Promise.resolve(null)),
         save: (name, content, type = 'text/plain') => (files ? files.save(String(name), content, type) : Promise.resolve(false)),
         arrived: (fn) => { const off = files ? files.arrived(fn) : () => {}; gone(off); return off; },
+        // Since 1.1.4, the desktop app only: a file open() picked there (its File's `path`) opened
+        // in its own app or shown in Explorer, and its hash; refused for any other path.
+        show: (path, o = {}) => (files?.show ? files.show(String(path), o || {}).then(row) : Promise.resolve(row({ ok: false, reason: 'Files on this computer open only in the desktop app' }))),
+        hash: (path) => (files?.hash ? files.hash(String(path)).then((h) => (h ? row(h) : null)) : Promise.resolve(null)),
       }),
       link: (url) => link(String(url)),
       roundTrip: (urlFor) => roundTrip(urlFor),

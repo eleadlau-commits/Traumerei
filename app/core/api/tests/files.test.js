@@ -84,3 +84,32 @@ test('a round trip through the browser: a port from the shell, the address opene
     assert.equal(await roundTrip((port) => `https://example.org/?p=${port}`), null);
   } finally { delete window.__TAURI_INTERNALS__; }
 });
+
+test('since 1.1.4, the desktop app picks through the shell: the File carries its path, and show and hash reach only through it', async () => {
+  const calls = [];
+  const f = seam([]);
+  assert.deepEqual(await f.show('C:/a.pdf'), { ok: false, reason: 'Files on this computer open only in the desktop app' });
+  assert.equal(await f.hash('C:/a.pdf'), null);
+  window.__TAURI_INTERNALS__ = { invoke: async (cmd, args) => {
+    calls.push([cmd, args]);
+    if (cmd === 'pick_file') return args.accept === '.none' ? null : ['C:\\Papers\\Smith 2019.pdf', 'Smith 2019.pdf', 4];
+    if (cmd === 'read_picked') return new Uint8Array([37, 80, 68, 70]).buffer;
+    if (cmd === 'show_file') { if (args.path !== 'C:\\Papers\\Smith 2019.pdf') throw 'only a file picked in this app can be reached'; return args.reveal ? 'revealed' : 'opened'; }
+    if (cmd === 'hash_file') { if (args.path !== 'C:\\Papers\\Smith 2019.pdf') throw 'refused'; return ['sha256:abc', 4]; }
+    throw new Error(cmd);
+  } };
+  try {
+    const file = await f.open('.pdf');
+    assert.deepEqual(calls.slice(0, 2), [['pick_file', { accept: '.pdf' }], ['read_picked', { path: 'C:\\Papers\\Smith 2019.pdf' }]]);
+    assert.deepEqual([file.name, file.path, file.type, file.size, await file.text()], ['Smith 2019.pdf', 'C:\\Papers\\Smith 2019.pdf', 'application/pdf', 4, '%PDF']);
+    assert.equal(await f.open('.none'), null); // cancelled
+    assert.deepEqual(await f.show(file.path, { page: 12 }), { ok: true, how: 'opened', page: false });
+    assert.deepEqual(await f.show(file.path, { reveal: true }), { ok: true, how: 'revealed', page: false });
+    assert.deepEqual(await f.show('C:\\Windows\\notepad.exe'), { ok: false, reason: 'only a file picked in this app can be reached' });
+    assert.deepEqual(await f.hash(file.path), { sha256: 'sha256:abc', bytes: 4 });
+    assert.equal(await f.hash('D:\\other.pdf'), null);
+    // An older shell with no pick_file: the webview's own dialog, as before.
+    window.__TAURI_INTERNALS__.invoke = async () => { throw new Error('unknown command'); };
+    assert.equal(await f.open('.pdf'), null);
+  } finally { delete window.__TAURI_INTERNALS__; }
+});
