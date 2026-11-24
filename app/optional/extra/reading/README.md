@@ -107,6 +107,27 @@ a source file's path and hash).
 - Opening the file at a quote's page waits on desktop file handles (core-gaps.md, gap 3): the
   helper (`compat.js` `fileHandles`) uses them once the app has them, and **Open** appears then.
 
+## What it adds (0.5)
+
+In the left dock's **In and out** (and as commands):
+- **Import BibTeX…**: a `.bib` file's entries (BibTeX or BibLaTeX, as Zotero's Export → BibTeX
+  writes them) become sources: type, key, authors ("Family, Given"; an organisation in braces
+  stays whole), title, year, edition, journal or book, volume, issue, pages, publisher, DOI, URL,
+  ISBN. LaTeX accents come in as letters; an abstract or a note never comes in. A source already
+  here by key (or by title and year) is left as it is; an entry with no key is given one. One
+  step. (Only from here: as a file format it would answer the app's own Import too, core-gaps.md
+  gap 10.)
+- **Import Zotero notes…**: Zotero's annotations (Add Note from Annotations, then the note
+  exported as Markdown) into the open source: each highlight a quote with its page, its comment a
+  comment under it, any other paragraph a note. Zotero's links, headings and images stay out.
+- **BibTeX**: the library's sources as a `.bib` file, each under its key.
+- **Markdown**: the notes by source, each source a heading with its key, its quotes as block
+  quotes cited with Pandoc keys (`[@darwin1859origin, p. 490]`), its comments as paragraphs.
+- **Word**: the notes by source as a `.docx`, quotes cited in Chicago author-date in the text
+  (`(Darwin 1859, 490)`, pages shortened as Chicago does), comments on a quote set in under it,
+  and a **References** list in Chicago author-date at the end (hanging indent; a book's title in
+  italic, a first edition not named).
+
 Typing a quote or a comment under a quote is done just after Enter, as its own step (no proposal
 links a note, Book's way): the first Ctrl+Z takes back the quote or the nesting, the second the
 note.
@@ -119,6 +140,9 @@ note.
   `nest`, `unnest`, `step`, `syncTags`, `newEdition`, `setEditionOf`).
 - `find.js`: tags read from words, the library's tags, and Find.
 - `files.js`: paths relative to the library folder, a quote's file page, Verify, Copy path.
+- `bibtex.js`, `zotero.js`, `io.js`: BibTeX in and out, Zotero's annotations in, as one step each.
+- `cite.js`, `word.js`: Chicago author-date and Pandoc citations, the Markdown and Word exports;
+  `zip.js` is copied from Book 0.4.7.
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
 - `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
   `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,

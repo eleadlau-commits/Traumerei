@@ -19,6 +19,7 @@ Book's list names the same gap, its number is given, so the core session fixes i
 | 7 | `rules.layout` lags the thought being written | Book (B-c) | Book works around it in `zoom.js` |
 | 8 | A chosen slot has no API word | Book (B-e, its gap 11) | Choose the mark above the slot |
 | 9 | The packer puts every file of a plugin in one scope | Reading, stage 1 | No top-level name in two files |
+| 10 | A format can't say it only takes files it accepts | Reading, stage 5 | No format; .bib in from the dock |
 
 1 to 5 matter most: 1 and 2 because two plugins scrape the same markup and break together, 3
 because it is the jump readers feel most, 4 because it is the plan's canvas, 5 because it costs
@@ -75,6 +76,8 @@ no rewrite when core ships.
 - **Meanwhile (0.1):** every source is its own column side by side, and opening one slides the view
   to it (`viewGo`), so the open source's stream is what the canvas shows; the others sit off to
   the side. Helper: the open source is kept by the plugin per room, for the session.
+- **Also (stage 3):** Find and the Tags list can't narrow the canvas to what matches, for the same
+  reason; the matches are listed in the left dock and a click goes to each.
 - **Addition:** a rule's hooks also handed a per-room view value the plugin sets without a step
   (for example `t.rules.view(room, value)` read as `reads.view`), never saved in the tables.
 
@@ -142,3 +145,12 @@ here so the batch is whole.
   big storage problem again, and a second product. Moved to later; before planning it, check the
   store's limits, failure when a copy is missing or a write fails, and its cost to the 0.8 s open.
   Importing a text as thoughts was rejected outright: it would put the full text in the `.traum`.
+
+## 10. A format can't say it only takes files it accepts (stage 5)
+
+`world.formats` asks the first format with `importRoom` (or `importInto`) when the app's Import runs
+with no file picked yet, whatever its `accepts` says. A plugin format that only takes its own files
+(Reading notes' .bib) would answer that Import ahead of the room file, with no file. Wanted: the
+no-file path skips a format that has no way to ask for a file (say an `asks: true` flag, or only
+formats that `accepts(null)`). Fallback: Reading notes registers no format; .bib comes in from its
+left dock's Import BibTeX… only.
