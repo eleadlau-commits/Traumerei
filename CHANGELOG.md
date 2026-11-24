@@ -29,6 +29,9 @@ The core gaps Book and Reading notes found (`app/core/core-gaps.md`), additive t
 - `t.rules.layout` of a rule that reads `marks.draft` follows the thought being written (gap 7).
 - A box a rule draws may say `after: mark`: a thought begun while it is chosen is written after
   that mark (a book's empty slot) (gap 8).
+- A format may say `asks: false`: Import with no file picked yet skips it (gap 10).
+- A plugin sets a room's mode: `marks.edit(room, { mode })` for a 2 × 2 room (a small room keeps
+  the mode it was made with), and `marks.make({ kind: 'room', at: { mode } })` (gap 11).
 
 ## 1.1.3
 

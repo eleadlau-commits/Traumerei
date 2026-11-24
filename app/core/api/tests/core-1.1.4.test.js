@@ -126,3 +126,26 @@ test('gap 8: a drawn box keeps `after` when it names a mark of the room, and dro
   assert.deepEqual(boxes.map((b) => b.after ?? null), [a, null, null]);
   assert.ok(!('after' in boxes[2]));
 });
+
+// Gap 11: a plugin sets a room's mode as the rail does: a big room switches, a small one keeps
+// the mode it was made with, and a room may be made with its mode.
+test('gap 11: marks.edit sets a big room\'s mode as one step; a small room, an unknown mode or a non-room is refused', () => {
+  const host = makeHost({ thoughts: 2 });
+  const { t } = host.plug('modes', (k) => k.slots.rules.add({ id: 'shelf', name: 'Shelf', arrange: () => [] }));
+  assert.equal(t.marks.edit(host.room, { mode: 'shelf' }).reason, 'A small room keeps the mode it was made with: only a 2 × 2 room switches');
+  host.w.things[host.room].size = 2; // made big (as the rooms page's resize does)
+  const steps = host.log.undo.length;
+  assert.ok(t.marks.edit(host.room, { mode: 'shelf' }).ok);
+  assert.equal(t.marks.get(host.room).mode, 'shelf');
+  assert.equal(host.log.undo.length, steps + 1);
+  assert.ok(t.marks.edit(host.room, { mode: 'shelf', name: 'Library' }).ok); // with other fields, together
+  assert.equal(t.marks.get(host.room).name, 'Library');
+  assert.equal(t.marks.edit(host.room, { mode: 'nowhere' }).reason, 'No such mode');
+  assert.equal(t.marks.edit(host.ids[0], { mode: 'shelf' }).reason, 'Only a room is seen through a mode');
+  // Made with it: a small room's one mode.
+  const made = t.marks.make({ kind: 'room', content: 'Reading', at: { mode: 'shelf' } });
+  assert.ok(made.ok);
+  assert.equal(t.marks.get(made.id).mode, 'shelf');
+  assert.ok(t.marks.edit(made.id, { mode: 'shelf' }).ok); // the mode it has: nothing refused
+  assert.equal(t.marks.make({ kind: 'room', content: 'Odd', at: { mode: 'nowhere' } }).reason, 'No such mode');
+});

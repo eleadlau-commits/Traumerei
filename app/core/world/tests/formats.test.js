@@ -64,3 +64,13 @@ test('formats follow the slot as plugins come and go', () => {
   assert.equal(f.any, false);
   assert.equal(f.canExport, false);
 });
+
+test('since 1.1.4, Import with no file yet skips a format that says asks: false', async () => {
+  const slot = new Slot(fakeApp(), 'world.formats');
+  slot.add({ id: 'bib', name: 'BibTeX', asks: false, accepts: (x) => x.name.endsWith('.bib'), importRoom: async (o) => ({ id: 'bib', from: o.file?.name }), importInto: async () => true }, 'reading');
+  slot.add({ id: 'traum', name: 'Room file', accepts: (x) => x.name.endsWith('.traum'), importRoom: async () => ({ id: 'picked' }), importInto: async () => true }, 'roomfile');
+  const f = formatsOf(slot);
+  assert.deepEqual(await f.importRoom({}), { id: 'picked' }); // the room file asks, not BibTeX
+  assert.deepEqual(await f.importRoom({ file: file('refs.bib') }), { id: 'bib', from: 'refs.bib' }); // a file it accepts still comes to it
+  assert.deepEqual(f.list.map((x) => x.id), ['bib', 'traum']);
+});

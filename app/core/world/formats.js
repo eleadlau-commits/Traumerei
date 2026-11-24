@@ -4,6 +4,8 @@
 //
 //   id, name                 'traum', 'Room file (.traum)'
 //   accepts(file)            whether a dropped or picked file is this format's
+//   asks?                    false: it never asks for a file itself, so Import with no file yet
+//                            skips it (it takes only a file it accepts; since 1.1.4)
 //   importRoom?(o)           a new room from o.file (or one it asks for when there is none):
 //                            { file, cell, page, ok() } → the room, or null
 //   importInto?(roomId, o)   the file's things into a room: { file, at(), ok(), before() } → true or false
@@ -26,17 +28,20 @@ export function formatsOf(slot) {
   };
   const forFile = (file) => all().find((f) => ask(f, () => f.accepts(file) === true, false)) || null;
   const first = (what) => all().find(has(what)) || null;
+  // Asked with no file yet: only a format that asks for one itself (asks: false says it takes only
+  // a file it accepts, handed to it; since 1.1.4).
+  const asking = (what) => all().find((f) => has(what)(f) && f.asks !== false) || null;
   const editor = () => all().find((f) => has('canEdit')(f) && ask(f, () => f.canEdit(), false)) || null;
   return Object.freeze({
     get any() { return all().length > 0; },
     get list() { return all().map((f) => ({ id: f.id, name: f.name })); },
     isRoomFile: (file) => !!forFile(file),
     importRoom: async (o = {}) => {
-      const f = o.file ? forFile(o.file) : first('importRoom');
+      const f = o.file ? forFile(o.file) : asking('importRoom');
       return f && has('importRoom')(f) ? (await wait(f, () => f.importRoom(o), null)) ?? null : null;
     },
     importInto: async (roomId, o = {}) => {
-      const f = o.file ? forFile(o.file) : first('importInto');
+      const f = o.file ? forFile(o.file) : asking('importInto');
       return f && has('importInto')(f) ? !!(await wait(f, () => f.importInto(roomId, o), false)) : false;
     },
     get canExport() { return !!first('exportRoom'); },
