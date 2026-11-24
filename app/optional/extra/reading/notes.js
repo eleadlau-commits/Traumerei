@@ -13,9 +13,11 @@
 //   tidy(t, src)               the stream's order as shown (a quote's comments right after it)
 //   newEdition(t, src)         a new source, an edition of `src` (its metadata copied, its own key)
 //   setEditionOf(t, src, main) an edition of `main`, or of nothing (null)
+//   syncTags(t, id)            a note in the tags its words name (#word), out of the others
 
 import { SOURCE, QUOTE, COMMENT, EDITION, isSource, notesOf, sourceOf, quoteOf, isQuote, aboutOf, editionOf, editionsOf,
   streamOf, blockOf, parseQuote, autoKey, uniqueKey, keysIn } from './rules.js';
+import { TAG, isTag, tagsIn, tagNamed, fold } from './find.js';
 
 const no = (reason) => ({ ok: false, reason });
 const partRow = (t, id, src) => t.links.from(id, 'part of').find((l) => l.to === src) || null;
@@ -154,6 +156,36 @@ export function step(t, id, dir) {
   if (i < 0 || j < 0 || j >= sibs.length) return { ok: true, moved: false };
   const before = dir < 0 ? sibs[j] : (sibs[j + 1] || null);
   return move(t, id, { source: src, under: under && sourceOf(t, under) === src ? under : null, before });
+}
+
+// ---- Tags ----
+
+// A note's tags as its words say (#word): in each tag group of the library (made when there is
+// none), out of the ones it no longer names; a tag left holding nothing goes. One step, or none
+// when nothing changes. → { ok, changed }.
+export function syncTags(t, id) {
+  const m = t.marks.get(id);
+  const room = m ? t.places.home(id) : null;
+  if (!m || m.kind !== 'line' || !room) return { ok: true, changed: false };
+  const want = tagsIn(m.text);
+  const now = t.links.holders(id).map((g) => t.marks.get(g)).filter(isTag);
+  const gone = now.filter((g) => !want.includes(fold(g.title)));
+  const add = want.filter((w) => !now.some((g) => fold(g.title) === w));
+  if (!gone.length && !add.length) return { ok: true, changed: false };
+  return t.together(() => {
+    for (const g of gone) {
+      const p = partRow(t, id, g.id);
+      if (p) t.links.unlink(p.id);
+      if (!t.links.members(g.id).length) t.marks.delete(g.id);
+    }
+    for (const w of add) {
+      let g = tagNamed(t, room, w);
+      if (!g) { const made = t.marks.make({ kind: 'group', content: { title: w, of: TAG }, in: room }); if (made?.ok === false) return made; g = made.id; }
+      const r = t.links.link(id, g, 'part of');
+      if (r?.ok === false) return r;
+    }
+    return { ok: true, changed: true };
+  });
 }
 
 // ---- Editions ----

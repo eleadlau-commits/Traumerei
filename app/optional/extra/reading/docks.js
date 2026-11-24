@@ -6,6 +6,7 @@
 // Only the plugin API (t.ui.docks) and Folio's ui.el; the look is Folio's classes.
 
 import { ui } from 'folio';
+import { find, tagsOf, snippet } from './find.js';
 import { RULE, TYPES, isSource, sourcesIn, notesOf, authorYear, autoKey, uniqueKey, validKey, keysIn, editionOf, editionsOf } from './rules.js';
 
 const { el } = ui;
@@ -67,7 +68,7 @@ export function followsAuto(src, taken) {
   return k === base || (k.startsWith(base) && /^[a-z]+$/.test(k.slice(base.length)));
 }
 
-// docks({ room, inLibrary, openOf, open, newSource, newEdition, setEditionOf }) → { sync, draw, focus, closeAll }
+// docks({ room, inLibrary, openOf, open, goTo, newSource, newEdition, setEditionOf }) → { sync, draw, focus, lit, focusFind, closeAll }
 export function installDocks(t, o) {
   const docks = () => t.ui.docks || null;
   let left = null, right = null; // the bodies, while open
@@ -79,9 +80,75 @@ export function installDocks(t, o) {
   // A source's editions fold into its line ("2 editions"); unfolded with → (or a click on the
   // count), folded with ←; the open one's always shown. This session's, per source.
   const unfolded = new Set();
+  // Find: words and #tags across the library's notes and sources (this session's query). The field
+  // is made once, so redrawing the dock never takes the caret from it.
+  let query = '';
+  let findBox = null, tagRow = null, body = null;
+  const makeFind = () => {
+    const input = el('input', { type: 'search', id: 'reading-find', class: 'reading-find', placeholder: 'Find: words, #tag', 'aria-label': 'Find in notes', spellcheck: 'false', autocomplete: 'off' });
+    input.addEventListener('input', () => { query = input.value; drawBody(); drawTags(); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (input.value) { input.value = query = ''; drawBody(); drawTags(); } else input.blur(); }
+      else if (e.key === 'Enter') { e.preventDefault(); body?.querySelector('.pick')?.click(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); body?.querySelector('.pick')?.focus(); }
+    });
+    return input;
+  };
+  const setQuery = (q) => { query = q; if (findBox) findBox.value = q; drawBody(); drawTags(); };
+  // The library's tags, each a word that adds itself to (or takes itself out of) the query.
+  const drawTags = () => {
+    if (!tagRow) return;
+    const r = o.room();
+    const tags = r ? tagsOf(t, r) : [];
+    const on = new Set((query.match(/#[^\s#]+/g) || []).map((w) => w.slice(1).toLowerCase()));
+    tagRow.replaceChildren(...tags.map((g) => el('button', { type: 'button', class: `box-btn reading-tag${on.has(g.word) ? ' st-sel' : ''}`, 'aria-pressed': on.has(g.word) ? 'true' : 'false', title: `${g.notes} ${g.notes === 1 ? 'note' : 'notes'}`,
+      onclick: () => {
+        const tag = `#${g.word}`;
+        const parts = query.split(/\s+/).filter(Boolean);
+        const next = on.has(g.word) ? parts.filter((p) => p.toLowerCase() !== tag) : [...parts, tag];
+        setQuery(next.join(' '));
+      } }, `#${g.word}`, el('span', { class: 'pick-note' }, ` ${g.notes}`))));
+    tagRow.hidden = !tags.length;
+  };
+  // The list under the field: the sources, or what the query finds.
+  const drawBody = () => {
+    if (!body) return;
+    const r = o.room();
+    if (!query.trim()) { body.replaceChildren(sourceList(r)); return; }
+    const got = r ? find(t, r, query) : { sources: [], notes: [], words: [] };
+    const hits = [
+      ...got.sources.map(({ source }) => { const s = t.marks.get(source); return el('button', { type: 'button', class: 'reading-hit pick', 'data-id': source, onclick: () => o.open(source) },
+        el('span', { class: 'reading-hit-where pick-note' }, `Source · ${s.citekey || '—'}`), el('span', { class: 'reading-hit-text' }, s.title || 'Untitled')); }),
+      ...got.notes.map((n) => { const s = t.marks.get(n.source); return el('button', { type: 'button', class: 'reading-hit pick', 'data-id': n.note, onclick: () => o.goTo(n.note) },
+        el('span', { class: 'reading-hit-where pick-note' }, [s?.citekey || '—', n.anchor].filter(Boolean).join(', ')), el('span', { class: 'reading-hit-text' }, snippet(n.text, got.words))); }),
+    ];
+    const list = el('div', { class: 'reading-list', role: 'listbox', 'aria-label': 'Found' }, ...hits);
+    walk(list, () => findBox?.focus());
+    const n = got.notes.length;
+    body.replaceChildren(el('p', { class: 'hint' }, hits.length ? `${n} ${n === 1 ? 'note' : 'notes'}${got.sources.length ? `, ${got.sources.length} ${got.sources.length === 1 ? 'source' : 'sources'}` : ''}. Enter goes to one; Escape clears.` : 'Nothing found.'), list);
+  };
+  // ArrowUp / ArrowDown walk a list; up from the first goes to `top`.
+  const walk = (list, top) => list.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...list.querySelectorAll('.pick')];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowUp' && i <= 0 && top) { e.preventDefault(); top(); return; }
+    const next = items[Math.max(0, Math.min(items.length - 1, (i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1))))];
+    if (next) { e.preventDefault(); next.focus(); }
+  });
   const drawLeft = () => {
     if (!left) return;
+    if (!findBox) { findBox = makeFind(); tagRow = el('div', { class: 'reading-tags', 'aria-label': 'Tags' }); body = el('div', { class: 'reading-body' }); }
     const r = o.room();
+    const open = r ? o.openOf(r) : null;
+    left.replaceChildren(
+      el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource()), open ? btn('New edition', () => o.newEdition?.()) : null),
+      findBox, tagRow, body,
+      el('p', { class: 'hint reading-keys' }, 'Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+    drawTags();
+    drawBody();
+  };
+  const sourceList = (r) => {
     const srcs = r ? sourcesIn(t, r) : [];
     const open = r ? o.openOf(r) : null;
     const openMain = open ? (editionOf(t, open) || open) : null;
@@ -111,19 +178,15 @@ export function installDocks(t, o) {
         else if (e.key === 'ArrowLeft' && unfolded.has(main)) { e.preventDefault(); toggle(main, main); }
         return;
       }
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-      const next = items[Math.max(0, Math.min(items.length - 1, (i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1))))];
-      if (next) { e.preventDefault(); next.focus(); }
     });
-    left.replaceChildren(
-      el('div', { class: 'box-btns reading-actions' }, btn('New source', () => o.newSource()), open ? btn('New edition', () => o.newEdition?.()) : null),
-      srcs.length ? list : el('p', { class: 'hint' }, 'No sources yet. New source (Alt+Shift+N) makes the first.'),
-      el('p', { class: 'hint reading-keys' }, 'Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+    walk(list, () => findBox?.focus());
+    return srcs.length ? list : el('p', { class: 'hint' }, 'No sources yet. New source (Alt+Shift+N) makes the first.');
   };
+
   // Fold or unfold a source's editions; the focus stays on `keep` (a line's id).
   const toggle = (main, keep = main) => {
     if (unfolded.has(main)) unfolded.delete(main); else unfolded.add(main);
-    drawLeft();
+    drawBody();
     left?.querySelector(`.reading-src[data-id="${keep}"]`)?.focus();
   };
 
@@ -236,7 +299,9 @@ export function installDocks(t, o) {
   const focus = (key = 'title') => { drawRight(true); const f = right?.querySelector(`#reading-f-${key}`); if (f) { f.focus(); f.select?.(); } };
   // The open source's line in the list, focused (Alt+↓ / Alt+↑ keep the list in step).
   const lit = () => left?.querySelector('.reading-src[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  // The Find field, ready to type (Alt+F); `q` put in it first when given.
+  const focusFind = async (q = null) => { if (!left) await openAll(); if (q != null) setQuery(q); findBox?.focus(); findBox?.select?.(); };
 
   for (const on of [t.marks.on, t.links.on]) on?.(() => { if (left || right) draw(); });
-  return { sync, draw, focus, lit, closeAll, showing: () => !!(left || right) };
+  return { sync, draw, focus, lit, focusFind, closeAll, showing: () => !!(left || right) };
 }

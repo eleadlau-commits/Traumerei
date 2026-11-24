@@ -15,6 +15,7 @@ const X = await load('rules.js');
 const D = await load('docks.js');
 const S = await load('tests/sample.js');
 const N = await load('notes.js');
+const F = await load('find.js');
 
 function setUp() {
   const host = makeHost({ thoughts: 2 });
@@ -237,4 +238,54 @@ test('reading: a new edition copies the metadata, takes its own key and folds un
   const sixth = marks.find((m) => m.citekey === 'darwin1872origin');
   assert.ok(sixth && X.editionOf(t, sixth.id), 'the edition link');
   assert.deepEqual(brokenLaws(host.w), []);
+});
+
+// ---- 0.3: tags and finding ----
+
+test('reading: #tags typed in a note put it in those tags (made when new); taken out, a tag holding nothing goes', () => {
+  const { host, t, s, rule, api } = setUp();
+  const mill = s.sources[2];
+  api.open(mill, { go: false });
+  const id = keep(host, t, api, rule, s.room, 'Compare Wollstonecraft. #liberty #Speech');
+  assert.deepEqual(F.tagsOfNote(t, id).sort(), ['liberty', 'speech']);
+  assert.equal(F.tagsOf(t, s.room).find((g) => g.word === 'liberty').notes, 3, 'the sample\'s tag, one more note');
+  assert.equal(X.sourceOf(t, id), mill, 'still in its source');
+  t.marks.edit(id, { text: 'Compare Wollstonecraft. #liberty' });
+  N.syncTags(t, id);
+  host.world.save();
+  assert.deepEqual(F.tagsOfNote(t, id), ['liberty']);
+  assert.ok(!F.tagNamed(t, s.room, 'speech'), 'a tag holding nothing goes');
+  assert.equal(N.syncTags(t, id).changed, false, 'nothing to change: no step');
+  assert.deepEqual(brokenLaws(host.w), []);
+});
+
+test('reading: Find goes through every note by words and #tags; a result opens its source and chooses the note', () => {
+  const { host, t, s, api } = setUp();
+  const got = F.find(t, s.room, '#liberty');
+  assert.deepEqual(got.notes.map((n) => t.marks.get(n.source).citekey), ['mill1859liberty', 'wollstonecraft1792vindication']);
+  const grand = F.find(t, s.room, 'grandeur');
+  assert.equal(grand.notes.length, 2, 'both editions\' quotes');
+  assert.deepEqual(grand.notes.map((n) => n.anchor), ['p. 490', 'p. 429']);
+  const hit = grand.notes[1].note;
+  assert.ok(api.goTo(hit));
+  assert.equal(api.openOf(s.room), s.sources[1], 'the 6th edition open');
+  // Every tag is claimed by the Library rule: none is left loose on the canvas.
+  const loose = t.places.loose(s.room).filter((id) => F.isTag(t.marks.get(id)));
+  assert.deepEqual(loose, []);
+});
+
+test('reading: Find in a library of 1,500 notes answers in under 50 ms', () => {
+  const { host, t } = setUp();
+  const r = host.lib.model.addRoom(host.w, 'Big', host.tick(), {}, X.RULE);
+  const srcs = Array.from({ length: 20 }, (_, i) => host.lib.model.create(host.w, r.id, { kind: 'group', of: X.SOURCE, family: true, x: 0, y: 0, title: `Source ${i}`, citekey: `k${i}` }, host.tick()).id);
+  for (let i = 0; i < 1500; i++) {
+    const th = host.lib.model.create(host.w, r.id, { kind: 'line', text: `note ${i} about ${i % 7 ? 'liberty' : 'wonder'} ${'word '.repeat(i % 20)}` }, host.tick());
+    host.lib.model.join(host.w, srcs[i % 20], th.id);
+  }
+  host.world.save();
+  const t0 = performance.now();
+  const got = F.find(t, r.id, 'wonder note');
+  const ms = performance.now() - t0;
+  assert.ok(got.notes.length > 200 - 1, `found ${got.notes.length}`);
+  assert.ok(ms < 50, `answered in ${ms.toFixed(1)} ms`);
 });

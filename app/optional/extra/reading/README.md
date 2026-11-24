@@ -22,6 +22,8 @@ a source file's path and hash).
   anchor, the printed page of that edition (`p. 112`, `pp. 112–113`, `p. xiv`).
 - A **comment** is a note with no quote link. A comment on a quote has a quiet `reading comment`
   link to it and sits under it, right after it in the stream.
+- A **tag** is a group of the family `reading-tag` (membership many), its title the word, typed
+  as `#word` in a note.
 - An **edition** is a source of its own (its own key, its own pages) with a quiet `reading
   edition` link to the source it is an edition of. A quote belongs to exactly one edition.
 
@@ -70,6 +72,23 @@ a source file's path and hash).
   Editions come right after their source, in the list and on the canvas, and fold into its line
   in the left dock ("▸ 1 edition"; → shows them, ← folds them).
 
+## What it adds (0.3)
+
+- **Tags**: `#word` typed in a note puts it in that tag (made when the library has none), and
+  taken out of the words takes it out; a tag left holding nothing goes. Tags are drawn quiet in
+  the words, and they are claimed by the Library rule (never loose on the canvas).
+- **Find** (Alt+F, or the field at the top of the left dock): words and `#tags` across the
+  library. A note is found when it holds every word (in its words, its page or its source's key)
+  and is in every tag; a source when its key, title, authors or year hold every word. The
+  results replace the list of sources while there is a query: the source's key and the page,
+  then a piece of the note around the word. ArrowDown walks them, Enter goes to one, Escape
+  clears. Under the field, the library's **tags** with their counts: a click adds the tag to the
+  query (or takes it out).
+- **Going to a note**: a result opens its source, slides the view to the note (smoothly, unless
+  the system asks for less motion) and chooses it.
+- The canvas shows every note while you find: which notes match is this session's view, which a
+  rule can't read on API 3 (core-gaps.md, gap 4).
+
 Typing a quote or a comment under a quote is done just after Enter, as its own step (no proposal
 links a note, Book's way): the first Ctrl+Z takes back the quote or the nesting, the second the
 note.
@@ -79,7 +98,8 @@ note.
 - `rules.js`: plain functions (sources, keys, anchors, the stream with its comments, the layout,
   where a note lands or is let go, the new library).
 - `notes.js`: the gestures on notes and editions, each one step (`asQuote`, `toggleQuote`, `move`,
-  `nest`, `unnest`, `step`, `newEdition`, `setEditionOf`).
+  `nest`, `unnest`, `step`, `syncTags`, `newEdition`, `setEditionOf`).
+- `find.js`: tags read from words, the library's tags, and Find.
 - `docks.js`: the two docks; `editFor` is what a field's words do to a source.
 - `compat.js`: the fallback helpers for the core gaps (`app/core/core-gaps.md`):
   `onModeChange`, `viewGet` / `viewGo`, `fileHandles`. Each uses the new API when the app has it,
@@ -110,3 +130,5 @@ note.
 4. Type `"…" p. 95`, Enter: a quote, its page in the gutter. Type again, Enter: a comment under
    it. Alt+Shift+↑ moves the quote and its comment up. In the left dock, → on Darwin shows its
    6th edition.
+5. Alt+F, type `grandeur`: both editions' quotes, with their pages; Enter on one goes to it. A
+   click on `#liberty` finds Mill and Wollstonecraft.
