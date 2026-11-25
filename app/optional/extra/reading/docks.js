@@ -70,7 +70,7 @@ export function followsAuto(src, taken) {
   return k === base || (k.startsWith(base) && /^[a-z]+$/.test(k.slice(base.length)));
 }
 
-// docks({ room, inLibrary, openOf, open, goTo, newSource, newEdition, setEditionOf, folder, setFolder,
+// docks({ room, inLibrary, openOf, open, goTo, newSource, deleteSource, newEdition, setEditionOf, folder, setFolder,
 //   pick, attach, setOffset, copyPath, showFile, canShow, verify, detach, openLink }) → { sync, draw, focus, lit, focusFind, closeAll }
 export function installDocks(t, o) {
   const docks = () => t.ui.docks || null;
@@ -232,7 +232,7 @@ export function installDocks(t, o) {
         el('div', { class: 'box-btns' }, btn('Import BibTeX…', () => o.bibIn?.()), btn('Import Zotero notes…', () => o.zoteroIn?.())),
         el('div', { class: 'box-btns' }, btn('BibTeX', () => o.bibOut?.()), btn('Markdown', () => o.mdOut?.()), btn('Word', () => o.wordOut?.())),
         el('p', { class: 'hint' }, 'Zotero: its metadata through Export → BibTeX; its annotations through Add Note from Annotations, then the note exported as Markdown, into the open source. Markdown cites with Pandoc keys; Word in Chicago author-date, with References.')),
-      el('p', { class: 'hint reading-keys' }, 'Alt+B: columns or blocks. Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+      el('p', { class: 'hint reading-keys' }, 'Delete: the source chosen in the list, with its notes. Alt+B: columns or blocks. Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
     drawColls();
     drawTags();
     drawBody();
@@ -263,6 +263,12 @@ export function installDocks(t, o) {
     list.addEventListener('keydown', (e) => {
       const items = [...list.querySelectorAll('.reading-src')];
       const i = items.indexOf(document.activeElement);
+      if (e.key === 'Delete' && i >= 0 && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault(); e.stopPropagation();
+        o.deleteSource?.(items[i].dataset.id);
+        setTimeout(() => left?.querySelector('.reading-src[aria-selected="true"]')?.focus(), 0);
+        return;
+      }
       if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && i >= 0) {
         const id = items[i].dataset.id, main = editionOf(t, id) || id;
         if (e.key === 'ArrowRight' && !unfolded.has(main) && editionsOf(t, main).length) { e.preventDefault(); toggle(main, id); }
@@ -344,7 +350,9 @@ export function installDocks(t, o) {
       el('div', { class: 'reading-form' }, ...FORM.map((f) => field(src, f, locked)), linkRow(src), editionField(src, locked)),
       collSection(src, locked),
       fileSection(src, locked),
-      el('p', { class: 'hint' }, `${n} ${n === 1 ? 'note' : 'notes'}. Enter keeps a field; Ctrl+Enter is a new line in Title and Authors.`));
+      el('p', { class: 'hint' }, `${n} ${n === 1 ? 'note' : 'notes'}. Enter keeps a field; Ctrl+Enter is a new line in Title and Authors.`),
+      locked ? null : el('section', { class: 'reading-src-actions' }, el('h3', { class: 'label' }, 'Actions'),
+        el('div', { class: 'box-btns' }, btn(n ? `Delete source and its ${n} ${n === 1 ? 'note' : 'notes'}` : 'Delete source', () => o.deleteSource?.(id), 'danger'))));
   };
 
   // The collections the source is in: each a box to tick (Space), indented as in the tree.

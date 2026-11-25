@@ -182,6 +182,13 @@ note.
 - New library is a room made seen as Library (`marks.make` with `at.mode`), no .traum in between;
   a .bib opened makes one the same way.
 
+## What changed in 0.6.3
+
+- **Delete source**: Details › Actions, or Delete on a source in the list. The source goes with
+  its notes (quotes, comments, the rest) as one step, and the one after it opens; Ctrl+Z brings it
+  all back. Its collections stay (even one it leaves empty), its editions stay as sources of their
+  own, and a tag left holding nothing goes (`deleteSource` in notes.js).
+
 ## How it is made
 
 - `rules.js`: plain functions (sources, keys, anchors, the stream with its comments, the layout,
