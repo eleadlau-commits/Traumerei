@@ -189,6 +189,28 @@ note.
   all back. Its collections stay (even one it leaves empty), its editions stay as sources of their
   own, and a tag left holding nothing goes (`deleteSource` in notes.js).
 
+## What it adds (0.7): the text reader
+
+- **Book**, a tab in the right dock beside Details: the open source's book, a page at a time.
+  Alt+Shift+R (or Details › File › Read here) opens it; ← / → or Page Up / Down turn the page,
+  Home and End go to the ends. A plain text file, an HTML file (as Project Gutenberg makes it) or
+  an EPUB reads here; a PDF still opens in its own app (Details › Open).
+- **Printed pages** where the file marks them: Gutenberg's page numbers (`[49]`, `[Pg 49]`) and an
+  EPUB's page breaks. A file with none is read in screens of about 2,400 letters.
+- **A quote's page**: Alt+Shift+P on a quote (or a comment under it) turns the Book tab to the page
+  its anchor names, with the quote lit; with no page in the anchor, its words are found in the book
+  (letters only: quotation marks, spacing, case and ß/ss don't count). While the tab shows,
+  choosing a quote on the canvas turns to it. With no book that reads here, Alt+Shift+P copies the
+  file's path and page as before.
+- **No text kept** (E's rule): the book is read from its file into this session's memory only,
+  never into the tables or the plugin's store. So it is picked once a session (Open the book…;
+  a file whose fingerprint differs from the one attached is shown with a warning). Core's
+  `ui.files.read(path)` (core-gaps.md, gap 12) would reopen it with the room; `compat.js` uses it
+  as soon as it is there.
+- Fast: a 460,000-letter book reads in about 20 ms, a quote is found in about 20 ms the first time
+  (then a few), a page turns in under 5 ms. `reader.js` (the words and pages, no DOM of its own
+  but a parser) and `book.js` (the tab).
+
 ## How it is made
 
 - `rules.js`: plain functions (sources, keys, anchors, the stream with its comments, the layout,

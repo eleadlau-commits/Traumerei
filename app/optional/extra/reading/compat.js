@@ -58,6 +58,8 @@ export async function sha256(bytes) {
 //   pick(accept)      → { name, bytes, sha256, path } or null (path null in a browser)
 //   show(path, page)  → true when the app opened it; else false (the caller copies path and page)
 //   hash(path)        → { sha256 (64 hex digits), bytes } or null
+//   load(accept)      → { name, sha256, data } a book picked, read into memory (never kept)
+//   read(path)        → the same by path, once core has ui.files.read (gap 12); else null
 export function fileHandles(t) {
   const f = t.ui.files || {};
   let native = false;
@@ -70,6 +72,24 @@ export function fileHandles(t) {
       const path = typeof file.path === 'string' && file.path ? file.path : null;
       if (path) native = true;
       return { name: file.name, bytes: buf.byteLength, sha256: await sha256(buf), path };
+    },
+    // A book read into memory, never kept: picked (each session) or, with core's ui.files.read
+    // (core-gaps.md, gap 12), by the path of a file picked before. → { name, sha256, data } or null.
+    async load(accept = '') {
+      const file = await f.open?.(accept);
+      if (!file) return null;
+      const data = new Uint8Array(await file.arrayBuffer());
+      if (typeof file.path === 'string' && file.path) native = true;
+      return { name: file.name, sha256: await sha256(data), data };
+    },
+    async read(path) {
+      if (typeof f.read !== 'function' || !path) return null;
+      try {
+        const got = await f.read(path);
+        if (!got || got.ok === false) return null;
+        const data = got instanceof Uint8Array ? got : new Uint8Array(await (got.arrayBuffer ? got.arrayBuffer() : got.bytes?.arrayBuffer?.() ?? got.bytes));
+        return { name: got.name || String(path).split(/[\\/]/).pop(), sha256: await sha256(data), data };
+      } catch { return null; }
     },
     async show(path, page = null) { return typeof f.show === 'function' ? (await f.show(path, page == null ? {} : { page }))?.ok === true : false; },
     async hash(path) {
