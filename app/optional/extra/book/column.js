@@ -179,6 +179,22 @@ export function numBox(L, y, lh, num, level) {
   return { x: L - lh * NUM_GAP - w, y: y - lh * 0.15, w, h: lh * 1.3, label: num, style: 'heading', level };
 }
 
+// A passage (core's kind: a title and its words, a verse of a song) in the book: set across the
+// column's full measure, its title on a line of its own in small capitals and its words under it
+// at the reading size, behind a hairline on the left PASSAGE_INDENT wide (style.css). Laid out as
+// a block exactly that tall, so the heading above and the paragraph below never run into it (the
+// room centres a mark on its row: a row shorter than what it draws spilled up over the heading).
+// → its height, or null for a mark of another kind.
+export const PASSAGE_INDENT = 15;
+export function passageHeight(reads, id, measure, W) {
+  const m = reads.marks.get(id);
+  if (!m || m.kind !== 'passage') return null;
+  const lh = measure('M', W).lineHeight;
+  const title = m.title ? lh : 0;
+  const words = m.text ? measure(m.text, W - PASSAGE_INDENT).height : 0;
+  return title + words || lh;
+}
+
 // The column: rows for the marks (centre, width, height, words set flush left) and boxes behind
 // them (the title, each heading's number, the line over the thoughts not yet in the book).
 // measure(text, width) → { lines, lineHeight, height }; size(id, width) → { height } or null.
@@ -196,6 +212,8 @@ export function column(reads, room, measure, size = () => null, set = null) {
     y += lh * 3;
   }
   const heightOf = (id) => {
+    const ph = passageHeight(reads, id, measure, W);
+    if (ph) return ph;
     const s = size(id, W);
     if (s && Number.isFinite(s.height) && s.height > 0 && s.lines == null) return s.height; // a kind that draws its own height
     return measure(reads.marks.text(id) || ' ', W).height;

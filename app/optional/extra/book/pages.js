@@ -5,7 +5,7 @@
 // heads the pages after its first: drawn, never stored. The thoughts not yet in the book follow
 // the last page, as a column. Plain functions, as column.js: tested in tests/book-editor.test.js.
 
-import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale, typeOf } from './column.js';
+import { RULE, SPACE, NOTE, column, read, nameOf, chapterLabel, placeNotes, settingOf, widthOf, draftRoom, numBox, headHeight, headScale, typeOf, passageHeight } from './column.js';
 import { slotsOf, spansOf } from './slots.js';
 
 // Page sizes in millimetres, and the margin around the words; drawn at MM world units to the
@@ -53,6 +53,8 @@ export function paginate(reads, room, measure, size = () => null, set = null) {
   const fresh = () => y <= top(page) + P.m + 0.5;
   const newPage = () => { page++; y = top(page) + P.m; used = false; heads[page] = running; };
   const linesOf = (id) => {
+    const ph = passageHeight(reads, id, measure, W); // a passage: one block, never split (column.js)
+    if (ph) return { block: ph, lines: ph / lh };
     const s = size(id, W);
     if (s && Number.isFinite(s.height) && s.height > 0 && s.lines == null) return { block: s.height };
     return measure(reads.marks.text(id) || ' ', W);

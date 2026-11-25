@@ -154,3 +154,11 @@
 h2.book-read-head { font-size: 1.45em; font-variant: small-caps; font-weight: 600; }
 h3.book-read-head { font-size: 1.2em; font-weight: 600; }
 h4.book-read-head, h5.book-read-head, h6.book-read-head { font-size: 1.05em; font-style: italic; }
+
+/* A passage in the book (a title and its words, a verse of a song): across the column's whole
+   measure, its words at the reading size and line spacing, nothing cut off; its title a line of its
+   own in small capitals, exactly one line tall (column.js passageHeight lays the passage out so:
+   the title's line, then its words wrapped PASSAGE_INDENT short of the measure). */
+.room[data-mode="book-page"] .room-float .room-passage { max-width: none; margin: 0; padding: 0 0 0 14px; font-size: inherit; line-height: inherit; }
+.room[data-mode="book-page"] .room-passage-title { font-size: .62em; line-height: calc(1.45 / .62); margin: 0; }
+.room[data-mode="book-page"] .room-passage-body { max-height: none; }
