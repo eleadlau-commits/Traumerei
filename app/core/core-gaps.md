@@ -21,6 +21,7 @@ Book's list names the same gap, its number is given, so the core session fixes i
 | 9 | The packer puts every file of a plugin in one scope | Reading, stage 1 | No top-level name in two files |
 | 10 | A format can't say it only takes files it accepts | Reading, stage 5 | No format; .bib in from the dock |
 | 11 | A plugin can't set a room's mode; a small room keeps one | Reading, stage 6 | New library is 2 × 2, its mode from a .traum |
+| 12 | A file picked before can't be read again by its path | Reading, 0.7 (text reader) | Pick the book once per session |
 
 **Status (24 Nov 2026, app 1.1.4).** Read against the philosophy (six tables, a rule a pure
 function of them, the rooms page's own rules) and fixed where they fit:
@@ -186,3 +187,16 @@ go to its blocks at all. Wanted: `rooms.mode(room, id)` (or `ui.open.room(id, { 
 the open room's mode, one of the modes it may take, and a way for a rule to name its siblings so
 a small room switches between them (Tab) without growing. Fallback: New library and the sample
 are 2 × 2 (`material.size: 2` in the .traum), so Tab works there.
+
+## 12. A file picked before can't be read again by its path (0.7, the text reader; 25 Nov 2026)
+
+Reading notes 0.7 shows a source's book in a Book tab (plain text, Gutenberg HTML, EPUB), held in
+memory only: no text goes in the tables or `t.store`. The app hands a plugin a file's contents
+only from `ui.files.open`, so the person picks the book again in each session before its page
+shows; `ui.files.hash(path)` reaches the same file by its path (desktop, a file `open` picked on
+this computer) but never its contents. E asked for the book to reopen with the room. Wanted:
+`ui.files.read(path)` → a `File` (or its bytes), with the same reach as `hash` and `show`: only a
+file `open` picked on this computer, refused in a browser, nothing kept by the app. The plugin
+still checks the hash against the source's before it shows a page. Fallback (0.7): pick the book
+once per session (Book › Open the book…; the same file is checked by its hash). 0.7 uses
+`ui.files.read` as soon as it is there, with no change to the plugin.

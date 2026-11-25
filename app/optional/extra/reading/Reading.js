@@ -16,6 +16,8 @@ import { RULE, BLOCKS_RULE, isLibraryMode, acrossOf, setAcross, BLOCKS_ACROSS, S
 import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags, deleteSource } from './notes.js';
 import { TAG, tagSpans } from './find.js';
 import { onModeChange, roomMode, viewGet, viewGo, stageBox, fileHandles } from './compat.js';
+import { installBook } from './book.js';
+import { readable } from './reader.js';
 import { importBib, importZotero } from './io.js';
 import { writeBib } from './bibtex.js';
 import { markdownOf } from './cite.js';
@@ -194,6 +196,7 @@ export function install(t) {
     }
     if (draw) docks.draw(true);
     docks.lit();
+    if (book.isOpen() && book.current()?.src !== id && t.ui.docks?.right?.isShowing?.('reading.book')) book.show(id);
     return true;
   };
   const step = (dir) => {
@@ -353,7 +356,24 @@ export function install(t) {
     return out;
   };
 
-  const docks = installDocks(t, { ...collections, room: here, inLibrary, openOf, open, goTo, newSource, deleteSource: dropSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
+  // The Book tab: the open source's book, read into memory only (book.js, reader.js).
+  const pathOf = (id) => { const f = fileOf(id); return f ? fullPath(folderOf(t.places.home(id)), f.rel) : null; };
+  const quoteFor = (mark) => {
+    const q = quoteOf(t, mark) ? mark : aboutOf(t, mark);
+    if (!q || !quoteOf(t, q)) return null;
+    return { src: sourceOf(t, q), words: t.marks.text(q), anchor: quoteOf(t, q).label || '' };
+  };
+  const book = installBook(t, { fileOf, pathOf, load: (accept) => handles.load(accept), readPath: (p) => handles.read(p), quoteOf: quoteFor });
+  const canRead = (id) => { const f = fileOf(id); return !!f && readable(f.name || f.rel); };
+  // Alt+Shift+P: the chosen quote's page in the Book tab when its book reads here; else its path copied.
+  const quotePage = () => {
+    const id = t.ui.chosen()?.mark;
+    const q = id ? quoteFor(id) : null;
+    if (q?.src && canRead(q.src)) return book.show(q.src, id);
+    return copyQuote();
+  };
+
+  const docks = installDocks(t, { ...collections, room: here, inLibrary, openOf, open, goTo, newSource, deleteSource: dropSource, canRead, readHere: (id) => book.show(id), bibIn, zoteroIn, bibOut, mdOut, wordOut,
     folder: folderOf, setFolder, pick, attach, setOffset, copyPath, showFile, canShow: () => handles.native, verify: verifyFile, detach, openLink, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).
@@ -361,6 +381,7 @@ export function install(t) {
   const moved = new Set();
   const settle = (rm) => {
     const opening = docks.sync(rm);
+    book.sync(!!rm && isLibraryMode(rm.mode));
     // A room 0.6 saw as Library · blocks: seen as Library, as blocks 3 across (one step, once).
     if (rm?.mode === BLOCKS_RULE && !moved.has(rm.room)) {
       moved.add(rm.room);
@@ -399,7 +420,8 @@ export function install(t) {
     return out?.id || null;
   };
   cmd({ id: 'reading.new-edition', keys: ['Alt+Shift+E'], zone: 'room', words: 'a new edition of the open source', when: inLibrary, run: () => edition() });
-  cmd({ id: 'reading.copy-path', keys: ['Alt+Shift+P'], zone: 'room', words: 'copy the chosen quote\'s file path and page', when: inLibrary, run: () => copyQuote() });
+  cmd({ id: 'reading.copy-path', keys: ['Alt+Shift+P'], zone: 'room', words: 'the chosen quote\'s page in the Book tab (or its file path and page copied)', when: inLibrary, run: () => quotePage() });
+  cmd({ id: 'reading.book', keys: ['Alt+Shift+R'], zone: 'room', words: 'read the open source\'s book in the Book tab', when: inLibrary, run: () => { const r = here(); const s = r ? openOf(r) : null; if (s) book.toggle(s); } });
   cmd({ id: 'reading.open-link', keys: ['Alt+Shift+O'], zone: 'room', words: 'open the open source\'s DOI or URL in the browser', when: inLibrary, run: () => { const r = here(); const s = r ? openOf(r) : null; if (s) openLink(s); } });
   cmd({ id: 'reading.import-bib', zone: 'room', words: 'add sources from a BibTeX file (Zotero: Export → BibTeX)', when: inLibrary, run: () => bibIn() });
   cmd({ id: 'reading.import-zotero', zone: 'room', words: 'add Zotero annotations (a note exported as Markdown) to the open source', when: inLibrary, run: () => zoteroIn() });
@@ -427,6 +449,7 @@ export function install(t) {
     if (!c?.context || !c.mark || !isLibraryMode(t.marks.get(c.context)?.mode)) return;
     const src = sourceOf(t, c.mark);
     if (src && opened.get(c.context) !== src) { opened.set(c.context, src); docks.draw(); docks.lit(); }
+    book.follow(c.mark, src);
   });
 
   // The first note of an empty source: the room set the thought where the view was, so the view

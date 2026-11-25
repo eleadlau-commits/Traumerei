@@ -232,7 +232,7 @@ export function installDocks(t, o) {
         el('div', { class: 'box-btns' }, btn('Import BibTeX…', () => o.bibIn?.()), btn('Import Zotero notes…', () => o.zoteroIn?.())),
         el('div', { class: 'box-btns' }, btn('BibTeX', () => o.bibOut?.()), btn('Markdown', () => o.mdOut?.()), btn('Word', () => o.wordOut?.())),
         el('p', { class: 'hint' }, 'Zotero: its metadata through Export → BibTeX; its annotations through Add Note from Annotations, then the note exported as Markdown, into the open source. Markdown cites with Pandoc keys; Word in Chicago author-date, with References.')),
-      el('p', { class: 'hint reading-keys' }, 'Delete: the source chosen in the list, with its notes. Alt+B: columns or blocks. Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
+      el('p', { class: 'hint reading-keys' }, 'Delete: the source chosen in the list, with its notes. Alt+Shift+R: its book in the Book tab; Alt+Shift+P: a quote\'s page there. Alt+B: columns or blocks. Alt+Shift+C: a new collection. Alt+Shift+L: the collections (F2 renames, Delete deletes, Alt+→ / Alt+← nests). Alt+F: find. Alt+↓ / Alt+↑: the next or previous source. → / ←: show or fold its editions. Alt+Shift+E: a new edition.'));
     drawColls();
     drawTags();
     drawBody();
@@ -423,6 +423,7 @@ export function installDocks(t, o) {
         textField('reading-f-offset', String(f.pageOffset || 0), (v) => { o.setOffset?.(src.id, offsetOf(v)); }, '0')),
       el('div', { class: 'box-btns' },
         btn('Copy path', () => o.copyPath?.(src.id)),
+        o.canRead?.(src.id) ? btn('Read here', () => o.readHere?.(src.id)) : null,
         o.canShow?.() ? btn('Open', () => o.showFile?.(src.id)) : null,
         locked ? null : btn('Verify…', () => o.verify?.(src.id)),
         locked ? null : btn('Detach', () => o.detach?.(src.id))),

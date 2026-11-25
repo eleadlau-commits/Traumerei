@@ -28,3 +28,9 @@
 .reading-coll-d3 { padding-left: calc(2 * var(--s-4, 16px)); }
 .reading-in-colls { display: flex; flex-direction: column; gap: var(--s-1, 4px); }
 .reading-in-coll { display: flex; align-items: center; gap: var(--s-1, 4px); }
+.reading-book { height: 100%; min-height: 0; }
+.reading-book-head { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reading-book-nav { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2, 8px); }
+.reading-book-at { font-variant-numeric: tabular-nums; }
+.reading-page { flex: 1 1 auto; min-height: 0; overflow-y: auto; line-height: 1.6; outline-offset: 2px; }
+.reading-page p { margin: 0 0 var(--s-3, 12px); }
