@@ -41,6 +41,9 @@ export function sizeFor(style, s) {
 
 // A key a focused surface never takes: Esc gives the room back; Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z
 // undo and redo, so a stroke is taken back like any step.
+// How long typing may pause and still be one step with what came before (ms).
+export const TYPING_MS = 1000;
+
 const isUndo = (e) => (e.ctrlKey || e.metaKey) && !e.altKey && ['z', 'y'].includes((e.key || '').toLowerCase());
 
 export class Surfaces {
@@ -113,7 +116,11 @@ export class Surfaces {
     let h = live.get(key);
     if (h && h.s !== s) { this.leaveSurface(key, h); h = null; }
     if (!h) {
-      const keys = el('textarea', { class: 'room-surface-keys', tabindex: '-1', 'aria-label': 'Keys for this surface', readonly: true, inputmode: 'none' });
+      // A surface with text: true (since 1.1.5) takes typed text: its keys box is writable, so
+      // dead keys, an IME and paste reach it; each piece goes to input() and the box is emptied.
+      const keys = s.text
+        ? el('textarea', { class: 'room-surface-keys', tabindex: '-1', 'aria-label': 'Text for this surface', inputmode: 'text', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' })
+        : el('textarea', { class: 'room-surface-keys', tabindex: '-1', 'aria-label': 'Keys for this surface', readonly: true, inputmode: 'none' });
       const paper = el('div', { class: 'room-surface-paper' });
       const node = el('div', { class: 'room-surface', 'data-surface': s.id }, paper, keys);
       h = { key, s, node, paper, keys, o: null, drawn: null, gesture: null, focused: false };
@@ -125,7 +132,7 @@ export class Surfaces {
     h.node.style.width = `${o.width}px`;
     h.node.style.height = `${o.height}px`;
     if (resized || h.drawn !== o.stamp) {
-      if (h.gesture) h.stale = true; // drawn again once the gesture ends
+      if (h.gesture) h.stale = true; // drawn again once the gesture ends (a typing run draws as it goes: the plugin sees its words)
       else this.drawSurface(h);
     }
     return h.node;
@@ -156,6 +163,7 @@ export class Surfaces {
   wireSurface(h) {
     const { node, keys } = h;
     node.addEventListener('pointerdown', (e) => {
+      if (h.focused) this.endTyping(h); // a typing run ends where a gesture begins
       if (!h.focused) {
         if (e.button !== 0 || this.locked) return;
         const from = { x: e.clientX, y: e.clientY, id: e.pointerId };
@@ -195,10 +203,30 @@ export class Surfaces {
       if (e.isComposing) return;
       e.stopPropagation();
       if (e.key === 'Escape') { e.preventDefault(); this.blurSurface(h); return; }
-      if (isUndo(e)) { e.preventDefault(); if (!h.gesture) this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey); return; }
+      if (isUndo(e)) { e.preventDefault(); this.endTyping(h); if (!h.gesture) this.undo(e.key.toLowerCase() === 'z' && !e.shiftKey); return; }
+      if (h.s.text && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) this.startTyping(h); // Backspace, Enter taken by key(): the same run
       const used = this.callSurface(h, 'key', Object.freeze({ key: e.key, code: e.code, shift: !!e.shiftKey, alt: !!e.altKey, ctrl: !!(e.ctrlKey || e.metaKey) }));
-      if (used === true || e.key === 'Tab' || e.key === ' ') e.preventDefault();
+      if (used === true || e.key === 'Tab' || (e.key === ' ' && !h.s.text)) e.preventDefault(); // a text surface takes a space as typed text
     });
+    if (h.s.text) {
+      // Typed text: what lands in the keys box goes to input() as { text, composing, type }, and
+      // the box is emptied. An IME's words arrive while composing (composing: true, the whole
+      // word so far each time), then once more when they are settled. A run of typing is one step.
+      const hand = (text, composing, type) => {
+        this.startTyping(h);
+        this.callSurface(h, 'input', Object.freeze({ text: String(text ?? ''), composing, type }));
+      };
+      keys.addEventListener('compositionupdate', (e) => { e.stopPropagation(); hand(e.data, true, 'insertCompositionText'); });
+      keys.addEventListener('compositionend', (e) => { e.stopPropagation(); hand(e.data, false, 'insertCompositionText'); keys.value = ''; });
+      keys.addEventListener('input', (e) => {
+        e.stopPropagation();
+        if (e.isComposing) return; // (heard through the composition events)
+        const text = keys.value;
+        keys.value = '';
+        if (e.inputType === 'insertCompositionText') return; // (some browsers send it after compositionend)
+        if (text || e.inputType) hand(text, false, e.inputType || 'insertText');
+      });
+    }
     // The keys box loses the focus when the room draws again and the surface is moved into its
     // new element (the same task puts it back), or when the focus goes somewhere else: only then
     // is the room given back.
@@ -226,6 +254,23 @@ export class Surfaces {
     if (h.stale && h.node.isConnected) this.drawSurface(h);
   }
 
+  // A run of typing in a text surface is one step, as a gesture is: held from its first piece of
+  // text until the typing pauses (TYPING_MS), a gesture begins, an undo, or the surface is left.
+  startTyping(h) {
+    if (!h.typing) h.typing = { done: h.s.hold?.() || (() => {}), timer: 0 };
+    clearTimeout(h.typing.timer);
+    h.typing.timer = setTimeout(() => this.endTyping(h), TYPING_MS);
+  }
+
+  endTyping(h) {
+    const t = h.typing;
+    if (!t) return;
+    h.typing = null;
+    clearTimeout(t.timer);
+    try { t.done(); } catch (err) { console.warn(`Surface ${h.s.id}: its typing step`, err); }
+    if (h.stale && !h.gesture && h.node.isConnected) this.drawSurface(h);
+  }
+
   // Focused: the pointer, the wheel and the keys are the surface's until Esc or a click outside.
   focusSurface(h) {
     if (h.focused) return;
@@ -242,6 +287,7 @@ export class Surfaces {
   blurSurface(h) {
     if (!h.focused) return;
     this.endGesture(h);
+    this.endTyping(h);
     h.focused = false;
     h.node.classList.remove('room-surface-on');
     document.removeEventListener('pointerdown', h.outside, true);

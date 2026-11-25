@@ -547,7 +547,7 @@ export const PROPOSALS = Object.freeze(['due', 'revisit', 'clear', 'gap', 'resol
 // What a box may say of its look (the room's classes, room/style.css): style, level 1-3, and words on its right.
 // A surface's id (since 1.1.0): lowercase words joined by dashes or dots ('sketch', 'chart.bars').
 export const SURFACE_ID = /^[a-z][a-z0-9]*([.-][a-z0-9]+)*$/;
-export const SURFACE_HOOKS = Object.freeze(['draw', 'pointer', 'wheel', 'key', 'focus', 'blur', 'leave']);
+export const SURFACE_HOOKS = Object.freeze(['draw', 'pointer', 'wheel', 'key', 'input', 'focus', 'blur', 'leave']); // input: since 1.1.5, with text: true
 
 // A plugin's surface as the room's slot holds it (room/surface.js): checked, its hooks only, and
 // hold() for the room to bracket a gesture so the plugin's proposes in it land as one step.
@@ -557,7 +557,7 @@ export function surfaceFor(s, hold, needs = []) {
   if (!s || typeof s !== 'object' || typeof s.id !== 'string' || !SURFACE_ID.test(s.id)) throw new Error('A surface needs an id: lowercase words joined by dashes or dots');
   if (typeof s.draw !== 'function') throw new Error(`Surface ${s.id} needs draw(el, ctx)`);
   const size = (v) => (Number.isFinite(v) && v > 0 ? Math.min(v, 4000) : undefined);
-  const out = { id: s.id, width: size(s.width), height: size(s.height), hold: () => (hold ? hold() : () => {}) };
+  const out = { id: s.id, width: size(s.width), height: size(s.height), text: s.text === true, hold: () => (hold ? hold() : () => {}) };
   for (const k of SURFACE_HOOKS) if (typeof s[k] === 'function') out[k] = s[k];
   return Object.freeze(out);
 }

@@ -5,7 +5,8 @@
 import { test, assert } from 'folio/testing';
 import * as lib from '../../world/lib.js';
 import { bind } from '../world.js';
-import { Surfaces, localPoint, sizeFor, pointerOf, SIZE } from '../surface.js';
+import { Surfaces, localPoint, sizeFor, pointerOf, SIZE, TYPING_MS } from '../surface.js';
+import { surfaceFor } from '../../api/v2.js';
 
 bind(lib);
 
@@ -134,5 +135,62 @@ test('a surface whose draw throws changes nothing in the room', () => {
   const warn = console.warn; console.warn = () => {};
   try { draw(); } finally { console.warn = warn; }
   assert.ok(world$.querySelector('.room-surface'));
+  done();
+});
+
+test('a surface asks for typed text with text: true, and only then hears input (since 1.1.5)', () => {
+  const plain = surfaceFor({ id: 'pad', draw() {}, input() {} }, null, ['surface']);
+  assert.equal(plain.text, false);
+  const typed = surfaceFor({ id: 'pad', text: true, draw() {}, input() {} }, null, ['surface']);
+  assert.equal(typed.text, true);
+  assert.equal(typeof typed.input, 'function', 'input is a hook it keeps');
+  assert.equal(surfaceFor({ id: 'pad', text: 'yes', draw() {} }, null, ['surface']).text, false, 'only true asks');
+});
+
+test('a text surface hears what is typed, an IME\'s words, and a run of typing is one step', async () => {
+  const heard = [];
+  let held = 0, let_go = 0;
+  const s = { id: 'pad', text: true, draw() {}, hold: () => { held++; return () => { let_go++; }; },
+    input: (e) => heard.push(`${e.type} ${JSON.stringify(e.text)}${e.composing ? ' …' : ''}`),
+    key: (e) => { heard.push(`key ${e.key}`); return e.key === 'Backspace'; } };
+  const { room, draw, done } = fakeRoom([s]);
+  draw();
+  const h = [...room.liveSurfaces.values()].find((x) => x.o.mark);
+  assert.equal(h.keys.readOnly, false, 'its keys box is writable');
+  assert.equal(h.keys.getAttribute('aria-label'), 'Text for this surface');
+  room.focusSurface(h);
+  const key = (k) => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); h.keys.dispatchEvent(e); return e; };
+  const type = (text, inputType = 'insertText') => { h.keys.value = text; h.keys.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, data: text })); };
+  key('a'); type('a');
+  assert.equal(key(' ').defaultPrevented, false, 'a space is typed, not swallowed');
+  type(' ');
+  assert.equal(key('Backspace').defaultPrevented, true, 'key() took it, so no text follows');
+  h.keys.dispatchEvent(new CompositionEvent('compositionupdate', { data: 'に' }));
+  h.keys.dispatchEvent(new CompositionEvent('compositionupdate', { data: 'にほん' }));
+  h.keys.dispatchEvent(new CompositionEvent('compositionend', { data: '日本' }));
+  type('pasted', 'insertFromPaste');
+  assert.equal(h.keys.value, '', 'the box is emptied after each piece');
+  assert.deepEqual(heard, ['key a', 'insertText "a"', 'key  ', 'insertText " "', 'key Backspace',
+    'insertCompositionText "に" …', 'insertCompositionText "にほん" …', 'insertCompositionText "日本"', 'insertFromPaste "pasted"']);
+  assert.deepEqual([held, let_go], [1, 0], 'one step, held while typing goes on');
+  await new Promise((r) => setTimeout(r, TYPING_MS + 100));
+  assert.deepEqual([held, let_go], [1, 1], 'a pause ends it');
+  key('b'); type('b');
+  assert.equal(held, 2, 'typing again is the next step');
+  room.blurSurface(h);
+  assert.equal(let_go, 2, 'leaving the surface ends it');
+  done();
+});
+
+test('a surface without text: true keeps a read-only keys box and hears no input', () => {
+  const heard = [];
+  const s = { id: 'pad', draw() {}, hold: () => () => {}, input: () => heard.push('input') };
+  const { room, draw, done } = fakeRoom([s]);
+  draw();
+  const h = [...room.liveSurfaces.values()][0];
+  assert.equal(h.keys.readOnly, true);
+  room.focusSurface(h);
+  h.keys.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'x' }));
+  assert.deepEqual(heard, []);
   done();
 });

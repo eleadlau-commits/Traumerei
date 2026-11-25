@@ -6,6 +6,7 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.5 | 3 | 1 | traum/3 |
 | 1.1.4 | 3 | 1 | traum/3 |
 | 1.1.3 | 3 | 1 | traum/3 |
 | 1.1.2 | 3 | 1 | traum/3 |
@@ -15,6 +16,16 @@ version with `python build.py release <version>`.
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.1.5
+
+Typed text on a surface (gap 12 of the open-core audit), additive to plugin API 3:
+
+- A surface with `text: true` gets a writable keys box and a new hook `input(e, ctx)` with
+  `{ text, composing, type }`: typed letters, dead keys, an IME's words and paste reach it, and a
+  screen reader hears a text field. `key` still comes first for Backspace, the arrows and the rest.
+- A run of typing on a surface is one undo step, until typing pauses for a second, a gesture
+  begins, Ctrl+Z, or the surface is left.
 
 ## 1.1.4
 
