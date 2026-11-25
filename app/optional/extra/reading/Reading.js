@@ -13,7 +13,7 @@
 import { Feature, ui } from 'folio';
 import { RULE, BLOCKS_RULE, isLibraryMode, acrossOf, setAcross, BLOCKS_ACROSS, SOURCE, QUOTE, COMMENT, EDITION, FIELDS, isSource, tidySource, sourcesIn, notesOf, sourceOf, layout, landing, dropAt,
   autoKey, uniqueKey, keysIn, parseQuote, isQuote, aboutOf, streamOf, quoteOf, COLUMN } from './rules.js';
-import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags } from './notes.js';
+import { asQuote, toggleQuote, move, nest, unnest, step as stepNote, tidy, newEdition, setEditionOf, syncTags, deleteSource } from './notes.js';
 import { TAG, tagSpans } from './find.js';
 import { onModeChange, roomMode, viewGet, viewGo, stageBox, fileHandles } from './compat.js';
 import { importBib, importZotero } from './io.js';
@@ -337,7 +337,23 @@ export function install(t) {
     removeCollection: (c) => { const name = t.marks.get(c)?.title || 'collection'; const out = say(removeCollection(t, c)); if (out?.ok) t.ui.toast(`${name} deleted; its sources stay in the library. Ctrl+Z brings it back.`); return out; },
   };
 
-  const docks = installDocks(t, { ...collections, room: here, inLibrary, openOf, open, goTo, newSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
+  // A source deleted with its notes (Details, or Delete in the list); the one after it opens.
+  const dropSource = (id) => {
+    const src = t.marks.get(id);
+    if (!isSource(src)) return null;
+    const r = t.places.home(id);
+    const list = sourcesIn(t, r).map((s) => s.id);
+    const i = list.indexOf(id);
+    const next = list[i + 1] || list[i - 1] || null;
+    const out = say(deleteSource(t, id));
+    if (out?.ok) {
+      t.ui.toast(`${src.citekey || src.title || 'Source'} deleted${out.notes ? ` with its ${out.notes} ${out.notes === 1 ? 'note' : 'notes'}` : ''}. Ctrl+Z brings it back.`);
+      if (next && t.marks.get(next)) open(next); else docks.draw?.(true);
+    }
+    return out;
+  };
+
+  const docks = installDocks(t, { ...collections, room: here, inLibrary, openOf, open, goTo, newSource, deleteSource: dropSource, bibIn, zoteroIn, bibOut, mdOut, wordOut,
     folder: folderOf, setFolder, pick, attach, setOffset, copyPath, showFile, canShow: () => handles.native, verify: verifyFile, detach, openLink, newEdition: () => edition(), setEditionOf: (src, main) => say(setEditionOf(t, src, main)) });
 
   // In a room seen as Library: the docks, and the first source in view (once per visit).

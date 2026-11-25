@@ -14,6 +14,8 @@
 //   newEdition(t, src)         a new source, an edition of `src` (its metadata copied, its own key)
 //   setEditionOf(t, src, main) an edition of `main`, or of nothing (null)
 //   syncTags(t, id)            a note in the tags its words name (#word), out of the others
+//   deleteSource(t, src)       a source and its notes deleted (its collections, editions and other
+//                              sources stay; a tag left holding nothing goes)
 
 import { SOURCE, QUOTE, COMMENT, EDITION, isSource, notesOf, sourceOf, quoteOf, isQuote, aboutOf, editionOf, editionsOf,
   streamOf, blockOf, parseQuote, autoKey, uniqueKey, keysIn } from './rules.js';
@@ -229,3 +231,18 @@ export function setEditionOf(t, src, main) {
 }
 
 
+
+// A source deleted with its notes, as one step (Ctrl+Z brings it all back). Taken out of its
+// collections first, so a collection it leaves empty stays (a group left with no parts would go).
+// Its editions stay, as sources of their own.
+export function deleteSource(t, src) {
+  if (!isSource(t.marks.get(src))) return no('Choose a source first.');
+  const notes = notesOf(t, src);
+  return t.together(() => {
+    unlinkAll(t, src, 'part of');
+    const d = t.marks.delete(src);
+    if (d?.ok === false) return d;
+    for (const n of notes) if (t.marks.get(n)) { const r = t.marks.delete(n); if (r?.ok === false) return r; }
+    return { ok: true, notes: notes.length };
+  });
+}

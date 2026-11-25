@@ -484,3 +484,33 @@ test('reading: as blocks, a 1,500-note library lays out in under 120 ms', () => 
   assert.ok(L.rows.length >= 1500);
   assert.ok(ms < 120, `${ms.toFixed(1)} ms`);
 });
+
+test('reading: a source deleted goes with its notes, as one step; its collections and editions stay', () => {
+  const { host, t, s } = setUp();
+  const [darwin, sixth] = s.sources;
+  const { 'Natural history': nat } = s.collections;
+  const notes = X.notesOf(t, darwin);
+  const n = t.marks.in(s.room).length;
+  assert.equal(N.deleteSource(t, notes[0]).ok, false, 'only a source');
+  // A collection holding only this source stays, empty.
+  const solo = K.newCollection(t, s.room, 'Only Darwin');
+  assert.ok(K.putIn(t, darwin, solo.id).ok);
+  host.world.save();
+  const out = N.deleteSource(t, darwin);
+  host.world.save();
+  assert.ok(out.ok);
+  assert.equal(out.notes, notes.length);
+  assert.ok(!t.marks.get(darwin));
+  assert.ok(notes.every((id) => !t.marks.get(id)), 'its notes went with it');
+  assert.ok(t.marks.get(solo.id), 'a collection it leaves empty stays');
+  assert.ok(t.marks.get(nat) && K.sourcesInCollection(t, nat).includes(sixth));
+  assert.ok(t.marks.get(sixth) && X.editionOf(t, sixth) === null, 'its edition stays, a source of its own');
+  assert.equal(X.sourcesIn(t, s.room).length, 4);
+  assert.deepEqual(brokenLaws(host.w), []);
+  host.world.undo();
+  assert.ok(t.marks.get(darwin));
+  assert.deepEqual(X.notesOf(t, darwin), notes, 'one undo brings it all back');
+  assert.equal(X.editionOf(t, sixth), darwin);
+  assert.ok(K.sourcesInCollection(t, solo.id).includes(darwin));
+  assert.equal(t.marks.in(s.room).length, n + 1);
+});
