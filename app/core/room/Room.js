@@ -292,6 +292,8 @@ export default class Room extends Feature {
     this.frame?.show(this, { search: this.finder ? () => this.openSearch() : null, back: () => this.back(), backLabel: 'Back to the rooms', crumbs: this.crumbs(),
       idle: IDLE });
     this.closeAdd();
+    // Zooming in, the loose tray waits until the room and its rail show (expand), not before them.
+    this.looseWaits = !!from;
     this.drawRoom();
     if (from) this.expand(from);
     this.takeDraft();
@@ -322,10 +324,13 @@ export default class Room extends Feature {
     this.closeSearch();
     this.modeSettings = null; // (and closing the ⚙ settings doesn't draw the room)
     this.panel?.closeAll(true);
-    this.docks?.left.close('loose', true);
     this.shelveDraft();
     this.stopWriting();
     this.roomId = null;
+    // The loose tray shuts once the room is gone: keeping a thought being edited above draws the
+    // room, and its tray with it, so shutting the tray before that opened it again on the rooms page.
+    this.looseWaits = false;
+    this.docks?.left.close('loose', true);
     this.zoomRoom = null; // coming back in is heard as a zoom again (view.js zoomed)
     this.barSaid = null;  // and the bar's words are put on the frame again (bars.js)
     this.drawStrip();     // empty now
@@ -362,7 +367,7 @@ export default class Room extends Feature {
   expand(a) {
     this.expandVeil?.remove();
     clearTimeout(this.expandTimer);
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.showLoose(); return; }
     const look = this.lookOf(room(this.world, this.roomId));
     const W = window.innerWidth, H = window.innerHeight;
     const veil = el('div', { class: 'expand', style: `background:linear-gradient(${look.top}, ${look.bottom});transform:translate(${a.left}px, ${a.top}px) scale(${a.width / W}, ${a.height / H})` });
@@ -375,8 +380,16 @@ export default class Room extends Feature {
     this.expandTimer = setTimeout(() => {
       this.root.classList.remove('expanding');
       veil.classList.add('done');
+      this.showLoose(); // with the room and its rail, as the veil fades
       this.expandTimer = setTimeout(() => veil.remove(), 260);
     }, 500);
+  }
+
+  // The loose tray held back while the room zoomed in: it shows now.
+  showLoose() {
+    if (!this.looseWaits) return;
+    this.looseWaits = false;
+    if (this.roomId) this.drawTray();
   }
 
   // A thought left half written when leaving a room is kept for it (its square shows a dot), and

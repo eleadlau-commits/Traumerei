@@ -6,6 +6,7 @@ version with `python build.py release <version>`.
 
 | App | Plugin API | AI tasks | .traum file |
 |---|---|---|---|
+| 1.1.6 | 3 | 1 | traum/3 |
 | 1.1.5 | 3 | 1 | traum/3 |
 | 1.1.4 | 3 | 1 | traum/3 |
 | 1.1.3 | 3 | 1 | traum/3 |
@@ -16,6 +17,16 @@ version with `python build.py release <version>`.
 | 1.0.2 | 2 | 1 | traum/3 |
 | 1.0.1 | 2 | 1 | traum/3 |
 | 1.0.0 | 2 | — | traum/3 |
+
+## 1.1.6
+
+Two fixes to a room's loose tray:
+
+- Going back to the rooms page (Rooms in the breadcrumb, Back, Escape) while a thought was open
+  for editing left the loose tray on the rooms page: keeping the thought drew the room again and
+  opened the tray after it had been shut. The tray now shuts once the room is gone.
+- Going into a room with the zoom, the tray no longer shows before the room: it waits for the
+  zoom to end and shows with the room and its rail.
 
 ## 1.1.5
 
