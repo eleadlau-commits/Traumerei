@@ -310,11 +310,13 @@ export class Bars {
 
   // The loose thoughts in the left dock: always there in a room, empty or not ("Loose · 0"), and
   // kept up to date while it shows (or is hidden), so switching mode (Tab) changes what it lists
-  // without shutting and opening it again; leaving the room shuts it.
+  // without shutting and opening it again; leaving the room shuts it. Going in with the zoom, it
+  // waits for the zoom to end, so it shows with the room and its rail, not before them.
   drawLoose(items) {
     const dock = this.docks.left;
     const open = this.loose && dock.isOpen('loose');
     if (!this.roomId && !open) { this.loose = null; this.looseQuery = ''; return; }
+    if (!open && this.looseWaits) return; // the room is still zooming in (Room.js showLoose)
     const title = items.length ? `${items.length} not placed` : 'Nothing loose';
     const shown = this.looseFilter(items);
     const list = shown.length ? shown.map((th) => this.looseCard(th))
@@ -348,7 +350,10 @@ export class Bars {
     // × and Escape only hide it, as Ctrl+Alt+L does; leaving the room shuts it.
     dock.open({ key: 'loose', kind: 'Loose', title, label: `Loose · ${items.length}`, body, quiet: true, beforeClose: () => { dock.toggle(); return false; },
       onClose: () => { if (this.loose === loose) { this.loose = null; this.looseQuery = ''; } } })
-      .then((handle) => { if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; } });
+      .then((handle) => {
+        if (handle && (!this.roomId || this.loose !== loose)) { handle.close(true); return; } // the room was left (or the tray made again) meanwhile
+        if (this.loose === loose) { if (handle) loose.handle = handle; else this.loose = null; }
+      });
   }
 
   // The add bar at the foot of the loose dock: a box always ready for a new thought. Enter keeps it
